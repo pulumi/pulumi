@@ -234,10 +234,10 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	handlerMu.Lock()
 
 	switch {
-	case LogToStderr && exportHandler != nil:
-		// Logs already flow to the engine over OTel, so ignore --logtostderr:
-		// writing JSON records to stderr would only leak them into the
-		// engine's display of our output.
+	case exportHandler != nil:
+		// Logs already flow to the engine over OTel, so skip local output:
+		// a log file would only duplicate them, and writing JSON records to
+		// stderr would leak them into the engine's display of our output.
 		primary = discardHandler{}
 	case LogToStderr:
 		primary = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{

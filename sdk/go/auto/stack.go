@@ -795,6 +795,11 @@ func refreshOptsToCmd(o *optrefresh.Options, s *Stack, isPreview bool) ([]string
 	if o.ClearPendingCreates {
 		args = append(args, "--clear-pending-creates")
 	}
+	// Each --import-pending-creates invocation accepts exactly one value, and the URN must be
+	// immediately followed by its provider ID, so we emit two flags per pending create.
+	for _, pc := range o.ImportPendingCreates {
+		args = append(args, "--import-pending-creates="+pc.URN, "--import-pending-creates="+pc.ID)
+	}
 	for _, tURN := range o.Target {
 		args = append(args, "--target="+tURN)
 	}

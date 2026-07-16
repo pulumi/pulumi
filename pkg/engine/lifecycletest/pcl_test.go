@@ -20,6 +20,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
 
@@ -406,7 +408,7 @@ func TestPclMultipleSnippets(t *testing.T) {
 	require.Len(t, snap.Snippets, 2)
 
 	// Index resources by URN name so the assertions don't depend on engine ordering.
-	resourcesByName := map[string]*resource.State{}
+	resourcesByName := map[string]*pkgresource.State{}
 	for _, r := range snap.Resources {
 		if r.Type == "pkgA:index:res" {
 			resourcesByName[r.URN.Name()] = r
@@ -520,7 +522,7 @@ lengthValue = length(["a", "b", "c", "d"])`,
 	require.NoError(t, err)
 
 	// Find the resource registered by the snippet.
-	var res *resource.State
+	var res *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.Type == "pkgA:index:res" {
 			res = r
@@ -608,7 +610,7 @@ rootDir = rootDirectory()`,
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
-	var res *resource.State
+	var res *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.Type == "pkgA:index:res" {
 			res = r
@@ -718,7 +720,7 @@ func TestPclSnippetInvoke(t *testing.T) {
 
 	require.Equal(t, []string{"hi"}, invoked, "invoke should be called exactly once with input \"hi\"")
 
-	var res *resource.State
+	var res *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.Type == "pkgA:index:res" {
 			res = r
@@ -822,7 +824,7 @@ func TestPclSnippetResourceReference(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	var res *resource.State
+	var res *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.Type == "pkgA:index:res" {
 			res = r
@@ -948,7 +950,7 @@ func TestPclSnippetReferenceLocalComponent(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	var res *resource.State
+	var res *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.Type == "pkgA:index:res" {
 			res = r
@@ -1061,7 +1063,7 @@ func TestPclSnippetMissingProgramReference(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	var res *resource.State
+	var res *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.Type == "pkgA:index:res" {
 			res = r
@@ -1178,7 +1180,7 @@ func TestPclSnippetMissingSnippetReference(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	var consumer *resource.State
+	var consumer *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "consumer" {
 			consumer = r
@@ -1304,7 +1306,7 @@ func TestPclSnippetReferenceFollowsAlias(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
-	var consumer *resource.State
+	var consumer *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "consumer" {
 			consumer = r
@@ -1384,7 +1386,7 @@ options {
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
-	var snippetRes *resource.State
+	var snippetRes *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.Type == tokens.Type("pkgA:index:res") {
 			snippetRes = r
@@ -1459,7 +1461,7 @@ options {
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
-	var snippetRes *resource.State
+	var snippetRes *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "snippet-resource" {
 			snippetRes = r
@@ -1523,7 +1525,7 @@ options {
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
-	var child *resource.State
+	var child *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "child" {
 			child = r
@@ -1763,6 +1765,27 @@ func TestPclSnippetOptionValidation(t *testing.T) {
 			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "delete-missing")
 		require.ErrorContains(t, err, fmt.Sprintf("cannot delete snippet %q: no such snippet in snapshot", snippetID))
 	})
+
+	t.Run("invalid snippet is not persisted", func(t *testing.T) {
+		t.Parallel()
+
+		p := newPlan(t)
+		snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		p.Options.Snippets = map[uuid.UUID]*resource.Snippet{
+			snippetID: {
+				Name: "test-resource", Type: "pkgA:index:res",
+				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+				Code:       ``,
+			},
+		}
+
+		snap, err := lt.TestOp(Update).RunStep(
+			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "invalid")
+		require.ErrorContains(t, err, "bind snippet")
+		require.ErrorContains(t, err, "missing required attribute 'propA'")
+		require.NotNil(t, snap)
+		require.Empty(t, snap.Snippets)
+	})
 }
 
 // newPclSnippetTestPlan returns an empty-snapshot TestPlan wired to the standard pkgA snippet
@@ -1811,7 +1834,7 @@ func TestPclSnippetIDRecorded(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
-	var found *resource.State
+	var found *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.Type == "pkgA:index:res" {
 			found = r

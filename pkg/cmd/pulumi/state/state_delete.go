@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -29,7 +31,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
 	"github.com/spf13/cobra"
@@ -43,8 +44,9 @@ func newStateDeleteCommand(ws pkgWorkspace.Context, lm backend.LoginManager) *co
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:   "delete",
-		Short: "Deletes one or more resources from a stack's state",
+		Use:     "remove",
+		Aliases: []string{"rm", "delete"},
+		Short:   "Deletes one or more resources from a stack's state",
 		Long: `Deletes one or more resources from a stack's state
 
 This command deletes resources from a stack's state, as long as it is safe to do so. Each resource is specified
@@ -57,7 +59,7 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
-		Example: "pulumi state delete 'urn:pulumi:stage::demo::pkg:index:Type::res-a' " +
+		Example: "pulumi state remove 'urn:pulumi:stage::demo::pkg:index:Type::res-a' " +
 			"'urn:pulumi:stage::demo::pkg:index:Type::res-b'",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -72,9 +74,9 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			showPrompt := !yes
 			nDeleted := 0
 
-			var handleProtected func(*resource.State) error
+			var handleProtected func(*pkgresource.State) error
 			if force {
-				handleProtected = func(res *resource.State) error {
+				handleProtected = func(res *pkgresource.State) error {
 					sink.Warningf(diag.Message(res.URN,
 						"deleting protected resource %s due to presence of --force"), res.URN)
 					res.Protect = false
@@ -165,12 +167,12 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 func runStateDeleteResources(
 	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm backend.LoginManager,
 	stackName string, showPrompt bool, args []string,
-	handleProtected func(*resource.State) error, targetDependents bool,
+	handleProtected func(*pkgresource.State) error, targetDependents bool,
 ) (int, error) {
 	var deleted int
 	err := runTotalStateEdit(ctx, sink, ws, lm, stackName, showPrompt,
 		func(opts display.Options, snap *deploy.Snapshot) error {
-			targets := make(map[*resource.State]struct{})
+			targets := make(map[*pkgresource.State]struct{})
 			for _, arg := range args {
 				res, err := resolveStateResourceArg(opts, snap, arg)
 				if err != nil {
@@ -194,16 +196,16 @@ func runStateDeleteResources(
 }
 
 func computeStateDeleteOrder(
-	snap *deploy.Snapshot, targets map[*resource.State]struct{},
-) ([]*resource.State, error) {
+	snap *deploy.Snapshot, targets map[*pkgresource.State]struct{},
+) ([]*pkgresource.State, error) {
 	dg := graph.NewDependencyGraph(snap.Resources)
-	remaining := make(map[*resource.State]struct{}, len(targets))
+	remaining := make(map[*pkgresource.State]struct{}, len(targets))
 	for k := range targets {
 		remaining[k] = struct{}{}
 	}
-	order := make([]*resource.State, 0, len(targets))
+	order := make([]*pkgresource.State, 0, len(targets))
 	for len(remaining) > 0 {
-		var next *resource.State
+		var next *pkgresource.State
 		for res := range remaining {
 			deps := dg.OnlyDependsOn(res)
 			ok := true

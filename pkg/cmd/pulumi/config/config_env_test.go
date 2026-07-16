@@ -99,7 +99,7 @@ func newConfigEnvCmdForTestWithCheckYAMLEnvironment(
 		},
 
 		ws: &pkgWorkspace.MockContext{
-			ReadProjectF: func() (*workspace.Project, string, error) {
+			ReadProjectF: func(string) (*workspace.Project, string, error) {
 				p, err := workspace.LoadProjectBytes([]byte(projectYAML), "Pulumi.yaml", encoding.YAML)
 				if err != nil {
 					return nil, "", err
@@ -203,6 +203,10 @@ func (m envDefMap) LoadEnvironment(ctx context.Context, name string) ([]byte, ev
 		return nil, nil, errors.New("not found")
 	}
 	return []byte(def), nil, nil
+}
+
+func (m envDefMap) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
 }
 
 func newConfigEnvCmdForInitTest(

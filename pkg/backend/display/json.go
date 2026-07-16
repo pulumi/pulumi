@@ -22,6 +22,8 @@ import (
 	"os"
 	"unicode/utf8"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -34,9 +36,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
-// rawStringBytesDisplay renders a string containing bytes that are not valid UTF-8 as b"<base64>",
+// byteStringDisplay renders a string containing bytes that are not valid UTF-8 as b"<base64>",
 // since such strings cannot be represented in JSON or terminal output directly.
-func rawStringBytesDisplay(s string) string {
+func byteStringDisplay(s string) string {
 	return `b"` + base64.StdEncoding.EncodeToString([]byte(s)) + `"`
 }
 
@@ -46,7 +48,7 @@ func rawStringBytesDisplay(s string) string {
 func massagePropertyValue(v resource.PropertyValue, showSecrets bool) resource.PropertyValue {
 	switch {
 	case v.IsString() && !utf8.ValidString(v.StringValue()):
-		return resource.NewProperty(rawStringBytesDisplay(v.StringValue()))
+		return resource.NewProperty(byteStringDisplay(v.StringValue()))
 	case v.IsArray():
 		new := make([]resource.PropertyValue, len(v.ArrayValue()))
 		for i, e := range v.ArrayValue() {
@@ -82,7 +84,7 @@ func MassageSecrets(m resource.PropertyMap, showSecrets bool) resource.PropertyM
 
 // stateForJSONOutput prepares some resource's state for JSON output. This includes filtering the output based
 // on the supplied options, in addition to massaging secret fields.
-func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
+func stateForJSONOutput(s *pkgresource.State, opts Options) *pkgresource.State {
 	var inputs resource.PropertyMap
 	var outputs resource.PropertyMap
 	if !isRootURN(s.URN) || !opts.SuppressOutputs {
@@ -94,7 +96,7 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 		inputs = resource.PropertyMap{}
 		outputs = resource.PropertyMap{}
 	}
-	return resource.NewState{
+	return pkgresource.NewState{
 		Type:                    s.Type,
 		URN:                     s.URN,
 		Custom:                  s.Custom,

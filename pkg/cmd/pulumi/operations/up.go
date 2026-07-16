@@ -97,6 +97,7 @@ func NewUpCmd() *cobra.Command {
 	var stackName string
 	var configArray []string
 	var configFile string
+	var envOverrides []string
 	var path bool
 	var client string
 
@@ -178,7 +179,7 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 
-		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -408,7 +409,7 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		// Load the project, update the name & description, remove the template section, and save it.
-		proj, root, err := ws.ReadProject()
+		proj, root, err := ws.ReadProject("")
 		if err != nil {
 			return err
 		}
@@ -473,7 +474,7 @@ func NewUpCmd() *cobra.Command {
 			}
 		}
 
-		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, pctx.Diag, ssml, s, proj, configFile)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, pctx.Diag, ssml, s, proj, configFile, envOverrides)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -750,6 +751,7 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
+	cmdConfig.OverrideEnvFlag(cmd, &envOverrides)
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the update and save to the stack config file")

@@ -1,0 +1,4 @@
+component: cli/do
+kind: fix
+body: Fix the converter plugin not being called if just attributes needed converting
+time: 2026-07-15T22:36:14.359311+01:00

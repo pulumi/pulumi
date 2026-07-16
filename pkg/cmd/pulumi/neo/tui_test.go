@@ -16,6 +16,7 @@ package neo
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -235,6 +236,36 @@ func TestNewModel_BusyStart(t *testing.T) {
 	assert.NotEmpty(t, m.blocks[0].label, "busy block must have a non-empty thinking label")
 }
 
+func TestNewModel_InitialViewDoesNotWrapPlaceholderToTinyWidth(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{Busy: true, InitialWidth: 215})
+	view := stripansi.Strip(m.viewString())
+
+	assert.Equal(t, 215, m.width)
+	assert.Equal(t, 211, m.liveWidth())
+	assert.Contains(t, view, "Send a message...",
+		"first frame before WindowSizeMsg must render the full placeholder")
+
+	m.textInput.SetWidth(2)
+	view = stripansi.Strip(m.viewString())
+	assert.Contains(t, view, "Send a message...",
+		"empty input render must not trust a stale tiny textarea viewport")
+
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 4, Height: 79})
+	um := updated.(Model)
+	view = stripansi.Strip(um.viewString())
+
+	assert.Equal(t, 215, um.width)
+	assert.Equal(t, 211, um.liveWidth())
+	assert.Contains(t, view, "Send a message...",
+		"bogus tiny startup WindowSizeMsg must not shrink the placeholder to Se")
+
+	updated, _ = um.Update(tea.WindowSizeMsg{Width: 120, Height: 79})
+	um = updated.(Model)
+	assert.Equal(t, 120, um.width, "subsequent valid resize must still be honored")
+}
+
 // -----------------------------------------------------------------------------
 // Block manipulation
 // -----------------------------------------------------------------------------
@@ -415,6 +446,20 @@ func TestModel_Update_KeyCtrlC_TwoPressesQuit(t *testing.T) {
 	assert.True(t, ok, "second consecutive Ctrl+C must produce a tea.QuitMsg")
 }
 
+func TestModel_Update_KeyCtrlC_WithDraftClearsInput(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	m.textInput.SetValue("half typed")
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	um := updated.(Model)
+
+	assert.Empty(t, um.textInput.Value(), "Ctrl+C with a draft must clear the textarea")
+	assert.False(t, um.ctrlCArmed, "clearing a draft must not arm the exit prompt")
+	assert.Nil(t, cmd, "clearing a draft must not quit")
+}
+
 func TestModel_Update_KeyCtrlC_FirstPressCancelsWhenBusy(t *testing.T) {
 	t.Parallel()
 
@@ -470,6 +515,96 @@ func TestModel_Update_KeyCtrlC_OtherKeyDisarms(t *testing.T) {
 	}
 }
 
+func TestModel_Update_CtrlAWithDraftMovesCursorStart(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+	m.textInput.SetValue("hello")
+	m.textInput.MoveToEnd()
+	require.Equal(t, 5, m.textInput.Column(), "precondition: cursor starts at the end")
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
+	um := updated.(Model)
+
+	assert.Equal(t, 0, um.textInput.Column(), "Ctrl+A with a draft must move to line start")
+	assert.Equal(t, client.NeoApprovalModeManual, um.approvalMode,
+		"Ctrl+A with a draft must not toggle approval mode")
+}
+
+func TestModel_Update_CtrlEWithDraftMovesCursorEnd(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	m.textInput.SetValue("hello")
+	m.textInput.CursorStart()
+	require.Equal(t, 0, m.textInput.Column(), "precondition: cursor starts at the beginning")
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'e', Mod: tea.ModCtrl})
+	um := updated.(Model)
+
+	assert.Equal(t, 5, um.textInput.Column(), "Ctrl+E must move to line end")
+}
+
+func TestModel_Update_DraftEditingKeysUseTextareaKeymap(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ctrl+d deletes forward instead of arming quit", func(t *testing.T) {
+		t.Parallel()
+
+		m := NewModel(ModelConfig{})
+		m.textInput.SetValue("abc")
+		m.textInput.CursorStart()
+
+		updated, cmd := m.Update(tea.KeyPressMsg{Code: 'd', Mod: tea.ModCtrl})
+		um := updated.(Model)
+
+		assert.Equal(t, "bc", um.textInput.Value())
+		assert.False(t, um.ctrlCArmed)
+		assert.Nil(t, cmd)
+	})
+
+	t.Run("meta+f moves forward one word", func(t *testing.T) {
+		t.Parallel()
+
+		m := NewModel(ModelConfig{})
+		m.textInput.SetValue("hello world")
+		m.textInput.CursorStart()
+
+		updated, _ := m.Update(tea.KeyPressMsg{Code: 'f', Mod: tea.ModMeta})
+		um := updated.(Model)
+
+		assert.Equal(t, 5, um.textInput.Column())
+	})
+
+	t.Run("meta+b moves backward one word", func(t *testing.T) {
+		t.Parallel()
+
+		m := NewModel(ModelConfig{})
+		m.textInput.SetValue("hello world")
+		m.textInput.MoveToEnd()
+
+		updated, _ := m.Update(tea.KeyPressMsg{Code: 'b', Mod: tea.ModMeta})
+		um := updated.(Model)
+
+		assert.Equal(t, 6, um.textInput.Column())
+	})
+
+	t.Run("cmd+backspace deletes backward one word", func(t *testing.T) {
+		t.Parallel()
+
+		m := NewModel(ModelConfig{})
+		m.textInput.SetValue("hello world")
+		m.textInput.MoveToEnd()
+
+		updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyBackspace, Mod: tea.ModSuper})
+		um := updated.(Model)
+
+		assert.Equal(t, "hello ", um.textInput.Value())
+	})
+}
+
 func TestModel_Update_KeyCtrlC_TimeoutDisarms(t *testing.T) {
 	t.Parallel()
 
@@ -504,6 +639,11 @@ func TestModel_Update_KeyCtrlC_StaleDisarmIgnored(t *testing.T) {
 	updated, _ = um.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	um = updated.(Model)
 	require.False(t, um.ctrlCArmed)
+
+	updated, _ = um.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	um = updated.(Model)
+	require.False(t, um.ctrlCArmed, "Ctrl+C with a draft must clear before re-arming")
+	require.Empty(t, um.textInput.Value())
 
 	updated, _ = um.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	um = updated.(Model)
@@ -1222,6 +1362,16 @@ func TestModel_Update_UIToolCompleted_AppendsCompleteAndStaysBusy(t *testing.T) 
 	require.GreaterOrEqual(t, len(um.blocks), 2)
 	assert.Equal(t, blockBusy, um.blocks[len(um.blocks)-1].kind)
 	assert.Equal(t, blockToolComplete, um.blocks[len(um.blocks)-2].kind)
+}
+
+func TestToolCompletedBlockUsesStyledMarker(t *testing.T) {
+	t.Parallel()
+
+	okBlock := toolCompletedBlock("filesystem__read", nil, false)
+	errBlock := toolCompletedBlock("filesystem__read", nil, true)
+
+	assert.Contains(t, okBlock.rendered, toolOKMarker)
+	assert.Contains(t, errBlock.rendered, toolErrMarker)
 }
 
 func TestModel_Update_UIError_EndsBusyAndAppendsError(t *testing.T) {
@@ -2483,6 +2633,96 @@ func TestPrintlnBlock_SubsequentEmissionsLeadByNewline(t *testing.T) {
 	require.Len(t, got, 1)
 	assert.Equal(t, "\nhello", got[0],
 		"subsequent emissions must start with a single \\n so blocks have a blank-line gap")
+}
+
+func TestNewModel_StagesHistoryWithoutUsingEventChannel(t *testing.T) {
+	t.Parallel()
+
+	history := make([]UIEvent, 70)
+	for i := range history {
+		history[i] = UIUserMessage{Content: fmt.Sprintf("history-%02d", i)}
+	}
+	ch := make(chan UIEvent)
+
+	m := NewModel(ModelConfig{
+		EventCh: ch,
+		History: history,
+	})
+
+	var userBlocks int
+	for _, b := range m.blocks {
+		if b.kind == blockUserMessage {
+			userBlocks++
+		}
+	}
+	assert.Equal(t, len(history), userBlocks)
+	assert.False(t, m.hasEmittedScrollback,
+		"staging resume history must not mark terminal scrollback as emitted before first render")
+}
+
+func TestModel_PrepareInitialScrollbackSuppressesFirstFlush(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{
+		InitialWidth: 100,
+		History: []UIEvent{
+			UIUserMessage{Content: "historical prompt"},
+			UIAssistantMessage{Content: "historical answer", IsFinal: true},
+		},
+	})
+
+	prepared, rendered := m.prepareInitialScrollback(100, 30)
+	stripped := stripansi.Strip(rendered)
+	assert.Contains(t, stripped, "historical prompt")
+	assert.Contains(t, stripped, "historical answer")
+	assert.True(t, prepared.sizeReceived)
+	assert.True(t, prepared.hasEmittedScrollback)
+
+	updated, cmd := prepared.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	um := updated.(Model)
+	assert.True(t, um.sizeReceived)
+	assert.Empty(t, collectPrintln(cmd),
+		"resume startup must not ask Bubble Tea to insert history above the live input frame")
+}
+
+func TestNewModel_HistoryFinalEventClearsStaleApprovalPrompt(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{
+		EventCh: make(chan UIEvent, 4),
+		History: []UIEvent{
+			UIApprovalRequest{
+				ApprovalID: "appr_1",
+				Message:    "Run this?",
+			},
+			UIAssistantMessage{
+				Content: "Done",
+				IsFinal: true,
+			},
+		},
+	})
+
+	assert.False(t, m.pendingApproval)
+	assert.Empty(t, m.approvalPromptText)
+	assert.Equal(t, "Send a message...", m.textInput.Placeholder)
+}
+
+func TestNewModel_HistoryKeepsTailApprovalPrompt(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{
+		EventCh: make(chan UIEvent, 4),
+		History: []UIEvent{
+			UIApprovalRequest{
+				ApprovalID: "appr_1",
+				Message:    "Run this?",
+			},
+		},
+	})
+
+	assert.True(t, m.pendingApproval)
+	assert.NotEmpty(t, m.approvalPromptText)
+	assert.Empty(t, m.textInput.Placeholder)
 }
 
 // TestTranscriptSpacing_FullSequence drives a representative session through

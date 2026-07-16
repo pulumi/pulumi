@@ -21,6 +21,8 @@ import (
 	"log/slog"
 	"os"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/spf13/cobra"
@@ -42,7 +44,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -61,6 +62,7 @@ func NewDestroyCmd() *cobra.Command {
 	var execAgent string
 	var configArray []string
 	var configFile string
+	var envOverrides []string
 	var path bool
 	var client string
 
@@ -256,7 +258,7 @@ func NewDestroyCmd() *cobra.Command {
 				// The config may be missing, fallback on the latest configuration in the backend.
 				getConfig = config.GetStackConfigurationOrLatest
 			}
-			cfg, sm, err := getConfig(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
+			cfg, sm, err := getConfig(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -429,6 +431,7 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
+	config.OverrideEnvFlag(cmd, &envOverrides)
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the destroy and save to the stack config file")
@@ -576,9 +579,9 @@ func NewDestroyCmd() *cobra.Command {
 // We rely on the fact that `resources` is topologically sorted with respect to
 // its dependencies.  This function understands that providers live outside
 // this topological sort.
-func getProtectedExcludes(resources []*resource.State) ([]string, error) {
+func getProtectedExcludes(resources []*pkgresource.State) ([]string, error) {
 	dg := graph.NewDependencyGraph(resources)
-	protected := mapset.NewSet[*resource.State]()
+	protected := mapset.NewSet[*pkgresource.State]()
 
 	for _, resource := range resources {
 		if resource.Protect {

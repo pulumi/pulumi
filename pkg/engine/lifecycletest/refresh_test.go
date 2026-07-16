@@ -23,6 +23,8 @@ import (
 	"strings"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
 	combinations "github.com/mxschmitt/golang-combinations"
@@ -302,7 +304,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	// Create an old snapshot with a single initialization failure.
 	//
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:       resURN.Type(),
 				URN:        resURN,
@@ -574,7 +576,7 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 }
 
 // Looks up the provider ID in newResources and sets "Provider" to reference that in every resource in oldResources.
-func setProviderRef(t *testing.T, oldResources, newResources []*resource.State, provURN resource.URN) {
+func setProviderRef(t *testing.T, oldResources, newResources []*pkgresource.State, provURN resource.URN) {
 	for _, r := range newResources {
 		if r.URN == provURN {
 			provRef, err := providers.NewReference(r.URN, r.ID)
@@ -606,8 +608,8 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns(refreshTargets)
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -619,7 +621,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		}
 	}
 
-	oldResources := []*resource.State{
+	oldResources := []*pkgresource.State{
 		newResource(urnA, "0", false),
 		newResource(urnB, "1", false, urnA),
 		newResource(urnC, "2", false, urnA, urnB),
@@ -775,8 +777,8 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns(refreshTargets)
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -788,7 +790,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		}
 	}
 
-	oldResources := []*resource.State{
+	oldResources := []*pkgresource.State{
 		newResource(urnA, "0", false),
 		newResource(urnB, "1", false, urnA),
 		newResource(urnC, "2", false, urnA, urnB),
@@ -954,8 +956,8 @@ func TestCanceledRefresh(t *testing.T) {
 	urnB := p.NewURN(resType, "resB", "")
 	urnC := p.NewURN(resType, "resC", "")
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -967,7 +969,7 @@ func TestCanceledRefresh(t *testing.T) {
 		}
 	}
 
-	oldResources := []*resource.State{
+	oldResources := []*pkgresource.State{
 		newResource(urnA, "0", false),
 		newResource(urnB, "1", false),
 		newResource(urnC, "2", false),
@@ -1165,7 +1167,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 	p.Options.T = t
 
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:       resURN.Type(),
 				URN:        resURN,
@@ -1224,7 +1226,7 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 	p.Options.T = t
 
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:    resURN.Type(),
 				URN:     resURN,
@@ -2645,7 +2647,7 @@ func TestRefreshV2Targeted(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		provA := &resource.State{
+		provA := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
 			Custom: true,
@@ -2656,7 +2658,7 @@ func TestRefreshV2Targeted(t *testing.T) {
 		provARef, err := providers.NewReference(provA.URN, provA.ID)
 		require.NoError(t, err)
 
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type:     "pkgA:index:Resource",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:index:Resource::resA",
 			Custom:   true,
@@ -2666,7 +2668,7 @@ func TestRefreshV2Targeted(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, resA)
 
-		provB := &resource.State{
+		provB := &pkgresource.State{
 			Type:   "pulumi:providers:pkgB",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::prov",
 			Custom: true,
@@ -2677,7 +2679,7 @@ func TestRefreshV2Targeted(t *testing.T) {
 		provBRef, err := providers.NewReference(provB.URN, provB.ID)
 		require.NoError(t, err)
 
-		compA := &resource.State{
+		compA := &pkgresource.State{
 			Type:     "pkgB:index:Component",
 			URN:      "urn:pulumi:test-stack::test-project::pkgB:index:Component::compA",
 			Custom:   false,
@@ -2685,7 +2687,7 @@ func TestRefreshV2Targeted(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, compA)
 
-		provC := &resource.State{
+		provC := &pkgresource.State{
 			Type:   "pulumi:providers:pkgC",
 			URN:    "urn:pulumi:test-stack::test-project::pkgB:index:Component$pulumi:providers:pkgC::provC",
 			Custom: true,
@@ -2772,7 +2774,7 @@ func TestRefreshV2FailedRead(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov := &resource.State{
+		prov := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::default",
 			Custom: true,
@@ -2783,7 +2785,7 @@ func TestRefreshV2FailedRead(t *testing.T) {
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
 		require.NoError(t, err)
 
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
 			Custom:   true,
@@ -2860,7 +2862,7 @@ func TestRefreshDeletedResourceWithChild(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		provA := &resource.State{
+		provA := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
 			Custom: true,
@@ -2871,7 +2873,7 @@ func TestRefreshDeletedResourceWithChild(t *testing.T) {
 		provARef, err := providers.NewReference(provA.URN, provA.ID)
 		require.NoError(t, err)
 
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
 			Custom:   true,
@@ -2880,7 +2882,7 @@ func TestRefreshDeletedResourceWithChild(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, resA)
 
-		provB := &resource.State{
+		provB := &pkgresource.State{
 			Type:   "pulumi:providers:pkgB",
 			URN:    "urn:pulumi:test-stack::test-project::pkgA:m:typA$pulumi:providers:pkgB::provB",
 			Custom: true,
@@ -2889,7 +2891,7 @@ func TestRefreshDeletedResourceWithChild(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, provB)
 
-		resADeleted := &resource.State{
+		resADeleted := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
 			Custom:   true,
@@ -2963,7 +2965,7 @@ func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
 		"outputProp": resource.NewProperty("oldOutputValue"),
 	}
 
-	oldResources := []*resource.State{
+	oldResources := []*pkgresource.State{
 		{
 			Type:    urnA.Type(),
 			URN:     urnA,
@@ -3045,7 +3047,7 @@ func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
 	// Verify the final snapshot state
 	require.Len(t, snap.Resources, 2, "expected provider and resource in snapshot")
 
-	var finalResource *resource.State
+	var finalResource *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN == urnA {
 			finalResource = r
@@ -3075,7 +3077,7 @@ func TestRefreshV2TargetedWithPropertyDependencies(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov := &resource.State{
+		prov := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provider",
 			Custom: true,
@@ -3086,7 +3088,7 @@ func TestRefreshV2TargetedWithPropertyDependencies(t *testing.T) {
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
 		require.NoError(t, err)
 
-		res := &resource.State{
+		res := &pkgresource.State{
 			Type:     "pkgA:index:Resource",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:index:Resource::resource",
 			Custom:   true,
@@ -3095,7 +3097,7 @@ func TestRefreshV2TargetedWithPropertyDependencies(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, res)
 
-		comp := &resource.State{
+		comp := &pkgresource.State{
 			Type:     "pkgA:index:Component",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:index:Component::component",
 			Provider: provRef.String(),
@@ -3170,7 +3172,7 @@ func TestRefreshV2TargetNotInProgram(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		provA := &resource.State{
+		provA := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
 			Custom: true,
@@ -3181,7 +3183,7 @@ func TestRefreshV2TargetNotInProgram(t *testing.T) {
 		provRefA, err := providers.NewReference(provA.URN, provA.ID)
 		require.NoError(t, err)
 
-		resA := &resource.State{
+		resA := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
 			Custom:   true,
@@ -3190,14 +3192,14 @@ func TestRefreshV2TargetNotInProgram(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, resA)
 
-		resB := &resource.State{
+		resB := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resB",
 			Provider: provRefA.String(),
 		}
 		s.Resources = append(s.Resources, resB)
 
-		resC := &resource.State{
+		resC := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resC",
 			Provider: provRefA.String(),
@@ -3265,7 +3267,7 @@ func TestRefreshV2ParentChildOrdering(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov0 := &resource.State{
+		prov0 := &pkgresource.State{
 			Type:   "pulumi:providers:pkgB",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::provB",
 			Custom: true,
@@ -3276,7 +3278,7 @@ func TestRefreshV2ParentChildOrdering(t *testing.T) {
 		provRef0, err := providers.NewReference(prov0.URN, prov0.ID)
 		require.NoError(t, err)
 
-		parent := &resource.State{
+		parent := &pkgresource.State{
 			Type:     "pkgB:m:parentType",
 			URN:      "urn:pulumi:test-stack::test-project::pkgB:m:parentType::parent",
 			Custom:   true,
@@ -3285,7 +3287,7 @@ func TestRefreshV2ParentChildOrdering(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, parent)
 
-		parentDeleted := &resource.State{
+		parentDeleted := &pkgresource.State{
 			Type:     "pkgB:m:parentType",
 			URN:      "urn:pulumi:test-stack::test-project::pkgB:m:parentType::parent",
 			Custom:   true,
@@ -3355,7 +3357,7 @@ func TestRefreshV2DependencyNotInOriginalSnapshot(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov0 := &resource.State{
+		prov0 := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
 			Custom: true,
@@ -3411,7 +3413,7 @@ func TestRefreshV2ExcludesChildWithExcludedParent(t *testing.T) {
 	p := &lt.TestPlan{Stack: "stack", Project: "project"}
 	snap := &deploy.Snapshot{}
 
-	prov := &resource.State{
+	prov := &pkgresource.State{
 		Type:   "pulumi:providers:pkgA",
 		URN:    "urn:pulumi:stack::project::pulumi:providers:pkgA::prov",
 		Custom: true,
@@ -3422,7 +3424,7 @@ func TestRefreshV2ExcludesChildWithExcludedParent(t *testing.T) {
 	provRef, err := providers.NewReference(prov.URN, prov.ID)
 	require.NoError(t, err)
 
-	parent := &resource.State{
+	parent := &pkgresource.State{
 		Type:     "pkgA:m:typA",
 		URN:      "urn:pulumi:stack::project::pkgA:m:typA::parent",
 		Custom:   true,
@@ -3431,7 +3433,7 @@ func TestRefreshV2ExcludesChildWithExcludedParent(t *testing.T) {
 	}
 	snap.Resources = append(snap.Resources, parent)
 
-	child := &resource.State{
+	child := &pkgresource.State{
 		Type:     "pkgA:m:typA",
 		URN:      "urn:pulumi:stack::project::pkgA:m:typA$pkgA:m:typA::child",
 		Custom:   false,
@@ -3659,7 +3661,7 @@ func TestRefreshV2DeletedWithOrdering(t *testing.T) {
 
 	// Set up the initial snapshot with resA (a component resource).
 	setupSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pkgA:m:t",
 				URN:    "urn:pulumi:test-stack::test-project::pkgA:m:t::resA",
@@ -3715,7 +3717,7 @@ func TestRefreshV2PropertyDependencyOrdering(t *testing.T) {
 	compURN := resource.URN("urn:pulumi:test::test::pkg:m:comp::comp")
 
 	snap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pkg:m:comp",
 				URN:    compURN,

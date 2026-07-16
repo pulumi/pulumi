@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"reflect"
 	"slices"
@@ -29,6 +30,7 @@ import (
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"go.opentelemetry.io/otel"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/migrate"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -41,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -274,7 +275,7 @@ func SerializeDeploymentWithMetadata(
 		}
 	}
 
-	features := maputil.SortedKeys(featureMap)
+	features := slices.Sorted(maps.Keys(featureMap))
 	if len(features) == 0 {
 		features = nil
 	}
@@ -532,8 +533,8 @@ func DeserializeDeploymentV3(
 	}
 
 	type deserializedData struct {
-		resources []*resource.State
-		ops       []resource.Operation
+		resources []*pkgresource.State
+		ops       []pkgresource.Operation
 	}
 
 	data, err := BatchDecrypt(
@@ -541,7 +542,7 @@ func DeserializeDeploymentV3(
 		secretsManager,
 		func(ctx context.Context, dec config.Decrypter) (deserializedData, error) {
 			// For every serialized resource vertex, create a ResourceDeployment out of it.
-			resources := slice.Prealloc[*resource.State](len(deployment.Resources))
+			resources := slice.Prealloc[*pkgresource.State](len(deployment.Resources))
 			for _, res := range deployment.Resources {
 				desres, err := DeserializeResource(res, dec)
 				if err != nil {
@@ -550,7 +551,7 @@ func DeserializeDeploymentV3(
 				resources = append(resources, desres)
 			}
 
-			ops := slice.Prealloc[resource.Operation](len(deployment.PendingOperations))
+			ops := slice.Prealloc[pkgresource.Operation](len(deployment.PendingOperations))
 			for _, op := range deployment.PendingOperations {
 				desop, err := DeserializeOperation(op, dec)
 				if err != nil {
@@ -583,7 +584,8 @@ func DeserializeDeploymentV3(
 		}
 	}
 	return deploy.NewSnapshot(
-		*manifest, secretsManager, data.resources, data.ops, metadata, snippets, deployment.Extensions), nil
+		*manifest, secretsManager, data.resources, data.ops, metadata, snippets, deployment.Extensions,
+	), nil
 }
 
 // initializeSecretsManager initializes the secrets manager for a deployment.
@@ -610,7 +612,7 @@ func initializeSecretsManager(
 
 // SerializeResource turns a resource into a structure suitable for serialization.
 func SerializeResource(
-	ctx context.Context, res *resource.State, enc config.Encrypter, showSecrets bool,
+	ctx context.Context, res *pkgresource.State, enc config.Encrypter, showSecrets bool,
 ) (apitype.ResourceV3, error) {
 	contract.Requiref(res != nil, "res", "must not be nil")
 	contract.Requiref(res.URN != "", "res", "must have a URN")
@@ -641,7 +643,7 @@ func SerializeResource(
 		return apitype.ResourceV3{}, err
 	}
 
-	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame resource.StackFrame) apitype.StackFrameV1 {
+	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame pkgresource.StackFrame) apitype.StackFrameV1 {
 		return apitype.StackFrameV1{SourcePosition: frame.SourcePosition}
 	}))
 
@@ -692,7 +694,7 @@ func SerializeResource(
 
 // SerializeOperation serializes a resource in a pending state.
 func SerializeOperation(
-	ctx context.Context, op resource.Operation, enc config.Encrypter, showSecrets bool,
+	ctx context.Context, op pkgresource.Operation, enc config.Encrypter, showSecrets bool,
 ) (apitype.OperationV2, error) {
 	res, err := SerializeResource(ctx, op.Resource, enc, showSecrets)
 	if err != nil {
@@ -845,7 +847,7 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
-func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resource.State, error) {
+func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*pkgresource.State, error) {
 	// Deserialize the resource properties, if they exist.
 	inputs, err := DeserializeProperties(res.Inputs, dec)
 	if err != nil {
@@ -873,11 +875,11 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 		return nil, fmt.Errorf("resource '%s' has 'custom' false but non-empty ID", res.URN)
 	}
 
-	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame apitype.StackFrameV1) resource.StackFrame {
-		return resource.StackFrame{SourcePosition: frame.SourcePosition}
+	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame apitype.StackFrameV1) pkgresource.StackFrame {
+		return pkgresource.StackFrame{SourcePosition: frame.SourcePosition}
 	}))
 
-	return resource.NewState{
+	return pkgresource.NewState{
 			Type:                    res.Type,
 			URN:                     res.URN,
 			Custom:                  res.Custom,
@@ -920,12 +922,12 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 
 // DeserializeOperation hydrates a pending resource/operation pair.
 func DeserializeOperation(op apitype.OperationV2, dec config.Decrypter,
-) (resource.Operation, error) {
+) (pkgresource.Operation, error) {
 	res, err := DeserializeResource(op.Resource, dec)
 	if err != nil {
-		return resource.Operation{}, err
+		return pkgresource.Operation{}, err
 	}
-	return resource.NewOperation(res, resource.OperationType(op.Type)), nil
+	return pkgresource.NewOperation(res, pkgresource.OperationType(op.Type)), nil
 }
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.

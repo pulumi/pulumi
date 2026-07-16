@@ -118,7 +118,6 @@ var expectedFailures = map[string]string{
 	"l2-plain": "map literals nested in plain list elements render without a type; generated code does not compile",
 
 	// pulumi/pulumi#18345
-	"l2-map-keys":                         "NonPlainData.InnerData renders as interface{}{} instead of &plain.InnerDataArgs{}",                                           //nolint:lll
 	"l2-component-program-resource-ref":   "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",               //nolint:lll
 	"l2-component-component-resource-ref": "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",               //nolint:lll
 	"l3-range":                            "list(string) and map(string) config values decoded as raw JSON strings by cfg.Require; cannot range over string as list/map", //nolint:lll

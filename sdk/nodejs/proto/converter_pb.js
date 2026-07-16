@@ -60,7 +60,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.ResourceImport = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.ResourceImport.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.ResourceImport, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -404,6 +404,13 @@ proto.pulumirpc.ConvertStateRequest.prototype.clearArgsList = function() {
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.ResourceImport.repeatedFields_ = [12];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -444,7 +451,9 @@ logicalName: jspb.Message.getFieldWithDefault(msg, 6, ""),
 isComponent: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
 isRemote: jspb.Message.getBooleanFieldWithDefault(msg, 8, false),
 parameterization: (f = msg.getParameterization()) && proto.pulumirpc.ResourceParameterization.toObject(includeInstance, f),
-extension: (f = msg.getExtension$()) && proto.pulumirpc.ResourceExtension.toObject(includeInstance, f)
+extension: (f = msg.getExtension$()) && proto.pulumirpc.ResourceExtension.toObject(includeInstance, f),
+parent: jspb.Message.getFieldWithDefault(msg, 11, ""),
+propertiesList: (f = jspb.Message.getRepeatedField(msg, 12)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -522,6 +531,14 @@ proto.pulumirpc.ResourceImport.deserializeBinaryFromReader = function(msg, reade
       var value = new proto.pulumirpc.ResourceExtension;
       reader.readMessage(value,proto.pulumirpc.ResourceExtension.deserializeBinaryFromReader);
       msg.setExtension$(value);
+      break;
+    case 11:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setParent(value);
+      break;
+    case 12:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addProperties(value);
       break;
     default:
       reader.skipField();
@@ -622,6 +639,20 @@ proto.pulumirpc.ResourceImport.serializeBinaryToWriter = function(message, write
       10,
       f,
       proto.pulumirpc.ResourceExtension.serializeBinaryToWriter
+    );
+  }
+  f = message.getParent();
+  if (f.length > 0) {
+    writer.writeString(
+      11,
+      f
+    );
+  }
+  f = message.getPropertiesList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      12,
+      f
     );
   }
 };
@@ -842,6 +873,61 @@ proto.pulumirpc.ResourceImport.prototype.clearExtension$ = function() {
  */
 proto.pulumirpc.ResourceImport.prototype.hasExtension$ = function() {
   return jspb.Message.getField(this, 10) != null;
+};
+
+
+/**
+ * optional string parent = 11;
+ * @return {string}
+ */
+proto.pulumirpc.ResourceImport.prototype.getParent = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 11, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+ */
+proto.pulumirpc.ResourceImport.prototype.setParent = function(value) {
+  return jspb.Message.setProto3StringField(this, 11, value);
+};
+
+
+/**
+ * repeated string properties = 12;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.ResourceImport.prototype.getPropertiesList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 12));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+ */
+proto.pulumirpc.ResourceImport.prototype.setPropertiesList = function(value) {
+  return jspb.Message.setField(this, 12, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+ */
+proto.pulumirpc.ResourceImport.prototype.addProperties = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 12, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+ */
+proto.pulumirpc.ResourceImport.prototype.clearPropertiesList = function() {
+  return this.setPropertiesList([]);
 };
 
 

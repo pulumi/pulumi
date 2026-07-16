@@ -20,6 +20,8 @@ import (
 	"strings"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -33,8 +35,8 @@ func TestDependencyGraph(t *testing.T) {
 	// Arrange.
 	providerA, providerARef := makeProvider("pkg", "providerA", "0")
 
-	a1 := &resource.State{URN: "a1", Provider: providerARef}
-	a2 := &resource.State{
+	a1 := &pkgresource.State{URN: "a1", Provider: providerARef}
+	a2 := &pkgresource.State{
 		URN:          "a2",
 		Provider:     providerARef,
 		Dependencies: []resource.URN{a1.URN},
@@ -42,46 +44,46 @@ func TestDependencyGraph(t *testing.T) {
 
 	providerB, providerBRef := makeProvider("pkg", "providerB", "1", a1.URN, a2.URN)
 
-	b1 := &resource.State{
+	b1 := &pkgresource.State{
 		URN:          "b1",
 		Provider:     providerBRef,
 		Dependencies: []resource.URN{a1.URN},
 	}
 
-	c1 := &resource.State{
+	c1 := &pkgresource.State{
 		URN:          "c1",
 		Dependencies: []resource.URN{a2.URN},
 	}
 
 	providerD, providerDRef := makeProvider("pkg", "providerD", "2")
 
-	d1 := &resource.State{URN: "d1", Provider: providerDRef}
-	d2 := &resource.State{URN: "d2", Parent: d1.URN}
-	d3 := &resource.State{URN: "d3", Provider: providerDRef, DeletedWith: d1.URN}
-	d4 := &resource.State{URN: "d4", Parent: d2.URN}
-	d5 := &resource.State{URN: "d5", Parent: d3.URN}
-	d6 := &resource.State{URN: "d6", Custom: true}
-	d7 := &resource.State{URN: "d7", Parent: d6.URN}
-	d8 := &resource.State{URN: "d8", DeletedWith: d6.URN}
-	d9 := &resource.State{URN: "d9", Parent: d8.URN}
+	d1 := &pkgresource.State{URN: "d1", Provider: providerDRef}
+	d2 := &pkgresource.State{URN: "d2", Parent: d1.URN}
+	d3 := &pkgresource.State{URN: "d3", Provider: providerDRef, DeletedWith: d1.URN}
+	d4 := &pkgresource.State{URN: "d4", Parent: d2.URN}
+	d5 := &pkgresource.State{URN: "d5", Parent: d3.URN}
+	d6 := &pkgresource.State{URN: "d6", Custom: true}
+	d7 := &pkgresource.State{URN: "d7", Parent: d6.URN}
+	d8 := &pkgresource.State{URN: "d8", DeletedWith: d6.URN}
+	d9 := &pkgresource.State{URN: "d9", Parent: d8.URN}
 
-	e1 := &resource.State{URN: "e1"}
-	e2 := &resource.State{URN: "e2", Dependencies: []resource.URN{e1.URN}}
-	e3 := &resource.State{
+	e1 := &pkgresource.State{URN: "e1"}
+	e2 := &pkgresource.State{URN: "e2", Dependencies: []resource.URN{e1.URN}}
+	e3 := &pkgresource.State{
 		URN: "e3",
 		PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 			"e3Prop1": {e1.URN},
 		},
 	}
 
-	e4 := &resource.State{URN: "e4", Dependencies: []resource.URN{e3.URN}}
-	e5 := &resource.State{URN: "e5", DeletedWith: e3.URN}
+	e4 := &pkgresource.State{URN: "e4", Dependencies: []resource.URN{e3.URN}}
+	e5 := &pkgresource.State{URN: "e5", DeletedWith: e3.URN}
 
-	f1 := &resource.State{URN: "f1"}
-	f2 := &resource.State{URN: "f2", DeletedWith: f1.URN}
-	f1D := &resource.State{URN: "f1", Delete: true}
+	f1 := &pkgresource.State{URN: "f1"}
+	f2 := &pkgresource.State{URN: "f2", DeletedWith: f1.URN}
+	f1D := &pkgresource.State{URN: "f1", Delete: true}
 
-	dg := NewDependencyGraph([]*resource.State{
+	dg := NewDependencyGraph([]*pkgresource.State{
 		// The "a", "b", and "c" resources are here to test basic dependencies -- providers, dependencies, etc. including
 		// transitive overlaps (e.g. where X depends on Z both directly and through an intermediate Y).
 		providerA, a1, a2,
@@ -113,7 +115,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				a1,        // a1's provider is providerA
 				a2,        // a2's provider is providerA; a2 also depends on a1
 				providerB, // providerB depends on a1 and a2
@@ -132,7 +134,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				a2,        // a2 depends on a1
 				providerB, // providerB depends on a1 and a2
 				b1,        // b1 depends on a1 and providerB
@@ -150,7 +152,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				providerB, // providerB depends on a2
 				b1,        // b1's provider is providerB
 				c1,        // c1 depends on a2
@@ -167,7 +169,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				b1, // b1's provider is providerB
 			}
 
@@ -202,7 +204,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				a2,        // a2's provider is providerA
 				providerB, // providerB depends on a2
 				b1,        // b1's provider is providerB
@@ -220,7 +222,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				a1,        // a1's provider is providerA
 				providerB, // providerB depends on a1
 				b1,        // b1's provider is providerB
@@ -247,7 +249,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				providerB, // providerB depends on a1
 				b1,        // b1's provider is providerB
 			}
@@ -263,7 +265,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				b1, // b1 depends on a1
 			}
 
@@ -278,7 +280,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				c1, // c1 depends on a2
 			}
 
@@ -303,7 +305,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				d1, // d1's provider is providerD
 				d3, // d3's provider is providerD; d3 is deleted with d1
 			}
@@ -319,7 +321,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				d1, // d1's provider is providerD
 				d2, // d2 is a child of d1
 				d3, // d3's provider is providerD; d3 is deleted with d1
@@ -338,7 +340,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				d3, // d3's provider is providerD
 			}
 
@@ -353,7 +355,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				d3, // d3 is deleted with d1
 			}
 
@@ -368,7 +370,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				d2, // d2 is a child of d1
 				d3, // d3 is deleted with d1
 				d4, // d4 is a child of d2
@@ -406,7 +408,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				e2, // e2 depends on e3
 				e3, // e3 has a property dependency on e1
 				e4, // e4 depends on e3
@@ -424,7 +426,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				e2, // e2 depends on e3
 			}
 
@@ -439,7 +441,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				e4, // e4 depends on e3
 				e5, // e5 is deleted with e3
 			}
@@ -459,7 +461,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{a1, a2, providerB, b1, c1}
+			expected := []*pkgresource.State{a1, a2, providerB, b1, c1}
 
 			// Act.
 			actual := dg.OnlyDependsOn(providerA)
@@ -472,7 +474,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{a2, providerB, b1, c1}
+			expected := []*pkgresource.State{a2, providerB, b1, c1}
 
 			// Act.
 			actual := dg.OnlyDependsOn(a1)
@@ -485,7 +487,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{providerB, b1, c1}
+			expected := []*pkgresource.State{providerB, b1, c1}
 
 			// Act.
 			actual := dg.OnlyDependsOn(a2)
@@ -498,7 +500,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{e2, e3, e4, e5}
+			expected := []*pkgresource.State{e2, e3, e4, e5}
 
 			// Act.
 			actual := dg.OnlyDependsOn(e1)
@@ -516,11 +518,11 @@ func TestDependencyGraph(t *testing.T) {
 		providerF2, providerF2Ref := makeProvider("pkg", "providerF", "2")
 		providerF3, providerF3Ref := makeProvider("pkg", "providerF", "3")
 
-		fx1 := &resource.State{URN: "fx", Provider: providerF1Ref}
-		fx2 := &resource.State{URN: "fx", Provider: providerF2Ref}
+		fx1 := &pkgresource.State{URN: "fx", Provider: providerF1Ref}
+		fx2 := &pkgresource.State{URN: "fx", Provider: providerF2Ref}
 
-		fy := &resource.State{URN: "fy", Provider: providerF3Ref, Dependencies: []resource.URN{fx1.URN}}
-		fz := &resource.State{
+		fy := &pkgresource.State{URN: "fy", Provider: providerF3Ref, Dependencies: []resource.URN{fx1.URN}}
+		fz := &pkgresource.State{
 			URN:      "fz",
 			Provider: providerF3Ref,
 			PropertyDependencies: map[resource.PropertyKey][]resource.URN{
@@ -528,20 +530,20 @@ func TestDependencyGraph(t *testing.T) {
 			},
 		}
 
-		fw := &resource.State{
+		fw := &pkgresource.State{
 			URN:         "fw",
 			Provider:    providerF3Ref,
 			DeletedWith: fx1.URN,
 		}
 
-		fu := &resource.State{URN: "fu", Provider: providerF3Ref}
-		fv := &resource.State{
+		fu := &pkgresource.State{URN: "fu", Provider: providerF3Ref}
+		fv := &pkgresource.State{
 			URN:         "fv",
 			Provider:    providerF3Ref,
 			DeletedWith: fu.URN,
 		}
 
-		dgOnly := NewDependencyGraph([]*resource.State{
+		dgOnly := NewDependencyGraph([]*pkgresource.State{
 			providerF1,
 			providerF2,
 			providerF3,
@@ -558,7 +560,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{fx1}
+			expected := []*pkgresource.State{fx1}
 
 			// Act.
 			actual := dgOnly.OnlyDependsOn(providerF1)
@@ -571,7 +573,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{fx2}
+			expected := []*pkgresource.State{fx2}
 
 			// Act.
 			actual := dgOnly.OnlyDependsOn(providerF2)
@@ -584,7 +586,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{
+			expected := []*pkgresource.State{
 				fy,
 				fz,
 
@@ -638,7 +640,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := mapset.NewSet[*resource.State]()
+			expected := mapset.NewSet[*pkgresource.State]()
 
 			// Act.
 			actual := dg.DependenciesOf(providerA)
@@ -729,7 +731,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := mapset.NewSet[*resource.State]()
+			expected := mapset.NewSet[*pkgresource.State]()
 
 			// Act.
 			actual := dg.DependenciesOf(providerD)
@@ -789,7 +791,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := mapset.NewSet[*resource.State]()
+			expected := mapset.NewSet[*pkgresource.State]()
 
 			// Act.
 			actual := dg.DependenciesOf(d6)
@@ -833,7 +835,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := mapset.NewSet[*resource.State]()
+			expected := mapset.NewSet[*pkgresource.State]()
 
 			// Act.
 			actual := dg.DependenciesOf(e1)
@@ -910,7 +912,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := mapset.NewSet[*resource.State]()
+			expected := mapset.NewSet[*pkgresource.State]()
 
 			// Act.
 			actual := dg.TransitiveDependenciesOf(providerA)
@@ -1006,7 +1008,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := mapset.NewSet[*resource.State]()
+			expected := mapset.NewSet[*pkgresource.State]()
 
 			// Act.
 			actual := dg.TransitiveDependenciesOf(providerD)
@@ -1102,7 +1104,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := mapset.NewSet[*resource.State]()
+			expected := mapset.NewSet[*pkgresource.State]()
 
 			// Act.
 			actual := dg.TransitiveDependenciesOf(e1)
@@ -1177,7 +1179,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := mapset.NewSet[*resource.State]()
+			expected := mapset.NewSet[*pkgresource.State]()
 
 			// Act.
 			actual := dg.TransitiveDependenciesOf(f1)
@@ -1209,7 +1211,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{}
+			expected := []*pkgresource.State{}
 
 			// Act.
 			actual := dg.ParentsOf(e2)
@@ -1222,7 +1224,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{d1}
+			expected := []*pkgresource.State{d1}
 
 			// Act.
 			actual := dg.ParentsOf(d2)
@@ -1235,7 +1237,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{d2, d1}
+			expected := []*pkgresource.State{d2, d1}
 
 			// Act.
 			actual := dg.ParentsOf(d4)
@@ -1248,7 +1250,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{d3}
+			expected := []*pkgresource.State{d3}
 
 			// Act.
 			actual := dg.ParentsOf(d5)
@@ -1265,7 +1267,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{d2, d4}
+			expected := []*pkgresource.State{d2, d4}
 
 			// Act.
 			actual := dg.ChildrenOf(d1)
@@ -1278,7 +1280,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{d4}
+			expected := []*pkgresource.State{d4}
 
 			// Act.
 			actual := dg.ChildrenOf(d2)
@@ -1291,7 +1293,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{d5}
+			expected := []*pkgresource.State{d5}
 
 			// Act.
 			actual := dg.ChildrenOf(d3)
@@ -1304,7 +1306,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			expected := []*resource.State{}
+			expected := []*pkgresource.State{}
 
 			// Act.
 			actual := dg.ChildrenOf(e1)
@@ -1331,7 +1333,7 @@ func TestDependencyGraph(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			fx1 := &resource.State{URN: "fx1"}
+			fx1 := &pkgresource.State{URN: "fx1"}
 
 			// Act.
 			actual := dg.Contains(fx1)
@@ -1342,10 +1344,10 @@ func TestDependencyGraph(t *testing.T) {
 	})
 }
 
-func makeProvider(pkg, name, id string, deps ...resource.URN) (*resource.State, string) {
+func makeProvider(pkg, name, id string, deps ...resource.URN) (*pkgresource.State, string) {
 	t := providers.MakeProviderType(tokens.Package(pkg))
 
-	provider := &resource.State{
+	provider := &pkgresource.State{
 		Type:         t,
 		Custom:       true,
 		URN:          resource.NewURN("stack", "proj", "", t, name),
@@ -1363,20 +1365,20 @@ func makeProvider(pkg, name, id string, deps ...resource.URN) (*resource.State, 
 	return provider, providerRef.String()
 }
 
-func assertSameSets(t *testing.T, expected mapset.Set[*resource.State], actual mapset.Set[*resource.State]) {
+func assertSameSets(t *testing.T, expected mapset.Set[*pkgresource.State], actual mapset.Set[*pkgresource.State]) {
 	if !expected.Equal(actual) {
 		assert.Failf(t, "expected and actual do not match",
 			"expected:\n\n%s\nactual\n\n%s", prettyResourceSet(expected), prettyResourceSet(actual))
 	}
 }
 
-func assertSameStates(t *testing.T, expecteds []*resource.State, actuals []*resource.State) {
+func assertSameStates(t *testing.T, expecteds []*pkgresource.State, actuals []*pkgresource.State) {
 	ne := len(expecteds)
 	na := len(actuals)
 	assert.Equal(t, ne, na, "different numbers of expected and actual states")
 
 	for i := range max(ne, na) {
-		var expected, actual *resource.State
+		var expected, actual *pkgresource.State
 		if i < ne {
 			//#nosec G602 -- false positive, bounds check is performed
 			expected = expecteds[i]
@@ -1390,7 +1392,7 @@ func assertSameStates(t *testing.T, expecteds []*resource.State, actuals []*reso
 	}
 }
 
-func prettyResource(r *resource.State) string {
+func prettyResource(r *pkgresource.State) string {
 	if r == nil {
 		return "<nil>"
 	}
@@ -1398,7 +1400,7 @@ func prettyResource(r *resource.State) string {
 	return fmt.Sprintf("%s\n  %v\n", r.URN, r)
 }
 
-func prettyResourceSet(s mapset.Set[*resource.State]) string {
+func prettyResourceSet(s mapset.Set[*pkgresource.State]) string {
 	var sb strings.Builder
 	for r := range s.Iter() {
 		sb.WriteString(prettyResource(r))
@@ -1581,7 +1583,7 @@ func TestPerf(t *testing.T) {
 func testPerfOf(
 	t *testing.T,
 	resourceCount int,
-	resourcesF func(n int) []*resource.State,
+	resourcesF func(n int) []*pkgresource.State,
 	iterations int,
 ) {
 	t.Helper()
@@ -1728,10 +1730,10 @@ func testPerfOf(
 
 // linearResourceGraph creates a set of resources where the ith resource depends on the i-1th resource (via a parent
 // relationship).
-func linearResourceGraph(n int) []*resource.State {
-	resources := make([]*resource.State, n)
+func linearResourceGraph(n int) []*pkgresource.State {
+	resources := make([]*pkgresource.State, n)
 	for i := 0; i < n; i++ {
-		resources[i] = &resource.State{
+		resources[i] = &pkgresource.State{
 			URN: resource.URN(fmt.Sprintf("urn%d", i)),
 		}
 
@@ -1744,10 +1746,10 @@ func linearResourceGraph(n int) []*resource.State {
 
 // triangleResourceGraph creates a set of resources where the ith resource depends on all previous resources (via a
 // dependencies list).
-func triangleResourceGraph(n int) []*resource.State {
-	resources := make([]*resource.State, n)
+func triangleResourceGraph(n int) []*pkgresource.State {
+	resources := make([]*pkgresource.State, n)
 	for i := 0; i < n; i++ {
-		r := &resource.State{
+		r := &pkgresource.State{
 			URN: resource.URN(fmt.Sprintf("urn%d", i)),
 		}
 

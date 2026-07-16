@@ -348,7 +348,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	fmt.Fprintln(args.stdout)
 
 	// Load the project, update the name & description, remove the template section, and save it.
-	proj, root, err := ws.ReadProject()
+	proj, root, err := ws.ReadProject("")
 	if err != nil {
 		return err
 	}
@@ -554,7 +554,8 @@ func NewNewCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
-		SuggestFor: []string{"init", "create"},
+		Aliases:    []string{"create", "setup"},
+		SuggestFor: []string{"init"},
 		Short:      "Create a new Pulumi project",
 		Long: "Create a new Pulumi project and stack from a template.\n" +
 			"\n" +
@@ -849,7 +850,7 @@ func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args ne
 	opts display.Options,
 ) (string, error) {
 	// Try to read the current project
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return "", err
 	}

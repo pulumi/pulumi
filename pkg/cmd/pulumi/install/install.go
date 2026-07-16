@@ -122,7 +122,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 
 			// Load the project
-			proj, root, err := ws.ReadProject()
+			proj, root, err := ws.ReadProject("")
 			if err != nil {
 				return err
 			}

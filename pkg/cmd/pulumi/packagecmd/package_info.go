@@ -40,7 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/spf13/cobra"
 )
 
@@ -203,7 +202,7 @@ func showProviderInfo(
 
 	fmt.Fprintln(stdout)
 
-	fmt.Fprintf(stdout, bold("Modules")+": %s\n", strings.Join(maputil.SortedKeys(modules), ", "))
+	fmt.Fprintf(stdout, bold("Modules")+": %s\n", strings.Join(slices.Sorted(maps.Keys(modules)), ", "))
 
 	fmt.Fprintln(stdout)
 	strArgs := strings.Join(args, " ")
@@ -295,7 +294,7 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 	fmt.Fprintf(stdout, bold("Resources")+": %d\n", len(resources))
 
 	fmt.Fprintln(stdout)
-	for _, name := range maputil.SortedKeys(resources) {
+	for _, name := range slices.Sorted(maps.Keys(resources)) {
 		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), summaryFromDescription(resources[name].Description))
 	}
 	fmt.Fprintln(stdout)
@@ -303,7 +302,7 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 	fmt.Fprintf(stdout, bold("Functions")+": %d\n", len(functions))
 
 	fmt.Fprintln(stdout)
-	for _, name := range maputil.SortedKeys(functions) {
+	for _, name := range slices.Sorted(maps.Keys(functions)) {
 		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), summaryFromDescription(functions[name].Description))
 	}
 	return nil

@@ -1344,6 +1344,36 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 		cmdExprs = tuple.Expressions
 	}
 
+	if h.Kind == pcl.HookKindError {
+		// Error hooks return whether the failed operation should be retried: retry if and
+		// only if the command exits successfully.
+		g.Fgenf(w, "%sconst %s = new pulumi.ErrorHook(%q, (args) => {\n",
+			g.Indent, varName, hookName)
+		g.Indented(func() {
+			g.Fgenf(w, "%stry {\n", g.Indent)
+			g.Indented(func() {
+				if len(cmdExprs) > 0 {
+					g.Fgenf(w, "%schild_process.execFileSync(%v, [", g.Indent, cmdExprs[0])
+					for j, arg := range cmdExprs[1:] {
+						if j > 0 {
+							g.Fgenf(w, ", ")
+						}
+						g.Fgenf(w, "%v", arg)
+					}
+					g.Fgenf(w, "]);\n")
+				}
+				g.Fgenf(w, "%sreturn true;\n", g.Indent)
+			})
+			g.Fgenf(w, "%s} catch (error) {\n", g.Indent)
+			g.Indented(func() {
+				g.Fgenf(w, "%sreturn false;\n", g.Indent)
+			})
+			g.Fgenf(w, "%s}\n", g.Indent)
+		})
+		g.Fgenf(w, "%s});\n", g.Indent)
+		return
+	}
+
 	g.Fgenf(w, "%sconst %s = new pulumi.ResourceHook(%q, (args) => {\n",
 		g.Indent, varName, hookName)
 	g.Indented(func() {

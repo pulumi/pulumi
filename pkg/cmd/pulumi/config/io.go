@@ -35,7 +35,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/spf13/cobra"
 )
+
+// OverrideEnvFlag registers the --override-env flag on cmd, binding it to overrides.
+func OverrideEnvFlag(cmd *cobra.Command, overrides *[]string) {
+	cmd.PersistentFlags().StringArrayVar(
+		overrides, "override-env", nil,
+		"[EXPERIMENTAL] Override an imported environment for this run only, as <env>=<replacement>; repeatable")
+}
 
 // Attempts to load configuration for the given stack.
 func GetStackConfiguration(
@@ -45,8 +53,9 @@ func GetStackConfiguration(
 	stack backend.Stack,
 	project *workspace.Project,
 	configFile string,
+	envOverrides []string,
 ) (backend.StackConfiguration, secrets.Manager, error) {
-	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil, configFile)
+	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil, configFile, envOverrides)
 }
 
 // GetStackConfigurationOrLatest attempts to load a current stack configuration
@@ -62,6 +71,7 @@ func GetStackConfigurationOrLatest(
 	stack backend.Stack,
 	project *workspace.Project,
 	configFile string,
+	envOverrides []string,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	return getStackConfigurationWithFallback(
 		ctx, sink, ssml, stack, project,
@@ -74,7 +84,7 @@ func GetStackConfigurationOrLatest(
 			}
 			return nil, err
 		},
-		configFile)
+		configFile, envOverrides)
 }
 
 func getStackConfigurationWithFallback(
@@ -85,6 +95,7 @@ func getStackConfigurationWithFallback(
 	project *workspace.Project,
 	fallbackGetConfig func(err error) (config.Map, error), // optional
 	configFile string,
+	envOverrides []string,
 ) (backend.StackConfiguration, secrets.Manager, error) {
 	workspaceStack, err := cmdStack.LoadProjectStack(ctx, sink, project, s, configFile)
 	if err != nil || workspaceStack == nil {
@@ -95,7 +106,8 @@ func getStackConfigurationWithFallback(
 		cfg, err := fallbackGetConfig(err)
 		if err != nil {
 			return backend.StackConfiguration{}, nil, fmt.Errorf(
-				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err)
+				"stack configuration could not be loaded from either Pulumi.yaml or the backend: %w", err,
+			)
 		}
 		workspaceStack = &workspace.ProjectStack{
 			Config: cfg,
@@ -107,7 +119,7 @@ func getStackConfigurationWithFallback(
 		return backend.StackConfiguration{}, nil, err
 	}
 
-	config, err := getStackConfigurationFromProjectStack(ctx, s, project, sm, workspaceStack)
+	config, err := getStackConfigurationFromProjectStack(ctx, s, project, sm, workspaceStack, envOverrides)
 	if err != nil {
 		return backend.StackConfiguration{}, nil, err
 	}
@@ -120,8 +132,9 @@ func getStackConfigurationFromProjectStack(
 	project *workspace.Project,
 	sm secrets.Manager,
 	workspaceStack *workspace.ProjectStack,
+	envOverrides []string,
 ) (backend.StackConfiguration, error) {
-	env, diags, err := openStackEnv(ctx, stack, workspaceStack)
+	env, diags, err := openStackEnv(ctx, stack, workspaceStack, envOverrides)
 	if err != nil {
 		return backend.StackConfiguration{}, fmt.Errorf("opening environment: %w", err)
 	}
@@ -227,10 +240,16 @@ func openStackEnv(
 	ctx context.Context,
 	stack backend.Stack,
 	workspaceStack *workspace.ProjectStack,
+	envOverrides []string,
 ) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
 	yaml := workspaceStack.EnvironmentBytes()
 	if len(yaml) == 0 {
 		return nil, nil, nil
+	}
+
+	overrides, err := parseEnvironmentOverrides(envOverrides)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	envs, ok := stack.Backend().(backend.EnvironmentsBackend)
@@ -243,7 +262,24 @@ func openStackEnv(
 	}
 	orgName := orgNamer.OrgName()
 
-	return envs.OpenYAMLEnvironment(ctx, orgName, yaml, 2*time.Hour)
+	return envs.OpenYAMLEnvironment(ctx, orgName, yaml, 2*time.Hour, overrides)
+}
+
+// parseEnvironmentOverrides converts <env>=<replacement> pairs into a map sent to ESC,
+// which substitutes the matching imports while resolving the environment import graph.
+func parseEnvironmentOverrides(envOverrides []string) (map[string]string, error) {
+	if len(envOverrides) == 0 {
+		return nil, nil
+	}
+	overrides := make(map[string]string, len(envOverrides))
+	for _, o := range envOverrides {
+		match, replacement, ok := strings.Cut(o, "=")
+		if !ok || match == "" || replacement == "" {
+			return nil, fmt.Errorf("invalid --override-env value %q: expected format <env>=<replacement>", o)
+		}
+		overrides[match] = replacement
+	}
+	return overrides, nil
 }
 
 func copySingleConfigKey(
@@ -351,7 +387,12 @@ func ParseConfigKey(ws pkgWorkspace.Context, key string, path bool) (config.Key,
 	// As a convenience, we'll treat any key with no delimiter as if:
 	// <program-name>:<key> had been written instead
 	if !strings.Contains(key, tokens.TokenDelimiter) {
-		proj, _, err := ws.ReadProject()
+		cwd, err := os.Getwd()
+		if err != nil {
+			return config.Key{}, fmt.Errorf("getting current working directory: %w", err)
+		}
+
+		proj, _, err := ws.ReadProject(cwd)
 		if err != nil {
 			return config.Key{}, err
 		}

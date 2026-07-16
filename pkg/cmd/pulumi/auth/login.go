@@ -140,8 +140,13 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				cloudURL = filepath.ToSlash(cloudURL)
 			}
 
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current working directory: %w", err)
+			}
+
 			// Try to read the current project
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject(cwd)
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -172,7 +177,8 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 					cloudURL = "https://api.pulumi.com"
 				}
 			} else if url := strings.TrimPrefix(strings.TrimPrefix(
-				cloudURL, "https://"), "http://"); strings.HasPrefix(url, "app.pulumi.com/") ||
+				cloudURL, "https://",
+			), "http://"); strings.HasPrefix(url, "app.pulumi.com/") ||
 				strings.HasPrefix(url, "pulumi.com") {
 				return fmt.Errorf("%s is not a valid self-hosted backend, "+
 					"use `pulumi login` without arguments to log into the Pulumi Cloud backend", cloudURL)
@@ -202,21 +208,25 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			if oidcToken != "" {
 				// Extract defaults from JWT token before creating auth context
 				resolvedOrg, resolvedTeam, resolvedUser, innerErr := extractOIDCDefaults(
-					oidcOrg, oidcTeam, oidcUser, oidcToken)
+					oidcOrg, oidcTeam, oidcUser, oidcToken,
+				)
 				if innerErr != nil {
 					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
 
 				authContext, innerErr := workspace.NewAuthContextForTokenExchange(
-					resolvedOrg, resolvedTeam, resolvedUser, oidcToken, oidcExpiration)
+					resolvedOrg, resolvedTeam, resolvedUser, oidcToken, oidcExpiration,
+				)
 				if innerErr != nil {
 					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
 				be, err = lm.LoginFromAuthContext(
-					ctx, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext)
+					ctx, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext,
+				)
 			} else {
 				be, err = lm.Login(
-					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color)
+					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color,
+				)
 			}
 
 			if err != nil {
@@ -270,7 +280,8 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 	cmd.PersistentFlags().StringVar(&oidcUser, "oidc-user", "", "The user when exchanging for a personal token")
 	cmd.PersistentFlags().StringVar(
 		&oidcExpiration, "oidc-expiration", "",
-		"The expiration for the cloud backend access token in duration format (e.g. '15m', '24h')")
+		"The expiration for the cloud backend access token in duration format (e.g. '15m', '24h')",
+	)
 
 	return cmd
 }
@@ -381,7 +392,8 @@ func extractOIDCDefaults(organization, team, user, token string) (string, string
 		return "", "", "", fmt.Errorf(
 			"JWT scope contains both team '%s' and user '%s'. "+
 				"Only one of team or user may be specified for token exchange",
-			jwtTeam, jwtUser)
+			jwtTeam, jwtUser,
+		)
 	}
 
 	// Validate that explicit flags don't conflict with JWT claims
@@ -390,21 +402,24 @@ func extractOIDCDefaults(organization, team, user, token string) (string, string
 			"--oidc-org '%s' conflicts with JWT aud claim organization '%s'. "+
 				"The JWT aud claim takes precedence during token exchange. "+
 				"Either omit --oidc-org to use the JWT value, or ensure they match",
-			organization, jwtOrg)
+			organization, jwtOrg,
+		)
 	}
 	if team != "" && jwtTeam != "" && team != jwtTeam {
 		return "", "", "", fmt.Errorf(
 			"--oidc-team '%s' conflicts with JWT scope team '%s'. "+
 				"The JWT scope takes precedence during token exchange. "+
 				"Either omit --oidc-team to use the JWT value, or ensure they match",
-			team, jwtTeam)
+			team, jwtTeam,
+		)
 	}
 	if user != "" && jwtUser != "" && user != jwtUser {
 		return "", "", "", fmt.Errorf(
 			"--oidc-user '%s' conflicts with JWT scope user '%s'. "+
 				"The JWT scope takes precedence during token exchange. "+
 				"Either omit --oidc-user to use the JWT value, or ensure they match",
-			user, jwtUser)
+			user, jwtUser,
+		)
 	}
 
 	// Use JWT values if explicit flags not provided

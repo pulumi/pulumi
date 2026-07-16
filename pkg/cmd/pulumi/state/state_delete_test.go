@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -66,7 +68,7 @@ func TestStateDeleteMultipleURNs(t *testing.T) {
 		},
 		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{URN: "urn:pulumi:proj::stk::pkg:index:typ::res-a"},
 					{URN: "urn:pulumi:proj::stk::pkg:index:typ::res-b"},
 				},
@@ -74,7 +76,7 @@ func TestStateDeleteMultipleURNs(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -132,7 +134,7 @@ func TestStateDeleteMultipleURNsResolvesDependencyOrder(t *testing.T) {
 		},
 		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{URN: depURN},
 					{
 						URN:          dependeeURN,
@@ -143,7 +145,7 @@ func TestStateDeleteMultipleURNsResolvesDependencyOrder(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -197,7 +199,7 @@ func TestStateDeleteParentAndChild(t *testing.T) {
 		},
 		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{URN: parentURN},
 					{
 						URN:    childURN,
@@ -208,7 +210,7 @@ func TestStateDeleteParentAndChild(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -254,14 +256,14 @@ func TestStateDeleteInvalidURN(t *testing.T) {
 		},
 		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{URN: "urn:pulumi:proj::stk::pkg:index:typ::res"},
 				},
 			}, nil
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{Name: "proj"}, "/testing/project", nil
 		},
 	}
@@ -298,14 +300,14 @@ func TestStateDeleteURNNotFound(t *testing.T) {
 		},
 		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{URN: "urn:pulumi:proj::stk::pkg:index:typ::my-bucket"},
 				},
 			}, nil
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{Name: "proj"}, "/testing/project", nil
 		},
 	}
@@ -383,7 +385,7 @@ func TestStateDeleteURN(t *testing.T) {
 		},
 		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{
 						URN: "urn:pulumi:proj::stk::pkg:index:typ::res",
 					},
@@ -392,7 +394,7 @@ func TestStateDeleteURN(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -425,7 +427,7 @@ func TestStateDeleteDependency(t *testing.T) {
 	mockStack := &backend.MockStack{
 		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{
 						URN: "urn:pulumi:proj::stk::pkg:index:typ::dependency",
 					},
@@ -446,7 +448,7 @@ func TestStateDeleteDependency(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -495,7 +497,7 @@ func TestStateDeleteProtected(t *testing.T) {
 		},
 		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
 			return &deploy.Snapshot{
-				Resources: []*resource.State{
+				Resources: []*pkgresource.State{
 					{
 						URN:     "urn:pulumi:proj::stk::pkg:index:typ::res",
 						Protect: true,
@@ -505,7 +507,7 @@ func TestStateDeleteProtected(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil
@@ -542,7 +544,7 @@ func TestStateDeleteAll(t *testing.T) {
 	t.Parallel()
 
 	snapshot := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				URN: "urn:pulumi:proj::stk::pkg:index:typ::dependency",
 			},
@@ -578,7 +580,7 @@ func TestStateDeleteAll(t *testing.T) {
 		},
 	}
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "proj",
 			}, "/testing/project", nil

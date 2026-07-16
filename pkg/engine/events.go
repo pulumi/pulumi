@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	codeasset "github.com/pulumi/pulumi/pkg/v3/asset"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -65,7 +67,7 @@ func NewCancelEvent() Event {
 
 func NewEvent[T EventPayload](payload T) Event {
 	// We want to use deepcopy.Copy here to ensure the state is not mutated after the event is created. We need to lock
-	// any *resource.State objects that are part of the payload, as other events may be trying to mutate state in
+	// any *pkgresource.State objects that are part of the payload, as other events may be trying to mutate state in
 	// parallel with this event.
 
 	var typ EventType
@@ -373,7 +375,7 @@ func (m *StepEventMetadata) UnlockState() {
 // StepEventStateMetadata contains detailed metadata about a resource's state pertaining to a given step.
 type StepEventStateMetadata struct {
 	// State contains the raw, complete state, for this resource.
-	State *resource.State
+	State *pkgresource.State
 	// the resource's type.
 	Type tokens.Type
 	// the resource's object urn, a human-friendly, unique name for the resource.
@@ -502,7 +504,7 @@ func queueEvents(events chan<- Event, buffer chan Event, done chan bool) {
 
 // MakeStepEventStateMetadata converts a resource state into the event metadata engine events
 // carry, redacting property values the same way real engine events do.
-func MakeStepEventStateMetadata(state *resource.State, showSecrets bool) *StepEventStateMetadata {
+func MakeStepEventStateMetadata(state *pkgresource.State, showSecrets bool) *StepEventStateMetadata {
 	return makeStepEventStateMetadata(state, false /*debug*/, showSecrets)
 }
 
@@ -540,7 +542,7 @@ func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool, show
 	}
 }
 
-func makeStepEventStateMetadata(state *resource.State, debug bool, showSecrets bool) *StepEventStateMetadata {
+func makeStepEventStateMetadata(state *pkgresource.State, debug bool, showSecrets bool) *StepEventStateMetadata {
 	if state == nil {
 		return nil
 	}

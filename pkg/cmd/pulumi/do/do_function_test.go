@@ -1305,7 +1305,7 @@ func TestDoCmdFunctionInvokeWithProjectContext(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name:    tokens.PackageName("my-project"),
 				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
@@ -2722,4 +2722,193 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 	err := cmd.Execute()
 	require.NoError(t, err)
 	assert.True(t, configureCalled, "Configure should be called with the converted provider config")
+}
+
+func TestDoCmdFunctionInvokeWithYAMLInputFlagsNoInputFile(t *testing.T) {
+	t.Parallel()
+
+	converterCalled := false
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name:    tokens.PackageName("my-project"),
+				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
+			}, t.TempDir(), nil
+		},
+	}
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		return &plugin.MockHost{
+			LoaderF: func(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+				return plugin.NewServer(ctx, schema.LoaderRegistration(schema.NewLoaderServerFromContext(ctx)))
+			},
+		}, nil
+	}
+	loadConverter := func(
+		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		assert.Equal(t, "yaml", name)
+		return &plugin.MockConverter{
+			ConvertSnippetF: func(ctx context.Context, req *plugin.ConvertSnippetRequest) (
+				*plugin.ConvertSnippetResponse, error,
+			) {
+				converterCalled = true
+				assert.Equal(t, "<no input file>", req.Filename)
+				assert.Empty(t, req.Source)
+				assert.NotEmpty(t, req.TargetLoader)
+				assert.Equal(t, "azure:index:myFunction", req.Token)
+				assert.Equal(t, map[string]string{"message": "instring"}, req.Attributes)
+				return &plugin.ConvertSnippetResponse{
+					Filename: "inputs.pp",
+					Attributes: map[string]string{
+						"message": "\"outstring\"",
+					},
+				}, nil
+			},
+		}, nil
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"message": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+						Required: []string{"message"},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"output1": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t, "outstring", req.Args["message"].StringValue())
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{
+		"azure:index:myFunction",
+		"--input", "yaml",
+		"--input:message", "instring",
+	})
+	err := cmd.Execute()
+	require.NoError(t, err)
+	assert.True(t, converterCalled, "ConvertSnippet should be called for YAML flags even without --input-file")
+	assert.JSONEq(t, `{"output1": "world"}`, stdout.String())
+}
+
+func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
+	t.Parallel()
+
+	converterCalled := false
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name:    tokens.PackageName("my-project"),
+				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
+			}, t.TempDir(), nil
+		},
+	}
+	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
+		return &plugin.MockHost{
+			LoaderF: func(ctx *plugin.Context) (*plugin.GrpcServer, error) {
+				return plugin.NewServer(ctx, schema.LoaderRegistration(schema.NewLoaderServerFromContext(ctx)))
+			},
+		}, nil
+	}
+	loadConverter := func(
+		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		assert.Equal(t, "yaml", name)
+		return &plugin.MockConverter{
+			ConvertSnippetF: func(ctx context.Context, req *plugin.ConvertSnippetRequest) (
+				*plugin.ConvertSnippetResponse, error,
+			) {
+				converterCalled = true
+				assert.Equal(t, "<no input file>", req.Filename)
+				assert.Empty(t, req.Source)
+				assert.NotEmpty(t, req.TargetLoader)
+				assert.Equal(t, "azure:index:myFunction", req.Token)
+				assert.Equal(t, map[string]string{
+					"number": "0o45",
+					"expr":   "{\"fn::secret\": 45}",
+				}, req.Attributes)
+
+				return &plugin.ConvertSnippetResponse{
+					Filename: "inputs.pp",
+					Attributes: map[string]string{
+						"number": "37", // 0o45 is octal in yaml, pcl doesn't have octal
+						"expr":   "secret(45)",
+					},
+				}, nil
+			},
+		}, nil
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"number": {TypeSpec: schema.TypeSpec{Type: "number"}},
+							"expr":   {TypeSpec: schema.TypeSpec{Type: "number"}},
+						},
+						Required: []string{"number", "expr"},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"output1": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t, 37.0, req.Args["number"].NumberValue())
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{
+		"azure:index:myFunction",
+		"--input", "yaml",
+		"--input:number", "0o45",
+		"--input:expr", "{\"fn::secret\": 45}",
+	})
+	err := cmd.Execute()
+	require.NoError(t, err)
+	assert.True(t, converterCalled, "ConvertSnippet should be called for YAML flags even without --input-file")
+	assert.JSONEq(t, `{"output1": "world"}`, stdout.String())
 }

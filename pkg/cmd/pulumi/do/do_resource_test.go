@@ -18,8 +18,11 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
@@ -33,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -925,13 +929,13 @@ func providerFlagStackContext(
 
 	proj := &workspace.Project{Name: tokens.PackageName("proj")}
 	mws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return proj, t.TempDir(), nil
 		},
-		// `do` populates evalContext.Stack from ws.New().Settings().Stack via currentStackIdentity;
+		// `do` populates evalContext.Stack from ws.New("").Settings().Stack via currentStackIdentity;
 		// that determines whether configureProvider considers us "in a stack context". PULUMI_STACK
 		// above only feeds the parallel path used by state.CurrentStack — both have to agree.
-		NewF: func() (pkgWorkspace.W, error) {
+		NewF: func(_ string) (pkgWorkspace.W, error) {
 			return &pkgWorkspace.MockW{
 				SettingsF: func() *pkgWorkspace.Settings {
 					return &pkgWorkspace.Settings{Stack: "myorg/proj/dev"}
@@ -988,7 +992,8 @@ func providerFlagStackContext(
 //
 //nolint:paralleltest // mutates cmdBackend.BackendInstance via providerFlagStackContext.
 func TestDoCmdResourceProviderFlagURNNotInSnapshot(t *testing.T) {
-	cmd, _, _ := providerFlagStackContext(t,
+	cmd, _, _ := providerFlagStackContext(
+		t,
 		&testProvider{spec: doResourceSpec(false)},
 		&deploy.Snapshot{}, // empty snapshot — no resources
 	)
@@ -1021,15 +1026,15 @@ func TestDoCmdResourceProviderFlagURNNotAProvider(t *testing.T) {
 	cases := []struct {
 		name       string
 		urn        resource.URN
-		resources  []*resource.State
+		resources  []*pkgresource.State
 		wantSubstr string
 	}{
 		{
 			name: "not a provider",
 			urn:  bucketURN,
 			//nolint:requiredfield // Only the fields configureProvider's matcher reads matter here.
-			resources: []*resource.State{
-				(&resource.NewState{
+			resources: []*pkgresource.State{
+				(&pkgresource.NewState{
 					Type:   "azure:index:Bucket",
 					URN:    bucketURN,
 					Custom: true,
@@ -1042,8 +1047,8 @@ func TestDoCmdResourceProviderFlagURNNotAProvider(t *testing.T) {
 			name: "provider for a different package",
 			urn:  awsProviderURN,
 			//nolint:requiredfield // Only the fields configureProvider's matcher reads matter here.
-			resources: []*resource.State{
-				(&resource.NewState{
+			resources: []*pkgresource.State{
+				(&pkgresource.NewState{
 					Type:   "pulumi:providers:aws",
 					URN:    awsProviderURN,
 					Custom: true,
@@ -1056,7 +1061,8 @@ func TestDoCmdResourceProviderFlagURNNotAProvider(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			cmd, _, _ := providerFlagStackContext(t,
+			cmd, _, _ := providerFlagStackContext(
+				t,
 				&testProvider{spec: doResourceSpec(false)},
 				&deploy.Snapshot{Resources: tc.resources},
 			)
@@ -1089,24 +1095,25 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 		},
 	}
 	var gotInputs resource.PropertyMap
-	cmd, _, _ := providerFlagStackContext(t, &testProvider{
-		spec: spec,
-		MockProvider: plugin.MockProvider{
-			ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-				gotInputs = req.Inputs
-				return plugin.ConfigureResponse{}, nil
-			},
-			ReadF: func(_ context.Context, _ plugin.ReadRequest) (plugin.ReadResponse, error) {
-				return plugin.ReadResponse{ReadResult: plugin.ReadResult{
-					ID:      "res-1",
-					Outputs: resource.PropertyMap{"name": resource.NewProperty("hello")},
-				}}, nil
+	cmd, _, _ := providerFlagStackContext(
+		t, &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					gotInputs = req.Inputs
+					return plugin.ConfigureResponse{}, nil
+				},
+				ReadF: func(_ context.Context, _ plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+						ID:      "res-1",
+						Outputs: resource.PropertyMap{"name": resource.NewProperty("hello")},
+					}}, nil
+				},
 			},
 		},
-	},
 		//nolint:requiredfield // Only the fields configureProvider's matcher reads matter here.
-		&deploy.Snapshot{Resources: []*resource.State{
-			(&resource.NewState{
+		&deploy.Snapshot{Resources: []*pkgresource.State{
+			(&pkgresource.NewState{
 				Type:   "pulumi:providers:azure",
 				URN:    providerURN,
 				Custom: true,
@@ -1121,6 +1128,7 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 	// `tenant` is not supplied here and should fall through from the snapshot's inputs.
 	cmd.SetArgs([]string{
 		"azure:index:myResource", "read", "res-1",
+		"--input", "pcl",
 		"--provider", string(providerURN),
 		"--azure:region", "us-west-2",
 	})
@@ -1130,4 +1138,30 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 	assert.Equal(t, "us-west-2", gotInputs["region"].StringValue(), "overlay should win for explicitly-set keys")
 	assert.Equal(t, "acme", gotInputs["tenant"].StringValue(),
 		"snapshot value should pass through for keys not in overlay")
+}
+
+func TestDoCmdResourceProviderErrorTidied(t *testing.T) {
+	t.Parallel()
+
+	cmd, _, stderr := newDoResourceCommand(t, &testProvider{
+		spec: doResourceSpec(false),
+		MockProvider: plugin.MockProvider{
+			ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+					ID:      req.ID,
+					Inputs:  resource.PropertyMap{},
+					Outputs: resource.PropertyMap{"name": resource.NewProperty("existing")},
+				}}, nil
+			},
+			DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+				return plugin.DeleteResponse{},
+					fmt.Errorf("deleting %s: 1 error occurred:\n\t* cluster busy\n\n", req.URN)
+			},
+		},
+	})
+	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "delete", "res-1", "--yes"})
+	err := cmd.Execute()
+	assert.True(t, result.IsBail(err))
+	assert.ErrorContains(t, err, `deleting azure:index:myResource "res-1": cluster busy`)
+	assert.Contains(t, stderr.String(), `deleting azure:index:myResource "res-1": cluster busy`)
 }

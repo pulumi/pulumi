@@ -20,13 +20,14 @@ import (
 	"io"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // stackJSONEnvelope is the stable, machine-readable shape emitted by
@@ -170,7 +171,7 @@ func buildStackJSON(in stackJSONInputs) *stackJSONEnvelope {
 	return env
 }
 
-func snapshotResourceJSON(r *resource.State) stackResourceJSON {
+func snapshotResourceJSON(r *pkgresource.State) stackResourceJSON {
 	return stackResourceJSON{
 		URN:    string(r.URN),
 		Type:   string(r.Type),

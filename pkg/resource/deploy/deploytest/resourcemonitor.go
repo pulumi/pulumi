@@ -23,6 +23,7 @@ import (
 	"time"
 
 	fxs "github.com/pgavlin/fx/v2/slices"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -120,7 +121,7 @@ func parseSourcePosition(raw string) (*pulumirpc.SourcePosition, error) {
 
 func marshalSourceInfo(
 	sourcePosition string,
-	stackTrace []resource.StackFrame,
+	stackTrace []pkgresource.StackFrame,
 ) (_ *pulumirpc.SourcePosition, _ *pulumirpc.StackTrace, err error) {
 	var pos *pulumirpc.SourcePosition
 	if sourcePosition != "" {
@@ -132,7 +133,9 @@ func marshalSourceInfo(
 
 	var trace *pulumirpc.StackTrace
 	if len(stackTrace) != 0 {
-		frames, err := fxs.TryCollect(fxs.MapUnpack(stackTrace, func(f resource.StackFrame) (*pulumirpc.StackFrame, error) {
+		frames, err := fxs.TryCollect(fxs.MapUnpack(stackTrace, func(
+			f pkgresource.StackFrame,
+		) (*pulumirpc.StackFrame, error) {
 			position, err := parseSourcePosition(f.SourcePosition)
 			if err != nil {
 				return nil, err
@@ -441,7 +444,7 @@ type ResourceOptions struct {
 	AliasSpecs              bool
 
 	SourcePosition         string
-	StackTrace             []resource.StackFrame
+	StackTrace             []pkgresource.StackFrame
 	ParentStackTraceHandle string
 
 	DisableSecrets            bool
@@ -676,7 +679,7 @@ func (rm *ResourceMonitor) ReadResource(
 	provider,
 	version,
 	sourcePosition string,
-	stackTrace []resource.StackFrame,
+	stackTrace []pkgresource.StackFrame,
 	parentStackTraceHandle string,
 	packageRef string,
 ) (resource.URN, resource.PropertyMap, error) {
@@ -768,7 +771,7 @@ func (rm *ResourceMonitor) Call(
 	version string,
 	packageRef string,
 	sourcePosition string,
-	stackTrace []resource.StackFrame,
+	stackTrace []pkgresource.StackFrame,
 	parentStackTraceHandle string,
 ) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN, []*pulumirpc.CheckFailure, error) {
 	sourcePos, stack, err := marshalSourceInfo(sourcePosition, stackTrace)

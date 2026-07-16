@@ -17,6 +17,8 @@ package operations
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/gofrs/uuid"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -63,7 +65,7 @@ func makeStateMetadata(
 
 	urn := resource.CreateURN(name, string(typ), "", "project", "stack")
 
-	state := &resource.State{
+	state := &pkgresource.State{
 		URN:    urn,
 		Type:   typ,
 		Custom: custom,

@@ -624,8 +624,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			a := &resource.State{URN: "a"}
-			b := &resource.State{URN: "b"}
+			a := &pkgresource.State{URN: "a"}
+			b := &pkgresource.State{URN: "b"}
 
 			// Act.
 			aIsTargeted := sg.isTargetedForUpdate(a)
@@ -640,8 +640,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			hasAAsProvider := &resource.State{Provider: apRef.String()}
-			hasBAsProvider := &resource.State{Provider: bpRef.String()}
+			hasAAsProvider := &pkgresource.State{Provider: apRef.String()}
+			hasBAsProvider := &pkgresource.State{Provider: bpRef.String()}
 
 			// Act.
 			hasAAsProviderIsTargeted := sg.isTargetedForUpdate(hasAAsProvider)
@@ -656,8 +656,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			hasAAsParent := &resource.State{Parent: "a"}
-			hasBAsParent := &resource.State{Parent: "b"}
+			hasAAsParent := &pkgresource.State{Parent: "a"}
+			hasBAsParent := &pkgresource.State{Parent: "b"}
 
 			// Act.
 			hasAAsParentIsTargeted := sg.isTargetedForUpdate(hasAAsParent)
@@ -672,8 +672,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			dependsOnA := &resource.State{Dependencies: []resource.URN{"a"}}
-			dependsOnB := &resource.State{Dependencies: []resource.URN{"a", "b"}}
+			dependsOnA := &pkgresource.State{Dependencies: []resource.URN{"a"}}
+			dependsOnB := &pkgresource.State{Dependencies: []resource.URN{"a", "b"}}
 
 			// Act.
 			dependsOnAIsTargeted := sg.isTargetedForUpdate(dependsOnA)
@@ -688,8 +688,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			dependsOnA := &resource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a"}}}
-			dependsOnB := &resource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a", "b"}}}
+			dependsOnA := &pkgresource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a"}}}
+			dependsOnB := &pkgresource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a", "b"}}}
 
 			// Act.
 			dependsOnAIsTargeted := sg.isTargetedForUpdate(dependsOnA)
@@ -704,8 +704,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			isDeletedWithA := &resource.State{DeletedWith: "a"}
-			isDeletedWithB := &resource.State{DeletedWith: "b"}
+			isDeletedWithA := &pkgresource.State{DeletedWith: "a"}
+			isDeletedWithB := &pkgresource.State{DeletedWith: "b"}
 
 			// Act.
 			isDeletedWithAIsTargeted := sg.isTargetedForUpdate(isDeletedWithA)
@@ -747,8 +747,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			a := &resource.State{URN: "a"}
-			c := &resource.State{URN: "c"}
+			a := &pkgresource.State{URN: "a"}
+			c := &pkgresource.State{URN: "c"}
 
 			// Act.
 			aIsTargeted := sg.isTargetedForUpdate(a)
@@ -763,8 +763,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			hasAAsProvider := &resource.State{Provider: apRef.String()}
-			hasBAsProvider := &resource.State{Provider: bpRef.String()}
+			hasAAsProvider := &pkgresource.State{Provider: apRef.String()}
+			hasBAsProvider := &pkgresource.State{Provider: bpRef.String()}
 
 			// Act.
 			hasAAsProviderIsTargeted := sg.isTargetedForUpdate(hasAAsProvider)
@@ -779,8 +779,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			hasAAsParent := &resource.State{Parent: "a"}
-			hasBAsParent := &resource.State{Parent: "b"}
+			hasAAsParent := &pkgresource.State{Parent: "a"}
+			hasBAsParent := &pkgresource.State{Parent: "b"}
 
 			// Act.
 			hasAAsParentIsTargeted := sg.isTargetedForUpdate(hasAAsParent)
@@ -795,8 +795,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			dependsOnA := &resource.State{Dependencies: []resource.URN{"a"}}
-			dependsOnB := &resource.State{Dependencies: []resource.URN{"a", "b"}}
+			dependsOnA := &pkgresource.State{Dependencies: []resource.URN{"a"}}
+			dependsOnB := &pkgresource.State{Dependencies: []resource.URN{"a", "b"}}
 
 			// Act.
 			dependsOnAIsTargeted := sg.isTargetedForUpdate(dependsOnA)
@@ -811,8 +811,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			dependsOnA := &resource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a"}}}
-			dependsOnB := &resource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a", "b"}}}
+			dependsOnA := &pkgresource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a"}}}
+			dependsOnB := &pkgresource.State{PropertyDependencies: map[resource.PropertyKey][]resource.URN{"p": {"a", "b"}}}
 
 			// Act.
 			dependsOnAIsTargeted := sg.isTargetedForUpdate(dependsOnA)
@@ -827,8 +827,8 @@ func TestStepGenerator(t *testing.T) {
 			t.Parallel()
 
 			// Arrange.
-			isDeletedWithA := &resource.State{DeletedWith: "a"}
-			isDeletedWithB := &resource.State{DeletedWith: "b"}
+			isDeletedWithA := &pkgresource.State{DeletedWith: "a"}
+			isDeletedWithB := &pkgresource.State{DeletedWith: "b"}
 
 			// Act.
 			isDeletedWithAIsTargeted := sg.isTargetedForUpdate(isDeletedWithA)
@@ -917,13 +917,13 @@ func TestStepGenerator(t *testing.T) {
 				urns: map[resource.URN]bool{},
 				deployment: &Deployment{
 					prev: &Snapshot{
-						Resources: []*resource.State{
+						Resources: []*pkgresource.State{
 							{
 								URN: "a",
 							},
 						},
 					},
-					olds: map[resource.URN]*resource.State{},
+					olds: map[resource.URN]*pkgresource.State{},
 				},
 			}
 			targets, err := sg.determineAllowedResourcesToDeleteFromTargets(
@@ -942,15 +942,15 @@ func TestStepGenerator(t *testing.T) {
 				urns: map[resource.URN]bool{},
 				deployment: &Deployment{
 					prev: &Snapshot{},
-					olds: map[resource.URN]*resource.State{},
+					olds: map[resource.URN]*pkgresource.State{},
 				},
 			}
 			_, err := sg.providerChanged(
 				"",
-				&resource.State{
+				&pkgresource.State{
 					Provider: "invalid-old-provider",
 				},
-				&resource.State{
+				&pkgresource.State{
 					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::name::uuid",
 				},
 			)
@@ -963,15 +963,15 @@ func TestStepGenerator(t *testing.T) {
 				urns: map[resource.URN]bool{},
 				deployment: &Deployment{
 					prev: &Snapshot{},
-					olds: map[resource.URN]*resource.State{},
+					olds: map[resource.URN]*pkgresource.State{},
 				},
 			}
 			_, err := sg.providerChanged(
 				"",
-				&resource.State{
+				&pkgresource.State{
 					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::name::uuid",
 				},
-				&resource.State{
+				&pkgresource.State{
 					Provider: "invalid-new-provider",
 				},
 			)
@@ -984,16 +984,16 @@ func TestStepGenerator(t *testing.T) {
 				urns: map[resource.URN]bool{},
 				deployment: &Deployment{
 					prev:      &Snapshot{},
-					olds:      map[resource.URN]*resource.State{},
+					olds:      map[resource.URN]*pkgresource.State{},
 					providers: &providers.Registry{},
 				},
 			}
 			_, err := sg.providerChanged(
 				"",
-				&resource.State{
+				&pkgresource.State{
 					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::default_name::uuid",
 				},
-				&resource.State{
+				&pkgresource.State{
 					Provider: "urn:pulumi:stack::project::pulumi:providers:provider::default_new::uuid",
 				},
 			)
@@ -1016,7 +1016,7 @@ func TestStepGenerator(t *testing.T) {
 		registry := providers.NewRegistry(newMockRegistryContext(host), false, nil)
 
 		providerURN := resource.URN("urn:pulumi:stack::project::pulumi:providers:k8s::default")
-		err := registry.Same(t.Context(), &resource.State{
+		err := registry.Same(t.Context(), &pkgresource.State{
 			URN:    providerURN,
 			Custom: true,
 			Type:   tokens.Type("pulumi:providers:k8s"),

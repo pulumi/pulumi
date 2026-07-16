@@ -20,6 +20,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -81,7 +83,7 @@ func TestTaintReplacement(t *testing.T) {
 	require.Len(t, snap.Resources, 2) // stack + resA
 
 	// Find resA and taint it
-	var resA *resource.State
+	var resA *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "resA" {
 			resA = r
@@ -98,7 +100,7 @@ func TestTaintReplacement(t *testing.T) {
 	require.Len(t, snap.Resources, 2) // stack + replaced resA
 
 	// Verify the resource was replaced
-	var newResA *resource.State
+	var newResA *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "resA" {
 			newResA = r
@@ -240,7 +242,7 @@ func TestTaintWithPendingDelete(t *testing.T) {
 	// - One that is current and tainted
 	// - One that is pending deletion and also tainted (should be ignored)
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   resURN.Type(),
 				URN:    resURN,
@@ -280,7 +282,7 @@ func TestTaintWithPendingDelete(t *testing.T) {
 	// - The deleted resource should be gone
 	// - The current resource should be replaced (due to taint)
 	// - There should be only one resource with this URN in the final snapshot
-	var finalResource *resource.State
+	var finalResource *pkgresource.State
 	resourceCount := 0
 	for _, r := range snap.Resources {
 		if r.URN == resURN {
@@ -353,7 +355,7 @@ func TestTaintNoChanges(t *testing.T) {
 	assert.Equal(t, 0, deleteCalls, "no replacement should occur without taint")
 
 	// Find resA and taint it
-	var resA *resource.State
+	var resA *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "resA" {
 			resA = r
@@ -370,7 +372,7 @@ func TestTaintNoChanges(t *testing.T) {
 	assert.Equal(t, 1, deleteCalls, "replacement should occur due to taint")
 
 	// Verify taint is cleared
-	var newResA *resource.State
+	var newResA *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "resA" {
 			newResA = r

@@ -17,6 +17,8 @@ package state
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -30,7 +32,7 @@ func TestRenameProvider(t *testing.T) {
 
 	// Define a state with a single provider and a single resource dependent on that provider.
 	provURN := resource.URN("urn:pulumi:dev::prog-aws-typescript::pulumi:providers:random::my-provider")
-	prov := resource.State{
+	prov := pkgresource.State{
 		URN:    provURN,
 		ID:     "81cd12dd-2a90-4f21-a521-f4c71c1f11eb",
 		Type:   "pulumi:providers:random",
@@ -39,13 +41,13 @@ func TestRenameProvider(t *testing.T) {
 
 	providerRefString := string(prov.URN) + "::" + string(prov.ID)
 
-	res1 := resource.State{
+	res1 := pkgresource.State{
 		URN:      resource.URN("urn:pulumi:dev::prog-aws-typescript::random:index/randomPet:RandomPet::pet-0"),
 		Type:     "random:index/randomPet:RandomPet",
 		Provider: providerRefString,
 	}
 	snap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			&prov,
 			&res1,
 		},
@@ -82,7 +84,7 @@ func TestStateRename_updatesChildren(t *testing.T) {
 	child := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet$random:index/randomPet:RandomPet::child")
 
 	snap := deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				URN:    provider,
 				ID:     "provider-id",

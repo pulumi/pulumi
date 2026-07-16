@@ -99,9 +99,11 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"The name of the stack to get info on. Defaults to the current stack")
+		"The name of the stack to get info on. Defaults to the current stack",
+	)
 	cmd.PersistentFlags().BoolVarP(
-		&transitiveDependencies, "transitive", "t", false, "Include transitive dependencies")
+		&transitiveDependencies, "transitive", "t", false, "Include transitive dependencies",
+	)
 
 	return cmd
 }
@@ -149,9 +151,15 @@ func getSummaryAbout(
 		result.Host = &host
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		addError(err, "Failed to get current working directory")
+		return result
+	}
+
 	var proj *workspace.Project
 	var pwd string
-	if proj, pwd, err = ws.ReadProject(); err != nil {
+	if proj, pwd, err = ws.ReadProject(cwd); err != nil {
 		addError(err, "Failed to read project")
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
@@ -159,11 +167,13 @@ func getSummaryAbout(
 		pluginHost, hostErr := pkghost.New(
 			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
 			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-			packageworkspace.NewResolverServer(reg))
+			packageworkspace.NewResolverServer(reg),
+		)
 		if hostErr != nil {
 			addError(hostErr, "Failed to create plugin host")
 		} else if pwd, program, pluginContext, err := engine.ProjectInfoContext(
-			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil); err != nil {
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+		); err != nil {
 			addError(err, "Failed to create plugin context")
 			contract.IgnoreClose(pluginHost)
 		} else {

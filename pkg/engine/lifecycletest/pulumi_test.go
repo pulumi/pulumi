@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -659,8 +660,8 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 	const resType = "pkgA:m:typA"
 	urnA := p.NewURN(resType, "resA", "")
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -673,11 +674,11 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 	}
 
 	old := &deploy.Snapshot{
-		PendingOperations: []resource.Operation{{
+		PendingOperations: []pkgresource.Operation{{
 			Resource: newResource(urnA, "0", false),
-			Type:     resource.OperationTypeUpdating,
+			Type:     pkgresource.OperationTypeUpdating,
 		}},
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			newResource(urnA, "0", false),
 		},
 	}
@@ -713,8 +714,8 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 	const resType = "pkgA:m:typA"
 	urnA := p.NewURN(resType, "resA", "")
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -727,11 +728,11 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 	}
 
 	old := &deploy.Snapshot{
-		PendingOperations: []resource.Operation{{
+		PendingOperations: []pkgresource.Operation{{
 			Resource: newResource(urnA, "0", false),
-			Type:     resource.OperationTypeUpdating,
+			Type:     pkgresource.OperationTypeUpdating,
 		}},
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			newResource(urnA, "0", false),
 		},
 	}
@@ -780,8 +781,8 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	urnA := p.NewURN(resType, "resA", "")
 	urnB := p.NewURN(resType, "resB", "")
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -799,17 +800,17 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	resA := newResource(urnA, "0", false)
 	resB := newResource(urnB, "0", false)
 	old := &deploy.Snapshot{
-		PendingOperations: []resource.Operation{
+		PendingOperations: []pkgresource.Operation{
 			{
 				Resource: resA,
-				Type:     resource.OperationTypeUpdating,
+				Type:     pkgresource.OperationTypeUpdating,
 			},
 			{
 				Resource: resB,
-				Type:     resource.OperationTypeCreating,
+				Type:     pkgresource.OperationTypeCreating,
 			},
 		},
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			resA,
 		},
 	}
@@ -837,12 +838,12 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	require.NoError(t, err)
 	// Assert that pending CREATE operation was preserved
 	require.Len(t, new.PendingOperations, 1)
-	assert.Equal(t, resource.OperationTypeCreating, new.PendingOperations[0].Type)
+	assert.Equal(t, pkgresource.OperationTypeCreating, new.PendingOperations[0].Type)
 	assert.Equal(t, urnB, new.PendingOperations[0].Resource.URN)
 }
 
-func findPendingOperationsByType(opType resource.OperationType, snapshot *deploy.Snapshot) []resource.Operation {
-	var operations []resource.Operation
+func findPendingOperationsByType(opType pkgresource.OperationType, snapshot *deploy.Snapshot) []pkgresource.Operation {
+	var operations []pkgresource.Operation
 	for _, operation := range snapshot.PendingOperations {
 		if operation.Type == opType {
 			operations = append(operations, operation)
@@ -861,8 +862,8 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	urnA := p.NewURN(resType, "resA", "")
 	urnB := p.NewURN(resType, "resB", "")
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -875,17 +876,17 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	}
 
 	old := &deploy.Snapshot{
-		PendingOperations: []resource.Operation{
+		PendingOperations: []pkgresource.Operation{
 			{
 				Resource: newResource(urnA, "0", false),
-				Type:     resource.OperationTypeUpdating,
+				Type:     pkgresource.OperationTypeUpdating,
 			},
 			{
 				Resource: newResource(urnB, "1", false),
-				Type:     resource.OperationTypeCreating,
+				Type:     pkgresource.OperationTypeCreating,
 			},
 		},
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			newResource(urnA, "0", false),
 		},
 	}
@@ -929,12 +930,12 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	new, _ := op.Run(project, target, options, false, nil, validate)
 	require.NotNil(t, new)
 
-	assert.Equal(t, resource.OperationTypeCreating, new.PendingOperations[0].Type)
+	assert.Equal(t, pkgresource.OperationTypeCreating, new.PendingOperations[0].Type)
 
 	// Assert that CREATE pending operations are retained
 	// TODO: should revisit whether non-CREATE pending operations should also be retained
 	require.Len(t, new.PendingOperations, 1)
-	createOperations := findPendingOperationsByType(resource.OperationTypeCreating, new)
+	createOperations := findPendingOperationsByType(pkgresource.OperationTypeCreating, new)
 	require.Len(t, createOperations, 1)
 	assert.Equal(t, urnB, createOperations[0].Resource.URN)
 }
@@ -1013,7 +1014,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 	}}
 
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   resURN.Type(),
 				URN:    resURN,
@@ -1071,7 +1072,7 @@ func TestStackReference(t *testing.T) {
 	// Test that changes to `name` cause replacement.
 	resURN := p.NewURN("pulumi:pulumi:StackReference", "other", "")
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:     resURN.Type(),
 				URN:      resURN,
@@ -1227,7 +1228,7 @@ func TestStackReferenceRegister(t *testing.T) {
 	// Test that changes to `name` cause replacement.
 	resURN := p.NewURN("pulumi:pulumi:StackReference", "other", "")
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   resURN.Type(),
 				URN:    resURN,
@@ -4187,7 +4188,7 @@ func TestSourcePositions(t *testing.T) {
 					resp, err := monitor.RegisterResource("pkgA:m:typA", req.Name+"/resA", true, deploytest.ResourceOptions{
 						Inputs:         inputs,
 						SourcePosition: fileURL(providerRegPos),
-						StackTrace: []resource.StackFrame{
+						StackTrace: []pkgresource.StackFrame{
 							{SourcePosition: fileURL(providerPos)},
 							{SourcePosition: fileURL(providerRegPos)},
 						},
@@ -4204,7 +4205,7 @@ func TestSourcePositions(t *testing.T) {
 						"",
 						"",
 						fileURL(providerCallPos),
-						[]resource.StackFrame{
+						[]pkgresource.StackFrame{
 							{SourcePosition: fileURL(providerPos)},
 							{SourcePosition: fileURL(providerCallPos)},
 						}, req.Info.StackTraceHandle,
@@ -4227,7 +4228,7 @@ func TestSourcePositions(t *testing.T) {
 						"",
 						"",
 						fileURL(providerReadPos),
-						[]resource.StackFrame{
+						[]pkgresource.StackFrame{
 							{SourcePosition: fileURL(providerPos)},
 							{SourcePosition: fileURL(providerReadPos)},
 						},
@@ -4268,7 +4269,7 @@ func TestSourcePositions(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:         inputs,
 			SourcePosition: fileURL(regPos),
-			StackTrace: []resource.StackFrame{
+			StackTrace: []pkgresource.StackFrame{
 				{SourcePosition: fileURL(progPos)},
 				{SourcePosition: fileURL(regPos)},
 			},
@@ -4284,7 +4285,7 @@ func TestSourcePositions(t *testing.T) {
 			"",
 			"",
 			fileURL(readPos),
-			[]resource.StackFrame{
+			[]pkgresource.StackFrame{
 				{SourcePosition: fileURL(progPos)},
 				{SourcePosition: fileURL(readPos)},
 			},
@@ -4297,7 +4298,7 @@ func TestSourcePositions(t *testing.T) {
 			Remote:         true,
 			Inputs:         inputs,
 			SourcePosition: fileURL(constructPos),
-			StackTrace: []resource.StackFrame{
+			StackTrace: []pkgresource.StackFrame{
 				{SourcePosition: fileURL(progPos)},
 				{SourcePosition: fileURL(constructPos)},
 			},
@@ -4305,7 +4306,7 @@ func TestSourcePositions(t *testing.T) {
 		require.NoError(t, err)
 
 		callInputs := resource.PropertyMap{"name": resource.NewProperty("progCall")}
-		_, _, _, err = monitor.Call("pkgA:m:callA", callInputs, nil, "", "", "", fileURL(callPos), []resource.StackFrame{
+		_, _, _, err = monitor.Call("pkgA:m:callA", callInputs, nil, "", "", "", fileURL(callPos), []pkgresource.StackFrame{
 			{SourcePosition: fileURL(progPos)},
 			{SourcePosition: fileURL(callPos)},
 		}, "")
@@ -4336,7 +4337,7 @@ func TestSourcePositions(t *testing.T) {
 	reg := snap.Resources[1]
 	assert.Equal(t, regURN, reg.URN)
 	assert.Equal(t, projURL(regPos), reg.SourcePosition)
-	assert.Equal(t, []resource.StackFrame{
+	assert.Equal(t, []pkgresource.StackFrame{
 		{SourcePosition: projURL(progPos)},
 		{SourcePosition: projURL(regPos)},
 	}, reg.StackTrace)
@@ -4344,7 +4345,7 @@ func TestSourcePositions(t *testing.T) {
 	read := snap.Resources[2]
 	assert.Equal(t, readURN, read.URN)
 	assert.Equal(t, projURL(readPos), read.SourcePosition)
-	assert.Equal(t, []resource.StackFrame{
+	assert.Equal(t, []pkgresource.StackFrame{
 		{SourcePosition: projURL(progPos)},
 		{SourcePosition: projURL(readPos)},
 	}, read.StackTrace)
@@ -4352,7 +4353,7 @@ func TestSourcePositions(t *testing.T) {
 	reg2 := snap.Resources[3]
 	assert.Equal(t, reg2URN, reg2.URN)
 	assert.Equal(t, projURL(providerRegPos), reg2.SourcePosition)
-	assert.Equal(t, []resource.StackFrame{
+	assert.Equal(t, []pkgresource.StackFrame{
 		{SourcePosition: projURL(progPos)},
 		{SourcePosition: projURL(constructPos)},
 		{SourcePosition: projURL(providerPos)},
@@ -4362,7 +4363,7 @@ func TestSourcePositions(t *testing.T) {
 	read2 := snap.Resources[4]
 	assert.Equal(t, read2URN, read2.URN)
 	assert.Equal(t, projURL(providerReadPos), read2.SourcePosition)
-	assert.Equal(t, []resource.StackFrame{
+	assert.Equal(t, []pkgresource.StackFrame{
 		{SourcePosition: projURL(progPos)},
 		{SourcePosition: projURL(constructPos)},
 		{SourcePosition: projURL(providerPos)},
@@ -4374,7 +4375,7 @@ func TestSourcePositions(t *testing.T) {
 	read3 := snap.Resources[5]
 	assert.Equal(t, read3URN, read3.URN)
 	assert.Equal(t, projURL(providerReadPos), read3.SourcePosition)
-	assert.Equal(t, []resource.StackFrame{
+	assert.Equal(t, []pkgresource.StackFrame{
 		{SourcePosition: projURL(progPos)},
 		{SourcePosition: projURL(callPos)},
 		{SourcePosition: projURL(providerPos)},

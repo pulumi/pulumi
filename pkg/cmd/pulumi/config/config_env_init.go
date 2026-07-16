@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"text/template"
 
@@ -64,16 +65,20 @@ func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
 
 	cmd.Flags().StringVar(
 		&impl.envName, "env", "",
-		`The name of the environment to create. Defaults to "<project name>/<stack name>"`)
+		`The name of the environment to create. Defaults to "<project name>/<stack name>"`,
+	)
 	cmd.Flags().BoolVar(
 		&impl.showSecrets, "show-secrets", false,
-		"Show secret values in plaintext instead of ciphertext")
+		"Show secret values in plaintext instead of ciphertext",
+	)
 	cmd.Flags().BoolVar(
 		&impl.keepConfig, "keep-config", false,
-		"Do not remove configuration values from the stack after creating the environment")
+		"Do not remove configuration values from the stack after creating the environment",
+	)
 	cmd.Flags().BoolVarP(
 		&impl.yes, "yes", "y", false,
-		"True to save the created environment without prompting")
+		"True to save the created environment without prompting",
+	)
 
 	return cmd
 }
@@ -105,7 +110,12 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	opts := display.Options{Color: cmd.parent.color}
 
-	project, _, err := cmd.parent.ws.ReadProject()
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting current working directory: %w", err)
+	}
+
+	project, _, err := cmd.parent.ws.ReadProject(cwd)
 	if err != nil {
 		return err
 	}

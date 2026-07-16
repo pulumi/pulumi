@@ -69,7 +69,7 @@ func TestFormatLogRecordsFoldsArgs(t *testing.T) {
 	require.NoError(t, err)
 
 	var out bytes.Buffer
-	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out)
+	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out, false)
 	require.NoError(t, err)
 
 	var got map[string]any
@@ -103,7 +103,7 @@ func TestFormatLogRecordsDecodesPropertyValues(t *testing.T) {
 	require.NoError(t, err)
 
 	var out bytes.Buffer
-	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out)
+	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out, false)
 	require.NoError(t, err)
 
 	var got map[string]any

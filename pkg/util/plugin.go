@@ -42,7 +42,7 @@ var knownLanguageRuntimes = map[string]knownLanguageRuntime{
 	"hcl": {
 		PluginDownloadURL: "github://api.github.com/pulumi-labs/pulumi-hcl",
 		// renovate: datasource=github-releases depName=pulumi-labs/pulumi-hcl extractVersion=^v(?<version>.+)$
-		Version: semver.MustParse("0.9.0"),
+		Version: semver.MustParse("0.10.0"),
 	},
 }
 

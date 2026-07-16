@@ -15,11 +15,13 @@
 package analyzer
 
 import (
+	"maps"
+	"slices"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 )
 
 // NewAnalyzePolicySummary creates a new summary from the Analyze response and policies in the analyzer.
@@ -97,7 +99,7 @@ func newPolicySummary(
 		URN:               urn,
 		PolicyPackName:    info.Name,
 		PolicyPackVersion: info.Version,
-		Passed:            maputil.SortedKeys(passed),
-		Failed:            maputil.SortedKeys(failed),
+		Passed:            slices.Sorted(maps.Keys(passed)),
+		Failed:            slices.Sorted(maps.Keys(failed)),
 	}
 }

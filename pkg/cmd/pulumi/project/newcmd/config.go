@@ -336,7 +336,7 @@ func ParseConfig(configArray []string, path bool) (config.Map, error) {
 func SaveConfig(
 	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stack backend.Stack, c config.Map, configFile string,
 ) error {
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil {
 		return err
 	}
