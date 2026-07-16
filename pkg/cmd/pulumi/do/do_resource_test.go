@@ -315,7 +315,7 @@ func TestDoCmdResourceCreateWithPCLInputFlags(t *testing.T) {
 		"--input-file", inputFile,
 		"--int-value", "42",
 		"--already-kebab-case", "kebab",
-		"--snake-case",
+		"--snake-case", "true",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)

@@ -2579,7 +2579,7 @@ func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
 		"--azure:opt-two", "val2",
 		"--in1", "p1",
 		"--input:in-two", "p2",
-		"--input:dry-run",
+		"--input:dry-run", "true",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)
@@ -2717,7 +2717,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 		"--azure:opt-two", "val2",
 		"--in1", "p1",
 		"--input:in-two", "p2",
-		"--input:dry-run",
+		"--input:dry-run", "true",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)
@@ -2851,6 +2851,7 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 				assert.Equal(t, map[string]string{
 					"number": "0o45",
 					"expr":   "{\"fn::secret\": 45}",
+					"flag":   "no",
 				}, req.Attributes)
 
 				return &plugin.ConvertSnippetResponse{
@@ -2858,6 +2859,7 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 					Attributes: map[string]string{
 						"number": "37", // 0o45 is octal in yaml, pcl doesn't have octal
 						"expr":   "secret(45)",
+						"flag":   "false", // no is false in yaml
 					},
 				}, nil
 			},
@@ -2873,6 +2875,7 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 						Properties: map[string]schema.PropertySpec{
 							"number": {TypeSpec: schema.TypeSpec{Type: "number"}},
 							"expr":   {TypeSpec: schema.TypeSpec{Type: "number"}},
+							"flag":   {TypeSpec: schema.TypeSpec{Type: "boolean"}},
 						},
 						Required: []string{"number", "expr"},
 					},
@@ -2889,6 +2892,8 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, 37.0, req.Args["number"].NumberValue())
+					assert.Equal(t, 45.0, req.Args["expr"].SecretValue().Element.NumberValue())
+					assert.Equal(t, false, req.Args["flag"].BoolValue())
 					return plugin.InvokeResponse{
 						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
 					}, nil
@@ -2906,6 +2911,7 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 		"--input", "yaml",
 		"--input:number", "0o45",
 		"--input:expr", "{\"fn::secret\": 45}",
+		"--input:flag", "no",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)
