@@ -51,7 +51,6 @@ var (
 	LogToStderr = false // true if logging is being redirected to stderr.
 	Verbose     = 0     // >0 if verbose logging is enabled at a particular level.
 	LogFlow     = false // true to flow logging settings to child processes.
-	LogSecrets  = false // true to skip redacting secret values in plaintext log output.
 )
 
 var (
@@ -94,9 +93,6 @@ type logRedactable interface {
 }
 
 func redactAttr(a slog.Attr) slog.Attr {
-	if LogSecrets {
-		return a
-	}
 	if k := a.Value.Kind(); k != slog.KindAny && k != slog.KindLogValuer {
 		return a
 	}

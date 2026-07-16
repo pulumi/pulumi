@@ -398,35 +398,6 @@ func (h *recordingAttrHandler) sawAttr(key, value string) bool {
 }
 
 //nolint:paralleltest // mutates global logging state and os.Stderr
-func TestLogSecretsDisablesRedaction(t *testing.T) {
-	prevLog, prevV, prevFlow, prevSecrets := LogToStderr, Verbose, LogFlow, LogSecrets
-	t.Cleanup(func() {
-		handlerMu.Lock()
-		primary = discardHandler{}
-		rebuildLogger()
-		handlerMu.Unlock()
-		LogToStderr, Verbose, LogFlow, LogSecrets = prevLog, prevV, prevFlow, prevSecrets
-	})
-
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-	oldStderr := os.Stderr
-	os.Stderr = w
-	InitLogging(true, 1, false)
-	os.Stderr = oldStderr
-
-	LogSecrets = true
-	slog.Info("logging in", "password", redactableSecret("hunter2"))
-
-	require.NoError(t, w.Close())
-	out, err := io.ReadAll(r)
-	require.NoError(t, err)
-
-	assert.Contains(t, string(out), "hunter2")
-	assert.NotContains(t, string(out), "[secret]")
-}
-
-//nolint:paralleltest // mutates global logging state and os.Stderr
 func TestPropertyValueAttrsRedacted(t *testing.T) {
 	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
 	t.Cleanup(func() {
