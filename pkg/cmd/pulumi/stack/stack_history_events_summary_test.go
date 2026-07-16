@@ -128,16 +128,13 @@ func TestBuildUpdateSummary(t *testing.T) {
 	assert.Equal(t, "db", s.Resources[2].Name)
 	assert.True(t, s.Resources[2].Failed)
 
-	// Only non-ephemeral errors survive; warnings are dropped.
 	require.Len(t, s.Diagnostics, 1)
 	assert.Equal(t, "error", s.Diagnostics[0].Severity)
 	assert.Equal(t, "creation failed: quota exceeded", s.Diagnostics[0].Message)
 	assert.Equal(t, s.Resources[2].URN, s.Diagnostics[0].URN)
 }
 
-// TestBuildUpdateSummary_BaseShapeMatchesLive is the compatibility guarantee
-// the issue asks for: the emitted JSON must parse as a display.SummaryJSON,
-// so tooling can treat live runs and historical lookups the same way.
+// The compatibility guarantee: the emitted JSON must parse as a display.SummaryJSON.
 func TestBuildUpdateSummary_BaseShapeMatchesLive(t *testing.T) {
 	t.Parallel()
 
@@ -182,7 +179,6 @@ func TestBuildUpdateSummary_FailureMarksLastEntryForURN(t *testing.T) {
 	))
 	require.NoError(t, err)
 
-	// The failure marks the existing entry rather than appending a second one.
 	require.Len(t, s.Resources, 1)
 	assert.True(t, s.Resources[0].Failed)
 	assert.Equal(t, apitype.OperationResultFailed, s.Result)
@@ -250,7 +246,6 @@ func TestRenderUpdateSummaryJSON_SingleLine(t *testing.T) {
 	var buf bytes.Buffer
 	require.NoError(t, renderUpdateSummaryJSON(&buf, s))
 
-	// One line, like the live summary.
 	assert.Equal(t, 1, bytes.Count(buf.Bytes(), []byte("\n")))
 	var decoded map[string]any
 	require.NoError(t, json.Unmarshal(buf.Bytes(), &decoded))

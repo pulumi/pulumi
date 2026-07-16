@@ -55,9 +55,8 @@ type historyEventsRender func(
 	w io.Writer, events iter.Seq2[apitype.EngineEvent, error],
 ) error
 
-// historyEventsRenderers pairs the renderer for the raw event stream with the
-// one for the --summary document, so a single --output flag can select the
-// format for both modes.
+// historyEventsRenderers pairs the raw-stream and --summary renderers behind
+// the single --output flag.
 type historyEventsRenderers struct {
 	events  historyEventsRender
 	summary summaryRender

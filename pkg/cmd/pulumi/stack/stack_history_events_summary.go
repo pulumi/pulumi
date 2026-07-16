@@ -32,31 +32,21 @@ import (
 )
 
 // updateSummary is the document emitted by `pulumi stack history events
-// --summary`. It embeds the base shape of the live `pulumi up --output json`
-// summary (display.SummaryJSON) so tooling can treat live runs and historical
-// lookups the same way, and extends it with the two things a post-hoc
-// debugging pass needs that the live summary does not carry: the update's
-// error diagnostics and per-resource failure markers.
+// --summary`: the base shape of the live `pulumi up --output json` summary,
+// extended with error diagnostics and per-resource failure markers.
 type updateSummary struct {
 	display.SummaryJSON
 
-	// Resources shadows the embedded field (shallower fields win during Go's
-	// JSON conflict resolution) so each entry can carry the failure marker
-	// while remaining parseable as a display.ResourceJSON.
+	// Shadows the embedded field (shallower fields win during Go's JSON
+	// conflict resolution) so entries can carry Failed.
 	Resources []summaryResource `json:"resources,omitempty"`
 
-	// Diagnostics holds the update's error messages. Errors not tied to any
-	// resource (program exceptions, provider configuration failures) have no
-	// URN, which is why the list lives at the top level rather than on
-	// resource entries.
 	Diagnostics []diagnosticSummary `json:"diagnostics,omitempty"`
 }
 
 type summaryResource struct {
 	display.ResourceJSON
 
-	// Failed is set when an operation on this resource failed; the error
-	// messages appear in updateSummary.Diagnostics under the same URN.
 	Failed bool `json:"failed,omitempty"`
 }
 
@@ -74,9 +64,7 @@ func resourceName(urn string) string {
 }
 
 func summaryResourceFor(m apitype.StepEventMetadata) summaryResource {
-	// Parent lives on the post-step state when there is one, and falls back
-	// to the pre-step state for deletes (where New is nil), mirroring the
-	// live summary's resourceJSONFromEvent.
+	// Parent falls back to the pre-step state for deletes, where New is nil.
 	var parent string
 	switch {
 	case m.New != nil:
@@ -93,10 +81,9 @@ func summaryResourceFor(m apitype.StepEventMetadata) summaryResource {
 	}}
 }
 
-// buildUpdateSummary reduces an engine event stream to an updateSummary. The
-// base fields mirror the live summary tap (display.tapSummaryJSON): one
-// resource entry per attempted operation from resource pre-events, with
-// unchanged (`same`) resources omitted.
+// buildUpdateSummary reduces an engine event stream to an updateSummary,
+// mirroring the live summary tap (display.tapSummaryJSON): one resource entry
+// per attempted operation, unchanged (`same`) resources omitted.
 func buildUpdateSummary(events iter.Seq2[apitype.EngineEvent, error]) (*updateSummary, error) {
 	s := &updateSummary{}
 
@@ -104,8 +91,6 @@ func buildUpdateSummary(events iter.Seq2[apitype.EngineEvent, error]) (*updateSu
 	var summaryEvent *apitype.SummaryEvent
 	anyFailed := false
 
-	// markFailed flags the most recent entry for a URN, appending one when
-	// the failure is the only event we saw for that resource.
 	markFailed := func(m apitype.StepEventMetadata) {
 		for i := len(s.Resources) - 1; i >= 0; i-- {
 			if s.Resources[i].URN == m.URN {
@@ -184,8 +169,7 @@ func buildUpdateSummary(events iter.Seq2[apitype.EngineEvent, error]) (*updateSu
 
 type summaryRender func(w io.Writer, s *updateSummary) error
 
-// renderUpdateSummaryJSON emits the summary as a single line, matching the
-// live `pulumi up --output json` output format.
+// renderUpdateSummaryJSON emits a single line, like the live summary.
 func renderUpdateSummaryJSON(w io.Writer, s *updateSummary) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
