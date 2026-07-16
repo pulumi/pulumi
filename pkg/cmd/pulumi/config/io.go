@@ -42,7 +42,7 @@ import (
 func OverrideEnvFlag(cmd *cobra.Command, overrides *[]string) {
 	cmd.PersistentFlags().StringArrayVar(
 		overrides, "override-env", nil,
-		"Override an imported environment for this run only, as <env>=<replacement>; repeatable")
+		"[EXPERIMENTAL] Override an imported environment for this run only, as <env>=<replacement>; repeatable")
 }
 
 // Attempts to load configuration for the given stack.
