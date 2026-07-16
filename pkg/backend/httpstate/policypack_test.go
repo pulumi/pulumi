@@ -136,6 +136,7 @@ func TestEscValueToConfigMap(t *testing.T) {
 type mockEnvironmentsBackend struct {
 	openYAMLEnvironmentF func(
 		ctx context.Context, org string, yaml []byte, duration time.Duration,
+		environmentOverrides map[string]string,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 }
 
@@ -153,8 +154,9 @@ func (m *mockEnvironmentsBackend) CheckYAMLEnvironment(
 
 func (m *mockEnvironmentsBackend) OpenYAMLEnvironment(
 	ctx context.Context, org string, yaml []byte, duration time.Duration,
+	environmentOverrides map[string]string,
 ) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
-	return m.openYAMLEnvironmentF(ctx, org, yaml, duration)
+	return m.openYAMLEnvironmentF(ctx, org, yaml, duration, environmentOverrides)
 }
 
 func TestResolveEnvironments(t *testing.T) {
@@ -178,6 +180,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				_ context.Context, org string, yaml []byte, _ time.Duration,
+				_ map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				assert.Equal(t, "test-org", org)
 				assert.Contains(t, string(yaml), "prod/policy-config")
@@ -225,6 +228,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return nil, nil, errors.New("connection refused")
 			},
@@ -250,6 +254,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return nil, apitype.EnvironmentDiagnostics{
 					{Summary: "unknown environment 'prod/missing'"},
@@ -276,6 +281,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
@@ -308,6 +314,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
@@ -340,6 +347,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				_ context.Context, org string, yaml []byte, _ time.Duration,
+				_ map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				assert.Equal(t, "test-org", org)
 				yamlStr := string(yaml)
@@ -377,6 +385,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
@@ -415,6 +424,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
@@ -468,6 +478,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
@@ -512,6 +523,7 @@ func TestResolveEnvironments(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
@@ -569,6 +581,7 @@ func TestLocalPolicyEnvironmentResolver(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				_ context.Context, org string, yaml []byte, _ time.Duration,
+				_ map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				assert.Equal(t, "test-org", org)
 				assert.Contains(t, string(yaml), "org/policy-secrets")
@@ -615,6 +628,7 @@ func TestLocalPolicyEnvironmentResolver(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return nil, nil, errors.New("connection refused")
 			},
@@ -632,6 +646,7 @@ func TestLocalPolicyEnvironmentResolver(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return nil, apitype.EnvironmentDiagnostics{
 					{Summary: "unknown environment 'env/missing'"},
@@ -650,6 +665,7 @@ func TestLocalPolicyEnvironmentResolver(t *testing.T) {
 		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
+				map[string]string,
 			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
