@@ -12,7 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+// Package rattler patches a Cobra command tree so that invalid invocations
+// fail with a non-zero exit code and an "unknown command" error that suggests
+// closely-matching commands from the whole tree.
+//
+// Cobra's own handling falls short in two ways: its "Did you mean this?"
+// suggestions fire only at the root and only consider the root's direct
+// children, so a nested command like `stack export` can never be suggested
+// for `pulumi export`; and non-runnable group commands return flag.ErrHelp
+// before args are ever validated, which Execute turns into "print help,
+// exit 0".
+//
+// The name continues the snake theme set by cobra and constrictor: a rattler
+// rattles a warning when you are headed down a bad path.
+package rattler
 
 import (
 	"errors"
@@ -23,55 +36,31 @@ import (
 	"unicode"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-// installUnknownCommandHandling walks the command tree and patches commands so
-// that invalid invocations fail with a non-zero exit code and an "unknown
-// command" error that suggests closely-matching commands from the whole tree.
-//
-// Cobra's own handling falls short in two ways: its "Did you mean this?"
-// suggestions fire only at the root and only consider the root's direct
-// children, so a nested command like `stack export` can never be suggested for
-// `pulumi export`; and non-runnable group commands return flag.ErrHelp before
-// args are ever validated, which Execute turns into "print help, exit 0".
-func installUnknownCommandHandling(c *cobra.Command) {
+// Install walks the command tree rooted at c and patches commands so that
+// invalid invocations fail with a non-zero exit code and an "unknown command"
+// error that suggests closely-matching commands from the whole tree. See the
+// package documentation for what this fixes over Cobra's own handling.
+func Install(c *cobra.Command) {
 	for _, child := range c.Commands() {
-		installUnknownCommandHandling(child)
+		Install(child)
 	}
 	// Commands that parse their own args (`pulumi do`) manage their own errors.
 	if !c.HasSubCommands() || c.DisableFlagParsing {
 		return
 	}
 
-	switch {
-	case !c.HasParent():
-		// The root: a positional arg that survives Find can only be an unknown
-		// command. Returning ErrHelp for a bare `pulumi` preserves cobra's
-		// "print help, exit zero" without running the persistent init hooks,
-		// because args validation precedes them; the RunE stub only exists to
-		// get execute() past its Runnable check, which would otherwise return
-		// ErrHelp before args are validated. Cobra compares against pflag's
-		// ErrHelp, not the standard library's.
-		c.Args = func(cmd *cobra.Command, args []string) error {
-			if len(args) == 0 {
-				return pflag.ErrHelp
-			}
-			return unknownCommandError(cmd, args)
-		}
-		c.RunE = func(cmd *cobra.Command, args []string) error {
-			return pflag.ErrHelp
-		}
-	case !c.Runnable():
-		// A group command: a positional arg can only be an attempted
-		// subcommand, so an unknown-command error beats whatever arg-count
-		// validator the command may have declared. A bare group invocation
-		// shows help but still exits non-zero; the bail error sets the exit
-		// code without printing anything after the help.
+	if !c.Runnable() {
+		// A group command, including the root: a positional arg can only be an
+		// attempted subcommand, so an unknown-command error beats whatever
+		// arg-count validator the command may have declared. A bare group
+		// invocation shows help but still exits non-zero; the bail error sets
+		// the exit code without printing anything after the help.
 		c.Args = func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return nil
@@ -84,7 +73,7 @@ func installUnknownCommandHandling(c *cobra.Command) {
 			}
 			return result.BailErrorf("%q requires a subcommand", cmd.CommandPath())
 		}
-	default:
+	} else {
 		// A runnable command with subcommands (`stack`, `config`, ...):
 		// positional args may be legitimate, so only treat them as an
 		// attempted subcommand when the command's own argument specification
@@ -313,7 +302,10 @@ func matchValue(word string, slot []string) int {
 }
 
 // Common synonyms mapped to the canonical word used for matching, so that
-// `pulumi webhook create` can rank `pulumi stack webhook new` highly.
+// `pulumi webhook create` can rank `pulumi stack webhook new` highly. The map
+// is many-to-one, but matching is symmetric: normalize runs over both the
+// typed words and the candidate command names, so any two words with the same
+// canonical form match no matter which of them the user typed.
 var synonyms = map[string]string{
 	"ls":      "list",
 	"rm":      "remove",

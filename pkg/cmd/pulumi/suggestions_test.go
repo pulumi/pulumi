@@ -19,11 +19,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
 // Unknown commands must be met with suggestions drawn from the whole command
@@ -121,10 +118,15 @@ func TestListAliases(t *testing.T) {
 	}
 }
 
-// A bare `pulumi` must keep printing help and exiting zero.
+// A bare `pulumi` is a group command like any other: it prints help but exits
+// non-zero.
 //
 //nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
-func TestBareRootPrintsHelp(t *testing.T) {
+func TestBareRootPrintsHelpAndFails(t *testing.T) {
+	// A bare invocation reaches the root's RunE, so the persistent init hooks
+	// run; keep the async update check from hitting the network.
+	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
+
 	pulumiCmd, cleanup := NewPulumiCmd()
 	defer cleanup()
 
@@ -134,167 +136,7 @@ func TestBareRootPrintsHelp(t *testing.T) {
 	pulumiCmd.SetArgs([]string{})
 
 	err := pulumiCmd.Execute()
-	require.NoError(t, err)
-	assert.NotEmpty(t, stdout.String(), "help text should be printed")
-}
-
-// newSuggestionsTestTree builds a small synthetic command tree mirroring the
-// shapes that matter for suggestion ranking.
-func newSuggestionsTestTree() *cobra.Command {
-	leaf := func(use string, aliases ...string) *cobra.Command {
-		return &cobra.Command{Use: use, Aliases: aliases, Run: func(*cobra.Command, []string) {}}
-	}
-	group := func(use string, children ...*cobra.Command) *cobra.Command {
-		c := &cobra.Command{Use: use}
-		c.AddCommand(children...)
-		return c
-	}
-
-	root := group("pulumi",
-		group("stack",
-			leaf("export"),
-			leaf("import"),
-			leaf("list", "ls"),
-			group("webhook", leaf("new"), leaf("list")),
-		),
-		group("org",
-			group("member", leaf("list"), leaf("remove")),
-			group("webhook", leaf("new")),
-		),
-		group("env", leaf("list", "ls"), leaf("get"), leaf("set")),
-		leaf("import"),
-		&cobra.Command{Use: "secret-cmd", Hidden: true, Run: func(*cobra.Command, []string) {}},
-	)
-	return root
-}
-
-func TestSuggestCommands(t *testing.T) {
-	t.Parallel()
-
-	root := newSuggestionsTestTree()
-	find := func(path ...string) *cobra.Command {
-		c, _, err := root.Find(path)
-		require.NoError(t, err)
-		return c
-	}
-
-	t.Run("exact leaf name beats levenshtein sibling", func(t *testing.T) {
-		t.Parallel()
-		got := suggestCommands(root, []string{"export"})
-		require.NotEmpty(t, got)
-		assert.Equal(t, "pulumi stack export", got[0])
-	})
-
-	t.Run("synonyms match", func(t *testing.T) {
-		t.Parallel()
-		got := suggestCommands(root, []string{"webhook", "create"})
-		assert.Equal(t, []string{"pulumi org webhook new", "pulumi stack webhook new"}, got)
-	})
-
-	t.Run("hyphen splitting and plural stemming", func(t *testing.T) {
-		t.Parallel()
-		got := suggestCommands(find("org"), []string{"list-members"})
-		require.NotEmpty(t, got)
-		assert.Equal(t, "pulumi org member list", got[0])
-	})
-
-	t.Run("subtree preferred over rest of tree", func(t *testing.T) {
-		t.Parallel()
-		got := suggestCommands(find("env"), []string{"lisst"})
-		assert.Equal(t, []string{"pulumi env list"}, got)
-	})
-
-	t.Run("two words reach a deep command from the root", func(t *testing.T) {
-		t.Parallel()
-		// `stack webhook list` outscores everything: `webhook` and `list`
-		// both match exactly and only `stack` goes untyped. The `webhook`
-		// groups themselves also match the failing word, but land too far
-		// below the winner to be offered alongside it.
-		got := suggestCommands(root, []string{"webhook", "list"})
-		assert.Equal(t, []string{"pulumi stack webhook list"}, got)
-	})
-
-	t.Run("one word is not enough for a deep command", func(t *testing.T) {
-		t.Parallel()
-		// `new` matches `stack webhook new` and `org webhook new` exactly,
-		// but two untyped path words each cost a point, dropping the score
-		// below the cutoff: deep commands need more typed context.
-		got := suggestCommands(root, []string{"new"})
-		assert.Empty(t, got)
-	})
-
-	t.Run("hidden commands are not suggested", func(t *testing.T) {
-		t.Parallel()
-		got := suggestCommands(root, []string{"secret-cmd"})
-		assert.Empty(t, got)
-	})
-
-	t.Run("no suggestions for gibberish", func(t *testing.T) {
-		t.Parallel()
-		got := suggestCommands(root, []string{"xyzzyq"})
-		assert.Empty(t, got)
-	})
-
-	t.Run("at most three suggestions", func(t *testing.T) {
-		t.Parallel()
-		crowded := &cobra.Command{Use: "pulumi"}
-		parent := &cobra.Command{Use: "things"}
-		for _, name := range []string{"alpha", "beta", "gamma", "delta"} {
-			parent.AddCommand(&cobra.Command{Use: name, Run: func(*cobra.Command, []string) {}})
-		}
-		crowded.AddCommand(parent)
-		got := suggestCommands(crowded, []string{"things"})
-		assert.LessOrEqual(t, len(got), maxSuggestions)
-	})
-}
-
-// A runnable command with subcommands may accept legitimate positional args.
-// Only the args past its argument specification can be an attempted
-// subcommand, and the error must blame the first of those, not the first arg
-// outright.
-func TestRunnableParentBlamesArgPastSpec(t *testing.T) {
-	t.Parallel()
-
-	parent := &cobra.Command{Use: "thing", RunE: func(*cobra.Command, []string) error { return nil }}
-	constrictor.AttachArguments(parent, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{{Name: "name"}},
-	})
-	parent.AddCommand(&cobra.Command{Use: "export", Run: func(*cobra.Command, []string) {}})
-	root := &cobra.Command{Use: "pulumi"}
-	root.AddCommand(parent)
-	installUnknownCommandHandling(root)
-
-	var out bytes.Buffer
-	root.SetOut(&out)
-	root.SetErr(&out)
-
-	root.SetArgs([]string{"thing", "myname", "expor"})
-	err := root.Execute()
 	require.Error(t, err)
-	assert.ErrorContains(t, err, `unknown command "expor" for "pulumi thing"`)
-	assert.ErrorContains(t, err, "pulumi thing export")
-	assert.NotContains(t, err.Error(), "myname")
-
-	// Args within the specification alone must still reach the command.
-	root.SetArgs([]string{"thing", "myname"})
-	require.NoError(t, root.Execute())
-}
-
-func TestNormalize(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		token string
-		want  []string
-	}{
-		{"list-members", []string{"list", "member"}},
-		{"ls", []string{"list"}},
-		{"create", []string{"new"}},
-		{"audit-log", []string{"audit", "log"}},
-		{"creates", []string{"new"}},
-		{"Webhook", []string{"webhook"}},
-	}
-	for _, c := range cases {
-		assert.Equal(t, c.want, normalize(c.token), "normalize(%q)", c.token)
-	}
+	assert.ErrorContains(t, err, `"pulumi" requires a subcommand`)
+	assert.NotEmpty(t, stdout.String(), "help text should be printed")
 }

@@ -75,6 +75,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/rattler"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
@@ -600,7 +601,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 	// Patch commands so that invalid invocations exit non-zero with
 	// suggestions for closely-matching commands.
-	installUnknownCommandHandling(cmd)
+	rattler.Install(cmd)
 
 	return cmd, cleanup
 }
