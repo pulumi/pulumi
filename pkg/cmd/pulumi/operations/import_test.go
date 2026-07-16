@@ -579,13 +579,10 @@ func TestApplyConverterProviders(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = applyConverterProviders(t.Context(), &f, map[string]plugin.ProviderImport{
+	err = applyConverterProviders(t.Context(), &f, map[string]resource.PropertyMap{
 		"aws.us": {
-			Package: "aws",
-			Inputs: resource.PropertyMap{
-				"region":    resource.NewProperty("us-east-1"),
-				"secretKey": resource.MakeSecret(resource.NewProperty("shh")),
-			},
+			"region":    resource.NewProperty("us-east-1"),
+			"secretKey": resource.MakeSecret(resource.NewProperty("shh")),
 		},
 	}, tokens.MustParseStackName("stack"), "proj", sdkconfig.NopEncrypter)
 	require.NoError(t, err)
@@ -602,6 +599,30 @@ func TestApplyConverterProviders(t *testing.T) {
 	assert.Equal(t, resource.NewProperty("us-east-1"), imports[0].ProviderInputs["region"])
 	// Secret values survive the round trip through the import file's serialized form.
 	assert.Equal(t, resource.MakeSecret(resource.NewProperty("shh")), imports[0].ProviderInputs["secretKey"])
+}
+
+func TestApplyConverterProviders_errors(t *testing.T) {
+	t.Parallel()
+
+	mixed := importFile{
+		Resources: []importSpec{
+			{Type: "aws:s3/bucket:Bucket", Name: "a", ID: "a", Provider: "prod"},
+			{Type: "gcp:compute/instance:Instance", Name: "b", ID: "b", Provider: "prod"},
+		},
+	}
+	err := applyConverterProviders(
+		t.Context(), &mixed, nil, tokens.MustParseStackName("stack"), "proj", sdkconfig.NopEncrypter)
+	assert.ErrorContains(t, err, `provider "prod" is referenced by resources of different packages`)
+
+	orphan := importFile{
+		Resources: []importSpec{
+			{Type: "aws:s3/bucket:Bucket", Name: "a", ID: "a"},
+		},
+	}
+	err = applyConverterProviders(t.Context(), &orphan, map[string]resource.PropertyMap{
+		"prod": {"region": resource.NewProperty("us-east-1")},
+	}, tokens.MustParseStackName("stack"), "proj", sdkconfig.NopEncrypter)
+	assert.ErrorContains(t, err, `provider inputs given for "prod", but no resource references it`)
 }
 
 func TestParseImportFileProviderInputsWithoutEntry(t *testing.T) {

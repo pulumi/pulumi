@@ -71,15 +71,12 @@ func (c *testConverterClient) ConvertState(
 				Provider:   "test:provider",
 			},
 		},
-		Providers: map[string]*pulumirpc.ProviderImport{
-			"test:provider": {
-				Package: "aws",
-				Inputs: mustMarshalProperties(resource.PropertyMap{
-					"region": resource.NewProperty("us-east-1"),
-					"secretKey": resource.MakeSecret(
-						resource.NewProperty("shh")),
-				}),
-			},
+		ProviderInputs: map[string]*structpb.Struct{
+			"test:provider": mustMarshalProperties(resource.PropertyMap{
+				"region": resource.NewProperty("us-east-1"),
+				"secretKey": resource.MakeSecret(
+					resource.NewProperty("shh")),
+			}),
 		},
 		Diagnostics: c.diagnostics,
 	}, nil
@@ -181,13 +178,10 @@ func TestConverterPlugin_State(t *testing.T) {
 	assert.Equal(t, []string{"prop1", "prop2"}, res.Properties)
 	assert.Equal(t, "test:provider", res.Provider)
 
-	require.Contains(t, resp.Providers, "test:provider")
-	prov := resp.Providers["test:provider"]
-	assert.Equal(t, "aws", prov.Package)
 	assert.Equal(t, resource.PropertyMap{
 		"region":    resource.NewProperty("us-east-1"),
 		"secretKey": resource.MakeSecret(resource.NewProperty("shh")),
-	}, prov.Inputs)
+	}, resp.ProviderInputs["test:provider"])
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, hcl.DiagError, diag.Severity)

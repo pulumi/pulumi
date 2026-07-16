@@ -77,19 +77,13 @@ func (c *converterServer) ConvertState(ctx context.Context,
 		}
 	}
 
-	providerImports := make(map[string]*pulumirpc.ProviderImport, len(resp.Providers))
-	for name, p := range resp.Providers {
-		var inputs *structpb.Struct
-		if p.Inputs != nil {
-			inputs, err = MarshalProperties(p.Inputs, MarshalOptions{KeepSecrets: true})
-			if err != nil {
-				return nil, fmt.Errorf("marshaling inputs for provider %q: %w", name, err)
-			}
+	providerInputs := make(map[string]*structpb.Struct, len(resp.ProviderInputs))
+	for name, pi := range resp.ProviderInputs {
+		inputs, err := MarshalProperties(pi, MarshalOptions{KeepSecrets: true})
+		if err != nil {
+			return nil, fmt.Errorf("marshaling inputs for provider %q: %w", name, err)
 		}
-		providerImports[name] = &pulumirpc.ProviderImport{
-			Package: p.Package,
-			Inputs:  inputs,
-		}
+		providerInputs[name] = inputs
 	}
 
 	// Translate the hcl.Diagnostics into rpc diagnostics.
@@ -99,9 +93,9 @@ func (c *converterServer) ConvertState(ctx context.Context,
 	}
 
 	rpcResp := &pulumirpc.ConvertStateResponse{
-		Resources:   resources,
-		Providers:   providerImports,
-		Diagnostics: diags,
+		Resources:      resources,
+		ProviderInputs: providerInputs,
+		Diagnostics:    diags,
 	}
 	return rpcResp, nil
 }

@@ -83,22 +83,11 @@ message ResourceImport {
     // required properties.
     repeated string properties = 12;
 
-    // the name of the resource's explicit provider, if any. Must reference a key in the response's
-    // providers map; resources without a provider are served by an appropriate default provider.
+    // the name of the resource's explicit provider, if any. Resources sharing a provider name are served
+    // by the same explicit provider, created during import; its package, version, and parameterization
+    // are taken from the resources that reference it, and its configuration may be supplied via the
+    // response's provider_inputs.
     string provider = 13;
-}
-
-// A ProviderImport describes an explicit provider that imported resources reference. The import process
-// will reuse a matching provider already in the stack's state, or create one from these details.
-message ProviderImport {
-    // the package name of the provider (e.g. "aws"): the created provider resource will have the type
-    // "pulumi:providers:<package>". The provider's version, download URL, and any parameterization are
-    // taken from the resources that reference it.
-    string package = 1;
-
-    // the configuration inputs for the provider, if known. Absent inputs mean the provider configures
-    // itself from its environment. Secret values are marked with Pulumi's standard secret signature.
-    google.protobuf.Struct inputs = 2;
 }
 
 // A ResourceParameterization describes the base plugin that a resource's parameterized provider is built
@@ -130,9 +119,10 @@ message ConvertStateResponse {
     // any diagnostics from state conversion.
     repeated pulumirpc.codegen.Diagnostic diagnostics = 2;
 
-    // the explicit providers referenced by resources' provider fields, keyed by the names used in those
-    // fields. Each key is also used as the name of the provider resource created during import.
-    map<string, ProviderImport> providers = 3;
+    // the configuration inputs for the explicit providers referenced by resources' provider fields, keyed
+    // by those names. Providers without an entry are created with empty configuration. Secret values are
+    // marked with Pulumi's standard secret signature.
+    map<string, google.protobuf.Struct> provider_inputs = 3;
 }
 
 message ConvertProgramRequest {
