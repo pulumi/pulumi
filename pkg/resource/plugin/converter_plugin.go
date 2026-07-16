@@ -157,19 +157,13 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 		}
 	}
 
-	providerImports := make(map[string]ProviderImport, len(resp.Providers))
-	for name, p := range resp.Providers {
-		var inputs presource.PropertyMap
-		if p.Inputs != nil {
-			inputs, err = UnmarshalProperties(p.Inputs, MarshalOptions{Label: label, KeepSecrets: true})
-			if err != nil {
-				return nil, fmt.Errorf("unmarshaling inputs for provider %q: %w", name, err)
-			}
+	providerInputs := make(map[string]presource.PropertyMap, len(resp.ProviderInputs))
+	for name, pi := range resp.ProviderInputs {
+		inputs, err := UnmarshalProperties(pi, MarshalOptions{Label: label, KeepSecrets: true})
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling inputs for provider %q: %w", name, err)
 		}
-		providerImports[name] = ProviderImport{
-			Package: p.Package,
-			Inputs:  inputs,
-		}
+		providerInputs[name] = inputs
 	}
 
 	// Translate the rpc diagnostics into hcl.Diagnostics.
@@ -180,9 +174,9 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 
 	logging.V(7).Infof("%s success", label)
 	return &ConvertStateResponse{
-		Resources:   resources,
-		Providers:   providerImports,
-		Diagnostics: diags,
+		Resources:      resources,
+		ProviderInputs: providerInputs,
+		Diagnostics:    diags,
 	}, nil
 }
 

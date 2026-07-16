@@ -96,8 +96,10 @@ class ResourceImport(google.protobuf.message.Message):
     response; resources without a parent are parented to the stack root.
     """
     provider: builtins.str
-    """the name of the resource's explicit provider, if any. Must reference a key in the response's
-    providers map; resources without a provider are served by an appropriate default provider.
+    """the name of the resource's explicit provider, if any. Resources sharing a provider name are served
+    by the same explicit provider, created during import; its package, version, and parameterization
+    are taken from the resources that reference it, and its configuration may be supplied via the
+    response's provider_inputs.
     """
     @property
     def parameterization(self) -> global___ResourceParameterization:
@@ -139,38 +141,6 @@ class ResourceImport(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["extension", b"extension", "id", b"id", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "parameterization", b"parameterization", "parent", b"parent", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "type", b"type", "version", b"version"]) -> None: ...
 
 global___ResourceImport = ResourceImport
-
-@typing.final
-class ProviderImport(google.protobuf.message.Message):
-    """A ProviderImport describes an explicit provider that imported resources reference. The import process
-    will reuse a matching provider already in the stack's state, or create one from these details.
-    """
-
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    PACKAGE_FIELD_NUMBER: builtins.int
-    INPUTS_FIELD_NUMBER: builtins.int
-    package: builtins.str
-    """the package name of the provider (e.g. "aws"): the created provider resource will have the type
-    "pulumi:providers:<package>". The provider's version, download URL, and any parameterization are
-    taken from the resources that reference it.
-    """
-    @property
-    def inputs(self) -> google.protobuf.struct_pb2.Struct:
-        """the configuration inputs for the provider, if known. Absent inputs mean the provider configures
-        itself from its environment. Secret values are marked with Pulumi's standard secret signature.
-        """
-
-    def __init__(
-        self,
-        *,
-        package: builtins.str = ...,
-        inputs: google.protobuf.struct_pb2.Struct | None = ...,
-    ) -> None: ...
-    def HasField(self, field_name: typing.Literal["inputs", b"inputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["inputs", b"inputs", "package", b"package"]) -> None: ...
-
-global___ProviderImport = ProviderImport
 
 @typing.final
 class ResourceParameterization(google.protobuf.message.Message):
@@ -231,26 +201,26 @@ class ConvertStateResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     @typing.final
-    class ProvidersEntry(google.protobuf.message.Message):
+    class ProviderInputsEntry(google.protobuf.message.Message):
         DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
         KEY_FIELD_NUMBER: builtins.int
         VALUE_FIELD_NUMBER: builtins.int
         key: builtins.str
         @property
-        def value(self) -> global___ProviderImport: ...
+        def value(self) -> google.protobuf.struct_pb2.Struct: ...
         def __init__(
             self,
             *,
             key: builtins.str = ...,
-            value: global___ProviderImport | None = ...,
+            value: google.protobuf.struct_pb2.Struct | None = ...,
         ) -> None: ...
         def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
         def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
 
     RESOURCES_FIELD_NUMBER: builtins.int
     DIAGNOSTICS_FIELD_NUMBER: builtins.int
-    PROVIDERS_FIELD_NUMBER: builtins.int
+    PROVIDER_INPUTS_FIELD_NUMBER: builtins.int
     @property
     def resources(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___ResourceImport]:
         """a list of resources to import."""
@@ -260,9 +230,10 @@ class ConvertStateResponse(google.protobuf.message.Message):
         """any diagnostics from state conversion."""
 
     @property
-    def providers(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___ProviderImport]:
-        """the explicit providers referenced by resources' provider fields, keyed by the names used in those
-        fields. Each key is also used as the name of the provider resource created during import.
+    def provider_inputs(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, google.protobuf.struct_pb2.Struct]:
+        """the configuration inputs for the explicit providers referenced by resources' provider fields, keyed
+        by those names. Providers without an entry are created with empty configuration. Secret values are
+        marked with Pulumi's standard secret signature.
         """
 
     def __init__(
@@ -270,9 +241,9 @@ class ConvertStateResponse(google.protobuf.message.Message):
         *,
         resources: collections.abc.Iterable[global___ResourceImport] | None = ...,
         diagnostics: collections.abc.Iterable[pulumi.codegen.hcl_pb2.Diagnostic] | None = ...,
-        providers: collections.abc.Mapping[builtins.str, global___ProviderImport] | None = ...,
+        provider_inputs: collections.abc.Mapping[builtins.str, google.protobuf.struct_pb2.Struct] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics", "providers", b"providers", "resources", b"resources"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics", "provider_inputs", b"provider_inputs", "resources", b"resources"]) -> None: ...
 
 global___ConvertStateResponse = ConvertStateResponse
 

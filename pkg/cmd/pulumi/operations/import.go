@@ -130,27 +130,38 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 	}, nil
 }
 
-// applyConverterProviders adds the explicit providers returned by a state converter to an import file.
-// Converters reference providers by name only; their URNs are constructed here, where the target stack
-// and project are known.
+// applyConverterProviders adds the explicit providers referenced by a state converter's resources to an
+// import file. Converters reference providers by name only; their URNs are constructed here, where the
+// target stack and project are known, with each provider's package taken from the resources that
+// reference it.
 func applyConverterProviders(
-	ctx context.Context, f *importFile, providerImports map[string]plugin.ProviderImport,
+	ctx context.Context, f *importFile, providerInputs map[string]resource.PropertyMap,
 	stack tokens.StackName, proj tokens.PackageName, enc sdkconfig.Encrypter,
 ) error {
-	if len(providerImports) == 0 {
-		return nil
+	packages := map[string]tokens.Package{}
+	for _, spec := range f.Resources {
+		if spec.Provider == "" {
+			continue
+		}
+		pkg := spec.Type.Package()
+		if existing, ok := packages[spec.Provider]; ok && existing != pkg {
+			return fmt.Errorf("provider %q is referenced by resources of different packages (%q and %q)",
+				spec.Provider, existing, pkg)
+		}
+		packages[spec.Provider] = pkg
 	}
-	if f.ProviderInputs == nil {
+	for name := range providerInputs {
+		if _, ok := packages[name]; !ok {
+			return fmt.Errorf("provider inputs given for %q, but no resource references it", name)
+		}
+	}
+	if f.ProviderInputs == nil && len(providerInputs) > 0 {
 		f.ProviderInputs = map[string]map[string]any{}
 	}
-	for name, p := range providerImports {
-		if p.Package == "" {
-			return fmt.Errorf("provider %q has no package", name)
-		}
-		f.NameTable[name] = resource.NewURN(
-			stack.Q(), proj, "", providers.MakeProviderType(tokens.Package(p.Package)), name)
-		if p.Inputs != nil {
-			serialized, err := resourcestack.SerializeProperties(ctx, p.Inputs, enc, true /*showSecrets*/)
+	for name, pkg := range packages {
+		f.NameTable[name] = resource.NewURN(stack.Q(), proj, "", providers.MakeProviderType(pkg), name)
+		if inputs, ok := providerInputs[name]; ok {
+			serialized, err := resourcestack.SerializeProperties(ctx, inputs, enc, true /*showSecrets*/)
 			if err != nil {
 				return fmt.Errorf("serializing inputs for provider %q: %w", name, err)
 			}
@@ -847,7 +858,8 @@ func NewImportCmd() *cobra.Command {
 			defer contract.IgnoreClose(pCtx)
 
 			var importFile importFile
-			var converterProviders map[string]plugin.ProviderImport
+			fromConverter := false
+			var converterInputs map[string]resource.PropertyMap
 			if importFilePath != "" {
 				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
 					contract.IgnoreError(cmd.Help())
@@ -942,7 +954,8 @@ func NewImportCmd() *cobra.Command {
 					return err
 				}
 				importFile = f
-				converterProviders = resp.Providers
+				fromConverter = true
+				converterInputs = resp.ProviderInputs
 			} else {
 				msg := "an inline resource must be specified if no converter or import file is used, missing "
 				if len(args) == 0 {
@@ -1055,9 +1068,11 @@ func NewImportCmd() *cobra.Command {
 			decrypter := sm.Decrypter()
 			encrypter := sm.Encrypter()
 
-			err = applyConverterProviders(ctx, &importFile, converterProviders, s.Ref().Name(), proj.Name, encrypter)
-			if err != nil {
-				return err
+			if fromConverter {
+				err = applyConverterProviders(ctx, &importFile, converterInputs, s.Ref().Name(), proj.Name, encrypter)
+				if err != nil {
+					return err
+				}
 			}
 
 			imports, nameTable, err := parseImportFile(

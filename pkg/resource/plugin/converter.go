@@ -51,18 +51,9 @@ type ResourceImport struct {
 	// the resource's required properties.
 	Properties []string
 
-	// Provider is the name of the resource's explicit provider, if any. It must reference a key in the
-	// response's Providers map.
+	// Provider is the name of the resource's explicit provider, if any. Resources sharing a provider
+	// name are served by the same explicit provider, created during import.
 	Provider string
-}
-
-// A ProviderImport describes an explicit provider that imported resources reference. The provider's
-// version, download URL, and any parameterization are taken from the resources that reference it.
-type ProviderImport struct {
-	// Package is the package name of the provider (e.g. "aws").
-	Package string
-	// Inputs holds the configuration inputs for the provider, if known.
-	Inputs resource.PropertyMap
 }
 
 // ResourceParameterization describes the base plugin that a resource's parameterized provider is built
@@ -93,9 +84,9 @@ type ConvertStateRequest struct {
 }
 
 type ConvertStateResponse struct {
-	Resources   []ResourceImport
-	Providers   map[string]ProviderImport
-	Diagnostics hcl.Diagnostics
+	Resources      []ResourceImport
+	ProviderInputs map[string]resource.PropertyMap
+	Diagnostics    hcl.Diagnostics
 }
 
 type ConvertProgramRequest struct {

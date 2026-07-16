@@ -81,13 +81,10 @@ func (c *testConverter) ConvertState(
 				Provider:   "test:provider",
 			},
 		},
-		Providers: map[string]ProviderImport{
+		ProviderInputs: map[string]resource.PropertyMap{
 			"test:provider": {
-				Package: "aws",
-				Inputs: resource.PropertyMap{
-					"region":    resource.NewProperty("us-east-1"),
-					"secretKey": resource.MakeSecret(resource.NewProperty("shh")),
-				},
+				"region":    resource.NewProperty("us-east-1"),
+				"secretKey": resource.MakeSecret(resource.NewProperty("shh")),
 			},
 		},
 		Diagnostics: diags,
@@ -186,10 +183,8 @@ func TestConverterServer_State(t *testing.T) {
 	assert.Equal(t, []string{"prop1", "prop2"}, res.Properties)
 	assert.Equal(t, "test:provider", res.Provider)
 
-	require.Contains(t, resp.Providers, "test:provider")
-	prov := resp.Providers["test:provider"]
-	assert.Equal(t, "aws", prov.Package)
-	inputs, err := UnmarshalProperties(prov.Inputs, MarshalOptions{KeepSecrets: true})
+	require.Contains(t, resp.ProviderInputs, "test:provider")
+	inputs, err := UnmarshalProperties(resp.ProviderInputs["test:provider"], MarshalOptions{KeepSecrets: true})
 	require.NoError(t, err)
 	assert.Equal(t, resource.PropertyMap{
 		"region":    resource.NewProperty("us-east-1"),
