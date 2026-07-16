@@ -15,12 +15,17 @@
 #   2. start router #1: org namespaces are a read-write publish target (embedded
 #      registry); pulumi/pulumi-provider-* is read-only, synthesized from released
 #      binaries on pull
-#   3. build the greeting component image under a working tag, then
-#      `pulumi package publish oci://<tag> --registry oci://<router#1> --publisher
-#      spikeorg`: the schema read boots the candidate image (verify by running),
-#      the org enters the ref at publish, and the image is pushed to the ORG
-#      namespace (localhost:5064/spikeorg/pulumi-provider-greeting:v0.1.0).
-#      All local tags are then removed — consumption must be honest
+#   3. `pulumi package publish <component dir> --registry oci://<router#1>
+#      --publisher spikeorg` — the WELDED path: publish drives the package's own
+#      self-described build (the same one `pulumi install` runs), boots the built
+#      image to read its schema (verify by running), checks the reported identity
+#      against the manifest's claim, and pushes the ORG ref
+#      (localhost:5064/spikeorg/pulumi-provider-greeting:v0.1.0). All local tags
+#      are then removed — consumption must be honest.
+#      3b. the same for a POLICY PACK: publish builds policy-pack-node/ (its
+#      PulumiPolicy.yaml declares name/version + build), verifies via
+#      GetAnalyzerInfo, pushes pulumi-policy-oci-policy-smoke, and a preview
+#      consumes it via --policy-pack oci://<ref> (pinned resolution)
 #   4. `pulumi package add oci://<org ref>` in a fresh Go consumer project: assert
 #      the pin lands in Pulumi.yaml AND in the generated SDK's PluginDownloadURL
 #   5. `pulumi up` with the registry knob as the ONLY registry config: greeting
@@ -76,9 +81,18 @@ REG2="localhost:$REG2_PORT"
 PROXY1_NAME="proto-publish-proxy-1"
 PROXY2_NAME="proto-publish-proxy-2"
 
-# The working tag the component image is built under; `package publish` derives
-# the real name from the identity the running image reports.
-SRC_TAG="oci-publish-src-greeting:dev"
+# The working tag the welded build produces (BuildPackage's host-unqualified
+# convention ref) — NOTE: shared spelling with the mlc smoke tests, which build the
+# same component; they rebuild it themselves, so removing it here is safe.
+WORK_TAG="pulumi/pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION"
+# The discriminating builder component-greeter's PulumiPlugin.yaml names.
+BUILDER_IMAGE="oci-smoke-builder:latest"
+# The policy pack under publish, and its refs.
+POLICY_DIR="$SMOKE_DIR/policy-pack-node"
+POLICY_PKG="oci-policy-smoke"
+POLICY_VERSION="1.0.0"
+POLICY_WORK_TAG="pulumi/pulumi-policy-$POLICY_PKG:v$POLICY_VERSION"
+POLICY_ORG_REF="$REG1/$ORG/pulumi-policy-$POLICY_PKG:v$POLICY_VERSION"
 # The ORG-namespaced ref the component is published under — the pin under test.
 ORG_REF="$REG1/$ORG/pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION"
 OCI_SOURCE="oci://$ORG_REF"
@@ -100,7 +114,7 @@ mkdir -p "$WORK/cli" "$WORK/project" "$WORK/state" "$WORK/consumer"
 
 cleanup() {
   local leftovers
-  for phase in "$POD_BASE" "$POD_BASE-pub" "$POD_BASE-add" "$POD_BASE-up" "$POD_BASE-zc" "$POD_BASE-mig" "$POD_BASE-off" "$POD_BASE-dst"; do
+  for phase in "$POD_BASE" "$POD_BASE-pub" "$POD_BASE-add" "$POD_BASE-up" "$POD_BASE-pol" "$POD_BASE-polup" "$POD_BASE-zc" "$POD_BASE-mig" "$POD_BASE-off" "$POD_BASE-dst"; do
     leftovers="$(docker ps -aq --filter "label=com.pulumi.pod=$phase" 2>/dev/null || true)"
     [ -n "$leftovers" ] && docker rm -f $leftovers >/dev/null 2>&1 || true
     docker volume rm "pulumi-pod-$phase-vol-workspace" >/dev/null 2>&1 || true
@@ -110,7 +124,8 @@ cleanup() {
   # Only refs this run owns (5064/5065-qualified, this run's program image, and the
   # host-unqualified random tag the zero-config probe creates).
   docker image rm -f "$ORG_REF" "$ORG_REF2" "$RANDOM_REF1" "$RANDOM_REF2" "$RANDOM_LOCAL" \
-    "$GREETING_DEFAULTED_REF1" "$GREETING_DEFAULTED_REF2" "$PROGRAM_IMAGE" "$SRC_TAG" >/dev/null 2>&1 || true
+    "$GREETING_DEFAULTED_REF1" "$GREETING_DEFAULTED_REF2" "$PROGRAM_IMAGE" "$WORK_TAG" \
+    "$POLICY_WORK_TAG" "$POLICY_ORG_REF" >/dev/null 2>&1 || true
   rm -rf "$WORK"
 }
 trap cleanup EXIT
@@ -145,8 +160,8 @@ echo "==> starting router #1 ($PROXY1_NAME on $REG1: org publish target + synthe
 start_proxy "$PROXY1_NAME" "$REG1_PORT"
 echo "    router #1 up"
 
-echo "==> building the greeting component image under its working tag ($SRC_TAG)"
-docker buildx build --builder "$BUILDER" --load -t "$SRC_TAG" "$COMPONENT_DIR"
+echo "==> building the discriminating builder image ($BUILDER_IMAGE — component-greeter's build.image)"
+docker buildx build --builder "$BUILDER" --load -t "$BUILDER_IMAGE" -f "$SMOKE_DIR/Dockerfile.builder" "$SMOKE_DIR"
 
 echo "==> creating pod network $NET"
 docker network create "$NET" >/dev/null
@@ -166,6 +181,8 @@ engine_run() {
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "$WORK/project":/project \
     -v "$WORK/state":/state \
+    -v "$COMPONENT_DIR":/packages/greeter:ro \
+    -v "$POLICY_DIR":/packages/policy:ro \
     -w /project \
     -e PULUMI_POD_MODE=true \
     -e PULUMI_POD_NETWORK="$NET" \
@@ -181,21 +198,27 @@ engine_run() {
 }
 
 ###############################################################################
-# publish: verify-by-running + identity-derived ref + push — the CLI owns it all.
+# publish (welded): the package DIRECTORY is the unit — publish builds it via its
+# own self-described build, verifies the artifact against the manifest claim, and
+# pushes the identity-derived org ref.
 ###############################################################################
 POD_ID="$POD_BASE-pub"
 KNOB="$REG1"
-echo "==> pulumi package publish oci://$SRC_TAG --registry oci://$REG1 --publisher $ORG"
-engine_run "pulumi package publish 'oci://$SRC_TAG' --registry 'oci://$REG1' --publisher '$ORG'" 2>&1 | tee "$WORK/publish.log"
+echo "==> pulumi package publish /packages/greeter --registry oci://$REG1 --publisher $ORG (welded: build + verify + push)"
+engine_run "pulumi package publish /packages/greeter --registry 'oci://$REG1' --publisher '$ORG'" 2>&1 | tee "$WORK/publish.log"
+if ! grep -q "Building $COMPONENT_PKG (v$COMPONENT_VERSION)" "$WORK/publish.log"; then
+  echo "!! publish did not drive the package's own build"
+  exit 1
+fi
 if ! grep -q "Published $ORG/$COMPONENT_PKG@$COMPONENT_VERSION to oci://$ORG_REF" "$WORK/publish.log"; then
   echo "!! publish did not derive the org ref from the identity the running image reported"
   exit 1
 fi
-echo "    publish verified the artifact by running it and pushed $ORG_REF"
+echo "    publish built the package, verified it by running it, and pushed $ORG_REF"
 
 echo "==> removing local greeting/random image tags so consumption is honest"
-docker image rm -f "$SRC_TAG" "$ORG_REF" "$GREETING_DEFAULTED_REF1" "$RANDOM_REF1" >/dev/null 2>&1 || true
-for ref in "$SRC_TAG" "$ORG_REF" "$GREETING_DEFAULTED_REF1" "$RANDOM_REF1"; do
+docker image rm -f "$WORK_TAG" "$ORG_REF" "$GREETING_DEFAULTED_REF1" "$RANDOM_REF1" >/dev/null 2>&1 || true
+for ref in "$WORK_TAG" "$ORG_REF" "$GREETING_DEFAULTED_REF1" "$RANDOM_REF1"; do
   if docker image inspect "$ref" >/dev/null 2>&1; then
     echo "!! $ref still present locally — the consumption test would not be honest"
     exit 1
@@ -326,6 +349,47 @@ case "$MESSAGE" in
   *) echo "!! stack output missing or unexpected: '${MESSAGE:-<empty>}'"; exit 1 ;;
 esac
 PET_BEFORE="$(pet_of "$WORK/up.log")"
+
+###############################################################################
+# policy pack: publish (build + GetAnalyzerInfo verify + push) and consume by
+# --policy-pack oci://<ref> (pinned resolution through the router).
+###############################################################################
+POD_ID="$POD_BASE-pol"
+KNOB="$REG1"
+echo "==> pulumi package publish /packages/policy --registry oci://$REG1 --publisher $ORG (policy pack)"
+engine_run "pulumi package publish /packages/policy --registry 'oci://$REG1' --publisher '$ORG'" 2>&1 | tee "$WORK/publish-policy.log"
+if ! grep -q "Building $POLICY_PKG (v$POLICY_VERSION)" "$WORK/publish-policy.log"; then
+  echo "!! policy publish did not drive the pack's own build"
+  exit 1
+fi
+if ! grep -q "Published $ORG/$POLICY_PKG@$POLICY_VERSION (policy pack) to oci://$POLICY_ORG_REF" "$WORK/publish-policy.log"; then
+  echo "!! policy publish did not derive the org ref from what the running pack reported"
+  exit 1
+fi
+echo "    pack built, verified via GetAnalyzerInfo, pushed $POLICY_ORG_REF"
+
+echo "==> consuming the published pack: preview --policy-pack oci://$POLICY_ORG_REF (honest pull)"
+docker image rm -f "$POLICY_WORK_TAG" "$POLICY_ORG_REF" >/dev/null 2>&1 || true
+POD_ID="$POD_BASE-polup"
+engine_run '
+    set -e
+    pulumi login "$PULUMI_BACKEND_URL"
+    pulumi stack select "$STACK"
+    pulumi preview --policy-pack "oci://'"$POLICY_ORG_REF"'" --stack "$STACK"
+  ' 2>&1 | tee "$WORK/preview-policy.log"
+if ! grep -q "oci: policy pack .* resolved by its oci:// pin: $POLICY_ORG_REF" "$WORK/preview-policy.log"; then
+  echo "!! the pack was not resolved from its oci:// pin"
+  exit 1
+fi
+if ! grep -q "oci: installed plugin $POLICY_ORG_REF by pulling its image" "$WORK/preview-policy.log"; then
+  echo "!! the published pack was not installed by pulling its image"
+  exit 1
+fi
+if ! grep -q "oci: policy pack .* running as container" "$WORK/preview-policy.log"; then
+  echo "!! the pack did not run as an analyzer container"
+  exit 1
+fi
+echo "    published pack pulled by pin and engaged in the preview"
 
 ###############################################################################
 # ZERO-CONFIG PROBE: no knob — the pin's own host is the default route.

@@ -3,7 +3,18 @@
 # container from the named image instead of spawning it via a language plugin. The
 # pack's code lives in the image; only this manifest needs to be reachable in the
 # engine container (mounted), exactly like Pulumi.yaml for a program.
+# name/version are the pack's MANIFEST-DECLARED identity — the same identity the
+# running pack reports via GetAnalyzerInfo (name from index.ts's PolicyPack, version
+# from package.json). `pulumi package publish` builds the pack, runs it, and verifies
+# the two agree before pushing under this name.
+name: oci-policy-smoke
+version: "1.0.0"
 runtime:
   name: oci
   options:
     image: oci-smoke-policy:latest
+    # The pack's own build, for `pulumi package publish <this dir>` — the same
+    # self-describing contract PulumiPlugin.yaml gives components. The default
+    # command builds the Dockerfile here and tags it $PULUMI_PACKAGE_IMAGE.
+    build:
+      image: docker:cli

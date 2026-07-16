@@ -97,3 +97,24 @@ func TestProviderImageRefDefaultsOrg(t *testing.T) {
 		"pulumi/pulumi-provider-random:v4.21.0",
 		ProviderImageRef("", "random", "4.21.0"))
 }
+
+// The policy-pack convention shares the grammar with a different kind prefix, and
+// the prefixes do not cross-parse: a provider ref carries no policy identity and
+// vice versa.
+func TestPolicyImageRefRoundTrip(t *testing.T) {
+	t.Parallel()
+	ref := PolicyImageRefInOrg("reg.example.com", "acme", "compliance", "1.2.3")
+	assert.Equal(t, "reg.example.com/acme/pulumi-policy-compliance:v1.2.3", ref)
+
+	id, ok := ParsePolicyImageRef(ref)
+	assert.True(t, ok)
+	assert.Equal(t, PackageIdentity{Org: "acme", Name: "compliance", Version: "1.2.3"}, id)
+
+	_, ok = ParsePolicyImageRef("reg.example.com/acme/pulumi-provider-compliance:v1.2.3")
+	assert.False(t, ok, "a provider ref is not policy identity")
+	_, ok = ParseProviderImageRef(ref)
+	assert.False(t, ok, "a policy ref is not provider identity")
+
+	assert.Equal(t, "pulumi/pulumi-policy-compliance:v1.2.3",
+		PolicyImageRef("", "compliance", "1.2.3"), "unpinned packs render under the default org")
+}

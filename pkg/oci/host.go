@@ -228,11 +228,34 @@ func ProviderImageRef(registry, name, version string) string {
 // but still namespaced. Docker tags cannot contain '+', so semver build
 // metadata (e.g. a dev build's 0.1.0-alpha.0+dev) is mapped to a tag-safe '_'.
 func ProviderImageRefInOrg(registry, org, name, version string) string {
+	return packageImageRefInOrg(registry, org, providerRepoPrefix, name, version)
+}
+
+// PolicyImageRef and PolicyImageRefInOrg are the policy-pack analogue of the
+// provider convention: <registry>/<org>/pulumi-policy-<name>:v<version> — the same
+// grammar with the pack's kind prefix in the leaf.
+func PolicyImageRef(registry, name, version string) string {
+	return PolicyImageRefInOrg(registry, DefaultPackageOrg, name, version)
+}
+
+// PolicyImageRefInOrg renders <registry>/<org>/pulumi-policy-<name>:v<version>;
+// see ProviderImageRefInOrg for the grammar's rules.
+func PolicyImageRefInOrg(registry, org, name, version string) string {
+	return packageImageRefInOrg(registry, org, policyRepoPrefix, name, version)
+}
+
+// The kind prefixes that begin a convention ref's leaf segment.
+const (
+	providerRepoPrefix = "pulumi-provider-"
+	policyRepoPrefix   = "pulumi-policy-"
+)
+
+func packageImageRefInOrg(registry, org, kindPrefix, name, version string) string {
 	tag := ""
 	if version != "" {
 		tag = "v" + strings.ReplaceAll(version, "+", "_")
 	}
-	ref := fmt.Sprintf("%s/pulumi-provider-%s:%s", org, name, tag)
+	ref := fmt.Sprintf("%s/%s%s:%s", org, kindPrefix, name, tag)
 	if registry != "" {
 		ref = registry + "/" + ref
 	}
@@ -741,6 +764,23 @@ func (h *containerHost) prefetchNow(ctx context.Context) {
 func (h *containerHost) PolicyAnalyzer(
 	ctx *plugin.Context, name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
+	// An oci:// reference is a published pack's self-locating pin
+	// (`--policy-pack oci://<ref>`), resolved exactly like a provider pin: the
+	// registry knob, when set, overrides the pinned host while keeping its
+	// identity; with no knob the pin's own host is the route, and the ref is
+	// pull-eligible with no registry configured (a pin names its own registry).
+	if ref, pinned := strings.CutPrefix(path, "oci://"); pinned {
+		image := ref
+		if id, ok := ParsePolicyImageRef(ref); ok && h.pluginRegistry != "" {
+			image = PolicyImageRefInOrg(h.pluginRegistry, id.Org, id.Name, id.Version)
+		}
+		fmt.Fprintf(os.Stderr, "oci: policy pack %s resolved by its oci:// pin: %s\n", name, image)
+		if err := h.ensureImage(ctx.Base(), string(name), image, true /*pinned*/); err != nil {
+			return nil, err
+		}
+		return h.runPolicyPackContainer(ctx, name, path, image)
+	}
+
 	image, ok, err := policyPackImage(path)
 	if err != nil {
 		return nil, err
@@ -753,6 +793,15 @@ func (h *containerHost) PolicyAnalyzer(
 	if err := h.ensureImage(ctx.Base(), string(name), image, false /*pinned*/); err != nil {
 		return nil, err
 	}
+	return h.runPolicyPackContainer(ctx, name, path, image)
+}
+
+// runPolicyPackContainer starts the resolved policy-pack image as an analyzer
+// container on the engine netns and attaches to it — the shared tail of both
+// PolicyAnalyzer resolution paths (pinned ref and path/manifest).
+func (h *containerHost) runPolicyPackContainer(
+	ctx *plugin.Context, name tokens.QName, path, image string,
+) (plugin.Analyzer, error) {
 
 	cfg := ContainerConfig{
 		Name:    uniqueContainerName("policy-" + sanitizeContainerName(filepath.Base(path))),

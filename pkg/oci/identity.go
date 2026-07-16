@@ -53,6 +53,16 @@ type PackageIdentity struct {
 // location. The tag's '+'→'_' mapping from ProviderImageRefInOrg is reversed,
 // which is unambiguous because semver versions never contain '_'.
 func ParseProviderImageRef(ref string) (PackageIdentity, bool) {
+	return parsePackageImageRef(ref, providerRepoPrefix)
+}
+
+// ParsePolicyImageRef is ParseProviderImageRef for the policy-pack convention
+// ([registry/]<org>/pulumi-policy-<name>:v<version>).
+func ParsePolicyImageRef(ref string) (PackageIdentity, bool) {
+	return parsePackageImageRef(ref, policyRepoPrefix)
+}
+
+func parsePackageImageRef(ref, kindPrefix string) (PackageIdentity, bool) {
 	repo, tag := ref, ""
 	if i := strings.LastIndex(ref, ":"); i > strings.LastIndex(ref, "/") {
 		repo, tag = ref[:i], ref[i+1:]
@@ -74,7 +84,7 @@ func ParseProviderImageRef(ref string) (PackageIdentity, bool) {
 		// A second host-looking segment (e.g. nested mirrors) is not an org.
 		return PackageIdentity{}, false
 	}
-	name := strings.TrimPrefix(segs[1], "pulumi-provider-")
+	name := strings.TrimPrefix(segs[1], kindPrefix)
 	if name == "" || name == segs[1] {
 		return PackageIdentity{}, false
 	}

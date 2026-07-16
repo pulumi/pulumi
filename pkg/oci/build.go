@@ -39,6 +39,13 @@ import (
 // Like every build site it needs pod mode only for --volumes-from the engine (to reach the
 // source), not the engine netns.
 func BuildPackage(ctx context.Context, dir, registry string, stderr io.Writer) (string, error) {
+	// The build runs in a builder container whose working directory is this dir —
+	// and a container workdir must be absolute, so a relative dir (e.g.
+	// `pulumi package publish greeter`) is resolved against the caller's cwd here.
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
 	proj, err := workspace.LoadPluginProject(filepath.Join(dir, "PulumiPlugin.yaml"))
 	if err != nil {
 		return "", fmt.Errorf("loading PulumiPlugin.yaml in %s: %w", dir, err)
@@ -54,12 +61,55 @@ func BuildPackage(ctx context.Context, dir, registry string, stderr io.Writer) (
 		return "", fmt.Errorf("package %s must declare runtime.options.name and runtime.options.version", dir)
 	}
 	build, _ := opts["build"].(map[string]any)
+	ref := ProviderImageRef(registry, name, version)
+	if err := runPackageBuild(ctx, dir, name, version, ref, build, stderr); err != nil {
+		return "", err
+	}
+	return ref, nil
+}
+
+// BuildPolicyPack builds a self-describing policy pack directory into an analyzer
+// image and returns its convention ref
+// (<registry>/pulumi/pulumi-policy-<name>:v<version>). The pack declares its identity
+// at the top of PulumiPolicy.yaml — `name` (manifest-declared; packs historically named
+// themselves only in code) and `version` — and its build in
+// runtime.options.build:{image, command, caches}, the same self-describing contract
+// PulumiPlugin.yaml gives components. The built pack still reports its own identity
+// when run (GetAnalyzerInfo); publish verifies the manifest claim and the artifact
+// report agree.
+func BuildPolicyPack(ctx context.Context, dir, registry string, stderr io.Writer) (string, error) {
+	dir, err := filepath.Abs(dir) // container workdirs must be absolute; see BuildPackage
+	if err != nil {
+		return "", err
+	}
+	proj, err := workspace.LoadPolicyPack(filepath.Join(dir, "PulumiPolicy.yaml"))
+	if err != nil {
+		return "", fmt.Errorf("loading PulumiPolicy.yaml in %s: %w", dir, err)
+	}
+	if proj.Runtime.Name() != "oci" {
+		return "", fmt.Errorf("policy pack %s declares runtime %q, want oci", dir, proj.Runtime.Name())
+	}
+	if proj.Name == "" || proj.Version == "" {
+		return "", fmt.Errorf(
+			"policy pack %s must declare top-level name and version in PulumiPolicy.yaml", dir)
+	}
+	build, _ := proj.Runtime.Options()["build"].(map[string]any)
+	ref := PolicyImageRef(registry, proj.Name, proj.Version)
+	if err := runPackageBuild(ctx, dir, proj.Name, proj.Version, ref, build, stderr); err != nil {
+		return "", err
+	}
+	return ref, nil
+}
+
+// runPackageBuild runs a package's self-described build (the options.build block shared
+// by PulumiPlugin.yaml and PulumiPolicy.yaml) in a builder container, tagging ref.
+func runPackageBuild(
+	ctx context.Context, dir, name, version, ref string, build map[string]any, stderr io.Writer,
+) error {
 	buildImage, _ := build["image"].(string)
 	if buildImage == "" {
-		return "", fmt.Errorf("package %s must declare runtime.options.build.image (the build environment)", name)
+		return fmt.Errorf("package %s must declare runtime.options.build.image (the build environment)", name)
 	}
-
-	ref := ProviderImageRef(registry, name, version)
 	command, _ := build["command"].(string)
 	if command == "" {
 		// Build the package's Dockerfile and tag it as the convention ref (delivered via
@@ -72,9 +122,9 @@ func BuildPackage(ctx context.Context, dir, registry string, stderr io.Writer) (
 		ctx, buildImage, command, dir, optStringSlice(build["caches"]),
 		map[string]string{"PULUMI_PACKAGE_IMAGE": ref}, stderr,
 	); err != nil {
-		return "", fmt.Errorf("building package %s: %w", name, err)
+		return fmt.Errorf("building package %s: %w", name, err)
 	}
-	return ref, nil
+	return nil
 }
 
 // optStringSlice reads a YAML list-of-strings option (parsed as []any) into []string,

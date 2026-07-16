@@ -75,6 +75,16 @@ type packagePublishCmd struct {
 	// publishImage tags and pushes a local package image (nil means
 	// oci.PublishPackageImage); injectable for tests.
 	publishImage func(ctx context.Context, srcRef, destRef string) error
+
+	// buildPackage / buildPolicyPack build a self-describing package directory and
+	// return its convention ref (nil means oci.BuildPackage / oci.BuildPolicyPack);
+	// injectable for tests.
+	buildPackage    func(ctx context.Context, dir, registry string, stderr io.Writer) (string, error)
+	buildPolicyPack func(ctx context.Context, dir, registry string, stderr io.Writer) (string, error)
+
+	// analyzerInfo runs a policy-pack image one-shot and returns what it reports
+	// (nil means oci.AnalyzerInfoFromImage); injectable for tests.
+	analyzerInfo func(pctx *plugin.Context, ref string) (plugin.AnalyzerInfo, error)
 }
 
 func newPackagePublishCmd() *cobra.Command {
@@ -141,8 +151,9 @@ func newPackagePublishCmd() *cobra.Command {
 	cmd.Flags().StringVar(
 		&args.registry, "registry", "",
 		"Publish to an OCI registry (oci://<host>) instead of the Private Registry. The package source "+
-			"must be an oci:// image ref present in the local daemon; it is verified by running it, tagged "+
-			"<host>/<publisher>/pulumi-provider-<name>:v<version>, and pushed.")
+			"may be a self-describing package directory (PulumiPlugin.yaml or PulumiPolicy.yaml — built, "+
+			"then verified by running it against the manifest's claim) or an oci:// image ref present in "+
+			"the local daemon; the verified identity is tagged into the publisher's org namespace and pushed.")
 
 	cmd.Flags().StringVar(
 		&args.readmePath, "readme", "",
@@ -192,15 +203,45 @@ func (cmd *packagePublishCmd) Run(
 	}
 	defer contract.IgnoreClose(pctx)
 
+	ociHost, publishToOCI := strings.CutPrefix(args.registry, "oci://")
+	if args.registry != "" && !publishToOCI {
+		return fmt.Errorf("unsupported --registry %q: only oci:// destinations are supported", args.registry)
+	}
+
+	// A directory source is the WELDED publish path: the package's own directory
+	// (its manifest + build spec + source) is the unit of publishing. Publish
+	// drives the build itself — the same self-describing build `pulumi install`
+	// runs, so the two cannot drift — and carries the manifest's identity claim
+	// forward to be verified against what the built artifact reports.
+	var manifestClaim *oci.PackageIdentity
+	if publishToOCI {
+		switch packageDirKind(packageSrc) {
+		case policyPackDir:
+			return cmd.runOCIPolicyPublish(ctx, pctx, b, args, ociHost, packageSrc)
+		case pluginPackageDir:
+			buildPkg := cmd.buildPackage
+			if buildPkg == nil {
+				buildPkg = oci.BuildPackage
+			}
+			// Build under the host-unqualified convention tag — a working name; the
+			// published ref is derived from the verified identity below.
+			builtRef, err := buildPkg(ctx, packageSrc, "", os.Stderr)
+			if err != nil {
+				return err
+			}
+			id, ok := oci.ParseProviderImageRef(builtRef)
+			if !ok {
+				return fmt.Errorf("internal error: built ref %q does not follow the package convention", builtRef)
+			}
+			manifestClaim = &id
+			packageSrc = "oci://" + builtRef
+		}
+	}
+
 	pkg, _, err := cmd.extractSchema(pkgWorkspace.Instance, pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry(),
 		env.Global(), 0 /* unbounded concurrency */)
 	if err != nil {
 		return fmt.Errorf("failed to get schema: %w", err)
-	}
-
-	ociHost, publishToOCI := strings.CutPrefix(args.registry, "oci://")
-	if args.registry != "" && !publishToOCI {
-		return fmt.Errorf("unsupported --registry %q: only oci:// destinations are supported", args.registry)
 	}
 
 	// An OCI publish is a registry op on the image itself — there is no readme
@@ -249,6 +290,17 @@ func (cmd *packagePublishCmd) Run(
 		}
 	} else {
 		return errors.New("no version specified, please set a version in the package schema")
+	}
+
+	// The well-formed gate of the welded path: the manifest claimed an identity so
+	// the build could name its output; the artifact's own report (its schema) is
+	// authoritative. Publishing an artifact that disagrees with its manifest would
+	// bake the drift into a released ref, so it fails here instead.
+	if manifestClaim != nil && (name != manifestClaim.Name || pkg.Version != manifestClaim.Version) {
+		return fmt.Errorf(
+			"package is not well-formed: PulumiPlugin.yaml claims %s@%s but the built artifact reports "+
+				"%s@%s from its schema — fix one so they agree",
+			manifestClaim.Name, manifestClaim.Version, name, pkg.Version)
 	}
 
 	if publishToOCI {
@@ -315,6 +367,94 @@ func (cmd *packagePublishCmd) Run(
 
 	fmt.Fprintf(cmd.stdout, "Successfully published package %s/%s@%s\n", publisher, name, version)
 
+	return nil
+}
+
+// packageDirKind classifies a package source that names a directory: a policy
+// pack (PulumiPolicy.yaml), a plugin package (PulumiPlugin.yaml), or neither —
+// in which case the source is handled by the ordinary schema-source forms.
+type dirKind int
+
+const (
+	notAPackageDir dirKind = iota
+	pluginPackageDir
+	policyPackDir
+)
+
+func packageDirKind(source string) dirKind {
+	info, err := os.Stat(source)
+	if err != nil || !info.IsDir() {
+		return notAPackageDir
+	}
+	if _, err := os.Stat(filepath.Join(source, "PulumiPolicy.yaml")); err == nil {
+		return policyPackDir
+	}
+	if _, err := os.Stat(filepath.Join(source, "PulumiPlugin.yaml")); err == nil {
+		return pluginPackageDir
+	}
+	return notAPackageDir
+}
+
+// runOCIPolicyPublish publishes a policy pack directory to an OCI registry: build
+// it (BuildPolicyPack — the manifest's name/version claim names the candidate),
+// verify by running it (GetAnalyzerInfo — the pack's own report must agree with
+// the claim), resolve the publisher org, and tag + push
+// <host>/<org>/pulumi-policy-<name>:v<version>. The analyzer protocol registers
+// exactly ONE pack per analyzer, so a single reported identity is the whole story.
+func (cmd *packagePublishCmd) runOCIPolicyPublish(
+	ctx context.Context, pctx *plugin.Context, b backend.Backend,
+	args publishPackageArgs, registryHost, dir string,
+) error {
+	buildPack := cmd.buildPolicyPack
+	if buildPack == nil {
+		buildPack = oci.BuildPolicyPack
+	}
+	builtRef, err := buildPack(ctx, dir, "", os.Stderr)
+	if err != nil {
+		return err
+	}
+	claim, ok := oci.ParsePolicyImageRef(builtRef)
+	if !ok {
+		return fmt.Errorf("internal error: built ref %q does not follow the policy pack convention", builtRef)
+	}
+
+	analyzerInfo := cmd.analyzerInfo
+	if analyzerInfo == nil {
+		analyzerInfo = oci.AnalyzerInfoFromImage
+	}
+	info, err := analyzerInfo(pctx, builtRef)
+	if err != nil {
+		return fmt.Errorf("verifying policy pack %s by running it: %w", claim.Name, err)
+	}
+	if info.Name != claim.Name || info.Version != claim.Version {
+		return fmt.Errorf(
+			"policy pack is not well-formed: PulumiPolicy.yaml claims %s@%s but the built pack reports "+
+				"%s@%s from GetAnalyzerInfo — fix one so they agree",
+			claim.Name, claim.Version, info.Name, info.Version)
+	}
+
+	publisher := args.publisher
+	if publisher == "" {
+		publisher, err = b.GetDefaultOrg(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to determine default organization: %w", err)
+		}
+		if publisher == "" {
+			return errors.New("no publisher specified and no default organization found; " +
+				"pass --publisher or set a default organization in your pulumi config")
+		}
+	}
+
+	destRef := oci.PolicyImageRefInOrg(registryHost, publisher, claim.Name, claim.Version)
+	publish := cmd.publishImage
+	if publish == nil {
+		publish = oci.PublishPackageImage
+	}
+	if err := publish(ctx, builtRef, destRef); err != nil {
+		return err
+	}
+	fmt.Fprintf(cmd.stdout, "Published %s/%s@%s (policy pack) to oci://%s\n",
+		publisher, claim.Name, claim.Version, destRef)
 	return nil
 }
 

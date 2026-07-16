@@ -883,6 +883,13 @@ func (proj *Project) Save(path string) error {
 }
 
 type PolicyPackProject struct {
+	// Name is the policy pack's manifest-declared name, completing a manifest that
+	// already declares version, description, author, website, and license. Optional
+	// today: established packs carry their name only in code (the analyzer reports it
+	// at run time), and the engine still keys on the reported name. Publishing a pack
+	// as an OCI image requires it — the publish flow derives the image ref from this
+	// manifest claim and verifies that the running artifact reports the same identity.
+	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 	// Runtime is a required runtime that executes code.
 	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime"`
 	// Version specifies the version of the policy pack. If set, it will override the

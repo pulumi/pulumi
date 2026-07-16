@@ -834,3 +834,135 @@ func TestPackagePublishCmd_OCIRegistry(t *testing.T) {
 		})
 	}
 }
+
+//nolint:paralleltest // This test uses the global backendInstance variable
+func TestPackagePublishCmd_OCIWeldedDirectory(t *testing.T) {
+	newPkgDir := func(t *testing.T, manifest string) string {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, manifest), []byte("runtime: oci\n"), 0o600))
+		return dir
+	}
+	mockBackend := func(t *testing.T) {
+		testutil.MockBackendInstance(t, &backend.MockBackend{
+			GetReadOnlyCloudRegistryF: func() registry.Registry { return &backend.MockCloudRegistry{} },
+			GetDefaultOrgF:            func(context.Context) (string, error) { return "", nil },
+		})
+	}
+
+	t.Run("plugin package: build, verify against the claim, publish", func(t *testing.T) {
+		mockBackend(t)
+		dir := newPkgDir(t, "PulumiPlugin.yaml")
+		var stdout bytes.Buffer
+		var gotSchemaSrc, gotSrc, gotDest string
+		cmd := &packagePublishCmd{
+			stdout: &stdout,
+			buildPackage: func(_ context.Context, d, reg string, _ io.Writer) (string, error) {
+				assert.Equal(t, dir, d)
+				assert.Empty(t, reg, "the build produces a working tag, not the published ref")
+				return "pulumi/pulumi-provider-greeting:v0.1.0", nil
+			},
+			extractSchema: func(
+				_ pkgWorkspace.Context, _ *plugin.Context, src string, _ plugin.ParameterizeParameters,
+				_ registry.Registry, _ env.Env, _ int,
+			) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+				gotSchemaSrc = src
+				return &schema.PackageSpec{Name: "greeting", Version: "0.1.0"}, nil, nil
+			},
+			publishImage: func(_ context.Context, srcRef, destRef string) error {
+				gotSrc, gotDest = srcRef, destRef
+				return nil
+			},
+		}
+		err := cmd.Run(t.Context(),
+			publishPackageArgs{registry: "oci://reg.example", publisher: "spikeorg"}, dir, &plugin.ParameterizeArgs{})
+		require.NoError(t, err)
+		assert.Equal(t, "oci://pulumi/pulumi-provider-greeting:v0.1.0", gotSchemaSrc,
+			"the verify must boot the image the build produced")
+		assert.Equal(t, "pulumi/pulumi-provider-greeting:v0.1.0", gotSrc)
+		assert.Equal(t, "reg.example/spikeorg/pulumi-provider-greeting:v0.1.0", gotDest)
+		assert.Contains(t, stdout.String(), "Published spikeorg/greeting@0.1.0")
+	})
+
+	t.Run("plugin package: artifact disagreeing with its manifest is rejected", func(t *testing.T) {
+		mockBackend(t)
+		dir := newPkgDir(t, "PulumiPlugin.yaml")
+		published := false
+		cmd := &packagePublishCmd{
+			buildPackage: func(context.Context, string, string, io.Writer) (string, error) {
+				return "pulumi/pulumi-provider-greeting:v0.1.0", nil
+			},
+			extractSchema: func(
+				_ pkgWorkspace.Context, _ *plugin.Context, _ string, _ plugin.ParameterizeParameters,
+				_ registry.Registry, _ env.Env, _ int,
+			) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+				// The schema reports a different version than PulumiPlugin.yaml claimed.
+				return &schema.PackageSpec{Name: "greeting", Version: "0.2.0"}, nil, nil
+			},
+			publishImage: func(context.Context, string, string) error { published = true; return nil },
+		}
+		err := cmd.Run(t.Context(),
+			publishPackageArgs{registry: "oci://reg.example", publisher: "spikeorg"}, dir, &plugin.ParameterizeArgs{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not well-formed")
+		assert.False(t, published, "a package that disagrees with its manifest must not be pushed")
+	})
+
+	t.Run("policy pack: build, verify by running, publish", func(t *testing.T) {
+		mockBackend(t)
+		dir := newPkgDir(t, "PulumiPolicy.yaml")
+		var stdout bytes.Buffer
+		var gotSrc, gotDest string
+		schemaExtracted := false
+		cmd := &packagePublishCmd{
+			stdout: &stdout,
+			buildPolicyPack: func(_ context.Context, d, reg string, _ io.Writer) (string, error) {
+				assert.Equal(t, dir, d)
+				assert.Empty(t, reg)
+				return "pulumi/pulumi-policy-compliance:v1.2.3", nil
+			},
+			analyzerInfo: func(_ *plugin.Context, ref string) (plugin.AnalyzerInfo, error) {
+				assert.Equal(t, "pulumi/pulumi-policy-compliance:v1.2.3", ref)
+				return plugin.AnalyzerInfo{Name: "compliance", Version: "1.2.3"}, nil
+			},
+			extractSchema: func(
+				_ pkgWorkspace.Context, _ *plugin.Context, _ string, _ plugin.ParameterizeParameters,
+				_ registry.Registry, _ env.Env, _ int,
+			) (*schema.PackageSpec, *workspace.PackageSpec, error) {
+				schemaExtracted = true
+				return nil, nil, errors.New("policy packs have no schema")
+			},
+			publishImage: func(_ context.Context, srcRef, destRef string) error {
+				gotSrc, gotDest = srcRef, destRef
+				return nil
+			},
+		}
+		err := cmd.Run(t.Context(),
+			publishPackageArgs{registry: "oci://reg.example", publisher: "acme"}, dir, &plugin.ParameterizeArgs{})
+		require.NoError(t, err)
+		assert.False(t, schemaExtracted, "policy packs verify via GetAnalyzerInfo, not GetSchema")
+		assert.Equal(t, "pulumi/pulumi-policy-compliance:v1.2.3", gotSrc)
+		assert.Equal(t, "reg.example/acme/pulumi-policy-compliance:v1.2.3", gotDest)
+		assert.Contains(t, stdout.String(), "Published acme/compliance@1.2.3 (policy pack)")
+	})
+
+	t.Run("policy pack: pack disagreeing with its manifest is rejected", func(t *testing.T) {
+		mockBackend(t)
+		dir := newPkgDir(t, "PulumiPolicy.yaml")
+		published := false
+		cmd := &packagePublishCmd{
+			buildPolicyPack: func(context.Context, string, string, io.Writer) (string, error) {
+				return "pulumi/pulumi-policy-compliance:v1.2.3", nil
+			},
+			analyzerInfo: func(*plugin.Context, string) (plugin.AnalyzerInfo, error) {
+				// The pack's code reports a different name than PulumiPolicy.yaml claimed.
+				return plugin.AnalyzerInfo{Name: "security", Version: "1.2.3"}, nil
+			},
+			publishImage: func(context.Context, string, string) error { published = true; return nil },
+		}
+		err := cmd.Run(t.Context(),
+			publishPackageArgs{registry: "oci://reg.example", publisher: "acme"}, dir, &plugin.ParameterizeArgs{})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not well-formed")
+		assert.False(t, published)
+	})
+}
