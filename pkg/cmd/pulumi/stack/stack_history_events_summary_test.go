@@ -20,10 +20,13 @@ import (
 	"errors"
 	"iter"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgdisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
@@ -37,11 +40,11 @@ func eventSeq(events ...apitype.EngineEvent) iter.Seq2[apitype.EngineEvent, erro
 	}
 }
 
-func outputsEvent(ts int, op apitype.OpType, urn, typ string, m apitype.StepEventMetadata) apitype.EngineEvent {
+func preEvent(ts int, op apitype.OpType, urn, typ string, m apitype.StepEventMetadata) apitype.EngineEvent {
 	m.Op, m.URN, m.Type = op, urn, typ
 	return apitype.EngineEvent{
-		Timestamp:       ts,
-		ResOutputsEvent: &apitype.ResOutputsEvent{Metadata: m},
+		Timestamp:        ts,
+		ResourcePreEvent: &apitype.ResourcePreEvent{Metadata: m},
 	}
 }
 
@@ -53,26 +56,17 @@ func TestBuildUpdateSummary(t *testing.T) {
 			Timestamp:    1000,
 			PreludeEvent: &apitype.PreludeEvent{Config: map[string]string{"proj:region": "us-west-2"}},
 		},
-		outputsEvent(1010, apitype.OpCreate,
-			"urn:pulumi:dev::proj::aws:s3/bucket:Bucket::my-bucket", "aws:s3/bucket:Bucket",
-			apitype.StepEventMetadata{}),
-		outputsEvent(1020, apitype.OpUpdate,
-			"urn:pulumi:dev::proj::aws:lambda/function:Function::f", "aws:lambda/function:Function",
-			apitype.StepEventMetadata{
-				DetailedDiff: map[string]apitype.PropertyDiff{
-					"code":    {Kind: apitype.DiffUpdate},
-					"tags":    {Kind: apitype.DiffAdd},
-					"handler": {Kind: apitype.DiffDelete},
-				},
-			}),
-		outputsEvent(1025, apitype.OpSame,
-			"urn:pulumi:dev::proj::aws:iam/role:Role::r", "aws:iam/role:Role",
-			apitype.StepEventMetadata{}),
-		outputsEvent(1030, apitype.OpSame,
+		preEvent(1005, apitype.OpSame,
 			"urn:pulumi:dev::proj::pulumi:pulumi:Stack::proj-dev", "pulumi:pulumi:Stack",
+			apitype.StepEventMetadata{}),
+		preEvent(1010, apitype.OpCreate,
+			"urn:pulumi:dev::proj::aws:s3/bucket:Bucket::my-bucket", "aws:s3/bucket:Bucket",
 			apitype.StepEventMetadata{
-				New: &apitype.StepEventStateMetadata{Outputs: map[string]any{"bucketName": "b"}},
+				New: &apitype.StepEventStateMetadata{Parent: "urn:pulumi:dev::proj::pulumi:pulumi:Stack::proj-dev"},
 			}),
+		preEvent(1020, apitype.OpUpdate,
+			"urn:pulumi:dev::proj::aws:lambda/function:Function::f", "aws:lambda/function:Function",
+			apitype.StepEventMetadata{}),
 		apitype.EngineEvent{
 			Timestamp: 1035,
 			DiagnosticEvent: &apitype.DiagnosticEvent{
@@ -83,11 +77,11 @@ func TestBuildUpdateSummary(t *testing.T) {
 		},
 		apitype.EngineEvent{
 			Timestamp:       1035,
-			DiagnosticEvent: &apitype.DiagnosticEvent{Message: "noisy", Severity: "debug"},
+			DiagnosticEvent: &apitype.DiagnosticEvent{Message: "deprecation notice", Severity: "warning"},
 		},
 		apitype.EngineEvent{
 			Timestamp:       1035,
-			DiagnosticEvent: &apitype.DiagnosticEvent{Message: "spinner", Severity: "info", Ephemeral: true},
+			DiagnosticEvent: &apitype.DiagnosticEvent{Message: "transient", Severity: "error", Ephemeral: true},
 		},
 		apitype.EngineEvent{
 			Timestamp: 1036,
@@ -100,135 +94,137 @@ func TestBuildUpdateSummary(t *testing.T) {
 			},
 		},
 		apitype.EngineEvent{
-			Timestamp: 1037,
-			PolicyEvent: &apitype.PolicyEvent{
-				ResourceURN:      "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::my-bucket",
-				PolicyName:       "no-public-buckets",
-				PolicyPackName:   "aws-guard",
-				EnforcementLevel: "mandatory",
-				Message:          "bucket must not be public",
-			},
-		},
-		apitype.EngineEvent{
 			Timestamp: 1040,
 			SummaryEvent: &apitype.SummaryEvent{
 				DurationSeconds: 40,
 				Result:          apitype.OperationResultFailed,
+				ResourceChanges: map[apitype.OpType]int{
+					apitype.OpCreate: 1,
+					apitype.OpUpdate: 1,
+					apitype.OpSame:   1,
+				},
 			},
 		},
 	)
 
-	s, err := buildUpdateSummary("acme/proj/dev", events)
+	s, err := buildUpdateSummary(events)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, s.Version)
-	assert.Equal(t, "acme/proj/dev", s.Stack)
-	assert.Equal(t, "failed", s.Status)
-	assert.Empty(t, s.Operation)
-	assert.Equal(t, "1970-01-01T00:16:40Z", s.StartedAt)
-	assert.Equal(t, "1970-01-01T00:17:20Z", s.CompletedAt)
-	assert.Equal(t, int64(40000), s.DurationMs)
-
-	assert.Equal(t, map[string]int{
-		"created":   1,
-		"updated":   1,
-		"unchanged": 2,
-		"failed":    1,
+	assert.Equal(t, apitype.OperationResultFailed, s.Result)
+	assert.Equal(t, 40*time.Second, s.Duration)
+	assert.Equal(t, pkgdisplay.ResourceChanges{
+		"create": 1,
+		"update": 1,
+		"same":   1,
 	}, s.Summary)
 
-	// Unchanged resources are counted but not listed.
+	// Sames are omitted; the failed resource with no pre-event is appended.
 	require.Len(t, s.Resources, 3)
 	assert.Equal(t, "my-bucket", s.Resources[0].Name)
-	assert.Equal(t, "created", s.Resources[0].Change)
-	assert.Equal(t, map[string]propertyChange{
-		"code":    {Kind: "updated"},
-		"tags":    {Kind: "added"},
-		"handler": {Kind: "deleted"},
-	}, s.Resources[1].PropertyChanges)
-	assert.Equal(t, "failed", s.Resources[2].Change)
+	assert.Equal(t, apitype.OpCreate, s.Resources[0].Op)
+	assert.Equal(t, "urn:pulumi:dev::proj::pulumi:pulumi:Stack::proj-dev", s.Resources[0].Parent)
+	assert.False(t, s.Resources[0].Failed)
+	assert.Equal(t, "f", s.Resources[1].Name)
+	assert.Equal(t, "db", s.Resources[2].Name)
+	assert.True(t, s.Resources[2].Failed)
 
-	assert.Equal(t, map[string]any{"bucketName": "b"}, s.Outputs)
-
-	// Debug and ephemeral diagnostics are dropped.
+	// Only non-ephemeral errors survive; warnings are dropped.
 	require.Len(t, s.Diagnostics, 1)
 	assert.Equal(t, "error", s.Diagnostics[0].Severity)
 	assert.Equal(t, "creation failed: quota exceeded", s.Diagnostics[0].Message)
-
-	require.Len(t, s.PolicyViolations, 1)
-	assert.Equal(t, "aws-guard", s.PolicyViolations[0].PolicyPack)
-	assert.Equal(t, "no-public-buckets", s.PolicyViolations[0].Policy)
+	assert.Equal(t, s.Resources[2].URN, s.Diagnostics[0].URN)
 }
 
-func TestBuildUpdateSummary_ReplacePairCollapses(t *testing.T) {
+// TestBuildUpdateSummary_BaseShapeMatchesLive is the compatibility guarantee
+// the issue asks for: the emitted JSON must parse as a display.SummaryJSON,
+// so tooling can treat live runs and historical lookups the same way.
+func TestBuildUpdateSummary_BaseShapeMatchesLive(t *testing.T) {
 	t.Parallel()
 
-	urn := "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::b"
-	events := eventSeq(
-		outputsEvent(1, apitype.OpCreateReplacement, urn, "aws:s3/bucket:Bucket",
-			apitype.StepEventMetadata{Diffs: []string{"bucketName"}}),
-		outputsEvent(2, apitype.OpDeleteReplaced, urn, "aws:s3/bucket:Bucket",
+	s, err := buildUpdateSummary(eventSeq(
+		preEvent(1, apitype.OpCreate,
+			"urn:pulumi:dev::proj::aws:s3/bucket:Bucket::b", "aws:s3/bucket:Bucket",
 			apitype.StepEventMetadata{}),
-	)
-
-	s, err := buildUpdateSummary("acme/proj/dev", events)
+		apitype.EngineEvent{
+			SummaryEvent: &apitype.SummaryEvent{
+				DurationSeconds: 5,
+				Result:          apitype.OperationResultSucceeded,
+				ResourceChanges: map[apitype.OpType]int{apitype.OpCreate: 1},
+			},
+		},
+	))
 	require.NoError(t, err)
 
-	assert.Equal(t, map[string]int{"replaced": 1}, s.Summary)
-	require.Len(t, s.Resources, 1)
-	assert.Equal(t, "replaced", s.Resources[0].Change)
-	assert.Equal(t, map[string]propertyChange{"bucketName": {Kind: "updated"}}, s.Resources[0].PropertyChanges)
+	encoded, err := json.Marshal(s)
+	require.NoError(t, err)
+
+	var live display.SummaryJSON
+	require.NoError(t, json.Unmarshal(encoded, &live))
+	assert.Equal(t, apitype.OperationResultSucceeded, live.Result)
+	assert.Equal(t, 5*time.Second, live.Duration)
+	assert.Equal(t, pkgdisplay.ResourceChanges{"create": 1}, live.Summary)
+	require.Len(t, live.Resources, 1)
+	assert.Equal(t, "b", live.Resources[0].Name)
+	assert.Equal(t, apitype.OpType("create"), live.Resources[0].Op)
 }
 
-func TestBuildUpdateSummary_FailedWinsOverLaterSteps(t *testing.T) {
+func TestBuildUpdateSummary_FailureMarksLastEntryForURN(t *testing.T) {
 	t.Parallel()
 
 	urn := "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::b"
-	events := eventSeq(
+	s, err := buildUpdateSummary(eventSeq(
+		preEvent(1, apitype.OpCreate, urn, "aws:s3/bucket:Bucket", apitype.StepEventMetadata{}),
 		apitype.EngineEvent{
-			Timestamp: 1,
 			ResOpFailedEvent: &apitype.ResOpFailedEvent{
 				Metadata: apitype.StepEventMetadata{Op: apitype.OpCreate, URN: urn, Type: "aws:s3/bucket:Bucket"},
 			},
 		},
-		outputsEvent(2, apitype.OpCreate, urn, "aws:s3/bucket:Bucket", apitype.StepEventMetadata{}),
-	)
-
-	s, err := buildUpdateSummary("acme/proj/dev", events)
+	))
 	require.NoError(t, err)
+
+	// The failure marks the existing entry rather than appending a second one.
 	require.Len(t, s.Resources, 1)
-	assert.Equal(t, "failed", s.Resources[0].Change)
-	assert.Equal(t, "failed", s.Status)
+	assert.True(t, s.Resources[0].Failed)
+	assert.Equal(t, apitype.OperationResultFailed, s.Result)
 }
 
-func TestBuildUpdateSummary_StatusFallbacks(t *testing.T) {
+func TestBuildUpdateSummary_ResultFallbacks(t *testing.T) {
 	t.Parallel()
 
 	// No summary event, no failures: unknown.
-	s, err := buildUpdateSummary("acme/proj/dev", eventSeq())
+	s, err := buildUpdateSummary(eventSeq())
 	require.NoError(t, err)
-	assert.Equal(t, "unknown", s.Status)
-	require.NotNil(t, s.Resources)
+	assert.Equal(t, apitype.OperationResult("unknown"), s.Result)
 
 	// No summary event, but an error diagnostic: failed.
-	s, err = buildUpdateSummary("acme/proj/dev", eventSeq(apitype.EngineEvent{
+	s, err = buildUpdateSummary(eventSeq(apitype.EngineEvent{
 		DiagnosticEvent: &apitype.DiagnosticEvent{Message: "boom", Severity: "error"},
 	}))
 	require.NoError(t, err)
-	assert.Equal(t, "failed", s.Status)
+	assert.Equal(t, apitype.OperationResultFailed, s.Result)
 
 	// Summary event without a result (older updates): succeeded.
-	s, err = buildUpdateSummary("acme/proj/dev", eventSeq(apitype.EngineEvent{
+	s, err = buildUpdateSummary(eventSeq(apitype.EngineEvent{
 		SummaryEvent: &apitype.SummaryEvent{DurationSeconds: 1},
 	}))
 	require.NoError(t, err)
-	assert.Equal(t, "succeeded", s.Status)
+	assert.Equal(t, apitype.OperationResultSucceeded, s.Result)
+}
 
-	// Preview bit is the only operation we can derive.
-	s, err = buildUpdateSummary("acme/proj/dev", eventSeq(apitype.EngineEvent{
-		SummaryEvent: &apitype.SummaryEvent{IsPreview: true, Result: apitype.OperationResultSucceeded},
-	}))
+func TestBuildUpdateSummary_DurationFallsBackToTimestamps(t *testing.T) {
+	t.Parallel()
+
+	s, err := buildUpdateSummary(eventSeq(
+		preEvent(1000, apitype.OpCreate,
+			"urn:pulumi:dev::proj::aws:s3/bucket:Bucket::b", "aws:s3/bucket:Bucket",
+			apitype.StepEventMetadata{}),
+		apitype.EngineEvent{
+			Timestamp:       1030,
+			DiagnosticEvent: &apitype.DiagnosticEvent{Message: "boom", Severity: "error"},
+		},
+	))
 	require.NoError(t, err)
-	assert.Equal(t, "preview", s.Operation)
+	assert.Equal(t, 30*time.Second, s.Duration)
 }
 
 func TestBuildUpdateSummary_PropagatesIteratorError(t *testing.T) {
@@ -239,14 +235,14 @@ func TestBuildUpdateSummary_PropagatesIteratorError(t *testing.T) {
 		yield(apitype.EngineEvent{}, boom)
 	}
 
-	_, err := buildUpdateSummary("acme/proj/dev", events)
+	_, err := buildUpdateSummary(events)
 	assert.ErrorIs(t, err, boom)
 }
 
-func TestRenderUpdateSummaryJSON(t *testing.T) {
+func TestRenderUpdateSummaryJSON_SingleLine(t *testing.T) {
 	t.Parallel()
 
-	s, err := buildUpdateSummary("acme/proj/dev", eventSeq(apitype.EngineEvent{
+	s, err := buildUpdateSummary(eventSeq(apitype.EngineEvent{
 		SummaryEvent: &apitype.SummaryEvent{Result: apitype.OperationResultSucceeded},
 	}))
 	require.NoError(t, err)
@@ -254,36 +250,48 @@ func TestRenderUpdateSummaryJSON(t *testing.T) {
 	var buf bytes.Buffer
 	require.NoError(t, renderUpdateSummaryJSON(&buf, s))
 
+	// One line, like the live summary.
+	assert.Equal(t, 1, bytes.Count(buf.Bytes(), []byte("\n")))
 	var decoded map[string]any
 	require.NoError(t, json.Unmarshal(buf.Bytes(), &decoded))
-	assert.Equal(t, "succeeded", decoded["status"])
-	assert.Equal(t, "acme/proj/dev", decoded["stack"])
-	// resources must serialize as [], not null, so consumers can rely on it.
-	assert.Equal(t, []any{}, decoded["resources"])
+	assert.Equal(t, "succeeded", decoded["result"])
 }
 
 func TestRenderUpdateSummaryText(t *testing.T) {
 	t.Parallel()
 
 	events := eventSeq(
-		outputsEvent(1, apitype.OpUpdate,
-			"urn:pulumi:dev::proj::aws:lambda/function:Function::f", "aws:lambda/function:Function",
-			apitype.StepEventMetadata{
-				DetailedDiff: map[string]apitype.PropertyDiff{"code": {Kind: apitype.DiffUpdate}},
-			}),
+		preEvent(1, apitype.OpCreate,
+			"urn:pulumi:dev::proj::aws:s3/bucket:Bucket::b", "aws:s3/bucket:Bucket",
+			apitype.StepEventMetadata{}),
+		apitype.EngineEvent{
+			ResOpFailedEvent: &apitype.ResOpFailedEvent{
+				Metadata: apitype.StepEventMetadata{
+					Op:   apitype.OpCreate,
+					URN:  "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::b",
+					Type: "aws:s3/bucket:Bucket",
+				},
+			},
+		},
 		apitype.EngineEvent{
 			DiagnosticEvent: &apitype.DiagnosticEvent{Message: "boom", Severity: "error"},
 		},
+		apitype.EngineEvent{
+			SummaryEvent: &apitype.SummaryEvent{
+				Result:          apitype.OperationResultFailed,
+				ResourceChanges: map[apitype.OpType]int{apitype.OpCreate: 1},
+			},
+		},
 	)
-	s, err := buildUpdateSummary("acme/proj/dev", events)
+	s, err := buildUpdateSummary(events)
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
 	require.NoError(t, renderUpdateSummaryText(&buf, s))
 	out := buf.String()
 
-	assert.Contains(t, out, "Status:   failed")
-	assert.Contains(t, out, "1 updated")
-	assert.Contains(t, out, "code (updated)")
+	assert.Contains(t, out, "Result:   failed")
+	assert.Contains(t, out, "1 create")
+	assert.Contains(t, out, "create (failed)")
 	assert.Contains(t, out, "error: boom")
 }

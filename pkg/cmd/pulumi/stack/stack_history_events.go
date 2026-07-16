@@ -103,9 +103,10 @@ func newStackHistoryEventsCmd(
 			"messages produced during an update. By default a single page of\n" +
 			"events is returned.\n" +
 			"\n" +
-			"Pass --summary to reduce the update's full event stream to a single\n" +
-			"resource-centric document describing what changed, what failed and\n" +
-			"why — useful for diagnosing an update after the fact.\n" +
+			"Pass --summary to reduce the update's full event stream to a compact\n" +
+			"summary with the same base shape as a live `pulumi up --output json`,\n" +
+			"extended with the update's error diagnostics and failed-resource\n" +
+			"markers — useful for diagnosing an update after the fact.\n" +
 			"\n" +
 			"This command requires the Pulumi Cloud backend.",
 		Example: "  # Show the first page of events in a human-readable table.\n" +
@@ -150,7 +151,7 @@ func newStackHistoryEventsCmd(
 	cmd.Flags().BoolVar(&args.all, "all", false,
 		"Return every event for the update")
 	cmd.Flags().BoolVar(&args.summary, "summary", false,
-		"Reduce the update's events to a single resource-centric summary document; implies --all")
+		"Reduce the update's events to a single summary document with error diagnostics; implies --all")
 	cmd.MarkFlagsMutuallyExclusive("count", "all")
 	cmd.MarkFlagsMutuallyExclusive("summary", "count")
 	cmd.MarkFlagsMutuallyExclusive("summary", "event-type")
@@ -188,7 +189,7 @@ func runStackHistoryEvents(
 
 	events := iterateEngineEvents(ctx, c, update, opts, args.all || args.summary, args.count)
 	if args.summary {
-		summary, err := buildUpdateSummary(stackID.String(), events)
+		summary, err := buildUpdateSummary(events)
 		if err != nil {
 			return err
 		}

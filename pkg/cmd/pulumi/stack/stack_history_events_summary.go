@@ -15,6 +15,7 @@
 package stack
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"iter"
@@ -25,116 +26,44 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pkgdisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-// updateSummary is a resource-centric digest of an update's engine events. It
-// deliberately avoids engine vocabulary (steps, ops, diff kinds): the target
-// consumer is a person — or an agent — diagnosing an update after the fact,
-// without access to the original CLI output.
+// updateSummary is the document emitted by `pulumi stack history events
+// --summary`. It embeds the base shape of the live `pulumi up --output json`
+// summary (display.SummaryJSON) so tooling can treat live runs and historical
+// lookups the same way, and extends it with the two things a post-hoc
+// debugging pass needs that the live summary does not carry: the update's
+// error diagnostics and per-resource failure markers.
 type updateSummary struct {
-	Version          int                      `json:"version"`
-	Operation        string                   `json:"operation,omitempty"`
-	Status           string                   `json:"status"`
-	Stack            string                   `json:"stack"`
-	StartedAt        string                   `json:"startedAt,omitempty"`
-	CompletedAt      string                   `json:"completedAt,omitempty"`
-	DurationMs       int64                    `json:"durationMs,omitempty"`
-	Summary          map[string]int           `json:"summary"`
-	Resources        []resourceSummary        `json:"resources"`
-	Outputs          map[string]any           `json:"outputs,omitempty"`
-	Diagnostics      []diagnosticSummary      `json:"diagnostics,omitempty"`
-	PolicyViolations []policyViolationSummary `json:"policyViolations,omitempty"`
+	display.SummaryJSON
+
+	// Resources shadows the embedded field (shallower fields win during Go's
+	// JSON conflict resolution) so each entry can carry the failure marker
+	// while remaining parseable as a display.ResourceJSON.
+	Resources []summaryResource `json:"resources,omitempty"`
+
+	// Diagnostics holds the update's error messages. Errors not tied to any
+	// resource (program exceptions, provider configuration failures) have no
+	// URN, which is why the list lives at the top level rather than on
+	// resource entries.
+	Diagnostics []diagnosticSummary `json:"diagnostics,omitempty"`
 }
 
-// resourceSummary describes what happened to a single resource. Resources
-// whose change is "unchanged" are counted in updateSummary.Summary but
-// excluded from updateSummary.Resources to keep the document focused on
-// what actually changed.
-type resourceSummary struct {
-	URN             string                    `json:"urn"`
-	Name            string                    `json:"name"`
-	Type            string                    `json:"type"`
-	Change          string                    `json:"change"`
-	PropertyChanges map[string]propertyChange `json:"propertyChanges,omitempty"`
-}
+type summaryResource struct {
+	display.ResourceJSON
 
-type propertyChange struct {
-	Kind string `json:"kind"`
+	// Failed is set when an operation on this resource failed; the error
+	// messages appear in updateSummary.Diagnostics under the same URN.
+	Failed bool `json:"failed,omitempty"`
 }
 
 type diagnosticSummary struct {
 	Severity string `json:"severity"`
 	URN      string `json:"urn,omitempty"`
 	Message  string `json:"message"`
-}
-
-type policyViolationSummary struct {
-	PolicyPack       string `json:"policyPack"`
-	Policy           string `json:"policy"`
-	URN              string `json:"urn,omitempty"`
-	EnforcementLevel string `json:"enforcementLevel"`
-	Severity         string `json:"severity,omitempty"`
-	Message          string `json:"message"`
-}
-
-// changeForOp translates an engine operation into the summary's
-// consumer-facing change vocabulary.
-func changeForOp(op apitype.OpType) string {
-	switch op {
-	case apitype.OpCreate:
-		return "created"
-	case apitype.OpUpdate, apitype.OpRefresh:
-		return "updated"
-	case apitype.OpSame:
-		return "unchanged"
-	case apitype.OpReplace, apitype.OpCreateReplacement, apitype.OpDeleteReplaced,
-		apitype.OpReadReplacement, apitype.OpDiscardReplaced, apitype.OpImportReplacement:
-		return "replaced"
-	case apitype.OpDelete, apitype.OpReadDiscard, apitype.OpRemovePendingReplace:
-		return "deleted"
-	case apitype.OpRead:
-		return "read"
-	case apitype.OpImport:
-		return "imported"
-	default:
-		return string(op)
-	}
-}
-
-func kindForDiff(k apitype.DiffKind) string {
-	switch k {
-	case apitype.DiffAdd, apitype.DiffAddReplace:
-		return "added"
-	case apitype.DiffDelete, apitype.DiffDeleteReplace:
-		return "deleted"
-	case apitype.DiffUpdate, apitype.DiffUpdateReplace:
-		return "updated"
-	default:
-		return string(k)
-	}
-}
-
-// propertyChangesFor extracts per-property changes from a step's metadata,
-// preferring the detailed diff and falling back to the plain list of changed
-// keys when the detailed diff is absent.
-func propertyChangesFor(m apitype.StepEventMetadata) map[string]propertyChange {
-	if len(m.DetailedDiff) > 0 {
-		out := make(map[string]propertyChange, len(m.DetailedDiff))
-		for path, d := range m.DetailedDiff {
-			out[path] = propertyChange{Kind: kindForDiff(d.Kind)}
-		}
-		return out
-	}
-	if len(m.Diffs) > 0 {
-		out := make(map[string]propertyChange, len(m.Diffs))
-		for _, k := range m.Diffs {
-			out[k] = propertyChange{Kind: "updated"}
-		}
-		return out
-	}
-	return nil
 }
 
 func resourceName(urn string) string {
@@ -144,42 +73,49 @@ func resourceName(urn string) string {
 	return urn
 }
 
-// buildUpdateSummary reduces an engine event stream to an updateSummary.
-func buildUpdateSummary(
-	stack string, events iter.Seq2[apitype.EngineEvent, error],
-) (*updateSummary, error) {
-	s := &updateSummary{
-		Version:   1,
-		Stack:     stack,
-		Summary:   map[string]int{},
-		Resources: []resourceSummary{},
+func summaryResourceFor(m apitype.StepEventMetadata) summaryResource {
+	// Parent lives on the post-step state when there is one, and falls back
+	// to the pre-step state for deletes (where New is nil), mirroring the
+	// live summary's resourceJSONFromEvent.
+	var parent string
+	switch {
+	case m.New != nil:
+		parent = m.New.Parent
+	case m.Old != nil:
+		parent = m.Old.Parent
 	}
+	return summaryResource{ResourceJSON: display.ResourceJSON{
+		URN:    m.URN,
+		Type:   m.Type,
+		Name:   resourceName(m.URN),
+		Op:     m.Op,
+		Parent: parent,
+	}}
+}
+
+// buildUpdateSummary reduces an engine event stream to an updateSummary. The
+// base fields mirror the live summary tap (display.tapSummaryJSON): one
+// resource entry per attempted operation from resource pre-events, with
+// unchanged (`same`) resources omitted.
+func buildUpdateSummary(events iter.Seq2[apitype.EngineEvent, error]) (*updateSummary, error) {
+	s := &updateSummary{}
 
 	var startTs, endTs int
 	var summaryEvent *apitype.SummaryEvent
-	byURN := map[string]*resourceSummary{}
-	var order []string
+	anyFailed := false
 
-	// record folds a step into the per-resource map. A URN can appear more
-	// than once (a replacement is a create-replacement plus a delete-replaced
-	// step); "failed" always wins, otherwise the latest step's change wins and
-	// property changes accumulate.
-	record := func(m apitype.StepEventMetadata, change string) {
-		r, ok := byURN[m.URN]
-		if !ok {
-			r = &resourceSummary{URN: m.URN, Name: resourceName(m.URN), Type: m.Type}
-			byURN[m.URN] = r
-			order = append(order, m.URN)
-		}
-		if r.Change != "failed" {
-			r.Change = change
-		}
-		for path, pc := range propertyChangesFor(m) {
-			if r.PropertyChanges == nil {
-				r.PropertyChanges = map[string]propertyChange{}
+	// markFailed flags the most recent entry for a URN, appending one when
+	// the failure is the only event we saw for that resource.
+	markFailed := func(m apitype.StepEventMetadata) {
+		for i := len(s.Resources) - 1; i >= 0; i-- {
+			if s.Resources[i].URN == m.URN {
+				s.Resources[i].Failed = true
+				return
 			}
-			r.PropertyChanges[path] = pc
 		}
+		r := summaryResourceFor(m)
+		r.Failed = true
+		s.Resources = append(s.Resources, r)
 	}
 
 	for ev, err := range events {
@@ -197,17 +133,16 @@ func buildUpdateSummary(
 		switch {
 		case ev.SummaryEvent != nil:
 			summaryEvent = ev.SummaryEvent
-		case ev.ResOutputsEvent != nil:
-			m := ev.ResOutputsEvent.Metadata
-			record(m, changeForOp(m.Op))
-			if m.Type == "pulumi:pulumi:Stack" && m.New != nil && len(m.New.Outputs) > 0 {
-				s.Outputs = m.New.Outputs
+		case ev.ResourcePreEvent != nil:
+			if m := ev.ResourcePreEvent.Metadata; m.Op != apitype.OpSame {
+				s.Resources = append(s.Resources, summaryResourceFor(m))
 			}
 		case ev.ResOpFailedEvent != nil:
-			record(ev.ResOpFailedEvent.Metadata, "failed")
+			anyFailed = true
+			markFailed(ev.ResOpFailedEvent.Metadata)
 		case ev.DiagnosticEvent != nil:
 			d := ev.DiagnosticEvent
-			if d.Ephemeral || d.Severity == "debug" {
+			if d.Severity != "error" || d.Ephemeral {
 				continue
 			}
 			s.Diagnostics = append(s.Diagnostics, diagnosticSummary{
@@ -215,56 +150,33 @@ func buildUpdateSummary(
 				URN:      d.URN,
 				Message:  strings.TrimRight(plain(d.Message), "\n"),
 			})
-		case ev.PolicyEvent != nil:
-			p := ev.PolicyEvent
-			s.PolicyViolations = append(s.PolicyViolations, policyViolationSummary{
-				PolicyPack:       p.PolicyPackName,
-				Policy:           p.PolicyName,
-				URN:              p.ResourceURN,
-				EnforcementLevel: p.EnforcementLevel,
-				Severity:         p.Severity,
-				Message:          strings.TrimRight(plain(p.Message), "\n"),
-			})
 		}
 	}
 
-	for _, urn := range order {
-		r := byURN[urn]
-		s.Summary[r.Change]++
-		if r.Change != "unchanged" {
-			s.Resources = append(s.Resources, *r)
+	if summaryEvent != nil {
+		s.Summary = make(pkgdisplay.ResourceChanges, len(summaryEvent.ResourceChanges))
+		for op, n := range summaryEvent.ResourceChanges {
+			s.Summary[pkgdisplay.StepOp(op)] = n
 		}
 	}
 
-	hasErrorDiag := slices.ContainsFunc(s.Diagnostics, func(d diagnosticSummary) bool {
-		return d.Severity == "error"
-	})
 	switch {
 	case summaryEvent != nil && summaryEvent.Result != "":
-		s.Status = string(summaryEvent.Result)
-	case s.Summary["failed"] > 0 || hasErrorDiag:
-		s.Status = "failed"
+		s.Result = summaryEvent.Result
+	case anyFailed || len(s.Diagnostics) > 0:
+		s.Result = apitype.OperationResultFailed
 	case summaryEvent != nil:
-		s.Status = "succeeded"
+		s.Result = apitype.OperationResultSucceeded
 	default:
-		s.Status = "unknown"
+		// Older or interrupted updates may carry no summary event at all.
+		s.Result = "unknown"
 	}
 
-	// The engine events do not record which operation produced them beyond
-	// the preview bit, so operation is omitted unless it is determinable.
-	if summaryEvent != nil && summaryEvent.IsPreview {
-		s.Operation = "preview"
-	}
-
-	if startTs > 0 {
-		s.StartedAt = time.Unix(int64(startTs), 0).UTC().Format(time.RFC3339)
-		s.CompletedAt = time.Unix(int64(endTs), 0).UTC().Format(time.RFC3339)
-	}
 	switch {
 	case summaryEvent != nil && summaryEvent.DurationSeconds > 0:
-		s.DurationMs = int64(summaryEvent.DurationSeconds) * 1000
+		s.Duration = time.Duration(summaryEvent.DurationSeconds) * time.Second
 	case endTs > startTs:
-		s.DurationMs = int64(endTs-startTs) * 1000
+		s.Duration = time.Duration(endTs-startTs) * time.Second
 	}
 
 	return s, nil
@@ -272,23 +184,23 @@ func buildUpdateSummary(
 
 type summaryRender func(w io.Writer, s *updateSummary) error
 
+// renderUpdateSummaryJSON emits the summary as a single line, matching the
+// live `pulumi up --output json` output format.
 func renderUpdateSummaryJSON(w io.Writer, s *updateSummary) error {
-	return ui.FprintJSON(w, s)
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	return enc.Encode(s)
 }
 
 func renderUpdateSummaryText(w io.Writer, s *updateSummary) error {
-	fmt.Fprintf(w, "Stack:    %s\n", s.Stack)
-	fmt.Fprintf(w, "Status:   %s\n", s.Status)
-	if s.Operation != "" {
-		fmt.Fprintf(w, "Operation: %s\n", s.Operation)
-	}
-	if s.DurationMs > 0 {
-		fmt.Fprintf(w, "Duration: %s\n", time.Duration(s.DurationMs)*time.Millisecond)
+	fmt.Fprintf(w, "Result:   %s\n", s.Result)
+	if s.Duration > 0 {
+		fmt.Fprintf(w, "Duration: %s\n", s.Duration)
 	}
 
 	parts := make([]string, 0, len(s.Summary))
-	for _, change := range slices.Sorted(maps.Keys(s.Summary)) {
-		parts = append(parts, fmt.Sprintf("%d %s", s.Summary[change], change))
+	for _, op := range slices.Sorted(maps.Keys(s.Summary)) {
+		parts = append(parts, fmt.Sprintf("%d %s", s.Summary[op], op))
 	}
 	if len(parts) > 0 {
 		fmt.Fprintf(w, "Changes:  %s\n", strings.Join(parts, ", "))
@@ -299,13 +211,13 @@ func renderUpdateSummaryText(w io.Writer, s *updateSummary) error {
 		t := table.NewWriter()
 		t.SetOutputMirror(w)
 		t.SetStyle(table.StyleLight)
-		t.AppendHeader(table.Row{"RESOURCE", "TYPE", "CHANGE", "PROPERTIES"})
+		t.AppendHeader(table.Row{"NAME", "TYPE", "OP"})
 		for _, r := range s.Resources {
-			props := slices.Sorted(maps.Keys(r.PropertyChanges))
-			for i, path := range props {
-				props[i] = fmt.Sprintf("%s (%s)", path, r.PropertyChanges[path].Kind)
+			op := string(r.Op)
+			if r.Failed {
+				op += " (failed)"
 			}
-			t.AppendRow(table.Row{r.Name, r.Type, r.Change, strings.Join(props, ", ")})
+			t.AppendRow(table.Row{r.Name, r.Type, op})
 		}
 		t.Render()
 	}
@@ -318,13 +230,6 @@ func renderUpdateSummaryText(w io.Writer, s *updateSummary) error {
 			} else {
 				fmt.Fprintf(w, "  %s: %s\n", d.Severity, d.Message)
 			}
-		}
-	}
-
-	if len(s.PolicyViolations) > 0 {
-		fmt.Fprintln(w, "\nPolicy violations:")
-		for _, p := range s.PolicyViolations {
-			fmt.Fprintf(w, "  %s/%s (%s): %s\n", p.PolicyPack, p.Policy, p.EnforcementLevel, p.Message)
 		}
 	}
 

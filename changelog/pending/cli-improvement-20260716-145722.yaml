@@ -1,6 +1,6 @@
 component: cli
 kind: improvement
-body: Add a `--summary` flag to `pulumi stack history events` that reduces an update's engine events to a single resource-centric summary document
+body: Add a `--summary` flag to `pulumi stack history events` that reduces a past update's events to the same summary shape as a live `pulumi up --output json`, extended with error diagnostics and failed-resource markers
 time: 2026-07-16T14:57:22.639431+02:00
 custom:
   PR: "23960"
