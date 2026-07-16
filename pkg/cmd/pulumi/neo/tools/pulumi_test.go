@@ -466,7 +466,7 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 }
 
 // TestPulumi_Run_PopulatesConsoleURLAndDeploymentID proves run() wires
-// backendDisplay.Options.OnPermalink through to pulumiResult.ConsoleURL /
+// backend.UpdateOptions.OnPermalink through to pulumiResult.ConsoleURL /
 // DeploymentID for both preview and up, using the same identifier convention
 // as the Pulumi Console: the preview's UpdateID (a UUID) for previews, and
 // the update's decimal version number for updates. The fake backend's
@@ -491,13 +491,13 @@ func TestPulumi_Run_PopulatesConsoleURLAndDeploymentID(t *testing.T) {
 
 			const wantURL = "https://app.pulumi.com/o/proj/dev/updates/42"
 			fireOnPermalink := func(op backend.UpdateOperation) {
-				if op.Opts.Display.OnPermalink == nil {
+				if op.Opts.OnPermalink == nil {
 					return
 				}
 				if tc.wantPreview {
-					op.Opts.Display.OnPermalink(wantURL, tc.wantDeployID, 0, true)
+					op.Opts.OnPermalink(wantURL, tc.wantDeployID, 0, true)
 				} else {
-					op.Opts.Display.OnPermalink(wantURL, "11111111-2222-3333-4444-555555555555", 42, false)
+					op.Opts.OnPermalink(wantURL, "11111111-2222-3333-4444-555555555555", 42, false)
 				}
 			}
 
