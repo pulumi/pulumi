@@ -434,6 +434,9 @@ type fakeTaskAPI struct {
 	// the backend's "invalid entities" rejection, driving the retry-without-
 	// stack fallback in createNeoTaskWithEntityRetry.
 	rejectStack bool
+	// streamPanic, when true, panics in StreamNeoTaskEvents — a stand-in for a
+	// bug anywhere on the session event loop goroutine, driving its recover.
+	streamPanic bool
 
 	mu      sync.Mutex
 	created []createdTask
@@ -461,6 +464,9 @@ func (p *fakeTaskAPI) CreateNeoTask(
 func (p *fakeTaskAPI) StreamNeoTaskEvents(
 	context.Context, string, string, string,
 ) (<-chan client.NeoStreamEvent, error) {
+	if p.streamPanic {
+		panic("stream exploded")
+	}
 	return p.stream, nil
 }
 

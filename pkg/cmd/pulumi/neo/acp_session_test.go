@@ -347,6 +347,25 @@ func TestRunTurnPostErrorReleasesTurn(t *testing.T) {
 	assert.Nil(t, s.activeTurn, "a failed post must release the turn slot for a retry")
 }
 
+// TestRunTurnSurvivesEventLoopPanic: a panic anywhere on the session event
+// loop goroutine (here: while connecting the event stream, but tool handlers
+// run there too) is recovered into runErr instead of crashing the process —
+// the waiting turn resolves with the panic error and later prompts fail fast
+// with the same cause.
+func TestRunTurnSurvivesEventLoopPanic(t *testing.T) {
+	t.Parallel()
+
+	fp := &fakeTaskAPI{streamPanic: true}
+	s := &acpSession{acpID: "sess_x", api: fp, orgName: "acme", client: &fakeACPClient{}}
+
+	_, err := s.runTurn(t.Context(), t.Context(), "hello")
+	require.ErrorContains(t, err, "panic in Neo session event loop")
+	require.ErrorContains(t, err, "stream exploded")
+
+	_, err = s.runTurn(t.Context(), t.Context(), "again")
+	require.ErrorContains(t, err, "panic in Neo session event loop")
+}
+
 // TestRunTurnConcurrentPromptsExactlyOneWins races two prompts on a started
 // session: exactly one must register the turn (and complete once the pump
 // resolves it), the other must be rejected without posting to the backend.

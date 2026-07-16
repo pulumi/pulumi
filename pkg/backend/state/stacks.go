@@ -61,14 +61,7 @@ func getCurrentStackName(ws pkgWorkspace.Context, dir string) (string, error) {
 		return stackName, nil
 	}
 
-	if dir == "" {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return "", fmt.Errorf("getting current working directory: %w", err)
-		}
-		dir = cwd
-	}
-
+	// An empty dir resolves to the process working directory inside ws.New.
 	w, err := ws.New(dir)
 	if err != nil {
 		return "", err

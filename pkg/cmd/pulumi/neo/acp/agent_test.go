@@ -67,7 +67,8 @@ func newTestPeersWithClient(t *testing.T, a *Agent, clientHandler jsonrpc2.Handl
 	agentEnd, clientEnd := net.Pipe()
 
 	agentConn := jsonrpc2.NewConn(t.Context(),
-		jsonrpc2.NewPlainObjectStream(agentEnd), jsonrpc2.AsyncHandler(jsonrpc2.HandlerWithError(a.handle)))
+		jsonrpc2.NewPlainObjectStream(agentEnd),
+		jsonrpc2.AsyncHandler(jsonrpc2.HandlerWithError(a.handleWithRecover)))
 
 	clientConn := jsonrpc2.NewConn(t.Context(),
 		jsonrpc2.NewPlainObjectStream(clientEnd), clientHandler)
@@ -207,6 +208,7 @@ type fakeDelegate struct {
 	gotClient    Client
 	promptResult PromptResult
 	promptErr    error
+	promptFn     func(PromptParams) (PromptResult, error)
 	gotPrompt    PromptParams
 	gotCancel    CancelParams
 	configResult SetConfigOptionResult
@@ -225,6 +227,9 @@ func (f *fakeDelegate) NewSession(
 
 func (f *fakeDelegate) Prompt(_ context.Context, params PromptParams) (PromptResult, error) {
 	f.gotPrompt = params
+	if f.promptFn != nil {
+		return f.promptFn(params)
+	}
 	return f.promptResult, f.promptErr
 }
 
@@ -367,4 +372,54 @@ func TestNewSessionAuthRequiredMapsToCode(t *testing.T) {
 	var rpcErr *jsonrpc2.Error
 	require.ErrorAs(t, err, &rpcErr)
 	assert.EqualValues(t, codeAuthRequired, rpcErr.Code)
+}
+
+func TestPromptAuthRequiredMapsToCode(t *testing.T) {
+	t.Parallel()
+
+	agent := NewAgent(testIdentity, "v3.0.0", &fakeDelegate{promptErr: ErrAuthRequired})
+	client := newTestPeers(t, agent)
+
+	err := client.Call(t.Context(), "session/prompt", PromptParams{SessionID: "sess_1"}, nil)
+	var rpcErr *jsonrpc2.Error
+	require.ErrorAs(t, err, &rpcErr)
+	assert.EqualValues(t, codeAuthRequired, rpcErr.Code)
+}
+
+func TestSetConfigOptionAuthRequiredMapsToCode(t *testing.T) {
+	t.Parallel()
+
+	agent := NewAgent(testIdentity, "v3.0.0", &fakeDelegate{configErr: ErrAuthRequired})
+	client := newTestPeers(t, agent)
+
+	err := client.Call(t.Context(), "session/set_config_option", SetConfigOptionParams{
+		SessionID: "sess_1", ConfigID: "permission", Value: "read-only",
+	}, nil)
+	var rpcErr *jsonrpc2.Error
+	require.ErrorAs(t, err, &rpcErr)
+	assert.EqualValues(t, codeAuthRequired, rpcErr.Code)
+}
+
+func TestHandlerPanicMapsToInternalErrorAndConnectionSurvives(t *testing.T) {
+	t.Parallel()
+
+	agent := NewAgent(testIdentity, "v3.0.0", &fakeDelegate{
+		promptFn: func(PromptParams) (PromptResult, error) { panic("boom in prompt") },
+	})
+	client := newTestPeers(t, agent)
+
+	// The panicking request fails with an internal error rather than tearing
+	// down the connection.
+	err := client.Call(t.Context(), "session/prompt", PromptParams{SessionID: "sess_1"}, nil)
+	var rpcErr *jsonrpc2.Error
+	require.ErrorAs(t, err, &rpcErr)
+	assert.EqualValues(t, jsonrpc2.CodeInternalError, rpcErr.Code)
+	assert.Contains(t, rpcErr.Message, "boom in prompt")
+
+	// The same connection still serves subsequent requests.
+	var res InitializeResult
+	require.NoError(t, client.Call(t.Context(), "initialize", InitializeParams{
+		ProtocolVersion: ProtocolVersion,
+	}, &res))
+	assert.Equal(t, ProtocolVersion, res.ProtocolVersion)
 }

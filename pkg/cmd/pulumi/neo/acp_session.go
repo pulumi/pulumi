@@ -140,13 +140,23 @@ func (s *acpSession) start(baseCtx context.Context, prompt string) error {
 	// When Run returns (stream ended, failed, or ctx cancelled), record that the
 	// event loop is gone — new prompts are rejected from then on — and tear down
 	// the derived context so the pump stops too and resolves any in-flight turn
-	// (see pump's teardown).
+	// (see pump's teardown). Run also executes every tool handler, so a panic
+	// anywhere in that code is recovered here into runErr — the session ends
+	// with an error instead of taking down the whole process; deferring cancel
+	// first (LIFO) means the pump unwinds only after the panic is recorded, so
+	// its teardown resolves a waiting turn with the panic error.
 	go func() {
+		var err error
 		defer cancel()
-		err := session.Run(sessCtx)
-		s.mu.Lock()
-		s.ended, s.runErr = true, err
-		s.mu.Unlock()
+		defer func() {
+			if r := recover(); r != nil {
+				err = acp.PanicError("Neo session event loop", r)
+			}
+			s.mu.Lock()
+			s.ended, s.runErr = true, err
+			s.mu.Unlock()
+		}()
+		err = session.Run(sessCtx)
 	}()
 	go s.pump(sessCtx, uiCh)
 	return nil
