@@ -83,9 +83,9 @@ func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.
 	var yes bool
 	cmd := &cobra.Command{
 		Use:   "upsert <name>",
-		Short: "Create a resource or fully replace an existing one",
-		Long: "Create a resource or fully replace an existing one.\n\n" +
-			"The resource created or replaced is tracked in the stack, " +
+		Short: "Create a resource or fully update an existing one",
+		Long: "Create a resource or fully update an existing one.\n\n" +
+			"The resource created or updated is tracked in the stack, " +
 			"so Pulumi can manage its lifecycle. No other resources in " +
 			"the stack are affected when running this command.",
 		Args: cobra.ExactArgs(1),
