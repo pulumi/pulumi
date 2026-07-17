@@ -2834,14 +2834,16 @@ func (pc *Client) GetNeoTask(ctx context.Context, orgName, taskID string) (*NeoT
 }
 
 // NeoStreamEvent is one item from a Neo task Server-Sent Events (SSE) stream. Exactly
-// one of Data or Err is populated: Data carries an event payload, Err carries a terminal
-// stream error (after which no further values are sent before the channel closes). ID
-// is the SSE `id:` field associated with the event (empty if absent); callers track it
-// to send `Last-Event-ID` on reconnect so the server can replay missed events.
+// one of Data, KeepAlive, or Err is populated: Data carries an event payload, KeepAlive
+// reports an SSE comment heartbeat, and Err carries a terminal stream error (after
+// which no further values are sent before the channel closes). ID is the SSE `id:`
+// field associated with the event (empty if absent); callers track it to send
+// `Last-Event-ID` on reconnect so the server can replay missed events.
 type NeoStreamEvent struct {
-	Data []byte
-	ID   string
-	Err  error
+	Data      []byte
+	ID        string
+	KeepAlive bool
+	Err       error
 }
 
 type neoTaskEventsResponse struct {
@@ -2887,8 +2889,8 @@ func (pc *Client) GetNeoTaskEvents(
 // StreamNeoTaskEvents opens a Server-Sent Events (SSE) connection to the Neo task event
 // stream and returns a channel of events. Each value carries either a raw event payload
 // (the bytes following each `data:` line, joined for multi-line events) along with the
-// `id:` of that event, or a terminal stream error. The channel is closed when the stream
-// ends or ctx is cancelled.
+// `id:` of that event, a keep-alive marker for SSE comments, or a terminal stream error.
+// The channel is closed when the stream ends or ctx is cancelled.
 //
 // If lastEventID is non-empty it is sent as the `Last-Event-ID` request header; the
 // pulumi-service stream endpoint honors this and replays only events with sequence
@@ -2964,6 +2966,7 @@ func (pc *Client) StreamNeoTaskEvents(
 				continue
 			}
 			if strings.HasPrefix(line, ":") {
+				send(NeoStreamEvent{KeepAlive: true})
 				continue
 			}
 			if chunk, ok := strings.CutPrefix(line, "data:"); ok {
