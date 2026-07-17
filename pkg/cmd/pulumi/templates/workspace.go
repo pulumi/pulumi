@@ -20,28 +20,26 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type getWorkspaceTemplateFunc = func(ctx context.Context, templateNamePathOrURL string, offline bool,
-	templateKind workspace.TemplateKind,
-) (workspace.TemplateRepository, error)
+type getProjectTemplateFunc = func(ctx context.Context, templateNamePathOrURL string, offline bool,
+	templateKind TemplateKind,
+) (TemplateRepository, error)
 
-func (s *Source) getWorkspaceTemplates(
-	ctx context.Context, templateNamePathOrURL string, scope SearchScope, templateKind workspace.TemplateKind,
-	_ *sync.WaitGroup,
-	get getWorkspaceTemplateFunc,
+func (s *Source) getProjectTemplates(
+	ctx context.Context, templateNamePathOrURL string, scope SearchScope, templateKind TemplateKind,
+	get getProjectTemplateFunc,
 ) {
 	repo, err := get(ctx, templateNamePathOrURL, scope == ScopeLocal, templateKind)
 	if err != nil {
-		if notFound := (workspace.TemplateNotFoundError{}); errors.As(err, &notFound) {
+		if notFound := (TemplateNotFoundError{}); errors.As(err, &notFound) {
 			s.addErrorOnEmpty(notFound)
 			return
 		}
 		// Bail on all errors unless its a 401 from a Pulumi Cloud backend...
-		if !errors.Is(err, workspace.ErrPulumiCloudUnauthorized) {
+		if !errors.Is(err, ErrPulumiCloudUnauthorized) {
 			s.addError(err)
 			return
 		}
@@ -55,20 +53,20 @@ func (s *Source) getWorkspaceTemplates(
 		}
 	}
 	s.addCloser(repo.Delete)
-	workspaceTemplates, err := repo.Templates()
+	projectTemplates, err := repo.Templates()
 	if err != nil {
 		s.addError(fmt.Errorf("could not get template from workspace: %w", err))
 		return
 	}
 
-	s.addDownloadedTemplates(workspaceTemplates)
+	s.addDownloadedTemplates(projectTemplates)
 }
 
 // Retrieve a Private template from the given Pulumi Cloud URL **including an auth token for Pulumi Cloud**.
-func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateRepository, error) {
+func retrievePrivatePulumiCloudTemplate(templateURL string) (TemplateRepository, error) {
 	u, err := url.Parse(templateURL)
 	if err != nil {
-		return workspace.TemplateRepository{}, fmt.Errorf("parsing template URL: %w", err)
+		return TemplateRepository{}, fmt.Errorf("parsing template URL: %w", err)
 	}
 	// Docs convention is to store the cloud URL with the protocol.
 	// e.g. `pulumi login https://api.pulumi.com` or `pulumi login https://api.acme.org`
@@ -76,7 +74,7 @@ func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateR
 
 	account, _, err := workspace.GetAccountWithAgentFallback(templatePulumiCloudHost)
 	if err != nil {
-		return workspace.TemplateRepository{}, fmt.Errorf(
+		return TemplateRepository{}, fmt.Errorf(
 			"looking up pulumi cloud backend %s: %w",
 			templatePulumiCloudHost,
 			err,
@@ -84,15 +82,15 @@ func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateR
 	}
 
 	if account.AccessToken == "" {
-		return workspace.TemplateRepository{}, fmt.Errorf("no access token found for %s", templatePulumiCloudHost)
+		return TemplateRepository{}, fmt.Errorf("no access token found for %s", templatePulumiCloudHost)
 	}
 
-	templateRepository, err := workspace.RetrieveZIPTemplates(templateURL, func(req *http.Request) {
+	templateRepository, err := RetrieveZIPTemplates(templateURL, func(req *http.Request) {
 		req.Header.Set("Authorization", "token "+account.AccessToken)
 	})
 
-	if errors.Is(err, workspace.ErrPulumiCloudUnauthorized) {
-		return workspace.TemplateRepository{}, fmt.Errorf(
+	if errors.Is(err, ErrPulumiCloudUnauthorized) {
+		return TemplateRepository{}, fmt.Errorf(
 			"unauthorized to access template at %s. You may not have access to this template or token may have expired",
 			templatePulumiCloudHost,
 		)
@@ -102,20 +100,22 @@ func retrievePrivatePulumiCloudTemplate(templateURL string) (workspace.TemplateR
 	return templateRepository, err
 }
 
-func (s *Source) addDownloadedTemplates(src []workspace.Template) {
+func (s *Source) addDownloadedTemplates(src []ProjectTemplate) {
 	for _, t := range src {
-		s.addTemplate(workspaceTemplate{t})
+		s.addTemplate(projectTemplate{t})
 	}
 }
 
-var _ Template = workspaceTemplate{}
+var _ Template = projectTemplate{}
 
-type workspaceTemplate struct {
-	t workspace.Template
+type projectTemplate struct {
+	t ProjectTemplate
 }
 
-func (t workspaceTemplate) Name() string                                             { return t.t.Name }
-func (t workspaceTemplate) DisplayName() string                                      { return t.t.Name }
-func (t workspaceTemplate) Description() string                                      { return t.t.Description }
-func (t workspaceTemplate) Error() error                                             { return t.t.Error }
-func (t workspaceTemplate) Download(ctx context.Context) (workspace.Template, error) { return t.t, nil }
+func (t projectTemplate) Name() string        { return t.t.Name }
+func (t projectTemplate) DisplayName() string { return t.t.Name }
+func (t projectTemplate) Description() string { return t.t.Description }
+func (t projectTemplate) Error() error        { return t.t.Error }
+func (t projectTemplate) Download(ctx context.Context) (ProjectTemplate, error) {
+	return t.t, nil
+}
