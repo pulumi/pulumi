@@ -82,8 +82,7 @@ func NewDoCmd(
 			return pkghost.New(
 				context.WithoutCancel(ctx), d, statusD, nil, pkgWorkspace.EnsureLanguageInstalled,
 				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-				packageworkspace.NewResolverServer(reg),
-			)
+				packageworkspace.NewResolverServer(reg))
 		}
 	}
 	if loadConverterPlugin == nil {
@@ -174,8 +173,7 @@ func NewDoCmd(
 
 		pctx, err := plugin.NewContext(
 			ctx, diagFwd, statusFwd, host, nil, wd, nil, false,
-			nil,
-		)
+			nil)
 		if err != nil {
 			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
@@ -466,8 +464,7 @@ to use another format.`,
 			"a path to a plugin binary or folder. If the package supports "+
 			"parameterization, additional space-separated parameters can be "+
 			"included after the package name, e.g. --package \"name@version "+
-			"param1 \\\"multi word param\\\"\"",
-	)
+			"param1 \\\"multi word param\\\"\"")
 
 	return cmd
 }
@@ -749,8 +746,7 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 
 	longhelp = fmt.Sprintf(
 		"%s\n\nRun 'pulumi do%s <module/resource/function> --help' for more details on usage.",
-		longhelp, flag,
-	)
+		longhelp, flag)
 
 	resTokens, fnTokens := pc.memberTokens()
 	modules := map[string]struct{}{}
@@ -829,8 +825,7 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 
 	longhelp = fmt.Sprintf(
 		"%s\n\nRun 'pulumi do%s <module/resource/function> --help' for more details on usage.",
-		longhelp, flag,
-	)
+		longhelp, flag)
 
 	resTokens, fnTokens := pc.memberTokens()
 	modules := map[string]struct{}{}
