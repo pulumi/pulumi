@@ -32,9 +32,9 @@ import (
 // the shared implementation behind `pulumi package build` and the language host's
 // local-component build (its InstallDependencies), so the two cannot drift.
 //
-// The build runs in a builder container started from build.image (the toolchain), with the
-// target ref delivered as $PULUMI_PACKAGE_IMAGE so the command stays ref-agnostic; the
-// default command tags the package Dockerfile as that ref. registry, when non-empty,
+// The build runs in a builder container started from build.image (the toolchain). It emits a
+// runtime-neutral OCI image layout (naming no runtime and no location); runPackageBuild then
+// loads that layout below the PodManager seam and applies ref there. registry, when non-empty,
 // qualifies the ref (so the built image is named where it resolves and where publish pushes).
 // Like every build site it needs pod mode only for --volumes-from the engine (to reach the
 // source), not the engine netns.
@@ -102,22 +102,16 @@ func BuildPolicyPack(ctx context.Context, dir, registry string, stderr io.Writer
 }
 
 // runPackageBuild runs a package's self-described build (the options.build block shared
-// by PulumiPlugin.yaml and PulumiPolicy.yaml) in a builder container, leaving the image
-// present in the store under ref.
+// by PulumiPlugin.yaml and PulumiPolicy.yaml) in a builder container, then loads the
+// result into the runtime store under ref.
 //
-// Two build contracts coexist here, one deprecating the other:
-//
-//   - The runtime-neutral contract (what #51 is about): the build writes an OCI image
-//     layout to $PULUMI_PACKAGE_LAYOUT — naming no runtime and no location — and this
-//     function then loads it below the PodManager seam via ImportImage, applying ref (the
-//     location the orchestrator resolved) at that sink. The build never touches a runtime
-//     store, so any builder on any runtime satisfies it; kaniko is the forcing function
-//     that proves it (it cannot reach the daemon socket to cheat).
-//   - The legacy contract: the build tags the image directly into the runtime store as
-//     $PULUMI_PACKAGE_IMAGE (the default `docker build -t` command). This is the very
-//     "output a resolvable ref" coupling #51 removes — the build must know, and load into,
-//     a specific runtime. Kept working while examples migrate; a build that emits a layout
-//     opts into the neutral path, one that does not falls through to this.
+// The contract is runtime-neutral (#51): the build writes an OCI image layout to
+// $PULUMI_PACKAGE_LAYOUT — naming no runtime and no location — and this function loads it
+// below the PodManager seam via ImportImage, applying ref (the location the orchestrator
+// resolved) at that sink. The build never touches a runtime store, so any builder on any
+// runtime satisfies it; kaniko is the forcing function that proves it (it cannot reach the
+// daemon socket to cheat). Identity is baked by the build (from $PULUMI_PACKAGE_NAME/
+// _VERSION); location is applied at the sink; the two never mix in the build command.
 func runPackageBuild(
 	ctx context.Context, dir, name, version, ref string, build map[string]any, stderr io.Writer,
 ) error {
@@ -127,9 +121,15 @@ func runPackageBuild(
 	}
 	command, _ := build["command"].(string)
 	if command == "" {
-		// Legacy default: build the package's Dockerfile and tag it directly into the
-		// store as the convention ref (delivered via env so the command stays ref-agnostic).
-		command = `docker build -q -t "$PULUMI_PACKAGE_IMAGE" .`
+		// Default: build the package's Dockerfile with buildkit and write a runtime-neutral
+		// OCI layout to $PULUMI_PACKAGE_LAYOUT — no ref, no runtime store. The Dockerfile is
+		// named relative to the builder's working directory (the package dir), so it stays
+		// package-relative even when $PULUMI_BUILD_CONTEXT is widened past the package (as a
+		// monorepo does) — the same way `docker build -f <path> <context>` decouples the two.
+		// Needs buildkit's OCI exporter (a containerd image store, or a docker-container
+		// buildx builder); see the trial-kit README.
+		command = `docker build -f Dockerfile ` +
+			`--output type=oci,tar=false,dest="$PULUMI_PACKAGE_LAYOUT" "$PULUMI_BUILD_CONTEXT"`
 	}
 
 	// Where the build writes its OCI layout when it takes the neutral path. A pod-provided
@@ -147,30 +147,19 @@ func runPackageBuild(
 	}
 
 	// The build context — what the builder sends to the daemon/kaniko. Defaults to the
-	// package dir; build.context widens it (e.g. ".." for a monorepo whose Dockerfile COPYs
-	// an adjacent package). Resolved relative to the package dir, required to be an ancestor
-	// of it (the context must contain the package), and exposed as $PULUMI_BUILD_CONTEXT for
-	// the command to reference. The Dockerfile path in the command is the author's concern,
-	// relative to the context they chose.
-	contextDir := dir
-	if c, _ := build["context"].(string); c != "" {
-		contextDir = filepath.Join(dir, c)
-		if fi, err := os.Stat(contextDir); err != nil || !fi.IsDir() {
-			return fmt.Errorf(
-				"package %s: build.context %q resolves to %s, not an accessible directory", name, c, contextDir)
-		}
-		if !strings.HasPrefix(dir+string(os.PathSeparator), contextDir+string(os.PathSeparator)) {
-			return fmt.Errorf(
-				"package %s: build.context %q (%s) must be an ancestor of the package dir %s", name, c, contextDir, dir)
-		}
+	// package dir; build.context widens it (e.g. ".." for a monorepo). Exposed to the build
+	// as $PULUMI_BUILD_CONTEXT; shared with the program-image build so both widen the same way.
+	contextCfg, _ := build["context"].(string)
+	contextDir, err := ResolveBuildContext("package "+name, dir, contextCfg)
+	if err != nil {
+		return err
 	}
 
 	fmt.Fprintf(stderr, "Building %s (v%s) in %s -> %s\n", name, version, buildImage, ref)
 	env := map[string]string{
-		// Legacy location channel: the build tags directly into the runtime store.
-		"PULUMI_PACKAGE_IMAGE": ref,
-		// Neutral contract: identity inputs (what it is) plus a location-free path to write
-		// the OCI layout to. The ref (where it lives) is applied at the sink, not here.
+		// The build's inputs are identity (what it is) plus a location-free path to write the
+		// OCI layout to. The ref — where it lives — is applied at the sink (ImportImage below),
+		// never here, so the build commits to no runtime and no registry.
 		"PULUMI_PACKAGE_NAME":    name,
 		"PULUMI_PACKAGE_VERSION": version,
 		"PULUMI_PACKAGE_LAYOUT":  layoutDir,
@@ -183,20 +172,54 @@ func runPackageBuild(
 		return fmt.Errorf("building package %s: %w", name, err)
 	}
 
-	// If the build wrote a layout, it chose the neutral contract: load it below the seam
-	// and apply ref there. Otherwise the legacy build already delivered ref into the store.
-	if _, err := os.Stat(filepath.Join(layoutDir, "index.json")); err == nil {
-		defer func() { _ = os.RemoveAll(layoutDir) }() // served its purpose; keep the workspace clean
-		fmt.Fprintf(stderr, "Importing %s from OCI layout -> %s\n", name, ref)
-		podID := os.Getenv("PULUMI_POD_ID")
-		if podID == "" {
-			podID, _ = os.Hostname()
-		}
-		if err := NewDockerPodManager(podID).ImportImage(ctx, layoutDir, ref); err != nil {
-			return fmt.Errorf("importing package %s image: %w", name, err)
-		}
+	// The build must have written an OCI layout — that is the whole contract. Load it below
+	// the PodManager seam and apply ref there (the location the orchestrator resolved). A
+	// build that emits no layout is an error, not a silent direct-load into some runtime store.
+	if _, err := os.Stat(filepath.Join(layoutDir, "index.json")); err != nil {
+		return fmt.Errorf("package %s: build wrote no OCI image layout to %s ($PULUMI_PACKAGE_LAYOUT); "+
+			"the build command must emit one "+
+			"(e.g. `docker build --output type=oci,tar=false,dest=$PULUMI_PACKAGE_LAYOUT ...` "+
+			"or a kaniko `--oci-layout-path=$PULUMI_PACKAGE_LAYOUT`)", name, layoutDir)
+	}
+	defer func() { _ = os.RemoveAll(layoutDir) }() // served its purpose; keep the workspace clean
+	fmt.Fprintf(stderr, "Importing %s from OCI layout -> %s\n", name, ref)
+	podID := os.Getenv("PULUMI_POD_ID")
+	if podID == "" {
+		podID, _ = os.Hostname()
+	}
+	if err := NewDockerPodManager(podID).ImportImage(ctx, layoutDir, ref); err != nil {
+		return fmt.Errorf("importing package %s image: %w", name, err)
 	}
 	return nil
+}
+
+// ResolveBuildContext resolves the build context directory for a package or program build.
+// It defaults to dir (the thing being built) and build.context widens it — e.g. ".." for a
+// monorepo whose Dockerfile COPYs an adjacent package. The context is resolved relative to
+// dir and required to be an ancestor of it (the context must contain what is being built);
+// the result is what the build should reference as $PULUMI_BUILD_CONTEXT. The Dockerfile path
+// stays the author's concern, named relative to the builder's working directory (dir), so it
+// remains dir-relative however wide the context grows — the way `docker build -f <path>
+// <context>` decouples the two. label names the thing being built, for error messages.
+//
+// It does NOT check the context stays within the pod's workspace mount: a context that escapes
+// it simply isn't visible to the builder (which inherits only the engine's mounts), so the
+// build fails on the missing files. Keeping the widened context under the mounted repo root is
+// the caller's concern — the wrapper mounts a parent via PULUMI_POD_MOUNT_DIR for exactly this.
+func ResolveBuildContext(label, dir, context string) (string, error) {
+	if context == "" {
+		return dir, nil
+	}
+	contextDir := filepath.Join(dir, context)
+	if fi, err := os.Stat(contextDir); err != nil || !fi.IsDir() {
+		return "", fmt.Errorf("%s: build.context %q resolves to %s, not an accessible directory",
+			label, context, contextDir)
+	}
+	if !strings.HasPrefix(dir+string(os.PathSeparator), contextDir+string(os.PathSeparator)) {
+		return "", fmt.Errorf("%s: build.context %q (%s) must be an ancestor of %s",
+			label, context, contextDir, dir)
+	}
+	return contextDir, nil
 }
 
 // optStringSlice reads a YAML list-of-strings option (parsed as []any) into []string,

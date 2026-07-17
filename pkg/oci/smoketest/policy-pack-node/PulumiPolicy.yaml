@@ -15,6 +15,7 @@ runtime:
     image: oci-smoke-policy:latest
     # The pack's own build, for `pulumi package publish <this dir>` — the same
     # self-describing contract PulumiPlugin.yaml gives components. The default
-    # command builds the Dockerfile here and tags it $PULUMI_PACKAGE_IMAGE.
+    # command builds the Dockerfile here into an OCI layout, which the engine
+    # loads into the store under the convention ref.
     build:
       image: docker:cli

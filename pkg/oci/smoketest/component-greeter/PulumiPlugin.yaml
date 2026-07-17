@@ -10,4 +10,4 @@ runtime:
     version: "0.1.0"
     build:
       image: oci-smoke-builder:latest
-      command: test -e /only-in-builder && docker build -q -t "$PULUMI_PACKAGE_IMAGE" .
+      command: test -e /only-in-builder && docker build -f Dockerfile --output type=oci,tar=false,dest="$PULUMI_PACKAGE_LAYOUT" "$PULUMI_BUILD_CONTEXT"

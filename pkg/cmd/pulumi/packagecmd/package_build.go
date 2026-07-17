@@ -29,10 +29,11 @@ import (
 // source→image seam, the dev-time twin of the registry proxy (which wraps released
 // binaries as images). A package describes itself in PulumiPlugin.yaml with
 // `runtime: oci` and `options.{name, version, build}`; this runs the build in a builder
-// container whose image supplies the toolchain (build.image), tagging the result by the
-// provider convention (pulumi-provider-<name>:v<version>). The built image lands in the
-// local store and the ref is printed; `pulumi package publish` later pushes that image.
-// There is deliberately no sink option — build leaves the image local, publish moves it.
+// container whose image supplies the toolchain (build.image). The build emits a
+// runtime-neutral OCI layout, which the engine loads into the local store under the
+// provider convention ref (pulumi-provider-<name>:v<version>) and prints; `pulumi package
+// publish` later pushes that image. There is deliberately no sink option — build leaves the
+// image local, publish moves it.
 //
 // This is the principled home for "where does the build run?": it retires the throwaway
 // `components:` block (where local-component build specs live today) in favour of each
@@ -53,13 +54,15 @@ PulumiPlugin.yaml declaring 'runtime: oci' with options:
       name: my-component        # the package name
       version: "1.0.0"          # the package version
       build:
-        image: my-builder:latest          # the build environment image
-        command: docker build -q -t "$PULUMI_PACKAGE_IMAGE" .   # optional
+        image: my-builder:latest   # the build environment image
+        # command: optional; the default builds ./Dockerfile into an OCI layout
+        # context: optional; widens the build context (e.g. .. for a monorepo)
 
 The build runs in a container started from build.image (which supplies the
-toolchain), with the target image ref available as $PULUMI_PACKAGE_IMAGE. The
-command must produce that image in the local container store. The resulting ref
-is printed to stdout.`,
+toolchain). It writes a runtime-neutral OCI image layout to $PULUMI_PACKAGE_LAYOUT
+(the default command uses buildkit's OCI exporter, so the daemon needs a containerd
+image store or a docker-container buildx builder). The engine then loads that layout
+into the local container store under the convention ref, which is printed to stdout.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dir := "."
 			if len(args) > 0 {

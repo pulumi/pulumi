@@ -422,10 +422,20 @@ func buildProgramImageInContainer(ctx context.Context, spec *structpb.Struct, di
 	if image == "" || command == "" {
 		return "", fmt.Errorf("oci: build needs 'image' and 'command' (got image=%q command=%q)", image, command)
 	}
+	// build.context widens the build context past the program dir (a monorepo whose Dockerfile
+	// COPYs an adjacent package), exposed to the command as $PULUMI_BUILD_CONTEXT — the same
+	// knob package builds get. The program image is per-run and pod-scoped (never published,
+	// never resolved across runtimes), so it keeps the simple "build tags an image, prints its
+	// ref" contract rather than the plugin build's runtime-neutral layout.
+	contextDir, err := oci.ResolveBuildContext("program", dir, optString(spec, "context"))
+	if err != nil {
+		return "", err
+	}
 	//nolint:forbidigo // language-host diagnostics go to the engine-attached stderr
 	fmt.Fprintf(os.Stderr, "oci: building program image in builder %s: %s\n", image, command)
 	//nolint:forbidigo // the build container streams its output to the engine-attached stderr
-	stdout, err := oci.BuildInContainer(ctx, image, command, dir, optStringList(spec, "caches"), nil, os.Stderr)
+	stdout, err := oci.BuildInContainer(ctx, image, command, dir, optStringList(spec, "caches"),
+		map[string]string{"PULUMI_BUILD_CONTEXT": contextDir}, os.Stderr)
 	if err != nil {
 		return "", fmt.Errorf("oci: builder %q failed: %w", image, err)
 	}
