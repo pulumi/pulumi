@@ -2579,7 +2579,7 @@ func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
 		"--azure:opt-two", "val2",
 		"--in1", "p1",
 		"--input:in-two", "p2",
-		"--input:dry-run", "true",
+		"--input:dry-run",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)
@@ -2717,7 +2717,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 		"--azure:opt-two", "val2",
 		"--in1", "p1",
 		"--input:in-two", "p2",
-		"--input:dry-run", "true",
+		"--input:dry-run",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)
@@ -2911,7 +2911,7 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 		"--input", "yaml",
 		"--input:number", "0o45",
 		"--input:expr", "{\"fn::secret\": 45}",
-		"--input:flag", "no",
+		"--input:flag=no",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)
