@@ -861,6 +861,10 @@ func promptRuntimeOptions(ctx *plugin.Context, language plugin.LanguageRuntime, 
 func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args newArgs,
 	opts display.Options,
 ) (string, error) {
+	if deriveAIOrTemplate(args) != "ai" {
+		return "", nil
+	}
+
 	// Try to read the current project
 	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
@@ -870,10 +874,6 @@ func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args ne
 	b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
 	if err != nil {
 		return "", err
-	}
-
-	if deriveAIOrTemplate(args) != "ai" {
-		return "", nil
 	}
 
 	if args.aiPrompt == "" && !opts.IsInteractive {

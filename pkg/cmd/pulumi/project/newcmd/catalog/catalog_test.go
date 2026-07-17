@@ -22,10 +22,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testTemplateNames mirrors a representative slice of the real pulumi/templates names so the derived
+// catalog exercises featured providers, the None build-system split, and a few "other" providers.
+var testTemplateNames = []string{
+	"aws-typescript", "aws-python", "aws-bun", "aws-csharp", "aws-fsharp",
+	"aws-go", "aws-java", "aws-scala", "aws-visualbasic", "aws-yaml",
+	"azure-typescript", "azure-python", "azure-csharp", "azure-fsharp", "azure-go", "azure-java", "azure-yaml",
+	"gcp-typescript", "gcp-python", "gcp-csharp", "gcp-fsharp", "gcp-go", "gcp-java", "gcp-visualbasic", "gcp-yaml",
+	"typescript", "python", "go", "csharp", "fsharp", "java", "java-gradle", "javascript", "bun", "visualbasic", "yaml",
+	"alicloud-typescript", "azuredevops-python", "linode-go", "rediscloud-python", "rediscloud-go",
+}
+
+func testCatalog() *Catalog { return New(testTemplateNames) }
+
 func TestFeaturedOrder(t *testing.T) {
 	t.Parallel()
 
-	featured := Featured()
+	featured := testCatalog().Featured()
 	require.Len(t, featured, 4)
 	assert.Equal(t, "aws", featured[0].ID)
 	assert.Equal(t, "azure", featured[1].ID)
@@ -39,7 +52,7 @@ func TestFeaturedOrder(t *testing.T) {
 func TestNoneIsNotInOthers(t *testing.T) {
 	t.Parallel()
 
-	for _, p := range Others() {
+	for _, p := range testCatalog().Others() {
 		assert.NotEqual(t, "none", p.ID, "None must not appear in the Other expansion")
 	}
 }
@@ -47,6 +60,7 @@ func TestNoneIsNotInOthers(t *testing.T) {
 func TestResolveNoneUsesBareTemplateNames(t *testing.T) {
 	t.Parallel()
 
+	cat := testCatalog()
 	tests := []struct{ language, want string }{
 		{"typescript", "typescript"},
 		{"python", "python"},
@@ -57,7 +71,7 @@ func TestResolveNoneUsesBareTemplateNames(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.language, func(t *testing.T) {
 			t.Parallel()
-			name, ok := Resolve("none", tt.language)
+			name, ok := cat.Resolve("none", tt.language)
 			require.True(t, ok)
 			assert.Equal(t, tt.want, name)
 		})
@@ -67,8 +81,9 @@ func TestResolveNoneUsesBareTemplateNames(t *testing.T) {
 func TestJavaDisplayNameIsSplitOnlyUnderNone(t *testing.T) {
 	t.Parallel()
 
+	cat := testCatalog()
 	displayNames := func(id string) []string {
-		p, ok := Get(id)
+		p, ok := cat.Get(id)
 		require.True(t, ok)
 		names := make([]string, len(p.Languages))
 		for i, l := range p.Languages {
@@ -90,7 +105,7 @@ func TestJavaDisplayNameIsSplitOnlyUnderNone(t *testing.T) {
 func TestNoneLanguageOrder(t *testing.T) {
 	t.Parallel()
 
-	none, ok := Get("none")
+	none, ok := testCatalog().Get("none")
 	require.True(t, ok)
 
 	displayNames := make([]string, len(none.Languages))
@@ -106,7 +121,7 @@ func TestNoneLanguageOrder(t *testing.T) {
 func TestOthersAreAlphabeticalAndNotFeatured(t *testing.T) {
 	t.Parallel()
 
-	others := Others()
+	others := testCatalog().Others()
 	require.NotEmpty(t, others)
 
 	names := make([]string, len(others))
@@ -120,7 +135,7 @@ func TestOthersAreAlphabeticalAndNotFeatured(t *testing.T) {
 func TestLanguageOrderByUsage(t *testing.T) {
 	t.Parallel()
 
-	aws, ok := Get("aws")
+	aws, ok := testCatalog().Get("aws")
 	require.True(t, ok)
 
 	displayNames := make([]string, len(aws.Languages))
@@ -141,6 +156,7 @@ func TestLanguageOrderByUsage(t *testing.T) {
 func TestLanguagesAreFilteredPerProvider(t *testing.T) {
 	t.Parallel()
 
+	cat := testCatalog()
 	tests := []struct {
 		provider string
 		language string
@@ -159,7 +175,7 @@ func TestLanguagesAreFilteredPerProvider(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.provider+"-"+tt.language, func(t *testing.T) {
 			t.Parallel()
-			_, ok := Resolve(tt.provider, tt.language)
+			_, ok := cat.Resolve(tt.provider, tt.language)
 			assert.Equal(t, tt.want, ok)
 		})
 	}
@@ -168,11 +184,12 @@ func TestLanguagesAreFilteredPerProvider(t *testing.T) {
 func TestResolveBuildsTemplateName(t *testing.T) {
 	t.Parallel()
 
-	name, ok := Resolve("aws", "typescript")
+	cat := testCatalog()
+	name, ok := cat.Resolve("aws", "typescript")
 	require.True(t, ok)
 	assert.Equal(t, "aws-typescript", name)
 
-	name, ok = Resolve("rediscloud", "python")
+	name, ok = cat.Resolve("rediscloud", "python")
 	require.True(t, ok)
 	assert.Equal(t, "rediscloud-python", name)
 }
@@ -180,15 +197,51 @@ func TestResolveBuildsTemplateName(t *testing.T) {
 func TestResolveUnknownProvider(t *testing.T) {
 	t.Parallel()
 
-	_, ok := Resolve("nope", "typescript")
+	_, ok := testCatalog().Resolve("nope", "typescript")
 	assert.False(t, ok)
 }
 
-func TestNoNonTemplateDirectoriesLeakIn(t *testing.T) {
+func TestSplitTemplateName(t *testing.T) {
 	t.Parallel()
 
-	for _, id := range []string{"tests", "scripts", "generator", "metadata"} {
-		_, ok := Get(id)
-		assert.False(t, ok, "%q is not a template provider", id)
+	tests := []struct {
+		name           string
+		provider, lang string
+		ok             bool
+	}{
+		{"aws-typescript", "aws", "typescript", true},
+		{"rediscloud-go", "rediscloud", "go", true},
+		{"typescript", "none", "typescript", true},
+		{"java", "none", "java", true},
+		{"java-gradle", "none", "java-gradle", true},
+		{"vpc-baseline", "", "", false},
+		{"scripts", "", "", false},
+		{"", "", "", false},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			provider, lang, ok := splitTemplateName(tt.name)
+			assert.Equal(t, tt.ok, ok)
+			assert.Equal(t, tt.provider, provider)
+			assert.Equal(t, tt.lang, lang)
+		})
+	}
+}
+
+func TestEmptyCatalog(t *testing.T) {
+	t.Parallel()
+
+	assert.True(t, New(nil).Empty())
+	assert.True(t, New([]string{"vpc-baseline", "scripts"}).Empty(), "unparseable names yield no providers")
+	assert.False(t, testCatalog().Empty())
+}
+
+func TestUnknownProviderFallsBackToRawDisplayName(t *testing.T) {
+	t.Parallel()
+
+	cat := New([]string{"newcloud-go"})
+	p, ok := cat.Get("newcloud")
+	require.True(t, ok, "a provider not in the curated display map must still be reachable")
+	assert.Equal(t, "newcloud", p.DisplayName)
 }

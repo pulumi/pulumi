@@ -36,14 +36,6 @@ const (
 
 type selectFunc func(message string, options []string, opts display.Options) (string, error)
 
-// publishedTemplate exposes GetPublisher; workspaceTemplate (from pulumi/templates) does not.
-type publishedTemplate interface{ GetPublisher() string }
-
-func isRegistryTemplate(t cmdTemplates.Template) bool {
-	_, ok := t.(publishedTemplate)
-	return ok
-}
-
 func surveySelect(message string, options []string, opts display.Options) (string, error) {
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 	var answer string
@@ -57,17 +49,50 @@ func surveySelect(message string, options []string, opts display.Options) (strin
 	return answer, nil
 }
 
+// pick prompts for one of items, presenting each by its display name, and returns the chosen item.
+func pick[T any](
+	sel selectFunc, message string, opts display.Options, items []T, name func(T) string,
+) (T, error) {
+	var zero T
+	options := make([]string, len(items))
+	byName := make(map[string]T, len(items))
+	for i, item := range items {
+		options[i] = name(item)
+		byName[name(item)] = item
+	}
+	answer, err := sel(message, options, opts)
+	if err != nil {
+		return zero, err
+	}
+	chosen, ok := byName[answer]
+	if !ok {
+		return zero, fmt.Errorf("no such option: %q", answer)
+	}
+	return chosen, nil
+}
+
 // chooseGuided returns (nil, nil) when the caller should fall back to the flat chooser.
 func chooseGuided(
 	templates []cmdTemplates.Template, opts display.Options, sel selectFunc,
 ) (cmdTemplates.Template, error) {
 	byName := make(map[string]cmdTemplates.Template, len(templates))
 	var registryTemplates []cmdTemplates.Template
+	curatedNames := make([]string, 0, len(templates))
 	for _, t := range templates {
 		byName[t.Name()] = t
-		if isRegistryTemplate(t) {
+		if t.FromRegistry() {
 			registryTemplates = append(registryTemplates, t)
+		} else {
+			curatedNames = append(curatedNames, t.Name())
 		}
+	}
+
+	cat := catalog.New(curatedNames)
+	if cat.Empty() && len(registryTemplates) == 0 {
+		return nil, nil
+	}
+	if cat.Empty() {
+		return chooseRegistryTemplate(registryTemplates, opts, sel)
 	}
 
 	if len(registryTemplates) > 0 {
@@ -81,7 +106,7 @@ func chooseGuided(
 		}
 	}
 
-	provider, err := chooseProvider(opts, sel)
+	provider, err := chooseProvider(cat, opts, sel)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +116,7 @@ func chooseGuided(
 		return nil, err
 	}
 
-	name, ok := catalog.Resolve(provider.ID, language)
+	name, ok := cat.Resolve(provider.ID, language)
 	if !ok {
 		return nil, nil
 	}
@@ -102,8 +127,10 @@ func chooseGuided(
 	return template, nil
 }
 
-func chooseProvider(opts display.Options, sel selectFunc) (catalog.Provider, error) {
-	featured := catalog.Featured()
+func providerDisplayName(p catalog.Provider) string { return p.DisplayName }
+
+func chooseProvider(cat *catalog.Catalog, opts display.Options, sel selectFunc) (catalog.Provider, error) {
+	featured := cat.Featured()
 	options := make([]string, 0, len(featured)+1)
 	byDisplayName := make(map[string]catalog.Provider, len(featured))
 	for _, p := range featured {
@@ -119,55 +146,22 @@ func chooseProvider(opts display.Options, sel selectFunc) (catalog.Provider, err
 	if answer != optionOther {
 		return byDisplayName[answer], nil
 	}
-
-	others := catalog.Others()
-	otherOptions := make([]string, 0, len(others))
-	otherByDisplayName := make(map[string]catalog.Provider, len(others))
-	for _, p := range others {
-		otherOptions = append(otherOptions, p.DisplayName)
-		otherByDisplayName[p.DisplayName] = p
-	}
-
-	answer, err = sel("\rWhich provider would you like to use?\n", otherOptions, opts)
-	if err != nil {
-		return catalog.Provider{}, err
-	}
-	return otherByDisplayName[answer], nil
+	return pick(sel, "\rWhich provider would you like to use?\n", opts, cat.Others(), providerDisplayName)
 }
 
 func chooseLanguage(provider catalog.Provider, opts display.Options, sel selectFunc) (string, error) {
-	options := make([]string, 0, len(provider.Languages))
-	byDisplayName := make(map[string]string, len(provider.Languages))
-	for _, l := range provider.Languages {
-		options = append(options, l.DisplayName)
-		byDisplayName[l.DisplayName] = l.ID
-	}
-
-	answer, err := sel("\rWhich language would you like to use?\n", options, opts)
+	language, err := pick(
+		sel, "\rWhich language would you like to use?\n", opts,
+		provider.Languages, func(l catalog.Language) string { return l.DisplayName })
 	if err != nil {
 		return "", err
 	}
-	return byDisplayName[answer], nil
+	return language.ID, nil
 }
 
 func chooseRegistryTemplate(
 	registryTemplates []cmdTemplates.Template, opts display.Options, sel selectFunc,
 ) (cmdTemplates.Template, error) {
-	options := make([]string, 0, len(registryTemplates))
-	byDisplayName := make(map[string]cmdTemplates.Template, len(registryTemplates))
-	for _, t := range registryTemplates {
-		options = append(options, t.DisplayName())
-		byDisplayName[t.DisplayName()] = t
-	}
-
-	message := fmt.Sprintf("\rPlease choose a template (%d total):\n", len(options))
-	answer, err := sel(message, options, opts)
-	if err != nil {
-		return nil, err
-	}
-	template, ok := byDisplayName[answer]
-	if !ok {
-		return nil, fmt.Errorf("no such template: %q", answer)
-	}
-	return template, nil
+	message := fmt.Sprintf("\rPlease choose a template (%d total):\n", len(registryTemplates))
+	return pick(sel, message, opts, registryTemplates, func(t cmdTemplates.Template) string { return t.DisplayName() })
 }

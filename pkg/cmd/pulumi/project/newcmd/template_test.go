@@ -93,7 +93,7 @@ func TestTemplateChooserPicksGuidedOnlyWhenNothingIsNamed(t *testing.T) {
 	}
 }
 
-func TestGuidedChooserFallsBackToFlatOnStaleCatalog(t *testing.T) {
+func TestGuidedChooserFallsBackToFlatWhenNothingIsCurated(t *testing.T) {
 	t.Parallel()
 
 	flatCalled := false
@@ -101,11 +101,14 @@ func TestGuidedChooserFallsBackToFlatOnStaleCatalog(t *testing.T) {
 		flatCalled = true
 		return fakeTemplate{name: "flat"}, nil
 	}
-	sel, _ := scriptedSelect(t, "AWS", "TypeScript")
+	sel := func(string, []string, display.Options) (string, error) {
+		t.Error("no prompt may be shown when the catalog is empty")
+		return "", nil
+	}
 
-	// The catalog resolves aws-typescript, which is absent here, so guided must defer to the flat list.
+	// A name the catalog can't decompose yields no providers, so guided must defer to the flat list.
 	got, err := guidedChooser(sel, flat)(
-		[]cmdTemplates.Template{fakeTemplate{name: "gcp-go"}},
+		[]cmdTemplates.Template{fakeTemplate{name: "unparseable"}},
 		display.Options{IsInteractive: true},
 	)
 	require.NoError(t, err)

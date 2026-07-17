@@ -126,6 +126,9 @@ type Template interface {
 	DisplayName() string
 	Description() string
 	Error() error
+	// FromRegistry reports whether this template comes from the registry (a published or org
+	// template) rather than the curated pulumi/templates set.
+	FromRegistry() bool
 	// Download the template and return an instantiable [workspace.Template] for this template.
 	Download(ctx context.Context) (workspace.Template, error)
 }

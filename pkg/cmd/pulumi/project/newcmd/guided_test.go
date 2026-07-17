@@ -35,6 +35,7 @@ func (f fakeTemplate) Name() string        { return f.name }
 func (f fakeTemplate) DisplayName() string { return f.name }
 func (f fakeTemplate) Description() string { return "" }
 func (f fakeTemplate) Error() error        { return f.err }
+func (f fakeTemplate) FromRegistry() bool  { return false }
 func (f fakeTemplate) Download(ctx context.Context) (workspace.Template, error) {
 	return workspace.Template{}, nil
 }
@@ -44,7 +45,7 @@ type fakeRegistryTemplate struct {
 	publisher string
 }
 
-func (f fakeRegistryTemplate) GetPublisher() string { return f.publisher }
+func (f fakeRegistryTemplate) FromRegistry() bool { return true }
 
 // scriptedSelect answers each prompt in order, asserting the option offered is present.
 func scriptedSelect(t *testing.T, answers ...string) (selectFunc, *[]([]string)) {
@@ -61,11 +62,11 @@ func scriptedSelect(t *testing.T, answers ...string) (selectFunc, *[]([]string))
 	}, &offered
 }
 
-func TestIsRegistryTemplate(t *testing.T) {
+func TestFromRegistry(t *testing.T) {
 	t.Parallel()
 
-	assert.False(t, isRegistryTemplate(fakeTemplate{name: "aws-typescript"}))
-	assert.True(t, isRegistryTemplate(fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}))
+	assert.False(t, fakeTemplate{name: "aws-typescript"}.FromRegistry())
+	assert.True(t, fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}.FromRegistry())
 }
 
 func TestGuidedResolvesFeaturedProvider(t *testing.T) {
@@ -134,7 +135,12 @@ func TestGuidedNoneResolvesToBareTemplate(t *testing.T) {
 func TestGuidedNonePositionInCloudPrompt(t *testing.T) {
 	t.Parallel()
 
-	templates := []cmdTemplates.Template{fakeTemplate{name: "typescript"}}
+	templates := []cmdTemplates.Template{
+		fakeTemplate{name: "aws-typescript"},
+		fakeTemplate{name: "azure-typescript"},
+		fakeTemplate{name: "gcp-typescript"},
+		fakeTemplate{name: "typescript"},
+	}
 	sel, offered := scriptedSelect(t, "None", "TypeScript")
 
 	_, err := chooseGuided(templates, display.Options{}, sel)
@@ -145,7 +151,10 @@ func TestGuidedNonePositionInCloudPrompt(t *testing.T) {
 func TestGuidedNoneJavaIsSplitByBuildSystem(t *testing.T) {
 	t.Parallel()
 
-	templates := []cmdTemplates.Template{fakeTemplate{name: "java-gradle"}}
+	templates := []cmdTemplates.Template{
+		fakeTemplate{name: "java"},
+		fakeTemplate{name: "java-gradle"},
+	}
 	sel, offered := scriptedSelect(t, "None", "Java (Gradle)")
 
 	got, err := chooseGuided(templates, display.Options{}, sel)
@@ -200,16 +209,20 @@ func TestChooseRegistryTemplateErrorsOnUnknownAnswer(t *testing.T) {
 		sel,
 	)
 	assert.Nil(t, got)
-	assert.ErrorContains(t, err, "no such template")
+	assert.ErrorContains(t, err, "no such option")
 }
 
-func TestGuidedFallsBackWhenResolvedTemplateMissing(t *testing.T) {
+func TestGuidedFallsBackWhenNothingIsCurated(t *testing.T) {
 	t.Parallel()
 
-	templates := []cmdTemplates.Template{fakeTemplate{name: "gcp-go"}}
-	sel, _ := scriptedSelect(t, "AWS", "TypeScript")
+	// A name the catalog can't decompose yields an empty catalog, so guided defers to the flat list.
+	templates := []cmdTemplates.Template{fakeTemplate{name: "unparseable"}}
+	sel := func(string, []string, display.Options) (string, error) {
+		t.Error("no prompt may be shown when the catalog is empty")
+		return "", nil
+	}
 
 	got, err := chooseGuided(templates, display.Options{}, sel)
-	require.NoError(t, err, "a stale catalog must not be a hard error")
+	require.NoError(t, err, "an empty catalog must not be a hard error")
 	assert.Nil(t, got, "nil signals fallback to the flat chooser")
 }
