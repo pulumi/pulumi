@@ -47,10 +47,10 @@ type Parameterization struct {
 
 // ToProviderParameterization converts a workspace parameterization to a provider parameterization.
 func (p *Parameterization) ToProviderParameterization(
-	typ tokens.Type, version *semver.Version,
+	pkg tokens.Package, version *semver.Version,
 ) (tokens.Package, *semver.Version, *workspace.Parameterization, error) {
 	if p == nil {
-		return typ.Package(), version, nil, nil
+		return pkg, version, nil, nil
 	}
 
 	if version == nil {
@@ -58,10 +58,19 @@ func (p *Parameterization) ToProviderParameterization(
 	}
 
 	return p.PluginName, &p.PluginVersion, &workspace.Parameterization{
-		Name:    string(typ.Package()),
+		Name:    string(pkg),
 		Version: *version,
 		Value:   p.Value,
 	}, nil
+}
+
+// importPackage returns the package an import's provider serves: for provider-typed imports the
+// provider's own package, otherwise the resource type's package.
+func importPackage(typ tokens.Type) tokens.Package {
+	if sdkproviders.IsProviderType(typ) {
+		return sdkproviders.GetProviderPackage(typ)
+	}
+	return typ.Package()
 }
 
 // An Import specifies a resource to import.
@@ -318,7 +327,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, errors.New("incorrect package type specified")
 		}
 
-		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(
+			importPackage(imp.Type), imp.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -496,15 +506,25 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			inputs = resource.PropertyMap{}
 		}
 
-		// Overlay version/URL/checksums from the Import if present and not already in inputs.
-		if imp.Version != nil {
-			providers.SetProviderVersion(inputs, imp.Version)
+		// Overlay version/URL/checksums/parameterization from the Import if present and not already
+		// in inputs.
+		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(
+			importPackage(imp.Type), imp.Version)
+		if err != nil {
+			return nil, err
+		}
+		if version != nil {
+			providers.SetProviderVersion(inputs, version)
 		}
 		if imp.PluginDownloadURL != "" {
 			providers.SetProviderURL(inputs, imp.PluginDownloadURL)
 		}
 		if len(imp.PluginChecksums) > 0 {
 			providers.SetProviderChecksums(inputs, imp.PluginChecksums)
+		}
+		if parameterization != nil {
+			providers.SetProviderName(inputs, pkg)
+			providers.SetProviderParameterization(inputs, parameterization)
 		}
 
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{
@@ -582,7 +602,8 @@ func (i *importer) importProviderURN(imp Import) (resource.URN, error) {
 	if imp.Provider != "" {
 		return imp.Provider, nil
 	}
-	pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+	pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(
+		importPackage(imp.Type), imp.Version)
 	if err != nil {
 		return "", err
 	}
@@ -689,7 +710,8 @@ func (i *importer) importResources(ctx context.Context) error {
 
 		providerURN := imp.Provider
 		if providerURN == "" && (!imp.Component || imp.Remote) {
-			pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+			pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(
+				importPackage(imp.Type), imp.Version)
 			if err != nil {
 				return err
 			}

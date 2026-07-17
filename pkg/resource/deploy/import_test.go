@@ -519,3 +519,143 @@ func TestImporterParameterizedProvider(t *testing.T) {
 	_, err := i.registerProviders(t.Context())
 	require.NoError(t, err)
 }
+
+func TestImporterParameterizedExplicitProvider(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	version := semver.MustParse("1.2.3")
+	parameterized := false
+	mockProvider := plugin.MockProvider{
+		ParameterizeF: func(ctx context.Context, paramReq plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			pValue, ok := paramReq.Parameters.(*plugin.ParameterizeValue)
+			assert.True(t, ok)
+			assert.Equal(t, pValue, &plugin.ParameterizeValue{
+				Name:    "ParameterizationName",
+				Version: semver.MustParse("1.2.3"),
+				Value:   []byte("parameterization-value"),
+			})
+			parameterized = true
+			return plugin.ParameterizeResponse{
+				Name:    "ParameterizationName",
+				Version: semver.MustParse("1.2.3"),
+			}, nil
+		},
+		CloseF: func() error {
+			return nil
+		},
+		CheckConfigF: func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+			return plugin.CheckConfigResponse{}, nil
+		},
+	}
+	providerURN := resource.URN(
+		"urn:pulumi:stack-name::project-name::pulumi:providers:ParameterizationName::my-provider")
+	i := &importer{
+		executor: &stepExecutor{
+			ctx: ctx,
+		},
+		deployment: &Deployment{
+			goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
+			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+			target: &Target{
+				Name: tokens.MustParseStackName("stack-name"),
+			},
+			source: &nullSource{},
+			providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+				ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+					assert.Equal(t, "foo", descriptor.Name)
+					assert.Equal(t, "1.0.0", descriptor.Version.String())
+					return &mockProvider, nil
+				},
+			}), true, nil),
+			imports: []Import{
+				{
+					Version:  &version,
+					Type:     "ParameterizationName:bar:Bar",
+					Name:     "res",
+					ID:       "some-id",
+					Provider: providerURN,
+					ProviderInputs: resource.PropertyMap{
+						"region": resource.NewProperty("eu-west-1"),
+					},
+					Parameterization: &Parameterization{
+						PluginName:    "foo",
+						PluginVersion: semver.MustParse("1.0.0"),
+						Value:         []byte("parameterization-value"),
+					},
+				},
+			},
+		},
+	}
+	_, err := i.registerProviders(t.Context())
+	require.NoError(t, err)
+	assert.True(t, parameterized)
+}
+
+func TestImporterParameterizedDeclaredProvider(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	version := semver.MustParse("1.2.3")
+	parameterized := false
+	mockProvider := plugin.MockProvider{
+		ParameterizeF: func(ctx context.Context, paramReq plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			pValue, ok := paramReq.Parameters.(*plugin.ParameterizeValue)
+			assert.True(t, ok)
+			assert.Equal(t, pValue, &plugin.ParameterizeValue{
+				Name:    "ParameterizationName",
+				Version: semver.MustParse("1.2.3"),
+				Value:   []byte("parameterization-value"),
+			})
+			parameterized = true
+			return plugin.ParameterizeResponse{
+				Name:    "ParameterizationName",
+				Version: semver.MustParse("1.2.3"),
+			}, nil
+		},
+		CloseF: func() error {
+			return nil
+		},
+		CheckConfigF: func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+			return plugin.CheckConfigResponse{}, nil
+		},
+	}
+	i := &importer{
+		executor: &stepExecutor{
+			ctx: ctx,
+		},
+		deployment: &Deployment{
+			goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
+			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+			target: &Target{
+				Name: tokens.MustParseStackName("stack-name"),
+			},
+			source: &nullSource{},
+			providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+				ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+					assert.Equal(t, "foo", descriptor.Name)
+					assert.Equal(t, "1.0.0", descriptor.Version.String())
+					return &mockProvider, nil
+				},
+			}), true, nil),
+			imports: []Import{
+				{
+					Version: &version,
+					Type:    "pulumi:providers:ParameterizationName",
+					Name:    "my-provider",
+					ProviderInputs: resource.PropertyMap{
+						"region": resource.NewProperty("eu-west-1"),
+					},
+					Parameterization: &Parameterization{
+						PluginName:    "foo",
+						PluginVersion: semver.MustParse("1.0.0"),
+						Value:         []byte("parameterization-value"),
+					},
+				},
+			},
+		},
+	}
+	_, err := i.registerProviders(t.Context())
+	require.NoError(t, err)
+	assert.True(t, parameterized)
+}

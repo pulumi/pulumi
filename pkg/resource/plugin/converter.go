@@ -49,6 +49,10 @@ type ResourceImport struct {
 	// Properties lists the input properties to include when generating code for the resource. Defaults to
 	// the resource's required properties.
 	Properties []string
+
+	// Provider is the name of the resource's explicit provider, if any. It must reference the name of a
+	// provider declared as another resource in the same response.
+	Provider string
 }
 
 // ResourceParameterization describes the base plugin that a resource's parameterized provider is built
