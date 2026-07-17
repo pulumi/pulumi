@@ -2,3 +2,5 @@ component: cli/import
 kind: improvement
 body: Allow explicit providers to be declared in the resources section of an import file and referenced by name
 time: 2026-07-17T15:42:48.639192+01:00
+custom:
+    PR: "23972"
