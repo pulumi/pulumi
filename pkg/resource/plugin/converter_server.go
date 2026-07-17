@@ -56,7 +56,6 @@ func (c *converterServer) ConvertState(ctx context.Context,
 			IsComponent:       resource.IsComponent,
 			Parent:            resource.Parent,
 			Properties:        resource.Properties,
-			Provider:          resource.Provider,
 		}
 		if p := resource.Parameterization; p != nil {
 			resources[i].Parameterization = &pulumirpc.ResourceParameterization{

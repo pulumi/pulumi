@@ -74,7 +74,6 @@ func (c *testConverter) ConvertState(
 				},
 				Parent:     "test:parent",
 				Properties: []string{"prop1", "prop2"},
-				Provider:   "test:provider",
 			},
 		},
 		Diagnostics: diags,
@@ -170,7 +169,6 @@ func TestConverterServer_State(t *testing.T) {
 	assert.Equal(t, []byte("test:extValue"), res.Extension.Value)
 	assert.Equal(t, "test:parent", res.Parent)
 	assert.Equal(t, []string{"prop1", "prop2"}, res.Properties)
-	assert.Equal(t, "test:provider", res.Provider)
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, codegenrpc.DiagnosticSeverity_DIAG_ERROR, diag.Severity)

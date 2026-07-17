@@ -453,8 +453,7 @@ isRemote: jspb.Message.getBooleanFieldWithDefault(msg, 8, false),
 parameterization: (f = msg.getParameterization()) && proto.pulumirpc.ResourceParameterization.toObject(includeInstance, f),
 extension: (f = msg.getExtension$()) && proto.pulumirpc.ResourceExtension.toObject(includeInstance, f),
 parent: jspb.Message.getFieldWithDefault(msg, 11, ""),
-propertiesList: (f = jspb.Message.getRepeatedField(msg, 12)) == null ? undefined : f,
-provider: jspb.Message.getFieldWithDefault(msg, 13, "")
+propertiesList: (f = jspb.Message.getRepeatedField(msg, 12)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -540,10 +539,6 @@ proto.pulumirpc.ResourceImport.deserializeBinaryFromReader = function(msg, reade
     case 12:
       var value = /** @type {string} */ (reader.readString());
       msg.addProperties(value);
-      break;
-    case 13:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setProvider(value);
       break;
     default:
       reader.skipField();
@@ -657,13 +652,6 @@ proto.pulumirpc.ResourceImport.serializeBinaryToWriter = function(message, write
   if (f.length > 0) {
     writer.writeRepeatedString(
       12,
-      f
-    );
-  }
-  f = message.getProvider();
-  if (f.length > 0) {
-    writer.writeString(
-      13,
       f
     );
   }
@@ -940,24 +928,6 @@ proto.pulumirpc.ResourceImport.prototype.addProperties = function(value, opt_ind
  */
 proto.pulumirpc.ResourceImport.prototype.clearPropertiesList = function() {
   return this.setPropertiesList([]);
-};
-
-
-/**
- * optional string provider = 13;
- * @return {string}
- */
-proto.pulumirpc.ResourceImport.prototype.getProvider = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 13, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.ResourceImport} returns this
- */
-proto.pulumirpc.ResourceImport.prototype.setProvider = function(value) {
-  return jspb.Message.setProto3StringField(this, 13, value);
 };
 
 
