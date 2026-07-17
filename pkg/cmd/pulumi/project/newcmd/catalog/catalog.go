@@ -13,9 +13,12 @@
 // limitations under the License.
 
 // Package catalog turns the flat list of available template names into the provider/language
-// structure the guided `pulumi new` flow walks through. The structure (which providers exist and
-// which languages each supports) is derived from the live template names, so new upstream templates
-// appear automatically; only the presentation (display names, featured set, ordering) is curated.
+// structure the guided `pulumi new` flow walks through. Providers are open-ended: a template for a
+// previously unseen provider appears automatically (with its raw id as the display name until someone
+// curates one). Languages are a closed set: languageDisplayNames doubles as the vocabulary that splits
+// "<provider>-<language>" names, so a template whose suffix is an unregistered language id won't parse
+// and stays out of the guided flow (still reachable via the flat list) until the id is added here.
+// Only presentation (display names, featured set, ordering) is curated.
 package catalog
 
 import (

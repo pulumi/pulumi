@@ -95,7 +95,6 @@ type newArgs struct {
 	listTemplates         bool
 	aiPrompt              string
 	aiLanguage            httpstate.PulumiAILanguage
-	templateMode          bool
 	runtimeOptions        []string
 	remoteStackConfig     bool
 	stdout                io.Writer
@@ -610,8 +609,7 @@ func NewNewCmd() *cobra.Command {
 			"* `pulumi new https://<user>:<password>@<hostname>/<project>/<repo>`\n" +
 			"* `pulumi new <user>@<hostname>:<project>/<repo>`\n" +
 			"* `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`\n" +
-			"To create a project using Pulumi AI, either select `ai` from the first selection, " +
-			"or provide any of the following:\n" +
+			"To create a project using Pulumi AI, provide any of the following:\n" +
 			"* `pulumi new --ai \"<prompt>\"`\n" +
 			"* `pulumi new --language <language>`\n" +
 			"* `pulumi new --ai \"<prompt>\" --language <language>`\n" +
@@ -712,10 +710,7 @@ func NewNewCmd() *cobra.Command {
 		&args.aiLanguage, "language", "Language to use for Pulumi AI "+
 			fmt.Sprintf("(must be one of %s)", httpstate.PulumiAILanguagesClause),
 	)
-	cmd.PersistentFlags().BoolVarP(
-		&args.templateMode, "template-mode", "t", false,
-		"Deprecated: no longer has any effect",
-	)
+	cmd.PersistentFlags().BoolP("template-mode", "t", false, "Deprecated: no longer has any effect")
 	_ = cmd.PersistentFlags().MarkHidden("template-mode")
 	cmd.PersistentFlags().StringSliceVar(
 		&args.runtimeOptions, "runtime-options", []string{},

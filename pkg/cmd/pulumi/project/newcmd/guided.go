@@ -50,21 +50,29 @@ func surveySelect(message string, options []string, opts display.Options) (strin
 }
 
 // pick prompts for one of items, presenting each by its display name, and returns the chosen item.
+// Duplicate display names (possible for registry/org templates) are suffixed so every option is
+// distinct: showing two identical rows would be ambiguous both to the user and to the reverse lookup.
 func pick[T any](
 	sel selectFunc, message string, opts display.Options, items []T, name func(T) string,
 ) (T, error) {
 	var zero T
 	options := make([]string, len(items))
-	byName := make(map[string]T, len(items))
+	byLabel := make(map[string]T, len(items))
+	counts := make(map[string]int, len(items))
 	for i, item := range items {
-		options[i] = name(item)
-		byName[name(item)] = item
+		label := name(item)
+		counts[label]++
+		if n := counts[label]; n > 1 {
+			label = fmt.Sprintf("%s (%d)", label, n)
+		}
+		options[i] = label
+		byLabel[label] = item
 	}
 	answer, err := sel(message, options, opts)
 	if err != nil {
 		return zero, err
 	}
-	chosen, ok := byName[answer]
+	chosen, ok := byLabel[answer]
 	if !ok {
 		return zero, fmt.Errorf("no such option: %q", answer)
 	}
@@ -116,18 +124,19 @@ func chooseGuided(
 		return nil, err
 	}
 
+	// Past this point the user has answered the provider and language prompts, so a miss is a broken
+	// invariant (the prompts only offer values the catalog can resolve), not a reason to silently fall
+	// back to the flat list after having already prompted. Surface it instead.
 	name, ok := cat.Resolve(provider.ID, language)
 	if !ok {
-		return nil, nil
+		return nil, fmt.Errorf("no template for provider %q and language %q", provider.ID, language)
 	}
 	template, ok := byName[name]
 	if !ok {
-		return nil, nil
+		return nil, fmt.Errorf("template %q is missing from the available set", name)
 	}
 	return template, nil
 }
-
-func providerDisplayName(p catalog.Provider) string { return p.DisplayName }
 
 func chooseProvider(cat *catalog.Catalog, opts display.Options, sel selectFunc) (catalog.Provider, error) {
 	featured := cat.Featured()
@@ -146,7 +155,9 @@ func chooseProvider(cat *catalog.Catalog, opts display.Options, sel selectFunc) 
 	if answer != optionOther {
 		return byDisplayName[answer], nil
 	}
-	return pick(sel, "\rWhich provider would you like to use?\n", opts, cat.Others(), providerDisplayName)
+	return pick(
+		sel, "\rWhich provider would you like to use?\n", opts, cat.Others(),
+		func(p catalog.Provider) string { return p.DisplayName })
 }
 
 func chooseLanguage(provider catalog.Provider, opts display.Options, sel selectFunc) (string, error) {

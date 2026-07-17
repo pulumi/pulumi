@@ -196,6 +196,22 @@ func TestGuidedRegistryTemplatesShowSourceStepAndSkipLanguage(t *testing.T) {
 	assert.Contains(t, (*offered)[0], sourceRegistryTemplates)
 }
 
+func TestChooseRegistryTemplateDisambiguatesDuplicateNames(t *testing.T) {
+	t.Parallel()
+
+	first := fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}
+	second := fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "globex"}
+	sel, offered := scriptedSelect(t, "vpc (2)")
+
+	got, err := chooseRegistryTemplate(
+		[]cmdTemplates.Template{first, second}, display.Options{}, sel)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+
+	require.Len(t, *offered, 1)
+	assert.Equal(t, []string{"vpc", "vpc (2)"}, (*offered)[0], "duplicate labels must be suffixed so both are selectable")
+}
+
 func TestChooseRegistryTemplateErrorsOnUnknownAnswer(t *testing.T) {
 	t.Parallel()
 
