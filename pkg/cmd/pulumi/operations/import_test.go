@@ -151,7 +151,45 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 			wantErrs: []string{
 				"1 error occurred",
-				"the provider 'unknown' for resource 'thing' of type 'foo:bar:baz' has no entry in 'nameTable'",
+				"the provider 'unknown' for resource 'thing' of type 'foo:bar:baz' has no entry in 'nameTable' or 'resources'",
+			},
+		},
+		{
+			desc: "provider with an ID",
+			give: importFile{
+				Resources: []importSpec{
+					{
+						Name: "prov",
+						ID:   "some-id",
+						Type: "pulumi:providers:aws",
+					},
+				},
+			},
+			wantErrs: []string{
+				"1 error occurred",
+				"resource 'prov' of type 'pulumi:providers:aws' has an ID, but is a provider, which is created rather than read",
+			},
+		},
+		{
+			desc: "provider reference to a non-provider resource",
+			give: importFile{
+				Resources: []importSpec{
+					{
+						Name: "bucket",
+						ID:   "bucket-id",
+						Type: "aws:s3/bucket:Bucket",
+					},
+					{
+						Name:     "thing",
+						ID:       "thing-id",
+						Type:     "aws:s3/bucket:Bucket",
+						Provider: "bucket",
+					},
+				},
+			},
+			wantErrs: []string{
+				"1 error occurred",
+				"the provider 'bucket' for resource 'thing' of type 'aws:s3/bucket:Bucket' is not a provider",
 			},
 		},
 		{
@@ -563,6 +601,38 @@ func TestParseImportFileProviderInputs(t *testing.T) {
 	require.NotNil(t, imports[0].ProviderInputs)
 	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].ProviderInputs["region"])
 	assert.Equal(t, resource.NewProperty("6.0.0"), imports[0].ProviderInputs["version"])
+}
+
+func TestParseImportFileDeclaredProvider(t *testing.T) {
+	t.Parallel()
+
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name: "my-prov",
+				Type: "pulumi:providers:aws",
+			},
+			{
+				Name:     "thing",
+				ID:       "thing-id",
+				Type:     "aws:s3:Bucket",
+				Provider: "my-prov",
+			},
+		},
+		ProviderInputs: map[string]map[string]any{
+			"my-prov": {
+				"region": "eu-west-1",
+			},
+		},
+	}
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+	require.NoError(t, err)
+	require.Len(t, imports, 2)
+
+	providerURN := resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::my-prov")
+	require.NotNil(t, imports[0].ProviderInputs)
+	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].ProviderInputs["region"])
+	assert.Equal(t, providerURN, imports[1].Provider)
 }
 
 func TestParseImportFileProviderInputsWithoutEntry(t *testing.T) {

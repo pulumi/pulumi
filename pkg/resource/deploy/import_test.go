@@ -224,6 +224,55 @@ func TestImporter(t *testing.T) {
 			_, err := i.registerProviders(t.Context())
 			assert.ErrorIs(t, err, expectedErr)
 		})
+		t.Run("provider declared as an import is created with its own inputs", func(t *testing.T) {
+			t.Parallel()
+
+			providerURN := resource.URN("urn:pulumi:stack-name::project-name::pulumi:providers:foo::my-provider")
+			expectedErr := errors.New("expected check config error")
+
+			i := &importer{
+				deployment: &Deployment{
+					goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
+					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+					target: &Target{
+						Name: tokens.MustParseStackName("stack-name"),
+					},
+					source: &nullSource{},
+					providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+						ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+							return &deploytest.Provider{
+								CheckConfigF: func(
+									_ context.Context, req plugin.CheckConfigRequest,
+								) (plugin.CheckConfigResponse, error) {
+									// The inputs come from the declared provider entry, not the
+									// referencing import, which carries none.
+									assert.Equal(t, resource.NewProperty("eu-west-1"),
+										req.News["region"])
+									return plugin.CheckConfigResponse{}, expectedErr
+								},
+							}, nil
+						},
+					}), true, nil),
+					imports: []Import{
+						{
+							Type: "pulumi:providers:foo",
+							Name: "my-provider",
+							ProviderInputs: resource.PropertyMap{
+								"region": resource.NewProperty("eu-west-1"),
+							},
+						},
+						{
+							Type:     "foo:bar:Bar",
+							Name:     "res",
+							ID:       "some-id",
+							Provider: providerURN,
+						},
+					},
+				},
+			}
+			_, err := i.registerProviders(t.Context())
+			assert.ErrorIs(t, err, expectedErr)
+		})
 		t.Run("explicit provider already in state uses existing reference", func(t *testing.T) {
 			t.Parallel()
 
