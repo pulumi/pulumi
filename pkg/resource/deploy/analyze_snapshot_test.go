@@ -18,6 +18,8 @@ import (
 	"errors"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -70,9 +72,9 @@ func (r *recordingPolicyEvents) OnPolicyAnalyzeStackSummary(s plugin.PolicySumma
 	r.stackSumm = append(r.stackSumm, s)
 }
 
-// makeTestResource creates a simple resource.State for use in tests.
-func makeTestResource(urn resource.URN) *resource.State {
-	return &resource.State{
+// makeTestResource creates a simple pkgresource.State for use in tests.
+func makeTestResource(urn resource.URN) *pkgresource.State {
+	return &pkgresource.State{
 		Type:    tokens.Type("pkg:index:MyResource"),
 		URN:     urn,
 		Custom:  true,
@@ -98,7 +100,7 @@ func TestAnalyzeSnapshot_NoAnalyzers(t *testing.T) {
 	t.Parallel()
 
 	snap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			makeTestResource("urn:pulumi:stack::project::pkg:index:MyResource::res"),
 		},
 	}
@@ -129,7 +131,7 @@ func TestAnalyzeSnapshot_AdvisoryViolationReturnsFalse(t *testing.T) {
 
 	urn := resource.URN("urn:pulumi:stack::project::pkg:index:MyResource::res")
 	snap := &deploy.Snapshot{
-		Resources: []*resource.State{makeTestResource(urn)},
+		Resources: []*pkgresource.State{makeTestResource(urn)},
 	}
 	events := &recordingPolicyEvents{}
 
@@ -161,7 +163,7 @@ func TestAnalyzeSnapshot_MandatoryViolationReturnsTrue(t *testing.T) {
 
 	urn := resource.URN("urn:pulumi:stack::project::pkg:index:MyResource::res")
 	snap := &deploy.Snapshot{
-		Resources: []*resource.State{makeTestResource(urn)},
+		Resources: []*pkgresource.State{makeTestResource(urn)},
 	}
 	events := &recordingPolicyEvents{}
 
@@ -194,7 +196,7 @@ func TestAnalyzeSnapshot_SkipsDeletedResources(t *testing.T) {
 	deleted := makeTestResource("urn:pulumi:stack::project::pkg:index:MyResource::deleted")
 	deleted.Delete = true
 
-	snap := &deploy.Snapshot{Resources: []*resource.State{live, deleted}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{live, deleted}}
 	events := &recordingPolicyEvents{}
 
 	var analyzed []resource.URN
@@ -221,7 +223,7 @@ func TestAnalyzeSnapshot_RemediationReportedNotApplied(t *testing.T) {
 	res := makeTestResource(urn)
 	res.Inputs = resource.ToResourcePropertyMap(original)
 
-	snap := &deploy.Snapshot{Resources: []*resource.State{res}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{res}}
 	events := &recordingPolicyEvents{}
 
 	analyzer := &deploytest.Analyzer{
@@ -256,7 +258,7 @@ func TestAnalyzeSnapshot_RemediationDiagnosticReportedAsAdvisory(t *testing.T) {
 	t.Parallel()
 
 	urn := resource.URN("urn:pulumi:stack::project::pkg:index:MyResource::res")
-	snap := &deploy.Snapshot{Resources: []*resource.State{makeTestResource(urn)}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{makeTestResource(urn)}}
 	events := &recordingPolicyEvents{}
 
 	analyzer := &deploytest.Analyzer{
@@ -283,7 +285,7 @@ func TestAnalyzeSnapshot_StackLevelViolation(t *testing.T) {
 	t.Parallel()
 
 	urn := resource.URN("urn:pulumi:stack::project::pkg:index:MyResource::res")
-	snap := &deploy.Snapshot{Resources: []*resource.State{makeTestResource(urn)}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{makeTestResource(urn)}}
 	events := &recordingPolicyEvents{}
 
 	analyzer := &deploytest.Analyzer{
@@ -317,12 +319,12 @@ func TestAnalyzeSnapshot_StackLevelViolation(t *testing.T) {
 func TestAnalyzeSnapshot_StackLevelViolationUsesRootStackResource(t *testing.T) {
 	t.Parallel()
 
-	rootStack := &resource.State{
+	rootStack := &pkgresource.State{
 		Type: resource.RootStackType,
 		URN:  "urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack",
 	}
 	res := makeTestResource("urn:pulumi:stack::project::pkg:index:MyResource::res")
-	snap := &deploy.Snapshot{Resources: []*resource.State{rootStack, res}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{rootStack, res}}
 	events := &recordingPolicyEvents{}
 
 	analyzer := &deploytest.Analyzer{
@@ -379,13 +381,13 @@ func TestAnalyzeSnapshot_StackLevelViolationDeletedTargetFallsBackToRoot(t *test
 
 	// Deleted resources are not sent to AnalyzeStack, so a stack diagnostic naming one is
 	// not a valid target and must fall back to the root stack rather than be trusted.
-	rootStack := &resource.State{
+	rootStack := &pkgresource.State{
 		Type: resource.RootStackType,
 		URN:  "urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack",
 	}
 	deleted := makeTestResource("urn:pulumi:stack::project::pkg:index:MyResource::gone")
 	deleted.Delete = true
-	snap := &deploy.Snapshot{Resources: []*resource.State{rootStack, deleted}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{rootStack, deleted}}
 	events := &recordingPolicyEvents{}
 
 	analyzer := &deploytest.Analyzer{
@@ -415,7 +417,7 @@ func TestAnalyzeSnapshot_StackLevelViolationResourceScopedURNPreserved(t *testin
 	// A stack-level analyzer may attribute a violation to a specific live resource; that
 	// URN names a current resource, so it is preserved rather than replaced by the root stack.
 	res := makeTestResource("urn:pulumi:stack::project::pkg:index:MyResource::res")
-	snap := &deploy.Snapshot{Resources: []*resource.State{res}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{res}}
 	events := &recordingPolicyEvents{}
 
 	analyzer := &deploytest.Analyzer{
@@ -444,13 +446,13 @@ func TestAnalyzeSnapshot_StackLevelViolationSkipsInvalidRootStackURN(t *testing.
 
 	// A root stack resource with a malformed URN must not be used as the attribution
 	// target; it is skipped and a valid URN is synthesized from another resource instead.
-	badRootStack := &resource.State{
+	badRootStack := &pkgresource.State{
 		Type:   resource.RootStackType,
 		URN:    "not-a-valid-urn",
 		Delete: true, // deleted so the per-resource pass skips it (URN.Name would panic)
 	}
 	res := makeTestResource("urn:pulumi:stack::project::pkg:index:MyResource::res")
-	snap := &deploy.Snapshot{Resources: []*resource.State{badRootStack, res}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{badRootStack, res}}
 	events := &recordingPolicyEvents{}
 
 	analyzer := &deploytest.Analyzer{
@@ -478,7 +480,7 @@ func TestAnalyzeSnapshot_AnalyzeErrorPropagated(t *testing.T) {
 	t.Parallel()
 
 	urn := resource.URN("urn:pulumi:stack::project::pkg:index:MyResource::res")
-	snap := &deploy.Snapshot{Resources: []*resource.State{makeTestResource(urn)}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{makeTestResource(urn)}}
 	events := &recordingPolicyEvents{}
 
 	analyzeErr := errors.New("analyzer exploded")
@@ -498,7 +500,7 @@ func TestAnalyzeSnapshot_RemediateErrorPropagated(t *testing.T) {
 	t.Parallel()
 
 	urn := resource.URN("urn:pulumi:stack::project::pkg:index:MyResource::res")
-	snap := &deploy.Snapshot{Resources: []*resource.State{makeTestResource(urn)}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{makeTestResource(urn)}}
 	events := &recordingPolicyEvents{}
 
 	remediateErr := errors.New("remediation exploded")
@@ -519,7 +521,7 @@ func TestAnalyzeSnapshot_MultipleResources(t *testing.T) {
 
 	res1 := makeTestResource("urn:pulumi:stack::project::pkg:index:MyResource::res1")
 	res2 := makeTestResource("urn:pulumi:stack::project::pkg:index:MyResource::res2")
-	snap := &deploy.Snapshot{Resources: []*resource.State{res1, res2}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{res1, res2}}
 	events := &recordingPolicyEvents{}
 
 	analyzer := &deploytest.Analyzer{
@@ -547,7 +549,7 @@ func TestAnalyzeSnapshot_SummaryEventsEmitted(t *testing.T) {
 	t.Parallel()
 
 	urn := resource.URN("urn:pulumi:stack::project::pkg:index:MyResource::res")
-	snap := &deploy.Snapshot{Resources: []*resource.State{makeTestResource(urn)}}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{makeTestResource(urn)}}
 	events := &recordingPolicyEvents{}
 
 	analyzer := &deploytest.Analyzer{

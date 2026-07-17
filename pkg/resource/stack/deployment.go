@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"reflect"
 	"slices"
@@ -42,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -275,7 +275,7 @@ func SerializeDeploymentWithMetadata(
 		}
 	}
 
-	features := maputil.SortedKeys(featureMap)
+	features := slices.Sorted(maps.Keys(featureMap))
 	if len(features) == 0 {
 		features = nil
 	}
@@ -533,7 +533,7 @@ func DeserializeDeploymentV3(
 	}
 
 	type deserializedData struct {
-		resources []*resource.State
+		resources []*pkgresource.State
 		ops       []pkgresource.Operation
 	}
 
@@ -542,7 +542,7 @@ func DeserializeDeploymentV3(
 		secretsManager,
 		func(ctx context.Context, dec config.Decrypter) (deserializedData, error) {
 			// For every serialized resource vertex, create a ResourceDeployment out of it.
-			resources := slice.Prealloc[*resource.State](len(deployment.Resources))
+			resources := slice.Prealloc[*pkgresource.State](len(deployment.Resources))
 			for _, res := range deployment.Resources {
 				desres, err := DeserializeResource(res, dec)
 				if err != nil {
@@ -584,7 +584,8 @@ func DeserializeDeploymentV3(
 		}
 	}
 	return deploy.NewSnapshot(
-		*manifest, secretsManager, data.resources, data.ops, metadata, snippets, deployment.Extensions), nil
+		*manifest, secretsManager, data.resources, data.ops, metadata, snippets, deployment.Extensions,
+	), nil
 }
 
 // initializeSecretsManager initializes the secrets manager for a deployment.
@@ -611,7 +612,7 @@ func initializeSecretsManager(
 
 // SerializeResource turns a resource into a structure suitable for serialization.
 func SerializeResource(
-	ctx context.Context, res *resource.State, enc config.Encrypter, showSecrets bool,
+	ctx context.Context, res *pkgresource.State, enc config.Encrypter, showSecrets bool,
 ) (apitype.ResourceV3, error) {
 	contract.Requiref(res != nil, "res", "must not be nil")
 	contract.Requiref(res.URN != "", "res", "must have a URN")
@@ -642,7 +643,7 @@ func SerializeResource(
 		return apitype.ResourceV3{}, err
 	}
 
-	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame resource.StackFrame) apitype.StackFrameV1 {
+	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame pkgresource.StackFrame) apitype.StackFrameV1 {
 		return apitype.StackFrameV1{SourcePosition: frame.SourcePosition}
 	}))
 
@@ -846,7 +847,7 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
-func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resource.State, error) {
+func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*pkgresource.State, error) {
 	// Deserialize the resource properties, if they exist.
 	inputs, err := DeserializeProperties(res.Inputs, dec)
 	if err != nil {
@@ -874,11 +875,11 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 		return nil, fmt.Errorf("resource '%s' has 'custom' false but non-empty ID", res.URN)
 	}
 
-	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame apitype.StackFrameV1) resource.StackFrame {
-		return resource.StackFrame{SourcePosition: frame.SourcePosition}
+	stackTrace := slices.Collect(fxs.Map(res.StackTrace, func(frame apitype.StackFrameV1) pkgresource.StackFrame {
+		return pkgresource.StackFrame{SourcePosition: frame.SourcePosition}
 	}))
 
-	return resource.NewState{
+	return pkgresource.NewState{
 			Type:                    res.Type,
 			URN:                     res.URN,
 			Custom:                  res.Custom,

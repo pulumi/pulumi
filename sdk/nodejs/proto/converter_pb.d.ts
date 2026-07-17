@@ -5,7 +5,6 @@
 /* eslint-disable */
 
 import * as jspb from "google-protobuf";
-import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 import * as pulumi_codegen_hcl_pb from "./codegen/hcl_pb";
 import * as pulumi_codegen_loader_pb from "./codegen/loader_pb";
 
@@ -167,9 +166,6 @@ export class ConvertStateResponse extends jspb.Message {
     setDiagnosticsList(value: Array<pulumi_codegen_hcl_pb.Diagnostic>): ConvertStateResponse;
     addDiagnostics(value?: pulumi_codegen_hcl_pb.Diagnostic, index?: number): pulumi_codegen_hcl_pb.Diagnostic;
 
-    getProviderInputsMap(): jspb.Map<string, google_protobuf_struct_pb.Struct>;
-    clearProviderInputsMap(): void;
-
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConvertStateResponse.AsObject;
     static toObject(includeInstance: boolean, msg: ConvertStateResponse): ConvertStateResponse.AsObject;
@@ -184,8 +180,6 @@ export namespace ConvertStateResponse {
     export type AsObject = {
         resourcesList: Array<ResourceImport.AsObject>,
         diagnosticsList: Array<pulumi_codegen_hcl_pb.Diagnostic.AsObject>,
-
-        providerInputsMap: Array<[string, google_protobuf_struct_pb.Struct.AsObject]>,
     }
 }
 

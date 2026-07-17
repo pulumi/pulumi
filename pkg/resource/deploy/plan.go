@@ -347,7 +347,7 @@ func (rp *ResourcePlan) diffAliases(a, b []resource.Alias) (message string, chan
 // This is similar to ResourcePlan.checkGoal but for the case we're we don't have a goal saved.
 // This simple checks that we're not changing anything.
 func checkMissingPlan(
-	oldState *resource.State,
+	oldState *pkgresource.State,
 	newInputs resource.PropertyMap,
 	programGoal *pkgresource.Goal,
 ) error {

@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,7 +30,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update parent, no-op", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Dependencies: []resource.URN{
@@ -60,7 +62,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update parent, identity", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Parent:   "urn:pulumi:stack::project::type:name::parent",
@@ -94,7 +96,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update parent, modify", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Parent:   "urn:pulumi:stack::project::type:name::parent",
@@ -131,7 +133,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update provider, no-op", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:    "urn:pulumi:stack::project::type:name",
 			Parent: "urn:pulumi:stack::project::type:name::parent",
 			Dependencies: []resource.URN{
@@ -166,7 +168,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update provider, identity", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Parent:   "urn:pulumi:stack::project::type:name::parent",
@@ -201,7 +203,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update provider, modify", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Parent:   "urn:pulumi:stack::project::type:name::parent",
@@ -238,7 +240,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update dependencies, no-op", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Parent:   "urn:pulumi:stack::project::type:name::parent",
@@ -269,7 +271,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update dependencies, identity", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Parent:   "urn:pulumi:stack::project::type:name::parent",
@@ -305,7 +307,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update dependencies, modify", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Parent:   "urn:pulumi:stack::project::type:name::parent",
@@ -342,7 +344,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update property dependencies, no-op", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Parent:   "urn:pulumi:stack::project::type:name::parent",
@@ -371,7 +373,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update property dependencies, identity", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Parent:   "urn:pulumi:stack::project::type:name::parent",
@@ -407,7 +409,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update property dependencies, modify", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Parent:   "urn:pulumi:stack::project::type:name::parent",
@@ -444,7 +446,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update deleted with, no-op", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Parent:   "urn:pulumi:stack::project::type:name::parent",
@@ -478,7 +480,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update deleted with, identity", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Parent:   "urn:pulumi:stack::project::type:name::parent",
@@ -514,7 +516,7 @@ func TestStateBuilder(t *testing.T) {
 	t.Run("Update deleted with, modify", func(t *testing.T) {
 		t.Parallel()
 
-		s0 := &resource.State{
+		s0 := &pkgresource.State{
 			URN:      "urn:pulumi:stack::project::type:name",
 			Provider: "urn:pulumi:providers::pkgA::prov::v1",
 			Parent:   "urn:pulumi:stack::project::type:name::parent",
@@ -549,24 +551,24 @@ func TestStateBuilder(t *testing.T) {
 	})
 }
 
-func justProvider(dep resource.StateDependency) bool {
+func justProvider(dep pkgresource.StateDependency) bool {
 	return false
 }
 
-func justParent(dep resource.StateDependency) bool {
-	return dep.Type == resource.ResourceParent
+func justParent(dep pkgresource.StateDependency) bool {
+	return dep.Type == pkgresource.ResourceParent
 }
 
-func justDependencies(dep resource.StateDependency) bool {
-	return dep.Type == resource.ResourceDependency
+func justDependencies(dep pkgresource.StateDependency) bool {
+	return dep.Type == pkgresource.ResourceDependency
 }
 
-func justPropertyDependencies(dep resource.StateDependency) bool {
-	return dep.Type == resource.ResourcePropertyDependency
+func justPropertyDependencies(dep pkgresource.StateDependency) bool {
+	return dep.Type == pkgresource.ResourcePropertyDependency
 }
 
-func justDeletedWith(dep resource.StateDependency) bool {
-	return dep.Type == resource.ResourceDeletedWith
+func justDeletedWith(dep pkgresource.StateDependency) bool {
+	return dep.Type == pkgresource.ResourceDeletedWith
 }
 
 func panicWith[T any](t T) T {

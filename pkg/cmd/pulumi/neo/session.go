@@ -27,13 +27,15 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/net/http2"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // Reconnect tuning. Backoff doubles per consecutive failure up to reconnectMaxBackoff;
-// the total budget resets on every successfully-delivered event. Vars (not consts) so
-// tests can override them.
+// the total budget resets on every successfully-delivered event or keep-alive. Vars
+// (not consts) so tests can override them.
 var (
 	reconnectInitialBackoff = 1 * time.Second
 	reconnectMaxBackoff     = 30 * time.Second
@@ -72,6 +74,9 @@ type Session struct {
 	Handlers map[string]ToolHandler
 	OrgName  string
 	TaskID   string
+	// LastEventID, when non-empty, is used for the initial SSE open. This lets
+	// resume flows attach from the current tail without replaying old events.
+	LastEventID string
 	// Log receives single-line status messages so the caller can render them however it
 	// likes (stderr today, a TUI tomorrow). nil disables logging.
 	Log io.Writer
@@ -93,7 +98,7 @@ type Session struct {
 // exhausted.
 func (s *Session) Run(ctx context.Context) error {
 	var (
-		lastEventID string
+		lastEventID = s.LastEventID
 		failures    int
 		deadline    time.Time
 	)
@@ -138,7 +143,8 @@ func (s *Session) Run(ctx context.Context) error {
 
 // drainStream reads events until the channel closes, ctx is cancelled, or an error
 // event arrives. It updates *lastEventID for each event that carries an `id:`. The
-// first return reports whether any non-error event was delivered.
+// first return reports whether the stream made progress by delivering either data or
+// a keep-alive.
 func (s *Session) drainStream(
 	ctx context.Context, stream <-chan client.NeoStreamEvent, lastEventID *string,
 ) (bool, error) {
@@ -153,6 +159,10 @@ func (s *Session) drainStream(
 			}
 			if evt.Err != nil {
 				return gotEvent, evt.Err
+			}
+			if evt.KeepAlive {
+				gotEvent = true
+				continue
 			}
 			if evt.ID != "" {
 				*lastEventID = evt.ID
@@ -185,6 +195,15 @@ func isTransientStreamError(err error) bool {
 	var ue *url.Error
 	if errors.As(err, &ue) {
 		return !errors.Is(ue.Err, context.Canceled)
+	}
+	var streamErr http2.StreamError
+	if errors.As(err, &streamErr) {
+		if streamErr.Code == http2.ErrCodeInternal ||
+			streamErr.Code == http2.ErrCodeCancel ||
+			streamErr.Code == http2.ErrCodeRefusedStream {
+			return true
+		}
+		return false
 	}
 	var oe *net.OpError
 	return errors.As(err, &oe)
@@ -390,22 +409,28 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 		return
 	}
 
+	for _, event := range uiEventsFromAgentResponse(eventBody) {
+		sendUI(s.UIEvents, event)
+	}
+}
+
+func uiEventsFromAgentResponse(eventBody json.RawMessage) []UIEvent {
 	var head apitype.AgentBackendEventHeader
 	if err := json.Unmarshal(eventBody, &head); err != nil {
-		return
+		return nil
 	}
 
 	switch head.Type {
 	case backendEventAssistantMessage:
 		var msg apitype.AgentBackendEventAssistantMessage
 		if err := json.Unmarshal(eventBody, &msg); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIAssistantMessage{
+		events := []UIEvent{UIAssistantMessage{
 			Content:           msg.Content,
 			IsFinal:           msg.IsFinal,
 			HasPendingCLIWork: msg.IsFinal && hasPendingCLIToolCalls(msg.ToolCalls),
-		})
+		}}
 		// todo__TodoWrite is cloud-marked, so it never reaches runBatch / the
 		// UIToolStarted path — forward the args directly as a UITodoList.
 		for _, tc := range msg.ToolCalls {
@@ -413,50 +438,51 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 				continue
 			}
 			if items, ok := parseTodoWriteArgs(tc.Args); ok {
-				sendUI(s.UIEvents, UITodoList{Items: items})
+				events = append(events, UITodoList{Items: items})
 			}
 		}
+		return events
 	case backendEventExecToolCallProgress:
 		var p apitype.AgentBackendEventExecToolCallProgress
 		if err := json.Unmarshal(eventBody, &p); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIToolProgress{Name: p.Name, Message: p.Content})
+		return []UIEvent{UIToolProgress{Name: p.Name, Message: p.Content}}
 	case backendEventError:
 		var e apitype.AgentBackendEventError
 		if err := json.Unmarshal(eventBody, &e); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIError{Message: e.Message})
+		return []UIEvent{UIError{Message: e.Message}}
 	case backendEventWarning:
 		var w apitype.AgentBackendEventWarning
 		if err := json.Unmarshal(eventBody, &w); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIWarning{Message: w.Message})
+		return []UIEvent{UIWarning{Message: w.Message}}
 	case backendEventCancelled:
-		sendUI(s.UIEvents, UICancelled{})
+		return []UIEvent{UICancelled{}}
 	case backendEventUserApprovalRequest:
 		var req apitype.AgentBackendEventUserApprovalRequest
 		if err := json.Unmarshal(eventBody, &req); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIApprovalRequest{
+		return []UIEvent{UIApprovalRequest{
 			ApprovalID:      req.ApprovalID,
 			Message:         req.Message,
 			Sensitivity:     req.Sensitivity,
 			ApprovalType:    req.ApprovalType,
 			PlanDescription: req.Context.PlanDescription,
 			ToolName:        req.Context.ToolName,
-		})
+		}}
 	case backendEventAwaitingApprovals:
-		sendUI(s.UIEvents, UIAwaitingApprovals{})
+		return []UIEvent{UIAwaitingApprovals{}}
 	case backendEventContextCompression:
 		var c apitype.AgentBackendEventContextCompression
 		if err := json.Unmarshal(eventBody, &c); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIContextCompression{Status: c.Status})
+		return []UIEvent{UIContextCompression{Status: c.Status}}
 	case backendEventToolResponse,
 		userEventExecToolCall, // server-side echo of a tool running (same discriminator as the CLI-posted event)
 		backendEventChangeEntities,
@@ -466,6 +492,7 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 		// Tick is self-perpetuating while busy, and m.cancelling persists across
 		// events until a final one arrives.
 	}
+	return nil
 }
 
 // forwardUserInputToUI parses a userInput event body and routes it to the TUI:
@@ -478,30 +505,63 @@ func (s *Session) forwardUserInputToUI(eventBody json.RawMessage) {
 		return
 	}
 
+	for _, event := range uiEventsFromUserInput(eventBody) {
+		sendUI(s.UIEvents, event)
+	}
+}
+
+func uiEventsFromUserInput(eventBody json.RawMessage) []UIEvent {
 	// Peek at the inner type; we reuse AgentBackendEventHeader because it's just
 	// a Type field and the JSON shape on the user-input side matches.
 	var head apitype.AgentBackendEventHeader
 	if err := json.Unmarshal(eventBody, &head); err != nil {
-		return
+		return nil
 	}
 
 	switch head.Type {
 	case userEventUserMessage:
 		var evt apitype.AgentUserEventUserMessage
 		if err := json.Unmarshal(eventBody, &evt); err != nil {
-			return
+			return nil
 		}
 		if evt.Content != "" {
-			sendUI(s.UIEvents, UIUserMessage{Content: evt.Content})
+			return []UIEvent{UIUserMessage{Content: evt.Content}}
 		}
 	case userEventUserConfirmation:
 		var evt apitype.AgentUserEventUserConfirmation
 		if err := json.Unmarshal(eventBody, &evt); err != nil {
-			return
+			return nil
 		}
-		sendUI(s.UIEvents, UIApprovalResolved{
+		return []UIEvent{UIApprovalResolved{
 			ApprovalID: evt.ApprovalID,
 			Approved:   evt.Approved,
-		})
+		}}
+	case userEventExecToolCall:
+		var evt apitype.AgentUserEventExecToolCall
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return nil
+		}
+		return []UIEvent{UIToolStarted{Name: evt.Name}}
+	case userEventToolResult:
+		var evt apitype.AgentUserEventToolResult
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return nil
+		}
+		events := make([]UIEvent, 0, len(evt.ToolResults))
+		for _, result := range evt.ToolResults {
+			resultRaw, err := json.Marshal(result.Content)
+			if err != nil {
+				resultRaw, _ = json.Marshal(map[string]string{
+					"marshal_error": err.Error(),
+				})
+			}
+			events = append(events, UIToolCompleted{
+				Name:    result.Name,
+				Result:  resultRaw,
+				IsError: result.IsError,
+			})
+		}
+		return events
 	}
+	return nil
 }

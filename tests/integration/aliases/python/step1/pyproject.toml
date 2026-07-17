@@ -1,0 +1,4 @@
+[project]
+name = "aliases_python"
+version = "0.0.0"
+dependencies = []

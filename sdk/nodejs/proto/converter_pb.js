@@ -15,8 +15,6 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var proto = { codegen: { }, pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
-var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
-goog.object.extend(proto, google_protobuf_struct_pb);
 var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
 goog.object.extend(proto, pulumi_codegen_hcl_pb);
 var pulumi_codegen_loader_pb = require('./codegen/loader_pb.js');
@@ -1463,8 +1461,7 @@ proto.pulumirpc.ConvertStateResponse.toObject = function(includeInstance, msg) {
 resourcesList: jspb.Message.toObjectList(msg.getResourcesList(),
     proto.pulumirpc.ResourceImport.toObject, includeInstance),
 diagnosticsList: jspb.Message.toObjectList(msg.getDiagnosticsList(),
-    pulumi_codegen_hcl_pb.Diagnostic.toObject, includeInstance),
-providerInputsMap: (f = msg.getProviderInputsMap()) ? f.toObject(includeInstance, proto.google.protobuf.Struct.toObject) : []
+    pulumi_codegen_hcl_pb.Diagnostic.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -1511,12 +1508,6 @@ proto.pulumirpc.ConvertStateResponse.deserializeBinaryFromReader = function(msg,
       reader.readMessage(value,pulumi_codegen_hcl_pb.Diagnostic.deserializeBinaryFromReader);
       msg.addDiagnostics(value);
       break;
-    case 3:
-      var value = msg.getProviderInputsMap();
-      reader.readMessage(value, function(message, reader) {
-        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.google.protobuf.Struct.deserializeBinaryFromReader, "", new proto.google.protobuf.Struct());
-         });
-      break;
     default:
       reader.skipField();
       break;
@@ -1561,10 +1552,6 @@ proto.pulumirpc.ConvertStateResponse.serializeBinaryToWriter = function(message,
       f,
       pulumi_codegen_hcl_pb.Diagnostic.serializeBinaryToWriter
     );
-  }
-  f = message.getProviderInputsMap(true);
-  if (f && f.getLength() > 0) {
-    f.serializeBinary(3, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeMessage, proto.google.protobuf.Struct.serializeBinaryToWriter);
   }
 };
 
@@ -1642,29 +1629,6 @@ proto.pulumirpc.ConvertStateResponse.prototype.addDiagnostics = function(opt_val
  */
 proto.pulumirpc.ConvertStateResponse.prototype.clearDiagnosticsList = function() {
   return this.setDiagnosticsList([]);
-};
-
-
-/**
- * map<string, google.protobuf.Struct> provider_inputs = 3;
- * @param {boolean=} opt_noLazyCreate Do not create the map if
- * empty, instead returning `undefined`
- * @return {!jspb.Map<string,!proto.google.protobuf.Struct>}
- */
-proto.pulumirpc.ConvertStateResponse.prototype.getProviderInputsMap = function(opt_noLazyCreate) {
-  return /** @type {!jspb.Map<string,!proto.google.protobuf.Struct>} */ (
-      jspb.Message.getMapField(this, 3, opt_noLazyCreate,
-      proto.google.protobuf.Struct));
-};
-
-
-/**
- * Clears values from the map. The map will be non-null.
- * @return {!proto.pulumirpc.ConvertStateResponse} returns this
- */
-proto.pulumirpc.ConvertStateResponse.prototype.clearProviderInputsMap = function() {
-  this.getProviderInputsMap().clear();
-  return this;
 };
 
 

@@ -39,6 +39,7 @@ import (
 	// We need to re-use glogs flags otherwise we'd get conflicts if another dependency pulled in glog later.
 	_ "github.com/golang/glog"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
@@ -82,6 +83,54 @@ func rebuildLogger() {
 		exporter: exportHandler,
 	}}
 	slog.SetDefault(slog.New(h))
+}
+
+// logRedactable is implemented by attribute values (such as the property types) that know how to
+// replace their secret contents for plaintext log output. Only the primary (stderr or log file)
+// output redacts; the sink and export handlers receive unredacted records.
+type logRedactable interface {
+	RedactedLogValue() slog.Value
+}
+
+func redactAttr(a slog.Attr) slog.Attr {
+	if k := a.Value.Kind(); k != slog.KindAny && k != slog.KindLogValuer {
+		return a
+	}
+	switch v := a.Value.Any().(type) {
+	case logRedactable:
+		a.Value = v.RedactedLogValue()
+	case map[string]any:
+		a.Value = slog.AnyValue(redactSecretsInJSON(v))
+	case []any:
+		a.Value = slog.AnyValue(redactSecretsInJSON(v))
+	}
+	return a
+}
+
+// redactSecretsInJSON walks an already-serialized JSON value and replaces any object carrying the
+// Pulumi secret signature with "[secret]". Unlike the in-place walk `pulumi logs share` uses on
+// records it owns, this copies: the original value is shared with the unredacted sink and export
+// log outputs.
+func redactSecretsInJSON(v any) any {
+	switch val := v.(type) {
+	case map[string]any:
+		if s, ok := val[sig.Key].(string); ok && s == sig.Secret {
+			return "[secret]"
+		}
+		redacted := make(map[string]any, len(val))
+		for k, child := range val {
+			redacted[k] = redactSecretsInJSON(child)
+		}
+		return redacted
+	case []any:
+		redacted := make([]any, len(val))
+		for i, child := range val {
+			redacted[i] = redactSecretsInJSON(child)
+		}
+		return redacted
+	default:
+		return val
+	}
 }
 
 // SetExportHandler installs an slog.Handler for OTLP log export.
@@ -228,16 +277,15 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	} else if f := flag.CommandLine.Lookup("v"); f != nil {
 		fmt.Sscan(f.Value.String(), &Verbose) //nolint:errcheck
 	}
-
 	initExportHandler(filepath.Base(os.Args[0]))
 
 	handlerMu.Lock()
 
 	switch {
-	case LogToStderr && exportHandler != nil:
-		// Logs already flow to the engine over OTel, so ignore --logtostderr:
-		// writing JSON records to stderr would only leak them into the
-		// engine's display of our output.
+	case exportHandler != nil:
+		// Logs already flow to the engine over OTel, so skip local output:
+		// a log file would only duplicate them, and writing JSON records to
+		// stderr would leak them into the engine's display of our output.
 		primary = discardHandler{}
 	case LogToStderr:
 		primary = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
@@ -367,6 +415,7 @@ func (f formattingHandler) Handle(ctx context.Context, r slog.Record) error {
 	var fmtArgs []any
 	var other []slog.Attr
 	r.Attrs(func(a slog.Attr) bool {
+		a = redactAttr(a)
 		if strings.HasPrefix(a.Key, "pulumi.log.arg") {
 			fmtArgs = append(fmtArgs, a.Value.Any())
 		} else {
@@ -386,7 +435,11 @@ func (f formattingHandler) Handle(ctx context.Context, r slog.Record) error {
 }
 
 func (f formattingHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return formattingHandler{inner: f.inner.WithAttrs(attrs)}
+	redacted := make([]slog.Attr, len(attrs))
+	for i, a := range attrs {
+		redacted[i] = redactAttr(a)
+	}
+	return formattingHandler{inner: f.inner.WithAttrs(redacted)}
 }
 
 func (f formattingHandler) WithGroup(name string) slog.Handler {

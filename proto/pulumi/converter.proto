@@ -14,7 +14,6 @@
 
 syntax = "proto3";
 
-import "google/protobuf/struct.proto";
 import "pulumi/codegen/hcl.proto";
 import "pulumi/codegen/loader.proto";
 
@@ -85,10 +84,9 @@ message ResourceImport {
     // required properties.
     repeated string properties = 12;
 
-    // the name of the resource's explicit provider, if any. Resources sharing a provider name are served
-    // by the same explicit provider, created during import; its package, version, and parameterization
-    // are taken from the resources that reference it, and its configuration may be supplied via the
-    // response's provider_inputs.
+    // the name of the resource's explicit provider, if any. Must reference the name of a provider
+    // declared as another resource (of type "pulumi:providers:<package>") in the same response;
+    // resources without a provider are served by an appropriate default provider.
     string provider = 13;
 }
 
@@ -120,11 +118,6 @@ message ConvertStateResponse {
 
     // any diagnostics from state conversion.
     repeated pulumirpc.codegen.Diagnostic diagnostics = 2;
-
-    // the configuration inputs for the explicit providers referenced by resources' provider fields, keyed
-    // by those names. Providers without an entry are created with empty configuration. Secret values are
-    // marked with Pulumi's standard secret signature.
-    map<string, google.protobuf.Struct> provider_inputs = 3;
 }
 
 message ConvertProgramRequest {

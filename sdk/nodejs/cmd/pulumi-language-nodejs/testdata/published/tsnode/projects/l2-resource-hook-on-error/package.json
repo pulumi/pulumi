@@ -1,0 +1,11 @@
+{
+	"name": "l2-resource-hook-on-error",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/flaky": "ROOT/artifacts/pulumi-flaky-46.0.0.tgz"
+	}
+}

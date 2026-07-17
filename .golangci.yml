@@ -239,6 +239,7 @@ linters:
       - node_modules
       - testdata$
       - third_party$
+      - third_party/
       - vendor$
 formatters:
   enable:
@@ -252,4 +253,5 @@ formatters:
       - node_modules
       - testdata$
       - third_party$
+      - third_party/
       - vendor$

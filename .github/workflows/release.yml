@@ -197,7 +197,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         with:
           repo: pulumi/pulumictl
-          tag: v0.0.42
+          tag: v0.0.50
           cache: enable
       - name: Repository Dispatch
         run: ${{ matrix.job.run-command }}

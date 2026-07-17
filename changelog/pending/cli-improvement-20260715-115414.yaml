@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Make `-v<n> --logflow` no longer produce separate log files for plugins
+time: 2026-07-15T11:54:14.933795614+02:00

@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/Netflix/go-expect"
 	backenddisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -60,7 +62,7 @@ func makeResourcePreEvent(urn, resType string, op display.StepOp, retainOnDelete
 			URN:  resource.URN(urn),
 			Type: tokens.Type(resType),
 			Old: &engine.StepEventStateMetadata{
-				State: &resource.State{
+				State: &pkgresource.State{
 					URN:            resource.URN(urn),
 					Type:           tokens.Type(resType),
 					RetainOnDelete: retainOnDelete,

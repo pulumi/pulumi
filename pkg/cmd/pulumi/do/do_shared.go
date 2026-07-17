@@ -59,7 +59,8 @@ import (
 
 func startSpinner(prefix string) func() {
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(
-		prefix, nil, cmdutil.GetGlobalColorization(), 8 /*timesPerSecond*/, !cmdutil.Interactive())
+		prefix, nil, cmdutil.GetGlobalColorization(), 8 /*timesPerSecond*/, !cmdutil.Interactive(),
+	)
 	spinner.Tick()
 	stop := make(chan struct{})
 	stopped := make(chan struct{})
@@ -313,8 +314,9 @@ func evaluatePCL(
 
 // evaluateFile reads an input file in the given format and evaluates it. For non-PCL formats the source is routed
 // through the named converter plugin's ConvertSnippet RPC and the resulting PCL is fed into the same bind pipeline.
-// An empty path is treated as "no input provided" and always goes through the PCL path so the bind step's
-// missing-required check still fires.
+// An empty path with no input flags is treated as "no input provided"; converter-backed formats still run for
+// resource/function input flags so those flags are interpreted by the selected converter before the bind step's
+// missing-required check runs.
 func evaluateFile(
 	ctx context.Context,
 	path, fileType, inputFormat, token string,
@@ -325,21 +327,26 @@ func evaluateFile(
 	evalContext functionEvalContext,
 	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
+	contract.Requiref(inputFormat != "", "inputFormat", "inputFormat must be non-empty")
+	filename := path
+
 	var pcl []byte
-	var filename string
-	var literals map[string]string
-	if path == "" || inputFormat == "" || inputFormat == "pcl" {
+	if path == "" {
+		// Bind still runs against an empty file so the schema's required-input check fires.
+		filename = fmt.Sprintf("<no %s file>", fileType)
+	} else {
 		var err error
-		filename = path
-		if path == "" {
-			// Bind still runs against an empty file so the schema's required-input check fires.
-			filename = fmt.Sprintf("<no %s file>", fileType)
-		} else {
-			pcl, err = os.ReadFile(path)
-			if err != nil {
-				return nil, fmt.Errorf("open %s file: %w", fileType, err)
-			}
+		pcl, err = os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("open %s file: %w", fileType, err)
 		}
+	}
+
+	var literals map[string]string
+	if len(pcl) == 0 && len(inputFlags) == 0 {
+		// No input provided; pcl and literals are empty
+	} else if inputFormat == "pcl" {
+		var err error
 		literals, err = inputFlagLiterals(inputFlags)
 		if err != nil {
 			return nil, err
@@ -351,13 +358,9 @@ func evaluateFile(
 		}
 		defer contract.IgnoreClose(converter)
 
-		source, err := os.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("read %s file: %w", fileType, err)
-		}
 		resp, err := converter.ConvertSnippet(ctx, &plugin.ConvertSnippetRequest{
-			Filename:     path,
-			Source:       source,
+			Filename:     filename,
+			Source:       pcl,
 			TargetLoader: loaderTarget,
 			Package:      packageDescriptor,
 			Token:        token,
@@ -367,7 +370,8 @@ func evaluateFile(
 			if status.Code(err) == codes.Unimplemented {
 				return nil, fmt.Errorf(
 					"%s %s converter does not support snippet conversion; use pcl format or try installing a newer %s converter",
-					inputFormat, fileType, inputFormat)
+					inputFormat, fileType, inputFormat,
+				)
 			}
 			return nil, fmt.Errorf("generate PCL from %s file: %w", fileType, err)
 		}
@@ -376,6 +380,9 @@ func evaluateFile(
 		}
 		pcl = resp.Source
 		filename = resp.Filename
+		if filename == "" {
+			filename = fmt.Sprintf("<converted %s>", fileType)
+		}
 		literals = resp.Attributes
 	}
 
@@ -542,24 +549,14 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 		typ := unwrapType(input.Type)
 		comment := flagUsage(input.Comment)
 
-		if typ == schema.StringType {
-			flagFunc = func(name, extraHelp string) {
-				flags.String(name, "", comment+extraHelp)
-			}
-		}
-		if typ == schema.BoolType {
+		switch typ {
+		case schema.BoolType:
 			flagFunc = func(name, extraHelp string) {
 				flags.Bool(name, false, comment+extraHelp)
 			}
-		}
-		if typ == schema.IntType {
+		case schema.StringType, schema.IntType, schema.NumberType:
 			flagFunc = func(name, extraHelp string) {
-				flags.Int(name, 0, comment+extraHelp)
-			}
-		}
-		if typ == schema.NumberType {
-			flagFunc = func(name, extraHelp string) {
-				flags.Float64(name, 0, comment+extraHelp)
+				flags.String(name, "", comment+extraHelp)
 			}
 		}
 
@@ -670,7 +667,8 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 	config, err := evaluateResourceFile(
 		ctx, pc.providerFile, "provider", pc.format,
 		pc.providerDef, ec, pc.converter, pc.loaderTarget, pc.packageDescriptor,
-		collectInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties))
+		collectInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties),
+	)
 	if err != nil {
 		return fmt.Errorf("parse provider file: %w", err)
 	}
@@ -714,7 +712,7 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 	ctx context.Context, providerURN resource.URN,
 ) (resource.PropertyMap, error) {
 	s, err := cmdStack.RequireStack(
-		ctx, pc.sink, pc.ws, pc.lm,
+		ctx, pc.diagFwd, pc.ws, pc.lm,
 		"", /*stackName — use whatever is currently selected*/
 		cmdStack.LoadOnly, display.Options{Color: cmdutil.GetGlobalColorization()},
 		"", /*configFile*/
@@ -738,7 +736,8 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 		if !strings.HasPrefix(string(res.Type), "pulumi:providers:") {
 			return nil, fmt.Errorf(
 				"resource %s is not a provider (type=%s); --provider must name a provider resource",
-				providerURN, res.Type)
+				providerURN, res.Type,
+			)
 		}
 		// The provider package must also match: AWS provider inputs handed to an Azure
 		// Configure call would either fail with a confusing schema mismatch or — worse — silently
@@ -747,7 +746,8 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 		if res.Type != expectedType {
 			return nil, fmt.Errorf(
 				"resource %s is a provider for a different package (type=%s); --provider must name a %s resource",
-				providerURN, res.Type, expectedType)
+				providerURN, res.Type, expectedType,
+			)
 		}
 		// Clone so we don't hand callers an aliasing pointer into the snapshot's state.
 		return maps.Clone(res.Inputs), nil
@@ -793,7 +793,8 @@ func (pc *packageCommand) confirm(cmd *cobra.Command, summary, operation string,
 		[]string{"yes", "no"},
 		"no",
 		cmdutil.GetGlobalColorization(),
-		ui.SurveyStdio(cmd.InOrStdin(), stderr)...)
+		ui.SurveyStdio(cmd.InOrStdin(), stderr)...,
+	)
 	if err != nil {
 		return fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", operation, err)
 	}

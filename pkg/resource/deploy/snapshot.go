@@ -38,7 +38,7 @@ import (
 type Snapshot struct {
 	Manifest          Manifest                // a deployment manifest of versions, checksums, and so on.
 	SecretsManager    secrets.Manager         // the manager to use use when serializing this snapshot.
-	Resources         []*resource.State       // fetches all resources and their associated states.
+	Resources         []*pkgresource.State    // fetches all resources and their associated states.
 	PendingOperations []pkgresource.Operation // all currently pending resource operations.
 	Metadata          SnapshotMetadata        // metadata associated with the snapshot.
 	Snippets          []resource.Snippet      // any PCL snippets associated with the snapshot.
@@ -66,7 +66,7 @@ type SnapshotIntegrityErrorMetadata struct {
 // NewSnapshot creates a snapshot from the given arguments.  The resources must be in topologically sorted order.
 // This property is not checked; for verification, please refer to the VerifyIntegrity function below.
 func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
-	resources []*resource.State, ops []pkgresource.Operation,
+	resources []*pkgresource.State, ops []pkgresource.Operation,
 	metadata SnapshotMetadata, snippets []resource.Snippet,
 	extensions map[apitype.ExtensionRef]apitype.Extension,
 ) *Snapshot {
@@ -84,7 +84,7 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 // MapExtensions builds the Extensions map for a snapshot. Any referenced
 // ExtensionRef that resolves to no blob is returned in missing.
 func MapExtensions(
-	resources []*resource.State,
+	resources []*pkgresource.State,
 	live map[apitype.ExtensionRef]apitype.Extension,
 	base *Snapshot,
 ) (extensions map[apitype.ExtensionRef]apitype.Extension, missing []apitype.ExtensionRef) {
@@ -135,7 +135,7 @@ func (snap *Snapshot) Prune() []PruneResult {
 	seen := map[resource.URN]resource.URN{}
 
 	for _, state := range snap.Resources {
-		var removedDeps []resource.StateDependency
+		var removedDeps []pkgresource.StateDependency
 
 		func() {
 			// Since we're potentially modifying the state, we'll need to lock it.
@@ -153,7 +153,7 @@ func (snap *Snapshot) Prune() []PruneResult {
 			_, allDeps := state.GetAllDependencies()
 			for _, dep := range allDeps {
 				switch dep.Type {
-				case resource.ResourceParent:
+				case pkgresource.ResourceParent:
 					// Since parent-child relationships affect URNs, we have more work to do for a parent dependency. If our parent
 					// is missing, we'll clear the reference and update our URN to remove the parent type. Moreover, we'll record
 					// the fact that we rewrote our URN so that any of our children can update their URNs appropriately.
@@ -178,7 +178,7 @@ func (snap *Snapshot) Prune() []PruneResult {
 						)
 						state.Parent = newParentURN
 					}
-				case resource.ResourceDependency:
+				case pkgresource.ResourceDependency:
 					// For dependencies, only preserve those that aren't dangling, taking into account any rewrites that may have
 					// occurred.
 					if newDepURN, has := seen[dep.URN]; has {
@@ -186,7 +186,7 @@ func (snap *Snapshot) Prune() []PruneResult {
 					} else {
 						removedDeps = append(removedDeps, dep)
 					}
-				case resource.ResourcePropertyDependency:
+				case pkgresource.ResourcePropertyDependency:
 					// For property dependencies, only preserve those that aren't dangling, taking into account any rewrites that
 					// may have occurred.
 					if newPropDepURN, has := seen[dep.URN]; has {
@@ -194,7 +194,7 @@ func (snap *Snapshot) Prune() []PruneResult {
 					} else {
 						removedDeps = append(removedDeps, dep)
 					}
-				case resource.ResourceDeletedWith:
+				case pkgresource.ResourceDeletedWith:
 					// Only preseve a deleted-with relationship if it isn't dangling, taking into account any rewrites that may have
 					// occurred.
 					if newDeletedWithURN, has := seen[dep.URN]; has {
@@ -203,7 +203,7 @@ func (snap *Snapshot) Prune() []PruneResult {
 						state.DeletedWith = ""
 						removedDeps = append(removedDeps, dep)
 					}
-				case resource.ResourceReplaceWith:
+				case pkgresource.ResourceReplaceWith:
 					if newReplaceWithURN, has := seen[dep.URN]; has {
 						state.ReplaceWith = append(state.ReplaceWith, newReplaceWithURN)
 					} else {
@@ -251,7 +251,7 @@ type PruneResult struct {
 	// True if and only if the resource was pending deletion.
 	Delete bool
 	// A list of dependencies that were removed as a result of pruning.
-	RemovedDependencies []resource.StateDependency
+	RemovedDependencies []pkgresource.StateDependency
 }
 
 // Repair attempts to repair this snapshot by sorting resources topologically and pruning dangling dependencies.
@@ -277,14 +277,14 @@ func (snap *Snapshot) Repair() ([]PruneResult, error) {
 // dependency-respecting order. Note that sortedness is a necessary but not sufficient condition for a snapshot to be
 // valid; the VerifyIntegrity method should be used to ensure that a snapshot is well-formed.
 func (snap *Snapshot) Toposort() error {
-	sorted := []*resource.State{}
+	sorted := []*pkgresource.State{}
 
 	// We implement the sort using a post-order depth-first search, keeping track of nodes we have visited and terminating
 	// when we have seen them all. It is not possible to sort a snapshot with cycles (and indeed, such snapshots will
 	// never be valid Pulumi states). To this end we also keep track of the path we are currently visiting so that we can
 	// spot if we are in a cycle.
-	visiting := map[*resource.State]bool{}
-	visited := map[*resource.State]bool{}
+	visiting := map[*pkgresource.State]bool{}
+	visited := map[*pkgresource.State]bool{}
 
 	// When traversing dependencies, we'll need to look them up by URN. It is possible that the same URN exists multiple
 	// times in a snapshot: in the case that the snapshot represents the state mid-way through one or more replacements,
@@ -294,8 +294,8 @@ func (snap *Snapshot) Toposort() error {
 	//
 	// NOTE: In the event of multiple old resources with the same URN, we can only implement a best-effort approach to
 	// sorting, since there is technically no way to disambiguate.
-	oldsByURN := map[resource.URN]*resource.State{}
-	newsByURN := map[resource.URN]*resource.State{}
+	oldsByURN := map[resource.URN]*pkgresource.State{}
+	newsByURN := map[resource.URN]*pkgresource.State{}
 	for _, state := range snap.Resources {
 		if state.Delete {
 			oldsByURN[state.URN] = state
@@ -387,7 +387,7 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 			len(snap.Resources), snapResources.String(), len(expected.Resources), expectedResources.String())
 	}
 
-	resourcesMap := make(map[resource.URN][]*resource.State)
+	resourcesMap := make(map[resource.URN][]*pkgresource.State)
 
 	for _, mr := range expected.Resources {
 		if len(mr.PropertyDependencies) > 0 {
@@ -465,12 +465,12 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 
 // topoVisit is a helper function for Toposort that visits a resource and its dependencies recursively.
 func topoVisit(
-	state *resource.State,
-	sorted *[]*resource.State,
-	oldsByURN map[resource.URN]*resource.State,
-	newsByURN map[resource.URN]*resource.State,
-	visiting map[*resource.State]bool,
-	visited map[*resource.State]bool,
+	state *pkgresource.State,
+	sorted *[]*pkgresource.State,
+	oldsByURN map[resource.URN]*pkgresource.State,
+	newsByURN map[resource.URN]*pkgresource.State,
+	visiting map[*pkgresource.State]bool,
+	visited map[*pkgresource.State]bool,
 ) error {
 	if visiting[state] {
 		return errors.New("snapshot has cyclic dependencies")
@@ -484,7 +484,7 @@ func topoVisit(
 	// * If there are both old and new resources with the same URN, and we are new, we take the new one; it would be
 	//   invalid for us to refer to the old state since it is going to be deleted.
 	// * If there is only one resource with the given URN, we take it.
-	lookup := func(urn resource.URN) *resource.State {
+	lookup := func(urn resource.URN) *pkgresource.State {
 		old, hasOld := oldsByURN[urn]
 		new, hasNew := newsByURN[urn]
 		if hasOld && hasNew {
@@ -506,7 +506,7 @@ func topoVisit(
 		visiting[state] = true
 
 		provider, allDeps := state.GetAllDependencies()
-		nexts := map[*resource.State]bool{}
+		nexts := map[*pkgresource.State]bool{}
 		for _, dep := range allDeps {
 			next := lookup(dep.URN)
 			if next != nil {
@@ -549,7 +549,7 @@ func topoVisit(
 // references which do not need to be indirected through any alias lookups, and which instead refer directly to the URN
 // of a resource in the resources map.
 //
-// Note: This method does not modify the snapshot (and resource.States
+// Note: This method does not modify the snapshot (and pkgresource.States
 // in the snapshot) in-place, but returns an independent structure,
 // with minimal copying necessary.
 func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
@@ -575,7 +575,8 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 				aliased[state.URN] = resource.NewURN(
 					state.URN.Stack(), state.URN.Project(),
 					parent.QualifiedType(), state.URN.Type(),
-					state.URN.Name())
+					state.URN.Name(),
+				)
 			}
 		}
 	}
@@ -597,7 +598,7 @@ func (snap *Snapshot) NormalizeURNReferences() (*Snapshot, error) {
 		return ref.String()
 	}
 
-	fixResource := func(old *resource.State) *resource.State {
+	fixResource := func(old *pkgresource.State) *pkgresource.State {
 		old.Lock.Lock()
 		defer old.Lock.Unlock()
 
@@ -673,7 +674,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 
 		// Now check the resources.  Check that the resources are well formed, that there
 		// are no duplicate URNs and that all dependencies exist in the snapshot.
-		urns := make(map[resource.URN][]*resource.State)
+		urns := make(map[resource.URN][]*pkgresource.State)
 		provs := make(map[providers.Reference]struct{})
 		for i, state := range snap.Resources {
 			urn := state.URN
@@ -719,7 +720,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 
 			for _, dep := range allDeps {
 				switch dep.Type {
-				case resource.ResourceParent:
+				case pkgresource.ResourceParent:
 					if _, has := urns[dep.URN]; !has {
 						for _, other := range snap.Resources[i+1:] {
 							if other.URN == dep.URN {
@@ -740,7 +741,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 						// TODO: Change this to an error once we're sure users won't hit this in the wild.
 						// return fmt.Errorf("child resource %s has parent %s but its URN doesn't match", urn, dep.URN)
 					}
-				case resource.ResourceDependency:
+				case pkgresource.ResourceDependency:
 					if _, has := urns[dep.URN]; !has {
 						for _, other := range snap.Resources[i+1:] {
 							if other.URN == dep.URN {
@@ -756,7 +757,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 							urn, dep.URN,
 						)
 					}
-				case resource.ResourcePropertyDependency:
+				case pkgresource.ResourcePropertyDependency:
 					if _, has := urns[dep.URN]; !has {
 						for _, other := range snap.Resources[i+1:] {
 							if other.URN == dep.URN {
@@ -772,7 +773,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 							urn, dep.URN, dep.Key,
 						)
 					}
-				case resource.ResourceDeletedWith:
+				case pkgresource.ResourceDeletedWith:
 					if _, has := urns[dep.URN]; !has {
 						for _, other := range snap.Resources[i+1:] {
 							if other.URN == dep.URN {
@@ -788,7 +789,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 							urn, dep.URN,
 						)
 					}
-				case resource.ResourceReplaceWith:
+				case pkgresource.ResourceReplaceWith:
 					if _, has := urns[dep.URN]; !has {
 						for _, other := range snap.Resources[i+1:] {
 							if other.URN == dep.URN {
@@ -836,7 +837,8 @@ func (snap *Snapshot) VerifyIntegrity() error {
 			}
 			if other, has := snippetUUIDs[snippet.UUID]; has {
 				return snapshot.SnapshotIntegrityErrorf(
-					"duplicate snippet uuid %q at indexes %d and %d", snippet.UUID, other, i)
+					"duplicate snippet uuid %q at indexes %d and %d", snippet.UUID, other, i,
+				)
 			}
 			snippetUUIDs[snippet.UUID] = i
 		}
@@ -845,11 +847,11 @@ func (snap *Snapshot) VerifyIntegrity() error {
 	return nil
 }
 
-// Applies a non-mutating modification for every resource.State in the
+// Applies a non-mutating modification for every pkgresource.State in the
 // Snapshot, returns the edited Snapshot.
-func (snap *Snapshot) withUpdatedResources(update func(*resource.State) *resource.State) *Snapshot {
+func (snap *Snapshot) withUpdatedResources(update func(*pkgresource.State) *pkgresource.State) *Snapshot {
 	old := snap.Resources
-	new := slice.Prealloc[*resource.State](len(old))
+	new := slice.Prealloc[*pkgresource.State](len(old))
 	edited := false
 	for _, s := range old {
 		n := update(s)

@@ -48,19 +48,31 @@ func (e *SlogLogExporter) exportRecord(lr plog.LogRecord) {
 
 	attrs := make([]any, 0, lr.Attributes().Len()*2)
 	lr.Attributes().Range(func(key string, val pcommon.Value) bool {
-		if val.Type() == pcommon.ValueTypeBytes {
-			raw := val.Bytes().AsRaw()
-			sv, err := logging.DecodeStructValueFromLog(raw)
-			if err == nil {
-				attrs = append(attrs, key, logging.PropertyValue{Key: key, Value: sv})
-				return true
-			}
-		}
-		attrs = append(attrs, key, val.AsString())
+		attrs = append(attrs, key, logAttrValue(key, val))
 		return true
 	})
 
 	slog.Log(context.Background(), level, msg, attrs...)
+}
+
+// logAttrValue converts an OTLP attribute back into the value the plugin
+// originally logged, so that downstream handlers see the integer "v"
+// verbosity attribute and structured values instead of their string forms.
+func logAttrValue(key string, val pcommon.Value) any {
+	switch val.Type() {
+	case pcommon.ValueTypeBytes:
+		if sv, err := logging.DecodeStructValueFromLog(val.Bytes().AsRaw()); err == nil {
+			return logging.PropertyValue{Key: key, Value: sv}
+		}
+		return val.AsString()
+	case pcommon.ValueTypeInt, pcommon.ValueTypeDouble, pcommon.ValueTypeBool,
+		pcommon.ValueTypeMap, pcommon.ValueTypeSlice:
+		return val.AsRaw()
+	case pcommon.ValueTypeEmpty, pcommon.ValueTypeStr:
+		return val.AsString()
+	default:
+		return val.AsString()
+	}
 }
 
 func otlpSeverityToSlog(sev plog.SeverityNumber) slog.Level {

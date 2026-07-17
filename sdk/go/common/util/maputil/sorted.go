@@ -16,15 +16,13 @@ package maputil
 
 import (
 	"cmp"
+	"maps"
 	"slices"
 )
 
+// Deprecated: use slices.Sorted(maps.Keys(m)).
+//
+//go:fix inline
 func SortedKeys[K cmp.Ordered, V any](m map[K]V) []K {
-	keys := make([]K, 0, len(m))
-	for propertyName := range m {
-		keys = append(keys, propertyName)
-	}
-
-	slices.Sort(keys)
-	return keys
+	return slices.Sorted(maps.Keys(m))
 }

@@ -22,6 +22,8 @@ import (
 	"strings"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	humanize "github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
@@ -131,6 +133,7 @@ func NewStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackDriftCmd())
 	cmd.AddCommand(newStackScheduleCmd())
 	cmd.AddCommand(newStackWebhookCmd())
+	cmd.AddCommand(newStackMigrateCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 
 	return cmd
 }
@@ -292,7 +295,7 @@ func stringifyOutput(v any) string {
 }
 
 type treeNode struct {
-	res      *resource.State
+	res      *pkgresource.State
 	children []*treeNode
 }
 
@@ -371,7 +374,7 @@ func renderTree(snap *deploy.Snapshot, showURNs, showIDs bool) ([]cmdutil.TableR
 	return rows, true
 }
 
-func renderResourceRow(res *resource.State, prefix, infoPrefix string, showURN, showID bool) cmdutil.TableRow {
+func renderResourceRow(res *pkgresource.State, prefix, infoPrefix string, showURN, showID bool) cmdutil.TableRow {
 	columns := []string{prefix + string(res.Type), res.URN.Name()}
 	additionalInfo := ""
 

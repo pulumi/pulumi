@@ -49,7 +49,7 @@ func TestImportDeployment(t *testing.T) {
 			var decrypterCalled bool
 			_, err := NewImportDeployment(&plugin.Context{}, &Options{}, nil, &Target{
 				Snapshot: &Snapshot{
-					Resources: []*resource.State{
+					Resources: []*pkgresource.State{
 						{
 							URN:    "urn:pulumi:stack::project::type::oldName",
 							Custom: true,
@@ -224,6 +224,55 @@ func TestImporter(t *testing.T) {
 			_, err := i.registerProviders(t.Context())
 			assert.ErrorIs(t, err, expectedErr)
 		})
+		t.Run("provider declared as an import is created with its own inputs", func(t *testing.T) {
+			t.Parallel()
+
+			providerURN := resource.URN("urn:pulumi:stack-name::project-name::pulumi:providers:foo::my-provider")
+			expectedErr := errors.New("expected check config error")
+
+			i := &importer{
+				deployment: &Deployment{
+					goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
+					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+					target: &Target{
+						Name: tokens.MustParseStackName("stack-name"),
+					},
+					source: &nullSource{},
+					providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+						ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+							return &deploytest.Provider{
+								CheckConfigF: func(
+									_ context.Context, req plugin.CheckConfigRequest,
+								) (plugin.CheckConfigResponse, error) {
+									// The inputs come from the declared provider entry, not the
+									// referencing import, which carries none.
+									assert.Equal(t, resource.NewProperty("eu-west-1"),
+										req.News["region"])
+									return plugin.CheckConfigResponse{}, expectedErr
+								},
+							}, nil
+						},
+					}), true, nil),
+					imports: []Import{
+						{
+							Type: "pulumi:providers:foo",
+							Name: "my-provider",
+							ProviderInputs: resource.PropertyMap{
+								"region": resource.NewProperty("eu-west-1"),
+							},
+						},
+						{
+							Type:     "foo:bar:Bar",
+							Name:     "res",
+							ID:       "some-id",
+							Provider: providerURN,
+						},
+					},
+				},
+			}
+			_, err := i.registerProviders(t.Context())
+			assert.ErrorIs(t, err, expectedErr)
+		})
 		t.Run("explicit provider already in state uses existing reference", func(t *testing.T) {
 			t.Parallel()
 
@@ -237,7 +286,7 @@ func TestImporter(t *testing.T) {
 						Name: tokens.MustParseStackName("stack-name"),
 					},
 					source: &nullSource{},
-					olds: map[resource.URN]*resource.State{
+					olds: map[resource.URN]*pkgresource.State{
 						providerURN: {
 							URN:  providerURN,
 							ID:   "existing-id",
@@ -332,7 +381,7 @@ func TestImporter(t *testing.T) {
 					},
 					deployment: &Deployment{
 						prev: &Snapshot{
-							Resources: []*resource.State{
+							Resources: []*pkgresource.State{
 								{
 									URN: "some-urn",
 								},
@@ -381,7 +430,7 @@ func TestImporter(t *testing.T) {
 					},
 					deployment: &Deployment{
 						prev: &Snapshot{
-							Resources: []*resource.State{
+							Resources: []*pkgresource.State{
 								{
 									Delete: true,
 								},
@@ -526,6 +575,74 @@ func TestImporterParameterizedExplicitProvider(t *testing.T) {
 					Name:     "res",
 					ID:       "some-id",
 					Provider: providerURN,
+					ProviderInputs: resource.PropertyMap{
+						"region": resource.NewProperty("eu-west-1"),
+					},
+					Parameterization: &Parameterization{
+						PluginName:    "foo",
+						PluginVersion: semver.MustParse("1.0.0"),
+						Value:         []byte("parameterization-value"),
+					},
+				},
+			},
+		},
+	}
+	_, err := i.registerProviders(t.Context())
+	require.NoError(t, err)
+	assert.True(t, parameterized)
+}
+
+func TestImporterParameterizedDeclaredProvider(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	version := semver.MustParse("1.2.3")
+	parameterized := false
+	mockProvider := plugin.MockProvider{
+		ParameterizeF: func(ctx context.Context, paramReq plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			pValue, ok := paramReq.Parameters.(*plugin.ParameterizeValue)
+			assert.True(t, ok)
+			assert.Equal(t, pValue, &plugin.ParameterizeValue{
+				Name:    "ParameterizationName",
+				Version: semver.MustParse("1.2.3"),
+				Value:   []byte("parameterization-value"),
+			})
+			parameterized = true
+			return plugin.ParameterizeResponse{
+				Name:    "ParameterizationName",
+				Version: semver.MustParse("1.2.3"),
+			}, nil
+		},
+		CloseF: func() error {
+			return nil
+		},
+		CheckConfigF: func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+			return plugin.CheckConfigResponse{}, nil
+		},
+	}
+	i := &importer{
+		executor: &stepExecutor{
+			ctx: ctx,
+		},
+		deployment: &Deployment{
+			goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
+			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+			target: &Target{
+				Name: tokens.MustParseStackName("stack-name"),
+			},
+			source: &nullSource{},
+			providers: providers.NewRegistry(newMockRegistryContext(&plugin.MockHost{
+				ProviderF: func(_ *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+					assert.Equal(t, "foo", descriptor.Name)
+					assert.Equal(t, "1.0.0", descriptor.Version.String())
+					return &mockProvider, nil
+				},
+			}), true, nil),
+			imports: []Import{
+				{
+					Version: &version,
+					Type:    "pulumi:providers:ParameterizationName",
+					Name:    "my-provider",
 					ProviderInputs: resource.PropertyMap{
 						"region": resource.NewProperty("eu-west-1"),
 					},

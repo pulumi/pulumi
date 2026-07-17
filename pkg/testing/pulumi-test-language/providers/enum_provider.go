@@ -87,6 +87,66 @@ func (p *EnumProvider) GetSchema(
 	add("mod")
 	add("mod/nested")
 
+	numberEnumToken := pkg.Name + ":index:NumberEnum"
+	pkg.Types[numberEnumToken] = schema.ComplexTypeSpec{
+		ObjectTypeSpec: schema.ObjectTypeSpec{Type: "number"},
+		Enum: []schema.EnumValueSpec{
+			{Name: "ZeroPointOne", Value: 0.1},
+			{Name: "One", Value: 1.0},
+		},
+	}
+
+	// Values without names, requiring the generators to mangle the values into
+	// identifiers.
+	wordyEnumToken := pkg.Name + ":index:WordyEnum"
+	pkg.Types[wordyEnumToken] = schema.ComplexTypeSpec{
+		ObjectTypeSpec: schema.ObjectTypeSpec{Type: "string"},
+		Enum: []schema.EnumValueSpec{
+			{Value: "A Value With Spaces."},
+			{Value: "It's got apostrophes"},
+			{Value: "_UNDERSCORE_PREFIX"},
+			{Name: "Named", Value: "plain"},
+		},
+	}
+
+	intEnumToken := pkg.Name + ":index:IntEnum"
+	stringEnumToken := pkg.Name + ":index:StringEnum"
+
+	holderToken := pkg.Name + ":index:Holder"
+	pkg.Types[holderToken] = schema.ComplexTypeSpec{
+		ObjectTypeSpec: schema.ObjectTypeSpec{
+			Type: "object",
+			Properties: map[string]schema.PropertySpec{
+				"size":  {TypeSpec: schema.TypeSpec{Ref: "#/types/" + intEnumToken}},
+				"color": {TypeSpec: schema.TypeSpec{Ref: "#/types/" + stringEnumToken}},
+			},
+		},
+	}
+
+	deluxeProps := map[string]schema.PropertySpec{
+		"numberEnum": {TypeSpec: schema.TypeSpec{Ref: "#/types/" + numberEnumToken}},
+		"wordyEnum":  {TypeSpec: schema.TypeSpec{Ref: "#/types/" + wordyEnumToken}},
+		"arrayOfEnum": {TypeSpec: schema.TypeSpec{
+			Type:  "array",
+			Items: &schema.TypeSpec{Ref: "#/types/" + stringEnumToken},
+		}},
+		"mapOfEnum": {TypeSpec: schema.TypeSpec{
+			Type:                 "object",
+			AdditionalProperties: &schema.TypeSpec{Ref: "#/types/" + intEnumToken},
+		}},
+		"holder": {TypeSpec: schema.TypeSpec{Ref: "#/types/" + holderToken}},
+		"unionEnum": {TypeSpec: schema.TypeSpec{
+			OneOf: []schema.TypeSpec{
+				{Ref: "#/types/" + wordyEnumToken},
+				{Type: "string"},
+			},
+		}},
+	}
+	pkg.Resources[pkg.Name+":index:Deluxe"] = schema.ResourceSpec{
+		ObjectTypeSpec:  schema.ObjectTypeSpec{Properties: deluxeProps},
+		InputProperties: deluxeProps,
+	}
+
 	jsonBytes, err := json.Marshal(pkg)
 	return plugin.GetSchemaResponse{Schema: jsonBytes}, err
 }
@@ -141,7 +201,8 @@ func (p *EnumProvider) Check(
 	switch req.URN.Type().String() {
 	case fmt.Sprintf("%s:index:Res", p.pkg()),
 		fmt.Sprintf("%s:mod:Res", p.pkg()),
-		fmt.Sprintf("%s:mod/nested:Res", p.pkg()):
+		fmt.Sprintf("%s:mod/nested:Res", p.pkg()),
+		fmt.Sprintf("%s:index:Deluxe", p.pkg()):
 		return plugin.CheckResponse{Properties: req.News}, nil
 	default:
 		return plugin.CheckResponse{
@@ -156,7 +217,8 @@ func (p *EnumProvider) Create(
 	switch req.URN.Type().String() {
 	case fmt.Sprintf("%s:index:Res", p.pkg()),
 		fmt.Sprintf("%s:mod:Res", p.pkg()),
-		fmt.Sprintf("%s:mod/nested:Res", p.pkg()):
+		fmt.Sprintf("%s:mod/nested:Res", p.pkg()),
+		fmt.Sprintf("%s:index:Deluxe", p.pkg()):
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
 			Properties: req.Properties,

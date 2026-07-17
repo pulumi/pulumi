@@ -722,6 +722,9 @@ const ResourceReferenceSig = sig.ResourceReference
 // OutputValueSig is the unique output value signature.
 const OutputValueSig = sig.OutputValue
 
+// ByteStringSig is the unique signature for strings containing bytes that are not valid UTF-8.
+const ByteStringSig = sig.ByteString
+
 // IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
 // users.
 func IsInternalPropertyKey(key PropertyKey) bool {

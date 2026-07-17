@@ -39,7 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -191,14 +190,14 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 	hasAnyInputVariables := len(configVars) > 0
 	if hasAnyInputVariables {
 		objectTypedConfigs := collectObjectTypedConfigVariables(component)
-		variableNames := maputil.SortedKeys(objectTypedConfigs)
+		variableNames := slices.Sorted(maps.Keys(objectTypedConfigs))
 		// generate resource args for this component
 		for _, variableName := range variableNames {
 			objectType := objectTypedConfigs[variableName]
 			objectTypeName := cgstrings.UppercaseFirst(variableName)
 			g.Fprintf(w, "class %s(TypedDict, total=False):\n", objectTypeName)
 			g.Indented(func() {
-				propertyNames := maputil.SortedKeys(objectType.Properties)
+				propertyNames := slices.Sorted(maps.Keys(objectType.Properties))
 				for _, propertyName := range propertyNames {
 					propertyType := objectType.Properties[propertyName]
 					inputType := componentInputElementType(propertyType)
@@ -1210,6 +1209,25 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 	var cmdExprs []model.Expression
 	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
 		cmdExprs = tuple.Expressions
+	}
+
+	if h.Kind == pcl.HookKindError {
+		// Error hooks return whether the failed operation should be retried: retry if and
+		// only if the command exits successfully.
+		g.Fgenf(w, "%sdef %s(args):\n", g.Indent, fnName)
+		g.Indented(func() {
+			g.Fgenf(w, "%sresult = subprocess.run([", g.Indent)
+			for i, arg := range cmdExprs {
+				if i > 0 {
+					g.Fgenf(w, ", ")
+				}
+				g.genPyStringArg(w, arg)
+			}
+			g.Fgenf(w, "], check=False)\n")
+			g.Fgenf(w, "%sreturn result.returncode == 0\n", g.Indent)
+		})
+		g.Fgenf(w, "%s%s = pulumi.ErrorHook(%q, %s)\n", g.Indent, pyName, hookName, fnName)
+		return
 	}
 
 	g.Fgenf(w, "%sdef %s(args):\n", g.Indent, fnName)

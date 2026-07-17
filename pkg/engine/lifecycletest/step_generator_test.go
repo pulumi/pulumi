@@ -19,6 +19,8 @@ import (
 	"errors"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -328,7 +330,7 @@ func TestInitErrorsStep(t *testing.T) {
 
 	// Create new resource for this snapshot.
 	lt.NewTestBuilder(t, &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:    "pulumi:providers:pkgA",
 				URN:     "urn:pulumi:test::test::pulumi:providers:pkgA::default",
@@ -382,7 +384,7 @@ func TestInitErrorsIgnoreChanges(t *testing.T) {
 
 	// Create new resource for this snapshot.
 	lt.NewTestBuilder(t, &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:    "pulumi:providers:pkgA",
 				URN:     "urn:pulumi:test::test::pulumi:providers:pkgA::default",

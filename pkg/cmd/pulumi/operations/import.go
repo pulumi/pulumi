@@ -24,6 +24,8 @@ import (
 	"os"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
@@ -128,47 +130,6 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 		NameTable: nameTable,
 		Resources: specs,
 	}, nil
-}
-
-// applyConverterProviders adds the explicit providers referenced by a state converter's resources to an
-// import file. Converters reference providers by name only; their URNs are constructed here, where the
-// target stack and project are known, with each provider's package taken from the resources that
-// reference it.
-func applyConverterProviders(
-	ctx context.Context, f *importFile, providerInputs map[string]resource.PropertyMap,
-	stack tokens.StackName, proj tokens.PackageName, enc sdkconfig.Encrypter,
-) error {
-	packages := map[string]tokens.Package{}
-	for _, spec := range f.Resources {
-		if spec.Provider == "" {
-			continue
-		}
-		pkg := spec.Type.Package()
-		if existing, ok := packages[spec.Provider]; ok && existing != pkg {
-			return fmt.Errorf("provider %q is referenced by resources of different packages (%q and %q)",
-				spec.Provider, existing, pkg)
-		}
-		packages[spec.Provider] = pkg
-	}
-	for name := range providerInputs {
-		if _, ok := packages[name]; !ok {
-			return fmt.Errorf("provider inputs given for %q, but no resource references it", name)
-		}
-	}
-	if f.ProviderInputs == nil && len(providerInputs) > 0 {
-		f.ProviderInputs = map[string]map[string]any{}
-	}
-	for name, pkg := range packages {
-		f.NameTable[name] = resource.NewURN(stack.Q(), proj, "", providers.MakeProviderType(pkg), name)
-		if inputs, ok := providerInputs[name]; ok {
-			serialized, err := resourcestack.SerializeProperties(ctx, inputs, enc, true /*showSecrets*/)
-			if err != nil {
-				return fmt.Errorf("serializing inputs for provider %q: %w", name, err)
-			}
-			f.ProviderInputs[name] = serialized
-		}
-	}
-	return nil
 }
 
 func makeImportFile(
@@ -393,7 +354,20 @@ func parseImportFile(
 		if spec.Name == "" {
 			pusherrf("%v has no name", describeResource(i, spec))
 		}
-		if !spec.Component && spec.ID == "" {
+		if providers.IsProviderType(spec.Type) {
+			// Providers declared in the resources block are created during import rather than read
+			// from a cloud, so they take no ID.
+			if spec.ID != "" {
+				pusherrf("%v has an ID, but is a provider, which is created rather than read",
+					describeResource(i, spec))
+			}
+			if spec.Component {
+				pusherrf("%v is a provider and may not be marked as a component", describeResource(i, spec))
+			}
+			if spec.Parent != "" {
+				pusherrf("%v is a provider and may not have a parent", describeResource(i, spec))
+			}
+		} else if !spec.Component && spec.ID == "" {
 			pusherrf("%v has no ID", describeResource(i, spec))
 		} else if spec.Component && spec.ID != "" {
 			pusherrf("%v has an ID, but is marked as a component", describeResource(i, spec))
@@ -560,10 +534,17 @@ func parseImportFile(
 				pusherrf("%v has an ambiguous provider",
 					describeResource(i, spec))
 			}
+			// The name table maps to providers that already exist in the stack; providers declared in
+			// the resources block resolve like parents do, via the URNs built above.
 			urn, ok := f.NameTable[spec.Provider]
 			if !ok {
-				pusherrf("the provider '%v' for %v has no entry in 'nameTable'",
+				urn, ok = urnMapping[spec.Provider]
+			}
+			if !ok {
+				pusherrf("the provider '%v' for %v has no entry in 'nameTable' or 'resources'",
 					spec.Provider, describeResource(i, spec))
+			} else if !urn.IsValid() || !providers.IsProviderType(urn.Type()) {
+				pusherrf("the provider '%v' for %v is not a provider", spec.Provider, describeResource(i, spec))
 			} else {
 				imp.Provider = urn
 			}
@@ -571,6 +552,18 @@ func parseImportFile(
 			// If the import file includes full inputs for this provider, deserialize them
 			// so the import system can create the provider with the correct configuration.
 			if serializedInputs, ok := f.ProviderInputs[spec.Provider]; ok {
+				providerInputs, err := resourcestack.DeserializeProperties(serializedInputs, dec)
+				if err != nil {
+					pusherrf("could not deserialize provider inputs for %v: %w",
+						describeResource(i, spec), err)
+				} else {
+					imp.ProviderInputs = providerInputs
+				}
+			}
+		}
+
+		if providers.IsProviderType(spec.Type) {
+			if serializedInputs, ok := f.ProviderInputs[spec.Name]; ok {
 				providerInputs, err := resourcestack.DeserializeProperties(serializedInputs, dec)
 				if err != nil {
 					pusherrf("could not deserialize provider inputs for %v: %w",
@@ -662,14 +655,14 @@ func generateImportedDefinitions(ctx *plugin.Context,
 		}
 	}()
 
-	resourceTable := map[resource.URN]*resource.State{}
+	resourceTable := map[resource.URN]*pkgresource.State{}
 	for _, r := range snap.Resources {
 		if !r.Delete {
 			resourceTable[r.URN] = r
 		}
 	}
 
-	var resources []*resource.State
+	var resources []*pkgresource.State
 	for _, i := range imports {
 		var parentType tokens.Type
 		if i.Parent != "" {
@@ -858,8 +851,6 @@ func NewImportCmd() *cobra.Command {
 			defer contract.IgnoreClose(pCtx)
 
 			var importFile importFile
-			fromConverter := false
-			var converterInputs map[string]resource.PropertyMap
 			if importFilePath != "" {
 				if len(args) != 0 || parentSpec != "" || providerSpec != "" || len(properties) != 0 {
 					contract.IgnoreError(cmd.Help())
@@ -954,8 +945,6 @@ func NewImportCmd() *cobra.Command {
 					return err
 				}
 				importFile = f
-				fromConverter = true
-				converterInputs = resp.ProviderInputs
 			} else {
 				msg := "an inline resource must be specified if no converter or import file is used, missing "
 				if len(args) == 0 {
@@ -1060,20 +1049,13 @@ func NewImportCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj, configFile)
+			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj, configFile, nil)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
 
 			decrypter := sm.Decrypter()
 			encrypter := sm.Encrypter()
-
-			if fromConverter {
-				err = applyConverterProviders(ctx, &importFile, converterInputs, s.Ref().Name(), proj.Name, encrypter)
-				if err != nil {
-					return err
-				}
-			}
 
 			imports, nameTable, err := parseImportFile(
 				importFile, s.Ref().Name(), proj.Name, protectResources, decrypter)

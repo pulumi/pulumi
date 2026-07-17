@@ -20,7 +20,6 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -51,8 +50,8 @@ type ResourceImport struct {
 	// the resource's required properties.
 	Properties []string
 
-	// Provider is the name of the resource's explicit provider, if any. Resources sharing a provider
-	// name are served by the same explicit provider, created during import.
+	// Provider is the name of the resource's explicit provider, if any. It must reference the name of a
+	// provider declared as another resource in the same response.
 	Provider string
 }
 
@@ -84,9 +83,8 @@ type ConvertStateRequest struct {
 }
 
 type ConvertStateResponse struct {
-	Resources      []ResourceImport
-	ProviderInputs map[string]resource.PropertyMap
-	Diagnostics    hcl.Diagnostics
+	Resources   []ResourceImport
+	Diagnostics hcl.Diagnostics
 }
 
 type ConvertProgramRequest struct {
