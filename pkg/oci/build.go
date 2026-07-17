@@ -132,14 +132,37 @@ func runPackageBuild(
 		command = `docker build -q -t "$PULUMI_PACKAGE_IMAGE" .`
 	}
 
-	// A sibling of the package dir under the shared workspace: reachable by both the
-	// builder (via --volumes-from) and this engine (which reads it for the import), but
-	// OUTSIDE the package's build context so a build cannot pick up its own prior output
-	// as source. A dedicated scratch volume is the cleaner form, but in-process ImportImage
-	// needs the layout on a path the engine already mounts — which the workspace is.
+	// Where the build writes its OCI layout when it takes the neutral path. A pod-provided
+	// scratch dir ($PULUMI_POD_BUILD_DIR — a volume the engine mounts and the builder
+	// inherits via --volumes-from) is the correct home: it lives OUTSIDE the workspace, so a
+	// widened build.context can never sweep the layout into its own build context. Absent
+	// that env (transitional, until every pod setup mounts the scratch volume), fall back to
+	// a package-dir sibling — safe only while the context is the package dir itself.
 	layoutDir := filepath.Join(filepath.Dir(dir), "."+filepath.Base(dir)+".oci-layout")
+	if scratch := os.Getenv("PULUMI_POD_BUILD_DIR"); scratch != "" {
+		layoutDir = filepath.Join(scratch, filepath.Base(dir)+".oci-layout")
+	}
 	if err := os.RemoveAll(layoutDir); err != nil {
 		return fmt.Errorf("clearing build layout dir %s: %w", layoutDir, err)
+	}
+
+	// The build context — what the builder sends to the daemon/kaniko. Defaults to the
+	// package dir; build.context widens it (e.g. ".." for a monorepo whose Dockerfile COPYs
+	// an adjacent package). Resolved relative to the package dir, required to be an ancestor
+	// of it (the context must contain the package), and exposed as $PULUMI_BUILD_CONTEXT for
+	// the command to reference. The Dockerfile path in the command is the author's concern,
+	// relative to the context they chose.
+	contextDir := dir
+	if c, _ := build["context"].(string); c != "" {
+		contextDir = filepath.Join(dir, c)
+		if fi, err := os.Stat(contextDir); err != nil || !fi.IsDir() {
+			return fmt.Errorf(
+				"package %s: build.context %q resolves to %s, not an accessible directory", name, c, contextDir)
+		}
+		if !strings.HasPrefix(dir+string(os.PathSeparator), contextDir+string(os.PathSeparator)) {
+			return fmt.Errorf(
+				"package %s: build.context %q (%s) must be an ancestor of the package dir %s", name, c, contextDir, dir)
+		}
 	}
 
 	fmt.Fprintf(stderr, "Building %s (v%s) in %s -> %s\n", name, version, buildImage, ref)
@@ -151,6 +174,8 @@ func runPackageBuild(
 		"PULUMI_PACKAGE_NAME":    name,
 		"PULUMI_PACKAGE_VERSION": version,
 		"PULUMI_PACKAGE_LAYOUT":  layoutDir,
+		// The build context, defaulting to the package dir; the command references it.
+		"PULUMI_BUILD_CONTEXT": contextDir,
 	}
 	if _, err := BuildInContainer(
 		ctx, buildImage, command, dir, optStringSlice(build["caches"]), env, stderr,
