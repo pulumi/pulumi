@@ -302,7 +302,7 @@ async def test_stack_finish_registers_outputs_once(monkeypatch):
 
     root = get_root_resource()
     assert isinstance(root, stack.Stack)
-    root.finish()
+    root._finish()
     assert registrations == [{"message": "hello"}]
 
 

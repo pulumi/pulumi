@@ -264,7 +264,7 @@ async def run_in_stack(func: Callable[[], Optional[Awaitable[None]]]):
 
                 stack._add_program_outputs(await outputs)
         finally:
-            stack.finish()
+            stack._finish()
 
     await _load_monitor_feature_support()
     await run_pulumi_func(run)
@@ -312,7 +312,7 @@ class Stack(ComponentResource):
             if isawaitable(awaitable):
                 _sync_await(awaitable)
         finally:
-            self.finish()
+            self._finish()
             # Intentionally leave this resource installed in case subsequent async work uses it.
 
     def _register_async_program(self, program: _AsyncProgram) -> None:
@@ -333,7 +333,7 @@ class Stack(ComponentResource):
         for name, value in outputs.items():
             export(name, value)
 
-    def finish(self) -> None:
+    def _finish(self) -> None:
         """Register this stack's outputs exactly once."""
         if self._outputs_registered:
             return

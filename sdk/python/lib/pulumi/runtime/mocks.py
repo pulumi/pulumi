@@ -332,4 +332,4 @@ def set_mocks(
     # Ensure a new root stack resource has been initialized.
     if get_root_resource() is None:
         root_stack = Stack()
-        root_stack.finish()
+        root_stack._finish()
