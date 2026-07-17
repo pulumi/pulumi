@@ -21,19 +21,16 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/adder"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-func NewCancelCmd(ws pkgWorkspace.Context) *cobra.Command {
+func NewCancelCmd(env adder.Environment) *cobra.Command {
 	var yes bool
-	var stack string
 	cmd := &cobra.Command{
 		Use:   "cancel",
 		Short: "Cancel a stack's currently running update, if any",
@@ -45,54 +42,49 @@ func NewCancelCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"\n" +
 			"After this command completes successfully, the stack will be ready for further\n" +
 			"updates.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			// Use the stack provided or, if missing, default to the current one.
-			if len(args) > 0 {
-				if stack != "" {
-					return errors.New("only one of --stack or argument stack name may be specified, not both")
-				}
-
-				stack = args[0]
+	}
+	stack := adder.StackFlag(cmd, "")
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		ctx := cmd.Context()
+		// Use the stack provided or, if missing, default to the current one.
+		if len(args) > 0 {
+			if flag, err := cmd.Flags().GetString("stack"); err != nil {
+				return err
+			} else if flag != "" {
+				return errors.New("only one of --stack or argument stack name may be specified, not both")
 			}
-
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
-
-			s, err := cmdStack.RequireStack(
-				ctx,
-				cmdutil.Diag(),
-				ws,
-				backend.DefaultLoginManager,
-				stack,
-				cmdStack.LoadOnly,
-				opts,
-				"",
-			)
-			if err != nil {
+			if err := cmd.Flags().Set("stack", args[0]); err != nil {
 				return err
 			}
+		}
 
-			// Ensure the user really wants to do this.
-			stackName := s.Ref().Name().String()
-			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
-			if cmdutil.Interactive() && (!yes && !ui.ConfirmPrompt(prompt, stackName, opts)) {
-				return result.FprintBailf(cmd.OutOrStdout(), "confirmation declined")
-			}
+		opts := display.Options{
+			Color: cmdutil.GetGlobalColorization(),
+		}
 
-			// Cancel the update.
-			if err := s.Backend().CancelCurrentUpdate(ctx, s.Ref()); err != nil {
-				return err
-			}
+		s, err := stack.Resolve(cmd, env)
+		if err != nil {
+			return err
+		}
 
-			msg := fmt.Sprintf(
-				"%sThe currently running update for '%s' has been canceled!%s",
-				colors.SpecAttention, stackName, colors.Reset)
-			fmt.Fprintln(cmd.OutOrStdout(), opts.Color.Colorize(msg))
+		// Ensure the user really wants to do this.
+		stackName := s.Ref().Name().String()
+		prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
+		if cmdutil.Interactive() && (!yes && !ui.ConfirmPrompt(prompt, stackName, opts)) {
+			return result.FprintBailf(cmd.OutOrStdout(), "confirmation declined")
+		}
 
-			return nil
-		},
+		// Cancel the update.
+		if err := s.Backend().CancelCurrentUpdate(ctx, s.Ref()); err != nil {
+			return err
+		}
+
+		msg := fmt.Sprintf(
+			"%sThe currently running update for '%s' has been canceled!%s",
+			colors.SpecAttention, stackName, colors.Reset)
+		fmt.Fprintln(cmd.OutOrStdout(), opts.Color.Colorize(msg))
+
+		return nil
 	}
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{{Name: "stack-name"}},
@@ -101,9 +93,6 @@ func NewCancelCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with cancellation anyway")
-	cmd.PersistentFlags().StringVarP(
-		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
 }

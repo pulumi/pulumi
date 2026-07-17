@@ -504,7 +504,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				operations.NewUpCmd(),
 				operations.NewDestroyCmd(),
 				operations.NewPreviewCmd(),
-				cancel.NewCancelCmd(pkgWorkspace.Instance),
+				cancel.NewCancelCmd(nCtx),
 			},
 		},
 		{
