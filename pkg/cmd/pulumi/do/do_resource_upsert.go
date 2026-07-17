@@ -213,7 +213,7 @@ func DefaultRunStatefulUpdate(
 	}
 
 	ssml := cmdStack.SecretsManagerLoader{FallbackToState: true}
-	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, req.Sink, ssml, req.Stack, req.Proj, "")
+	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, req.Sink, ssml, req.Stack, req.Proj, "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("get stack configuration: %w", err)
 	}

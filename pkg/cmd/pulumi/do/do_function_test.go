@@ -2898,7 +2898,7 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{
