@@ -26,7 +26,16 @@ import (
 
 // CurrentStack reads the current stack and returns an instance connected to its backend provider.
 func CurrentStack(ctx context.Context, ws pkgWorkspace.Context, b backend.Backend) (backend.Stack, error) {
-	stackName, err := getCurrentStackName(ws)
+	return CurrentStackAt(ctx, ws, b, "")
+}
+
+// CurrentStackAt is like CurrentStack, but resolves the workspace (and thus the selected stack)
+// from dir instead of the process working directory. An empty dir means the process working
+// directory.
+func CurrentStackAt(
+	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, dir string,
+) (backend.Stack, error) {
+	stackName, err := getCurrentStackName(ws, dir)
 	if err != nil {
 		return nil, err
 	} else if stackName == "" {
@@ -46,18 +55,14 @@ func CurrentStack(ctx context.Context, ws pkgWorkspace.Context, b backend.Backen
 	return b.GetStack(ctx, ref)
 }
 
-func getCurrentStackName(ws pkgWorkspace.Context) (string, error) {
+func getCurrentStackName(ws pkgWorkspace.Context, dir string) (string, error) {
 	// PULUMI_STACK environment variable overrides any stack name in the workspace settings
 	if stackName, ok := os.LookupEnv("PULUMI_STACK"); ok {
 		return stackName, nil
 	}
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("getting current working directory: %w", err)
-	}
-
-	w, err := ws.New(cwd)
+	// An empty dir resolves to the process working directory inside ws.New.
+	w, err := ws.New(dir)
 	if err != nil {
 		return "", err
 	}

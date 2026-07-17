@@ -571,24 +571,14 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 		typ := unwrapType(input.Type)
 		comment := flagUsage(input.Comment)
 
-		if typ == schema.StringType {
-			flagFunc = func(name, extraHelp string) {
-				flags.String(name, "", comment+extraHelp)
-			}
-		}
-		if typ == schema.BoolType {
+		switch typ {
+		case schema.BoolType:
 			flagFunc = func(name, extraHelp string) {
 				flags.Bool(name, false, comment+extraHelp)
 			}
-		}
-		if typ == schema.IntType {
+		case schema.StringType, schema.IntType, schema.NumberType:
 			flagFunc = func(name, extraHelp string) {
-				flags.Int(name, 0, comment+extraHelp)
-			}
-		}
-		if typ == schema.NumberType {
-			flagFunc = func(name, extraHelp string) {
-				flags.Float64(name, 0, comment+extraHelp)
+				flags.String(name, "", comment+extraHelp)
 			}
 		}
 

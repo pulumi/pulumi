@@ -205,6 +205,10 @@ func (m envDefMap) LoadEnvironment(ctx context.Context, name string) ([]byte, ev
 	return []byte(def), nil, nil
 }
 
+func (m envDefMap) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
+}
+
 func newConfigEnvCmdForInitTest(
 	stdin io.Reader,
 	stdout io.Writer,

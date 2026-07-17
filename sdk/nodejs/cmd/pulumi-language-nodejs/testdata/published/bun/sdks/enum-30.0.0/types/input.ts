@@ -6,3 +6,7 @@ import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 import * as enums from "../types/enums";
 
+export interface HolderArgs {
+    color?: pulumi.Input<enums.StringEnum | undefined>;
+    size?: pulumi.Input<enums.IntEnum | undefined>;
+}

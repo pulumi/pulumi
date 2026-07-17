@@ -7,9 +7,9 @@ permissions:
 
 # Fast-path CI for PRs that touch only `pkg/cmd/pulumi/neo/**`. The heavy
 # `on-pr.yml` workflow auto-skips for neo-only PRs via paths-ignore; this
-# workflow runs a focused subset: lint + neo unit tests + a Linux/amd64 CLI
-# build. The `ci-ok` job here satisfies the required status check that
-# `on-pr.yml` would normally provide.
+# workflow runs a focused subset: lint + neo unit tests (Linux and Windows) +
+# a Linux/amd64 CLI build. The `ci-ok` job here satisfies the required status
+# check that `on-pr.yml` would normally provide.
 on:
   pull_request:
     paths:
@@ -78,6 +78,22 @@ jobs:
       version-set: ${{ needs.version-set.outputs.version-set }}
     secrets: inherit
 
+  neo-unit-tests-windows:
+    name: Neo unit tests (windows)
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: [info, version-set]
+    uses: ./.github/workflows/ci-run-test.yml
+    with:
+      ref: ${{ github.head_ref }}
+      version: ${{ needs.info.outputs.version }}
+      platform: windows-latest
+      test-name: neo unit tests windows
+      test-command: PKGS="./cmd/pulumi/neo/..." make gotestsum/pkg
+      is-integration-test: false
+      enable-coverage: false
+      version-set: ${{ needs.version-set.outputs.version-set }}
+    secrets: inherit
+
   build-cli:
     name: build CLI
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
@@ -95,14 +111,14 @@ jobs:
 
   ci-ok:
     name: ci-ok
-    needs: [lint, neo-unit-tests, build-cli]
+    needs: [lint, neo-unit-tests, neo-unit-tests-windows, build-cli]
     if: always()
     runs-on: ubuntu-latest
     steps:
       # Mirror on-pr.yml: community PRs route through on-community-pr.yml,
       # so don't gate on lint/test results when the PR is from a fork.
       - name: CI failed
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && (needs.lint.result != 'success' || needs.neo-unit-tests.result != 'success' || needs.build-cli.result != 'success') }}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && (needs.lint.result != 'success' || needs.neo-unit-tests.result != 'success' || needs.neo-unit-tests-windows.result != 'success' || needs.build-cli.result != 'success') }}
         run: exit 1
       - name: CI succeeded
         run: exit 0

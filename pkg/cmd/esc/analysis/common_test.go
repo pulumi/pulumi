@@ -89,6 +89,10 @@ func (testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]byt
 	return []byte(`{"values": {}}`), nil, nil
 }
 
+func (testEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
+}
+
 const def = `imports:
   - a
 values:

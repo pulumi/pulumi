@@ -15,6 +15,7 @@
 package client
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -1154,6 +1155,68 @@ func TestOpenYAMLEnvironment(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, expectedID, id)
 		assert.Empty(t, diags)
+	})
+
+	t.Run("EnvironmentOverrides", func(t *testing.T) {
+		t.Parallel()
+		yaml := []byte(`{"values":{"foo":"bar"}}`)
+
+		const expectedID = "open-id"
+		duration := 2 * time.Hour
+		overrides := map[string]string{"default/env@6": "team/replacement"}
+
+		client := newTestClient(
+			t,
+			http.MethodPost,
+			"/api/esc/environments/test-org/yaml/open",
+			func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, duration.String(), r.URL.Query().Get("duration"))
+
+				decoded, err := base64.RawURLEncoding.DecodeString(r.URL.Query().Get("environmentOverrides"))
+				require.NoError(t, err)
+				var got map[string]string
+				require.NoError(t, json.Unmarshal(decoded, &got))
+				assert.Equal(t, overrides, got)
+
+				body, err := io.ReadAll(r.Body)
+				require.NoError(t, err)
+				assert.Equal(t, yaml, body)
+
+				err = json.NewEncoder(w).Encode(map[string]any{"id": expectedID})
+				require.NoError(t, err)
+			},
+		)
+
+		id, diags, err := client.OpenYAMLEnvironment(t.Context(), "test-org", yaml, duration,
+			OpenYAMLOption{EnvironmentOverrides: overrides})
+		require.NoError(t, err)
+		assert.Equal(t, expectedID, id)
+		assert.Empty(t, diags)
+	})
+
+	t.Run("NoEnvironmentOverrides", func(t *testing.T) {
+		t.Parallel()
+		yaml := []byte(`{"values":{"foo":"bar"}}`)
+
+		const expectedID = "open-id"
+		duration := 2 * time.Hour
+
+		client := newTestClient(
+			t,
+			http.MethodPost,
+			"/api/esc/environments/test-org/yaml/open",
+			func(w http.ResponseWriter, r *http.Request) {
+				// The query parameter must be omitted entirely when there are no overrides.
+				assert.False(t, r.URL.Query().Has("environmentOverrides"))
+
+				err := json.NewEncoder(w).Encode(map[string]any{"id": expectedID})
+				require.NoError(t, err)
+			},
+		)
+
+		id, _, err := client.OpenYAMLEnvironment(t.Context(), "test-org", yaml, duration)
+		require.NoError(t, err)
+		assert.Equal(t, expectedID, id)
 	})
 
 	t.Run("Diags", func(t *testing.T) {
