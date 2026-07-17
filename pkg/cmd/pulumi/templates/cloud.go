@@ -442,10 +442,11 @@ type orgTemplate struct {
 
 var _ Template = (*orgTemplate)(nil)
 
-func (t orgTemplate) Name() string        { return t.t.Name }
-func (t orgTemplate) DisplayName() string { return t.t.Name }
-func (t orgTemplate) Description() string { return t.t.Description }
-func (t orgTemplate) Error() error        { return nil }
+func (t orgTemplate) Name() string         { return t.t.Name }
+func (t orgTemplate) DisplayName() string  { return t.t.Name }
+func (t orgTemplate) Description() string  { return t.t.Description }
+func (t orgTemplate) Error() error         { return nil }
+func (t orgTemplate) GetPublisher() string { return t.org }
 func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
 	templateDir, err := os.MkdirTemp("", "pulumi-template-")
 	if err != nil {

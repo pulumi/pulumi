@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -121,4 +122,12 @@ func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 
 	proj := loadProject(t, tempdir)
 	require.Equal(t, projectName, proj.Name.String())
+}
+
+func TestDeriveAIOrTemplateRoutesWithoutPrompting(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "template", deriveAIOrTemplate(newArgs{}))
+	assert.Equal(t, "ai", deriveAIOrTemplate(newArgs{aiPrompt: "an s3 bucket"}))
+	assert.Equal(t, "ai", deriveAIOrTemplate(newArgs{aiLanguage: httpstate.PulumiAILanguage("TypeScript")}))
 }

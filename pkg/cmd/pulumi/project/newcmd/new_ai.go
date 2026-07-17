@@ -24,7 +24,6 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -42,15 +41,6 @@ func deriveAIOrTemplate(args newArgs) string {
 		return "ai"
 	}
 	return "template"
-}
-
-func shouldPromptForAIOrTemplate(args newArgs, userBackend backend.Backend) bool {
-	_, isHTTPBackend := userBackend.(httpstate.Backend)
-	return args.aiPrompt == "" &&
-		args.aiLanguage == "" &&
-		!args.templateMode &&
-		isHTTPBackend &&
-		!args.yes
 }
 
 // Iteratively prompt the user for input, sending their input as a prompt to Pulumi AI.
@@ -270,30 +260,4 @@ func runAINewPromptStep(
 		continueSelection = yesSelection
 	}
 	return continueSelection, conversationURLReturn, conversationIDReturn, connectionIDReturn, nil
-}
-
-// Prompt the user to decide whether they'd like to enter an interactive AI prompt or use a template.
-func chooseWithAIOrTemplate(opts display.Options) (string, error) {
-	options := []string{
-		"template",
-		"ai",
-	}
-
-	optionsDescriptionMap := map[string]string{
-		"template": "Create a new Pulumi project using a template",
-		"ai":       "Create a new Pulumi project using Pulumi AI",
-	}
-
-	var ai string
-	if err := survey.AskOne(&survey.Select{
-		Message: "Would you like to create a project from a template or using a Pulumi AI prompt?",
-		Options: options,
-		Description: func(opt string, _ int) string {
-			return optionsDescriptionMap[opt]
-		},
-	}, &ai, ui.SurveyIcons(opts.Color)); err != nil {
-		return "template", err
-	}
-
-	return ai, nil
 }

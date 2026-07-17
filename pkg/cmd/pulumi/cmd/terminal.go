@@ -52,12 +52,13 @@ func OptimalPageSize(opts OptimalPageSizeOpts) int {
 	} else if _, height, err := term.GetSize(0); err == nil {
 		pageSize = height
 	}
-	if pageSize > opts.Nopts {
-		pageSize = opts.Nopts
-	}
+	// Subtract the buffer before clamping to Nopts, or short lists lose rows to chrome they don't share space with.
 	const buffer = 5
 	if pageSize > buffer {
 		pageSize = pageSize - buffer
+	}
+	if pageSize > opts.Nopts {
+		pageSize = opts.Nopts
 	}
 	return pageSize
 }

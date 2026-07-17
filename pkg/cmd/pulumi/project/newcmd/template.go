@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"sort"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -43,6 +44,33 @@ func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cm
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
 
+	return chooseTemplateFlat(templates, opts)
+}
+
+// guidedChooser walks the user from provider to language to a starter template, falling back to flat
+// when the catalog cannot resolve the answers to one of the available templates.
+func guidedChooser(sel selectFunc, flat chooseTemplateFunc) chooseTemplateFunc {
+	return func(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error) {
+		if !opts.IsInteractive {
+			return nil, nil
+		}
+
+		surveycore.DisableColor = true
+
+		template, err := chooseGuided(templates, opts, sel)
+		if err != nil {
+			return nil, err
+		}
+		if template != nil {
+			return template, nil
+		}
+
+		fmt.Fprintln(os.Stderr, "Falling back to the full template list.") //nolint:forbidigo
+		return flat(templates, opts)
+	}
+}
+
+func chooseTemplateFlat(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error) {
 	options, optionToTemplateMap := templatesToOptionArrayAndMap(templates)
 	nopts := len(options)
 	pageSize := cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: nopts})

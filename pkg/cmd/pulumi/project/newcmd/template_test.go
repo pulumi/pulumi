@@ -15,9 +15,14 @@
 package newcmd
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 )
 
 func TestSanitizeTemplate(t *testing.T) {
@@ -40,4 +45,138 @@ func TestSanitizeTemplate(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestChooseTemplateNonInteractiveReturnsNil(t *testing.T) {
+	t.Parallel()
+
+	got, err := ChooseTemplate(
+		[]cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}},
+		display.Options{IsInteractive: false},
+	)
+	require.NoError(t, err)
+	assert.Nil(t, got)
+}
+
+func TestTemplateChooserPicksGuidedOnlyWhenNothingIsNamed(t *testing.T) {
+	t.Parallel()
+
+	flat := func([]cmdTemplates.Template, display.Options) (cmdTemplates.Template, error) {
+		return fakeTemplate{name: "flat"}, nil
+	}
+	guided := func([]cmdTemplates.Template, display.Options) (cmdTemplates.Template, error) {
+		return fakeTemplate{name: "guided"}, nil
+	}
+
+	tests := []struct {
+		name              string
+		templateNameOrURL string
+		expected          string
+	}{
+		{"nothing named", "", "guided"},
+		{"template named", "aws-typescript", "flat"},
+		{"url named", "https://github.com/pulumi/examples", "flat"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			args := newArgs{
+				chooseTemplate:       flat,
+				chooseTemplateGuided: guided,
+				templateNameOrURL:    tt.templateNameOrURL,
+			}
+			got, err := args.templateChooser()(nil, display.Options{})
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, got.Name())
+		})
+	}
+}
+
+func TestGuidedChooserFallsBackToFlatOnStaleCatalog(t *testing.T) {
+	t.Parallel()
+
+	flatCalled := false
+	flat := func([]cmdTemplates.Template, display.Options) (cmdTemplates.Template, error) {
+		flatCalled = true
+		return fakeTemplate{name: "flat"}, nil
+	}
+	sel, _ := scriptedSelect(t, "AWS", "TypeScript")
+
+	// The catalog resolves aws-typescript, which is absent here, so guided must defer to the flat list.
+	got, err := guidedChooser(sel, flat)(
+		[]cmdTemplates.Template{fakeTemplate{name: "gcp-go"}},
+		display.Options{IsInteractive: true},
+	)
+	require.NoError(t, err)
+	assert.True(t, flatCalled)
+	assert.Equal(t, "flat", got.Name())
+}
+
+func TestGuidedChooserReturnsGuidedTemplateWithoutFlat(t *testing.T) {
+	t.Parallel()
+
+	flat := func([]cmdTemplates.Template, display.Options) (cmdTemplates.Template, error) {
+		t.Error("flat chooser must not run when guided resolves a template")
+		return nil, nil
+	}
+	sel, _ := scriptedSelect(t, "AWS", "TypeScript")
+
+	got, err := guidedChooser(sel, flat)(
+		[]cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}},
+		display.Options{IsInteractive: true},
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "aws-typescript", got.Name())
+}
+
+func TestGuidedChooserPropagatesErrors(t *testing.T) {
+	t.Parallel()
+
+	flat := func([]cmdTemplates.Template, display.Options) (cmdTemplates.Template, error) {
+		t.Error("flat chooser must not run when guided errors")
+		return nil, nil
+	}
+	sel := func(string, []string, display.Options) (string, error) {
+		return "", errors.New("no template selected")
+	}
+
+	_, err := guidedChooser(sel, flat)(
+		[]cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}},
+		display.Options{IsInteractive: true},
+	)
+	assert.ErrorContains(t, err, "no template selected")
+}
+
+func TestGuidedChooserNonInteractiveReturnsNil(t *testing.T) {
+	t.Parallel()
+
+	sel := func(string, []string, display.Options) (string, error) {
+		t.Error("no prompt may be shown when non-interactive")
+		return "", nil
+	}
+
+	got, err := guidedChooser(sel, ChooseTemplate)(
+		[]cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}},
+		display.Options{IsInteractive: false},
+	)
+	require.NoError(t, err)
+	assert.Nil(t, got)
+}
+
+func TestTemplatesToOptionArrayAndMapSortsAndMarksBroken(t *testing.T) {
+	t.Parallel()
+
+	options, byOption := templatesToOptionArrayAndMap([]cmdTemplates.Template{
+		fakeTemplate{name: "zeta"},
+		fakeTemplate{name: "broken", err: errors.New("boom")},
+		fakeTemplate{name: "alpha"},
+	})
+	require.Len(t, options, 3)
+	assert.Contains(t, options[0], "alpha")
+	assert.Contains(t, options[1], "zeta")
+	assert.Equal(t, "alpha", byOption[options[0]].Name())
+
+	assert.Contains(t, options[2], "broken", "broken templates sort to the end")
+	assert.Contains(t, options[2], BrokenTemplateDescription)
 }

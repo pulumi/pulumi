@@ -87,6 +87,7 @@ type newArgs struct {
 	languageTemplate      languageTemplateFunc
 	promptForAIProjectURL promptForAIProjectURLFunc
 	chooseTemplate        chooseTemplateFunc
+	chooseTemplateGuided  chooseTemplateFunc
 	secretsProvider       string
 	stack                 string
 	templateNameOrURL     string
@@ -212,7 +213,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	} else if len(templates) == 1 {
 		cmdTemplate = templates[0]
 	} else if !args.yes {
-		if cmdTemplate, err = args.chooseTemplate(templates, opts); err != nil {
+		if cmdTemplate, err = args.templateChooser()(templates, opts); err != nil {
 			return err
 		}
 	}
@@ -521,6 +522,15 @@ func runNew(ctx context.Context, args newArgs) error {
 	return nil
 }
 
+// templateChooser picks the guided provider/language flow only when the user named no template at all.
+// Any named template or URL already narrows the choice, so those disambiguate against the flat list.
+func (args newArgs) templateChooser() chooseTemplateFunc {
+	if args.templateNameOrURL == "" && args.chooseTemplateGuided != nil {
+		return args.chooseTemplateGuided
+	}
+	return args.chooseTemplate
+}
+
 // isInteractive lets us force interactive mode for testing by setting PULUMI_TEST_INTERACTIVE.
 func isInteractive() bool {
 	test, ok := os.LookupEnv("PULUMI_TEST_INTERACTIVE")
@@ -532,6 +542,7 @@ func NewNewCmd() *cobra.Command {
 	args := newArgs{
 		prompt:               ui.PromptForValue,
 		chooseTemplate:       ChooseTemplate,
+		chooseTemplateGuided: guidedChooser(surveySelect, ChooseTemplate),
 		promptRuntimeOptions: promptRuntimeOptions,
 		languageTemplate: func(ctx context.Context, language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
 			projectName tokens.PackageName,
@@ -703,8 +714,9 @@ func NewNewCmd() *cobra.Command {
 	)
 	cmd.PersistentFlags().BoolVarP(
 		&args.templateMode, "template-mode", "t", false,
-		"Run in template mode, which will skip prompting for AI or Template functionality",
+		"Deprecated: no longer has any effect",
 	)
+	_ = cmd.PersistentFlags().MarkHidden("template-mode")
 	cmd.PersistentFlags().StringSliceVar(
 		&args.runtimeOptions, "runtime-options", []string{},
 		"Additional options for the language runtime (format: key1=value1,key2=value2)",
@@ -860,16 +872,7 @@ func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args ne
 		return "", err
 	}
 
-	var aiOrTemplate string
-	if shouldPromptForAIOrTemplate(args, b) {
-		aiOrTemplate, err = chooseWithAIOrTemplate(opts)
-	} else {
-		aiOrTemplate = deriveAIOrTemplate(args)
-	}
-	if err != nil {
-		return "", err
-	}
-	if aiOrTemplate != "ai" {
+	if deriveAIOrTemplate(args) != "ai" {
 		return "", nil
 	}
 

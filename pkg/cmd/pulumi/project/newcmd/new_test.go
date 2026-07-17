@@ -941,7 +941,6 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 				interactive:          tt.prompted != "",
 				generateOnly:         true,
 				yes:                  tt.prompted == "",
-				templateMode:         true,
 				name:                 projectName,
 				prompt:               promptMock(uniqueProjectName, stackName),
 				promptRuntimeOptions: runtimeOptionsMock,
@@ -980,7 +979,6 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 		interactive:          false,
 		generateOnly:         true,
 		yes:                  true,
-		templateMode:         true,
 		name:                 projectName,
 		prompt:               ui.PromptForValue,
 		promptRuntimeOptions: runtimeOptionsMock,
@@ -1321,37 +1319,6 @@ func assertTemplateContains(t *testing.T, actual, expected string) {
 	actualP := parse(actual)
 	for _, e := range expectedP {
 		assert.Contains(t, actualP, e)
-	}
-}
-
-func TestNoPromptWithYes(t *testing.T) {
-	t.Parallel()
-	for _, interactive := range []bool{true, false} {
-		t.Run(fmt.Sprintf("interactive=%t", interactive), func(t *testing.T) {
-			t.Parallel()
-			args := newArgs{
-				interactive: interactive,
-				yes:         true,
-			}
-
-			mockBackend := &backend.MockBackend{
-				GetReadOnlyCloudRegistryF: func() registry.Registry {
-					return &backend.MockCloudRegistry{
-						Mock: registry.Mock{
-							ListTemplatesF: func(
-								ctx context.Context, opts registry.ListTemplatesOptions,
-							) iter.Seq2[apitype.TemplateMetadata, error] {
-								assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-								return func(yield func(apitype.TemplateMetadata, error) bool) {}
-							},
-						},
-					}
-				},
-				NameF: func() string { return "mock" },
-			}
-
-			require.False(t, shouldPromptForAIOrTemplate(args, mockBackend))
-		})
 	}
 }
 

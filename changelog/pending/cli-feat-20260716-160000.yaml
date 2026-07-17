@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: '`pulumi new` no longer prompts to choose between a template and Pulumi AI; use `--ai` to generate a project with Pulumi AI'
+time: 2026-07-16T16:00:00Z

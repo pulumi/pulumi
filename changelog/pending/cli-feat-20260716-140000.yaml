@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: '`pulumi new` now asks for a cloud provider and language instead of listing every template'
+time: 2026-07-16T14:00:00Z

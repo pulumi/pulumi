@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: 'Show more options at once in interactive prompts with short lists'
+time: 2026-07-16T15:00:00Z
