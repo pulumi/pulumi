@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Redact secrets in property values in logs
+time: 2026-07-14T17:25:31.43918684+02:00
