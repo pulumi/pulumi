@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"golang.org/x/sync/errgroup"
 
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
@@ -128,8 +130,8 @@ func resolveStackPolicyViolationURN(
 }
 
 // buildSnapshotProviderMap builds a map of provider URN -> provider state from a snapshot.
-func buildSnapshotProviderMap(snap *Snapshot) map[resource.URN]*resource.State {
-	providers := make(map[resource.URN]*resource.State)
+func buildSnapshotProviderMap(snap *Snapshot) map[resource.URN]*pkgresource.State {
+	providers := make(map[resource.URN]*pkgresource.State)
 	for _, res := range snap.Resources {
 		if sdkproviders.IsProviderType(res.Type) {
 			providers[res.URN] = res
@@ -138,14 +140,14 @@ func buildSnapshotProviderMap(snap *Snapshot) map[resource.URN]*resource.State {
 	return providers
 }
 
-// stateToAnalyzerResource converts a resource.State to a plugin.AnalyzerResource.
+// stateToAnalyzerResource converts a pkgresource.State to a plugin.AnalyzerResource.
 // properties must be supplied explicitly: use res.Inputs for per-resource Analyze calls
 // (matching what Analyze receives during a deployment) and res.Outputs for AnalyzeStack
 // calls (to verify the final deployed state).
 func stateToAnalyzerResource(
-	res *resource.State,
+	res *pkgresource.State,
 	properties resource.PropertyMap,
-	providers map[resource.URN]*resource.State,
+	providers map[resource.URN]*pkgresource.State,
 ) plugin.AnalyzerResource {
 	r := plugin.AnalyzerResource{
 		URN:        res.URN,

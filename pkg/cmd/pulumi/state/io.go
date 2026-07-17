@@ -23,6 +23,8 @@ import (
 	"strings"
 	"unicode"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
@@ -236,7 +238,7 @@ func resourceNotFoundError(candidates []resource.URN, urn resource.URN) error {
 // locateStackResource attempts to find a unique resource associated with the given URN in the given snapshot. If the
 // given URN is ambiguous and this is an interactive terminal, it prompts the user to select one of the resources in
 // the list of resources with identical URNs to operate upon.
-func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resource.URN) (*resource.State, error) {
+func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resource.URN) (*pkgresource.State, error) {
 	candidateResources := edit.LocateResource(snap, urn)
 	switch {
 	case len(candidateResources) == 0: // resource was not found
@@ -262,7 +264,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	prompt = opts.Color.Colorize(colors.SpecPrompt + prompt + colors.Reset)
 
 	options := slice.Prealloc[string](len(candidateResources))
-	optionMap := make(map[string]*resource.State)
+	optionMap := make(map[string]*pkgresource.State)
 	for _, ambiguousResource := range candidateResources {
 		// Prompt the user to select from a list of IDs, since these resources are known to all have the same URN.
 		message := fmt.Sprintf("%q", ambiguousResource.ID)
@@ -292,7 +294,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 
 // resolveStateResourceArg resolves a CLI argument (must be a valid resource URN) to a resource
 // in the snapshot, with interactive disambiguation when multiple state entries share the same URN.
-func resolveStateResourceArg(opts display.Options, snap *deploy.Snapshot, arg string) (*resource.State, error) {
+func resolveStateResourceArg(opts display.Options, snap *deploy.Snapshot, arg string) (*pkgresource.State, error) {
 	urn := resource.URN(arg)
 	if !urn.IsValid() {
 		return nil, fmt.Errorf("%q is not a valid resource URN\n%s", arg, listURNsHint(""))

@@ -1866,7 +1866,7 @@ func inheritFromParent(child *pulumirpc.RegisterResourceRequest, parent pkgresou
 	}
 }
 
-type stackTrace = []resource.StackFrame
+type stackTrace = []pkgresource.StackFrame
 
 type sourcePositions struct {
 	projectRoot string
@@ -1930,13 +1930,13 @@ func (s *sourcePositions) newStackTrace(raw *pulumirpc.StackTrace) stackTrace {
 		return nil
 	}
 
-	return slice.Map(raw.Frames, func(f *pulumirpc.StackFrame) resource.StackFrame {
+	return slice.Map(raw.Frames, func(f *pulumirpc.StackFrame) pkgresource.StackFrame {
 		pc, err := s.parseSourcePosition(f.GetPc())
 		if err != nil {
 			logging.V(5).Infof("failed to parse frame source position %#v: %v", f.GetPc(), err)
-			return resource.StackFrame{}
+			return pkgresource.StackFrame{}
 		}
-		return resource.StackFrame{SourcePosition: pc}
+		return pkgresource.StackFrame{SourcePosition: pc}
 	})
 }
 
@@ -2726,7 +2726,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				"resource monitor shut down while waiting for construct to complete")
 		}
 
-		result = &RegisterResult{State: &resource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
+		result = &RegisterResult{State: &pkgresource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
 
 		// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
 		// Secret but also add them to the outputDeps map.
@@ -3165,7 +3165,7 @@ type readResourceEvent struct {
 	dependencies            []resource.URN
 	additionalSecretOutputs []resource.PropertyKey
 	sourcePosition          string
-	stackTrace              []resource.StackFrame
+	stackTrace              []pkgresource.StackFrame
 	done                    chan *ReadResult
 }
 
@@ -3183,8 +3183,8 @@ func (g *readResourceEvent) Dependencies() []resource.URN     { return g.depende
 func (g *readResourceEvent) AdditionalSecretOutputs() []resource.PropertyKey {
 	return g.additionalSecretOutputs
 }
-func (g *readResourceEvent) SourcePosition() string            { return g.sourcePosition }
-func (g *readResourceEvent) StackTrace() []resource.StackFrame { return g.stackTrace }
+func (g *readResourceEvent) SourcePosition() string               { return g.sourcePosition }
+func (g *readResourceEvent) StackTrace() []pkgresource.StackFrame { return g.stackTrace }
 
 func (g *readResourceEvent) Done(result *ReadResult) {
 	g.done <- result

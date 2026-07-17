@@ -21,6 +21,8 @@ import (
 	"sync"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -523,7 +525,7 @@ func TestImportUpdatedID(t *testing.T) {
 		nil,
 		false,
 	)
-	snap := p.Run(t, &deploy.Snapshot{Resources: []*resource.State{stackResource}})
+	snap := p.Run(t, &deploy.Snapshot{Resources: []*pkgresource.State{stackResource}})
 
 	require.NotEmpty(t, snap.Resources)
 
@@ -616,7 +618,7 @@ func TestImportExtensionParameterizedResource(t *testing.T) {
 		assert.Equal(t, []byte("blob-a"), blob.Value)
 	}
 
-	var imported *resource.State
+	var imported *pkgresource.State
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "resA" {
 			imported = r

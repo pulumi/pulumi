@@ -14,8 +14,6 @@
 
 package resource
 
-import sdkresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-
 // OperationType is the type of operations issued by the engine.
 type OperationType string
 
@@ -35,12 +33,12 @@ const (
 // Operation represents an operation that the engine has initiated but has not yet completed. It is
 // essentially just a tuple of a resource and a string identifying the operation.
 type Operation struct {
-	Resource *sdkresource.State
+	Resource *State
 	Type     OperationType
 }
 
 // NewOperation constructs a new Operation from a state and an operation name.
-func NewOperation(state *sdkresource.State, op OperationType) Operation {
+func NewOperation(state *State, op OperationType) Operation {
 	return Operation{state, op}
 }
 

@@ -184,6 +184,14 @@ type NeoTaskResponse struct {
 	TaskID string `json:"taskId"`
 }
 
+// NeoTask represents the fields from an existing Neo task that the CLI needs
+// when reattaching to it.
+type NeoTask struct {
+	TaskID         string            `json:"taskId"`
+	ApprovalMode   NeoApprovalMode   `json:"approvalMode,omitempty"`
+	PermissionMode NeoPermissionMode `json:"permissionMode,omitempty"`
+}
+
 // TemplatePublishOperationID uniquely identifies a template publish operation.
 type TemplatePublishOperationID string
 
@@ -2812,22 +2820,77 @@ func (pc *Client) UpdateNeoTask(
 	return nil
 }
 
+// GetNeoTask fetches task metadata for an existing Neo task.
+func (pc *Client) GetNeoTask(ctx context.Context, orgName, taskID string) (*NeoTask, error) {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s", orgName, taskID)
+	var resp NeoTask
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, fmt.Errorf("getting Neo task: %w", err)
+	}
+	return &resp, nil
+}
+
 // NeoStreamEvent is one item from a Neo task Server-Sent Events (SSE) stream. Exactly
-// one of Data or Err is populated: Data carries an event payload, Err carries a terminal
-// stream error (after which no further values are sent before the channel closes). ID
-// is the SSE `id:` field associated with the event (empty if absent); callers track it
-// to send `Last-Event-ID` on reconnect so the server can replay missed events.
+// one of Data, KeepAlive, or Err is populated: Data carries an event payload, KeepAlive
+// reports an SSE comment heartbeat, and Err carries a terminal stream error (after
+// which no further values are sent before the channel closes). ID is the SSE `id:`
+// field associated with the event (empty if absent); callers track it to send
+// `Last-Event-ID` on reconnect so the server can replay missed events.
 type NeoStreamEvent struct {
-	Data []byte
-	ID   string
-	Err  error
+	Data      []byte
+	ID        string
+	KeepAlive bool
+	Err       error
+}
+
+type neoTaskEventsResponse struct {
+	Events            []apitype.AgentConsoleEvent `json:"events"`
+	ContinuationToken *string                     `json:"continuationToken,omitempty"`
+}
+
+// GetNeoTaskEvents returns all currently recorded events for a Neo task and the
+// newest event ID. Callers can pass the returned ID to StreamNeoTaskEvents as
+// Last-Event-ID to attach from the live tail without replaying historical events.
+func (pc *Client) GetNeoTaskEvents(
+	ctx context.Context, orgName, taskID string,
+) ([]apitype.AgentConsoleEvent, string, error) {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
+	var events []apitype.AgentConsoleEvent
+	var lastEventID string
+	var continuationToken string
+	for {
+		path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s/events?pageSize=1000", orgName, taskID)
+		if continuationToken != "" {
+			path += "&continuationToken=" + url.QueryEscape(continuationToken)
+		}
+
+		var resp neoTaskEventsResponse
+		if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+			return nil, "", fmt.Errorf("getting Neo task events: %w", err)
+		}
+		for _, event := range resp.Events {
+			if event.ID != "" {
+				lastEventID = event.ID
+			}
+		}
+		events = append(events, resp.Events...)
+		if resp.ContinuationToken == nil || *resp.ContinuationToken == "" {
+			return events, lastEventID, nil
+		}
+		continuationToken = *resp.ContinuationToken
+	}
 }
 
 // StreamNeoTaskEvents opens a Server-Sent Events (SSE) connection to the Neo task event
 // stream and returns a channel of events. Each value carries either a raw event payload
 // (the bytes following each `data:` line, joined for multi-line events) along with the
-// `id:` of that event, or a terminal stream error. The channel is closed when the stream
-// ends or ctx is cancelled.
+// `id:` of that event, a keep-alive marker for SSE comments, or a terminal stream error.
+// The channel is closed when the stream ends or ctx is cancelled.
 //
 // If lastEventID is non-empty it is sent as the `Last-Event-ID` request header; the
 // pulumi-service stream endpoint honors this and replays only events with sequence
@@ -2903,6 +2966,7 @@ func (pc *Client) StreamNeoTaskEvents(
 				continue
 			}
 			if strings.HasPrefix(line, ":") {
+				send(NeoStreamEvent{KeepAlive: true})
 				continue
 			}
 			if chunk, ok := strings.CutPrefix(line, "data:"); ok {

@@ -24,7 +24,6 @@ import (
 	codegen "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -124,10 +123,9 @@ type ResourceImport struct {
 	// the input properties to include when generating code for the resource. Defaults to the resource's
 	// required properties.
 	Properties []string `protobuf:"bytes,12,rep,name=properties,proto3" json:"properties,omitempty"`
-	// the name of the resource's explicit provider, if any. Resources sharing a provider name are served
-	// by the same explicit provider, created during import; its package, version, and parameterization
-	// are taken from the resources that reference it, and its configuration may be supplied via the
-	// response's provider_inputs.
+	// the name of the resource's explicit provider, if any. Must reference the name of a provider
+	// declared as another resource (of type "pulumi:providers:<package>") in the same response;
+	// resources without a provider are served by an appropriate default provider.
 	Provider      string `protobuf:"bytes,13,opt,name=provider,proto3" json:"provider,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -388,13 +386,9 @@ type ConvertStateResponse struct {
 	// a list of resources to import.
 	Resources []*ResourceImport `protobuf:"bytes,1,rep,name=resources,proto3" json:"resources,omitempty"`
 	// any diagnostics from state conversion.
-	Diagnostics []*codegen.Diagnostic `protobuf:"bytes,2,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
-	// the configuration inputs for the explicit providers referenced by resources' provider fields, keyed
-	// by those names. Providers without an entry are created with empty configuration. Secret values are
-	// marked with Pulumi's standard secret signature.
-	ProviderInputs map[string]*structpb.Struct `protobuf:"bytes,3,rep,name=provider_inputs,json=providerInputs,proto3" json:"provider_inputs,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	Diagnostics   []*codegen.Diagnostic `protobuf:"bytes,2,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ConvertStateResponse) Reset() {
@@ -437,13 +431,6 @@ func (x *ConvertStateResponse) GetResources() []*ResourceImport {
 func (x *ConvertStateResponse) GetDiagnostics() []*codegen.Diagnostic {
 	if x != nil {
 		return x.Diagnostics
-	}
-	return nil
-}
-
-func (x *ConvertStateResponse) GetProviderInputs() map[string]*structpb.Struct {
-	if x != nil {
-		return x.ProviderInputs
 	}
 	return nil
 }
@@ -753,7 +740,7 @@ var File_pulumi_converter_proto protoreflect.FileDescriptor
 
 const file_pulumi_converter_proto_rawDesc = "" +
 	"\n" +
-	"\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\"N\n" +
+	"\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\"N\n" +
 	"\x13ConvertStateRequest\x12#\n" +
 	"\rmapper_target\x18\x01 \x01(\tR\fmapperTarget\x12\x12\n" +
 	"\x04args\x18\x02 \x03(\tR\x04args\"\xd4\x03\n" +
@@ -782,14 +769,10 @@ const file_pulumi_converter_proto_rawDesc = "" +
 	"\x11ResourceExtension\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x14\n" +
-	"\x05value\x18\x03 \x01(\fR\x05value\"\xca\x02\n" +
+	"\x05value\x18\x03 \x01(\fR\x05value\"\x90\x01\n" +
 	"\x14ConvertStateResponse\x127\n" +
 	"\tresources\x18\x01 \x03(\v2\x19.pulumirpc.ResourceImportR\tresources\x12?\n" +
-	"\vdiagnostics\x18\x02 \x03(\v2\x1d.pulumirpc.codegen.DiagnosticR\vdiagnostics\x12\\\n" +
-	"\x0fprovider_inputs\x18\x03 \x03(\v23.pulumirpc.ConvertStateResponse.ProviderInputsEntryR\x0eproviderInputs\x1aZ\n" +
-	"\x13ProviderInputsEntry\x12\x10\n" +
-	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
-	"\x05value\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x05value:\x028\x01\"\x8b\x02\n" +
+	"\vdiagnostics\x18\x02 \x03(\v2\x1d.pulumirpc.codegen.DiagnosticR\vdiagnostics\"\x8b\x02\n" +
 	"\x15ConvertProgramRequest\x12)\n" +
 	"\x10source_directory\x18\x01 \x01(\tR\x0fsourceDirectory\x12)\n" +
 	"\x10target_directory\x18\x02 \x01(\tR\x0ftargetDirectory\x12#\n" +
@@ -838,7 +821,7 @@ func file_pulumi_converter_proto_rawDescGZIP() []byte {
 	return file_pulumi_converter_proto_rawDescData
 }
 
-var file_pulumi_converter_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_pulumi_converter_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_pulumi_converter_proto_goTypes = []any{
 	(*ConvertStateRequest)(nil),      // 0: pulumirpc.ConvertStateRequest
 	(*ResourceImport)(nil),           // 1: pulumirpc.ResourceImport
@@ -849,36 +832,32 @@ var file_pulumi_converter_proto_goTypes = []any{
 	(*ConvertProgramResponse)(nil),   // 6: pulumirpc.ConvertProgramResponse
 	(*ConvertSnippetRequest)(nil),    // 7: pulumirpc.ConvertSnippetRequest
 	(*ConvertSnippetResponse)(nil),   // 8: pulumirpc.ConvertSnippetResponse
-	nil,                              // 9: pulumirpc.ConvertStateResponse.ProviderInputsEntry
-	nil,                              // 10: pulumirpc.ConvertSnippetRequest.AttributesEntry
-	nil,                              // 11: pulumirpc.ConvertSnippetResponse.AttributesEntry
-	(*codegen.Diagnostic)(nil),       // 12: pulumirpc.codegen.Diagnostic
-	(*codegen.GetSchemaRequest)(nil), // 13: codegen.GetSchemaRequest
-	(*structpb.Struct)(nil),          // 14: google.protobuf.Struct
+	nil,                              // 9: pulumirpc.ConvertSnippetRequest.AttributesEntry
+	nil,                              // 10: pulumirpc.ConvertSnippetResponse.AttributesEntry
+	(*codegen.Diagnostic)(nil),       // 11: pulumirpc.codegen.Diagnostic
+	(*codegen.GetSchemaRequest)(nil), // 12: codegen.GetSchemaRequest
 }
 var file_pulumi_converter_proto_depIdxs = []int32{
 	2,  // 0: pulumirpc.ResourceImport.parameterization:type_name -> pulumirpc.ResourceParameterization
 	3,  // 1: pulumirpc.ResourceImport.extension:type_name -> pulumirpc.ResourceExtension
 	1,  // 2: pulumirpc.ConvertStateResponse.resources:type_name -> pulumirpc.ResourceImport
-	12, // 3: pulumirpc.ConvertStateResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	9,  // 4: pulumirpc.ConvertStateResponse.provider_inputs:type_name -> pulumirpc.ConvertStateResponse.ProviderInputsEntry
-	12, // 5: pulumirpc.ConvertProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	13, // 6: pulumirpc.ConvertSnippetRequest.package:type_name -> codegen.GetSchemaRequest
-	10, // 7: pulumirpc.ConvertSnippetRequest.attributes:type_name -> pulumirpc.ConvertSnippetRequest.AttributesEntry
-	12, // 8: pulumirpc.ConvertSnippetResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	11, // 9: pulumirpc.ConvertSnippetResponse.attributes:type_name -> pulumirpc.ConvertSnippetResponse.AttributesEntry
-	14, // 10: pulumirpc.ConvertStateResponse.ProviderInputsEntry.value:type_name -> google.protobuf.Struct
-	0,  // 11: pulumirpc.Converter.ConvertState:input_type -> pulumirpc.ConvertStateRequest
-	5,  // 12: pulumirpc.Converter.ConvertProgram:input_type -> pulumirpc.ConvertProgramRequest
-	7,  // 13: pulumirpc.Converter.ConvertSnippet:input_type -> pulumirpc.ConvertSnippetRequest
-	4,  // 14: pulumirpc.Converter.ConvertState:output_type -> pulumirpc.ConvertStateResponse
-	6,  // 15: pulumirpc.Converter.ConvertProgram:output_type -> pulumirpc.ConvertProgramResponse
-	8,  // 16: pulumirpc.Converter.ConvertSnippet:output_type -> pulumirpc.ConvertSnippetResponse
-	14, // [14:17] is the sub-list for method output_type
-	11, // [11:14] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	11, // 3: pulumirpc.ConvertStateResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	11, // 4: pulumirpc.ConvertProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	12, // 5: pulumirpc.ConvertSnippetRequest.package:type_name -> codegen.GetSchemaRequest
+	9,  // 6: pulumirpc.ConvertSnippetRequest.attributes:type_name -> pulumirpc.ConvertSnippetRequest.AttributesEntry
+	11, // 7: pulumirpc.ConvertSnippetResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	10, // 8: pulumirpc.ConvertSnippetResponse.attributes:type_name -> pulumirpc.ConvertSnippetResponse.AttributesEntry
+	0,  // 9: pulumirpc.Converter.ConvertState:input_type -> pulumirpc.ConvertStateRequest
+	5,  // 10: pulumirpc.Converter.ConvertProgram:input_type -> pulumirpc.ConvertProgramRequest
+	7,  // 11: pulumirpc.Converter.ConvertSnippet:input_type -> pulumirpc.ConvertSnippetRequest
+	4,  // 12: pulumirpc.Converter.ConvertState:output_type -> pulumirpc.ConvertStateResponse
+	6,  // 13: pulumirpc.Converter.ConvertProgram:output_type -> pulumirpc.ConvertProgramResponse
+	8,  // 14: pulumirpc.Converter.ConvertSnippet:output_type -> pulumirpc.ConvertSnippetResponse
+	12, // [12:15] is the sub-list for method output_type
+	9,  // [9:12] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_converter_proto_init() }
@@ -892,7 +871,7 @@ func file_pulumi_converter_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_converter_proto_rawDesc), len(file_pulumi_converter_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

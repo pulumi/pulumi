@@ -21,6 +21,8 @@ import (
 	"log/slog"
 	"math"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -56,7 +58,7 @@ type ImportState struct {
 
 	// A snapshot of the resources in the Pulumi program that new resources are being imported to. This is used to resolve
 	// references to packages providers.
-	Snapshot []*resource.State
+	Snapshot []*pkgresource.State
 }
 
 // filterReferences filters out self-references from the import state so that if a resource has a property
@@ -84,7 +86,7 @@ func filterReferences(resourceName string, importState ImportState) ImportState 
 // GenerateHCL2Definition will drop map entries who's type doesn't conform to the schema type.
 func GenerateHCL2Definition(
 	loader schema.Loader,
-	state *resource.State,
+	state *pkgresource.State,
 	importState ImportState,
 ) (*model.Block, *schema.PackageDescriptor, error) {
 	// First up, we'll need to load the appropriate package for this resource. We'll do this by grabbing the resource's
@@ -95,7 +97,7 @@ func GenerateHCL2Definition(
 		return nil, nil, fmt.Errorf("parse resource provider reference: %w", err)
 	}
 
-	var provider *resource.State
+	var provider *pkgresource.State
 	for _, s := range importState.Snapshot {
 		if s.URN == providerRef.URN() && s.ID == providerRef.ID() {
 			provider = s
@@ -269,7 +271,7 @@ func appendResourceOption(block *model.Block, name string, value model.Expressio
 //
 // The corresponding binding pcl function to read these is bindResourceOptions
 // which reads out these options.
-func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[string]bool) (*model.Block, error) {
+func makeResourceOptions(state *pkgresource.State, names NameTable, addedRefs map[string]bool) (*model.Block, error) {
 	var resourceOptions *model.Block
 	if state.Parent != "" && state.Parent.QualifiedType() != resource.RootStackType {
 		name, ok := names[state.Parent]

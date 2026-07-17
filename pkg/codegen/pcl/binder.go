@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 
 	"github.com/blang/semver"
@@ -35,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -415,7 +415,7 @@ func typecheckObjectArgs(
 		}
 	}
 
-	for _, name := range maputil.SortedKeys(objectType.Properties) {
+	for _, name := range slices.Sorted(maps.Keys(objectType.Properties)) {
 		expected := objectType.Properties[name]
 		_, hasAttribute := attrNames[name]
 		if model.IsOptionalType(expected) || hasAttribute {

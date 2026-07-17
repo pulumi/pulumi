@@ -19,6 +19,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -39,7 +41,7 @@ func TestUntaintSingleResource(t *testing.T) {
 	require.NoError(t, err)
 
 	providerURN := resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -88,7 +90,7 @@ func TestUntaintMultipleResources(t *testing.T) {
 	require.NoError(t, err)
 
 	providerURN := resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -152,7 +154,7 @@ func TestUntaintNonExistentResource(t *testing.T) {
 	require.NoError(t, err)
 
 	providerURN := resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -205,7 +207,7 @@ func TestUntaintMixedExistingAndNonExistent(t *testing.T) {
 	require.NoError(t, err)
 
 	providerURN := resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -267,7 +269,7 @@ func TestUntaintAlreadyUntaintedResource(t *testing.T) {
 	require.NoError(t, err)
 
 	providerURN := resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0")
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -331,7 +333,7 @@ func TestUntaintWithParentChildRelationship(t *testing.T) {
 	parentURN := resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "parent")
 	childURN := resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "child")
 
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -384,7 +386,7 @@ func TestUntaintMultipleResourcesWithErrors(t *testing.T) {
 	sm := b64.NewBase64SecretsManager()
 
 	// Create a snapshot directly with resources
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*pkgresource.State{
 		{
 			URN:   resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
 			Type:  "pulumi:providers:a::default_1_0_0",
@@ -431,7 +433,7 @@ func TestUntaintWithDependencies(t *testing.T) {
 	resource1URN := resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "resource1")
 	resource2URN := resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "resource2")
 
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -490,7 +492,7 @@ func TestUntaintRoundTrip(t *testing.T) {
 
 	providerURN := resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0")
 	resourceURN := resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "name")
-	resources := []*resource.State{
+	resources := []*pkgresource.State{
 		{
 			URN:    providerURN,
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -544,7 +546,7 @@ func TestUntaintResourceWithDeleteTrue(t *testing.T) {
 
 	// Create a snapshot with both a resource marked for deletion and a normal resource with the same URN
 	// This simulates a replacement scenario
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*pkgresource.State{
 		{
 			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -585,7 +587,7 @@ func TestUntaintAllResourcesWithDeleteTrue(t *testing.T) {
 	sm := b64.NewBase64SecretsManager()
 
 	// Create a snapshot with some resources marked for deletion
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*pkgresource.State{
 		{
 			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
 			Type:   "pulumi:providers:a::default_1_0_0",
@@ -641,7 +643,7 @@ func TestUntaintOnlyDeletedResource(t *testing.T) {
 	deletedURN := resource.NewURN("test-stack", "test", "d:e:f", "a:b:c", "deleted")
 
 	// Create a snapshot with only a deleted resource
-	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*resource.State{
+	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, []*pkgresource.State{
 		{
 			URN:    resource.NewURN("test-stack", "test", "", "pulumi:providers:a", "default_1_0_0"),
 			Type:   "pulumi:providers:a::default_1_0_0",

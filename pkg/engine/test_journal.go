@@ -49,9 +49,9 @@ type JournalEntries []TestJournalEntry
 
 func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
-	resources, dones := []*resource.State{}, make(map[*resource.State]bool)
+	resources, dones := []*pkgresource.State{}, make(map[*pkgresource.State]bool)
 	isRefresh := false
-	ops, doneOps := []pkgresource.Operation{}, make(map[*resource.State]bool)
+	ops, doneOps := []pkgresource.Operation{}, make(map[*pkgresource.State]bool)
 	// Collect extension blobs from ExtensionParameterizeStep entries seen during this plan.
 	liveExtensions := map[apitype.ExtensionRef]apitype.Extension{}
 	for _, e := range entries {
@@ -149,7 +149,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	// Same/Update/Create a resource and so add it to the `resources` list, but then later see a delete
 	// operation for that same resource. In that case, we want to filter out the resource from the list of
 	// resources before writing the actual snapshot.
-	filteredResources := []*resource.State{}
+	filteredResources := []*pkgresource.State{}
 	for _, res := range resources {
 		if !dones[res] {
 			filteredResources = append(filteredResources, res)
@@ -326,7 +326,7 @@ func NewTestJournal() *TestJournal {
 // this function does not mutate the state objects in place instead returning a new state object with the
 // appropriate fields filtered out, note that the slice containing the states is mutated.
 func FilterRefreshDeletes(
-	resources []*resource.State,
+	resources []*pkgresource.State,
 ) {
 	availableParents := map[resource.URN]resource.URN{}
 	referenceable := make(map[resource.URN]bool)
@@ -341,7 +341,7 @@ func FilterRefreshDeletes(
 		_, allDeps := res.GetAllDependencies()
 		for _, dep := range allDeps {
 			switch dep.Type {
-			case resource.ResourceParent:
+			case pkgresource.ResourceParent:
 				if referenceable[dep.URN] {
 					availableParents[res.URN] = dep.URN
 					newParent = dep.URN
@@ -354,25 +354,25 @@ func FilterRefreshDeletes(
 					availableParents[res.URN] = newParent
 					filtered = true
 				}
-			case resource.ResourceDependency:
+			case pkgresource.ResourceDependency:
 				if referenceable[dep.URN] {
 					newDeps = append(newDeps, dep.URN)
 				} else {
 					filtered = true
 				}
-			case resource.ResourcePropertyDependency:
+			case pkgresource.ResourcePropertyDependency:
 				if referenceable[dep.URN] {
 					newPropDeps[dep.Key] = append(newPropDeps[dep.Key], dep.URN)
 				} else {
 					filtered = true
 				}
-			case resource.ResourceDeletedWith:
+			case pkgresource.ResourceDeletedWith:
 				if referenceable[dep.URN] {
 					newDeletedWith = dep.URN
 				} else {
 					filtered = true
 				}
-			case resource.ResourceReplaceWith:
+			case pkgresource.ResourceReplaceWith:
 				if referenceable[dep.URN] {
 					newReplaceWith = append(newReplaceWith, dep.URN)
 				} else {

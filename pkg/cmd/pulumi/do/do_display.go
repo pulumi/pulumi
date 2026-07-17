@@ -15,7 +15,13 @@
 package do
 
 import (
+	"errors"
+	"fmt"
+	"regexp"
+	"strings"
 	"time"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/spf13/cobra"
 
@@ -25,27 +31,33 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 type displayedStep struct {
 	Op           display.StepOp
-	Old, New     *resource.State
+	Old, New     *pkgresource.State
 	Diffs        []resource.PropertyKey
 	DetailedDiff map[string]plugin.PropertyDiff
 	Preview      bool
 }
 
 func (pc *packageCommand) runDisplayedStep(
-	cmd *cobra.Command, step displayedStep, call func() (*resource.State, error),
+	cmd *cobra.Command, step displayedStep, call func() (*pkgresource.State, error),
 ) error {
+	urn := step.urn()
+	subject := step.subject()
 	preview := (pc.dryrun || step.Preview) && step.Op != deploy.OpRead
 
 	if pc.jsonOut && !step.Preview {
 		state, err := call()
 		if err != nil || state == nil {
-			return err
+			return tidyProviderError(err, urn, subject)
 		}
 		return pc.printResourceResult(cmd, state)
 	}
@@ -80,16 +92,44 @@ func (pc *packageCommand) runDisplayedStep(
 	start := time.Now()
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{Metadata: metadata, Planning: preview})
 
-	result, err := call()
+	forward := func(ephemeral bool) diagForwarder {
+		return func(sev diag.Severity, d *diag.Diag, args ...any) bool {
+			if sev == diag.Info {
+				return false
+			}
+			prefix, msg := engine.StringifyDiag(sev, d, args...)
+			events <- engine.NewEvent(engine.DiagEventPayload{
+				URN:       urn,
+				Prefix:    logging.FilterString(prefix),
+				Message:   logging.FilterString(tidyProviderMessage(msg, urn, subject)),
+				Color:     colors.Raw,
+				Severity:  sev,
+				StreamID:  d.StreamID,
+				Ephemeral: ephemeral,
+			})
+			return true
+		}
+	}
+	pc.diagFwd.set(forward(false))
+	pc.statusFwd.set(forward(true))
+
+	state, err := call()
+	if err != nil {
+		err = tidyProviderError(err, urn, subject)
+		pc.diagFwd.Errorf(diag.RawMessage(urn, err.Error()))
+	}
+	pc.diagFwd.clear()
+	pc.statusFwd.clear()
 	if err != nil {
 		events <- engine.NewEvent(engine.ResourceOperationFailedPayload{
 			Metadata: metadata,
 			Status:   resource.StatusOK,
 			Steps:    1,
 		})
+		err = result.BailError(err)
 	} else {
-		if result != nil {
-			metadata.New = engine.MakeStepEventStateMetadata(result, pc.showSecrets)
+		if state != nil {
+			metadata.New = engine.MakeStepEventStateMetadata(state, pc.showSecrets)
 			metadata.Res = metadata.New
 		}
 		events <- engine.NewEvent(engine.ResourceOutputsEventPayload{Metadata: metadata, Planning: preview})
@@ -116,6 +156,38 @@ func (s displayedStep) urn() resource.URN {
 	return s.Old.URN
 }
 
+func (s displayedStep) subject() string {
+	id := ""
+	if s.Old != nil && s.Old.ID != "" {
+		id = string(s.Old.ID)
+	}
+	if s.New != nil && s.New.ID != "" {
+		id = string(s.New.ID)
+	}
+	if id == "" {
+		return string(s.urn().Type())
+	}
+	return fmt.Sprintf("%s %q", s.urn().Type(), id)
+}
+
+var singleErrorOccurred = regexp.MustCompile(`(?s)1 error occurred:\s*\n\s*\* (.*?)\s*$`)
+
+func tidyProviderMessage(msg string, urn resource.URN, subject string) string {
+	msg = strings.ReplaceAll(msg, string(urn), subject)
+	return singleErrorOccurred.ReplaceAllString(msg, "$1")
+}
+
+func tidyProviderError(err error, urn resource.URN, subject string) error {
+	if err == nil {
+		return nil
+	}
+	msg := tidyProviderMessage(err.Error(), urn, subject)
+	if msg == err.Error() {
+		return err
+	}
+	return errors.New(msg)
+}
+
 func (s displayedStep) metadata(showSecrets bool) engine.StepEventMetadata {
 	oldMeta := engine.MakeStepEventStateMetadata(s.Old, showSecrets)
 	newMeta := engine.MakeStepEventStateMetadata(s.New, showSecrets)
@@ -135,8 +207,8 @@ func (s displayedStep) metadata(showSecrets bool) engine.StepEventMetadata {
 	}
 }
 
-func operationState(urn resource.URN, id resource.ID, inputs, outputs resource.PropertyMap) *resource.State {
-	return &resource.State{
+func operationState(urn resource.URN, id resource.ID, inputs, outputs resource.PropertyMap) *pkgresource.State {
+	return &pkgresource.State{
 		Type:    urn.Type(),
 		URN:     urn,
 		Custom:  true,

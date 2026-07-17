@@ -15,6 +15,7 @@
 package tests
 
 import (
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -42,8 +43,8 @@ func init() {
 					outputs := stack.Outputs
 					AssertPropertyMapMember(l, outputs, "hello", resource.NewProperty("hello world"))
 
-					var first *resource.State
-					var second *resource.State
+					var first *pkgresource.State
+					var second *pkgresource.State
 					for _, r := range snap.Resources {
 						if r.URN.Name() == "first" {
 							first = r

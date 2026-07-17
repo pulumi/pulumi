@@ -21,7 +21,6 @@ import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.message
-import google.protobuf.struct_pb2
 import pulumi.codegen.hcl_pb2
 import pulumi.codegen.loader_pb2
 import typing
@@ -92,10 +91,9 @@ class ResourceImport(google.protobuf.message.Message):
     response; resources without a parent are parented to the stack root.
     """
     provider: builtins.str
-    """the name of the resource's explicit provider, if any. Resources sharing a provider name are served
-    by the same explicit provider, created during import; its package, version, and parameterization
-    are taken from the resources that reference it, and its configuration may be supplied via the
-    response's provider_inputs.
+    """the name of the resource's explicit provider, if any. Must reference the name of a provider
+    declared as another resource (of type "pulumi:providers:<package>") in the same response;
+    resources without a provider are served by an appropriate default provider.
     """
     @property
     def parameterization(self) -> global___ResourceParameterization:
@@ -196,27 +194,8 @@ global___ResourceExtension = ResourceExtension
 class ConvertStateResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    @typing.final
-    class ProviderInputsEntry(google.protobuf.message.Message):
-        DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-        KEY_FIELD_NUMBER: builtins.int
-        VALUE_FIELD_NUMBER: builtins.int
-        key: builtins.str
-        @property
-        def value(self) -> google.protobuf.struct_pb2.Struct: ...
-        def __init__(
-            self,
-            *,
-            key: builtins.str = ...,
-            value: google.protobuf.struct_pb2.Struct | None = ...,
-        ) -> None: ...
-        def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
-        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
-
     RESOURCES_FIELD_NUMBER: builtins.int
     DIAGNOSTICS_FIELD_NUMBER: builtins.int
-    PROVIDER_INPUTS_FIELD_NUMBER: builtins.int
     @property
     def resources(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___ResourceImport]:
         """a list of resources to import."""
@@ -225,21 +204,13 @@ class ConvertStateResponse(google.protobuf.message.Message):
     def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.codegen.hcl_pb2.Diagnostic]:
         """any diagnostics from state conversion."""
 
-    @property
-    def provider_inputs(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, google.protobuf.struct_pb2.Struct]:
-        """the configuration inputs for the explicit providers referenced by resources' provider fields, keyed
-        by those names. Providers without an entry are created with empty configuration. Secret values are
-        marked with Pulumi's standard secret signature.
-        """
-
     def __init__(
         self,
         *,
         resources: collections.abc.Iterable[global___ResourceImport] | None = ...,
         diagnostics: collections.abc.Iterable[pulumi.codegen.hcl_pb2.Diagnostic] | None = ...,
-        provider_inputs: collections.abc.Mapping[builtins.str, google.protobuf.struct_pb2.Struct] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics", "provider_inputs", b"provider_inputs", "resources", b"resources"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics", "resources", b"resources"]) -> None: ...
 
 global___ConvertStateResponse = ConvertStateResponse
 

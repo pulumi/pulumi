@@ -16,9 +16,6 @@ package plugin
 
 import (
 	"context"
-	"fmt"
-
-	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -77,15 +74,6 @@ func (c *converterServer) ConvertState(ctx context.Context,
 		}
 	}
 
-	providerInputs := make(map[string]*structpb.Struct, len(resp.ProviderInputs))
-	for name, pi := range resp.ProviderInputs {
-		inputs, err := MarshalProperties(pi, MarshalOptions{KeepSecrets: true})
-		if err != nil {
-			return nil, fmt.Errorf("marshaling inputs for provider %q: %w", name, err)
-		}
-		providerInputs[name] = inputs
-	}
-
 	// Translate the hcl.Diagnostics into rpc diagnostics.
 	diags := slice.Prealloc[*codegenrpc.Diagnostic](len(resp.Diagnostics))
 	for _, diag := range resp.Diagnostics {
@@ -93,9 +81,8 @@ func (c *converterServer) ConvertState(ctx context.Context,
 	}
 
 	rpcResp := &pulumirpc.ConvertStateResponse{
-		Resources:      resources,
-		ProviderInputs: providerInputs,
-		Diagnostics:    diags,
+		Resources:   resources,
+		Diagnostics: diags,
 	}
 	return rpcResp, nil
 }

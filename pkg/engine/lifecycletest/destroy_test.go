@@ -21,6 +21,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
@@ -991,7 +993,7 @@ func TestTargetedAliasDestroyV2(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov := &resource.State{
+		prov := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
 			Custom: true,
@@ -1002,7 +1004,7 @@ func TestTargetedAliasDestroyV2(t *testing.T) {
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
 		require.NoError(t, err)
 
-		comp := &resource.State{
+		comp := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::compA",
 			Custom:   false,
@@ -1011,7 +1013,7 @@ func TestTargetedAliasDestroyV2(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, comp)
 
-		res := &resource.State{
+		res := &pkgresource.State{
 			Type:     "pkgA:m:typB",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA$pkgA:m:typB::resA",
 			Custom:   true,
@@ -1070,7 +1072,7 @@ func TestDestroyV2ProtectedWithProviderDependencies(t *testing.T) {
 	t.Parallel()
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
@@ -1132,7 +1134,7 @@ func TestDestroyWithProgramProtectedResourceWithProvider(t *testing.T) {
 	t.Skip("Skipping test, see pulumi/pulumi#21277")
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
@@ -1184,7 +1186,7 @@ func TestDestroyV2TargetChildWithNewParent(t *testing.T) {
 	t.Skip("Skipping test, see pulumi/pulumi#21347")
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
@@ -1264,7 +1266,7 @@ func TestDestroyV2TargetProviderWithAliasedParent(t *testing.T) {
 	t.Skip("Skipping test, snapshot integrity error with aliased parent")
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::prov",
@@ -1361,7 +1363,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
 
-		prov := &resource.State{
+		prov := &pkgresource.State{
 			Type:   "pulumi:providers:pkgA",
 			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
 			Custom: true,
@@ -1372,7 +1374,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
 		require.NoError(t, err)
 
-		resA1 := &resource.State{
+		resA1 := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
 			Custom:   false,
@@ -1380,7 +1382,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, resA1)
 
-		resA2 := &resource.State{
+		resA2 := &pkgresource.State{
 			Type:     "pkgA:m:typA",
 			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
 			Custom:   false,
@@ -1389,7 +1391,7 @@ func TestDestroyV2ResourceWithDependencyOnDeleted(t *testing.T) {
 		}
 		s.Resources = append(s.Resources, resA2)
 
-		resB := &resource.State{
+		resB := &pkgresource.State{
 			Type:               "pkgA:m:typB",
 			URN:                "urn:pulumi:test-stack::test-project::pkgA:m:typB::resB",
 			Custom:             true,
@@ -1439,7 +1441,7 @@ func TestDestroyV2ResourceReferencesAliasedProvider(t *testing.T) {
 	t.Skip("Skipping test, repro for snapshot integrity issue")
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgA",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgA::provA",
@@ -1521,7 +1523,7 @@ func TestDestroyV2RefreshWithTargetedProviderParentChange(t *testing.T) {
 	project := p.GetProject()
 
 	initialSnap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   "pulumi:providers:pkgB",
 				URN:    "urn:pulumi:test::test::pulumi:providers:pkgB::provB",

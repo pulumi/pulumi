@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -37,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	utilenv "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
@@ -288,10 +288,14 @@ func rebuildDependencies(resources []apitype.ResourceV3) {
 				}
 			}
 		}
-		for i, r := range resources[i].ReplaceWith {
-			if !referenceable[r] {
-				resources[i].ReplaceWith = append(resources[i].ReplaceWith, "")
+		newReplaceWith := []resource.URN{}
+		for _, r := range resources[i].ReplaceWith {
+			if referenceable[r] {
+				newReplaceWith = append(newReplaceWith, r)
 			}
+		}
+		if len(resources[i].ReplaceWith) > 0 {
+			resources[i].ReplaceWith = newReplaceWith
 		}
 		if !referenceable[resources[i].DeletedWith] {
 			resources[i].DeletedWith = ""
@@ -429,7 +433,7 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	return apitype.TypedDeployment{
 		Deployment: deployment,
 		Version:    version,
-		Features:   maputil.SortedKeys(features),
+		Features:   slices.Sorted(maps.Keys(features)),
 	}, nil
 }
 
@@ -634,7 +638,7 @@ func NewSnapshotJournaler(
 		snapCopy = &deploy.Snapshot{
 			Manifest:          baseSnap.Manifest,
 			SecretsManager:    baseSnap.SecretsManager,
-			Resources:         make([]*resource.State, 0),
+			Resources:         make([]*pkgresource.State, 0),
 			PendingOperations: make([]pkgresource.Operation, 0),
 			Metadata:          baseSnap.Metadata,
 			Snippets:          baseSnap.Snippets,
@@ -783,7 +787,7 @@ func NewJournaler(
 		snapCopy = &deploy.Snapshot{
 			Manifest:          baseSnap.Manifest,
 			SecretsManager:    baseSnap.SecretsManager,
-			Resources:         make([]*resource.State, 0),
+			Resources:         make([]*pkgresource.State, 0),
 			PendingOperations: make([]pkgresource.Operation, 0),
 			Metadata:          baseSnap.Metadata,
 		}

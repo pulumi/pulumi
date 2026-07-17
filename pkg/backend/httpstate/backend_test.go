@@ -28,6 +28,8 @@ import (
 	"testing"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -2798,7 +2800,7 @@ func TestRunEngineActionPropagatesSnapshotJournalerError(t *testing.T) {
 	require.NoError(t, err)
 	mgr := failingSecretsManager{err: errors.New("encrypt boom")}
 	snap := &deploy.Snapshot{
-		Resources: []*resource.State{{
+		Resources: []*pkgresource.State{{
 			Type: tokens.Type("test:index:Resource"),
 			URN: resource.NewURN(
 				stackName.Q(), tokens.PackageName("project"), "",

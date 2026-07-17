@@ -17,6 +17,8 @@ package lifecycletest
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,7 +56,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 	// Create an old snapshot with two copies of a resource that share a URN: one that is pending deletion and one
 	// that is not.
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:    resURN.Type(),
 				URN:     resURN,
@@ -131,7 +133,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 	// Create an old snapshot with two copies of a resource that share a URN: one that is pending deletion and one
 	// that is not.
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:    resURN.Type(),
 				URN:     resURN,
@@ -215,7 +217,7 @@ func TestDestroyWithUntargetedPendingDelete(t *testing.T) {
 	resBURN := p.NewURN("pkgA:m:typA", "resB", "")
 
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:    resAURN.Type(),
 				URN:     resAURN,

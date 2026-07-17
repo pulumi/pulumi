@@ -19,6 +19,8 @@ import (
 	"sync"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -179,7 +181,7 @@ func TestExtensionParameterizedProvider(t *testing.T) {
 				assert.Equal(t, []byte("blob-a"), snap.Extensions[apitype.ExtensionRef(refA)].Value)
 				assert.Equal(t, []byte("blob-b"), snap.Extensions[apitype.ExtensionRef(refB)].Value)
 
-				var resA, resB *resource.State
+				var resA, resB *pkgresource.State
 				for _, r := range snap.Resources {
 					switch r.URN.Name() {
 					case "resA":

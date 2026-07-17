@@ -47,10 +47,10 @@ type Parameterization struct {
 
 // ToProviderParameterization converts a workspace parameterization to a provider parameterization.
 func (p *Parameterization) ToProviderParameterization(
-	typ tokens.Type, version *semver.Version,
+	pkg tokens.Package, version *semver.Version,
 ) (tokens.Package, *semver.Version, *workspace.Parameterization, error) {
 	if p == nil {
-		return typ.Package(), version, nil, nil
+		return pkg, version, nil, nil
 	}
 
 	if version == nil {
@@ -58,10 +58,19 @@ func (p *Parameterization) ToProviderParameterization(
 	}
 
 	return p.PluginName, &p.PluginVersion, &workspace.Parameterization{
-		Name:    string(typ.Package()),
+		Name:    string(pkg),
 		Version: *version,
 		Value:   p.Value,
 	}, nil
+}
+
+// importPackage returns the package an import's provider serves: for provider-typed imports the
+// provider's own package, otherwise the resource type's package.
+func importPackage(typ tokens.Type) tokens.Package {
+	if sdkproviders.IsProviderType(typ) {
+		return sdkproviders.GetProviderPackage(typ)
+	}
+	return typ.Package()
 }
 
 // An Import specifies a resource to import.
@@ -164,7 +173,7 @@ func NewImportDeployment(
 		source:                          NewErrorSource(projectName),
 		providers:                       reg,
 		newPlans:                        newResourcePlan(target.Config),
-		news:                            &gsync.Map[resource.URN, *resource.State]{},
+		news:                            &gsync.Map[resource.URN, *pkgresource.State]{},
 		extensions:                      map[sdkproviders.Reference][]inFlightExtension{},
 	}, nil
 }
@@ -237,7 +246,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 	projectName, stackName := i.deployment.source.Project(), i.deployment.target.Name
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName.Q(), projectName, "", typ, name)
-	state := resource.NewState{
+	state := pkgresource.NewState{
 		Type:                    typ,
 		URN:                     urn,
 		Custom:                  false,
@@ -296,6 +305,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			// Skip local component resources, they don't have providers.
 			continue
 		}
+		if sdkproviders.IsProviderType(imp.Type) {
+			// Providers declared as imports are collected below.
+			continue
+		}
 
 		if imp.Provider != "" {
 			if state, ok := i.deployment.olds[imp.Provider]; ok {
@@ -314,7 +327,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, errors.New("incorrect package type specified")
 		}
 
-		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(importPackage(imp.Type), imp.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -340,6 +353,25 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	// import file (ProviderInputs), or they may have no config at all (e.g. the random provider).
 	// Deduplicate by URN since multiple resources may reference the same explicit provider.
 	explicitProvidersByURN := map[resource.URN]Import{}
+	// Providers declared directly as imports are collected first so the declared entry, which carries
+	// the provider's own inputs and version, wins the dedupe over referencing imports.
+	for _, imp := range i.deployment.imports {
+		if !sdkproviders.IsProviderType(imp.Type) {
+			continue
+		}
+		urn := i.deployment.generateURN("", imp.Type, imp.Name)
+		if state, ok := i.deployment.olds[urn]; ok {
+			ref, err := sdkproviders.NewReference(urn, state.ID)
+			contract.AssertNoErrorf(err,
+				"could not create provider reference with URN %q and ID %q", urn, state.ID)
+			urnToReference[urn] = ref.String()
+			continue
+		}
+		if _, ok := explicitProvidersByURN[urn]; !ok {
+			imp.Provider = urn
+			explicitProvidersByURN[urn] = imp
+		}
+	}
 	for _, imp := range i.deployment.imports {
 		if imp.Provider == "" {
 			continue
@@ -401,7 +433,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate provider config: %w", err)
 		}
-		state := resource.NewState{
+		state := pkgresource.NewState{
 			Type:                    typ,
 			URN:                     urn,
 			Custom:                  true,
@@ -475,7 +507,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 		// Overlay version/URL/checksums/parameterization from the Import if present and not already
 		// in inputs.
-		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(importPackage(imp.Type), imp.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -500,7 +532,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate explicit provider config for %s: %w", providerURN, err)
 		}
-		state := resource.NewState{
+		state := pkgresource.NewState{
 			Type:                    typ,
 			URN:                     providerURN,
 			Custom:                  true,
@@ -568,7 +600,7 @@ func (i *importer) importProviderURN(imp Import) (resource.URN, error) {
 	if imp.Provider != "" {
 		return imp.Provider, nil
 	}
-	pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+	pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(importPackage(imp.Type), imp.Version)
 	if err != nil {
 		return "", err
 	}
@@ -642,6 +674,10 @@ func (i *importer) importResources(ctx context.Context) error {
 	urns := map[resource.URN]struct{}{}
 	steps := slice.Prealloc[Step](len(i.deployment.imports))
 	for _, imp := range i.deployment.imports {
+		if sdkproviders.IsProviderType(imp.Type) {
+			// Already created (or reused from state) by registerProviders.
+			continue
+		}
 		parent := imp.Parent
 		if parent == "" {
 			parent = stackURN
@@ -671,7 +707,7 @@ func (i *importer) importResources(ctx context.Context) error {
 
 		providerURN := imp.Provider
 		if providerURN == "" && (!imp.Component || imp.Remote) {
-			pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+			pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(importPackage(imp.Type), imp.Version)
 			if err != nil {
 				return err
 			}
@@ -689,7 +725,7 @@ func (i *importer) importResources(ctx context.Context) error {
 		}
 
 		// Create the new desired state. Note that the resource is protected. Provider might be "" at this point.
-		new := resource.NewState{
+		new := pkgresource.NewState{
 			Type:                    urn.Type(),
 			URN:                     urn,
 			Custom:                  !imp.Component,
@@ -727,7 +763,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			SnippetID:               "",
 		}.Make()
 		if imp.Extension != nil {
-			new.ExtensionRef = resource.ExtensionRef(hashExtension(*imp.Extension))
+			new.ExtensionRef = pkgresource.ExtensionRef(hashExtension(*imp.Extension))
 		}
 		// Set a dummy goal so the resource is tracked as managed.
 		i.deployment.goals.Store(urn, &pkgresource.Goal{})
