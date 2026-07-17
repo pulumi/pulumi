@@ -22,10 +22,16 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/daemon"
+	"github.com/google/go-containerregistry/pkg/v1/layout"
 )
 
 // podLabel keys a label attached to every resource a dockerPodManager creates,
@@ -378,6 +384,68 @@ func (m *dockerPodManager) ImageExists(ctx context.Context, ref string) (bool, e
 func (m *dockerPodManager) PullImage(ctx context.Context, ref string) error {
 	_, err := m.docker(ctx, "pull", ref)
 	return err
+}
+
+// ImportImage loads the OCI image layout at layoutPath into the docker daemon and
+// tags it as ref. Unlike the rest of this implementation — which shells out to the
+// `docker` CLI — the load is done in-process via go-containerregistry, because
+// `docker load` cannot ingest an OCI layout *directory* and the PodManager owns the
+// loading step, so the dependency belongs here rather than behind a sibling
+// container. It reads the layout's single image and streams it to the daemon's load
+// endpoint (which dedups already-present layers on ingest, so a warm re-import does
+// not re-materialize the base), applying ref as the location the orchestrator
+// resolved.
+func (m *dockerPodManager) ImportImage(ctx context.Context, layoutPath, ref string) error {
+	idx, err := layout.ImageIndexFromPath(layoutPath)
+	if err != nil {
+		return fmt.Errorf("oci: reading image layout at %s: %w", layoutPath, err)
+	}
+	manifest, err := idx.IndexManifest()
+	if err != nil {
+		return fmt.Errorf("oci: reading layout index at %s: %w", layoutPath, err)
+	}
+	// A layout is not always a single image: buildx attaches a provenance/SBOM attestation
+	// manifest by default, and a multi-arch build carries one image per platform. Pick the
+	// image manifest for this host rather than assuming exactly one entry.
+	digest, err := selectImageManifest(manifest)
+	if err != nil {
+		return fmt.Errorf("oci: %w in layout at %s", err, layoutPath)
+	}
+	img, err := idx.Image(digest)
+	if err != nil {
+		return fmt.Errorf("oci: extracting image from layout at %s: %w", layoutPath, err)
+	}
+	tag, err := name.NewTag(ref)
+	if err != nil {
+		return fmt.Errorf("oci: parsing target ref %q: %w", ref, err)
+	}
+	if _, err := daemon.Write(tag, img, daemon.WithContext(ctx)); err != nil {
+		return fmt.Errorf("oci: loading image %s into the daemon: %w", ref, err)
+	}
+	return nil
+}
+
+// selectImageManifest picks the runnable image manifest for the current host from a layout
+// index. It skips buildx attestation manifests (provenance/SBOM, annotated
+// attestation-manifest) and, in a multi-arch layout, entries for other platforms; a nil
+// platform — the common single-image case — matches anything. This is why ImportImage does
+// not assume the index holds exactly one manifest.
+func selectImageManifest(mf *v1.IndexManifest) (v1.Hash, error) {
+	for i := range mf.Manifests {
+		d := mf.Manifests[i]
+		if d.Annotations["vnd.docker.reference.type"] == "attestation-manifest" {
+			continue
+		}
+		if !d.MediaType.IsImage() {
+			continue // a nested index (manifest list) or non-image artifact, not runnable as-is
+		}
+		if d.Platform != nil && (d.Platform.OS != runtime.GOOS || d.Platform.Architecture != runtime.GOARCH) {
+			continue
+		}
+		return d.Digest, nil
+	}
+	return v1.Hash{}, fmt.Errorf("no image manifest for %s/%s (index holds %d manifest(s))",
+		runtime.GOOS, runtime.GOARCH, len(mf.Manifests))
 }
 
 func (m *dockerPodManager) Cleanup(ctx context.Context) error {

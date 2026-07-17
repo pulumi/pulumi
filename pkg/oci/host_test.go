@@ -51,6 +51,7 @@ func (f fakePod) CopyFromImage(context.Context, string, string, Volume, string) 
 func (f fakePod) ReadImageFile(context.Context, string, string) ([]byte, error) { panic("unused") }
 func (f fakePod) ImageExists(context.Context, string) (bool, error)             { return f.imageExists, nil }
 func (f fakePod) PullImage(context.Context, string) error                       { panic("unused") }
+func (f fakePod) ImportImage(context.Context, string, string) error             { panic("unused") }
 func (f fakePod) Cleanup(context.Context) error                                 { panic("unused") }
 
 // recordingPod is a fakePod that records the containers StopContainer was called on, so a

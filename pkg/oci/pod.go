@@ -111,6 +111,16 @@ type PodManager interface {
 	// the same infrastructure used to distribute any other image.
 	PullImage(ctx context.Context, ref string) error
 
+	// ImportImage loads a runtime-neutral OCI image layout (a directory of
+	// digest-addressed blobs, as any builder can emit) into the local image store
+	// under ref. It is the sink for the build contract: a build produces a layout
+	// naming no runtime and no location, and this verb — which is runtime-specific
+	// by design, and so belongs below this seam — makes it present and tags it with
+	// the ref the orchestrator resolved. This is the one place a decoupled build's
+	// artifact re-enters a particular runtime; a containerd backend would satisfy
+	// it with `ctr images import` rather than a docker load.
+	ImportImage(ctx context.Context, layoutPath, ref string) error
+
 	// Cleanup stops and removes every container, volume, and network this manager
 	// created. It is best-effort: it attempts to remove all resources and returns
 	// a joined error describing any failures, so one failure does not strand the

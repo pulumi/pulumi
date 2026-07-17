@@ -102,7 +102,22 @@ func BuildPolicyPack(ctx context.Context, dir, registry string, stderr io.Writer
 }
 
 // runPackageBuild runs a package's self-described build (the options.build block shared
-// by PulumiPlugin.yaml and PulumiPolicy.yaml) in a builder container, tagging ref.
+// by PulumiPlugin.yaml and PulumiPolicy.yaml) in a builder container, leaving the image
+// present in the store under ref.
+//
+// Two build contracts coexist here, one deprecating the other:
+//
+//   - The runtime-neutral contract (what #51 is about): the build writes an OCI image
+//     layout to $PULUMI_PACKAGE_LAYOUT — naming no runtime and no location — and this
+//     function then loads it below the PodManager seam via ImportImage, applying ref (the
+//     location the orchestrator resolved) at that sink. The build never touches a runtime
+//     store, so any builder on any runtime satisfies it; kaniko is the forcing function
+//     that proves it (it cannot reach the daemon socket to cheat).
+//   - The legacy contract: the build tags the image directly into the runtime store as
+//     $PULUMI_PACKAGE_IMAGE (the default `docker build -t` command). This is the very
+//     "output a resolvable ref" coupling #51 removes — the build must know, and load into,
+//     a specific runtime. Kept working while examples migrate; a build that emits a layout
+//     opts into the neutral path, one that does not falls through to this.
 func runPackageBuild(
 	ctx context.Context, dir, name, version, ref string, build map[string]any, stderr io.Writer,
 ) error {
@@ -112,17 +127,49 @@ func runPackageBuild(
 	}
 	command, _ := build["command"].(string)
 	if command == "" {
-		// Build the package's Dockerfile and tag it as the convention ref (delivered via
-		// env so the command stays ref-agnostic).
+		// Legacy default: build the package's Dockerfile and tag it directly into the
+		// store as the convention ref (delivered via env so the command stays ref-agnostic).
 		command = `docker build -q -t "$PULUMI_PACKAGE_IMAGE" .`
 	}
 
+	// A sibling of the package dir under the shared workspace: reachable by both the
+	// builder (via --volumes-from) and this engine (which reads it for the import), but
+	// OUTSIDE the package's build context so a build cannot pick up its own prior output
+	// as source. A dedicated scratch volume is the cleaner form, but in-process ImportImage
+	// needs the layout on a path the engine already mounts — which the workspace is.
+	layoutDir := filepath.Join(filepath.Dir(dir), "."+filepath.Base(dir)+".oci-layout")
+	if err := os.RemoveAll(layoutDir); err != nil {
+		return fmt.Errorf("clearing build layout dir %s: %w", layoutDir, err)
+	}
+
 	fmt.Fprintf(stderr, "Building %s (v%s) in %s -> %s\n", name, version, buildImage, ref)
+	env := map[string]string{
+		// Legacy location channel: the build tags directly into the runtime store.
+		"PULUMI_PACKAGE_IMAGE": ref,
+		// Neutral contract: identity inputs (what it is) plus a location-free path to write
+		// the OCI layout to. The ref (where it lives) is applied at the sink, not here.
+		"PULUMI_PACKAGE_NAME":    name,
+		"PULUMI_PACKAGE_VERSION": version,
+		"PULUMI_PACKAGE_LAYOUT":  layoutDir,
+	}
 	if _, err := BuildInContainer(
-		ctx, buildImage, command, dir, optStringSlice(build["caches"]),
-		map[string]string{"PULUMI_PACKAGE_IMAGE": ref}, stderr,
+		ctx, buildImage, command, dir, optStringSlice(build["caches"]), env, stderr,
 	); err != nil {
 		return fmt.Errorf("building package %s: %w", name, err)
+	}
+
+	// If the build wrote a layout, it chose the neutral contract: load it below the seam
+	// and apply ref there. Otherwise the legacy build already delivered ref into the store.
+	if _, err := os.Stat(filepath.Join(layoutDir, "index.json")); err == nil {
+		defer func() { _ = os.RemoveAll(layoutDir) }() // served its purpose; keep the workspace clean
+		fmt.Fprintf(stderr, "Importing %s from OCI layout -> %s\n", name, ref)
+		podID := os.Getenv("PULUMI_POD_ID")
+		if podID == "" {
+			podID, _ = os.Hostname()
+		}
+		if err := NewDockerPodManager(podID).ImportImage(ctx, layoutDir, ref); err != nil {
+			return fmt.Errorf("importing package %s image: %w", name, err)
+		}
 	}
 	return nil
 }
