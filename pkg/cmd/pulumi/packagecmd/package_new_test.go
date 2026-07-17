@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -240,7 +241,7 @@ func TestPackageNew_InvalidName(t *testing.T) {
 func TestPackageTemplatesToOptions(t *testing.T) {
 	t.Parallel()
 
-	templates := []workspace.PackageTemplate{
+	templates := []cmdTemplates.PackageTemplate{
 		{Name: "zeta", Description: "last alphabetically"},
 		{Name: "alpha", Description: "first alphabetically"},
 		{Name: "broken", Error: assert.AnError},
@@ -262,7 +263,7 @@ func TestLoadPackageTemplate(t *testing.T) {
 		t.Parallel()
 		path, err := filepath.Abs(filepath.Join("testdata", "template-component-nodejs"))
 		require.NoError(t, err)
-		template, err := workspace.LoadPackageTemplate(path)
+		template, err := cmdTemplates.LoadPackageTemplate(path)
 		require.NoError(t, err)
 		assert.Equal(t, "template-component-nodejs", template.Name)
 		assert.Equal(t, "A Node.js component package starter", template.Description)
@@ -272,7 +273,7 @@ func TestLoadPackageTemplate(t *testing.T) {
 		t.Parallel()
 		path, err := filepath.Abs(filepath.Join("testdata", "template-broken"))
 		require.NoError(t, err)
-		_, err = workspace.LoadPackageTemplate(path)
+		_, err = cmdTemplates.LoadPackageTemplate(path)
 		require.Error(t, err)
 	})
 }

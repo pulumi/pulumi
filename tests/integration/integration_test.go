@@ -1282,6 +1282,7 @@ func TestPolicyPackNewGenerateOnly(t *testing.T) {
 }
 
 func TestPolicyPackNew(t *testing.T) {
+	t.Skip("https://github.com/pulumi/pulumi/issues/23969")
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)

@@ -195,7 +195,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		scope = cmdTemplates.ScopeLocal
 	}
 	templateSource := cmdTemplates.New(ctx,
-		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject, env.Global())
+		args.templateNameOrURL, scope, cmdTemplates.TemplateKindPulumiProject, env.Global())
 	defer contract.IgnoreClose(templateSource)
 
 	// List the templates from the repo.
@@ -217,7 +217,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
-	var template workspace.Template
+	var template cmdTemplates.ProjectTemplate
 	if cmdTemplate == nil {
 		// Template might be nil if we're running in non-interactive mode and didn't pass a template to choose. In
 		// that case we'll write a minimal Pulumi.yaml.
@@ -231,7 +231,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			return fmt.Errorf("writing minimal Pulumi.yaml: %w", err)
 		}
 
-		template = workspace.Template{
+		template = cmdTemplates.ProjectTemplate{
 			Dir:         temp,
 			ProjectName: "${PROJECT}",
 		}
@@ -248,7 +248,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Do a dry run, if we're not forcing files to be overwritten.
 	if !args.force {
-		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd, args.name); err != nil {
+		if err = cmdTemplates.CopyTemplateFilesDryRun(template.Dir, cwd, args.name); err != nil {
 			if os.IsNotExist(err) {
 				return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 			}
@@ -337,7 +337,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Actually copy the files.
-	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
+	if err = cmdTemplates.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 		}
@@ -547,7 +547,7 @@ func NewNewCmd() *cobra.Command {
 			scope = cmdTemplates.ScopeLocal
 		}
 		// Attempt to retrieve available templates.
-		s := cmdTemplates.New(ctx, "", scope, workspace.TemplateKindPulumiProject, env.Global())
+		s := cmdTemplates.New(ctx, "", scope, cmdTemplates.TemplateKindPulumiProject, env.Global())
 		t, err := s.Templates()
 		return t, s, err
 	}
