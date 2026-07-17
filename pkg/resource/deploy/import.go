@@ -327,7 +327,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, errors.New("incorrect package type specified")
 		}
 
-		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(importPackage(imp.Type), imp.Version)
+		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(
+			importPackage(imp.Type), imp.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -507,7 +508,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 		// Overlay version/URL/checksums/parameterization from the Import if present and not already
 		// in inputs.
-		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(importPackage(imp.Type), imp.Version)
+		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(
+			importPackage(imp.Type), imp.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -600,7 +602,8 @@ func (i *importer) importProviderURN(imp Import) (resource.URN, error) {
 	if imp.Provider != "" {
 		return imp.Provider, nil
 	}
-	pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(importPackage(imp.Type), imp.Version)
+	pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(
+		importPackage(imp.Type), imp.Version)
 	if err != nil {
 		return "", err
 	}
@@ -707,7 +710,8 @@ func (i *importer) importResources(ctx context.Context) error {
 
 		providerURN := imp.Provider
 		if providerURN == "" && (!imp.Component || imp.Remote) {
-			pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(importPackage(imp.Type), imp.Version)
+			pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(
+				importPackage(imp.Type), imp.Version)
 			if err != nil {
 				return err
 			}
