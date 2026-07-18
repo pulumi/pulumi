@@ -27,6 +27,18 @@ func (a *analyzer) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Emp
 	return &emptypb.Empty{}, nil
 }
 
+func (a *analyzer) GetAnalyzerInfo(ctx context.Context, req *emptypb.Empty) (*pulumirpc.AnalyzerInfo, error) {
+	return &pulumirpc.AnalyzerInfo{Name: "language-test-pack", Version: "0.0.1"}, nil
+}
+
+func (a *analyzer) GetPluginInfo(ctx context.Context, req *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
+	return &pulumirpc.PluginInfo{Version: "0.0.1"}, nil
+}
+
+func (a *analyzer) Analyze(ctx context.Context, req *pulumirpc.AnalyzeRequest) (*pulumirpc.AnalyzeResponse, error) {
+	return &pulumirpc.AnalyzeResponse{}, nil
+}
+
 func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerStackConfigureRequest) (*pulumirpc.AnalyzerStackConfigureResponse, error) {
 	if req.Stack != "test-stack" {
 		return nil, fmt.Errorf("expected stack to be test-stack, got %s", req.Stack)

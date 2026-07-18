@@ -62,12 +62,30 @@ type CreatePolicyPackRequest struct {
 	// Metadata contains optional data about the environment performing the publish operation,
 	// e.g. the current source code control commit information.
 	Metadata map[string]string `json:"metadata,omitempty"`
+
+	// Platforms lists the platforms ("linux-amd64", ...) for which this pack
+	// provides per-platform binary artifacts, in addition to the source archive.
+	// Empty for source-only packs.
+	Platforms []string `json:"platforms,omitempty"`
 }
 
 // CreatePolicyPackResponse is the response from creating a Policy Pack. It returns
 // a URI to upload the Policy Pack zip file to.
 type CreatePolicyPackResponse struct {
 	Version   int    `json:"version"`
+	UploadURI string `json:"uploadURI"`
+	// RequiredHeaders represents headers that the CLI must set in order
+	// for the upload to succeed.
+	RequiredHeaders map[string]string `json:"requiredHeaders,omitempty"`
+
+	// PlatformUploadURIs maps platform to a presigned upload for that
+	// platform's binary artifact. Set when the request declared Platforms.
+	PlatformUploadURIs map[string]PolicyPackUpload `json:"platformUploadURIs,omitempty"`
+}
+
+// PolicyPackUpload describes the presigned upload destination for one
+// platform's policy pack artifact.
+type PolicyPackUpload struct {
 	UploadURI string `json:"uploadURI"`
 	// RequiredHeaders represents headers that the CLI must set in order
 	// for the upload to succeed.

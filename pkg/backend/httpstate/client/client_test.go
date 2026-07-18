@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	goruntime "runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -33,6 +34,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -40,6 +42,24 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestGetStackPolicyPacksSendsPlatform(t *testing.T) {
+	t.Parallel()
+
+	var gotQuery string
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		gotQuery = req.URL.RawQuery
+		require.NoError(t, json.NewEncoder(rw).Encode(apitype.GetStackPolicyPacksResponse{}))
+	}))
+	defer server.Close()
+
+	client := newMockClient(server)
+	_, err := client.GetStackPolicyPacks(t.Context(),
+		StackIdentifier{Owner: "acme", Project: "p", Stack: tokens.MustParseStackName("s")})
+	require.NoError(t, err)
+	assert.Contains(t, gotQuery, "os="+goruntime.GOOS)
+	assert.Contains(t, gotQuery, "arch="+goruntime.GOARCH)
+}
 
 func newMockServer(statusCode int, message string) *httptest.Server {
 	return httptest.NewServer(
@@ -2157,4 +2177,168 @@ func TestClient_WithRefresh(t *testing.T) {
 		pc := NewClient("https://api.example.com", "tok", false, nil)
 		assert.Panics(t, func() { pc.WithRefresh("some-refresh", nil) })
 	})
+}
+
+func TestPublishPolicyPackWithPlatforms(t *testing.T) {
+	t.Parallel()
+
+	uploads := map[string][]byte{}
+	var createReq apitype.CreatePolicyPackRequest
+	completeCalled := false
+
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mux.HandleFunc("/api/orgs/acme/policypacks", func(rw http.ResponseWriter, req *http.Request) {
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&createReq))
+		resp := apitype.CreatePolicyPackResponse{
+			Version:   1,
+			UploadURI: server.URL + "/upload/source",
+			PlatformUploadURIs: map[string]apitype.PolicyPackUpload{
+				"linux-amd64": {
+					UploadURI:       server.URL + "/upload/linux-amd64",
+					RequiredHeaders: map[string]string{"x-test": "yes"},
+				},
+				"darwin-arm64": {UploadURI: server.URL + "/upload/darwin-arm64"},
+			},
+		}
+		require.NoError(t, json.NewEncoder(rw).Encode(resp))
+	})
+	mux.HandleFunc("/upload/", func(rw http.ResponseWriter, req *http.Request) {
+		require.Equal(t, http.MethodPut, req.Method)
+		key := strings.TrimPrefix(req.URL.Path, "/upload/")
+		if key == "linux-amd64" {
+			require.Equal(t, "yes", req.Header.Get("x-test"))
+		}
+		body, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		uploads[key] = body
+	})
+	mux.HandleFunc("/api/orgs/acme/policypacks/mypack/versions/0.0.1/complete",
+		func(rw http.ResponseWriter, req *http.Request) {
+			completeCalled = true
+		})
+
+	client := newMockClient(server)
+	version, err := client.PublishPolicyPack(t.Context(), "acme", "nodejs",
+		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"},
+		[]byte("source-bytes"),
+		map[string][]byte{
+			"linux-amd64":  []byte("linux-bytes"),
+			"darwin-arm64": []byte("darwin-bytes"),
+		}, nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, "0.0.1", version)
+	assert.Equal(t, []string{"darwin-arm64", "linux-amd64"}, createReq.Platforms)
+	assert.Equal(t, "nodejs", createReq.Runtime)
+	assert.Equal(t, []byte("source-bytes"), uploads["source"])
+	assert.Equal(t, []byte("linux-bytes"), uploads["linux-amd64"])
+	assert.Equal(t, []byte("darwin-bytes"), uploads["darwin-arm64"])
+	assert.True(t, completeCalled)
+}
+
+func TestPublishPolicyPackWithPlatformsUploadRejected(t *testing.T) {
+	t.Parallel()
+
+	completeCalled := false
+
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mux.HandleFunc("/api/orgs/acme/policypacks", func(rw http.ResponseWriter, req *http.Request) {
+		resp := apitype.CreatePolicyPackResponse{
+			Version:   1,
+			UploadURI: server.URL + "/upload/source",
+			PlatformUploadURIs: map[string]apitype.PolicyPackUpload{
+				"darwin-arm64": {UploadURI: server.URL + "/upload/darwin-arm64"},
+				"linux-amd64":  {UploadURI: server.URL + "/upload/linux-amd64"},
+			},
+		}
+		require.NoError(t, json.NewEncoder(rw).Encode(resp))
+	})
+	mux.HandleFunc("/upload/", func(rw http.ResponseWriter, req *http.Request) {
+		if strings.HasSuffix(req.URL.Path, "darwin-arm64") {
+			rw.WriteHeader(http.StatusForbidden)
+		}
+	})
+	mux.HandleFunc("/api/orgs/acme/policypacks/mypack/versions/0.0.1/complete",
+		func(rw http.ResponseWriter, req *http.Request) {
+			completeCalled = true
+		})
+
+	client := newMockClient(server)
+	_, err := client.PublishPolicyPack(t.Context(), "acme", "nodejs",
+		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"},
+		[]byte("source-bytes"),
+		map[string][]byte{
+			"linux-amd64":  []byte("linux-bytes"),
+			"darwin-arm64": []byte("darwin-bytes"),
+		}, nil)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "darwin-arm64")
+	assert.False(t, completeCalled)
+}
+
+func TestPublishPolicyPackWithPlatformsUnsupportedService(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServer(200, `{"version":1,"uploadURI":"https://legacy-only"}`)
+	defer server.Close()
+
+	client := newMockClient(server)
+	_, err := client.PublishPolicyPack(t.Context(), "acme", "nodejs",
+		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"},
+		[]byte("source-bytes"),
+		map[string][]byte{"linux-amd64": []byte("b")}, nil)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "does not support policy pack binaries")
+	assert.ErrorContains(t, err, "source only")
+}
+
+func TestPublishPolicyPackSourceOnlyUploadRejected(t *testing.T) {
+	t.Parallel()
+
+	completeCalled := false
+
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mux.HandleFunc("/api/orgs/acme/policypacks", func(rw http.ResponseWriter, req *http.Request) {
+		resp := apitype.CreatePolicyPackResponse{
+			Version:   1,
+			UploadURI: server.URL + "/upload/source",
+		}
+		require.NoError(t, json.NewEncoder(rw).Encode(resp))
+	})
+	mux.HandleFunc("/upload/", func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusForbidden)
+	})
+	mux.HandleFunc("/api/orgs/acme/policypacks/mypack/versions/0.0.1/complete",
+		func(rw http.ResponseWriter, req *http.Request) {
+			completeCalled = true
+		})
+
+	client := newMockClient(server)
+	_, err := client.PublishPolicyPack(t.Context(), "acme", "nodejs",
+		plugin.AnalyzerInfo{Name: "mypack", Version: "0.0.1"}, []byte("source-bytes"), nil, nil)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "source")
+	assert.False(t, completeCalled)
+}
+
+func TestPublishPolicyPackBinariesRequireVersion(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServer(200, `{}`)
+	defer server.Close()
+
+	client := newMockClient(server)
+	_, err := client.PublishPolicyPack(t.Context(), "acme", "nodejs",
+		plugin.AnalyzerInfo{Name: "mypack"}, []byte("source-bytes"),
+		map[string][]byte{"linux-amd64": []byte("b")}, nil)
+	require.ErrorContains(t, err, "version is required")
 }

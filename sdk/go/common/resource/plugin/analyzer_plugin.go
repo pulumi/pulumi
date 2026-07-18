@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -105,18 +106,17 @@ func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
 	hasPlugin func(workspace.PluginDescriptor) bool,
 ) (Analyzer, error) {
-	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
-	proj, err := workspace.LoadPolicyPack(projPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load Pulumi policy project located at %q: %w", policyPackPath, err)
-	}
+	// A --policy-pack path may point directly at a pre-built analyzer executable (local
+	// development against a freshly built binary) or at a pack directory. Resolve to the
+	// binary and the effective pack directory before dispatching.
+	binPath, packDir, isBinary := workspace.ResolveAnalyzerBinary(policyPackPath)
 
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 	) (*pulumirpc.AnalyzerHandshakeResponse, error) {
 		// For analyzers the root directory and program directory are the location of the PulumiPolicy.yaml _not_ the
 		// location of the shim plugin.
-		dir := policyPackPath
+		dir := packDir
 		client := pulumirpc.NewAnalyzerClient(conn)
 
 		req := pulumirpc.AnalyzerHandshakeRequest{
@@ -140,79 +140,32 @@ func NewPolicyAnalyzer(
 		return res, nil
 	}
 
-	// This first section is a back compatibility bit for the old way of running analyzer plugins where we
-	// would look for a plugin called "pulumi-analyzer-policy-<runtime>" and invoke that plugin with two
-	// arguments, the engine address and the policy pack path. We don't do this for actual "languages" (i.e.
-	// things with language plugins), but have to leave this in to ensure things like
-	// https://github.com/pulumi/pulumi-policy-opa continue to work (although in time they could probably be
-	// moved to just be language runtimes like the rest).
-	if hasPlugin == nil {
-		hasPlugin = func(spec workspace.PluginDescriptor) bool {
-			path, err := workspace.GetPluginPath(
-				ctx.baseContext,
-				ctx.Diag,
-				spec,
-				ctx.ProjectPlugins())
-			return err == nil && path != ""
-		}
-	}
-	foundLanguagePlugin := hasPlugin(workspace.PluginDescriptor{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin})
-
 	var plug *Plugin
-	if !foundLanguagePlugin {
-		// Couldn't get a language plugin, fall back to the old behavior, of trying to run
-		// "pulumi-analyzer-policy-<runtime>".
-		policyAnalyzerName := "policy-" + proj.Runtime.Name()
-
-		// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
-		var pluginPath string
-		pluginPath, err = workspace.GetPluginPath(
-			ctx.baseContext, ctx.Diag,
-			workspace.PluginDescriptor{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, ctx.ProjectPlugins())
-		if err != nil {
-			return nil, err
-		}
-
-		// The `pulumi-analyzer-policy` plugin is a script that looks for the '@pulumi/pulumi/cmd/run-policy-pack'
-		// node module and runs it with node. To allow non-node Pulumi programs (e.g. Python, .NET, Go, etc.) to
-		// run node policy packs, we must set the plugin's pwd to the policy pack directory instead of the Pulumi
-		// program directory, so that the '@pulumi/pulumi/cmd/run-policy-pack' module from the policy pack's
-		// node_modules is used.
-		pwd := policyPackPath
-
-		args := []string{host.ServerAddr(), "."}
-		for k, v := range proj.Runtime.Options() {
-			if vstr := fmt.Sprintf("%v", v); vstr != "" {
-				args = append(args, fmt.Sprintf("-%s=%s", k, vstr))
-			}
-		}
-
-		// Create the environment variables from the options.
-		var environment env.Env
-		environment, err = constructEnv(opts, proj.Runtime.Name())
-		if err != nil {
-			return nil, err
-		}
-
-		plug, _, err = newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
-			apitype.AnalyzerPlugin, args, environment, handshake,
-			analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)),
-			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
-	} else {
-		// Else we _did_ get a language plugin so just use RunPlugin to invoke the policy pack.
-		analyzerEnv := env.Global()
-		if opts != nil && len(opts.AdditionalEnv) > 0 {
-			additionalStore := envutil.MapStore{}
-			for k, v := range opts.AdditionalEnv {
-				additionalStore[k] = v
-			}
-			analyzerEnv = envutil.NewEnv(envutil.JoinStore(additionalStore, env.Global().GetStore()))
-		}
-
-		plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
-			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, analyzerEnv,
+	var proj *workspace.PolicyPackProject
+	var err error
+	if isBinary {
+		// Binary packs ship a bare analyzer executable and need no manifest or language
+		// host: exec it directly, exactly as a provider plugin would be.
+		plug, _, err = newPlugin(ctx, packDir, binPath, fmt.Sprintf("%v (analyzer)", name),
+			apitype.AnalyzerPlugin, []string{host.ServerAddr(), "."}, analyzerPluginEnv(opts),
 			handshake, analyzerPluginDialOptions(ctx, string(name)),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
+	} else if proj, err = workspace.LoadPolicyPack(
+		filepath.Join(packDir, "PulumiPolicy.yaml")); err != nil {
+		return nil, fmt.Errorf("failed to load Pulumi policy project located at %q: %w", packDir, err)
+	} else if languagePluginFound(ctx, proj, hasPlugin) {
+		// Source pack with a language plugin: use RunPlugin to invoke the policy pack.
+		plug, _, err = newPlugin(ctx, ctx.Pwd, packDir, fmt.Sprintf("%v (analyzer)", name),
+			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, analyzerPluginEnv(opts),
+			handshake, analyzerPluginDialOptions(ctx, string(name)),
+			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
+	} else {
+		// Source pack, back-compat path: run the legacy "pulumi-analyzer-policy-<runtime>"
+		// bootstrap plugin. We don't do this for actual "languages" (i.e. things with
+		// language plugins), but have to leave this in to ensure things like
+		// https://github.com/pulumi/pulumi-policy-opa continue to work (although in time
+		// they could probably be moved to just be language runtimes like the rest).
+		plug, err = newBootstrapAnalyzerPlugin(host, ctx, name, packDir, proj, opts, handshake)
 	}
 
 	if err != nil {
@@ -269,18 +222,94 @@ func NewPolicyAnalyzer(
 		logging.V(7).Infof("StackConfigure: success [%v]", name)
 	}
 
-	var description string
-	if proj.Description != nil {
-		description = *proj.Description
+	// Source packs carry version/description in the manifest; binary packs self-report
+	// them via GetAnalyzerInfo, so these stay empty when there is no manifest.
+	var version, description string
+	if proj != nil {
+		version = proj.Version
+		if proj.Description != nil {
+			description = *proj.Description
+		}
 	}
 
 	return &analyzer{
 		name:        name,
 		plug:        plug,
 		client:      client,
-		version:     proj.Version,
+		version:     version,
 		description: description,
 	}, nil
+}
+
+// analyzerPluginEnv is the environment an analyzer plugin is started with: the process
+// environment plus any additional variables from the analyzer options.
+func analyzerPluginEnv(opts *PolicyAnalyzerOptions) env.Env {
+	if opts == nil || len(opts.AdditionalEnv) == 0 {
+		return env.Global()
+	}
+	additionalStore := envutil.MapStore{}
+	maps.Copy(additionalStore, opts.AdditionalEnv)
+	return envutil.NewEnv(envutil.JoinStore(additionalStore, env.Global().GetStore()))
+}
+
+func languagePluginFound(
+	ctx *Context, proj *workspace.PolicyPackProject, hasPlugin func(workspace.PluginDescriptor) bool,
+) bool {
+	if hasPlugin == nil {
+		hasPlugin = func(spec workspace.PluginDescriptor) bool {
+			path, err := workspace.GetPluginPath(
+				ctx.baseContext,
+				ctx.Diag,
+				spec,
+				ctx.ProjectPlugins())
+			return err == nil && path != ""
+		}
+	}
+	return hasPlugin(workspace.PluginDescriptor{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin})
+}
+
+// newBootstrapAnalyzerPlugin starts a policy pack via the legacy bootstrap analyzer
+// plugin "pulumi-analyzer-policy-<runtime>".
+func newBootstrapAnalyzerPlugin(
+	host Host, ctx *Context, name tokens.QName, policyPackPath string,
+	proj *workspace.PolicyPackProject, opts *PolicyAnalyzerOptions,
+	handshake func(context.Context, string, string, *grpc.ClientConn) (*pulumirpc.AnalyzerHandshakeResponse, error),
+) (*Plugin, error) {
+	policyAnalyzerName := "policy-" + proj.Runtime.Name()
+
+	// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
+	pluginPath, err := workspace.GetPluginPath(
+		ctx.baseContext, ctx.Diag,
+		workspace.PluginDescriptor{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, ctx.ProjectPlugins())
+	if err != nil {
+		return nil, err
+	}
+
+	// The `pulumi-analyzer-policy` plugin is a script that looks for the '@pulumi/pulumi/cmd/run-policy-pack'
+	// node module and runs it with node. To allow non-node Pulumi programs (e.g. Python, .NET, Go, etc.) to
+	// run node policy packs, we must set the plugin's pwd to the policy pack directory instead of the Pulumi
+	// program directory, so that the '@pulumi/pulumi/cmd/run-policy-pack' module from the policy pack's
+	// node_modules is used.
+	pwd := policyPackPath
+
+	args := []string{host.ServerAddr(), "."}
+	for k, v := range proj.Runtime.Options() {
+		if vstr := fmt.Sprintf("%v", v); vstr != "" {
+			args = append(args, fmt.Sprintf("-%s=%s", k, vstr))
+		}
+	}
+
+	// Create the environment variables from the options.
+	environment, err := constructEnv(opts, proj.Runtime.Name())
+	if err != nil {
+		return nil, err
+	}
+
+	plug, _, err := newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
+		apitype.AnalyzerPlugin, args, environment, handshake,
+		analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)),
+		host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
+	return plug, err
 }
 
 func NewAnalyzerWithClient(name tokens.QName, client pulumirpc.AnalyzerClient) Analyzer {

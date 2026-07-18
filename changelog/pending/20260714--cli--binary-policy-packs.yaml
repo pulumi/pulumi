@@ -1,0 +1,6 @@
+component: cli
+kind: feat
+body: "Policy packs can ship pre-built per-platform analyzer binaries; `pulumi policy publish` discovers `pulumi-analyzer-<name>-<os>-<arch>` binaries by convention (override with `--binary-dir`) and publishes them alongside the source archive, letting consumers run the pack without its language toolchain"
+time: 2026-07-14T00:00:00.000000+00:00
+custom:
+    PR: "23933"

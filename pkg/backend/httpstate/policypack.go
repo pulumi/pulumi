@@ -15,7 +15,6 @@
 package httpstate
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -23,6 +22,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -397,25 +397,58 @@ func (pack *cloudPolicyPack) Backend() backend.Backend {
 func (pack *cloudPolicyPack) Publish(
 	ctx context.Context, op backend.PublishOperation,
 ) error {
-	//
-	// Get PolicyPack metadata from the plugin.
-	//
+	var analyzerInfo plugin.AnalyzerInfo
+	var platformArchives map[string][]byte
 
-	fmt.Println("Obtaining policy metadata from policy plugin")
-
-	abs, err := filepath.Abs(op.PlugCtx.Pwd)
+	// Discover pre-built per-platform analyzer binaries by convention: files named
+	// "pulumi-analyzer-<name>-<os>-<arch>[.exe]" in the binary directory (--binary-dir,
+	// or the conventional "bin" under the pack). An explicit --binary-dir with no
+	// binaries is an error; the conventional default simply falls back to a source-only
+	// publish.
+	binaryDir := op.BinaryDir
+	if binaryDir == "" {
+		binaryDir = filepath.Join(op.PlugCtx.Pwd, "bin")
+	}
+	binaries, err := discoverPolicyBinaries(binaryDir)
 	if err != nil {
 		return err
 	}
-
-	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(op.PlugCtx, tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
-	if err != nil {
-		return err
+	if op.BinaryDir != "" && len(binaries) == 0 {
+		return fmt.Errorf(
+			"no analyzer binaries (pulumi-analyzer-<name>-<os>-<arch>) were found in %q", binaryDir)
 	}
 
-	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
-	if err != nil {
-		return err
+	if len(binaries) > 0 {
+		//
+		// The pack ships pre-built per-platform binaries: conformance-check the host
+		// platform's binary and build one bare-exe artifact per platform, published
+		// alongside the source archive.
+		//
+		info, archives, err := buildBinaryArtifacts(ctx, op, binaries)
+		if err != nil {
+			return err
+		}
+		analyzerInfo, platformArchives = info, archives
+	} else {
+		//
+		// Get PolicyPack metadata from the plugin.
+		//
+		fmt.Println("Obtaining policy metadata from policy plugin")
+
+		abs, err := filepath.Abs(op.PlugCtx.Pwd)
+		if err != nil {
+			return err
+		}
+
+		analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(op.PlugCtx, tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
+		if err != nil {
+			return err
+		}
+
+		analyzerInfo, err = analyzer.GetAnalyzerInfo(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Update the name and version tag from the metadata.
@@ -424,23 +457,12 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Compressing policy pack")
 
-	var packTarball []byte
-
-	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
-	runtime := op.PolicyPack.Runtime.Name()
-	if strings.EqualFold(runtime, "nodejs") {
-		packTarball, err = npm.Pack(ctx, npm.AutoPackageManager, op.PlugCtx.Pwd, os.Stderr)
-		if err != nil {
-			return fmt.Errorf("could not publish policies because of error running npm pack: %w", err)
-		}
-	} else {
-		// npm pack puts all the files in a "package" subdirectory inside the .tgz it produces, so we'll do
-		// the same for other runtimes. That way, after unpacking, we can look for the PulumiPolicy.yaml inside the
-		// package directory to determine the runtime of the policy pack.
-		packTarball, err = archive.TGZ(op.PlugCtx.Pwd, "package", true /*useDefaultExcludes*/)
-		if err != nil {
-			return fmt.Errorf("could not publish policies because of error creating the .tgz: %w", err)
-		}
+	packTarball, err := buildSourceTarball(ctx, op)
+	if err != nil {
+		return err
+	}
+	if len(platformArchives) > 0 {
+		warnIfSourceTarballContainsBinaries(packTarball, op.PlugCtx.Pwd, binaries)
 	}
 
 	//
@@ -450,7 +472,8 @@ func (pack *cloudPolicyPack) Publish(
 	fmt.Println("Uploading policy pack to Pulumi service")
 
 	publishedVersion, err := pack.cl.PublishPolicyPack(
-		ctx, pack.ref.orgName, runtime, analyzerInfo, bytes.NewReader(packTarball), op.Metadata)
+		ctx, pack.ref.orgName, op.PolicyPack.Runtime.Name(), analyzerInfo,
+		packTarball, platformArchives, op.Metadata)
 	if err != nil {
 		return err
 	}
@@ -458,6 +481,25 @@ func (pack *cloudPolicyPack) Publish(
 	fmt.Printf("\nPermalink: %s/%s\n", pack.ref.CloudConsoleURL(), publishedVersion)
 
 	return nil
+}
+
+func buildSourceTarball(ctx context.Context, op backend.PublishOperation) ([]byte, error) {
+	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
+	if strings.EqualFold(op.PolicyPack.Runtime.Name(), "nodejs") {
+		packTarball, err := npm.Pack(ctx, npm.AutoPackageManager, op.PlugCtx.Pwd, os.Stderr)
+		if err != nil {
+			return nil, fmt.Errorf("could not publish policies because of error running npm pack: %w", err)
+		}
+		return packTarball, nil
+	}
+	// npm pack puts all the files in a "package" subdirectory inside the .tgz it produces, so we'll do
+	// the same for other runtimes. That way, after unpacking, we can look for the PulumiPolicy.yaml inside the
+	// package directory to determine the runtime of the policy pack.
+	packTarball, err := archive.TGZ(op.PlugCtx.Pwd, packageDir, true /*useDefaultExcludes*/)
+	if err != nil {
+		return nil, fmt.Errorf("could not publish policies because of error creating the .tgz: %w", err)
+	}
+	return packTarball, nil
 }
 
 func (pack *cloudPolicyPack) Enable(ctx context.Context, policyGroup string, op backend.PolicyPackOperation) error {
@@ -538,6 +580,17 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 	//nolint:forbidigo // historic os.Rename usage
 	if err := os.Rename(tempPackageDir, finalDir); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("moving plugin: %w", err)
+	}
+
+	// Binary packs ship a bare analyzer executable and need no manifest or language
+	// toolchain: mark it runnable and stop before any manifest load or dependency install.
+	if binPath, ok := workspace.FindAnalyzerBinary(finalDir); ok {
+		if goruntime.GOOS != "windows" {
+			if err := os.Chmod(binPath, 0o755); err != nil {
+				return fmt.Errorf("marking policy pack binary executable: %w", err)
+			}
+		}
+		return nil
 	}
 
 	projPath := filepath.Join(finalDir, "PulumiPolicy.yaml")
