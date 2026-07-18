@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
@@ -99,6 +100,17 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	return cmd
 }
 
+func (pc *packageCommand) timeoutSeconds() (float64, error) {
+	if pc.timeout == "" {
+		return 0, nil
+	}
+	duration, err := time.ParseDuration(pc.timeout)
+	if err != nil {
+		return 0, fmt.Errorf("parse --timeout: %w", err)
+	}
+	return duration.Seconds(), nil
+}
+
 func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.Command {
 	var inputFile string
 	var yes bool
@@ -111,6 +123,10 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 				return errStatefulNotImplemented("create")
 			}
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
+				return err
+			}
+			timeout, err := pc.timeoutSeconds()
+			if err != nil {
 				return err
 			}
 			ctx := cmd.Context()
@@ -139,6 +155,7 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 					Name:       urn.Name(),
 					Type:       urn.Type(),
 					Properties: checked,
+					Timeout:    timeout,
 					Preview:    pc.dryrun,
 				})
 				if err != nil {
@@ -180,16 +197,22 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
 	cmd.Flags().BoolVar(&yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
+	cmd.Flags().StringVar(&pc.timeout, "timeout", "",
+		"Timeout for the operation, specified as a duration (e.g. 30s, 5m, 1h)")
 	addInputFlags(cmd, "input", res.InputProperties)
 	return cmd
 }
 
 func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "read <id>",
 		Short: "Read a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			timeout, err := pc.timeoutSeconds()
+			if err != nil {
+				return err
+			}
 			ctx := cmd.Context()
 			if err := pc.configureProvider(cmd, ctx); err != nil {
 				return err
@@ -201,12 +224,13 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 				New: operationState(urn, id, nil, nil),
 			}, func() (*pkgresource.State, error) {
 				response, err := pc.provider.Read(ctx, plugin.ReadRequest{
-					URN:    urn,
-					Name:   urn.Name(),
-					Type:   urn.Type(),
-					ID:     id,
-					Inputs: resource.PropertyMap{},
-					State:  resource.PropertyMap{},
+					URN:     urn,
+					Name:    urn.Name(),
+					Type:    urn.Type(),
+					ID:      id,
+					Inputs:  resource.PropertyMap{},
+					State:   resource.PropertyMap{},
+					Timeout: timeout,
 				})
 				if err != nil {
 					return nil, err
@@ -221,6 +245,9 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 			})
 		},
 	}
+	cmd.Flags().StringVar(&pc.timeout, "timeout", "",
+		"Timeout for the operation, specified as a duration (e.g. 30s, 5m, 1h)")
+	return cmd
 }
 
 func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.Command {
@@ -236,6 +263,10 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 				return errStatefulNotImplemented("patch")
 			}
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
+				return err
+			}
+			timeout, err := pc.timeoutSeconds()
+			if err != nil {
 				return err
 			}
 			ctx := cmd.Context()
@@ -311,6 +342,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 					OldInputs:  oldInputs,
 					OldOutputs: read.Outputs,
 					NewInputs:  checked,
+					Timeout:    timeout,
 					Preview:    pc.dryrun,
 				})
 				if err != nil {
@@ -324,6 +356,8 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
 	cmd.Flags().BoolVar(&yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
+	cmd.Flags().StringVar(&pc.timeout, "timeout", "",
+		"Timeout for the operation, specified as a duration (e.g. 30s, 5m, 1h)")
 	addInputFlags(cmd, "input", res.InputProperties)
 	return cmd
 }
@@ -339,6 +373,10 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 				return errStatefulNotImplemented("delete")
 			}
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
+				return err
+			}
+			timeout, err := pc.timeoutSeconds()
+			if err != nil {
 				return err
 			}
 			ctx := cmd.Context()
@@ -388,6 +426,7 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 					ID:      id,
 					Inputs:  response.Inputs,
 					Outputs: response.Outputs,
+					Timeout: timeout,
 				})
 				return nil, err
 			})
@@ -395,6 +434,8 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 	}
 	cmd.Flags().BoolVar(&yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
+	cmd.Flags().StringVar(&pc.timeout, "timeout", "",
+		"Timeout for the operation, specified as a duration (e.g. 30s, 5m, 1h)")
 	return cmd
 }
 
