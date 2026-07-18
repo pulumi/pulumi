@@ -19,9 +19,11 @@
 // containers — sharing one virtual network and, where needed, a workspace
 // volume.
 //
-// The interface is deliberately runtime-agnostic. The only implementation today
-// shells out to the `docker` CLI, but nothing in the PodManager contract assumes
-// Docker; a podman/nerdctl/containerd backend can satisfy the same interface.
+// The interface is deliberately runtime-agnostic. Two implementations exist: the
+// default (dockerPodManager) shells out to the `docker` CLI, and a second
+// (nerdctlPodManager) drives containerd via `nerdctl`/`ctr` — a runtime that never
+// touches the docker socket, which is what proves nothing in the contract assumes
+// Docker. NewPodManager selects between them.
 //
 // This package is an early prototype of the design in oci-execution-design.md.
 // It lives under pkg/ rather than the public sdk/ surface intentionally, so its
@@ -32,7 +34,30 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 )
+
+// PodRuntimeEnvVar names the environment variable that selects the container runtime the pod
+// uses: "docker" (the default) or "containerd"/"nerdctl". It must be forwarded into the engine
+// container's environment alongside PULUMI_POD_ID — the build sink and the container host read
+// it from their own processes inside that container (see NewPodManager call sites), so if it is
+// set only on the outer CLI those in-container managers silently fall back to docker while the
+// outer runtime is containerd.
+const PodRuntimeEnvVar = "PULUMI_POD_RUNTIME"
+
+// NewPodManager constructs the PodManager for the configured container runtime, defaulting to
+// docker when PULUMI_POD_RUNTIME is unset (so the default path is byte-for-byte unchanged). It
+// is the single runtime-selection seam: every site that needs a manager calls this rather than a
+// concrete constructor, so adding a runtime is one env value, not a code change at four sites.
+func NewPodManager(podID string, opts ...Option) PodManager {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(PodRuntimeEnvVar))) {
+	case "containerd", "nerdctl":
+		return NewNerdctlPodManager(podID, opts...)
+	default:
+		return NewDockerPodManager(podID, opts...)
+	}
+}
 
 // PodManager orchestrates the containers, network, and volumes that make up a
 // single execution pod. A PodManager owns the resources it creates and is

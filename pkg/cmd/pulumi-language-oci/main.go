@@ -298,7 +298,7 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 		// labelled for cleanup.
 		podID, _ = os.Hostname()
 	}
-	pod := oci.NewDockerPodManager(podID)
+	pod := oci.NewPodManager(podID)
 
 	// Record the built program image ref so the container host — a separate process in
 	// this engine container that starts providers — can run run-from-program-image (`command`)

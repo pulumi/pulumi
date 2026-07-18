@@ -187,7 +187,7 @@ func runPackageBuild(
 	if podID == "" {
 		podID, _ = os.Hostname()
 	}
-	if err := NewDockerPodManager(podID).ImportImage(ctx, layoutDir, ref); err != nil {
+	if err := NewPodManager(podID).ImportImage(ctx, layoutDir, ref); err != nil {
 		return fmt.Errorf("importing package %s image: %w", name, err)
 	}
 	return nil
@@ -281,7 +281,7 @@ func BuildInContainer(
 	for _, c := range caches {
 		volumes = append(volumes, VolumeMount{Source: CacheVolumeName(c), Target: c})
 	}
-	pod := NewDockerPodManager(podID)
+	pod := NewPodManager(podID)
 	return pod.RunToCompletion(ctx, ContainerConfig{
 		Image:       image,
 		Name:        "build",

@@ -99,11 +99,13 @@ func NewDockerPodManager(podID string, opts ...Option) PodManager {
 	return m
 }
 
-// docker runs `docker <args...>` with no stdin and returns trimmed stdout.
+// docker runs `<bin> <args...>` with no stdin and returns trimmed stdout. bin is the
+// docker CLI by default; nerdctlPodManager reuses this method with bin="nerdctl", so the
+// error prefix names the actual binary rather than hard-coding "docker".
 func (m *dockerPodManager) docker(ctx context.Context, args ...string) (string, error) {
 	stdout, stderr, err := m.run(ctx, nil, m.bin, args...)
 	if err != nil {
-		return "", fmt.Errorf("docker %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr))
+		return "", fmt.Errorf("%s %s: %w: %s", m.bin, strings.Join(args, " "), err, strings.TrimSpace(stderr))
 	}
 	return strings.TrimSpace(stdout), nil
 }
@@ -396,24 +398,9 @@ func (m *dockerPodManager) PullImage(ctx context.Context, ref string) error {
 // not re-materialize the base), applying ref as the location the orchestrator
 // resolved.
 func (m *dockerPodManager) ImportImage(ctx context.Context, layoutPath, ref string) error {
-	idx, err := layout.ImageIndexFromPath(layoutPath)
+	img, err := imageFromLayout(layoutPath)
 	if err != nil {
-		return fmt.Errorf("oci: reading image layout at %s: %w", layoutPath, err)
-	}
-	manifest, err := idx.IndexManifest()
-	if err != nil {
-		return fmt.Errorf("oci: reading layout index at %s: %w", layoutPath, err)
-	}
-	// A layout is not always a single image: buildx attaches a provenance/SBOM attestation
-	// manifest by default, and a multi-arch build carries one image per platform. Pick the
-	// image manifest for this host rather than assuming exactly one entry.
-	digest, err := selectImageManifest(manifest)
-	if err != nil {
-		return fmt.Errorf("oci: %w in layout at %s", err, layoutPath)
-	}
-	img, err := idx.Image(digest)
-	if err != nil {
-		return fmt.Errorf("oci: extracting image from layout at %s: %w", layoutPath, err)
+		return err
 	}
 	tag, err := name.NewTag(ref)
 	if err != nil {
@@ -423,6 +410,34 @@ func (m *dockerPodManager) ImportImage(ctx context.Context, layoutPath, ref stri
 		return fmt.Errorf("oci: loading image %s into the daemon: %w", ref, err)
 	}
 	return nil
+}
+
+// imageFromLayout reads the runnable host-arch image out of a runtime-neutral OCI layout
+// directory, skipping buildx attestation manifests and other-arch entries. Extracting the
+// image from the layout is runtime-neutral — only the sink that ingests it differs (the
+// docker daemon's load endpoint here, containerd's content store in nerdctlPodManager) — so
+// both ImportImage implementations share this step.
+func imageFromLayout(layoutPath string) (v1.Image, error) {
+	idx, err := layout.ImageIndexFromPath(layoutPath)
+	if err != nil {
+		return nil, fmt.Errorf("oci: reading image layout at %s: %w", layoutPath, err)
+	}
+	manifest, err := idx.IndexManifest()
+	if err != nil {
+		return nil, fmt.Errorf("oci: reading layout index at %s: %w", layoutPath, err)
+	}
+	// A layout is not always a single image: buildx attaches a provenance/SBOM attestation
+	// manifest by default, and a multi-arch build carries one image per platform. Pick the
+	// image manifest for this host rather than assuming exactly one entry.
+	digest, err := selectImageManifest(manifest)
+	if err != nil {
+		return nil, fmt.Errorf("oci: %w in layout at %s", err, layoutPath)
+	}
+	img, err := idx.Image(digest)
+	if err != nil {
+		return nil, fmt.Errorf("oci: extracting image from layout at %s: %w", layoutPath, err)
+	}
+	return img, nil
 }
 
 // selectImageManifest picks the runnable image manifest for the current host from a layout

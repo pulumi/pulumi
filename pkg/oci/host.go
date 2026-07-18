@@ -191,7 +191,7 @@ func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 	programImage := os.Getenv("PULUMI_POD_PROGRAM_IMAGE")
 	// Optional: an OCI registry to pull provider plugin images from on demand.
 	pluginRegistry := os.Getenv("PULUMI_POD_PLUGIN_REGISTRY")
-	return NewContainerHost(base, NewDockerPodManager(podID), engineHost, programImage, pluginRegistry, podID), nil
+	return NewContainerHost(base, NewPodManager(podID), engineHost, programImage, pluginRegistry, podID), nil
 }
 
 // programImageRef resolves the program image that run-from-program-image (`command`) and
@@ -802,7 +802,6 @@ func (h *containerHost) PolicyAnalyzer(
 func (h *containerHost) runPolicyPackContainer(
 	ctx *plugin.Context, name tokens.QName, path, image string,
 ) (plugin.Analyzer, error) {
-
 	cfg := ContainerConfig{
 		Name:    uniqueContainerName("policy-" + sanitizeContainerName(filepath.Base(path))),
 		Network: "container:" + h.engineHost,
