@@ -6,6 +6,7 @@
 :titlesonly:
 
 /docs/contributing/development
+/docs/contributing/producing-the-pulumi-cli-and-sdks
 /docs/documentation/README
 /docs/debugging/README
 :::
