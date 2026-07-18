@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -453,8 +454,8 @@ func (rs *resourceStatusServer) unmarshalViewStepState(
 		Parent:  viewOf,
 		URN:     stateURN,
 		Type:    stateType,
-		Inputs:  inputs,
-		Outputs: outputs,
+		Inputs:  property.NewMap(resource.FromResourcePropertyMap(inputs).AsMap()),
+		Outputs: property.NewMap(resource.FromResourcePropertyMap(outputs).AsMap()),
 	}, nil
 }
 

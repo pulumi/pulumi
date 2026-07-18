@@ -53,10 +53,10 @@ func init() {
 					}
 
 					component1 := RequireSingleNamedResource(l, snap.Resources, "component1")
-					assertOutput(component1.Outputs, "propertyDeps")
+					assertOutput(resource.ToResourcePropertyMap(component1.Outputs), "propertyDeps")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					assertOutput(stack.Outputs, "propertyDepsFromCall")
+					assertOutput(resource.ToResourcePropertyMap(stack.Outputs), "propertyDepsFromCall")
 				},
 			},
 		},

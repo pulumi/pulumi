@@ -115,12 +115,12 @@ func testURN(typ, name string) resource.URN {
 
 func deleteState(typ, name string, outs resource.PropertyMap) *pkgresource.State {
 	return &pkgresource.State{
-		Delete: true, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
+		Delete: true, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: resource.FromResourcePropertyMap(outs),
 	}
 }
 
 func liveState(typ, name string, outs resource.PropertyMap) *pkgresource.State {
 	return &pkgresource.State{
-		Delete: false, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
+		Delete: false, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: resource.FromResourcePropertyMap(outs),
 	}
 }

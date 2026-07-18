@@ -23,6 +23,7 @@ import (
 	sdkresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type (
@@ -58,8 +59,8 @@ type State struct {
 	Custom                  bool                  // true if the resource is custom, managed by a plugin.
 	Delete                  bool                  // true if this resource is pending deletion due to a replacement.
 	ID                      ID                    // the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
-	Inputs                  PropertyMap           // the resource's input properties (as specified by the program).
-	Outputs                 PropertyMap           // the resource's complete output state (as returned by the resource provider).
+	Inputs                  property.Map          // the resource's input properties (as specified by the program).
+	Outputs                 property.Map          // the resource's complete output state (as returned by the resource provider).
 	Parent                  URN                   // an optional parent URN that this resource belongs to.
 	Protect                 bool                  // true to "protect" this resource (protected resources cannot be deleted).
 	Taint                   bool                  // true to force replacement of this resource during the next update.
@@ -83,7 +84,7 @@ type State struct {
 	StackTrace              []StackFrame          // If set, the stack trace at time of registration
 	IgnoreChanges           []string              // If set, the list of properties to ignore changes for.
 	ReplaceOnChanges        []string              // If set, the list of properties that if changed trigger a replace.
-	ReplacementTrigger      PropertyValue         // If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger      property.Value        // If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
 	HideDiff                []PropertyPath        // If set, the list of property paths to compact the diff for.
 	RefreshBeforeUpdate     bool                  // true if this resource should always be refreshed prior to updates.
 	ViewOf                  URN                   // If set, the URN of the resource this resource is a view of.
@@ -177,10 +178,10 @@ type NewState struct {
 	ID ID // required
 
 	// the resource's input properties (as specified by the program).
-	Inputs PropertyMap // required
+	Inputs property.Map // required
 
 	// the resource's complete output state (as returned by the resource provider).
-	Outputs PropertyMap // required
+	Outputs property.Map // required
 
 	// an optional parent URN that this resource belongs to.
 	Parent URN // required
@@ -252,7 +253,7 @@ type NewState struct {
 	ReplaceOnChanges []string // required
 
 	// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
-	ReplacementTrigger PropertyValue // required
+	ReplacementTrigger property.Value // required
 
 	// If set, the list of properties that should have their diff suppressed.
 	HideDiff []PropertyPath // required

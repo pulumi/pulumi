@@ -39,7 +39,7 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 
 					require.Len(l, outputs, 2, "expected 2 outputs")
 

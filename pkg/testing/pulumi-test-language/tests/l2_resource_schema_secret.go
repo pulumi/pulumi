@@ -62,9 +62,9 @@ func init() {
 					for _, name := range []string{"topLevelElided", "topLevelNotElided"} {
 						topLevel := RequireSingleNamedResource(l, res.Snap.Resources, name)
 						assert.Contains(l, topLevel.AdditionalSecretOutputs, resource.PropertyKey("secretOutput"))
-						assert.True(l, topLevel.Outputs["secretOutput"].ContainsSecrets(),
+						assert.True(l, resource.ToResourcePropertyMap(topLevel.Outputs)["secretOutput"].ContainsSecrets(),
 							"expected %s schema-secret output to be secret", name)
-						assert.True(l, stack.Outputs[resource.PropertyKey(name)].ContainsSecrets(),
+						assert.True(l, resource.ToResourcePropertyMap(stack.Outputs)[resource.PropertyKey(name)].ContainsSecrets(),
 							"expected %s stack output to be secret", name)
 					}
 				},

@@ -63,7 +63,7 @@ func AWSOperationsProvider(
 
 	// If there is an explicit provider - instead use the configuration on that provider
 	if component.Provider != nil {
-		outputs := component.Provider.State.Outputs
+		outputs := resource.ToResourcePropertyMap(component.Provider.State.Outputs)
 		awsRegion = getPropertyMapStringValue(outputs, "region")
 		awsAccessKey = getPropertyMapStringValue(outputs, "accessKey")
 		awsSecretKey = getPropertyMapStringValue(outputs, "secretKey")
@@ -123,10 +123,11 @@ const (
 func (ops *awsOpsProvider) GetLogs(ctx context.Context, query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
 	logging.V(6).Infof("GetLogs[%v]", state.URN)
+	outputs := resource.ToResourcePropertyMap(state.Outputs)
 	//exhaustive:ignore
 	switch state.Type {
 	case awsFunctionType:
-		functionName := state.Outputs["name"].StringValue()
+		functionName := outputs["name"].StringValue()
 		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
 			ctx,
 			[]string{functionName},
@@ -140,7 +141,7 @@ func (ops *awsOpsProvider) GetLogs(ctx context.Context, query LogQuery) (*[]LogE
 		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
 		return &logResult, nil
 	case awsLogGroupType:
-		name := state.Outputs["name"].StringValue()
+		name := outputs["name"].StringValue()
 		logResult := ops.awsConnection.getLogsForLogGroupsConcurrently(
 			ctx,
 			[]string{name},

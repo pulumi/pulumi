@@ -42,8 +42,8 @@ func init() {
 					}),
 				})
 
-				require.Equal(l, expected, mmu.Outputs["mapMapUnionProperty"])
-				require.Equal(l, expected, stack.Outputs["mapMapUnionOutput"])
+				require.Equal(l, expected, resource.ToResourcePropertyMap(mmu.Outputs)["mapMapUnionProperty"])
+				require.Equal(l, expected, resource.ToResourcePropertyMap(stack.Outputs)["mapMapUnionOutput"])
 
 				l.Logf("# Checking Union[String,Int]")
 
@@ -51,10 +51,10 @@ func init() {
 				si2 := RequireSingleNamedResource(l, snapshot.Resources, "stringOrIntegerExample2")
 
 				require.Equal(l, resource.NewProperty(42.0),
-					si1.Outputs["stringOrIntegerProperty"])
+					resource.ToResourcePropertyMap(si1.Outputs)["stringOrIntegerProperty"])
 
 				require.Equal(l, resource.NewProperty("forty two"),
-					si2.Outputs["stringOrIntegerProperty"])
+					resource.ToResourcePropertyMap(si2.Outputs)["stringOrIntegerProperty"])
 
 				l.Logf("# Checking List<Union<String, Enum>>")
 
@@ -65,26 +65,26 @@ func init() {
 						resource.NewProperty("Send"),
 						resource.NewProperty("NotAnEnumValue"),
 					}),
-					seul.Outputs["stringEnumUnionListProperty"])
+					resource.ToResourcePropertyMap(seul.Outputs)["stringEnumUnionListProperty"])
 
 				l.Logf("# Checking typed enum (safe)")
 
 				safeEnum := RequireSingleNamedResource(l, snapshot.Resources, "safeEnumExample")
 				require.Equal(l,
 					resource.NewProperty("Block"),
-					safeEnum.Outputs["typedEnumProperty"])
+					resource.ToResourcePropertyMap(safeEnum.Outputs)["typedEnumProperty"])
 
 				l.Logf("# Checking typed enum (output)")
 
 				enumOutputExample := RequireSingleNamedResource(l, snapshot.Resources, "enumOutputExample")
 				require.Equal(l,
 					resource.NewProperty("Block"),
-					enumOutputExample.Outputs["type"])
+					resource.ToResourcePropertyMap(enumOutputExample.Outputs)["type"])
 
 				outputEnum := RequireSingleNamedResource(l, snapshot.Resources, "outputEnumExample")
 				require.Equal(l,
 					resource.NewProperty("Block"),
-					outputEnum.Outputs["typedEnumProperty"])
+					resource.ToResourcePropertyMap(outputEnum.Outputs)["typedEnumProperty"])
 			},
 		}},
 	}

@@ -89,8 +89,8 @@ func stateForJSONOutput(s *pkgresource.State, opts Options) *pkgresource.State {
 	var outputs resource.PropertyMap
 	if !isRootURN(s.URN) || !opts.SuppressOutputs {
 		// For now, replace any secret properties as the string [secret] and then serialize what we have.
-		inputs = MassageSecrets(s.Inputs, false)
-		outputs = MassageSecrets(s.Outputs, false)
+		inputs = MassageSecrets(resource.ToResourcePropertyMap(s.Inputs), false)
+		outputs = MassageSecrets(resource.ToResourcePropertyMap(s.Outputs), false)
 	} else {
 		// If we're suppressing outputs, don't show the root stack properties.
 		inputs = resource.PropertyMap{}
@@ -102,8 +102,8 @@ func stateForJSONOutput(s *pkgresource.State, opts Options) *pkgresource.State {
 		Custom:                  s.Custom,
 		Delete:                  s.Delete,
 		ID:                      s.ID,
-		Inputs:                  inputs,
-		Outputs:                 outputs,
+		Inputs:                  resource.FromResourcePropertyMap(inputs),
+		Outputs:                 resource.FromResourcePropertyMap(outputs),
 		Parent:                  s.Parent,
 		Protect:                 s.Protect,
 		Taint:                   s.Taint,

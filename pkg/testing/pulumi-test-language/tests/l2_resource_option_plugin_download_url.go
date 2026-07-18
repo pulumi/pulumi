@@ -82,11 +82,13 @@ func init() {
 						"resources with default and explicit default URLs should use the same provider")
 
 					// Verify custom URL providers have the correct pluginDownloadURL in __internal
-					url1 := customProvider1.Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue()
+					customProvider1Inputs := resource.ToResourcePropertyMap(customProvider1.Inputs)
+					url1 := customProvider1Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue()
 					assert.Equal(l, "https://custom.pulumi.test/provider1", url1,
 						"customProvider1 should have correct pluginDownloadURL")
 
-					url2 := customProvider2.Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue()
+					customProvider2Inputs := resource.ToResourcePropertyMap(customProvider2.Inputs)
+					url2 := customProvider2Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue()
 					assert.Equal(l, "https://custom.pulumi.test/provider2", url2,
 						"customProvider2 should have correct pluginDownloadURL")
 

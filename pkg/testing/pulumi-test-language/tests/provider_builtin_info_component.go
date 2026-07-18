@@ -40,17 +40,18 @@ func init() {
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:builtin-info-component")
 					component := RequireSingleResource(l, snap.Resources, "builtin-info-component:index:BuiltinInfo")
+					outputs := resource.ToResourcePropertyMap(component.Outputs)
 
 					AssertPropertyMapMember(
-						l, component.Outputs, "organization",
+						l, outputs, "organization",
 						resource.NewProperty("organization"),
 					)
 					AssertPropertyMapMember(
-						l, component.Outputs, "project",
+						l, outputs, "project",
 						resource.NewProperty("provider-builtin-info-component"),
 					)
 					AssertPropertyMapMember(
-						l, component.Outputs, "stack",
+						l, outputs, "stack",
 						resource.NewProperty("test"),
 					)
 				},

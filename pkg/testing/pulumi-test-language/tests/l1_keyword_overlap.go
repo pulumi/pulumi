@@ -30,7 +30,7 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 
 					AssertPropertyMapMember(l, outputs, "class", resource.NewProperty("class_output_string"))
 					AssertPropertyMapMember(l, outputs, "export", resource.NewProperty("export_output_string"))

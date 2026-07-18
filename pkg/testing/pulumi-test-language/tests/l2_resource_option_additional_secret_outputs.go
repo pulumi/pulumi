@@ -38,13 +38,13 @@ func init() {
 					// Resource with additionalSecretOutputs
 					withSecret := RequireSingleNamedResource(l, res.Snap.Resources, "withSecret")
 					assert.Equal(l, []resource.PropertyKey{"value"}, withSecret.AdditionalSecretOutputs)
-					assert.True(l, withSecret.Outputs["value"].IsSecret(),
+					assert.True(l, resource.ToResourcePropertyMap(withSecret.Outputs)["value"].IsSecret(),
 						"expected 'value' output to be secret")
 
 					// Resource without additionalSecretOutputs
 					withoutSecret := RequireSingleNamedResource(l, res.Snap.Resources, "withoutSecret")
 					assert.Empty(l, withoutSecret.AdditionalSecretOutputs)
-					assert.False(l, withoutSecret.Outputs["value"].IsSecret(),
+					assert.False(l, resource.ToResourcePropertyMap(withoutSecret.Outputs)["value"].IsSecret(),
 						"expected 'value' output to not be secret")
 				},
 			},

@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,7 +46,7 @@ func init() {
 
 					names := make([]string, 0, len(targets))
 					for _, target := range targets {
-						name, ok := target.Inputs["name"]
+						name, ok := resource.ToResourcePropertyMap(target.Inputs)["name"]
 						require.True(l, ok, "expected target to have 'name' input")
 						require.True(l, name.IsString(), "expected 'name' to be a string")
 						names = append(names, name.StringValue())

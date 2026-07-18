@@ -67,7 +67,7 @@ func init() {
 					require.Equal(l, want, fromPrimitive.Outputs)
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 
 					AssertPropertyMapMember(l, outputs, "unsetBoolean", resource.NewProperty("null"))
 					AssertPropertyMapMember(l, outputs, "unsetFloat", resource.NewProperty("null"))

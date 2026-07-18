@@ -464,6 +464,6 @@ func TestResourceReferences_NameAndTypeFilledByEngine(t *testing.T) {
 	}
 	require.NotNil(t, componentState)
 
-	echo := componentState.Outputs["echo"]
+	echo := resource.ToResourcePropertyMap(componentState.Outputs)["echo"]
 	assert.True(t, echo.IsResourceReference())
 }

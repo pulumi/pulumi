@@ -33,7 +33,7 @@ func init() {
 
 					// Check we have an output in the stack for true
 
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 
 					AssertPropertyMapMember(l, outputs, "output_true", resource.NewProperty(true))
 				},

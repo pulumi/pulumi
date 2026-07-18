@@ -39,7 +39,7 @@ func init() {
 
 					assertValue := func(name string, want resource.PropertyValue) {
 						r := RequireSingleNamedResource(l, res.Snap.Resources, name)
-						require.Equal(l, want, r.Inputs["value"], name)
+						require.Equal(l, want, resource.ToResourcePropertyValue(r.Inputs.Get("value")), name)
 					}
 
 					assertValue("aString", resource.NewProperty("a string"))

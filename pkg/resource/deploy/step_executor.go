@@ -243,12 +243,12 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	// might already be there, since otherwise "deleting" outputs would have no affect.
 	outs := e.Outputs()
 	se.log(synchronousWorkerID,
-		"registered resource outputs %s: old=#%d, new=#%d", urn, len(reg.New().Outputs), len(outs))
+		"registered resource outputs %s: old=#%d, new=#%d", urn, reg.New().Outputs.Len(), len(outs))
 
 	old := se.deployment.Olds()[urn]
 	var oldOuts resource.PropertyMap
 	if old != nil {
-		oldOuts = old.Outputs
+		oldOuts = toLegacyMap(old.Outputs)
 	}
 
 	// If we're finalizing stack outputs and there was an error, the absence of an output can't safely be assumed to
@@ -273,7 +273,7 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	}
 
 	reg.New().Lock.Lock()
-	reg.New().Outputs = outs
+	reg.New().Outputs = fromLegacyMap(outs)
 	reg.New().Lock.Unlock()
 
 	// If we're generating plans save these new outputs to the plan
@@ -301,9 +301,9 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 				s.Type(),
 				nil, /* oldOptions */
 				resourceOptionsFromState(s.new),
-				s.new.Inputs,
+				toLegacyMap(s.new.Inputs),
 				nil, /* oldInputs */
-				s.new.Outputs,
+				toLegacyMap(s.new.Outputs),
 				nil, /* oldOutputs */
 			); err != nil {
 				// Component was registered successfully; only the after-hook failed. Surface the error and record it as
@@ -321,10 +321,10 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 				s.Type(),
 				resourceOptionsFromState(s.old),
 				resourceOptionsFromState(s.new),
-				s.new.Inputs,
-				s.old.Inputs,
-				s.new.Outputs,
-				s.old.Outputs,
+				toLegacyMap(s.new.Inputs),
+				toLegacyMap(s.old.Inputs),
+				toLegacyMap(s.new.Outputs),
+				toLegacyMap(s.old.Outputs),
 			); err != nil {
 				// Component was registered successfully; only the after-hook failed. Surface the error and record it as
 				// a deployment-level failure, but let the step succeed.
@@ -526,8 +526,8 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 					Message: "The 'id' property cannot be made secret. See pulumi/pulumi#2717 for more details.",
 				})
 			} else {
-				if v, has := newState.Outputs[k]; has && !v.IsSecret() {
-					newState.Outputs[k] = resource.MakeSecret(v)
+				if v, has := newState.Outputs.GetOk(string(k)); has && !v.Secret() {
+					newState.Outputs = newState.Outputs.Set(string(k), v.WithSecret(true))
 				} else if !has { //nolint:staticcheck // https://github.com/pulumi/pulumi/issues/9926
 					// TODO (https://github.com/pulumi/pulumi/issues/9926): We want to re-enable this warning
 					// but it requires that providers always return back _every_ output even in preview. We
@@ -551,14 +551,14 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 		}
 
 		// If an input secret is potentially leaked as an output, preemptively mark it as secret.
-		for k, out := range newState.Outputs {
-			if !out.IsSecret() {
-				in, has := newState.Inputs[k]
+		for k, out := range newState.Outputs.AsMap() {
+			if !out.Secret() {
+				in, has := newState.Inputs.GetOk(k)
 				if !has {
 					continue
 				}
-				if in.IsSecret() {
-					newState.Outputs[k] = resource.MakeSecret(out)
+				if in.Secret() {
+					newState.Outputs = newState.Outputs.Set(k, out.WithSecret(true))
 				}
 			}
 		}
@@ -581,7 +581,7 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 		// If we're generating plans update the resource's outputs in the generated plan.
 		if se.deployment.opts.GeneratePlan {
 			if resourcePlan, ok := se.deployment.newPlans.get(newState.URN); ok {
-				resourcePlan.Outputs = newState.Outputs
+				resourcePlan.Outputs = toLegacyMap(newState.Outputs)
 			}
 		}
 	}

@@ -439,6 +439,42 @@ func TestWithDependencies(t *testing.T) {
 	})
 }
 
+func TestArrayEquals(t *testing.T) {
+	t.Parallel()
+
+	assert.True(t, NewArray([]Value{New("a"), New(1.0)}).Equals(NewArray([]Value{New("a"), New(1.0)})))
+	assert.False(t, NewArray([]Value{New("a"), New(1.0)}).Equals(NewArray([]Value{New("a"), New(2.0)})))
+	assert.False(t, NewArray([]Value{New(Computed)}).Equals(NewArray([]Value{New("a")})))
+	assert.True(t, NewArray([]Value{New(Computed)}).Equals(NewArray([]Value{New("a")}), EqualRelaxComputed))
+}
+
+func TestMapEquals(t *testing.T) {
+	t.Parallel()
+
+	assert.True(t, NewMap(map[string]Value{
+		"a": New("a"),
+		"b": New(1.0),
+	}).Equals(NewMap(map[string]Value{
+		"b": New(1.0),
+		"a": New("a"),
+	})))
+	assert.False(t, NewMap(map[string]Value{
+		"a": New("a"),
+	}).Equals(NewMap(map[string]Value{
+		"a": New("b"),
+	})))
+	assert.False(t, NewMap(map[string]Value{
+		"a": New(Computed),
+	}).Equals(NewMap(map[string]Value{
+		"a": New("a"),
+	})))
+	assert.True(t, NewMap(map[string]Value{
+		"a": New(Computed),
+	}).Equals(NewMap(map[string]Value{
+		"a": New("a"),
+	}), EqualRelaxComputed))
+}
+
 func TestNotComparable(t *testing.T) {
 	t.Parallel()
 

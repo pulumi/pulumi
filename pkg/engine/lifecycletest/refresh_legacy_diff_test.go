@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestRefreshBasicsWithLegacyDiff(t *testing.T) {
@@ -91,8 +92,8 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 			Custom:       true,
 			Delete:       del,
 			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
+			Inputs:       property.Map{},
+			Outputs:      property.Map{},
 			Dependencies: dependencies,
 		}
 	}
@@ -177,7 +178,7 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 				} else {
 					// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
 					// an OpSame.
-					if reflect.DeepEqual(old.Outputs, expected.Outputs) {
+					if reflect.DeepEqual(resource.ToResourcePropertyMap(old.Outputs), expected.Outputs) {
 						assert.Equal(t, deploy.OpSame, resultOp)
 					} else {
 						assert.Equal(t, deploy.OpUpdate, resultOp)
@@ -187,8 +188,8 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 					new = new.Copy()
 
 					// Only the inputs and outputs should have changed (if anything changed).
-					old.Inputs = expected.Inputs
-					old.Outputs = expected.Outputs
+					old.Inputs = resource.FromResourcePropertyMap(expected.Inputs)
+					old.Outputs = resource.FromResourcePropertyMap(expected.Outputs)
 
 					// Discard timestamps for refresh test.
 					new.Modified = nil
@@ -236,8 +237,8 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 		// and timestamp.
 		old := oldResources[int(idx)]
 		if targetedForRefresh {
-			old.Inputs = expected.Inputs
-			old.Outputs = expected.Outputs
+			old.Inputs = resource.FromResourcePropertyMap(expected.Inputs)
+			old.Outputs = resource.FromResourcePropertyMap(expected.Outputs)
 			old.Modified = r.Modified
 		}
 		assert.Equal(t, old, r)

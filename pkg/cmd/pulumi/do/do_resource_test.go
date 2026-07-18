@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1038,7 +1039,7 @@ func TestDoCmdResourceProviderFlagURNNotAProvider(t *testing.T) {
 					Type:   "azure:index:Bucket",
 					URN:    bucketURN,
 					Custom: true,
-					Inputs: resource.PropertyMap{"region": resource.NewProperty("us-east-1")},
+					Inputs: property.NewMap(map[string]property.Value{"region": property.New("us-east-1")}),
 				}).Make(),
 			},
 			wantSubstr: "is not a provider",
@@ -1052,7 +1053,7 @@ func TestDoCmdResourceProviderFlagURNNotAProvider(t *testing.T) {
 					Type:   "pulumi:providers:aws",
 					URN:    awsProviderURN,
 					Custom: true,
-					Inputs: resource.PropertyMap{"region": resource.NewProperty("us-east-1")},
+					Inputs: property.NewMap(map[string]property.Value{"region": property.New("us-east-1")}),
 				}).Make(),
 			},
 			wantSubstr: "provider for a different package",
@@ -1117,10 +1118,10 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 				Type:   "pulumi:providers:azure",
 				URN:    providerURN,
 				Custom: true,
-				Inputs: resource.PropertyMap{
-					"region": resource.NewProperty("us-east-1"),
-					"tenant": resource.NewProperty("acme"),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"region": property.New("us-east-1"),
+					"tenant": property.New("acme"),
+				}),
 			}).Make(),
 		}},
 	)

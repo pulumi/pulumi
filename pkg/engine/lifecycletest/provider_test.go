@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestSingleResourceDefaultProviderLifecycle(t *testing.T) {
@@ -136,8 +137,8 @@ func TestSingleResourceDefaultProviderUpgrade(t *testing.T) {
 			URN:     resURN,
 			Custom:  true,
 			ID:      "0",
-			Inputs:  resource.PropertyMap{},
-			Outputs: resource.PropertyMap{},
+			Inputs:  property.Map{},
+			Outputs: property.Map{},
 		}},
 	}
 
@@ -1329,9 +1330,10 @@ func TestPluginDownloadURLPassthrough(t *testing.T) {
 		for _, e := range entries {
 			r := e.Step.New()
 			if r.Type == pkgAType {
-				downloadURL := r.Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue()
+				inputs := resource.ToResourcePropertyMap(r.Inputs)
+				downloadURL := inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue()
 				if downloadURL != pkgAPluginDownloadURL {
-					return fmt.Errorf("Found unexpected value %v", r.Inputs["pluginDownloadURL"])
+					return fmt.Errorf("Found unexpected value %v", inputs["pluginDownloadURL"])
 				}
 			}
 		}
@@ -1373,7 +1375,7 @@ func TestPluginDownloadURLDefaultProvider(t *testing.T) {
 	foundDefaultProvider := false
 	for _, r := range snapshot.Resources {
 		if providers.IsDefaultProvider(r.URN) {
-			actualURL, err := pkgproviders.GetProviderDownloadURL(r.Inputs)
+			actualURL, err := pkgproviders.GetProviderDownloadURL(resource.ToResourcePropertyMap(r.Inputs))
 			require.NoError(t, err)
 			assert.Equal(t, url, actualURL)
 			foundDefaultProvider = true
@@ -1527,8 +1529,11 @@ func TestProviderVersionAssignment(t *testing.T) {
 			},
 			validate: func(t *testing.T, r *pkgresource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
-					assert.Equal(t, r.Inputs["version"].StringValue(), "1.1.0")
-					assert.Equal(t, r.Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue(), "example.com/default")
+					inputs := resource.ToResourcePropertyMap(r.Inputs)
+					assert.Equal(t, inputs["version"].StringValue(), "1.1.0")
+					assert.Equal(t,
+						inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue(),
+						"example.com/default")
 				}
 			},
 			prog: prog(),
@@ -1545,9 +1550,12 @@ func TestProviderVersionAssignment(t *testing.T) {
 			}},
 			validate: func(t *testing.T, r *pkgresource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
-					_, hasVersion := r.Inputs["version"]
+					inputs := resource.ToResourcePropertyMap(r.Inputs)
+					_, hasVersion := inputs["version"]
 					assert.False(t, hasVersion)
-					assert.Equal(t, r.Inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue(), "example.com/download")
+					assert.Equal(t,
+						inputs["__internal"].ObjectValue()["pluginDownloadURL"].StringValue(),
+						"example.com/download")
 				}
 			},
 			prog: prog(deploytest.ResourceOptions{PluginDownloadURL: "example.com/download"}),
@@ -1568,15 +1576,15 @@ func TestProviderVersionAssignment(t *testing.T) {
 					{
 						Type: "providers:pulumi:pkgA",
 						URN:  "this:is:a:urn::ofaei",
-						Inputs: map[resource.PropertyKey]resource.PropertyValue{
-							"version": resource.NewPropertyValue("1.3.0"),
-						},
+						Inputs: property.NewMap(map[string]property.Value{
+							"version": property.New("1.3.0"),
+						}),
 					},
 				},
 			},
 			validate: func(t *testing.T, r *pkgresource.State) {
 				if providers.IsProviderType(r.Type) && !providers.IsDefaultProvider(r.URN) {
-					assert.Equal(t, r.Inputs["version"].StringValue(), "1.1.0")
+					assert.Equal(t, resource.ToResourcePropertyMap(r.Inputs)["version"].StringValue(), "1.1.0")
 				}
 			},
 		},
@@ -2114,10 +2122,10 @@ func TestRefreshLegacyState(t *testing.T) {
 			{
 				Type: "providers:pulumi:pkgA",
 				URN:  p.NewURN("providers:pulumi:pkgA", "prov", ""),
-				Inputs: map[resource.PropertyKey]resource.PropertyValue{
-					"version":           resource.NewPropertyValue("1.3.0"),
-					"pluginDownloadURL": resource.NewProperty("http://example.com"),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"version":           property.New("1.3.0"),
+					"pluginDownloadURL": property.New("http://example.com"),
+				}),
 			},
 		},
 	}
@@ -2127,8 +2135,8 @@ func TestRefreshLegacyState(t *testing.T) {
 	require.NoError(t, err)
 
 	prov := snap.Resources[0]
-	assert.Equal(t, "1.3.0", prov.Inputs["version"].StringValue())
-	assert.Equal(t, "http://example.com", prov.Inputs["pluginDownloadURL"].StringValue())
+	assert.Equal(t, "1.3.0", resource.ToResourcePropertyMap(prov.Inputs)["version"].StringValue())
+	assert.Equal(t, "http://example.com", resource.ToResourcePropertyMap(prov.Inputs)["pluginDownloadURL"].StringValue())
 }
 
 // This tests that we don't send __internal through to the provider instance itself
@@ -2287,8 +2295,8 @@ func TestProviderSameStep(t *testing.T) {
 	// But we should still save the new inputs, this is odd but consistent with same steps for other resources
 	// in the presence of changed values but same_diff results.
 	prov := snap.Resources[0]
-	assert.Equal(t, "200", prov.Inputs["value"].StringValue())
-	assert.Equal(t, "100", prov.Outputs["value"].StringValue())
+	assert.Equal(t, "200", resource.ToResourcePropertyMap(prov.Inputs)["value"].StringValue())
+	assert.Equal(t, "100", resource.ToResourcePropertyMap(prov.Outputs)["value"].StringValue())
 }
 
 // TestMalformedProvider tests that if a malformed provider reference is sent we return an error.
@@ -2455,7 +2463,7 @@ func TestDroppedVersion(t *testing.T) {
 	// assert the provider version is set
 	require.Len(t, snap.Resources, 2)
 	prov := snap.Resources[0]
-	version, ok := prov.Inputs["version"]
+	version, ok := resource.ToResourcePropertyMap(prov.Inputs)["version"]
 	require.True(t, ok, "expected 'version' to be present in provider inputs")
 	require.True(t, version.IsString(), "expected 'version' to be a string")
 	assert.Equal(t, "1.0.0", version.StringValue())
@@ -2548,7 +2556,7 @@ func TestInternalKey(t *testing.T) {
 	// assert the engines __internal field is set
 	require.Len(t, snap.Resources, 2)
 	prov := snap.Resources[0]
-	internal, ok := prov.Inputs["__internal"]
+	internal, ok := resource.ToResourcePropertyMap(prov.Inputs)["__internal"]
 	require.True(t, ok, "expected '__internal' to be present in provider inputs")
 	require.True(t, internal.IsObject(), "expected '__internal' to be an object")
 	assert.Equal(t, resource.PropertyMap{

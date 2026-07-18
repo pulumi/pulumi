@@ -541,7 +541,7 @@ func resultState(
 }
 
 func (pc *packageCommand) printResourceResult(cmd *cobra.Command, state *pkgresource.State) error {
-	output, err := jsonifyProperty(resource.NewProperty(state.Outputs), pc.showSecrets)
+	output, err := jsonifyProperty(resource.NewProperty(resource.ToResourcePropertyMap(state.Outputs)), pc.showSecrets)
 	if err != nil {
 		return fmt.Errorf("failed to convert outputs to JSON: %w", err)
 	}

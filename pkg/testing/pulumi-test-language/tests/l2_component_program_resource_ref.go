@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -77,17 +78,17 @@ func init() {
 					// * Its value output should be "foo-bar-baz".
 					// * Its ref output should be a reference to component1-child by its URN and ID.
 					require.Equal(
-						l, "foo-bar-baz", component1.Outputs["value"].StringValue(),
+						l, "foo-bar-baz", resource.ToResourcePropertyMap(component1.Outputs)["value"].StringValue(),
 						"expected component1 to have correct value output",
 					)
 					require.Equal(
-						l, component1Child.URN, component1.Outputs["ref"].ResourceReferenceValue().URN,
+						l, component1Child.URN, resource.ToResourcePropertyMap(component1.Outputs)["ref"].ResourceReferenceValue().URN,
 						"expected component1 to return a reference to component1-child by its URN",
 					)
 					require.Equal(
 						l,
 						component1Child.ID.String(),
-						component1.Outputs["ref"].ResourceReferenceValue().ID.StringValue(),
+						resource.ToResourcePropertyMap(component1.Outputs)["ref"].ResourceReferenceValue().ID.StringValue(),
 						"expected component1 to return a reference to component1-child by its ID",
 					)
 
@@ -100,7 +101,7 @@ func init() {
 						"expected component1-child to use default provider",
 					)
 					require.Equal(
-						l, "foo-bar-baz", component1Child.Outputs["value"].StringValue(),
+						l, "foo-bar-baz", resource.ToResourcePropertyMap(component1Child.Outputs)["value"].StringValue(),
 						"expected component1-child to have correct value output",
 					)
 
@@ -114,7 +115,7 @@ func init() {
 						"expected custom1 to use default provider",
 					)
 					require.Equal(
-						l, "foo-bar-baz", custom1.Outputs["value"].StringValue(),
+						l, "foo-bar-baz", resource.ToResourcePropertyMap(custom1.Outputs)["value"].StringValue(),
 						"expected custom1 to have correct value output",
 					)
 
@@ -123,7 +124,7 @@ func init() {
 						"expected custom2 to use default provider",
 					)
 					require.Equal(
-						l, "foo-bar-baz", custom2.Outputs["value"].StringValue(),
+						l, "foo-bar-baz", resource.ToResourcePropertyMap(custom2.Outputs)["value"].StringValue(),
 						"expected custom2 to have correct value output",
 					)
 				},

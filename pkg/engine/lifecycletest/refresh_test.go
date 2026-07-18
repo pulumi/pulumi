@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -310,8 +311,8 @@ func TestRefreshInitFailure(t *testing.T) {
 				URN:        resURN,
 				Custom:     true,
 				ID:         "0",
-				Inputs:     resource.PropertyMap{},
-				Outputs:    resource.PropertyMap{},
+				Inputs:     property.Map{},
+				Outputs:    property.Map{},
 				InitErrors: []string{"Resource failed to initialize"},
 			},
 			{
@@ -319,8 +320,8 @@ func TestRefreshInitFailure(t *testing.T) {
 				URN:     res2URN,
 				Custom:  true,
 				ID:      "1",
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 			},
 		},
 	}
@@ -615,8 +616,8 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 			Custom:       true,
 			Delete:       del,
 			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
+			Inputs:       property.Map{},
+			Outputs:      property.Map{},
 			Dependencies: dependencies,
 		}
 	}
@@ -784,8 +785,8 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 			Custom:       true,
 			Delete:       del,
 			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
+			Inputs:       property.Map{},
+			Outputs:      property.Map{},
 			Dependencies: dependencies,
 		}
 	}
@@ -876,7 +877,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 				} else {
 					// If there were changes to the inputs, we want the result op to be an
 					// OpUpdate. Otherwise we want an OpSame.
-					if reflect.DeepEqual(old.Inputs, expected.Inputs) {
+					if reflect.DeepEqual(resource.ToResourcePropertyMap(old.Inputs), expected.Inputs) {
 						assert.Equal(t, deploy.OpSame, resultOp)
 					} else {
 						assert.Equal(t, deploy.OpUpdate, resultOp)
@@ -886,8 +887,8 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 					new = new.Copy()
 
 					// Only the inputs and outputs should have changed (if anything changed).
-					old.Inputs = expected.Inputs
-					old.Outputs = expected.Outputs
+					old.Inputs = resource.FromResourcePropertyMap(expected.Inputs)
+					old.Outputs = resource.FromResourcePropertyMap(expected.Outputs)
 
 					// Discard timestamps for refresh test.
 					new.Modified = nil
@@ -935,8 +936,8 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		// and timestamp.
 		old := oldResources[int(idx)]
 		if targetedForRefresh {
-			old.Inputs = expected.Inputs
-			old.Outputs = expected.Outputs
+			old.Inputs = resource.FromResourcePropertyMap(expected.Inputs)
+			old.Outputs = resource.FromResourcePropertyMap(expected.Outputs)
 			old.Modified = r.Modified
 		}
 
@@ -963,8 +964,8 @@ func TestCanceledRefresh(t *testing.T) {
 			Custom:       true,
 			Delete:       del,
 			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
+			Inputs:       property.Map{},
+			Outputs:      property.Map{},
 			Dependencies: dependencies,
 		}
 	}
@@ -1062,7 +1063,7 @@ func TestCanceledRefresh(t *testing.T) {
 			} else {
 				// If there were changes to the inputs, we want the result op to be an
 				// OpUpdate. Otherwise we want an OpSame.
-				if reflect.DeepEqual(old.Inputs, expected.Inputs) {
+				if reflect.DeepEqual(resource.ToResourcePropertyMap(old.Inputs), expected.Inputs) {
 					assert.Equal(t, deploy.OpSame, resultOp)
 				} else {
 					assert.Equal(t, deploy.OpUpdate, resultOp)
@@ -1071,8 +1072,8 @@ func TestCanceledRefresh(t *testing.T) {
 				// The inputs, outputs and modified timestamps should have changed (if
 				// anything changed at all).
 				old = old.Copy()
-				old.Inputs = expected.Inputs
-				old.Outputs = expected.Outputs
+				old.Inputs = resource.FromResourcePropertyMap(expected.Inputs)
+				old.Outputs = resource.FromResourcePropertyMap(expected.Outputs)
 				old.Modified = new.Modified
 
 				assert.Equal(t, old, new)
@@ -1114,8 +1115,8 @@ func TestCanceledRefresh(t *testing.T) {
 
 				// The inputs, outputs and modified timestamps should have changed (if
 				// anything changed at all).
-				old.Inputs = expected.Inputs
-				old.Outputs = expected.Outputs
+				old.Inputs = resource.FromResourcePropertyMap(expected.Inputs)
+				old.Outputs = resource.FromResourcePropertyMap(expected.Outputs)
 				old.Modified = r.Modified
 
 				assert.Equal(t, old, r)
@@ -1173,8 +1174,8 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 				URN:        resURN,
 				Custom:     true,
 				ID:         idBefore,
-				Inputs:     resource.PropertyMap{},
-				Outputs:    outputs,
+				Inputs:     property.Map{},
+				Outputs:    resource.FromResourcePropertyMap(outputs),
 				InitErrors: []string{"Resource failed to initialize"},
 			},
 		},
@@ -1232,8 +1233,8 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 				URN:     resURN,
 				Custom:  true,
 				ID:      idBefore,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 			},
 		},
 	}
@@ -2971,8 +2972,8 @@ func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
 			URN:     urnA,
 			Custom:  true,
 			ID:      "resA-id",
-			Inputs:  initialInputs,
-			Outputs: initialOutputs,
+			Inputs:  resource.FromResourcePropertyMap(initialInputs),
+			Outputs: resource.FromResourcePropertyMap(initialOutputs),
 		},
 	}
 
@@ -3550,13 +3551,14 @@ func TestRefreshV2ExcludeTarget(t *testing.T) {
 	// Look up by name since ordering may change due to parallelism.
 	refreshed := resource.NewProperty(true)
 	for _, r := range snap.Resources {
+		outputs := resource.ToResourcePropertyMap(r.Outputs)
 		switch r.URN.Name() {
 		case "resA":
-			assert.Equal(t, refreshed, r.Outputs["refreshed"], "resA should have been refreshed")
+			assert.Equal(t, refreshed, outputs["refreshed"], "resA should have been refreshed")
 		case "resB":
-			assert.NotContains(t, r.Outputs, resource.PropertyKey("refreshed"), "resB should NOT have been refreshed (excluded)")
+			assert.NotContains(t, outputs, resource.PropertyKey("refreshed"), "resB should NOT have been refreshed (excluded)")
 		case "resC":
-			assert.Equal(t, refreshed, r.Outputs["refreshed"], "resC should have been refreshed")
+			assert.Equal(t, refreshed, outputs["refreshed"], "resC should have been refreshed")
 		}
 	}
 }
@@ -3631,15 +3633,16 @@ func TestRefreshV2IncludeTarget(t *testing.T) {
 	// Look up by name since ordering may change due to parallelism.
 	refreshed := resource.NewProperty(true)
 	for _, r := range snap.Resources {
+		outputs := resource.ToResourcePropertyMap(r.Outputs)
 		switch r.URN.Name() {
 		case "resA":
-			assert.NotContains(t, r.Outputs,
+			assert.NotContains(t, outputs,
 				resource.PropertyKey("refreshed"), "resA should NOT have been refreshed (not targeted)")
 		case "resB":
 			assert.Equal(t, refreshed,
-				r.Outputs["refreshed"], "resB should have been refreshed")
+				outputs["refreshed"], "resB should have been refreshed")
 		case "resC":
-			assert.NotContains(t, r.Outputs,
+			assert.NotContains(t, outputs,
 				resource.PropertyKey("refreshed"), "resC should NOT have been refreshed (not targeted)")
 		}
 	}

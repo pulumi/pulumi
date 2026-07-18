@@ -41,7 +41,7 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:pulumi")
 					RequireSingleResource(l, snap.Resources, "pulumi:pulumi:StackReference")
 
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 
 					require.Len(l, outputs, 3, "expected 3 outputs")
 					AssertPropertyMapMember(l, outputs, "plain", resource.NewProperty("plain"))

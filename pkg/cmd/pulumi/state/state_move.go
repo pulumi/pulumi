@@ -381,7 +381,7 @@ func (cmd *stateMoveCmd) Run(
 			// If all the inputs of the provider in the destination stack are the same as the provider in the source stack,
 			// we can assume that the provider is equal for the purpose of resources depending on it.  We don't need to copy
 			// it, but we need to set the provider for all resources to the provider in the destination stack.
-			if destRes.Inputs.DeepEquals(r.Inputs) {
+			if destRes.Inputs.Equals(r.Inputs) {
 				rewriteMap[fmt.Sprintf("%s::%s", res.URN, res.ID)] = fmt.Sprintf("%s::%s", destRes.URN, destRes.ID)
 				continue
 			}

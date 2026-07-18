@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -70,7 +71,7 @@ func (ctx *grpcTestContext) configGetterCapturedConfig(resourceName string) stri
 			continue
 		}
 		require.Equal(l, "config-grpc:index:ConfigFetcher", string(r.Type))
-		configOut, gotConfig := r.Outputs["config"]
+		configOut, gotConfig := resource.ToResourcePropertyMap(r.Outputs)["config"]
 		require.Truef(l, gotConfig, "No `config` output")
 		require.Truef(l, configOut.IsString(), "`config` output must be a string")
 		return configOut.StringValue()

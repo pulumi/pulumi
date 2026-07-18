@@ -44,16 +44,19 @@ func init() {
 					RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:nestedobject")
 
 					numTarget := RequireSingleNamedResource(l, res.Snap.Resources, "numTarget")
-					AssertPropertyMapMember(l, numTarget.Inputs, "name", resource.NewProperty("num-0+"))
+					numTargetInputs := resource.ToResourcePropertyMap(numTarget.Inputs)
+					AssertPropertyMapMember(l, numTargetInputs, "name", resource.NewProperty("num-0+"))
 
 					listTarget := RequireSingleNamedResource(l, res.Snap.Resources, "listTarget")
-					AssertPropertyMapMember(l, listTarget.Inputs, "name", resource.NewProperty("1:b+"))
+					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(listTarget.Inputs), "name", resource.NewProperty("1:b+"))
 
 					listDynTarget0 := RequireSingleNamedResource(l, res.Snap.Resources, "listDynTarget-0")
-					AssertPropertyMapMember(l, listDynTarget0.Inputs, "name", resource.NewProperty("0:a!"))
+					listDynTarget0Inputs := resource.ToResourcePropertyMap(listDynTarget0.Inputs)
+					AssertPropertyMapMember(l, listDynTarget0Inputs, "name", resource.NewProperty("0:a!"))
 
 					listDynTarget1 := RequireSingleNamedResource(l, res.Snap.Resources, "listDynTarget-1")
-					AssertPropertyMapMember(l, listDynTarget1.Inputs, "name", resource.NewProperty("1:b!"))
+					listDynTarget1Inputs := resource.ToResourcePropertyMap(listDynTarget1.Inputs)
+					AssertPropertyMapMember(l, listDynTarget1Inputs, "name", resource.NewProperty("1:b!"))
 				},
 			},
 		},

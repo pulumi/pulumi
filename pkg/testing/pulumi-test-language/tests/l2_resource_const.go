@@ -34,7 +34,7 @@ func init() {
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 					RequireSingleResource(l, res.Snap.Resources, "constant:index:Resource")
 
-					AssertPropertyMapMember(l, stack.Outputs, "kind", resource.NewProperty("Constant"))
+					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(stack.Outputs), "kind", resource.NewProperty("Constant"))
 				},
 			},
 		},

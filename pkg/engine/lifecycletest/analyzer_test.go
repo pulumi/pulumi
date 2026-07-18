@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -504,9 +505,9 @@ func TestResourceRemediation(t *testing.T) {
 	r := snap.Resources[1]
 	assert.Equal(t, "pkgA:m:typA", string(r.Type))
 	require.Len(t, r.Inputs, 3)
-	assert.Equal(t, "foo", r.Inputs["a"].StringValue())
-	assert.Equal(t, true, r.Inputs["fff"].BoolValue())
-	assert.Equal(t, "bar", r.Inputs["z"].StringValue())
+	assert.Equal(t, "foo", resource.ToResourcePropertyMap(r.Inputs)["a"].StringValue())
+	assert.Equal(t, true, resource.ToResourcePropertyMap(r.Inputs)["fff"].BoolValue())
+	assert.Equal(t, "bar", resource.ToResourcePropertyMap(r.Inputs)["z"].StringValue())
 }
 
 // TestRemediationDiagnostic tests the case where a remediation issues a diagnostic rather than transforming

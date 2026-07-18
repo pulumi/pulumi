@@ -154,7 +154,8 @@ func (sm *SnapshotManager) mutate(mutator func() bool) error {
 func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 	return sm.mutate(func() bool {
 		old, new := step.Old(), step.New()
-		if old != nil && new != nil && old.Outputs.DeepEquals(new.Outputs) {
+		if old != nil && new != nil &&
+			old.Outputs.Equals(new.Outputs) {
 			logging.V(9).Infof("SnapshotManager: eliding RegisterResourceOutputs due to equal outputs")
 			return false
 		}
@@ -340,11 +341,11 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	// If the inputs or outputs of this resource have changed, we must write the checkpoint. Note that it is possible
 	// for the inputs of a "same" resource to have changed even if the contents of the input bags are different if the
 	// resource's provider deems the physical change to be semantically irrelevant.
-	if !old.Inputs.DeepEquals(new.Inputs) {
+	if !old.Inputs.Equals(new.Inputs) {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Inputs")
 		return true
 	}
-	if !old.Outputs.DeepEquals(new.Outputs) {
+	if !old.Outputs.Equals(new.Outputs) {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Outputs")
 		return true
 	}
@@ -372,7 +373,7 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		return true
 	}
 
-	if !old.ReplacementTrigger.DeepEquals(new.ReplacementTrigger) {
+	if !old.ReplacementTrigger.Equals(new.ReplacementTrigger) {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplacementTrigger")
 		return true
 	}

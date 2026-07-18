@@ -1609,8 +1609,8 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
-	assert.Equal(t, expectedName, snap.Resources[1].Inputs["name"])
-	assert.Equal(t, expectedName, snap.Resources[1].Outputs["name"])
+	assert.Equal(t, expectedName, resource.ToResourcePropertyMap(snap.Resources[1].Inputs)["name"])
+	assert.Equal(t, expectedName, resource.ToResourcePropertyMap(snap.Resources[1].Outputs)["name"])
 
 	// Run a new update which will cause a replace and check we get a new name
 	ins = resource.NewPropertyMapFromMap(map[string]any{
@@ -1621,8 +1621,8 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
-	assert.NotEqual(t, expectedName, snap.Resources[1].Inputs["name"])
-	assert.NotEqual(t, expectedName, snap.Resources[1].Outputs["name"])
+	assert.NotEqual(t, expectedName, resource.ToResourcePropertyMap(snap.Resources[1].Inputs)["name"])
+	assert.NotEqual(t, expectedName, resource.ToResourcePropertyMap(snap.Resources[1].Outputs)["name"])
 }
 
 func TestPlannedUpdateWithDependentDelete(t *testing.T) {

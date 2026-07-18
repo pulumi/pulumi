@@ -155,7 +155,7 @@ func buildImportFile(
 				providerInputs[urn] = preEvent.Metadata.Res.Inputs
 				contract.Assertf(preEvent.Metadata.Res.State != nil,
 					"%s: expected State to be non-nil for provider", urn)
-				providerFullInputs[urn] = preEvent.Metadata.Res.State.Inputs
+				providerFullInputs[urn] = resource.ToResourcePropertyMap(preEvent.Metadata.Res.State.Inputs)
 			}
 
 			// Only interested in creates

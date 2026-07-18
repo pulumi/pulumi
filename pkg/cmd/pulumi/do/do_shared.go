@@ -750,7 +750,7 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 			)
 		}
 		// Clone so we don't hand callers an aliasing pointer into the snapshot's state.
-		return maps.Clone(res.Inputs), nil
+		return maps.Clone(resource.ToResourcePropertyMap(res.Inputs)), nil
 	}
 	return nil, fmt.Errorf("no resource named %s in the current stack", providerURN)
 }

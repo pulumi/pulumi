@@ -38,8 +38,9 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					AssertPropertyMapMember(l, stack.Outputs, "parameterValue", resource.NewProperty("Hello"))
-					AssertPropertyMapMember(l, stack.Outputs, "baseValue", resource.NewProperty("base"))
+					stackOutputs := resource.ToResourcePropertyMap(stack.Outputs)
+					AssertPropertyMapMember(l, stackOutputs, "parameterValue", resource.NewProperty("Hello"))
+					AssertPropertyMapMember(l, stackOutputs, "baseValue", resource.NewProperty("base"))
 
 					greeting := RequireSingleResource(l, snap.Resources, "extbase:index:Greeting")
 					require.NotEmpty(l, greeting.ExtensionRef,

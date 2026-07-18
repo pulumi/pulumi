@@ -90,8 +90,9 @@ func init() {
 						wantExpected[key] = value
 					}
 
-					if !wantCorrect.DeepEquals(secret.Inputs) {
-						assert.Equal(l, wantExpected, secret.Inputs,
+					secretInputs := resource.ToResourcePropertyMap(secret.Inputs)
+					if !wantCorrect.DeepEquals(secretInputs) {
+						assert.Equal(l, wantExpected, secretInputs,
 							"expected inputs to be %v, will accept %v", wantCorrect, wantExpected)
 					}
 

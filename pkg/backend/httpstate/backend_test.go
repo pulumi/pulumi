@@ -52,6 +52,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -2805,9 +2806,9 @@ func TestRunEngineActionPropagatesSnapshotJournalerError(t *testing.T) {
 			URN: resource.NewURN(
 				stackName.Q(), tokens.PackageName("project"), "",
 				tokens.Type("test:index:Resource"), "resource"),
-			Outputs: resource.PropertyMap{
-				"secret": resource.MakeSecret(resource.NewProperty("value")),
-			},
+			Outputs: property.NewMap(map[string]property.Value{
+				"secret": property.New("value").WithSecret(true),
+			}),
 		}},
 	}
 	fx := newRunEngineActionFixture(t, snap, nil, mgr)

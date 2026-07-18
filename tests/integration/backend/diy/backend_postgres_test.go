@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/tests/integration/backend/diy/pgtest"
 )
 
@@ -319,20 +320,20 @@ func TestPostgresBackend(t *testing.T) {
 			Type:    resource.RootStackType,
 			URN:     resource.CreateURN("test-stack", string(resource.RootStackType), "", string(projectName), "test-stack"),
 			Custom:  false,
-			Outputs: resource.PropertyMap{},
+			Outputs: property.Map{},
 		},
 		{
 			Type:   "test:index:Resource",
 			URN:    testURN,
 			Custom: true,
 			ID:     "test-resource-id",
-			Inputs: resource.PropertyMap{
-				"name": resource.NewProperty("test-resource"),
-			},
-			Outputs: resource.PropertyMap{
-				"name": resource.NewProperty("test-resource"),
-				"arn":  resource.NewProperty("arn:test:resource"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"name": property.New("test-resource"),
+			}),
+			Outputs: property.NewMap(map[string]property.Value{
+				"name": property.New("test-resource"),
+				"arn":  property.New("arn:test:resource"),
+			}),
 		},
 	}, nil, deploy.SnapshotMetadata{}, nil, nil)
 

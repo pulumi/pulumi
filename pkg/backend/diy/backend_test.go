@@ -55,6 +55,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 //nolint:paralleltest // mutates global configuration
@@ -245,9 +246,9 @@ func makeUntypedDeploymentTimestamp(
 		{
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", name),
 			Type: "a:b:c",
-			Inputs: resource.PropertyMap{
-				resource.PropertyKey("secret"): resource.MakeSecret(resource.NewProperty("s3cr3t")),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"secret": property.New("s3cr3t").WithSecret(true),
+			}),
 			Created:  created,
 			Modified: modified,
 		},
@@ -616,26 +617,26 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 	rBase := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "base"),
 		Type: "a:b:c",
-		Inputs: resource.PropertyMap{
-			resource.PropertyKey("p"): resource.NewProperty("v"),
-		},
+		Inputs: property.NewMap(map[string]property.Value{
+			"p": property.New("v"),
+		}),
 	}
 
 	rDependency := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "dependency"),
 		Type: "a:b:c",
-		Inputs: resource.PropertyMap{
-			resource.PropertyKey("p"): resource.NewProperty("v"),
-		},
+		Inputs: property.NewMap(map[string]property.Value{
+			"p": property.New("v"),
+		}),
 		Dependencies: []resource.URN{rBase.URN},
 	}
 
 	rPropertyDependency := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "property-dependency"),
 		Type: "a:b:c",
-		Inputs: resource.PropertyMap{
-			resource.PropertyKey("p"): resource.NewProperty("v"),
-		},
+		Inputs: property.NewMap(map[string]property.Value{
+			"p": property.New("v"),
+		}),
 		PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 			resource.PropertyKey("p"): {rBase.URN},
 		},
@@ -644,18 +645,18 @@ func TestRenamePreservesIntegrity(t *testing.T) {
 	rDeletedWith := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "deleted-with"),
 		Type: "a:b:c",
-		Inputs: resource.PropertyMap{
-			resource.PropertyKey("p"): resource.NewProperty("v"),
-		},
+		Inputs: property.NewMap(map[string]property.Value{
+			"p": property.New("v"),
+		}),
 		DeletedWith: rBase.URN,
 	}
 
 	rParent := &pkgresource.State{
 		URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "parent"),
 		Type: "a:b:c",
-		Inputs: resource.PropertyMap{
-			resource.PropertyKey("p"): resource.NewProperty("v"),
-		},
+		Inputs: property.NewMap(map[string]property.Value{
+			"p": property.New("v"),
+		}),
 		Parent: rBase.URN,
 	}
 
@@ -782,9 +783,9 @@ func TestHtmlEscaping(t *testing.T) {
 		{
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
 			Type: "a:b:c",
-			Inputs: resource.PropertyMap{
-				resource.PropertyKey("html"): resource.NewProperty("<html@tags>"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"html": property.New("<html@tags>"),
+			}),
 		},
 	}
 

@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // analyzeResource runs all analyzers against a single resource in parallel, emitting
@@ -146,14 +147,14 @@ func buildSnapshotProviderMap(snap *Snapshot) map[resource.URN]*pkgresource.Stat
 // calls (to verify the final deployed state).
 func stateToAnalyzerResource(
 	res *pkgresource.State,
-	properties resource.PropertyMap,
+	properties property.Map,
 	providers map[resource.URN]*pkgresource.State,
 ) plugin.AnalyzerResource {
 	r := plugin.AnalyzerResource{
 		URN:        res.URN,
 		Type:       res.Type,
 		Name:       res.URN.Name(),
-		Properties: resource.FromResourcePropertyMap(properties),
+		Properties: properties,
 		Options: plugin.AnalyzerResourceOptions{
 			Protect:                 res.Protect,
 			IgnoreChanges:           res.IgnoreChanges,
@@ -170,7 +171,7 @@ func stateToAnalyzerResource(
 					URN:        provRes.URN,
 					Type:       provRes.Type,
 					Name:       provRes.URN.Name(),
-					Properties: resource.FromResourcePropertyMap(provRes.Inputs),
+					Properties: provRes.Inputs,
 				}
 			}
 		}

@@ -54,7 +54,7 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 			Draw(t, "pkg")
 		sample := rapidimporter.State(pkg).Draw(t, "sample")
 
-		if checkPropertyMap(sample.State.Inputs, property.Value.IsNull) {
+		if checkPropertyMap(resource.ToResourcePropertyMap(sample.State.Inputs), property.Value.IsNull) {
 			// generatePropertyValue (pkg/importer/hcl2.go:588) normalizes a
 			// null value for an optional property to "no attribute emitted",
 			// so an original `{b: null}` round-trips to `{}`. Skip these
@@ -63,7 +63,7 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 			t.Skip("inputs contain an explicit null; production normalizes optional-null to absent")
 		}
 
-		if checkPropertyMap(sample.State.Inputs, func(v property.Value) bool {
+		if checkPropertyMap(resource.ToResourcePropertyMap(sample.State.Inputs), func(v property.Value) bool {
 			if v.IsString() && !norm.NFC.IsNormalString(v.AsString()) {
 				return true
 			}
@@ -94,7 +94,7 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 			t.Skip("inputs contain a non-NFC string; HCL round-trip silently NFC-normalizes")
 		}
 
-		if checkPropertyMap(sample.State.Inputs, func(p property.Value) bool {
+		if checkPropertyMap(resource.ToResourcePropertyMap(sample.State.Inputs), func(p property.Value) bool {
 			if !p.IsMap() {
 				return false
 			}
@@ -145,7 +145,7 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 		require.Truef(t, ok, "first node is %T, want *pcl.Resource", prog.Nodes[0])
 
 		gotInputs := renderInputs(t, res)
-		require.Truef(t, sample.State.Inputs.DeepEquals(gotInputs),
+		require.Truef(t, sample.State.Inputs.Equals(resource.FromResourcePropertyMap(gotInputs)),
 			"inputs differ\nwant: %#v\ngot:  %#v\nblock:\n%s", sample.State.Inputs, gotInputs, text)
 	})
 }

@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type MockRegisterResourceEvent struct {
@@ -72,8 +73,8 @@ func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *pkgresource.Sta
 	return &pkgresource.State{
 		Type:         tokens.Type("test"),
 		URN:          urn,
-		Inputs:       make(resource.PropertyMap),
-		Outputs:      make(resource.PropertyMap),
+		Inputs:       property.Map{},
+		Outputs:      property.Map{},
 		Dependencies: deps,
 	}
 }
@@ -82,8 +83,8 @@ func NewResourceWithInputs(urn resource.URN, inputs resource.PropertyMap) *pkgre
 	return &pkgresource.State{
 		Type:         tokens.Type("test"),
 		URN:          urn,
-		Inputs:       inputs,
-		Outputs:      make(resource.PropertyMap),
+		Inputs:       resource.FromResourcePropertyMap(inputs),
+		Outputs:      property.Map{},
 		Dependencies: []resource.URN{},
 	}
 }
@@ -350,7 +351,7 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 
 	// Change the resource outputs.
 	changes = append(changes, NewResource(resourceA.URN))
-	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	changes[3].Outputs = property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 
 	snap := NewSnapshot([]*pkgresource.State{
 		provider,
@@ -742,9 +743,9 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs = resourceA.Inputs.Set("key", property.New("old"))
 	resourceANew := NewResource("a")
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs = resourceANew.Inputs.Set("key", property.New("new"))
 	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
@@ -779,9 +780,9 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs = resourceA.Inputs.Set("key", property.New("old"))
 	resourceANew := NewResource("a")
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs = resourceANew.Inputs.Set("key", property.New("new"))
 	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
@@ -905,12 +906,12 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	resourceA.ID = "some-c"
 	resourceA.External = true
 	resourceA.Custom = true
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs = resourceA.Inputs.Set("key", property.New("old"))
 	resourceANew := NewResource("c")
 	resourceANew.ID = "some-other-c"
 	resourceANew.External = true
 	resourceANew.Custom = true
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs = resourceANew.Inputs.Set("key", property.New("new"))
 
 	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
@@ -976,12 +977,12 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	resourceA.ID = "some-e"
 	resourceA.External = true
 	resourceA.Custom = true
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs = resourceA.Inputs.Set("key", property.New("old"))
 	resourceANew := NewResource("e")
 	resourceANew.ID = "some-new-e"
 	resourceANew.External = true
 	resourceANew.Custom = true
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs = resourceANew.Inputs.Set("key", property.New("new"))
 
 	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
@@ -1035,7 +1036,7 @@ func TestRegisterOutputs(t *testing.T) {
 
 	// Now, change the outputs and issue another RRO.
 	resourceA2 := NewResource("a")
-	resourceA2.Outputs = resource.PropertyMap{"hello": resource.NewProperty("world")}
+	resourceA2.Outputs = property.NewMap(map[string]property.Value{"hello": property.New("world")})
 	step = deploy.NewSameStep(nil, nil, resourceA, resourceA2)
 	err = manager.RegisterResourceOutputs(step)
 	require.NoError(t, err)

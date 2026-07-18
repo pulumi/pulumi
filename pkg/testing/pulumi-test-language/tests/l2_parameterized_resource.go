@@ -37,11 +37,11 @@ func init() {
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					require.Equal(l,
 						resource.NewProperty("HelloWorld"),
-						stack.Outputs["parameterValue"],
+						resource.ToResourcePropertyMap(stack.Outputs)["parameterValue"],
 						"parameter value should be correct")
 					require.Equal(l,
 						resource.NewProperty("HelloWorldComponent"),
-						stack.Outputs["parameterValueFromComponent"],
+						resource.ToResourcePropertyMap(stack.Outputs)["parameterValueFromComponent"],
 						"parameter value from component should be correct")
 				},
 			},

@@ -40,10 +40,11 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					AssertPropertyMapMember(l, stack.Outputs, "parameterValue", resource.NewProperty("Hello"))
-					AssertPropertyMapMember(l, stack.Outputs, "parameterValueFromComponent",
+					stackOutputs := resource.ToResourcePropertyMap(stack.Outputs)
+					AssertPropertyMapMember(l, stackOutputs, "parameterValue", resource.NewProperty("Hello"))
+					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(stack.Outputs), "parameterValueFromComponent",
 						resource.NewProperty("HelloComponent"))
-					AssertPropertyMapMember(l, stack.Outputs, "invokeGreeting",
+					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(stack.Outputs), "invokeGreeting",
 						resource.NewProperty("Hello, Pulumi"))
 
 					// The Greeting custom resource lives under the BASE provider's

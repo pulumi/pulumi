@@ -823,23 +823,24 @@ func (r *Registry) Same(ctx context.Context, res *pkgresource.State, fromCheck b
 		providerPkg := providers.GetProviderPackage(urn.Type())
 
 		// Parse the provider version, then load, configure, and register the provider.
-		name, err := GetProviderName(providerPkg, res.Inputs)
+		inputs := resource.ToResourcePropertyMap(res.Inputs)
+		name, err := GetProviderName(providerPkg, inputs)
 		if err != nil {
 			return fmt.Errorf("parse name for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		version, err := GetProviderVersion(res.Inputs)
+		version, err := GetProviderVersion(inputs)
 		if err != nil {
 			return fmt.Errorf("parse version for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		downloadURL, err := GetProviderDownloadURL(res.Inputs)
+		downloadURL, err := GetProviderDownloadURL(inputs)
 		if err != nil {
 			return fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		parameter, err := GetProviderParameterization(providerPkg, res.Inputs)
+		parameter, err := GetProviderParameterization(providerPkg, inputs)
 		if err != nil {
 			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		envVarMappings, err := GetEnvironmentVariableMappings(res.Inputs)
+		envVarMappings, err := GetEnvironmentVariableMappings(inputs)
 		if err != nil {
 			return fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -864,7 +865,7 @@ func (r *Registry) Same(ctx context.Context, res *pkgresource.State, fromCheck b
 		Name:   &name,
 		Type:   &typ,
 		ID:     &res.ID,
-		Inputs: FilterProviderConfig(res.Inputs),
+		Inputs: FilterProviderConfig(resource.ToResourcePropertyMap(res.Inputs)),
 	}); err != nil {
 		contract.IgnoreClose(provider)
 		return fmt.Errorf("configure provider '%v': %w", urn, err)

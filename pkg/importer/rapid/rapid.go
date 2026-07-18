@@ -19,8 +19,7 @@
 // in the supplied schema package, plus a Snapshot containing all other
 // resources its envelope refers to (provider, optional satellites used as
 // parent / dependency / deletedWith / replaceWith / propertyDependencies
-// targets). The state's Inputs are drawn via the rapidresource generator and
-// converted to [resource.PropertyMap] via [resource.ToResourcePropertyMap].
+// targets). The state's Inputs are drawn via the rapidresource generator.
 package rapidimporter
 
 import (
@@ -36,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Sample is a generated resource state and the snapshot needed to import it.
@@ -100,7 +100,7 @@ func drawSample(t *rapid.T, pkg *schema.Package, pickable []*schema.Resource) *S
 		URN:                 resource.NewURN(stackName, projectName, "", typ, name),
 		Custom:              true,
 		ID:                  drawResourceID(t, "resource-id"),
-		Inputs:              resource.ToResourcePropertyMap(inputs),
+		Inputs:              inputs,
 		Provider:            providerRefString(provider),
 		Protect:             rapid.Bool().Draw(t, "protect"),
 		RetainOnDelete:      rapid.Bool().Draw(t, "retain-on-delete"),
@@ -157,7 +157,7 @@ func drawSatellite(
 		Custom:   true,
 		ID:       drawResourceID(t, fmt.Sprintf("satellite-%d-id", i)),
 		Provider: providerRefString(provider),
-		Inputs:   resource.PropertyMap{},
+		Inputs:   property.Map{},
 	}
 }
 
@@ -180,7 +180,7 @@ func drawProviderState(t *rapid.T, pkg *schema.Package) *pkgresource.State {
 		URN:    resource.NewURN(stackName, projectName, "", typ, name),
 		Custom: true,
 		ID:     id,
-		Inputs: inputs,
+		Inputs: resource.FromResourcePropertyMap(inputs),
 	}
 }
 

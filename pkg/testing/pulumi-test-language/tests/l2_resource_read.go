@@ -37,9 +37,9 @@ func init() {
 					readRes := RequireSingleResource(l, res.Snap.Resources, "read:index:Resource")
 					assert.True(l, readRes.External, "expected read resource to be external")
 					assert.Equal(l, resource.ID("existing-id"), readRes.ID)
-					assert.Equal(l, "existing-key", readRes.Inputs["lookup"].StringValue())
-					assert.Equal(l, "existing-key", readRes.Outputs["lookup"].StringValue())
-					assert.Equal(l, true, readRes.Outputs["value"].BoolValue())
+					assert.Equal(l, "existing-key", resource.ToResourcePropertyMap(readRes.Inputs)["lookup"].StringValue())
+					assert.Equal(l, "existing-key", resource.ToResourcePropertyMap(readRes.Outputs)["lookup"].StringValue())
+					assert.Equal(l, true, resource.ToResourcePropertyMap(readRes.Outputs)["value"].BoolValue())
 				},
 			},
 		},

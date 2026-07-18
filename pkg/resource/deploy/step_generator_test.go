@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestIgnoreChanges(t *testing.T) {
@@ -1021,7 +1022,7 @@ func TestStepGenerator(t *testing.T) {
 			Custom: true,
 			Type:   tokens.Type("pulumi:providers:k8s"),
 			ID:     "id-1",
-			Inputs: resource.PropertyMap{"version": resource.NewProperty("1.0.0")},
+			Inputs: property.NewMap(map[string]property.Value{"version": property.New("1.0.0")}),
 		}, false)
 		require.NoError(t, err)
 

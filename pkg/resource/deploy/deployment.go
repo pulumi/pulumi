@@ -481,8 +481,8 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) (bool, e
 				URN:     urn,
 				Custom:  true,
 				ID:      id,
-				Inputs:  inputs,
-				Outputs: inputs,
+				Inputs:  resource.FromResourcePropertyMap(inputs),
+				Outputs: resource.FromResourcePropertyMap(inputs),
 			}
 			defaultProviders = append(defaultProviders, provider)
 			defaultProviderRefs[pkg] = ref
@@ -523,16 +523,17 @@ func migrateProviders(target *Target, prev *Snapshot, source Source) (bool, erro
 			// scenario where the CLI is being upgraded from a version that did not reflect provider inputs to
 			// provider outputs, and a provider is being upgraded from a version that did not implement DiffConfig to
 			// a version that does.
-			if sdkproviders.IsProviderType(res.URN.Type()) && len(res.Inputs) != 0 && len(res.Outputs) == 0 {
+			if sdkproviders.IsProviderType(res.URN.Type()) && res.Inputs.Len() != 0 && res.Outputs.Len() == 0 {
 				changed = true
 				// Importantly DO NOT copy the __internal key to the outputs. This key is only expected on inputs.
-				res.Outputs = make(resource.PropertyMap)
-				for k, v := range res.Inputs {
+				outputs := make(map[string]property.Value, res.Inputs.Len())
+				for k, v := range res.Inputs.AsMap() {
 					if k == "__internal" {
 						continue
 					}
-					res.Outputs[k] = v
+					outputs[k] = v
 				}
+				res.Outputs = property.NewMap(outputs)
 			}
 		}
 	}
@@ -772,8 +773,8 @@ func (d *Deployment) GetOldViews(urn resource.URN) []plugin.View {
 		view := plugin.View{
 			Type:    res.URN.Type(),
 			Name:    res.URN.Name(),
-			Inputs:  res.Inputs,
-			Outputs: res.Outputs,
+			Inputs:  resource.ToResourcePropertyMap(res.Inputs),
+			Outputs: resource.ToResourcePropertyMap(res.Outputs),
 		}
 		if res.Parent != "" && res.Parent != res.ViewOf {
 			view.ParentType = res.Parent.Type()

@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -245,25 +246,25 @@ func TestRoundtripCheckpoint(t *testing.T) {
 			{
 				URN:     "pulumi:stack::project::pulumi:root::project-stack",
 				Type:    resource.RootStackType,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 			},
 			{
 				URN:    "pulumi:stack::project::custom:resource:MyResource::res1",
 				Type:   "custom:resource:MyResource",
 				ID:     "res1-id",
 				Custom: true,
-				Inputs: resource.PropertyMap{
-					"stringProp": resource.NewProperty("inputValue"),
-					"numberProp": resource.NewProperty(42.0),
-					"boolProp":   resource.NewProperty(true),
-					"nullProp":   resource.NewNullProperty(),
-					"infProp":    resource.NewProperty(math.Inf(1)),
-					"negInfProp": resource.NewProperty(math.Inf(-1)),
-				},
-				Outputs: resource.PropertyMap{
-					"outputProp": resource.NewProperty("outputValue"),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"stringProp": property.New("inputValue"),
+					"numberProp": property.New(42.0),
+					"boolProp":   property.New(true),
+					"nullProp":   {},
+					"infProp":    property.New(math.Inf(1)),
+					"negInfProp": property.New(math.Inf(-1)),
+				}),
+				Outputs: property.NewMap(map[string]property.Value{
+					"outputProp": property.New("outputValue"),
+				}),
 				Parent: "pulumi:stack::project::pulumi:root::project-stack",
 			},
 		},
@@ -291,10 +292,10 @@ func TestRoundtripNanCheckpoint(t *testing.T) {
 			{
 				URN:  "pulumi:stack::project::pulumi:root::project-stack",
 				Type: resource.RootStackType,
-				Inputs: resource.PropertyMap{
-					"nan": resource.NewProperty(math.NaN()),
-				},
-				Outputs: resource.PropertyMap{},
+				Inputs: property.NewMap(map[string]property.Value{
+					"nan": property.New(math.NaN()),
+				}),
+				Outputs: property.Map{},
 			},
 		},
 	}
@@ -311,8 +312,8 @@ func TestRoundtripNanCheckpoint(t *testing.T) {
 	require.NotNil(t, loadedSnap)
 
 	// We can't just use require.Equal because NaN != NaN, so we need to check the property specifically.
-	loadedProp, ok := loadedSnap.Resources[0].Inputs["nan"]
+	loadedProp, ok := loadedSnap.Resources[0].Inputs.GetOk("nan")
 	require.True(t, ok)
 	require.True(t, loadedProp.IsNumber())
-	require.True(t, math.IsNaN(loadedProp.NumberValue()))
+	require.True(t, math.IsNaN(loadedProp.AsNumber()))
 }

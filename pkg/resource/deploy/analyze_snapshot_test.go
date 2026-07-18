@@ -78,7 +78,7 @@ func makeTestResource(urn resource.URN) *pkgresource.State {
 		Type:    tokens.Type("pkg:index:MyResource"),
 		URN:     urn,
 		Custom:  true,
-		Outputs: resource.PropertyMap{"key": resource.NewProperty("value")},
+		Outputs: property.NewMap(map[string]property.Value{"key": property.New("value")}),
 	}
 }
 
@@ -221,7 +221,7 @@ func TestAnalyzeSnapshot_RemediationReportedNotApplied(t *testing.T) {
 	remediated := property.NewMap(map[string]property.Value{"key": property.New("good")})
 
 	res := makeTestResource(urn)
-	res.Inputs = resource.ToResourcePropertyMap(original)
+	res.Inputs = original
 
 	snap := &deploy.Snapshot{Resources: []*pkgresource.State{res}}
 	events := &recordingPolicyEvents{}

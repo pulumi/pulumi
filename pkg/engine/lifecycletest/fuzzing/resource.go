@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"pgregory.net/rapid"
 )
 
@@ -192,9 +193,9 @@ func (r *ResourceSpec) AsResource() *pkgresource.State {
 	// In order to allow us to control generated resource IDs (e.g. such as those returned by a provider Create call),
 	// we'll set the ResourceSpec's ID field as an input property.
 	if !providers.IsProviderType(r.Type) {
-		s.Inputs = resource.PropertyMap{
-			"__id": resource.NewProperty(r.ID.String()),
-		}
+		s.Inputs = property.NewMap(map[string]property.Value{
+			"__id": property.New(r.ID.String()),
+		})
 	}
 
 	return s

@@ -30,7 +30,7 @@ func init() {
 				require.NoError(l, res.Err)
 
 				stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-				AssertPropertyMapMember(l, stack.Outputs, "result", resource.NewProperty(expected))
+				AssertPropertyMapMember(l, resource.ToResourcePropertyMap(stack.Outputs), "result", resource.NewProperty(expected))
 			},
 		}
 	}

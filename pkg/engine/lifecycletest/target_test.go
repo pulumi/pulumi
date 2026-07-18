@@ -117,13 +117,13 @@ func TestRefreshTargetChildren(t *testing.T) {
 
 	require.Len(t, snap.Resources, 5)
 	assert.Equal(t, snap.Resources[1].URN, a)
-	assert.Equal(t, snap.Resources[1].Outputs["count"], null)
+	assert.Equal(t, resource.ToResourcePropertyMap(snap.Resources[1].Outputs)["count"], null)
 	assert.Equal(t, snap.Resources[2].URN, b)
-	assert.NotEqual(t, snap.Resources[2].Outputs["count"], null)
+	assert.NotEqual(t, resource.ToResourcePropertyMap(snap.Resources[2].Outputs)["count"], null)
 	assert.Equal(t, snap.Resources[3].URN, c)
-	assert.NotEqual(t, snap.Resources[3].Outputs["count"], null)
+	assert.NotEqual(t, resource.ToResourcePropertyMap(snap.Resources[3].Outputs)["count"], null)
 	assert.Equal(t, snap.Resources[4].URN, d)
-	assert.NotEqual(t, snap.Resources[4].Outputs["count"], null)
+	assert.NotEqual(t, resource.ToResourcePropertyMap(snap.Resources[4].Outputs)["count"], null)
 
 	assert.Equal(t, callCount, int32(3))
 }
@@ -554,13 +554,13 @@ func TestRefreshExcludeTarget(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, snap.Resources, 5)
-	assert.Equal(t, snap.Resources[2].Outputs["count"], null)
+	assert.Equal(t, resource.ToResourcePropertyMap(snap.Resources[2].Outputs)["count"], null)
 
 	// Order isn't guaranteed because of parallelism, so we can't check that
 	// these are 1 + 2 + 3
-	assert.NotEqual(t, snap.Resources[1].Outputs["count"], null)
-	assert.NotEqual(t, snap.Resources[3].Outputs["count"], null)
-	assert.NotEqual(t, snap.Resources[4].Outputs["count"], null)
+	assert.NotEqual(t, resource.ToResourcePropertyMap(snap.Resources[1].Outputs)["count"], null)
+	assert.NotEqual(t, resource.ToResourcePropertyMap(snap.Resources[3].Outputs)["count"], null)
+	assert.NotEqual(t, resource.ToResourcePropertyMap(snap.Resources[4].Outputs)["count"], null)
 }
 
 // We should be able to build an `A > B > C > D` and refresh the `A` target by
@@ -635,10 +635,10 @@ func TestRefreshExcludeChildren(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, snap.Resources, 5)
-	assert.Equal(t, snap.Resources[1].Outputs["count"], resource.NewProperty(1.0))
-	assert.Equal(t, snap.Resources[2].Outputs["count"], null)
-	assert.Equal(t, snap.Resources[3].Outputs["count"], null)
-	assert.Equal(t, snap.Resources[4].Outputs["count"], null)
+	assert.Equal(t, resource.ToResourcePropertyMap(snap.Resources[1].Outputs)["count"], resource.NewProperty(1.0))
+	assert.Equal(t, resource.ToResourcePropertyMap(snap.Resources[2].Outputs)["count"], null)
+	assert.Equal(t, resource.ToResourcePropertyMap(snap.Resources[3].Outputs)["count"], null)
+	assert.Equal(t, resource.ToResourcePropertyMap(snap.Resources[4].Outputs)["count"], null)
 }
 
 func destroySpecificTargets(
@@ -1889,8 +1889,8 @@ func newResource(urn, parent resource.URN, id resource.ID, provider string, depe
 		Custom:               custom,
 		Delete:               false,
 		ID:                   id,
-		Inputs:               inputs,
-		Outputs:              outputs,
+		Inputs:               resource.FromResourcePropertyMap(inputs),
+		Outputs:              resource.FromResourcePropertyMap(outputs),
 		Dependencies:         dependencies,
 		PropertyDependencies: propertyDeps,
 		Provider:             provider,

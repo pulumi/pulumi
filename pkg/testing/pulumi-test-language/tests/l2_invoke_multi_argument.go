@@ -40,7 +40,7 @@ func init() {
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					require.NotNil(l, stack, "expected a stack resource")
 
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 
 					AssertPropertyMapMember(l, outputs, "both", resource.NewProperty("hello world"))
 					AssertPropertyMapMember(l, outputs, "onlyRequired", resource.NewProperty("hello"))

@@ -221,7 +221,8 @@ func (sm *JournalSnapshotManager) RegisterResourceOutputs(step deploy.Step) erro
 	old, new := step.Old(), step.New()
 
 	journalEntry := sm.newJournalEntry(JournalEntryOutputs, operationID)
-	journalEntry.ElideWrite = old != nil && new != nil && old.Outputs.DeepEquals(new.Outputs)
+	journalEntry.ElideWrite = old != nil && new != nil &&
+		old.Outputs.Equals(new.Outputs)
 	journalEntry.State = step.New().Copy()
 	// We always need to mark the *new* resource for removal here, because registering outputs
 	// is not a really a separate step, but the step we're getting here has already been executed.
@@ -487,11 +488,11 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	// If the inputs or outputs of this resource have changed, we must write the checkpoint. Note that it is possible
 	// for the inputs of a "same" resource to have changed even if the contents of the input bags are different if the
 	// resource's provider deems the physical change to be semantically irrelevant.
-	if !old.Inputs.DeepEquals(new.Inputs) {
+	if !old.Inputs.Equals(new.Inputs) {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Inputs")
 		return true
 	}
-	if !old.Outputs.DeepEquals(new.Outputs) {
+	if !old.Outputs.Equals(new.Outputs) {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Outputs")
 		return true
 	}

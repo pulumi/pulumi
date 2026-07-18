@@ -313,6 +313,7 @@ func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]any, e
 	// crypter. This also ensures that if for some reason we didn't remove everything, we don't accidentally disclose
 	// secret values!
 	ctx := context.TODO()
-	return stack.SerializeProperties(ctx, display.MassageSecrets(state.Outputs, showSecrets),
-		config.NewPanicCrypter(), showSecrets)
+	outputs := resource.ToResourcePropertyMap(state.Outputs)
+	return stack.SerializeProperties(
+		ctx, display.MassageSecrets(outputs, showSecrets), config.NewPanicCrypter(), showSecrets)
 }

@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +40,7 @@ func init() {
 					assert.Equal(l, "prov", provider.URN.Name(), "expected provider named 'prov'")
 
 					// Check that envVarMappings is set in the provider Inputs under __internal
-					internal := provider.Inputs["__internal"]
+					internal := resource.ToResourcePropertyMap(provider.Inputs)["__internal"]
 					require.NotNil(l, internal, "expected __internal in provider inputs")
 					internalObj := internal.ObjectValue()
 					envVarMappings := internalObj["envVarMappings"]

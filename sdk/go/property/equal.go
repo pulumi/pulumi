@@ -51,6 +51,24 @@ func (v Value) Equals(other Value, opts ...EqualOption) bool {
 	return v.equals(other, eqOpts)
 }
 
+// Check if two Arrays are equal.
+func (a Array) Equals(other Array, opts ...EqualOption) bool {
+	var eqOpts eqOpts
+	for _, o := range opts {
+		o(&eqOpts)
+	}
+	return a.equals(other, eqOpts)
+}
+
+// Check if two Maps are equal.
+func (m Map) Equals(other Map, opts ...EqualOption) bool {
+	var eqOpts eqOpts
+	for _, o := range opts {
+		o(&eqOpts)
+	}
+	return m.equals(other, eqOpts)
+}
+
 func (v Value) equals(other Value, opts eqOpts) bool {
 	if v.isSecret != other.isSecret {
 		return false
@@ -78,27 +96,10 @@ func (v Value) equals(other Value, opts eqOpts) bool {
 		return v.AsString() == other.AsString()
 	case v.IsArray() && other.IsArray():
 		a1, a2 := v.AsArray(), other.AsArray()
-		if a1.Len() != a2.Len() {
-			return false
-		}
-		for i := range a1.arr {
-			if !a1.arr[i].equals(a2.arr[i], opts) {
-				return false
-			}
-		}
-		return true
+		return a1.equals(a2, opts)
 	case v.IsMap() && other.IsMap():
 		m1, m2 := v.AsMap(), other.AsMap()
-		if m1.Len() != m2.Len() {
-			return false
-		}
-		for k, v1 := range m1.m {
-			v2, ok := m2.m[k]
-			if !ok || !v1.equals(v2, opts) {
-				return false
-			}
-		}
-		return true
+		return m1.equals(m2, opts)
 	case v.IsAsset() && other.IsAsset():
 		a1, a2 := v.asAssetMut(), other.asAssetMut()
 		return a1.Equals(a2)
@@ -115,4 +116,29 @@ func (v Value) equals(other Value, opts eqOpts) bool {
 	default:
 		return false
 	}
+}
+
+func (a Array) equals(other Array, opts eqOpts) bool {
+	if a.Len() != other.Len() {
+		return false
+	}
+	for i := range a.arr {
+		if !a.arr[i].equals(other.arr[i], opts) {
+			return false
+		}
+	}
+	return true
+}
+
+func (m Map) equals(other Map, opts eqOpts) bool {
+	if m.Len() != other.Len() {
+		return false
+	}
+	for k, v1 := range m.m {
+		v2, ok := other.m[k]
+		if !ok || !v1.equals(v2, opts) {
+			return false
+		}
+	}
+	return true
 }

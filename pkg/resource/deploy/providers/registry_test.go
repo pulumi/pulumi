@@ -199,7 +199,7 @@ func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMa
 		Custom: true,
 		Delete: del,
 		ID:     resource.ID(id),
-		Inputs: inputs,
+		Inputs: resource.FromResourcePropertyMap(inputs),
 	}
 }
 
@@ -263,7 +263,7 @@ func TestNewRegistryOldState(t *testing.T) {
 
 		assert.Equal(t, providers.GetProviderPackage(old.Type), p.(*testProvider).pkg)
 
-		ver, err := GetProviderVersion(old.Inputs)
+		ver, err := GetProviderVersion(resource.ToResourcePropertyMap(old.Inputs))
 		require.NoError(t, err)
 		if ver != nil {
 			info, err := p.GetPluginInfo(t.Context())
@@ -357,7 +357,7 @@ func TestCRUD(t *testing.T) {
 	// Update the existing provider for the first entry in olds.
 	{
 		urn, id := olds[0].URN, olds[0].ID
-		olds, news := olds[0].Inputs, olds[0].Inputs
+		olds, news := resource.ToResourcePropertyMap(olds[0].Inputs), resource.ToResourcePropertyMap(olds[0].Inputs)
 		timeout := float64(120)
 
 		// Fetch the old provider instance.
@@ -522,7 +522,7 @@ func TestCRUDPreview(t *testing.T) {
 	// Update the existing provider for the first entry in olds.
 	{
 		urn, id := olds[0].URN, olds[0].ID
-		olds, news := olds[0].Inputs, olds[0].Inputs
+		olds, news := resource.ToResourcePropertyMap(olds[0].Inputs), resource.ToResourcePropertyMap(olds[0].Inputs)
 
 		// Fetch the old provider instance.
 		old, ok := r.GetProvider(mustNewReference(urn, id))
@@ -564,7 +564,8 @@ func TestCRUDPreview(t *testing.T) {
 	// Replace the existing provider for the last entry in olds.
 	{
 		urn, id := olds[len(olds)-1].URN, olds[len(olds)-1].ID
-		olds, news := olds[len(olds)-1].Inputs, olds[len(olds)-1].Inputs
+		olds, news := resource.ToResourcePropertyMap(olds[len(olds)-1].Inputs),
+			resource.ToResourcePropertyMap(olds[len(olds)-1].Inputs)
 
 		// Fetch the old provider instance.
 		old, ok := r.GetProvider(mustNewReference(urn, id))
@@ -1033,7 +1034,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		require.NotNil(t, p)
 
 		// Verify the mappings can be retrieved from the original inputs
-		retrieved, err := GetEnvironmentVariableMappings(old.Inputs)
+		retrieved, err := GetEnvironmentVariableMappings(resource.ToResourcePropertyMap(old.Inputs))
 		require.NoError(t, err)
 		assert.Equal(t, mappings, retrieved)
 	})

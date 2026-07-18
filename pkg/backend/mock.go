@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -645,7 +644,7 @@ func (ms *MockStack) SnapshotStackOutputs(
 	if res == nil {
 		return property.Map{}, nil
 	}
-	return resource.FromResourcePropertyMap(res.Outputs), nil
+	return res.Outputs, nil
 }
 
 func (ms *MockStack) Tags() map[apitype.StackTagName]string {

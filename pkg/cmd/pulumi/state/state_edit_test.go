@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,33 +39,33 @@ func TestSnapshotFrontendRoundTrip(t *testing.T) {
 			{
 				URN:  resource.URN("urn:pulumi:dev::random::pulumi:pulumi:Stack::random-dev"),
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.PropertyMap{
-					resource.PropertyKey("name"): resource.NewProperty("fancy-pig"),
-				},
+				Outputs: property.NewMap(map[string]property.Value{
+					"name": property.New("fancy-pig"),
+				}),
 			},
 			{
 				URN:    resource.URN("urn:pulumi:dev::random::pulumi:providers:random::default_4_13_2"),
 				Type:   "pulumi:providers:random",
 				Custom: true,
 				ID:     resource.ID("ed72fad1-9a82-49d7-b09f-1659b7a3c7db"),
-				Inputs: resource.PropertyMap{
-					resource.PropertyKey("version"): resource.NewProperty("4.13.2"),
-				},
-				Outputs: resource.PropertyMap{
-					resource.PropertyKey("aversion"): resource.NewProperty("4.13.2"),
-					resource.PropertyKey("version"):  resource.NewProperty("4.13.2"),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"version": property.New("4.13.2"),
+				}),
+				Outputs: property.NewMap(map[string]property.Value{
+					"aversion": property.New("4.13.2"),
+					"version":  property.New("4.13.2"),
+				}),
 			},
 			{
 				URN:    resource.URN("urn:pulumi:dev::random::random:index/randomPet:RandomPet::username-1"),
 				Type:   "random:index/randomPet:RandomPet",
 				Custom: true,
 				ID:     resource.ID("wondrous-doe"),
-				Outputs: resource.PropertyMap{
-					resource.PropertyKey("id"):        resource.NewProperty("wondrous-doe"),
-					resource.PropertyKey("length"):    resource.NewProperty(2.0),
-					resource.PropertyKey("separator"): resource.NewProperty("-"),
-				},
+				Outputs: property.NewMap(map[string]property.Value{
+					"id":        property.New("wondrous-doe"),
+					"length":    property.New(2.0),
+					"separator": property.New("-"),
+				}),
 				Parent:   resource.URN("urn:pulumi:dev::random::pulumi:pulumi:Stack::random-dev"),
 				Provider: "urn:pulumi:dev::random::pulumi:providers:random::default_4_13_2::ed72fad1-9a82-49d7-b09f-1659b7a3c7db",
 			},

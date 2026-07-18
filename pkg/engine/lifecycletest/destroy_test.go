@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -1543,9 +1544,9 @@ func TestDestroyV2RefreshWithTargetedProviderParentChange(t *testing.T) {
 				Custom:   false,
 				ID:       "",
 				Provider: "urn:pulumi:test::test::pulumi:providers:pkgB::provB::id1",
-				Inputs: resource.PropertyMap{
-					"__id": resource.NewProperty(""),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"__id": property.New(""),
+				}),
 			},
 			{
 				Type:     "pkgB:m:typD",
@@ -1553,9 +1554,9 @@ func TestDestroyV2RefreshWithTargetedProviderParentChange(t *testing.T) {
 				Custom:   true,
 				ID:       "id2",
 				Provider: "urn:pulumi:test::test::pulumi:providers:pkgB::provB::id1",
-				Inputs: resource.PropertyMap{
-					"__id": resource.NewProperty("id2"),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"__id": property.New("id2"),
+				}),
 			},
 		},
 	}

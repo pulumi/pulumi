@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Snapshot is a view of a collection of resources in an stack at a point in time.  It describes resources; their
@@ -403,11 +404,11 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 		// Normalize empty Outputs and Inputs.  Since we're serializing and deserializing
 		// this in the journal, we lose some information compared to the regular
 		// snapshotting algorithm.
-		if len(mr.Outputs) == 0 {
-			mr.Outputs = make(resource.PropertyMap)
+		if mr.Outputs.Len() == 0 {
+			mr.Outputs = property.Map{}
 		}
-		if len(mr.Inputs) == 0 {
-			mr.Inputs = make(resource.PropertyMap)
+		if mr.Inputs.Len() == 0 {
+			mr.Inputs = property.Map{}
 		}
 		resourcesMap[mr.URN] = append(resourcesMap[mr.URN], mr)
 	}
@@ -429,11 +430,11 @@ func (snap *Snapshot) AssertEqual(expected *Snapshot) error {
 		// Normalize empty Outputs and Inputs.  Since we're serializing and deserializing
 		// this in the journal, we lose some information compared to the regular
 		// snapshotting algorithm.
-		if len(jr.Outputs) == 0 {
-			jr.Outputs = make(resource.PropertyMap)
+		if jr.Outputs.Len() == 0 {
+			jr.Outputs = property.Map{}
 		}
-		if len(jr.Inputs) == 0 {
-			jr.Inputs = make(resource.PropertyMap)
+		if jr.Inputs.Len() == 0 {
+			jr.Inputs = property.Map{}
 		}
 		for _, mr := range resourcesMap[jr.URN] {
 			if diff := deep.Equal(jr, mr); diff != nil {

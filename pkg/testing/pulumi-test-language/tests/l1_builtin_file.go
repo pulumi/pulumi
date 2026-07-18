@@ -27,7 +27,7 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 					require.Len(l, outputs, 3, "expected 3 outputs")
 
 					AssertPropertyMapMember(l, outputs, "fileContent",

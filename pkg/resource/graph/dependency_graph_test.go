@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -1352,8 +1353,8 @@ func makeProvider(pkg, name, id string, deps ...resource.URN) (*pkgresource.Stat
 		Custom:       true,
 		URN:          resource.NewURN("stack", "proj", "", t, name),
 		ID:           resource.ID(id),
-		Inputs:       resource.PropertyMap{},
-		Outputs:      resource.PropertyMap{},
+		Inputs:       property.Map{},
+		Outputs:      property.Map{},
 		Dependencies: deps,
 	}
 

@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // prefixCrypter is a test crypter that wraps plaintexts with a fixed tag so a test can assert
@@ -1449,9 +1450,9 @@ func TestStackMigrate_ReencryptsStateSecret(t *testing.T) { //nolint: parallelte
 			{
 				URN:  resource.NewURN("dev", "proj", "", resource.RootStackType, "dev"),
 				Type: resource.RootStackType,
-				Outputs: resource.PropertyMap{
-					"stateSecret": resource.MakeSecret(resource.NewProperty("state-plaintext")),
-				},
+				Outputs: property.NewMap(map[string]property.Value{
+					"stateSecret": property.New("state-plaintext").WithSecret(true),
+				}),
 			},
 		},
 	}
@@ -2090,8 +2091,8 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 				Parent:               rootURN,
 				Aliases:              []resource.URN{aliasURN},
 				ViewOf:               viewURN,
-				Inputs:               inputs,
-				Outputs:              outputs,
+				Inputs:               resource.FromResourcePropertyMap(inputs),
+				Outputs:              resource.FromResourcePropertyMap(outputs),
 				Dependencies:         []resource.URN{depURN},
 				PropertyDependencies: map[resource.PropertyKey][]resource.URN{"k": {propDepURN}},
 				DeletedWith:          deletedWithURN,
@@ -2102,7 +2103,7 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 				URN:                siblingURN,
 				Type:               "pkg:Sibling",
 				Parent:             rootURN,
-				ReplacementTrigger: replacementTrigger,
+				ReplacementTrigger: resource.FromResourcePropertyValue(replacementTrigger),
 			},
 		},
 	}

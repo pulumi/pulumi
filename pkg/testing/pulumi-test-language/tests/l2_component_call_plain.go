@@ -50,25 +50,26 @@ func init() {
 					RequireStackResource(l, err, changes)
 
 					stack := snap.Resources[0]
+					stackOutputs := resource.ToResourcePropertyMap(stack.Outputs)
 
 					// Plain integer return.
-					AssertPropertyMapMember(l, stack.Outputs, "plainValue", resource.NewProperty(42.0))
+					AssertPropertyMapMember(l, stackOutputs, "plainValue", resource.NewProperty(42.0))
 					// Plain integer returned as a field of the plain struct from nestedPlainProvider().
-					AssertPropertyMapMember(l, stack.Outputs, "nestedPlainValue", resource.NewProperty(42.0))
+					AssertPropertyMapMember(l, stackOutputs, "nestedPlainValue", resource.NewProperty(42.0))
 
 					// The Custom resource created with the provider returned from plainProvider()
 					// should have echoed the providerConfig value that was passed into the
 					// component, confirming component -> constructed-provider -> child propagation.
 					custom := RequireSingleNamedResource(l, snap.Resources, "customFromPlainProvider")
 					require.Equal(
-						l, "propagated", custom.Outputs["config"].StringValue(),
+						l, "propagated", resource.ToResourcePropertyMap(custom.Outputs)["config"].StringValue(),
 						"expected customFromPlainProvider.config to propagate from Configurer.providerConfig",
 					)
 
 					// Same assertion via nestedPlainProvider().provider.
 					customNested := RequireSingleNamedResource(l, snap.Resources, "customFromNestedPlainProvider")
 					require.Equal(
-						l, "propagated", customNested.Outputs["config"].StringValue(),
+						l, "propagated", resource.ToResourcePropertyMap(customNested.Outputs)["config"].StringValue(),
 						"expected customFromNestedPlainProvider.config to propagate via nestedPlainProvider().provider",
 					)
 				},

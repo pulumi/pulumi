@@ -43,17 +43,18 @@ func init() {
 					large := RequireSingleResource(l, snap.Resources, "large:index:String")
 					require.Equal(l,
 						resource.NewProperty("hello world"),
-						large.Inputs["value"],
+						resource.ToResourcePropertyValue(large.Inputs.Get("value")),
 					)
 					require.Equal(l,
 						largeString,
-						large.Outputs["value"],
+						resource.ToResourcePropertyMap(large.Outputs)["value"],
 					)
 
 					// Check the stack output value is as well
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
-					require.Equal(l, largeString, stack.Outputs["output"], "expected large string stack output")
+					stackOutputs := resource.ToResourcePropertyMap(stack.Outputs)
+					require.Equal(l, largeString, stackOutputs["output"], "expected large string stack output")
 				},
 			},
 		},

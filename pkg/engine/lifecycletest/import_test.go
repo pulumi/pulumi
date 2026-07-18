@@ -811,7 +811,7 @@ func TestImportIgnoreChanges(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, snap.Resources, 2)
-	assert.Equal(t, resource.NewProperty("bar"), snap.Resources[1].Outputs["foo"])
+	assert.Equal(t, resource.NewProperty("bar"), resource.ToResourcePropertyMap(snap.Resources[1].Outputs)["foo"])
 }
 
 func TestImportPlanExistingImport(t *testing.T) {
@@ -1104,7 +1104,7 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 	require.Len(t, snap.Resources, 3)
 
 	// We should still have the baz output but will be missing its input
-	assert.Equal(t, resource.NewProperty(2.0), snap.Resources[2].Outputs["baz"])
+	assert.Equal(t, resource.NewProperty(2.0), resource.ToResourcePropertyMap(snap.Resources[2].Outputs)["baz"])
 	assert.NotContains(t, snap.Resources[2].Inputs, "baz")
 }
 
@@ -1477,7 +1477,7 @@ func TestImportDefaultProvider(t *testing.T) {
 
 	// The default provider should have been created with the expected version.
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[1].URN.Type())
-	assert.Equal(t, "1.0.0", snap.Resources[1].Inputs["version"].StringValue())
+	assert.Equal(t, "1.0.0", resource.ToResourcePropertyMap(snap.Resources[1].Inputs)["version"].StringValue())
 
 	// Import should save the ID, inputs and outputs
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[2].ID)

@@ -72,9 +72,9 @@ func init() {
 					assert.Equal(l, want, primResource.Inputs, "resource inputs should preserve adversarial map keys")
 					assert.Equal(l, primResource.Inputs, primResource.Outputs, "expected inputs and outputs to match")
 
-					AssertPropertyMapMember(l, stack.Outputs,
+					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(stack.Outputs),
 						"resourceBooleanMap", resource.NewProperty(adversarialMap))
-					AssertPropertyMapMember(l, stack.Outputs,
+					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(stack.Outputs),
 						"invokeBooleanMap", resource.NewProperty(adversarialMap))
 				},
 			},

@@ -42,7 +42,8 @@ func init() {
 					RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:nestedobject")
 
 					mapTarget := RequireSingleNamedResource(l, res.Snap.Resources, "mapTarget")
-					AssertPropertyMapMember(l, mapTarget.Inputs, "name", resource.NewProperty("k1=v1+"))
+					mapTargetInputs := resource.ToResourcePropertyMap(mapTarget.Inputs)
+					AssertPropertyMapMember(l, mapTargetInputs, "name", resource.NewProperty("k1=v1+"))
 				},
 			},
 		},

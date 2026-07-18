@@ -65,7 +65,7 @@ func init() {
 					// * explicitProvFromIdentity, whose value should be the value output of the explicit provider.
 					// * explicitProvFromPrefixed, whose value should be the value output of the explicit provider, prefixed with
 					//   "call-prefix-".
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 					require.Len(l, outputs, 3, "expected 3 outputs")
 					AssertPropertyMapMember(
 						l, outputs,

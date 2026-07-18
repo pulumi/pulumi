@@ -53,7 +53,7 @@ func makeAnalyzeSnapshot() *deploy.Snapshot {
 			Type:    tokens.Type("pkg:index:MyResource"),
 			URN:     "urn:pulumi:stack::project::pkg:index:MyResource::res",
 			Custom:  true,
-			Outputs: resource.PropertyMap{"k": resource.NewProperty("v")},
+			Outputs: property.NewMap(map[string]property.Value{"k": property.New("v")}),
 		}},
 	}
 }
@@ -554,8 +554,8 @@ func TestPolicyAnalyzeCmd_AnalyzeStackCalled_PrintsAndUsesOutputs(t *testing.T) 
 			Type:    tokens.Type("pkg:index:MyResource"),
 			URN:     urn,
 			Custom:  true,
-			Inputs:  resource.PropertyMap{"origin": resource.NewProperty("input")},
-			Outputs: resource.PropertyMap{"origin": resource.NewProperty("output")},
+			Inputs:  property.NewMap(map[string]property.Value{"origin": property.New("input")}),
+			Outputs: property.NewMap(map[string]property.Value{"origin": property.New("output")}),
 		}},
 	}
 

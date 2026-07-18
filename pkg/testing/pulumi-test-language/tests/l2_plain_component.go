@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -49,7 +50,7 @@ func init() {
 						"expected component type",
 					)
 					require.Equal(
-						l, "my-resource", comp.Outputs["label"].StringValue(),
+						l, "my-resource", resource.ToResourcePropertyMap(comp.Outputs)["label"].StringValue(),
 						"expected label output",
 					)
 
@@ -59,7 +60,7 @@ func init() {
 						"expected child custom type",
 					)
 					require.Equal(
-						l, "my-resource", child.Outputs["value"].StringValue(),
+						l, "my-resource", resource.ToResourcePropertyMap(child.Outputs)["value"].StringValue(),
 						"expected child value output",
 					)
 				},

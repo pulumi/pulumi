@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // TestDeploymentSerialization creates a basic snapshot of a given resource state.
@@ -58,7 +59,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		Custom: true,
 		Delete: false,
 		ID:     resource.ID("test-resource-x"),
-		Inputs: resource.NewPropertyMapFromMap(map[string]any{
+		Inputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 			"in-nil":         nil,
 			"in-bool":        true,
 			"in-float64":     float64(1.5),
@@ -75,8 +76,8 @@ func TestDeploymentSerialization(t *testing.T) {
 			"in-component-resource-reference":         resource.MakeComponentResourceReference("urn", "1.2.3").V,
 			"in-custom-resource-reference":            resource.MakeCustomResourceReference("urn2", "id", "2.3.4").V,
 			"in-custom-resource-reference-unknown-id": resource.MakeCustomResourceReference("urn3", "", "3.4.5").V,
-		}),
-		Outputs: resource.NewPropertyMapFromMap(map[string]any{
+		})),
+		Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 			"out-nil":         nil,
 			"out-bool":        false,
 			"out-float64":     float64(76),
@@ -89,7 +90,7 @@ func TestDeploymentSerialization(t *testing.T) {
 				"z": float64(999.9),
 			},
 			"out-empty-map": map[string]any{},
-		}),
+		})),
 		Parent:   "",
 		Protect:  false,
 		Taint:    false,
@@ -116,7 +117,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		StackTrace:              nil,
 		IgnoreChanges:           nil,
 		ReplaceOnChanges:        nil,
-		ReplacementTrigger:      resource.NewNullProperty(),
+		ReplacementTrigger:      property.Value{},
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks: map[resource.HookType][]string{
@@ -459,8 +460,8 @@ func TestResourceSnippetIDRoundTrip(t *testing.T) {
 		Type:      tokens.Type("pkgA:index:res"),
 		URN:       resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
 		Custom:    true,
-		Inputs:    resource.PropertyMap{"propA": resource.NewProperty(true)},
-		Outputs:   resource.PropertyMap{},
+		Inputs:    property.NewMap(map[string]property.Value{"propA": property.New(true)}),
+		Outputs:   property.Map{},
 		SnippetID: snippetID,
 	}
 
@@ -827,8 +828,8 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 				Custom:       false,
 				Delete:       false,
 				ID:           "",
-				Inputs:       resource.PropertyMap{},
-				Outputs:      resource.PropertyMap{},
+				Inputs:       property.Map{},
+				Outputs:      property.Map{},
 				Parent:       "",
 				Protect:      false,
 				Dependencies: nil,
@@ -1127,10 +1128,10 @@ func TestSecretInputRoundTrip(t *testing.T) {
 	res := &pkgresource.State{
 		URN:  "urn:pulumi:stack::project::pkg:index:type::name",
 		Type: "pkg:index:type",
-		Inputs: resource.NewPropertyMapFromMap(map[string]any{
+		Inputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 			"normal": "hello",
 			"secret": resource.MakeSecret(resource.NewProperty("there")),
-		}),
+		})),
 	}
 
 	sm := b64.NewBase64SecretsManager()
@@ -1143,7 +1144,7 @@ func TestSecretInputRoundTrip(t *testing.T) {
 	require.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"normal": "hello",
 		"secret": resource.MakeSecret(resource.NewProperty("there")),
-	}), deserialized.Inputs)
+	}), resource.ToResourcePropertyMap(deserialized.Inputs))
 }
 
 // Tests that when a deployment has no root stack resource, DeserializeStackOutputs returns nil outputs.

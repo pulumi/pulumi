@@ -38,7 +38,7 @@ func init() {
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 
 					require.Len(l, outputs, 10, "expected 10 outputs")
 					AssertPropertyMapMember(l, outputs, "plainTrySuccess", resource.NewProperty("MOK"))

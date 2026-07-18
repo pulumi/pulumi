@@ -213,7 +213,7 @@ func operationState(urn resource.URN, id resource.ID, inputs, outputs resource.P
 		URN:     urn,
 		Custom:  true,
 		ID:      id,
-		Inputs:  inputs,
-		Outputs: outputs,
+		Inputs:  resource.FromResourcePropertyMap(inputs),
+		Outputs: resource.FromResourcePropertyMap(outputs),
 	}
 }

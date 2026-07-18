@@ -66,6 +66,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -1430,7 +1431,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}
 
 	contract.Assertf(result != nil, "ReadResource operation returned a nil result")
-	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
+	marshaled, err := plugin.MarshalProperties(resource.ToResourcePropertyMap(result.State.Outputs), plugin.MarshalOptions{
 		Label:            label,
 		KeepUnknowns:     true,
 		KeepSecrets:      req.GetAcceptSecrets(),
@@ -2726,14 +2727,19 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				"resource monitor shut down while waiting for construct to complete")
 		}
 
-		result = &RegisterResult{State: &pkgresource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
+		result = &RegisterResult{
+			State: &pkgresource.State{
+				URN:     constructResult.URN,
+				Outputs: resource.FromResourcePropertyMap(constructResult.Outputs),
+			},
+		}
 
 		// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
 		// Secret but also add them to the outputDeps map.
 		if constructResult.OutputDependencies == nil {
 			constructResult.OutputDependencies = map[resource.PropertyKey][]resource.URN{}
 		}
-		for k, v := range result.State.Outputs {
+		for k, v := range constructResult.Outputs {
 			constructResult.OutputDependencies[k] = extendOutputDependencies(constructResult.OutputDependencies[k], v)
 		}
 
@@ -2892,7 +2898,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// the SDK's calls to getResource to fail when it attempts to resolve those references.
 		//
 		// Work on a more targeted fix is tracked in https://github.com/pulumi/pulumi/issues/5978
-		outputs = resource.PropertyMap{}
+		outputs = property.Map{}
 	}
 
 	// Publish the registered outputs on the registration observer so other concurrent sources waiting on this URN
@@ -2904,13 +2910,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// snippet's References map is rewritten to the canonical URN at snapshot-write time by NormalizeURNReferences.
 	if rm.observer != nil && result.Result == ResultStateSuccess && result.State.URN != "" {
 		if custom {
-			rm.observer.Resolve(result.State.URN, result.State.ID, outputs)
+			legacyOutputs := resource.ToResourcePropertyMap(outputs)
+			rm.observer.Resolve(result.State.URN, result.State.ID, legacyOutputs)
 			// Publish under each alias too. We use parsedAliases (the request's aliases) rather than
 			// result.State.Aliases because the Construct path only fills in URN+Outputs on the result, leaving
 			// Aliases empty.
 			for _, alias := range parsedAliases {
 				if aliasURN := alias.GetURN(); aliasURN != "" && aliasURN != result.State.URN {
-					rm.observer.Resolve(aliasURN, result.State.ID, outputs)
+					rm.observer.Resolve(aliasURN, result.State.ID, legacyOutputs)
 				}
 			}
 		} else if !remote {
@@ -2934,12 +2941,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if !req.GetSupportsPartialValues() {
 		logging.V(5).Infof("stripping unknowns from RegisterResource response for urn %v", result.State.URN)
 		filtered := resource.PropertyMap{}
-		for k, v := range outputs {
+		for k, v := range resource.ToResourcePropertyMap(outputs) {
 			if !v.ContainsUnknowns() {
 				filtered[k] = v
 			}
 		}
-		outputs = filtered
+		outputs = resource.FromResourcePropertyMap(filtered)
 	}
 
 	// TODO(@platform):
@@ -2985,12 +2992,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource operation finished: t=%v, urn=%v, #outs=%v",
-		result.State.Type, result.State.URN, len(outputs),
+		result.State.Type, result.State.URN, outputs.Len(),
 	)
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
-	obj, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
+	obj, err := plugin.MarshalProperties(resource.ToResourcePropertyMap(outputs), plugin.MarshalOptions{
 		Label:            label,
 		KeepUnknowns:     true,
 		KeepSecrets:      req.GetAcceptSecrets(),

@@ -1142,7 +1142,7 @@ func createStackReferences(
 					Type: resource.RootStackType,
 					URN: resource.CreateURN(resourceName, string(resource.RootStackType), "",
 						string(projectName), stackName.String()),
-					Outputs: outputs,
+					Outputs: resource.FromResourcePropertyMap(outputs),
 				},
 			},
 		}

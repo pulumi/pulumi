@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // StepCompleteFunc is the type of functions returned from Step.Apply. These
@@ -44,6 +45,18 @@ import (
 // _should not_ modify the resource state in these functions -- doing so will
 // race with the snapshot writing code.
 type StepCompleteFunc func()
+
+func toLegacyMap(m property.Map) resource.PropertyMap {
+	return resource.ToResourcePropertyMap(m)
+}
+
+func fromLegacyMap(m resource.PropertyMap) property.Map {
+	return resource.FromResourcePropertyMap(m)
+}
+
+func mapsEqual(a, b property.Map) bool {
+	return a.Equals(b)
+}
 
 // Step is a specification for a deployment operation.
 type Step interface {
@@ -305,7 +318,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.Type(),
 		nil, /* oldOptions */
 		resourceOptionsFromState(s.new),
-		s.new.Inputs,
+		toLegacyMap(s.new.Inputs),
 		nil, /* oldInputs */
 		nil, /* newOutputs */
 		nil, /* oldOutputs */
@@ -344,7 +357,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					URN:                   s.URN(),
 					Name:                  s.new.URN.Name(),
 					Type:                  s.new.URN.Type(),
-					Properties:            s.new.Inputs,
+					Properties:            toLegacyMap(s.new.Inputs),
 					Timeout:               s.new.CustomTimeouts.Create,
 					Preview:               s.deployment.opts.DryRun,
 					ResourceStatusAddress: resourceStatusAddress,
@@ -379,7 +392,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.Type(),
 					nil, /* oldOptions */
 					resourceOptionsFromState(s.new),
-					s.new.Inputs,
+					toLegacyMap(s.new.Inputs),
 					nil, /* oldInputs */
 					nil, /* oldOutputs */
 					"create",
@@ -419,7 +432,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		if err == nil || resourceStatus == resource.StatusPartialFailure {
 			id = resp.ID
-			outs = resp.Properties
+			outs = resource.FromResourcePropertyMap(resp.Properties)
 			refreshBeforeUpdate = resp.RefreshBeforeUpdate
 
 			if err == nil && !s.deployment.opts.DryRun && id == "" {
@@ -467,9 +480,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.new.Type,
 			nil, /* oldOptions */
 			resourceOptionsFromState(s.new),
-			s.new.Inputs,
+			toLegacyMap(s.new.Inputs),
 			nil, /* oldInputs */
-			s.new.Outputs,
+			toLegacyMap(s.new.Outputs),
 			nil, /* oldOutputs */
 		); err != nil {
 			// The cloud resource was created successfully, only the after-hook failed. Surface the error as a
@@ -610,9 +623,9 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		resourceOptionsFromState(s.old),
 		nil, /* newOptions */
 		nil, /* newInputs */
-		s.old.Inputs,
+		toLegacyMap(s.old.Inputs),
 		nil, /* newOutputs */
-		s.old.Outputs,
+		toLegacyMap(s.old.Outputs),
 	); err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -665,8 +678,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					Name:                  s.URN().Name(),
 					Type:                  s.URN().Type(),
 					ID:                    s.old.ID,
-					Inputs:                s.old.Inputs,
-					Outputs:               s.old.Outputs,
+					Inputs:                toLegacyMap(s.old.Inputs),
+					Outputs:               toLegacyMap(s.old.Outputs),
 					Timeout:               s.old.CustomTimeouts.Delete,
 					ResourceStatusAddress: resourceStatusAddress,
 					ResourceStatusToken:   resourceStatusToken,
@@ -695,8 +708,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					resourceOptionsFromState(s.old),
 					nil, /* newOptions */
 					nil, /* newInputs */
-					s.old.Inputs,
-					s.old.Outputs,
+					toLegacyMap(s.old.Inputs),
+					toLegacyMap(s.old.Outputs),
 					"delete",
 					failures,
 				)
@@ -774,9 +787,9 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		resourceOptionsFromState(s.old),
 		nil, /* newOptions */
 		nil, /* newInputs */
-		s.old.Inputs,
+		toLegacyMap(s.old.Inputs),
 		nil, /* newOutputs */
-		s.old.Outputs,
+		toLegacyMap(s.old.Outputs),
 	); err != nil {
 		// The cloud resource was deleted successfully, only the after-hook failed. Surface the error and record it as a
 		// deployment-level failure, but let the step's snapshot commit go through so state matches the cloud (resource
@@ -947,10 +960,10 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.Type(),
 		resourceOptionsFromState(s.old),
 		resourceOptionsFromState(s.new),
-		s.new.Inputs,
-		s.old.Inputs,
+		toLegacyMap(s.new.Inputs),
+		toLegacyMap(s.old.Inputs),
 		nil, /* newOutputs */
-		s.old.Outputs,
+		toLegacyMap(s.old.Outputs),
 	); err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -983,9 +996,9 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					Name:                  s.URN().Name(),
 					Type:                  s.URN().Type(),
 					ID:                    s.old.ID,
-					OldInputs:             s.old.Inputs,
-					OldOutputs:            s.old.Outputs,
-					NewInputs:             s.new.Inputs,
+					OldInputs:             toLegacyMap(s.old.Inputs),
+					OldOutputs:            toLegacyMap(s.old.Outputs),
+					NewInputs:             toLegacyMap(s.new.Inputs),
 					Timeout:               s.new.CustomTimeouts.Update,
 					IgnoreChanges:         s.ignoreChanges,
 					Preview:               s.deployment.opts.DryRun,
@@ -1022,9 +1035,9 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.Type(),
 					resourceOptionsFromState(s.old),
 					resourceOptionsFromState(s.new),
-					s.new.Inputs,
-					s.old.Inputs,
-					s.old.Outputs,
+					toLegacyMap(s.new.Inputs),
+					toLegacyMap(s.old.Inputs),
+					toLegacyMap(s.old.Outputs),
 					"update",
 					failures,
 				)
@@ -1064,7 +1077,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		defer s.new.Lock.Unlock()
 
 		// Now copy any output state back in case the update triggered cascading updates to other properties.
-		s.new.Outputs = resp.Properties
+		s.new.Outputs = fromLegacyMap(resp.Properties)
 		s.new.RefreshBeforeUpdate = resp.RefreshBeforeUpdate
 
 		// UpdateStep doesn't create, but does modify state.
@@ -1096,10 +1109,10 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.Type(),
 			resourceOptionsFromState(s.old),
 			resourceOptionsFromState(s.new),
-			s.new.Inputs,
-			s.old.Inputs,
-			s.new.Outputs,
-			s.old.Outputs,
+			toLegacyMap(s.new.Inputs),
+			toLegacyMap(s.old.Inputs),
+			toLegacyMap(s.new.Outputs),
+			toLegacyMap(s.old.Outputs),
 		); err != nil {
 			// The cloud resource was updated successfully, only the after-hook failed. Surface the error and record it
 			// as a deployment-level failure, but let the step's snapshot commit go through so state matches the cloud.
@@ -1288,7 +1301,7 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
 
-		s.new.Outputs = resource.PropertyMap{}
+		s.new.Outputs = property.Map{}
 	} else {
 		prov, err := getProvider(s, s.provider)
 		if err != nil {
@@ -1311,8 +1324,8 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			Name:                  urn.Name(),
 			Type:                  urn.Type(),
 			ID:                    id,
-			Inputs:                s.new.Inputs,
-			State:                 s.new.Inputs,
+			Inputs:                toLegacyMap(s.new.Inputs),
+			State:                 toLegacyMap(s.new.Inputs),
 			Timeout:               s.new.CustomTimeouts.Read,
 			ResourceStatusAddress: resourceStatusAddress,
 			ResourceStatusToken:   resourceStatusToken,
@@ -1338,7 +1351,7 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		if result.Outputs == nil {
 			return resource.StatusOK, nil, fmt.Errorf("resource '%s' does not exist", id)
 		}
-		s.new.Outputs = result.Outputs
+		s.new.Outputs = fromLegacyMap(result.Outputs)
 
 		if result.ID != "" {
 			s.new.ID = result.ID
@@ -1357,8 +1370,8 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 	var inputsChange, outputsChange bool
 	if s.old != nil {
-		inputsChange = !s.new.Inputs.DeepEquals(s.old.Inputs)
-		outputsChange = !s.new.Outputs.DeepEquals(s.old.Outputs)
+		inputsChange = !mapsEqual(s.new.Inputs, s.old.Inputs)
+		outputsChange = !mapsEqual(s.new.Outputs, s.old.Outputs)
 	}
 	// Only update the Modified timestamp if read provides new values that differ
 	// from the old state.
@@ -1496,7 +1509,7 @@ func (s *RefreshStep) ResultOp() display.StepOp {
 	// * The user has explicitly opted into this legacy behaviour by setting
 	//   the `UseLegacyRefreshDiff` option to true.
 	if s.old.External || s.deployment.opts.UseLegacyRefreshDiff {
-		if s.new == s.old || s.old.Outputs.Diff(s.new.Outputs) == nil {
+		if s.new == s.old || toLegacyMap(s.old.Outputs).Diff(toLegacyMap(s.new.Outputs)) == nil {
 			return OpSame
 		}
 	} else {
@@ -1552,8 +1565,8 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		Name:                  s.new.URN.Name(),
 		Type:                  s.new.URN.Type(),
 		ID:                    resourceID,
-		Inputs:                s.old.Inputs,
-		State:                 s.old.Outputs,
+		Inputs:                toLegacyMap(s.old.Inputs),
+		State:                 toLegacyMap(s.old.Outputs),
 		Timeout:               s.old.CustomTimeouts.Read,
 		ResourceStatusAddress: resourceStatusAddress,
 		ResourceStatusToken:   resourceStatusToken,
@@ -1584,18 +1597,19 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		refreshed.ID, len(refreshed.Inputs), len(refreshed.Outputs))
 
 	// If the ID is blank treat this as a delete, and leave outputs blank.
-	var outputs resource.PropertyMap
-	if refreshed.ID != "" {
-		outputs = refreshed.Outputs
+	var outputs property.Map
+	hasOutputs := refreshed.ID != ""
+	if hasOutputs {
+		outputs = fromLegacyMap(refreshed.Outputs)
 	}
 
 	// If the provider specified new inputs for this resource, pick them up now. Otherwise, retain the current inputs.
 	inputs := s.old.Inputs
 	if refreshed.Inputs != nil {
-		inputs = refreshed.Inputs
+		inputs = fromLegacyMap(refreshed.Inputs)
 	}
 
-	if outputs != nil {
+	if hasOutputs {
 		contract.Assertf(refreshed.ID != "", "refreshed.ID can not be empty")
 
 		// There is a chance that the ID has changed. We want to allow this change to happen
@@ -1629,11 +1643,11 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			// * The user has explicitly opted into this legacy behaviour by setting
 			//   the `UseLegacyRefreshDiff` option to true.
 			if s.old.External || s.deployment.opts.UseLegacyRefreshDiff {
-				inputsChange = !refreshed.Inputs.DeepEquals(s.old.Inputs)
-				outputsChange = !refreshed.Outputs.DeepEquals(s.old.Outputs)
+				inputsChange = !mapsEqual(fromLegacyMap(refreshed.Inputs), s.old.Inputs)
+				outputsChange = !mapsEqual(fromLegacyMap(refreshed.Outputs), s.old.Outputs)
 			} else {
-				inputsChange = !inputs.DeepEquals(s.old.Inputs)
-				outputsChange = !outputs.DeepEquals(s.old.Outputs)
+				inputsChange = !mapsEqual(inputs, s.old.Inputs)
+				outputsChange = !mapsEqual(outputs, s.old.Outputs)
 			}
 		}
 
@@ -1670,9 +1684,9 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				s.deployment.Diag(),
 				s.new.URN, s.new.ID,
 				// pass new inputs/outputs as old inputs/outputs
-				s.new.Inputs, s.new.Outputs,
+				toLegacyMap(s.new.Inputs), toLegacyMap(s.new.Outputs),
 				// pass old inputs as new inputs
-				s.old.Inputs,
+				toLegacyMap(s.old.Inputs),
 				prov, s.deployment.opts.DryRun, s.old.IgnoreChanges,
 			)
 			if err != nil {
@@ -1871,7 +1885,7 @@ func newImportDeploymentStep(deployment *Deployment, new *pkgresource.State, ran
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 	contract.Requiref(!new.External, "new", "must not be external")
 	contract.Requiref(!new.Custom || randomSeed != nil, "randomSeed", "must not be nil")
-	contract.Assertf(len(new.Inputs) == 0, "import resource cannot have existing inputs")
+	contract.Assertf(new.Inputs.Len() == 0, "import resource cannot have existing inputs")
 
 	contract.Requiref(new.ViewOf == "", "new", "must not be a view")
 
@@ -1939,8 +1953,8 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 	}
 
 	// Only need to do anything here for custom resources, components just import as empty
-	inputs := resource.PropertyMap{}
-	outputs := resource.PropertyMap{}
+	inputs := property.Map{}
+	outputs := property.Map{}
 	var prov plugin.Provider
 	rst := resource.StatusOK
 	if s.new.Custom {
@@ -1998,8 +2012,8 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		} else {
 			s.new.ID = s.new.ImportID
 		}
-		inputs = read.Inputs
-		outputs = read.Outputs
+		inputs = fromLegacyMap(read.Inputs)
+		outputs = fromLegacyMap(read.Outputs)
 		s.new.RefreshBeforeUpdate = read.RefreshBeforeUpdate
 	} else {
 		s.new.Lock.Lock()
@@ -2042,7 +2056,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		IgnoreChanges:           s.new.IgnoreChanges,
 		HideDiff:                s.new.HideDiff,
 		ReplaceOnChanges:        s.new.ReplaceOnChanges,
-		ReplacementTrigger:      resource.NewNullProperty(),
+		ReplacementTrigger:      property.Value{},
 		RefreshBeforeUpdate:     s.new.RefreshBeforeUpdate,
 		ViewOf:                  s.new.ViewOf,
 		ResourceHooks:           nil,
@@ -2078,15 +2092,16 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 
 		if len(inputProperties) == 0 {
 			logging.V(9).Infof("Importing %v with all properties", s.URN())
-			s.new.Inputs = s.old.Inputs.Copy()
+			s.new.Inputs = s.old.Inputs
 		} else {
 			logging.V(9).Infof("Importing %v with supplied properties: %v", s.URN(), inputProperties)
+			importInputs := property.Map{}
 			for _, p := range inputProperties {
-				k := resource.PropertyKey(p)
-				if value, has := s.old.Inputs[k]; has {
-					s.new.Inputs[k] = value
+				if value, has := s.old.Inputs.GetOk(p); has {
+					importInputs = importInputs.Set(p, value)
 				}
 			}
+			s.new.Inputs = importInputs
 		}
 
 		// Check the provider inputs for consistency. If the inputs fail validation, the import will still succeed, but
@@ -2096,8 +2111,8 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			URN:           s.new.URN,
 			Name:          s.URN().Name(),
 			Type:          s.URN().Type(),
-			Olds:          s.old.Inputs,
-			News:          s.new.Inputs,
+			Olds:          toLegacyMap(s.old.Inputs),
+			News:          toLegacyMap(s.new.Inputs),
 			AllowUnknowns: s.deployment.opts.DryRun,
 			RandomSeed:    s.randomSeed,
 		})
@@ -2131,8 +2146,9 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 	}
 
 	// Set inputs back to their old values (if any) for any "ignored" properties
-	processedInputs := processIgnoreChanges(s.deployment.Diag(), s.new.URN, s.new.Inputs, s.old.Inputs, s.ignoreChanges)
-	s.new.Inputs = processedInputs
+	processedInputs := processIgnoreChanges(
+		s.deployment.Diag(), s.new.URN, toLegacyMap(s.new.Inputs), toLegacyMap(s.old.Inputs), s.ignoreChanges)
+	s.new.Inputs = fromLegacyMap(processedInputs)
 
 	// If we were asked to replace an existing, non-External resource, pend the deletion here.
 	if s.replacing {
@@ -2414,7 +2430,8 @@ func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	diff, err := diffResource(
 		s.deployment.Diag(),
-		s.new.URN, s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, s.deployment.opts.DryRun, s.ignoreChanges,
+		s.new.URN, s.old.ID, toLegacyMap(s.old.Inputs), toLegacyMap(s.old.Outputs), toLegacyMap(s.new.Inputs),
+		prov, s.deployment.opts.DryRun, s.ignoreChanges,
 	)
 	if err != nil {
 		s.pcs.Reject(err)

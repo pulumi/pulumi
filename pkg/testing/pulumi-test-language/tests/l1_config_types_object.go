@@ -74,7 +74,7 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 					assertJSONOutput(l, outputs, "optionalList", `null`)
 					assertJSONOutput(l, outputs, "optionalMap", `null`)
 					assertJSONOutput(l, outputs, "optionalObject", `null`)
@@ -89,7 +89,7 @@ func init() {
 					assert.Nil(l, res.Err, "expected no error, got %v", res.Err)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 					assertJSONOutput(l, outputs, "optionalList", `["a","b"]`)
 					assertJSONOutput(l, outputs, "optionalMap", `{"key":"value"}`)
 					assertJSONOutput(l, outputs, "optionalObject", `{"prop":"value1","other":2}`)

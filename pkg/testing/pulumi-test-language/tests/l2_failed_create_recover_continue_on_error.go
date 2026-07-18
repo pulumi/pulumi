@@ -52,13 +52,13 @@ func init() {
 					require.NoError(l, res.Snap.VerifyIntegrity(), "expected snapshot to be valid")
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					recovered := stack.Outputs["recovered"]
+					recovered := resource.ToResourcePropertyMap(stack.Outputs)["recovered"]
 					require.True(l, recovered.IsString(), "expected recovered stack output to be a string")
 					require.True(l, strings.HasPrefix(recovered.StringValue(), "recovered: "), "expected recovered prefix")
 					require.NotEqual(l, "recovered: ", recovered.StringValue(), "expected recovered error message")
 
 					recoveredValue := RequireSingleNamedResource(l, res.Snap.Resources, "recovered_value")
-					AssertPropertyMapMember(l, recoveredValue.Outputs, "value",
+					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(recoveredValue.Outputs), "value",
 						resource.NewProperty(true))
 				},
 			},

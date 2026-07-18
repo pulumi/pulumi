@@ -63,7 +63,7 @@ func init() {
 					assert.Equal(l, unsetWant, unsetRes.Outputs, "unsetRes outputs")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 
 					// Traversal of populated output object -> optional scalar yields the value.
 					AssertPropertyMapMember(l, outputs, "setBoolean", resource.NewProperty(true))

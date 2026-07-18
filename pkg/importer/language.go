@@ -154,11 +154,10 @@ func createImportState(states []*pkgresource.State, snapshot []*pkgresource.Stat
 
 		initialPath := hcl.Traversal{hcl.TraverseRoot{Name: name}}
 
-		for key, value := range state.Outputs {
-			if string(key) == "name" || string(key) == "arn" {
-				nextPath := nextPropertyPath(initialPath, hcl.TraverseAttr{Name: string(key)})
-				valueV := resource.FromResourcePropertyValue(value)
-				if output := createPathedValue(name, valueV, nextPath); output != nil {
+		for key, value := range state.Outputs.AsMap() {
+			if key == "name" || key == "arn" {
+				nextPath := nextPropertyPath(initialPath, hcl.TraverseAttr{Name: key})
+				if output := createPathedValue(name, value, nextPath); output != nil {
 					pathedLiteralValues = append(pathedLiteralValues, *output)
 				}
 			}

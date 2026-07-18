@@ -41,7 +41,7 @@ func init() {
 
 					require.NotNil(l, stack, "expected a stack resource")
 
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 
 					AssertPropertyMapMember(l, outputs, "hello", resource.NewProperty("hello world"))
 					AssertPropertyMapMember(l, outputs, "goodbye", resource.NewProperty("goodbye world"))

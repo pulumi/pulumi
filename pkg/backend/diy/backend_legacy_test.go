@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // This file contains copies of old backend tests
@@ -301,9 +302,9 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 		{
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", "name"),
 			Type: "a:b:c",
-			Inputs: resource.PropertyMap{
-				resource.PropertyKey("html"): resource.NewProperty("<html@tags>"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"html": property.New("<html@tags>"),
+			}),
 		},
 	}
 

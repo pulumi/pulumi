@@ -622,23 +622,23 @@ func SerializeResource(
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
 	var inputs map[string]any
-	if inp := res.Inputs; inp != nil {
-		sinp, err := SerializeProperties(ctx, inp, enc, showSecrets)
+	if inp := res.Inputs; inp.Len() != 0 {
+		sinp, err := SerializeProperties(ctx, resource.ToResourcePropertyMap(inp), enc, showSecrets)
 		if err != nil {
 			return apitype.ResourceV3{}, err
 		}
 		inputs = sinp
 	}
 	var outputs map[string]any
-	if outp := res.Outputs; outp != nil {
-		soutp, err := SerializeProperties(ctx, outp, enc, showSecrets)
+	if outp := res.Outputs; outp.Len() != 0 {
+		soutp, err := SerializeProperties(ctx, resource.ToResourcePropertyMap(outp), enc, showSecrets)
 		if err != nil {
 			return apitype.ResourceV3{}, err
 		}
 		outputs = soutp
 	}
 
-	trigger, err := SerializePropertyValue(ctx, res.ReplacementTrigger, enc, showSecrets)
+	trigger, err := SerializePropertyValue(ctx, resource.ToResourcePropertyValue(res.ReplacementTrigger), enc, showSecrets)
 	if err != nil {
 		return apitype.ResourceV3{}, err
 	}
@@ -885,8 +885,8 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*pkgreso
 			Custom:                  res.Custom,
 			Delete:                  res.Delete,
 			ID:                      res.ID,
-			Inputs:                  inputs,
-			Outputs:                 outputs,
+			Inputs:                  resource.FromResourcePropertyMap(inputs),
+			Outputs:                 resource.FromResourcePropertyMap(outputs),
 			Parent:                  res.Parent,
 			Protect:                 res.Protect,
 			Taint:                   res.Taint,
@@ -911,7 +911,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*pkgreso
 			IgnoreChanges:           res.IgnoreChanges,
 			HideDiff:                res.HideDiff,
 			ReplaceOnChanges:        res.ReplaceOnChanges,
-			ReplacementTrigger:      trigger,
+			ReplacementTrigger:      resource.FromResourcePropertyValue(trigger),
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 			ViewOf:                  res.ViewOf,
 			ResourceHooks:           res.ResourceHooks,

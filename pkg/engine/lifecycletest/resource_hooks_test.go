@@ -985,7 +985,7 @@ func TestResourceHookBeforeUpdateError(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	require.Equal(t, snap.Resources[0].URN.Name(), "default")
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
-	require.Equal(t, snap.Resources[1].Outputs.Mappable(), map[string]any{
+	require.Equal(t, resource.ToResourcePropertyMap(snap.Resources[1].Outputs).Mappable(), map[string]any{
 		"foo": "bar",
 	}, "the resource was not updated")
 }

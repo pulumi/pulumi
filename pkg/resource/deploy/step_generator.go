@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // The mode in which the step generator is running.
@@ -313,8 +314,8 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		Custom:                  true,
 		Delete:                  false,
 		ID:                      event.ID(),
-		Inputs:                  event.Properties(),
-		Outputs:                 make(resource.PropertyMap),
+		Inputs:                  fromLegacyMap(event.Properties()),
+		Outputs:                 property.Map{},
 		Parent:                  parent,
 		Protect:                 false,
 		Taint:                   false,
@@ -338,7 +339,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		IgnoreChanges:           nil,
 		HideDiff:                nil,
 		ReplaceOnChanges:        nil,
-		ReplacementTrigger:      resource.NewNullProperty(),
+		ReplacementTrigger:      property.Value{},
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
@@ -792,8 +793,8 @@ func (sg *stepGenerator) generateResourceSteps(
 		Custom:                  goal.Custom,
 		Delete:                  false,
 		ID:                      "",
-		Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
-		Outputs:                 nil,
+		Inputs:                  goal.Properties,
+		Outputs:                 property.Map{},
 		Parent:                  goal.Parent,
 		Protect:                 protectState,
 		Taint:                   false,
@@ -818,7 +819,7 @@ func (sg *stepGenerator) generateResourceSteps(
 		IgnoreChanges:           goal.IgnoreChanges,
 		HideDiff:                slices.Collect(slicesfx.Map(goal.HideDiff, resource.ToResourcePropertyPath)),
 		ReplaceOnChanges:        goal.ReplaceOnChanges,
-		ReplacementTrigger:      resource.ToResourcePropertyValue(goal.ReplacementTrigger),
+		ReplacementTrigger:      goal.ReplacementTrigger,
 		RefreshBeforeUpdate:     refreshBeforeUpdate,
 		ViewOf:                  "",
 		ResourceHooks:           goal.ResourceHooks,
@@ -1127,8 +1128,8 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 					Custom:                  goal.Custom,
 					Delete:                  false,
 					ID:                      "",
-					Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
-					Outputs:                 nil,
+					Inputs:                  goal.Properties,
+					Outputs:                 property.Map{},
 					Parent:                  goal.Parent,
 					Protect:                 new.Protect,
 					Taint:                   false,
@@ -1152,7 +1153,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 					IgnoreChanges:           goal.IgnoreChanges,
 					HideDiff:                slices.Collect(slicesfx.Map(goal.HideDiff, resource.ToResourcePropertyPath)),
 					ReplaceOnChanges:        goal.ReplaceOnChanges,
-					ReplacementTrigger:      resource.NewNullProperty(),
+					ReplacementTrigger:      property.Value{},
 					RefreshBeforeUpdate:     new.RefreshBeforeUpdate,
 					ViewOf:                  "",
 					ResourceHooks:           goal.ResourceHooks,
@@ -1247,8 +1248,9 @@ func (sg *stepGenerator) continueStepsFromImport(
 	inputs := new.Inputs
 	if old != nil {
 		// Set inputs back to their old values (if any) for any "ignored" properties
-		processedInputs := processIgnoreChanges(sg.deployment.Diag(), urn, inputs, old.Inputs, goal.IgnoreChanges)
-		inputs = processedInputs
+		processedInputs := processIgnoreChanges(
+			sg.deployment.Diag(), urn, toLegacyMap(inputs), toLegacyMap(old.Inputs), goal.IgnoreChanges)
+		inputs = fromLegacyMap(processedInputs)
 	}
 
 	// We only allow unknown property values to be exposed to the provider if we are performing an update preview.
@@ -1285,8 +1287,8 @@ func (sg *stepGenerator) continueStepsFromImport(
 	var oldInputs resource.PropertyMap
 	var oldOutputs resource.PropertyMap
 	if old != nil {
-		oldInputs = old.Inputs
-		oldOutputs = old.Outputs
+		oldInputs = toLegacyMap(old.Inputs)
+		oldOutputs = toLegacyMap(old.Outputs)
 	}
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
@@ -1317,13 +1319,13 @@ func (sg *stepGenerator) continueStepsFromImport(
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
 				URN:           urn,
 				Olds:          oldInputs,
-				News:          inputs,
+				News:          toLegacyMap(inputs),
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
 			})
 		}
-		inputs = resp.Properties
+		inputs = fromLegacyMap(resp.Properties)
 
 		if err != nil {
 			return nil, false, err
@@ -1338,7 +1340,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
 			oldInputs = nil
 		}
-		inputDiff := oldInputs.Diff(inputs)
+		inputDiff := oldInputs.Diff(toLegacyMap(inputs))
 
 		// Generate the output goal plan, if we're recreating or imported this it should already exist
 		if recreating || imported {
@@ -1367,11 +1369,11 @@ func (sg *stepGenerator) continueStepsFromImport(
 		if !ok {
 			if old == nil {
 				// We could error here, but we'll trigger an error later on anyway that Create isn't valid here
-			} else if err := checkMissingPlan(old, inputs, goal); err != nil {
+			} else if err := checkMissingPlan(old, toLegacyMap(inputs), goal); err != nil {
 				return nil, false, fmt.Errorf("resource %s violates plan: %w", urn, err)
 			}
 		} else {
-			if err := resourcePlan.checkGoal(oldInputs, inputs, goal); err != nil {
+			if err := resourcePlan.checkGoal(oldInputs, toLegacyMap(inputs), goal); err != nil {
 				return nil, false, fmt.Errorf("resource %s violates plan: %w", urn, err)
 			}
 		}
@@ -1388,7 +1390,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 			URN:        new.URN,
 			Type:       new.Type,
 			Name:       new.URN.Name(),
-			Properties: resource.FromResourcePropertyMap(inputs),
+			Properties: inputs,
 			Options: plugin.AnalyzerResourceOptions{
 				Protect:                 new.Protect,
 				IgnoreChanges:           goal.IgnoreChanges,
@@ -1405,7 +1407,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 				URN:        providerResource.URN,
 				Type:       providerResource.Type,
 				Name:       providerResource.URN.Name(),
-				Properties: resource.FromResourcePropertyMap(providerResource.Inputs),
+				Properties: providerResource.Inputs,
 			}
 		}
 
@@ -1433,10 +1435,10 @@ func (sg *stepGenerator) continueStepsFromImport(
 			} else {
 				// Emit a nice message so users know what was remediated.
 				sg.deployment.events.OnPolicyRemediation(new.URN, tresult,
-					resource.FromResourcePropertyMap(inputs), tresult.Properties)
+					inputs, tresult.Properties)
 				// Use the transformed inputs rather than the old ones from this point onwards.
-				inputs = resource.ToResourcePropertyMap(tresult.Properties)
-				new.Inputs = resource.ToResourcePropertyMap(tresult.Properties)
+				inputs = tresult.Properties
+				new.Inputs = tresult.Properties
 			}
 		}
 		summary := resourceanalyzer.NewRemediatePolicySummary(new.URN, response, info)
@@ -1445,7 +1447,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 
 	// Second pass: perform analysis in parallel. Analysis is read-only (it only produces
 	// diagnostics) so all analyzers can safely run concurrently on the resource inputs.
-	analyzeInvalid, err := sg.analyzeAll(ctx, analyzers, new, inputs, goal)
+	analyzeInvalid, err := sg.analyzeAll(ctx, analyzers, new, toLegacyMap(inputs), goal)
 	if err != nil {
 		return nil, false, err
 	}
@@ -1726,7 +1728,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 		}
 
 		return sg.generateStepsFromDiff(
-			event, urn, old, new, oldInputs, oldOutputs, inputs, prov, goal, randomSeed, autonaming,
+			event, urn, old, new, oldInputs, oldOutputs, toLegacyMap(inputs), prov, goal, randomSeed, autonaming,
 		)
 	}
 
@@ -1774,14 +1776,16 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	// Unknowns in replacement triggers are fine during preview, but they should raise an error during the actual
 	// operation. This check only applies when we have an old resource (i.e., during updates/replaces), since a
 	// replacement trigger only makes sense when there's something to replace.
-	if !sg.deployment.opts.DryRun && new.ReplacementTrigger.ContainsUnknowns() {
+	newReplacementTrigger := resource.ToResourcePropertyValue(new.ReplacementTrigger)
+	oldReplacementTrigger := resource.ToResourcePropertyValue(old.ReplacementTrigger)
+	if !sg.deployment.opts.DryRun && newReplacementTrigger.ContainsUnknowns() {
 		message := fmt.Sprintf("replacement trigger contains unknowns for %s", urn)
 		sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
 		sg.sawError = true
 		return nil, false, result.BailErrorf("%s", message)
 	}
 
-	triggerReplace := shouldTriggerReplace(new.ReplacementTrigger, old.ReplacementTrigger)
+	triggerReplace := shouldTriggerReplace(newReplacementTrigger, oldReplacementTrigger)
 
 	var diff plugin.DiffResult
 	var pcs *promise.CompletionSource[plugin.DiffResult]
@@ -1954,15 +1958,17 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			// If the goal state specified an ID, issue an error: the replacement will change the ID, and is
 			// therefore incompatible with the goal state.
 			if goal.ID != "" {
+				oldInputs := toLegacyMap(old.Inputs)
+				newInputs := toLegacyMap(new.Inputs)
 				replaceDiff := strings.Join(
 					slice.Map(diff.ReplaceKeys, func(k resource.PropertyKey) string {
 						var oldStr, newStr string
 						if sg.deployment.opts.ShowSecrets {
-							oldStr = old.Inputs[k].String()
-							newStr = new.Inputs[k].String()
+							oldStr = oldInputs[k].String()
+							newStr = newInputs[k].String()
 						} else {
-							oldStr = old.Inputs[k].RedactSecrets()
-							newStr = new.Inputs[k].RedactSecrets()
+							oldStr = oldInputs[k].RedactSecrets()
+							newStr = newInputs[k].RedactSecrets()
 						}
 						return fmt.Sprintf("%s: %s => %s", k, oldStr, newStr)
 					}),
@@ -1999,7 +2005,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {
 					return nil, result.BailErrorf("resource %v has check errors: %v", urn, failures)
 				}
-				new.Inputs = inputs
+				new.Inputs = fromLegacyMap(inputs)
 			}
 
 			if logging.V(7).Enabled() {
@@ -2793,9 +2799,9 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *pkgresource
 
 	diff, err := newProv.DiffConfig(context.TODO(), plugin.DiffConfigRequest{
 		URN:           newRef.URN(),
-		OldInputs:     providers.FilterProviderConfig(oldRes.Inputs),
-		OldOutputs:    oldRes.Outputs,
-		NewInputs:     providers.FilterProviderConfig(newRes.Inputs),
+		OldInputs:     providers.FilterProviderConfig(toLegacyMap(oldRes.Inputs)),
+		OldOutputs:    toLegacyMap(oldRes.Outputs),
+		NewInputs:     providers.FilterProviderConfig(toLegacyMap(newRes.Inputs)),
 		AllowUnknowns: true,
 	})
 	if err != nil {
@@ -2872,7 +2878,8 @@ func (sg *stepGenerator) diff(
 		// If parallel diff isn't enabled just do the diff directly.
 		diff, err := diffResource(
 			sg.deployment.Diag(),
-			urn, old.ID, oldInputs, old.Outputs, newInputs, prov, sg.deployment.opts.DryRun, goal.IgnoreChanges,
+			urn, old.ID, oldInputs, toLegacyMap(old.Outputs), newInputs, prov, sg.deployment.opts.DryRun,
+			goal.IgnoreChanges,
 		)
 		return diff, nil, err
 	}
@@ -2952,8 +2959,9 @@ func issueCheckFailures(printf func(*diag.Diag, ...any), new *pkgresource.State,
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
+			value, _ := inputs.GetOk(string(failure.Property))
 			printf(diag.GetResourcePropertyInvalidValueError(urn),
-				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
+				new.Type, urn.Name(), failure.Property, value, failure.Reason)
 		} else {
 			printf(
 				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason,
@@ -3189,14 +3197,16 @@ func (sg *stepGenerator) calculateDependentReplacements(root *pkgresource.State)
 		// Scan the properties of this resource in order to determine whether or not any of them depend on a resource
 		// that requires replacement and build a set of input properties for the provider diff.
 		hasDependencyInReplaceSet, inputsForDiff := false, resource.PropertyMap{}
-		for pk, pv := range r.Inputs {
-			for _, propertyDep := range r.PropertyDependencies[pk] {
+		for pk, pv := range r.Inputs.AsMap() {
+			propertyKey := resource.PropertyKey(pk)
+			inputForDiff := resource.ToResourcePropertyValue(pv)
+			for _, propertyDep := range r.PropertyDependencies[propertyKey] {
 				if replaceSet[propertyDep] {
 					hasDependencyInReplaceSet = true
-					pv = resource.MakeComputed(resource.NewProperty("<unknown>"))
+					inputForDiff = resource.MakeComputed(resource.NewProperty("<unknown>"))
 				}
 			}
-			inputsForDiff[pk] = pv
+			inputsForDiff[propertyKey] = inputForDiff
 		}
 
 		// If none of this resource's properties depend on a resource in the replace set, then none of the properties
@@ -3232,7 +3242,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *pkgresource.State)
 		// Call the provider's `Diff` method and return.
 		diff, err := diffResource(
 			sg.deployment.Diag(),
-			r.URN, r.ID, r.Inputs, r.Outputs, inputsForDiff, prov, true, r.IgnoreChanges,
+			r.URN, r.ID, toLegacyMap(r.Inputs), toLegacyMap(r.Outputs), inputsForDiff, prov, true, r.IgnoreChanges,
 		)
 		if err != nil {
 			return false, nil, err
@@ -3341,7 +3351,7 @@ func (sg *stepGenerator) analyzeAll(
 			URN:        providerResource.URN,
 			Type:       providerResource.Type,
 			Name:       providerResource.URN.Name(),
-			Properties: resource.FromResourcePropertyMap(providerResource.Inputs),
+			Properties: providerResource.Inputs,
 		}
 	}
 
@@ -3379,7 +3389,7 @@ func (sg *stepGenerator) AnalyzeResources(ctx context.Context) error {
 					Name: v.URN.Name(),
 					// Unlike Analyze, AnalyzeStack is called on the final outputs of each resource,
 					// to verify the final stack is in a compliant state.
-					Properties: resource.FromResourcePropertyMap(v.Outputs),
+					Properties: v.Outputs,
 					Options: plugin.AnalyzerResourceOptions{
 						Protect:                 v.Protect,
 						IgnoreChanges:           v.IgnoreChanges,
@@ -3431,7 +3441,7 @@ func (sg *stepGenerator) AnalyzeResources(ctx context.Context) error {
 					URN:        providerResource.URN,
 					Type:       providerResource.Type,
 					Name:       providerResource.URN.Name(),
-					Properties: resource.FromResourcePropertyMap(providerResource.Inputs),
+					Properties: providerResource.Inputs,
 				}
 			}
 			resources = append(resources, res)

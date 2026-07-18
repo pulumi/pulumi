@@ -65,7 +65,7 @@ func init() {
 					//
 					// * Its value output should be "bar".
 					require.Equal(
-						l, "bar", component1.Outputs["value"].StringValue(),
+						l, "bar", resource.ToResourcePropertyMap(component1.Outputs)["value"].StringValue(),
 						"expected component1 to have correct value output",
 					)
 
@@ -73,7 +73,7 @@ func init() {
 					//
 					// * from_identity, whose value should be the value output of component1
 					// * from_prefixed, whose value should be the value output of component1, prefixed with "foo-".
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 					require.Len(l, outputs, 2, "expected 2 outputs")
 					AssertPropertyMapMember(l, outputs, "from_identity", resource.NewProperty("bar"))
 					AssertPropertyMapMember(l, outputs, "from_prefixed", resource.NewProperty("foo-bar"))

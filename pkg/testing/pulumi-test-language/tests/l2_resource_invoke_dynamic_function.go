@@ -42,7 +42,7 @@ func init() {
 
 					AssertPropertyMapMember(
 						l,
-						r.Outputs,
+						resource.ToResourcePropertyMap(r.Outputs),
 						"dynamic",
 						resource.NewProperty(
 							resource.NewPropertyMapFromMap(

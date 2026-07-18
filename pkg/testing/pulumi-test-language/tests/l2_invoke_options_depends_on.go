@@ -40,7 +40,7 @@ func init() {
 					stack := snap.Resources[0]
 					require.Equal(l, resource.RootStackType, stack.Type)
 
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 					AssertPropertyMapMember(l, outputs, "hello", resource.NewProperty("hello world"))
 
 					var first *pkgresource.State

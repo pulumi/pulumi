@@ -241,9 +241,7 @@ func TestBuiltinProvider(t *testing.T) {
 				}
 
 				expected := &pkgresource.State{
-					Outputs: resource.PropertyMap{
-						"foo": resource.NewProperty("bar"),
-					},
+					Outputs: property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
 				}
 
 				p.news.Store("res-name", expected)
@@ -256,7 +254,7 @@ func TestBuiltinProvider(t *testing.T) {
 				})
 
 				require.NoError(t, err)
-				assert.Equal(t, expected.Outputs, actual.Properties["state"].ObjectValue())
+				assert.Equal(t, resource.ToResourcePropertyMap(expected.Outputs), actual.Properties["state"].ObjectValue())
 			})
 
 			t.Run("ok read", func(t *testing.T) {
@@ -268,9 +266,7 @@ func TestBuiltinProvider(t *testing.T) {
 				}
 
 				expected := &pkgresource.State{
-					Outputs: resource.PropertyMap{
-						"foo": resource.NewProperty("bar"),
-					},
+					Outputs: property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
 				}
 
 				p.reads.Store("res-name", expected)
@@ -283,7 +279,7 @@ func TestBuiltinProvider(t *testing.T) {
 				})
 
 				require.NoError(t, err)
-				assert.Equal(t, expected.Outputs, actual.Properties["state"].ObjectValue())
+				assert.Equal(t, resource.ToResourcePropertyMap(expected.Outputs), actual.Properties["state"].ObjectValue())
 			})
 
 			t.Run("err", func(t *testing.T) {

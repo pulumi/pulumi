@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -452,7 +451,7 @@ func (c *backendClient) GetStackResourceOutputs(
 
 		resc := map[string]property.Value{
 			"type":    property.New(string(r.Type)),
-			"outputs": property.New(resource.FromResourcePropertyMap(r.Outputs)),
+			"outputs": property.New(r.Outputs),
 		}
 		pm[string(r.URN)] = property.New(resc)
 	}

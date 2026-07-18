@@ -31,7 +31,7 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 
 					require.Len(l, outputs, 1, "expected 1 outputs")
 					// TODO(https://github.com/pulumi/pulumi/issues/19015): Ideally we'd allow for nulls in the output

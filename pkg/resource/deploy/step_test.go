@@ -475,7 +475,7 @@ func TestUpdateStep(t *testing.T) {
 			require.Len(t, s.new.InitErrors, 1)
 			assert.Equal(t, resource.PropertyMap{
 				"key": resource.NewProperty("expected-value"),
-			}, s.new.Outputs)
+			}, resource.ToResourcePropertyMap(s.new.Outputs))
 		})
 	})
 }
@@ -583,10 +583,10 @@ func TestReadStep(t *testing.T) {
 
 			// News should be updated.
 			require.Len(t, s.new.InitErrors, 1)
-			assert.Equal(t, (resource.PropertyMap)(nil), s.new.Inputs)
+			assert.Equal(t, resource.PropertyMap{}, resource.ToResourcePropertyMap(s.new.Inputs))
 			assert.Equal(t, resource.PropertyMap{
 				"outputs-key": resource.NewProperty("expected-value"),
-			}, s.new.Outputs)
+			}, resource.ToResourcePropertyMap(s.new.Outputs))
 			assert.Equal(t, resource.ID("new-id"), s.new.ID)
 		})
 		t.Run("unknown id", func(t *testing.T) {
@@ -610,7 +610,7 @@ func TestReadStep(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, resource.StatusOK, status)
 			// News should be updated.
-			assert.Equal(t, resource.PropertyMap{}, s.new.Outputs)
+			assert.Equal(t, resource.PropertyMap{}, resource.ToResourcePropertyMap(s.new.Outputs))
 		})
 	})
 }
@@ -814,8 +814,8 @@ func TestRefreshStepPatterns(t *testing.T) {
 			Type:     "some-type",
 			Custom:   true,
 			Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
-			Inputs:   tc.inputs,
-			Outputs:  tc.outputs,
+			Inputs:   resource.FromResourcePropertyMap(tc.inputs),
+			Outputs:  resource.FromResourcePropertyMap(tc.outputs),
 		}
 		s := &RefreshStep{
 			old: state,
@@ -939,7 +939,7 @@ func TestRefreshStep(t *testing.T) {
 			require.Len(t, s.new.InitErrors, 1)
 			assert.Equal(t, resource.PropertyMap{
 				"outputs-key": resource.NewProperty("expected-value"),
-			}, s.new.Outputs)
+			}, resource.ToResourcePropertyMap(s.new.Outputs))
 			assert.Equal(t, resource.ID("new-id"), s.new.ID)
 		})
 	})

@@ -462,6 +462,6 @@ func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.Pro
 		"urn":      urnInput,
 		"id":       resource.NewProperty(string(state.ID)),
 		"provider": resource.NewProperty(state.Provider),
-		"state":    resource.NewProperty(state.Outputs),
+		"state":    resource.NewProperty(resource.ToResourcePropertyMap(state.Outputs)),
 	}, nil
 }

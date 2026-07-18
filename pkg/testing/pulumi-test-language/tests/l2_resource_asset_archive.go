@@ -159,26 +159,26 @@ func init() {
 					assert.Equal(l, remotearc.Inputs, remotearc.Outputs, "expected inputs and outputs to match")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					AssertPropertyMapMember(l, stack.Outputs, "assetOutput",
+					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(stack.Outputs), "assetOutput",
 						resource.NewProperty(assetValue))
-					AssertPropertyMapMember(l, stack.Outputs, "archiveOutput",
+					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(stack.Outputs), "archiveOutput",
 						resource.NewProperty(archiveValue))
-					AssertPropertyMapMember(l, stack.Outputs, "assetList",
+					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(stack.Outputs), "assetList",
 						resource.NewProperty([]resource.PropertyValue{
 							resource.NewProperty(assetValue),
 							resource.NewProperty(stringAsset),
 						}))
-					AssertPropertyMapMember(l, stack.Outputs, "archiveList",
+					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(stack.Outputs), "archiveList",
 						resource.NewProperty([]resource.PropertyValue{
 							resource.NewProperty(archiveValue),
 							resource.NewProperty(folderValue),
 						}))
-					AssertPropertyMapMember(l, stack.Outputs, "assetMap",
+					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(stack.Outputs), "assetMap",
 						resource.NewProperty(resource.PropertyMap{
 							"file":   resource.NewProperty(assetValue),
 							"string": resource.NewProperty(stringAsset),
 						}))
-					AssertPropertyMapMember(l, stack.Outputs, "archiveMap",
+					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(stack.Outputs), "archiveMap",
 						resource.NewProperty(resource.PropertyMap{
 							"tar":    resource.NewProperty(archiveValue),
 							"folder": resource.NewProperty(folderValue),

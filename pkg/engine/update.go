@@ -1286,10 +1286,7 @@ func (acts *updateActions) OnResourceStepPost(
 		old := step.Old()
 		contract.Assertf(new != nil, "new state should not be nil for partially-failed update")
 		contract.Assertf(old != nil, "old state should not be nil for partially-failed update")
-		new.Inputs = make(resource.PropertyMap)
-		for key, value := range old.Inputs {
-			new.Inputs[key] = value
-		}
+		new.Inputs = old.Inputs
 	}
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
@@ -1374,9 +1371,7 @@ func shouldRecordReadStep(step deploy.Step) bool {
 	// app did any 'reads' these don't show up in the resource summary at the end.
 	return step.Old() != nil &&
 		step.New() != nil &&
-		step.Old().Outputs != nil &&
-		step.New().Outputs != nil &&
-		step.Old().Outputs.Diff(step.New().Outputs) != nil
+		resource.ToResourcePropertyMap(step.Old().Outputs).Diff(resource.ToResourcePropertyMap(step.New().Outputs)) != nil
 }
 
 func newPreviewActions(ctx *Context, opts *deploymentOptions) *previewActions {

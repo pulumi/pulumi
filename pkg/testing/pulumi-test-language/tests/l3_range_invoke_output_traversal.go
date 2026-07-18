@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,7 +42,7 @@ func init() {
 					names := map[string]string{}
 					targets := RequireNResources(l, res.Snap.Resources, "nestedobject:index:Target", 3)
 					for _, target := range targets {
-						name, ok := target.Inputs["name"]
+						name, ok := resource.ToResourcePropertyMap(target.Inputs)["name"]
 						require.True(l, ok && name.IsString(), "expected target to have 'name' input of type string")
 						names[target.URN.Name()] = name.StringValue()
 					}

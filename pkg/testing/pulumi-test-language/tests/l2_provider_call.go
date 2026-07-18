@@ -66,7 +66,7 @@ func init() {
 					//
 					// * defaultProviderValue, whose value should be the value of the default provider concatenated with the
 					//   defaultRes resource's value.
-					outputs := stack.Outputs
+					outputs := resource.ToResourcePropertyMap(stack.Outputs)
 					require.Len(l, outputs, 1, "expected 1 output")
 					AssertPropertyMapMember(
 						l, outputs,

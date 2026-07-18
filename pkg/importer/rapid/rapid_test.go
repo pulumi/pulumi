@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils/rapidresource"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils/rapidschema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -47,7 +46,7 @@ func TestRapidState(t *testing.T) {
 		require.NotNilf(t, r, "state type %q not declared in package", sample.State.Type)
 		require.Falsef(t, r.IsProvider, "state type %q is a provider", sample.State.Type)
 
-		inputs := resource.FromResourcePropertyMap(sample.State.Inputs)
+		inputs := sample.State.Inputs
 		require.Truef(t,
 			rapidresource.MapStructurallyTyped(inputs, r.InputProperties),
 			"inputs %v do not match input properties of %q", inputs, r.Token)

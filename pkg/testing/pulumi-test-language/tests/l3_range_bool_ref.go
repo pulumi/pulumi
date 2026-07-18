@@ -42,7 +42,8 @@ func init() {
 					RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:nestedobject")
 
 					boolTarget := RequireSingleNamedResource(l, res.Snap.Resources, "boolTarget")
-					AssertPropertyMapMember(l, boolTarget.Inputs, "name", resource.NewProperty("bool-resource+"))
+					boolTargetInputs := resource.ToResourcePropertyMap(boolTarget.Inputs)
+					AssertPropertyMapMember(l, boolTargetInputs, "name", resource.NewProperty("bool-resource+"))
 				},
 			},
 		},

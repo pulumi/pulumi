@@ -377,7 +377,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 
 		switch urn {
 		case "urn:pulumi:test::test::pkgB:m:typB::failing", "urn:pulumi:test::test::pkgB:m:typB::failing2":
-			assert.Equal(t, resource.NewProperty("bar"), snap.Resources[idx].Inputs["foo"])
+			assert.Equal(t, resource.NewProperty("bar"), resource.ToResourcePropertyMap(snap.Resources[idx].Inputs)["foo"])
 		}
 	}
 }
@@ -492,7 +492,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent3"), snap.Resources[4].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgB:m:typB::failing"), snap.Resources[5].URN)
 	// Refresh didn't return the input so we expect it to be empty
-	assert.Equal(t, resource.PropertyValue{}, snap.Resources[5].Inputs["foo"])
+	assert.Equal(t, resource.PropertyValue{}, resource.ToResourcePropertyMap(snap.Resources[5].Inputs)["foo"])
 }
 
 func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
@@ -660,7 +660,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent2"), snap.Resources[3].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent3"), snap.Resources[4].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgB:m:typB::failing"), snap.Resources[5].URN)
-	assert.Equal(t, resource.NewProperty("bar"), snap.Resources[5].Inputs["foo"])
+	assert.Equal(t, resource.NewProperty("bar"), resource.ToResourcePropertyMap(snap.Resources[5].Inputs)["foo"])
 }
 
 func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
