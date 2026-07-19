@@ -216,15 +216,9 @@ func (h *ociHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirp
 	monitor, engine := req.MonitorAddress, h.engineAddress
 	if podMode {
 		// The engine binds 0.0.0.0 but advertises a loopback host it can't know is
-		// reachable from elsewhere. Rewrite the host portion to one the program
-		// container can dial: host.docker.internal when the engine is on the host,
-		// or the engine container's DNS name when it runs on the pod network. The
-		// shim sets PULUMI_POD_ADVERTISE_HOST; absent it, fall back to our own
-		// hostname (equal to the engine container's name in the in-container case).
-		advertiseHost := os.Getenv("PULUMI_POD_ADVERTISE_HOST")
-		if advertiseHost == "" {
-			advertiseHost, _ = os.Hostname()
-		}
+		// reachable from the program container. Rewrite the host portion to one the
+		// program can dial — see podAdvertiseHost.
+		advertiseHost := podAdvertiseHost()
 		monitor = rewriteHost(monitor, advertiseHost)
 		engine = rewriteHost(engine, advertiseHost)
 		//nolint:forbidigo // language-host diagnostics go to the engine-attached stderr
@@ -486,6 +480,27 @@ func rewriteHost(addr, newHost string) string {
 		return addr
 	}
 	return net.JoinHostPort(newHost, port)
+}
+
+// podAdvertiseHost returns the host the program container should dial to reach the engine's
+// gRPC servers, which the engine binds to 0.0.0.0 but advertises on a loopback it cannot know
+// is reachable elsewhere.
+//
+// On CRI every pod member — program included — shares the one sandbox network namespace, so the
+// engine is reachable on loopback and there is no per-pod bridge or container DNS name to
+// advertise (providers already loopback; the program is the last DNS-by-name consumer, and this
+// is where it stops being one). On the docker/nerdctl bridge the program runs in its own netns
+// and must dial the engine by its advertised container DNS name (PULUMI_POD_ADVERTISE_HOST, set
+// by the wrapper; absent it, this engine container's own hostname, which equals its name).
+func podAdvertiseHost() string {
+	if oci.RuntimeIsCRI() {
+		return "127.0.0.1"
+	}
+	if h := os.Getenv("PULUMI_POD_ADVERTISE_HOST"); h != "" {
+		return h
+	}
+	host, _ := os.Hostname()
+	return host
 }
 
 func optString(s *structpb.Struct, key string) string {

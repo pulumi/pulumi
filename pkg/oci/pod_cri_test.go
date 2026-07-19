@@ -140,6 +140,17 @@ func TestNewPodManagerSelectsCriRuntime(t *testing.T) {
 	}
 }
 
+// TestRuntimeIsCRI pins the predicate the language host uses to switch the program→engine wiring
+// to loopback; it must agree with NewPodManager's selection (both read normalizedPodRuntime).
+func TestRuntimeIsCRI(t *testing.T) {
+	for env, want := range map[string]bool{"": false, "docker": false, "containerd": false, "cri": true, " CRI ": true} {
+		t.Run(env, func(t *testing.T) {
+			t.Setenv(PodRuntimeEnvVar, env)
+			assert.Equal(t, want, RuntimeIsCRI())
+		})
+	}
+}
+
 // TestCriRunContainerBuildsSpec is the CRI analogue of the docker argv assertions: it pins the
 // translation from a runtime-neutral ContainerConfig to a CRI CreateContainerRequest —
 // Entrypoint→Command, Cmd→Args, sorted Envs, host-path Mounts, the pod label, a per-attempt log
