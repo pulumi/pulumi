@@ -62,6 +62,12 @@ type CreatePolicyPackRequest struct {
 	// Metadata contains optional data about the environment performing the publish operation,
 	// e.g. the current source code control commit information.
 	Metadata map[string]string `json:"metadata,omitempty"`
+
+	// ImageRef is the digest-pinned OCI image reference for a policy pack with
+	// runtime "oci" (e.g. "ghcr.io/acme/pack@sha256:…"). When set, the service
+	// records the reference as the pack's artifact and no tarball is uploaded:
+	// the response carries no upload URL and no publish-complete call follows.
+	ImageRef string `json:"imageRef,omitempty"`
 }
 
 // CreatePolicyPackResponse is the response from creating a Policy Pack. It returns
@@ -91,6 +97,15 @@ type RequiredPolicy struct {
 
 	// Where the Policy Pack can be downloaded from.
 	PackLocation string `json:"packLocation,omitempty"`
+
+	// Runtime of the required Policy Pack (e.g. "nodejs", "oci"). Empty for
+	// packs published before runtimes were recorded.
+	Runtime string `json:"runtime,omitempty"`
+
+	// ImageRef is the digest-pinned OCI image reference for the required
+	// Policy Pack (e.g. "ghcr.io/acme/pack@sha256:…"). Set only for packs
+	// published with runtime "oci"; such packs have no PackLocation.
+	ImageRef string `json:"imageRef,omitempty"`
 
 	// The configuration that is to be passed to the Policy Pack. This is map a of policies
 	// mapped to their configuration. Each individual configuration must comply with the

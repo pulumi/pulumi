@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -35,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin/oci"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -68,6 +70,10 @@ func newCloudRequiredPolicy(client *client.Client, envs backend.EnvironmentsBack
 func (rp *cloudRequiredPolicy) Name() string    { return rp.RequiredPolicy.Name }
 func (rp *cloudRequiredPolicy) Version() string { return rp.VersionTag }
 func (rp *cloudRequiredPolicy) OrgName() string { return rp.orgName }
+
+// ImageRef intentionally shadows the promoted apitype.RequiredPolicy.ImageRef
+// field so this type satisfies engine.RequiredPolicy's ImageRef() method.
+func (rp *cloudRequiredPolicy) ImageRef() string { return rp.RequiredPolicy.ImageRef }
 
 func (rp *cloudRequiredPolicy) policyVersion() string {
 	policy := rp.RequiredPolicy
@@ -394,9 +400,104 @@ func (pack *cloudPolicyPack) Backend() backend.Backend {
 	return pack.b
 }
 
+// ociPublishRef resolves the tagged ref to publish from the manifest's image
+// option, the pack version, and --tag.
+func ociPublishRef(proj *workspace.PolicyPackProject, tag string) (string, error) {
+	ref, tagged, err := oci.RefForPack(proj, tag)
+	if err != nil {
+		return "", err
+	}
+	if !tagged {
+		return "", errors.New("no image tag to publish: pass --tag, tag the image in runtime.options.image, " +
+			"or set `version` in PulumiPolicy.yaml")
+	}
+	return ref, nil
+}
+
+// retargetRefFromAnalyzer fetches the pack's metadata from a booted analyzer
+// and points pack.ref at the name and version the pack declares, which is what
+// publishing registers under (not whatever the local directory was called).
+func (pack *cloudPolicyPack) retargetRefFromAnalyzer(
+	ctx context.Context, analyzer plugin.Analyzer,
+) (plugin.AnalyzerInfo, error) {
+	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
+	if err != nil {
+		return plugin.AnalyzerInfo{}, err
+	}
+	pack.ref.name = tokens.QName(analyzerInfo.Name)
+	pack.ref.versionTag = analyzerInfo.Version
+	return analyzerInfo, nil
+}
+
+// publishOCI publishes a policy pack whose artifact is a container image the
+// author has already built and pushed: resolve the tag to its digest, verify
+// the platform matrix, boot the image for metadata (which doubles as a boot
+// check), and register the digest-pinned ref — nothing is uploaded.
+func (pack *cloudPolicyPack) publishOCI(ctx context.Context, op backend.PublishOperation) error {
+	taggedRef, err := ociPublishRef(op.PolicyPack, op.Tag)
+	if err != nil {
+		return err
+	}
+
+	rt, err := oci.DetectRuntime(nil)
+	if err != nil {
+		return fmt.Errorf("publishing an oci policy pack requires a container runtime: %w", err)
+	}
+
+	fmt.Printf("Pulling %s\n", taggedRef)
+	if err := rt.Pull(ctx, taggedRef, os.Stderr); err != nil {
+		return fmt.Errorf("%w\n(the image must be built and pushed before `pulumi policy publish`)", err)
+	}
+
+	digestRef, err := rt.ResolveDigest(ctx, taggedRef)
+	if err != nil {
+		return err
+	}
+
+	// Every server-side enforcement point (Deployments executor, Insights
+	// evaluator, TF policy check) runs on linux/amd64: an image without it
+	// would pass publish and local dev, then break org enforcement.
+	ok, err := rt.HasPlatform(ctx, digestRef, "linux/amd64")
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("image %s does not include linux/amd64, which server-side policy "+
+			"enforcement requires; build a multi-arch image, e.g. "+
+			"`docker buildx build --platform linux/amd64,linux/arm64 --push`", taggedRef)
+	}
+
+	fmt.Println("Obtaining policy metadata from policy pack image")
+	analyzer, err := plugin.NewContainerPolicyAnalyzer(op.PlugCtx.Host, op.PlugCtx, tokens.QName(taggedRef),
+		plugin.ContainerPack{Image: digestRef}, nil /*opts*/)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(analyzer)
+
+	analyzerInfo, err := pack.retargetRefFromAnalyzer(ctx, analyzer)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Registering %s\n", digestRef)
+	publishedVersion, err := pack.cl.RegisterPolicyPackImage(
+		ctx, pack.ref.orgName, analyzerInfo, digestRef, op.Metadata)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("\nPermalink: %s/%s\n", pack.ref.CloudConsoleURL(), publishedVersion)
+	return nil
+}
+
 func (pack *cloudPolicyPack) Publish(
 	ctx context.Context, op backend.PublishOperation,
 ) error {
+	if op.PolicyPack.Runtime.Name() == oci.RuntimeName {
+		return pack.publishOCI(ctx, op)
+	}
+
 	//
 	// Get PolicyPack metadata from the plugin.
 	//
@@ -413,14 +514,10 @@ func (pack *cloudPolicyPack) Publish(
 		return err
 	}
 
-	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
+	analyzerInfo, err := pack.retargetRefFromAnalyzer(ctx, analyzer)
 	if err != nil {
 		return err
 	}
-
-	// Update the name and version tag from the metadata.
-	pack.ref.name = tokens.QName(analyzerInfo.Name)
-	pack.ref.versionTag = analyzerInfo.Version
 
 	fmt.Println("Compressing policy pack")
 

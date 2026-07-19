@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin/oci"
 	"github.com/pulumi/pulumi/pkg/v3/util/validation"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -2001,20 +2002,76 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	runtime string, analyzerInfo plugin.AnalyzerInfo, dirArchive io.Reader,
 	metadata map[string]string,
 ) (string, error) {
+	resp, version, err := pc.createPolicyPack(ctx, orgName, runtime, analyzerInfo, "" /*imageRef*/, metadata)
+	if err != nil {
+		return "", err
+	}
+
 	//
-	// Step 1: Send POST containing policy metadata to service. This begins process of creating
-	// publishing the PolicyPack.
+	// Step 2: Upload the compressed PolicyPack directory to the pre-signed object storage service URL.
+	// The PolicyPack is now published.
 	//
 
-	if err := validatePolicyPackVersion(analyzerInfo.Version); err != nil {
+	putReq, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
+	if err != nil {
+		return "", fmt.Errorf("Failed to upload compressed PolicyPack: %w", err)
+	}
+
+	for k, v := range resp.RequiredHeaders {
+		putReq.Header.Add(k, v)
+	}
+
+	_, err = pc.restClient.HTTPClient().Do(putReq, retryAllMethods)
+	if err != nil {
+		return "", fmt.Errorf("Failed to upload compressed PolicyPack: %w", err)
+	}
+
+	//
+	// Step 3: Signal to the service that the PolicyPack publish operation is complete.
+	//
+
+	err = pc.restCall(ctx, "POST",
+		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, version), nil, nil, nil)
+	if err != nil {
+		return "", fmt.Errorf("Request to signal completion of the publish operation failed: %w", err)
+	}
+
+	return version, nil
+}
+
+// RegisterPolicyPackImage publishes a policy pack whose artifact is a
+// container image the author has already pushed: it records the digest-pinned
+// image ref in the pack version's metadata. Nothing is uploaded. It returns
+// the version of the pack.
+func (pc *Client) RegisterPolicyPackImage(ctx context.Context, orgName string,
+	analyzerInfo plugin.AnalyzerInfo, imageRef string, metadata map[string]string,
+) (string, error) {
+	resp, version, err := pc.createPolicyPack(ctx, orgName, oci.RuntimeName, analyzerInfo, imageRef, metadata)
+	if err != nil {
 		return "", err
+	}
+	if resp.UploadURI != "" {
+		return "", errors.New("the Pulumi Cloud service you are connected to does not support OCI policy packs " +
+			"(it returned an artifact upload URL for an image-based publish); " +
+			"upgrade the service or publish a tarball-based pack")
+	}
+	return version, nil
+}
+
+// createPolicyPack sends the POST that begins publishing a policy pack and
+// returns the service's response along with the effective version.
+func (pc *Client) createPolicyPack(ctx context.Context, orgName string,
+	runtime string, analyzerInfo plugin.AnalyzerInfo, imageRef string, metadata map[string]string,
+) (*apitype.CreatePolicyPackResponse, string, error) {
+	if err := validatePolicyPackVersion(analyzerInfo.Version); err != nil {
+		return nil, "", err
 	}
 
 	policies := make([]apitype.Policy, len(analyzerInfo.Policies))
 	for i, policy := range analyzerInfo.Policies {
 		configSchema, err := convertPolicyConfigSchema(policy.ConfigSchema)
 		if err != nil {
-			return "", err
+			return nil, "", err
 		}
 
 		policies[i] = apitype.Policy{
@@ -2044,6 +2101,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		Repository:  analyzerInfo.Repository,
 		Runtime:     runtime,
 		Metadata:    metadata,
+		ImageRef:    imageRef,
 	}
 
 	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
@@ -2057,31 +2115,8 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	var resp apitype.CreatePolicyPackResponse
 	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
 	if err != nil {
-		return "", fmt.Errorf("Publish policy pack failed: %w", err)
+		return nil, "", fmt.Errorf("Publish policy pack failed: %w", err)
 	}
-
-	//
-	// Step 2: Upload the compressed PolicyPack directory to the pre-signed object storage service URL.
-	// The PolicyPack is now published.
-	//
-
-	putReq, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
-	if err != nil {
-		return "", fmt.Errorf("Failed to upload compressed PolicyPack: %w", err)
-	}
-
-	for k, v := range resp.RequiredHeaders {
-		putReq.Header.Add(k, v)
-	}
-
-	_, err = pc.restClient.HTTPClient().Do(putReq, retryAllMethods)
-	if err != nil {
-		return "", fmt.Errorf("Failed to upload compressed PolicyPack: %w", err)
-	}
-
-	//
-	// Step 3: Signal to the service that the PolicyPack publish operation is complete.
-	//
 
 	// If the version tag is empty, an older version of pulumi/policy is being used and
 	// we therefore need to use the version provided by the pulumi service.
@@ -2090,13 +2125,8 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		version = strconv.Itoa(resp.Version)
 		fmt.Printf("Published as version %s\n", version)
 	}
-	err = pc.restCall(ctx, "POST",
-		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, version), nil, nil, nil)
-	if err != nil {
-		return "", fmt.Errorf("Request to signal completion of the publish operation failed: %w", err)
-	}
 
-	return version, nil
+	return &resp, version, nil
 }
 
 // convertPolicyConfigSchema converts a policy's schema from the analyzer to the apitype.

@@ -44,6 +44,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin/oci"
 )
 
 // analyzer reflects an analyzer plugin, loaded dynamically for a single suite of checks.
@@ -52,6 +54,10 @@ type analyzer struct {
 	plug    *Plugin
 	client  pulumirpc.AnalyzerClient
 	version string
+
+	// closeFn releases whatever the analyzer runs on: the plugin child process,
+	// a container, or an attached connection.
+	closeFn func() error
 
 	// The description from the policy pack's PulumiPolicy.yaml file (if present).
 	description string
@@ -92,9 +98,10 @@ func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
 
 	return &analyzer{
-		name:   name,
-		plug:   plug,
-		client: pulumirpc.NewAnalyzerClient(plug.Conn),
+		name:    name,
+		plug:    plug,
+		client:  pulumirpc.NewAnalyzerClient(plug.Conn),
+		closeFn: plug.Close,
 	}, nil
 }
 
@@ -105,10 +112,38 @@ func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
 	hasPlugin func(workspace.PluginDescriptor) bool,
 ) (Analyzer, error) {
+	// Attach mode: the pack is already running (a pod sidecar, or under a
+	// debugger); connect instead of launching. Attach and image-ref packs have
+	// no local pack directory or manifest to consult.
+	if port, err := GetPolicyPackAttachPort(name); err != nil {
+		return nil, err
+	} else if port != nil {
+		return AttachPolicyAnalyzer(host, ctx, name, *port, opts)
+	}
+
+	// A digest-pinned image ref (server-enforced pack): boot the container.
+	if opts != nil && opts.ImageRef != "" {
+		return NewContainerPolicyAnalyzer(host, ctx, name, ContainerPack{Image: opts.ImageRef}, opts)
+	}
+
 	projPath := filepath.Join(policyPackPath, "PulumiPolicy.yaml")
 	proj, err := workspace.LoadPolicyPack(projPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load Pulumi policy project located at %q: %w", policyPackPath, err)
+	}
+
+	if proj.Runtime.Name() == oci.RuntimeName {
+		// The image must have been built locally (the CLI never builds or
+		// implicitly pulls for local packs).
+		ref, _, err := oci.RefForPack(proj, "")
+		if err != nil {
+			return nil, fmt.Errorf("policy pack at %q: %w", policyPackPath, err)
+		}
+		pack := ContainerPack{Image: ref, Version: proj.Version}
+		if proj.Description != nil {
+			pack.Description = *proj.Description
+		}
+		return NewContainerPolicyAnalyzer(host, ctx, name, pack, opts)
 	}
 
 	handshake := func(
@@ -232,41 +267,8 @@ func NewPolicyAnalyzer(
 
 	client := pulumirpc.NewAnalyzerClient(plug.Conn)
 
-	// We call Configure on the analyzer plugin if we've been given options. We might not have options. For example
-	// example when running `pulumi policy publish`, we are not running in the context of a project or stack.
-	if opts != nil {
-		req := &pulumirpc.AnalyzerStackConfigureRequest{
-			Stack:        opts.Stack,
-			Project:      opts.Project,
-			Organization: opts.Organization,
-			Tags:         opts.Tags,
-			DryRun:       opts.DryRun,
-		}
-		mconfig := make(map[string]string, len(opts.Config))
-		for k, v := range opts.Config {
-			mconfig[k.String()] = v
-		}
-		req.Config = mconfig
-		mkeys := make([]string, 0, len(opts.ConfigSecretKeys))
-		for _, k := range opts.ConfigSecretKeys {
-			mkeys = append(mkeys, k.String())
-		}
-		req.ConfigSecretKeys = mkeys
-
-		_, err = client.ConfigureStack(ctx.Request(), req)
-		if err != nil {
-			status, ok := status.FromError(err)
-			if ok && status.Code() == codes.Unimplemented {
-				// If the analyzer doesn't implement StackConfigure, that's fine -- we'll fall back to existing
-				// behavior.
-				logging.V(7).Infof("StackConfigure: not supported by '%v'", name)
-			} else {
-				logging.V(7).Infof("StackConfigure: failed: err=%v", status)
-				return nil, rpcerror.Convert(err)
-			}
-		}
-
-		logging.V(7).Infof("StackConfigure: success [%v]", name)
+	if err := configureStack(ctx, client, name, opts); err != nil {
+		return nil, err
 	}
 
 	var description string
@@ -280,13 +282,60 @@ func NewPolicyAnalyzer(
 		client:      client,
 		version:     proj.Version,
 		description: description,
+		closeFn:     plug.Close,
 	}, nil
+}
+
+// configureStack sends the stack context to the analyzer. We might not have options -- for
+// example when running `pulumi policy publish`, we are not running in the context of a project
+// or stack, just booting the pack to call GetAnalyzerInfo.
+func configureStack(
+	ctx *Context, client pulumirpc.AnalyzerClient, name tokens.QName, opts *PolicyAnalyzerOptions,
+) error {
+	if opts == nil {
+		return nil
+	}
+
+	req := &pulumirpc.AnalyzerStackConfigureRequest{
+		Stack:        opts.Stack,
+		Project:      opts.Project,
+		Organization: opts.Organization,
+		Tags:         opts.Tags,
+		DryRun:       opts.DryRun,
+	}
+	mconfig := make(map[string]string, len(opts.Config))
+	for k, v := range opts.Config {
+		mconfig[k.String()] = v
+	}
+	req.Config = mconfig
+	mkeys := make([]string, 0, len(opts.ConfigSecretKeys))
+	for _, k := range opts.ConfigSecretKeys {
+		mkeys = append(mkeys, k.String())
+	}
+	req.ConfigSecretKeys = mkeys
+
+	_, err := client.ConfigureStack(ctx.Request(), req)
+	if err != nil {
+		st, ok := status.FromError(err)
+		if ok && st.Code() == codes.Unimplemented {
+			// If the analyzer doesn't implement StackConfigure, that's fine -- we'll fall back to existing
+			// behavior.
+			logging.V(7).Infof("StackConfigure: not supported by '%v'", name)
+			return nil
+		}
+		logging.V(7).Infof("StackConfigure: failed: err=%v", st)
+		return rpcerror.Convert(err)
+	}
+
+	logging.V(7).Infof("StackConfigure: success [%v]", name)
+	return nil
 }
 
 func NewAnalyzerWithClient(name tokens.QName, client pulumirpc.AnalyzerClient) Analyzer {
 	return &analyzer{
-		name:   name,
-		client: client,
+		name:    name,
+		client:  client,
+		closeFn: func() error { return nil },
 	}
 }
 
@@ -657,12 +706,10 @@ func (a *analyzer) Configure(ctx context.Context, policyConfig map[string]Analyz
 	return nil
 }
 
-// Close tears down the underlying plugin RPC connection and process.
+// Close tears down whatever the analyzer runs on: the plugin RPC connection
+// and process, a container, or an attached connection.
 func (a *analyzer) Close() error {
-	if a.plug == nil {
-		return nil
-	}
-	return a.plug.Close()
+	return a.closeFn()
 }
 
 // Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.

@@ -51,6 +51,10 @@ func (p *testRequiredPolicy) Version() string {
 	return p.version
 }
 
+func (p *testRequiredPolicy) ImageRef() string {
+	return ""
+}
+
 func (p *testRequiredPolicy) Installed() bool {
 	// For tests, we consider the policy already installed
 	return true
@@ -1212,6 +1216,7 @@ type failingDownloadRequiredPolicy struct {
 
 func (p *failingDownloadRequiredPolicy) Name() string                        { return p.name }
 func (p *failingDownloadRequiredPolicy) Version() string                     { return "" }
+func (p *failingDownloadRequiredPolicy) ImageRef() string                    { return "" }
 func (p *failingDownloadRequiredPolicy) Installed() bool                     { return false }
 func (p *failingDownloadRequiredPolicy) LocalPath() (string, error)          { return "", nil }
 func (p *failingDownloadRequiredPolicy) Config() map[string]*json.RawMessage { return nil }
@@ -1238,6 +1243,7 @@ type failingInstallRequiredPolicy struct {
 
 func (p *failingInstallRequiredPolicy) Name() string                        { return p.name }
 func (p *failingInstallRequiredPolicy) Version() string                     { return "" }
+func (p *failingInstallRequiredPolicy) ImageRef() string                    { return "" }
 func (p *failingInstallRequiredPolicy) Installed() bool                     { return false }
 func (p *failingInstallRequiredPolicy) LocalPath() (string, error)          { return "", nil }
 func (p *failingInstallRequiredPolicy) Config() map[string]*json.RawMessage { return nil }
