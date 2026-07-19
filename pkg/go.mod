@@ -118,6 +118,7 @@ require (
 	golang.org/x/text v0.38.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
+	k8s.io/cri-api v0.33.0
 	lukechampine.com/frand v1.5.1
 )
 

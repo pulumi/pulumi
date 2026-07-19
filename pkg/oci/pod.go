@@ -39,21 +39,29 @@ import (
 )
 
 // PodRuntimeEnvVar names the environment variable that selects the container runtime the pod
-// uses: "docker" (the default) or "containerd"/"nerdctl". It must be forwarded into the engine
-// container's environment alongside PULUMI_POD_ID — the build sink and the container host read
-// it from their own processes inside that container (see NewPodManager call sites), so if it is
-// set only on the outer CLI those in-container managers silently fall back to docker while the
-// outer runtime is containerd.
+// uses: "docker" (the default), "containerd"/"nerdctl" (containerd via the nerdctl/ctr CLIs), or
+// "cri" (containerd via the CRI gRPC API). It must be forwarded into the engine container's
+// environment alongside PULUMI_POD_ID — the build sink and the container host read it from their
+// own processes inside that container (see NewPodManager call sites), so if it is set only on the
+// outer CLI those in-container managers silently fall back to docker while the outer runtime is
+// something else.
 const PodRuntimeEnvVar = "PULUMI_POD_RUNTIME"
 
 // NewPodManager constructs the PodManager for the configured container runtime, defaulting to
 // docker when PULUMI_POD_RUNTIME is unset (so the default path is byte-for-byte unchanged). It
 // is the single runtime-selection seam: every site that needs a manager calls this rather than a
 // concrete constructor, so adding a runtime is one env value, not a code change at four sites.
+//
+// The opts (WithDockerBinary, withRunner) configure the docker/nerdctl managers; the CRI manager
+// takes none of them (it is a gRPC client, not a CLI, and reads its endpoint/sandbox/log dir from
+// the environment), so it ignores opts. Production constructs with no opts, so this loses nothing;
+// tests that need to drive the CRI manager against a fake call NewCriPodManager directly.
 func NewPodManager(podID string, opts ...Option) PodManager {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv(PodRuntimeEnvVar))) {
 	case "containerd", "nerdctl":
 		return NewNerdctlPodManager(podID, opts...)
+	case "cri":
+		return NewCriPodManager(podID)
 	default:
 		return NewDockerPodManager(podID, opts...)
 	}
