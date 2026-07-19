@@ -1,0 +1,14 @@
+run: esc open default/test --format value:dotenv
+error: exit status 1
+environments:
+  test-user/default/test:
+    values:
+      environmentVariables:
+        FOO: bar
+
+---
+> esc open default/test --format value:dotenv
+
+---
+> esc open default/test --format value:dotenv
+Error: output format "value:dotenv" is not a valid object:encoding pair

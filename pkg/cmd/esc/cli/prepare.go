@@ -24,27 +24,35 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-func getEnvironmentVariables(env *esc.Environment, quote, redact bool) (environ, secrets []string) {
-	vars := env.GetEnvironmentVariables()
-	keys := maps.Keys(vars)
-	sort.Strings(keys)
+// ProjectedVariable is a projected `environmentVariables` entry: the name of an environment variable and
+// the string value a process would see for it.
+type ProjectedVariable struct {
+	Name   string
+	Value  string
+	Secret bool
+}
 
-	for _, k := range keys {
-		v := vars[k]
-		s := v.Value.(string)
+// ProjectedFile is a projected `files` entry: the name of the environment variable that holds the path to
+// the materialized temporary file. Path is that path, or "[unknown]" when files are not materialized.
+type ProjectedFile struct {
+	Name   string
+	Path   string
+	Secret bool
+}
 
-		if v.Secret {
-			secrets = append(secrets, s)
-			if redact {
-				s = "[secret]"
-			}
-		}
-		if quote {
-			s = strconv.Quote(s)
-		}
-		environ = append(environ, fmt.Sprintf("%v=%v", k, s))
-	}
-	return environ, secrets
+// EnvironmentProjection is the process-environment projection of a resolved environment: the
+// environmentVariables and files reserved properties rendered as the string-valued variables a process
+// consumes. It carries structure (per-variable secret flag, env-var vs file) that the flat dotenv/shell
+// encodings discard.
+type EnvironmentProjection struct {
+	// Variables are the projected environment variables, sorted by name.
+	Variables []ProjectedVariable
+	// Files are the projected files, sorted by name.
+	Files []ProjectedFile
+	// Paths are the temporary files created on disk, for later cleanup.
+	Paths []string
+	// Secrets are the raw secret values (env var values and file contents), for redaction of command output.
+	Secrets []string
 }
 
 func createTemporaryFile(fs escFS, content []byte) (string, error) {
@@ -70,36 +78,6 @@ func removeTemporaryFiles(fs escFS, paths []string) {
 	}
 }
 
-func createTemporaryFiles(e *esc.Environment, opts PrepareOptions) (paths, environ, secrets []string, err error) {
-	files := e.GetTemporaryFiles()
-	keys := maps.Keys(files)
-	sort.Strings(keys)
-
-	for _, k := range keys {
-		v := files[k]
-		s := v.Value.(string)
-
-		if v.Secret {
-			secrets = append(secrets, s)
-		}
-
-		path := "[unknown]"
-		if !opts.Pretend {
-			path, err = createTemporaryFile(opts.fs, []byte(s))
-			if err != nil {
-				removeTemporaryFiles(opts.fs, paths)
-				return nil, nil, nil, err
-			}
-			paths = append(paths, path)
-		}
-		if opts.Quote {
-			path = strconv.Quote(path)
-		}
-		environ = append(environ, fmt.Sprintf("%v=%v", k, path))
-	}
-	return paths, environ, secrets, nil
-}
-
 // PrepareOptions contains options for PrepareEnvironment.
 type PrepareOptions struct {
 	Quote   bool // True to quote environment variable values
@@ -109,9 +87,9 @@ type PrepareOptions struct {
 	fs escFS // The filesystem for temporary files
 }
 
-// PrepareEnvironment prepares the envvar and temporary file projections for an environment. Returns the paths to
-// temporary files, environment variable pairs, and secret values.
-func PrepareEnvironment(e *esc.Environment, opts *PrepareOptions) (files, environ, secrets []string, err error) {
+// projectEnvironment computes the process-environment projection of e, materializing temporary files unless
+// opts.Pretend is set. Values are raw: quoting and redaction are presentation concerns applied by callers.
+func projectEnvironment(e *esc.Environment, opts *PrepareOptions) (*EnvironmentProjection, error) {
 	if opts == nil {
 		opts = &PrepareOptions{}
 	}
@@ -119,14 +97,74 @@ func PrepareEnvironment(e *esc.Environment, opts *PrepareOptions) (files, enviro
 		opts.fs = newFS()
 	}
 
-	envVars, envSecrets := getEnvironmentVariables(e, opts.Quote, opts.Redact)
+	proj := &EnvironmentProjection{}
 
-	filePaths, fileVars, fileSecrets, err := createTemporaryFiles(e, *opts)
+	vars := e.GetEnvironmentVariables()
+	varKeys := maps.Keys(vars)
+	sort.Strings(varKeys)
+	for _, k := range varKeys {
+		v := vars[k]
+		s := v.Value.(string)
+		if v.Secret {
+			proj.Secrets = append(proj.Secrets, s)
+		}
+		proj.Variables = append(proj.Variables, ProjectedVariable{Name: k, Value: s, Secret: v.Secret})
+	}
+
+	files := e.GetTemporaryFiles()
+	fileKeys := maps.Keys(files)
+	sort.Strings(fileKeys)
+	for _, k := range fileKeys {
+		v := files[k]
+		s := v.Value.(string)
+		if v.Secret {
+			proj.Secrets = append(proj.Secrets, s)
+		}
+		path := "[unknown]"
+		if !opts.Pretend {
+			p, err := createTemporaryFile(opts.fs, []byte(s))
+			if err != nil {
+				removeTemporaryFiles(opts.fs, proj.Paths)
+				return nil, err
+			}
+			proj.Paths = append(proj.Paths, p)
+			path = p
+		}
+		proj.Files = append(proj.Files, ProjectedFile{Name: k, Path: path, Secret: v.Secret})
+	}
+
+	return proj, nil
+}
+
+// PrepareEnvironment prepares the envvar and temporary file projections for an environment. Returns the paths to
+// temporary files, environment variable pairs, and secret values.
+func PrepareEnvironment(e *esc.Environment, opts *PrepareOptions) (files, environ, secrets []string, err error) {
+	if opts == nil {
+		opts = &PrepareOptions{}
+	}
+
+	proj, err := projectEnvironment(e, opts)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("creating temporary files: %v", err)
 	}
 
-	environ = append(envVars, fileVars...)
-	secrets = append(envSecrets, fileSecrets...)
-	return filePaths, environ, secrets, nil
+	for _, v := range proj.Variables {
+		s := v.Value
+		if v.Secret && opts.Redact {
+			s = "[secret]"
+		}
+		if opts.Quote {
+			s = strconv.Quote(s)
+		}
+		environ = append(environ, fmt.Sprintf("%v=%v", v.Name, s))
+	}
+	for _, f := range proj.Files {
+		s := f.Path
+		if opts.Quote {
+			s = strconv.Quote(s)
+		}
+		environ = append(environ, fmt.Sprintf("%v=%v", f.Name, s))
+	}
+
+	return proj.Paths, environ, proj.Secrets, nil
 }

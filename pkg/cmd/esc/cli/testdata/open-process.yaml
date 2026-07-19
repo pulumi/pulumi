@@ -1,0 +1,70 @@
+run: |
+  esc open default/test --format process:json-detailed
+  esc open default/test --format process:json
+  esc open default/test --format process:yaml
+  esc open default/test --format dotenv
+environments:
+  test-user/default/test:
+    values:
+      pi: 3.14
+      secret:
+        fn::secret:
+          ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+      environmentVariables:
+        FOO: bar
+        NUM: ${pi}
+        SECRET: ${secret}
+      files:
+        NUM_FILE: ${pi}
+        SECRET_FILE: ${secret}
+
+---
+> esc open default/test --format process:json-detailed
+{
+  "FOO": {
+    "value": "bar",
+    "secret": false
+  },
+  "NUM": {
+    "value": "3.14",
+    "secret": false
+  },
+  "NUM_FILE": {
+    "value": "temp/esc-temp-0",
+    "secret": false
+  },
+  "SECRET": {
+    "value": "secretAccessKey",
+    "secret": true
+  },
+  "SECRET_FILE": {
+    "value": "temp/esc-temp-1",
+    "secret": true
+  }
+}
+> esc open default/test --format process:json
+{
+  "FOO": "bar",
+  "NUM": "3.14",
+  "NUM_FILE": "temp/esc-temp-2",
+  "SECRET": "secretAccessKey",
+  "SECRET_FILE": "temp/esc-temp-3"
+}
+> esc open default/test --format process:yaml
+FOO: bar
+NUM: "3.14"
+NUM_FILE: temp/esc-temp-4
+SECRET: secretAccessKey
+SECRET_FILE: temp/esc-temp-5
+> esc open default/test --format dotenv
+FOO="bar"
+NUM="3.14"
+SECRET="secretAccessKey"
+NUM_FILE="temp/esc-temp-6"
+SECRET_FILE="temp/esc-temp-7"
+
+---
+> esc open default/test --format process:json-detailed
+> esc open default/test --format process:json
+> esc open default/test --format process:yaml
+> esc open default/test --format dotenv

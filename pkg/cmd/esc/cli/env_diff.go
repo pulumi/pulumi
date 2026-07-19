@@ -84,23 +84,11 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 				}
 			}
 
-			switch format {
-			case "":
-				// OK
-			case "detailed", "json", "string":
-				return diff.diffValue(ctx, baseRef, compareRef, path, format, showSecrets)
-			case "dotenv":
-				if len(path) != 0 {
-					return fmt.Errorf("output format '%s' may not be used with a property path", format)
+			if format != "" {
+				if _, err := validateFormat(format, path); err != nil {
+					return err
 				}
 				return diff.diffValue(ctx, baseRef, compareRef, path, format, showSecrets)
-			case "shell":
-				if len(path) != 0 {
-					return fmt.Errorf("output format '%s' may not be used with a property path", format)
-				}
-				return diff.diffValue(ctx, baseRef, compareRef, path, format, showSecrets)
-			default:
-				return fmt.Errorf("unknown output format %q", format)
 			}
 
 			baseData, err := diff.getEnvironment(ctx, baseRef, path, showSecrets)
@@ -146,7 +134,7 @@ func newEnvDiffCmd(env *envCommand) *cobra.Command {
 
 	cmd.Flags().StringVarP(
 		&format, "format", "f", "",
-		"the output format to use. May be 'dotenv', 'json', 'yaml', 'detailed', or 'shell'")
+		formatFlagHelp("the output format to use, given as <object>:<encoding>."))
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show static secrets in plaintext rather than ciphertext")

@@ -84,23 +84,11 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 				return errors.New("`--value` and `--definition` flags cannot be used together")
 			}
 
-			switch value {
-			case "":
-				// OK
-			case "detailed", "json", "string":
-				return get.showValue(ctx, ref, path, value, showSecrets)
-			case "dotenv":
-				if len(path) != 0 {
-					return fmt.Errorf("output format '%s' may not be used with a property path", value)
+			if value != "" {
+				if _, err := validateFormat(value, path); err != nil {
+					return err
 				}
 				return get.showValue(ctx, ref, path, value, showSecrets)
-			case "shell":
-				if len(path) != 0 {
-					return fmt.Errorf("output format '%s' may not be used with a property path", value)
-				}
-				return get.showValue(ctx, ref, path, value, showSecrets)
-			default:
-				return fmt.Errorf("unknown output format %q", value)
 			}
 
 			data, err := get.getEnvironment(ctx, ref, path, showSecrets)
@@ -144,7 +132,7 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 		"Set to print just the definition.")
 	cmd.Flags().StringVar(
 		&value, "value", "",
-		"Set to print just the value in the given format. May be 'dotenv', 'json', 'detailed', 'shell' or 'string'")
+		formatFlagHelp("print just the value in the given format, given as <object>:<encoding>."))
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show static secrets in plaintext rather than ciphertext")
