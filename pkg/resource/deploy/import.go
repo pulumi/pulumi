@@ -296,6 +296,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			// Skip local component resources, they don't have providers.
 			continue
 		}
+		if sdkproviders.IsProviderType(imp.Type) {
+			// Providers declared as imports are collected below.
+			continue
+		}
 
 		if imp.Provider != "" {
 			if state, ok := i.deployment.olds[imp.Provider]; ok {
@@ -340,6 +344,25 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	// import file (ProviderInputs), or they may have no config at all (e.g. the random provider).
 	// Deduplicate by URN since multiple resources may reference the same explicit provider.
 	explicitProvidersByURN := map[resource.URN]Import{}
+	// Providers declared directly as imports are collected first so the declared entry, which carries
+	// the provider's own inputs and version, wins the dedupe over referencing imports.
+	for _, imp := range i.deployment.imports {
+		if !sdkproviders.IsProviderType(imp.Type) {
+			continue
+		}
+		urn := i.deployment.generateURN("", imp.Type, imp.Name)
+		if state, ok := i.deployment.olds[urn]; ok {
+			ref, err := sdkproviders.NewReference(urn, state.ID)
+			contract.AssertNoErrorf(err,
+				"could not create provider reference with URN %q and ID %q", urn, state.ID)
+			urnToReference[urn] = ref.String()
+			continue
+		}
+		if _, ok := explicitProvidersByURN[urn]; !ok {
+			imp.Provider = urn
+			explicitProvidersByURN[urn] = imp
+		}
+	}
 	for _, imp := range i.deployment.imports {
 		if imp.Provider == "" {
 			continue
@@ -633,6 +656,10 @@ func (i *importer) importResources(ctx context.Context) error {
 	urns := map[resource.URN]struct{}{}
 	steps := slice.Prealloc[Step](len(i.deployment.imports))
 	for _, imp := range i.deployment.imports {
+		if sdkproviders.IsProviderType(imp.Type) {
+			// Already created (or reused from state) by registerProviders.
+			continue
+		}
 		parent := imp.Parent
 		if parent == "" {
 			parent = stackURN
