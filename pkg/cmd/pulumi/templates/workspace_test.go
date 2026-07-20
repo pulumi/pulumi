@@ -22,25 +22,25 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
 //nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestRetrievePrivatePulumiCloudTemplateFallsBackToAgentCredentials(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
 	t.Setenv("CODEX_SANDBOX", "1")
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, "")
+	t.Setenv(pkgWorkspace.PulumiCredentialsPathEnvVar, "")
 	t.Setenv("PULUMI_HOME", "")
 
 	var gotAuth string
@@ -51,7 +51,7 @@ func TestRetrievePrivatePulumiCloudTemplateFallsBackToAgentCredentials(t *testin
 	t.Cleanup(server.Close)
 
 	cloudURL := "https://" + server.Listener.Addr().String()
-	require.NoError(t, workspace.StoreAgentAccount(cloudURL, workspace.Account{AccessToken: "agent-token"}, true))
+	require.NoError(t, pkgWorkspace.StoreAgentAccount(cloudURL, pkgWorkspace.Account{AccessToken: "agent-token"}, true))
 
 	_, err = retrievePrivatePulumiCloudTemplate(server.URL + "/templates/private.zip")
 	require.Error(t, err)

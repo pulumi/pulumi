@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -1556,7 +1557,7 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 	} else {
 		// Set PulumiCredentialsPathEnvVar to our CWD, so we use credentials specific to just this
 		// test.
-		pt.opts.Env = append(pt.opts.Env, fmt.Sprintf("%s=%s", workspace.PulumiCredentialsPathEnvVar, dir))
+		pt.opts.Env = append(pt.opts.Env, fmt.Sprintf("%s=%s", pkgWorkspace.PulumiCredentialsPathEnvVar, dir))
 
 		loginArgs := []string{"login"}
 		loginArgs = addFlagIfNonNil(loginArgs, "--cloud-url", pt.opts.CloudURL)

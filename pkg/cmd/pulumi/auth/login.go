@@ -214,7 +214,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
 
-				authContext, innerErr := workspace.NewAuthContextForTokenExchange(
+				authContext, innerErr := pkgWorkspace.NewAuthContextForTokenExchange(
 					resolvedOrg, resolvedTeam, resolvedUser, oidcToken, oidcExpiration,
 				)
 				if innerErr != nil {
@@ -240,7 +240,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			} else {
 				// if the user has specified a default org to associate with the backend
 				if defaultOrg != "" {
-					if err := workspace.SetBackendConfigDefaultOrg(be.URL(), defaultOrg); err != nil {
+					if err := pkgWorkspace.SetBackendConfigDefaultOrg(be.URL(), defaultOrg); err != nil {
 						return err
 					}
 				}
@@ -300,7 +300,7 @@ func validateCloudBackendType(typ string) error {
 }
 
 // chooseAccount will prompt the user to choose amongst the available accounts.
-func chooseAccount(accounts map[string]workspace.Account, opts display.Options) (string, error) {
+func chooseAccount(accounts map[string]pkgWorkspace.Account, opts display.Options) (string, error) {
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
 	surveycore.DisableColor = true
 

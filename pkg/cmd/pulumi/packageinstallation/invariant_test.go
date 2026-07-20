@@ -294,8 +294,8 @@ func (w invariantWorkspace) ReadProject(string) (*workspace.Project, string, err
 	return nil, "", assert.AnError
 }
 
-func (w invariantWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
-	return workspace.Credentials{}, nil
+func (w invariantWorkspace) GetStoredCredentials() (pkgWorkspace.Credentials, error) {
+	return pkgWorkspace.Credentials{}, nil
 }
 
 func (w invariantWorkspace) GetPlugins(context.Context) ([]workspace.PluginInfo, error) {

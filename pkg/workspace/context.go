@@ -52,7 +52,7 @@ type Context interface {
 	LoadBaseProjectFrom(ctx context.Context, path string) (workspace.BaseProject, string, error)
 
 	// GetStoredCredentials returns any credentials stored on the local machine.
-	GetStoredCredentials() (workspace.Credentials, error)
+	GetStoredCredentials() (Credentials, error)
 }
 
 var Instance Context = &workspaceContext{}
@@ -76,8 +76,8 @@ func (*workspaceContext) ReadProject(dir string) (*workspace.Project, string, er
 	return proj, filepath.Dir(path), nil
 }
 
-func (*workspaceContext) GetStoredCredentials() (workspace.Credentials, error) {
-	return workspace.GetStoredCredentials()
+func (*workspaceContext) GetStoredCredentials() (Credentials, error) {
+	return GetStoredCredentials()
 }
 
 func (*workspaceContext) LoadPluginProjectAt(_ context.Context, path string) (*workspace.PluginProject, string, error) {

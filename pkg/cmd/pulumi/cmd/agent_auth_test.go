@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -35,29 +36,29 @@ import (
 
 //nolint:paralleltest // mutates shared temporary agent credentials
 func TestProcessCmdErrorsPrintsAgentAuthRequiredInstruction(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
 	t.Setenv("CODEX_SANDBOX", "1")
 	cloudURL := "https://api.example.com"
 	expiresAt := time.Now().Add(2*24*time.Hour + 3*time.Hour + 9*time.Minute)
-	err = workspace.StoreAgentAccount(cloudURL, workspace.Account{
+	err = pkgWorkspace.StoreAgentAccount(cloudURL, pkgWorkspace.Account{
 		AccessToken: "locally-unexpired-agent-token",
 		TokenInformation: &workspace.TokenInformation{
 			ExpiresAt: &expiresAt,
 		},
 	}, true)
 	require.NoError(t, err)
-	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+	err = pkgWorkspace.StoreAgentClaim(pkgWorkspace.AgentClaim{
 		ClaimURL:   "https://app.pulumi.com/claim/abc123",
 		ValidUntil: time.Now().Add(24 * time.Hour),
 		CloudURL:   cloudURL,
@@ -91,29 +92,29 @@ func TestProcessCmdErrorsKeepsGenericLoginRequiredOutsideAgentMode(t *testing.T)
 
 //nolint:paralleltest // mutates shared temporary agent credentials
 func TestProcessCmdErrorsPrintsAgentClaimWarningForNonLoginError(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
 	t.Setenv("CODEX_SANDBOX", "1")
 	cloudURL := "https://api.non-login-error.example.com"
 	expiresAt := time.Now().Add(time.Hour)
-	err = workspace.StoreAgentAccount(cloudURL, workspace.Account{
+	err = pkgWorkspace.StoreAgentAccount(cloudURL, pkgWorkspace.Account{
 		AccessToken: "agent-token",
 		TokenInformation: &workspace.TokenInformation{
 			ExpiresAt: &expiresAt,
 		},
 	}, true)
 	require.NoError(t, err)
-	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+	err = pkgWorkspace.StoreAgentClaim(pkgWorkspace.AgentClaim{
 		ClaimURL:   "https://app.pulumi.com/claim/non-login-error",
 		CloudURL:   cloudURL,
 		ValidUntil: time.Now().Add(24 * time.Hour),
@@ -133,15 +134,15 @@ func TestProcessCmdErrorsPrintsAgentClaimWarningForNonLoginError(t *testing.T) {
 
 //nolint:paralleltest // mutates shared temporary agent credentials
 func TestProcessCmdErrorsDoesNotPrintClaimURLForUnauthorizedClaimedAccount(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
@@ -154,14 +155,14 @@ func TestProcessCmdErrorsDoesNotPrintClaimURLForUnauthorizedClaimedAccount(t *te
 
 	t.Setenv("CODEX_SANDBOX", "1")
 	expiresAt := time.Now().Add(-time.Minute)
-	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+	err = pkgWorkspace.StoreAgentAccount(server.URL, pkgWorkspace.Account{
 		AccessToken: "agent-token",
 		TokenInformation: &workspace.TokenInformation{
 			ExpiresAt: &expiresAt,
 		},
 	}, true)
 	require.NoError(t, err)
-	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+	err = pkgWorkspace.StoreAgentClaim(pkgWorkspace.AgentClaim{
 		ClaimURL:   "https://app.pulumi.com/claim/claimed-token",
 		ClaimToken: "claimed-token",
 		CloudURL:   server.URL,
@@ -182,29 +183,29 @@ func TestProcessCmdErrorsDoesNotPrintClaimURLForUnauthorizedClaimedAccount(t *te
 
 //nolint:paralleltest // mutates shared temporary agent credentials
 func TestProcessCmdErrorsPrintsAgentAuthRequiredInstructionForAPIUnauthorized(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
 	t.Setenv("CODEX_SANDBOX", "1")
 	cloudURL := "https://api.example.com"
 	expiresAt := time.Now().Add(2 * 24 * time.Hour)
-	err = workspace.StoreAgentAccount(cloudURL, workspace.Account{
+	err = pkgWorkspace.StoreAgentAccount(cloudURL, pkgWorkspace.Account{
 		AccessToken: "locally-unexpired-agent-token",
 		TokenInformation: &workspace.TokenInformation{
 			ExpiresAt: &expiresAt,
 		},
 	}, true)
 	require.NoError(t, err)
-	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+	err = pkgWorkspace.StoreAgentClaim(pkgWorkspace.AgentClaim{
 		ClaimURL:   "https://app.pulumi.com/claim/api-401",
 		ValidUntil: time.Now().Add(24 * time.Hour),
 		CloudURL:   cloudURL,
@@ -224,29 +225,29 @@ func TestProcessCmdErrorsPrintsAgentAuthRequiredInstructionForAPIUnauthorized(t 
 
 //nolint:paralleltest // mutates shared temporary agent credentials
 func TestProcessCmdErrorsDoesNotPrintAgentAuthRequiredInstructionForAPINonUnauthorized(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
 	t.Setenv("CODEX_SANDBOX", "1")
 	cloudURL := "https://api.example.com"
 	expiresAt := time.Now().Add(2 * 24 * time.Hour)
-	err = workspace.StoreAgentAccount(cloudURL, workspace.Account{
+	err = pkgWorkspace.StoreAgentAccount(cloudURL, pkgWorkspace.Account{
 		AccessToken: "locally-unexpired-agent-token",
 		TokenInformation: &workspace.TokenInformation{
 			ExpiresAt: &expiresAt,
 		},
 	}, true)
 	require.NoError(t, err)
-	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+	err = pkgWorkspace.StoreAgentClaim(pkgWorkspace.AgentClaim{
 		ClaimURL:   "https://app.pulumi.com/claim/api-401",
 		ValidUntil: time.Now().Add(24 * time.Hour),
 		CloudURL:   cloudURL,

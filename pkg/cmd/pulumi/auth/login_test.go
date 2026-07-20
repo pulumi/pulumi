@@ -42,8 +42,8 @@ func TestLoginURLResolution(t *testing.T) {
 		oidcToken string
 	}
 
-	credsF := func() (workspace.Credentials, error) {
-		return workspace.Credentials{Current: "https://stored-creds.example.com"}, nil
+	credsF := func() (pkgWorkspace.Credentials, error) {
+		return pkgWorkspace.Credentials{Current: "https://stored-creds.example.com"}, nil
 	}
 
 	tests := []struct {
@@ -217,7 +217,7 @@ func TestLoginURLResolution(t *testing.T) {
 					project *workspace.Project,
 					setCurrent bool,
 					insecure bool,
-					authContext workspace.AuthContext,
+					authContext pkgWorkspace.AuthContext,
 				) (pkgBackend.Backend, error) {
 					captured.url = url
 					captured.oidcToken = authContext.Token

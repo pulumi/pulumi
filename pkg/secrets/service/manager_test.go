@@ -20,31 +20,31 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 //nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestGetServiceSecretsAccountFallsBackToAgentCredentials(t *testing.T) {
 	isolateAgentCredentials(t)
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
 	t.Setenv("CODEX_SANDBOX", "1")
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, "")
+	t.Setenv(pkgWorkspace.PulumiCredentialsPathEnvVar, "")
 	t.Setenv(env.Home.Var().Name(), "")
 
 	cloudURL := "https://api.service-secrets-agent.example.com"
-	err = workspace.StoreAgentAccount(cloudURL, workspace.Account{AccessToken: "agent-token"}, true)
+	err = pkgWorkspace.StoreAgentAccount(cloudURL, pkgWorkspace.Account{AccessToken: "agent-token"}, true)
 	require.NoError(t, err)
 
 	account, err := getServiceSecretsAccount(cloudURL)
@@ -55,24 +55,24 @@ func TestGetServiceSecretsAccountFallsBackToAgentCredentials(t *testing.T) {
 //nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestGetServiceSecretsAccountDoesNotFallbackWithExplicitPath(t *testing.T) {
 	isolateAgentCredentials(t)
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
 	t.Setenv("CODEX_SANDBOX", "1")
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, t.TempDir())
+	t.Setenv(pkgWorkspace.PulumiCredentialsPathEnvVar, t.TempDir())
 	t.Setenv(env.Home.Var().Name(), "")
 
 	cloudURL := "https://api.service-secrets-explicit.example.com"
-	err = workspace.StoreAgentAccount(cloudURL, workspace.Account{AccessToken: "agent-token"}, true)
+	err = pkgWorkspace.StoreAgentAccount(cloudURL, pkgWorkspace.Account{AccessToken: "agent-token"}, true)
 	require.NoError(t, err)
 
 	account, err := getServiceSecretsAccount(cloudURL)

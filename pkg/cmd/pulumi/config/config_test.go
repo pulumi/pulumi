@@ -959,8 +959,8 @@ func TestConfigRefresh(t *testing.T) {
 			ReadProjectF: func(string) (*workspace.Project, string, error) {
 				return &workspace.Project{Name: "testProject"}, "", nil
 			},
-			GetStoredCredentialsF: func() (workspace.Credentials, error) {
-				return workspace.Credentials{Current: "https://api.pulumi.com"}, nil
+			GetStoredCredentialsF: func() (pkgWorkspace.Credentials, error) {
+				return pkgWorkspace.Credentials{Current: "https://api.pulumi.com"}, nil
 			},
 		}
 

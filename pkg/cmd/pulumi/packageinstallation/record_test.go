@@ -173,7 +173,7 @@ func (w *recordingWorkspace) ReadProject(dir string) (*workspace.Project, string
 	return project, path, err
 }
 
-func (w *recordingWorkspace) GetStoredCredentials() (workspace.Credentials, error) {
+func (w *recordingWorkspace) GetStoredCredentials() (pkgWorkspace.Credentials, error) {
 	w.start("GetStoredCredentials")
 	creds, err := w.w.GetStoredCredentials()
 	w.finish(creds, err)

@@ -131,50 +131,50 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 
 //nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
 	badCredentialsDir := t.TempDir()
 	badCredentialsPath := badCredentialsDir + "/not-a-directory"
 	require.NoError(t, os.WriteFile(badCredentialsPath, []byte("not a directory"), 0o600))
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, badCredentialsPath)
+	t.Setenv(pkgWorkspace.PulumiCredentialsPathEnvVar, badCredentialsPath)
 	t.Setenv("CODEX_SANDBOX", "1")
 
-	err = workspace.StoreAgentAccount("https://api.example.com", workspace.Account{AccessToken: "agent-token"}, true)
+	err = pkgWorkspace.StoreAgentAccount("https://api.example.com", pkgWorkspace.Account{AccessToken: "agent-token"}, true)
 	require.NoError(t, err)
 
-	account, err := getBackendAccount(t.Context(), "https://api.example.com")
+	account, _, err := getBackendAccount(t.Context(), "https://api.example.com")
 	require.Error(t, err)
 	assert.Empty(t, account.AccessToken)
 }
 
 //nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestCurrentEnvTokenFailsWithInaccessibleExplicitPath(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
 	badCredentialsDir := t.TempDir()
 	badCredentialsPath := badCredentialsDir + "/not-a-directory"
 	require.NoError(t, os.WriteFile(badCredentialsPath, []byte("not a directory"), 0o600))
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, badCredentialsPath)
+	t.Setenv(pkgWorkspace.PulumiCredentialsPathEnvVar, badCredentialsPath)
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv("PULUMI_ACCESS_TOKEN", "env-token")
 
@@ -192,22 +192,22 @@ func TestCurrentEnvTokenFailsWithInaccessibleExplicitPath(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, account)
 
-	agentAccount, err := workspace.GetAgentAccount(server.URL)
+	agentAccount, err := pkgWorkspace.GetAgentAccount(server.URL)
 	require.NoError(t, err)
 	assert.Empty(t, agentAccount.AccessToken)
 }
 
 //nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
@@ -231,10 +231,10 @@ func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
 	require.NotNil(t, account)
 	assert.Equal(t, "env-token", account.AccessToken)
 
-	defaultAccount, err := workspace.GetAccount(server.URL)
+	defaultAccount, err := pkgWorkspace.GetAccount(server.URL)
 	require.NoError(t, err)
 	assert.Equal(t, "env-token", defaultAccount.AccessToken)
-	agentAccount, err := workspace.GetAgentAccount(server.URL)
+	agentAccount, err := pkgWorkspace.GetAgentAccount(server.URL)
 	require.NoError(t, err)
 	assert.Empty(t, agentAccount.AccessToken)
 }
@@ -282,7 +282,7 @@ func TestCurrentRefreshesAccessTokenOn401WhenRefreshTokenStored(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+	require.NoError(t, pkgWorkspace.StoreAccount(server.URL, pkgWorkspace.Account{
 		AccessToken:  "stale-access-token",
 		RefreshToken: "stored-refresh-token",
 	}, true))
@@ -296,7 +296,7 @@ func TestCurrentRefreshesAccessTokenOn401WhenRefreshTokenStored(t *testing.T) {
 		"the refresh token is preserved (Phase 1: server doesn't rotate)")
 	assert.Equal(t, "alice", account.Username)
 
-	saved, err := workspace.GetAccount(server.URL)
+	saved, err := pkgWorkspace.GetAccount(server.URL)
 	require.NoError(t, err)
 	assert.Equal(t, "fresh-access-token", saved.AccessToken,
 		"credentials.json should reflect the refreshed access token")
@@ -344,7 +344,7 @@ func TestCurrentRefreshesFromRefreshOnlyStoredAccount(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+	require.NoError(t, pkgWorkspace.StoreAccount(server.URL, pkgWorkspace.Account{
 		RefreshToken: "only-refresh-token",
 	}, true))
 
@@ -396,7 +396,7 @@ func TestCurrentPersistsRotatedRefreshToken(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+	require.NoError(t, pkgWorkspace.StoreAccount(server.URL, pkgWorkspace.Account{
 		AccessToken:  "stale-access-token",
 		RefreshToken: "stored-refresh-token",
 	}, true))
@@ -407,7 +407,7 @@ func TestCurrentPersistsRotatedRefreshToken(t *testing.T) {
 	assert.Equal(t, "fresh-access-token", account.AccessToken)
 	assert.Equal(t, "rotated-refresh-token", account.RefreshToken)
 
-	saved, err := workspace.GetAccount(server.URL)
+	saved, err := pkgWorkspace.GetAccount(server.URL)
 	require.NoError(t, err)
 	assert.Equal(t, "fresh-access-token", saved.AccessToken)
 	assert.Equal(t, "rotated-refresh-token", saved.RefreshToken,
@@ -454,7 +454,7 @@ func TestCurrentPreservesRefreshTokenWhenGrantResponseOmitsIt(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+	require.NoError(t, pkgWorkspace.StoreAccount(server.URL, pkgWorkspace.Account{
 		AccessToken:  "stale-access-token",
 		RefreshToken: "stored-refresh-token",
 	}, true))
@@ -466,7 +466,7 @@ func TestCurrentPreservesRefreshTokenWhenGrantResponseOmitsIt(t *testing.T) {
 	assert.Equal(t, "stored-refresh-token", account.RefreshToken,
 		"omitted refresh_token in the response must not destroy the existing one")
 
-	saved, err := workspace.GetAccount(server.URL)
+	saved, err := pkgWorkspace.GetAccount(server.URL)
 	require.NoError(t, err)
 	assert.Equal(t, "fresh-access-token", saved.AccessToken)
 	assert.Equal(t, "stored-refresh-token", saved.RefreshToken,
@@ -477,7 +477,7 @@ func TestValidateStoredAccountSkipsNetworkWhenNoCredential(t *testing.T) {
 	t.Parallel()
 	// An account with neither an access nor a refresh token can't authenticate and must short-
 	// circuit before any network attempt — the cloudURL here intentionally points nowhere.
-	account, valid, err := validateStoredAccount(t.Context(), "http://127.0.0.1:0", false, workspace.Account{})
+	account, valid, err := validateStoredAccount(t.Context(), "http://127.0.0.1:0", false, pkgWorkspace.Account{})
 	require.NoError(t, err)
 	assert.False(t, valid)
 	assert.Empty(t, account.AccessToken)
@@ -530,7 +530,7 @@ func TestCurrentRefreshesLocallyExpiredAccessTokenWhenRefreshTokenStored(t *test
 	t.Cleanup(server.Close)
 
 	expiredAt := time.Now().Add(-time.Hour)
-	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+	require.NoError(t, pkgWorkspace.StoreAccount(server.URL, pkgWorkspace.Account{
 		AccessToken:  "stale-access-token",
 		RefreshToken: "stored-refresh-token",
 		TokenInformation: &workspace.TokenInformation{
@@ -546,7 +546,7 @@ func TestCurrentRefreshesLocallyExpiredAccessTokenWhenRefreshTokenStored(t *test
 	assert.Equal(t, "stored-refresh-token", account.RefreshToken)
 	assert.Equal(t, "alice", account.Username)
 
-	saved, err := workspace.GetAccount(server.URL)
+	saved, err := pkgWorkspace.GetAccount(server.URL)
 	require.NoError(t, err)
 	assert.Equal(t, "fresh-access-token", saved.AccessToken,
 		"credentials.json should reflect the refreshed access token")
@@ -591,7 +591,7 @@ func TestCurrentPreservesExpiresAtWhenServerAcceptsLocallyExpiredAccessToken(t *
 	t.Cleanup(server.Close)
 
 	expiredAt := time.Now().Add(-time.Hour)
-	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+	require.NoError(t, pkgWorkspace.StoreAccount(server.URL, pkgWorkspace.Account{
 		AccessToken:  "live-access-token",
 		RefreshToken: "stored-refresh-token",
 		TokenInformation: &workspace.TokenInformation{
@@ -638,7 +638,7 @@ func TestCurrentReturnsNoAccountWhenAccessTokenLocallyExpiredAndNoRefreshToken(t
 	t.Cleanup(server.Close)
 
 	expiredAt := time.Now().Add(-time.Hour)
-	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+	require.NoError(t, pkgWorkspace.StoreAccount(server.URL, pkgWorkspace.Account{
 		AccessToken: "stale-access-token",
 		TokenInformation: &workspace.TokenInformation{
 			ExpiresAt: &expiredAt,
@@ -707,15 +707,15 @@ func TestGetAccountDetailsInstallsRefreshWrapperWhenRefreshTokenSupplied(t *test
 
 //nolint:paralleltest // mutates shared temporary agent credentials
 func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
@@ -729,14 +729,14 @@ func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T
 	t.Cleanup(server.Close)
 
 	expiredAt := time.Now().Add(-time.Hour)
-	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+	err = pkgWorkspace.StoreAgentAccount(server.URL, pkgWorkspace.Account{
 		AccessToken: "expired-agent-token",
 		TokenInformation: &workspace.TokenInformation{
 			ExpiresAt: &expiredAt,
 		},
 	}, true)
 	require.NoError(t, err)
-	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+	err = pkgWorkspace.StoreAgentClaim(pkgWorkspace.AgentClaim{
 		ClaimURL:   "https://app.pulumi.com/claim/abc123",
 		ValidUntil: time.Now().Add(time.Hour),
 		CloudURL:   server.URL,
@@ -751,15 +751,15 @@ func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T
 
 //nolint:paralleltest // mutates shared temporary agent credentials
 func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
@@ -778,14 +778,14 @@ func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testi
 	t.Cleanup(server.Close)
 
 	expiresAt := time.Now().Add(time.Hour)
-	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+	err = pkgWorkspace.StoreAgentAccount(server.URL, pkgWorkspace.Account{
 		AccessToken: "locally-unexpired-agent-token",
 		TokenInformation: &workspace.TokenInformation{
 			ExpiresAt: &expiresAt,
 		},
 	}, true)
 	require.NoError(t, err)
-	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+	err = pkgWorkspace.StoreAgentClaim(pkgWorkspace.AgentClaim{
 		ClaimURL:   "https://app.pulumi.com/claim/abc123",
 		ValidUntil: time.Now().Add(-time.Hour),
 		CloudURL:   server.URL,
@@ -802,15 +802,15 @@ func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testi
 
 //nolint:paralleltest // mutates shared temporary agent credentials
 func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
@@ -824,7 +824,7 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 	t.Cleanup(server.Close)
 
 	expiresAt := time.Now().Add(time.Hour)
-	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+	err = pkgWorkspace.StoreAgentAccount(server.URL, pkgWorkspace.Account{
 		AccessToken:     "valid-agent-token",
 		Username:        "agent-user",
 		Organizations:   []string{"agent-org"},
@@ -834,7 +834,7 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 		},
 	}, true)
 	require.NoError(t, err)
-	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+	err = pkgWorkspace.StoreAgentClaim(pkgWorkspace.AgentClaim{
 		ClaimURL:   "https://app.pulumi.com/claim/abc123",
 		ValidUntil: time.Now().Add(-time.Hour),
 		CloudURL:   server.URL,
@@ -851,25 +851,25 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 
 	// Post-validate persistence goes through agentAccount.Save, which writes to the agent file
 	// (the account's source) rather than leaking into default credentials.
-	fromAgent, err := workspace.GetAgentAccount(server.URL)
+	fromAgent, err := pkgWorkspace.GetAgentAccount(server.URL)
 	require.NoError(t, err)
 	assert.Equal(t, "valid-agent-token", fromAgent.AccessToken)
-	fromDefault, err := workspace.GetAccount(server.URL)
+	fromDefault, err := pkgWorkspace.GetAccount(server.URL)
 	require.NoError(t, err)
 	assert.Empty(t, fromDefault.AccessToken, "agent-sourced account must not be copied into default credentials")
 }
 
 //nolint:paralleltest // mutates shared temporary agent credentials and console env
 func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
@@ -934,7 +934,7 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	assert.True(t, account.TokenInformation.ExpiresAt.Equal(accessTokenValidUntil))
 	assert.Equal(t, []string{http.MethodGet, http.MethodPost}, signupMethods)
 
-	claim, err := workspace.GetAgentClaim()
+	claim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	assert.Equal(t, "http://app.example.com/claim/claim-token", claim.ClaimURL)
 	assert.Equal(t, "claim-token", claim.ClaimToken)
@@ -946,15 +946,15 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 	// The refresh token returned by agent signup must land in the stored Account so the
 	// auto-refresh wrapper can use it once the access token expires.
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
@@ -1003,7 +1003,7 @@ func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 	assert.Equal(t, "agent-refresh-token", account.RefreshToken,
 		"signup-returned refresh token must be plumbed into the returned Account")
 
-	stored, err := workspace.GetAgentAccount(server.URL)
+	stored, err := pkgWorkspace.GetAgentAccount(server.URL)
 	require.NoError(t, err)
 	assert.Equal(t, "agent-refresh-token", stored.RefreshToken,
 		"signup-returned refresh token must be persisted to the agent credentials file")
@@ -1013,15 +1013,15 @@ func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 func TestCurrentSignupAgentAccountWithoutRefreshTokenLeavesAccountEmpty(t *testing.T) {
 	// Back-compat with a server that doesn't (yet) issue refresh tokens at signup: the response
 	// omits refreshToken and the CLI must not error or invent a value.
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
@@ -1068,7 +1068,7 @@ func TestCurrentSignupAgentAccountWithoutRefreshTokenLeavesAccountEmpty(t *testi
 	assert.Equal(t, "agent-access-token", account.AccessToken)
 	assert.Empty(t, account.RefreshToken, "no refreshToken in response → none on the Account")
 
-	stored, err := workspace.GetAgentAccount(server.URL)
+	stored, err := pkgWorkspace.GetAgentAccount(server.URL)
 	require.NoError(t, err)
 	assert.Empty(t, stored.RefreshToken, "no refreshToken in response → none persisted")
 }
@@ -1132,7 +1132,7 @@ func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *test
 	// will reject. No claim is stored, so currentOrSignupAgentAccount falls through to re-signup
 	// once the refresh attempt fails.
 	expiredAt := time.Now().Add(-time.Hour)
-	require.NoError(t, workspace.StoreAgentAccount(server.URL, workspace.Account{
+	require.NoError(t, pkgWorkspace.StoreAgentAccount(server.URL, pkgWorkspace.Account{
 		AccessToken:  "old-access-token",
 		RefreshToken: "old-refresh-token",
 		TokenInformation: &workspace.TokenInformation{
@@ -1147,7 +1147,7 @@ func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *test
 	assert.Equal(t, "new-access-token", account.AccessToken)
 	assert.Equal(t, "new-refresh-token", account.RefreshToken)
 
-	stored, err := workspace.GetAgentAccount(server.URL)
+	stored, err := pkgWorkspace.GetAgentAccount(server.URL)
 	require.NoError(t, err)
 	assert.Equal(t, "new-refresh-token", stored.RefreshToken,
 		"re-signup must replace the stale refresh token, not preserve it")
@@ -1204,7 +1204,7 @@ func TestCurrentAgentAccountRefreshesLocallyExpiredAccessTokenInsteadOfResigning
 	t.Cleanup(server.Close)
 
 	expiredAt := time.Now().Add(-time.Hour)
-	require.NoError(t, workspace.StoreAgentAccount(server.URL, workspace.Account{
+	require.NoError(t, pkgWorkspace.StoreAgentAccount(server.URL, pkgWorkspace.Account{
 		AccessToken:  "old-access-token",
 		RefreshToken: "stored-refresh-token",
 		Username:     "agent-user",
@@ -1223,7 +1223,7 @@ func TestCurrentAgentAccountRefreshesLocallyExpiredAccessTokenInsteadOfResigning
 	assert.Equal(t, "agent-user", account.Username, "username should survive the refresh path")
 	assert.Equal(t, 0, signupCalls, "signup must not be called when refresh succeeds")
 
-	stored, err := workspace.GetAgentAccount(server.URL)
+	stored, err := pkgWorkspace.GetAgentAccount(server.URL)
 	require.NoError(t, err)
 	assert.Equal(t, "fresh-access-token", stored.AccessToken,
 		"agent credentials file should reflect the refreshed access token")
@@ -1304,15 +1304,15 @@ func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 
 //nolint:paralleltest // mutates env vars, global interactive mode, shared temporary agent credentials, and console env
 func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
@@ -1418,8 +1418,8 @@ func TestValueOrDefaultURL(t *testing.T) {
 	t.Run("TestValueOrDefault", func(t *testing.T) {
 		current := ""
 		mock := &pkgWorkspace.MockContext{
-			GetStoredCredentialsF: func() (workspace.Credentials, error) {
-				return workspace.Credentials{
+			GetStoredCredentialsF: func() (pkgWorkspace.Credentials, error) {
+				return pkgWorkspace.Credentials{
 					Current: current,
 				}, nil
 			},
@@ -1588,13 +1588,13 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 			}))
 			t.Cleanup(server.Close)
 
-			err := workspace.StoreAccount(server.URL, workspace.Account{
+			err := pkgWorkspace.StoreAccount(server.URL, pkgWorkspace.Account{
 				AccessToken: testJWT,
 			}, true)
 			require.NoError(t, err)
 
 			if tt.configuredOrg != "" {
-				err = workspace.SetBackendConfigDefaultOrg(server.URL, tt.configuredOrg)
+				err = pkgWorkspace.SetBackendConfigDefaultOrg(server.URL, tt.configuredOrg)
 				require.NoError(t, err)
 			}
 

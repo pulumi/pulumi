@@ -26,20 +26,19 @@ import (
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 //nolint:paralleltest // mutates env vars and shared temporary agent credentials
 func TestDeleteAccountFallsBackToAgentCredentials(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "1")
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, "")
+	t.Setenv(pkgWorkspace.PulumiCredentialsPathEnvVar, "")
 	t.Setenv(env.Home.Var().Name(), "")
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
 
 	cloudURL := "https://api.logout-agent.example.com"
-	err := workspace.StoreAgentAccount(cloudURL, workspace.Account{AccessToken: "agent-token"}, true)
+	err := pkgWorkspace.StoreAgentAccount(cloudURL, pkgWorkspace.Account{AccessToken: "agent-token"}, true)
 	require.NoError(t, err)
-	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+	err = pkgWorkspace.StoreAgentClaim(pkgWorkspace.AgentClaim{
 		ClaimURL:   "https://app.pulumi.com/claim/logout-agent",
 		ClaimToken: "logout-agent",
 		CloudURL:   cloudURL,
@@ -50,10 +49,10 @@ func TestDeleteAccountFallsBackToAgentCredentials(t *testing.T) {
 	err = deleteAccount(cloudURL)
 	require.NoError(t, err)
 
-	account, err := workspace.GetAgentAccount(cloudURL)
+	account, err := pkgWorkspace.GetAgentAccount(cloudURL)
 	require.NoError(t, err)
 	assert.Empty(t, account.AccessToken)
-	claim, err := workspace.GetAgentClaim()
+	claim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	assert.Empty(t, claim.ClaimURL)
 }
@@ -62,12 +61,12 @@ func TestCredentialsContainAccountIncludesTokenlessCurrentBackend(t *testing.T) 
 	t.Parallel()
 
 	cloudURL := "file://~"
-	creds := workspace.Credentials{
+	creds := pkgWorkspace.Credentials{
 		Current: cloudURL,
 		AccessTokens: map[string]string{
 			cloudURL: "",
 		},
-		Accounts: map[string]workspace.Account{
+		Accounts: map[string]pkgWorkspace.Account{
 			cloudURL: {},
 		},
 	}
@@ -79,11 +78,11 @@ func TestCredentialsContainAccountIncludesTokenlessCurrentBackend(t *testing.T) 
 func TestDeleteAccountSkipsAgentFallbackWhenExplicitPathSet(t *testing.T) {
 	credsDir := t.TempDir()
 	t.Setenv("CODEX_SANDBOX", "1")
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv(pkgWorkspace.PulumiCredentialsPathEnvVar, credsDir)
 	t.Setenv(env.Home.Var().Name(), "")
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
 
-	err := workspace.StoreCredentials(workspace.Credentials{
+	err := pkgWorkspace.StoreCredentials(pkgWorkspace.Credentials{
 		AccessTokens: map[string]string{
 			"https://api.logout-explicit.example.com": "default-token",
 		},
@@ -93,7 +92,7 @@ func TestDeleteAccountSkipsAgentFallbackWhenExplicitPathSet(t *testing.T) {
 	err = deleteAccount("https://api.logout-explicit.example.com")
 	require.NoError(t, err)
 
-	creds, err := workspace.GetStoredCredentials()
+	creds, err := pkgWorkspace.GetStoredCredentials()
 	require.NoError(t, err)
 	assert.NotContains(t, creds.AccessTokens, "https://api.logout-explicit.example.com")
 }
@@ -105,10 +104,10 @@ func TestDeleteAllAccountsSkipsAgentFallbackOutsideAgentMode(t *testing.T) {
 	t.Setenv("CODEX_SANDBOX", "")
 	t.Setenv("AI_AGENT", "")
 	t.Setenv("CODEX_CI", "")
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv(pkgWorkspace.PulumiCredentialsPathEnvVar, credsDir)
 	t.Setenv(env.Home.Var().Name(), "")
 
-	err := workspace.StoreCredentials(workspace.Credentials{
+	err := pkgWorkspace.StoreCredentials(pkgWorkspace.Credentials{
 		AccessTokens: map[string]string{
 			"https://api.logout-all.example.com": "default-token",
 		},
@@ -125,9 +124,9 @@ func TestDeleteAllAccountsSkipsAgentFallbackOutsideAgentMode(t *testing.T) {
 //nolint:paralleltest // mutates env vars
 func TestLogoutCommandAll(t *testing.T) {
 	credsDir := t.TempDir()
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv(pkgWorkspace.PulumiCredentialsPathEnvVar, credsDir)
 	t.Setenv(env.Home.Var().Name(), "")
-	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+	require.NoError(t, pkgWorkspace.StoreCredentials(pkgWorkspace.Credentials{
 		AccessTokens: map[string]string{
 			"https://api.logout-command-all.example.com": "default-token",
 		},
@@ -146,10 +145,10 @@ func TestLogoutCommandAll(t *testing.T) {
 //nolint:paralleltest // mutates env vars
 func TestLogoutCommandCloudURL(t *testing.T) {
 	credsDir := t.TempDir()
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv(pkgWorkspace.PulumiCredentialsPathEnvVar, credsDir)
 	t.Setenv(env.Home.Var().Name(), "")
 	cloudURL := "https://api.logout-command.example.com"
-	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+	require.NoError(t, pkgWorkspace.StoreCredentials(pkgWorkspace.Credentials{
 		AccessTokens: map[string]string{
 			cloudURL: "default-token",
 		},
@@ -168,17 +167,17 @@ func TestLogoutCommandCloudURL(t *testing.T) {
 func TestLogoutCommandFallsBackToAgentCurrentCloud(t *testing.T) {
 	agentDir := t.TempDir()
 	t.Setenv("CODEX_SANDBOX", "1")
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, "")
+	t.Setenv(pkgWorkspace.PulumiCredentialsPathEnvVar, "")
 	t.Setenv(env.Home.Var().Name(), "")
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", agentDir)
 
 	cloudURL := "https://api.logout-agent-current.example.com"
-	err := workspace.StoreAgentAccount(cloudURL, workspace.Account{AccessToken: "agent-token"}, true)
+	err := pkgWorkspace.StoreAgentAccount(cloudURL, pkgWorkspace.Account{AccessToken: "agent-token"}, true)
 	require.NoError(t, err)
 
 	cmd := NewLogoutCmd(&pkgWorkspace.MockContext{
-		GetStoredCredentialsF: func() (workspace.Credentials, error) {
-			return workspace.Credentials{}, assert.AnError
+		GetStoredCredentialsF: func() (pkgWorkspace.Credentials, error) {
+			return pkgWorkspace.Credentials{}, assert.AnError
 		},
 	})
 	var output bytes.Buffer
@@ -188,7 +187,7 @@ func TestLogoutCommandFallsBackToAgentCurrentCloud(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, output.String(), "Logged out of "+cloudURL)
 
-	account, err := workspace.GetAgentAccount(cloudURL)
+	account, err := pkgWorkspace.GetAgentAccount(cloudURL)
 	require.NoError(t, err)
 	assert.Empty(t, account.AccessToken)
 

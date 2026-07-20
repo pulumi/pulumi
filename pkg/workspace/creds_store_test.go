@@ -32,14 +32,7 @@ import (
 
 //nolint:paralleltest // mutates environment
 func TestConcurrentCredentialsWrites(t *testing.T) {
-	// save and remember to restore creds in ~/.pulumi/credentials
-	// as the test will be modifying them
-	oldCreds, err := GetStoredCredentials()
-	require.NoError(t, err)
-	defer func() {
-		err := StoreCredentials(oldCreds)
-		require.NoError(t, err)
-	}()
+	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
 
 	// use test creds that have at least 1 AccessToken to force a
 	// disk write and contention
@@ -57,7 +50,7 @@ func TestConcurrentCredentialsWrites(t *testing.T) {
 
 	// Store testCreds initially so asserts in
 	// GetStoredCredentials goroutines find the expected data
-	err = StoreCredentials(testCreds)
+	err := StoreCredentials(testCreds)
 	require.NoError(t, err)
 
 	for i := 0; i < n; i++ {
@@ -121,90 +114,21 @@ func TestAccountHasCredential(t *testing.T) {
 	}
 }
 
-func TestAccountSaveErrorsOnEmptySource(t *testing.T) {
-	t.Parallel()
-	// A literal Account has no source (it wasn't loaded from a file). Save must refuse rather
-	// than silently writing somewhere a caller didn't ask for.
-	err := Account{AccessToken: "x"}.Save("https://api.example.com", false)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not loaded")
-}
-
-//nolint:paralleltest // mutates environment and package global
-func TestAccountSaveWritesToSourceFile(t *testing.T) {
-	// File-as-a-unit invariant: an account loaded from a file must Save back to that same file.
-	// Loaded-from-default must not bleed into agent, and loaded-from-agent must not bleed into
-	// default (the bug the source field exists to prevent).
-	credsDir := t.TempDir()
-	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
-	t.Setenv("PULUMI_HOME", "")
-
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
-	t.Cleanup(func() {
-		require.NoError(t, DeleteAgentCredentials())
-		agentPulumiDir = oldAgentPulumiDir
-	})
-
-	const cloudURL = "https://api.example.com"
-
-	t.Run("loaded from default writes back to default", func(t *testing.T) {
-		require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "orig-default"}, false))
-		require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "orig-agent"}, false))
-
-		loaded, err := GetAccount(cloudURL)
-		require.NoError(t, err)
-		loaded.AccessToken = "updated-default"
-		require.NoError(t, loaded.Save(cloudURL, false))
-
-		fromDefault, err := GetAccount(cloudURL)
-		require.NoError(t, err)
-		assert.Equal(t, "updated-default", fromDefault.AccessToken)
-
-		fromAgent, err := GetAgentAccount(cloudURL)
-		require.NoError(t, err)
-		assert.Equal(t, "orig-agent", fromAgent.AccessToken,
-			"saving a default-sourced account must not touch the agent file")
-	})
-
-	t.Run("loaded from agent writes back to agent", func(t *testing.T) {
-		require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "orig-default"}, false))
-		require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "orig-agent"}, false))
-
-		loaded, err := GetAgentAccount(cloudURL)
-		require.NoError(t, err)
-		loaded.AccessToken = "updated-agent"
-		require.NoError(t, loaded.Save(cloudURL, false))
-
-		fromAgent, err := GetAgentAccount(cloudURL)
-		require.NoError(t, err)
-		assert.Equal(t, "updated-agent", fromAgent.AccessToken)
-
-		fromDefault, err := GetAccount(cloudURL)
-		require.NoError(t, err)
-		assert.Equal(t, "orig-default", fromDefault.AccessToken,
-			"saving an agent-sourced account must not touch the default file")
-	})
-}
-
 //nolint:paralleltest // mutates environment and package global
 func TestGetAccountWithAgentFallbackUsesRefreshOnlyDefaultAccount(t *testing.T) {
 	// An account with only a refresh token (no access token) must be treated as usable rather
 	// than skipped in favour of the agent fallback — the wrapper will mint the first access
 	// token on the initial 401.
-	oldCreds, err := GetStoredCredentials()
-	require.NoError(t, err)
+	t.Setenv("PULUMI_HOME", t.TempDir())
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
 	t.Cleanup(func() {
-		require.NoError(t, StoreCredentials(oldCreds))
 		require.NoError(t, DeleteAgentCredentials())
 		agentPulumiDir = oldAgentPulumiDir
 	})
 
 	setAgentEnv(t)
 	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
 
 	cloudURL := "https://api.refresh-only.example.com"
 	require.NoError(t, StoreAccount(cloudURL, Account{RefreshToken: "refresh-only"}, true))
@@ -372,19 +296,16 @@ func TestGetAgentAccessTokenExpiresAt(t *testing.T) {
 
 //nolint:paralleltest // mutates environment, default credentials, and package global
 func TestGetAccountWithAgentFallbackPrefersDefaultCredentials(t *testing.T) {
-	oldCreds, err := GetStoredCredentials()
-	require.NoError(t, err)
+	t.Setenv("PULUMI_HOME", t.TempDir())
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
 	t.Cleanup(func() {
-		require.NoError(t, StoreCredentials(oldCreds))
 		require.NoError(t, DeleteAgentCredentials())
 		agentPulumiDir = oldAgentPulumiDir
 	})
 
 	setAgentEnv(t)
 	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
 
 	cloudURL := "https://api.default-wins.example.com"
 	require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "default-token"}, true))
@@ -423,19 +344,16 @@ func TestGetAccountWithAgentFallbackDoesNotMergeFieldsAcrossFiles(t *testing.T) 
 	// File-as-a-unit invariant on the read side: a default account with an access token but no
 	// refresh token must not silently acquire a refresh token from the agent file. The loaded
 	// account is wholly from the source file, never a merge across the two.
-	oldCreds, err := GetStoredCredentials()
-	require.NoError(t, err)
+	t.Setenv("PULUMI_HOME", t.TempDir())
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
 	t.Cleanup(func() {
-		require.NoError(t, StoreCredentials(oldCreds))
 		require.NoError(t, DeleteAgentCredentials())
 		agentPulumiDir = oldAgentPulumiDir
 	})
 
 	setAgentEnv(t)
 	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv("PULUMI_HOME", "")
 
 	cloudURL := "https://api.no-cross-file-merge.example.com"
 	require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "default-access"}, true))

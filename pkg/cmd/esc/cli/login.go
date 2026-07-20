@@ -24,13 +24,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Account holds details about a Pulumi account: the shared Pulumi account plus the backend URL and
 // default org the ESC CLI resolved it against.
 type Account struct {
-	workspace.Account
+	pkgWorkspace.Account
 
 	// The URL of the account's backend.
 	BackendURL string
@@ -70,12 +69,12 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 	var acct *Account
 	creds, err := esc.ws.GetStoredCredentials()
 	if err != nil {
-		if !workspace.AgentCredentialsFallbackEnabled() {
+		if !pkgWorkspace.AgentCredentialsFallbackEnabled() {
 			return fmt.Errorf("could not determine current cloud: %w", err)
 		}
 		// Agent mode with unreadable credentials: treat as no stored account and defer to the
 		// login manager below.
-		creds = workspace.Credentials{}
+		creds = pkgWorkspace.Credentials{}
 	}
 	if a, ok := creds.Accounts[backendURL]; ok {
 		acct = &Account{Account: a, BackendURL: backendURL}

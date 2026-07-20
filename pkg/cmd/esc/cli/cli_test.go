@@ -143,9 +143,9 @@ func (env testEnviron) Vars() []string {
 
 // mockWorkspace returns a pulumi workspace Context that serves the given stored credentials,
 // used to drive ESC's credential reads in tests.
-func mockWorkspace(creds workspace.Credentials) pkgWorkspace.Context {
+func mockWorkspace(creds pkgWorkspace.Credentials) pkgWorkspace.Context {
 	return &pkgWorkspace.MockContext{
-		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+		GetStoredCredentialsF: func() (pkgWorkspace.Credentials, error) {
 			return creds, nil
 		},
 	}
@@ -268,7 +268,7 @@ type submittedChangeRequest struct {
 }
 
 type testLoginManager struct {
-	creds workspace.Credentials
+	creds pkgWorkspace.Credentials
 }
 
 // Current returns the current cloud backend if one is already logged in.
@@ -276,7 +276,7 @@ func (lm *testLoginManager) Current(
 	ctx context.Context,
 	cloudURL string,
 	insecure, setCurrent bool,
-) (*workspace.Account, error) {
+) (*pkgWorkspace.Account, error) {
 	if lm.creds.Current == "" {
 		return nil, nil
 	}
@@ -298,13 +298,13 @@ func (lm *testLoginManager) Login(
 	welcome func(display.Options),
 	current bool,
 	opts display.Options,
-) (*workspace.Account, error) {
+) (*pkgWorkspace.Account, error) {
 	acct, ok := lm.creds.Accounts[cloudURL]
 	if !ok {
 		if cloudURL != "https://api.pulumi.com" {
 			return nil, errors.New("unauthorized")
 		}
-		acct := workspace.Account{
+		acct := pkgWorkspace.Account{
 			Username:    "test-user",
 			AccessToken: "access-token",
 		}
@@ -324,13 +324,13 @@ func (lm *testLoginManager) LoginWithOIDCToken(
 	scope string,
 	expiration time.Duration,
 	setCurrent bool,
-) (*workspace.Account, error) {
+) (*pkgWorkspace.Account, error) {
 	acct, ok := lm.creds.Accounts[cloudURL]
 	if !ok {
 		if cloudURL != "https://api.pulumi.com" {
 			return nil, errors.New("unauthorized")
 		}
-		acct := workspace.Account{
+		acct := pkgWorkspace.Account{
 			Username:    "test-user",
 			AccessToken: "access-token",
 		}
@@ -1597,7 +1597,7 @@ type testExec struct {
 
 	parentPath string
 	login      *testLoginManager
-	creds      workspace.Credentials
+	creds      pkgWorkspace.Credentials
 	client     *testPulumiClient
 }
 
@@ -2029,9 +2029,9 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 		}
 	}
 
-	creds := workspace.Credentials{
+	creds := pkgWorkspace.Credentials{
 		Current: "https://api.fake.pulumi.com",
-		Accounts: map[string]workspace.Account{
+		Accounts: map[string]pkgWorkspace.Account{
 			"https://api.pulumi.com": {
 				Username:    "test-user",
 				AccessToken: "access-token",

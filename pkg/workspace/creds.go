@@ -61,7 +61,7 @@ func GetCurrentCloudURLWithAgentFallback(ws Context, e env.Env, project *workspa
 		return url, nil
 	}
 
-	if !workspace.AgentCredentialsFallbackEnabled() {
+	if !AgentCredentialsFallbackEnabled() {
 		logging.V(7).Infof("Could not get cloud URL from default credentials without agent fallback: %v", err)
 		return "", err
 	}
@@ -70,7 +70,7 @@ func GetCurrentCloudURLWithAgentFallback(ws Context, e env.Env, project *workspa
 	logging.V(7).Infof(
 		"Could not get cloud URL from default credentials in agent mode (%s); checking shared agent credentials: %v",
 		agent, err)
-	agentCreds, agentErr := workspace.GetAgentStoredCredentials()
+	agentCreds, agentErr := GetAgentStoredCredentials()
 	if agentErr != nil {
 		return "", fmt.Errorf("could not get cloud url from agent credentials: %w", errors.Join(err, agentErr))
 	}

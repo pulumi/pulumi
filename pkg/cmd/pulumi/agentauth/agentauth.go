@@ -23,9 +23,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 var validateAgentClaim = func(ctx context.Context, cloudURL, claimToken string) (bool, error) {
@@ -40,7 +40,7 @@ func MaybePrintClaimWarning(ctx context.Context, stderr io.Writer) {
 	}
 
 	now := time.Now()
-	deleted, err := workspace.DeleteExpiredAgentCredentials(now)
+	deleted, err := pkgWorkspace.DeleteExpiredAgentCredentials(now)
 	if err != nil {
 		slog.InfoContext(ctx, "Could not delete expired agent credentials", "err", err)
 		return
@@ -49,14 +49,14 @@ func MaybePrintClaimWarning(ctx context.Context, stderr io.Writer) {
 		return
 	}
 
-	claim, err := workspace.GetAgentClaim()
+	claim, err := pkgWorkspace.GetAgentClaim()
 	if err != nil || claim.ClaimURL == "" {
 		return
 	}
 	if claim.CloudURL == "" || !httpstate.AgentCredentialsUsed(ctx, claim.CloudURL) {
 		return
 	}
-	account, err := workspace.GetAgentAccount(claim.CloudURL)
+	account, err := pkgWorkspace.GetAgentAccount(claim.CloudURL)
 	if err != nil {
 		slog.InfoContext(ctx, "Could not read agent account credentials", "err", err)
 		return
@@ -70,7 +70,7 @@ func MaybePrintClaimWarning(ctx context.Context, stderr io.Writer) {
 		return
 	}
 
-	warning := workspace.FormatAgentClaimInstruction(claim.ClaimURL, accessTokenExpiresAt, claim.ValidUntil, now)
+	warning := pkgWorkspace.FormatAgentClaimInstruction(claim.ClaimURL, accessTokenExpiresAt, claim.ValidUntil, now)
 	_, err = io.WriteString(stderr, warning)
 	contract.IgnoreError(err)
 }
@@ -84,36 +84,36 @@ func AuthRequiredMessage(now time.Time) string {
 		return ""
 	}
 
-	claim, err := workspace.GetAgentClaim()
+	claim, err := pkgWorkspace.GetAgentClaim()
 	if err != nil || claim.CloudURL == "" {
 		return ""
 	}
-	account, err := workspace.GetAgentAccount(claim.CloudURL)
+	account, err := pkgWorkspace.GetAgentAccount(claim.CloudURL)
 	if err != nil {
 		return ""
 	}
-	expiresAt, valid := workspace.AgentAccessTokenExpiresAt(account, now)
+	expiresAt, valid := pkgWorkspace.AgentAccessTokenExpiresAt(account, now)
 	if claim.ClaimUnavailableAt != nil {
-		return workspace.FormatAgentLoginRequiredInstruction(
-			workspace.AgentLoginClaimUnavailable, expiresAt, now)
+		return pkgWorkspace.FormatAgentLoginRequiredInstruction(
+			pkgWorkspace.AgentLoginClaimUnavailable, expiresAt, now)
 	}
 	if claim.ClaimToken != "" {
 		claimable, err := validateAgentClaim(context.Background(), claim.CloudURL, claim.ClaimToken)
 		if err != nil {
 			slog.Info("Could not validate agent claim token", "cloud-url", claim.CloudURL, "err", err)
 		} else if !claimable {
-			if err = workspace.MarkAgentClaimUnavailable(now); err != nil {
+			if err = pkgWorkspace.MarkAgentClaimUnavailable(now); err != nil {
 				slog.Info("Could not mark agent claim unavailable", "cloud-url", claim.CloudURL, "err", err)
 			}
-			return workspace.FormatAgentLoginRequiredInstruction(
-				workspace.AgentLoginClaimUnavailable, expiresAt, now)
+			return pkgWorkspace.FormatAgentLoginRequiredInstruction(
+				pkgWorkspace.AgentLoginClaimUnavailable, expiresAt, now)
 		} else {
-			return workspace.FormatAgentClaimInstruction(claim.ClaimURL, expiresAt, claim.ValidUntil, now)
+			return pkgWorkspace.FormatAgentClaimInstruction(claim.ClaimURL, expiresAt, claim.ValidUntil, now)
 		}
 	}
 	if valid && expiresAt != nil {
-		return workspace.FormatAgentLoginRequiredInstruction(
-			workspace.AgentLoginTokenRejected, expiresAt, now)
+		return pkgWorkspace.FormatAgentLoginRequiredInstruction(
+			pkgWorkspace.AgentLoginTokenRejected, expiresAt, now)
 	}
-	return workspace.FormatAgentClaimInstruction(claim.ClaimURL, expiresAt, claim.ValidUntil, now)
+	return pkgWorkspace.FormatAgentClaimInstruction(claim.ClaimURL, expiresAt, claim.ValidUntil, now)
 }

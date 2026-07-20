@@ -18,22 +18,22 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	sdkWorkspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetCurrentCloudURL(t *testing.T) {
 	t.Parallel()
 
-	credsF := func() (workspace.Credentials, error) {
-		return workspace.Credentials{Current: "https://credentials.com"}, nil
+	credsF := func() (Credentials, error) {
+		return Credentials{Current: "https://credentials.com"}, nil
 	}
 
 	tests := []struct {
 		name           string
 		ws             Context
 		e              env.Env
-		project        *workspace.Project
+		project        *sdkWorkspace.Project
 		expectedString string
 		expectedError  error
 	}{
@@ -57,7 +57,7 @@ func TestGetCurrentCloudURL(t *testing.T) {
 				GetStoredCredentialsF: credsF,
 			},
 			e:              env.NewEnv(env.MapStore{}),
-			project:        &workspace.Project{Backend: &workspace.ProjectBackend{URL: "https://project.com"}},
+			project:        &sdkWorkspace.Project{Backend: &sdkWorkspace.ProjectBackend{URL: "https://project.com"}},
 			expectedString: "https://project.com",
 		},
 		{
@@ -68,14 +68,14 @@ func TestGetCurrentCloudURL(t *testing.T) {
 			e: env.NewEnv(env.MapStore{
 				env.BackendURL.Var().Name(): "https://env.com",
 			}),
-			project:        &workspace.Project{Backend: &workspace.ProjectBackend{URL: "https://project.com"}},
+			project:        &sdkWorkspace.Project{Backend: &sdkWorkspace.ProjectBackend{URL: "https://project.com"}},
 			expectedString: "https://env.com",
 		},
 		{
 			name: "report error from stored credentials",
 			ws: &MockContext{
-				GetStoredCredentialsF: func() (workspace.Credentials, error) {
-					return workspace.Credentials{}, assert.AnError
+				GetStoredCredentialsF: func() (Credentials, error) {
+					return Credentials{}, assert.AnError
 				},
 			},
 			e:             env.NewEnv(env.MapStore{}),

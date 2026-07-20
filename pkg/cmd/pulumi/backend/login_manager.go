@@ -61,7 +61,7 @@ type LoginManager interface {
 		project *workspace.Project,
 		setCurrent bool,
 		insecure bool,
-		authContext workspace.AuthContext,
+		authContext pkgWorkspace.AuthContext,
 	) (backend.Backend, error)
 }
 
@@ -119,9 +119,9 @@ func (f *lm) LoginFromAuthContext(
 	project *workspace.Project,
 	setCurrent bool,
 	insecure bool,
-	authContext workspace.AuthContext,
+	authContext pkgWorkspace.AuthContext,
 ) (backend.Backend, error) {
-	if authContext.GrantType == workspace.AuthContextGrantTypeTokenExchange {
+	if authContext.GrantType == pkgWorkspace.AuthContextGrantTypeTokenExchange {
 		lm := httpstate.NewLoginManager()
 		_, err := lm.LoginWithOIDCToken(
 			ctx, sink, url, insecure, authContext.Token, authContext.Organization, authContext.Scope,
@@ -162,7 +162,7 @@ type MockLoginManager struct {
 		project *workspace.Project,
 		setCurrent bool,
 		insecure bool,
-		authContext workspace.AuthContext,
+		authContext pkgWorkspace.AuthContext,
 	) (backend.Backend, error)
 }
 
@@ -191,7 +191,7 @@ func (lm *MockLoginManager) LoginFromAuthContext(
 	project *workspace.Project,
 	setCurrent bool,
 	insecure bool,
-	authContext workspace.AuthContext,
+	authContext pkgWorkspace.AuthContext,
 ) (backend.Backend, error) {
 	if lm.LoginFromAuthContextF != nil {
 		return lm.LoginFromAuthContextF(ctx, sink, url, project, setCurrent, insecure, authContext)

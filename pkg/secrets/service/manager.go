@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -243,7 +244,7 @@ func NewServiceSecretsManagerFromState(ctx context.Context, state json.RawMessag
 // getServiceSecretsAccount returns credentials for a service secrets manager,
 // falling back to shared agent credentials when an agent cannot use default
 // credentials and no explicit Pulumi credential path was configured.
-func getServiceSecretsAccount(cloudURL string) (workspace.Account, error) {
-	account, _, err := workspace.GetAccountWithAgentFallback(cloudURL)
+func getServiceSecretsAccount(cloudURL string) (pkgWorkspace.Account, error) {
+	account, _, err := pkgWorkspace.GetAccountWithAgentFallback(cloudURL)
 	return account, err
 }

@@ -736,8 +736,8 @@ func TestStackMigrate_RejectsSameBackend(t *testing.T) { //nolint: paralleltest
 		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return nil, "", workspace.ErrProjectNotFound
 		},
-		GetStoredCredentialsF: func() (workspace.Credentials, error) {
-			return workspace.Credentials{Current: url}, nil
+		GetStoredCredentialsF: func() (pkgWorkspace.Credentials, error) {
+			return pkgWorkspace.Credentials{Current: url}, nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
@@ -2930,8 +2930,8 @@ func TestStackMigrate_RefusesLegacyRenameWithoutProject(t *testing.T) { //nolint
 		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return nil, "", workspace.ErrProjectNotFound
 		},
-		GetStoredCredentialsF: func() (workspace.Credentials, error) {
-			return workspace.Credentials{Current: "https://api.pulumi.com"}, nil
+		GetStoredCredentialsF: func() (pkgWorkspace.Credentials, error) {
+			return pkgWorkspace.Credentials{Current: "https://api.pulumi.com"}, nil
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{

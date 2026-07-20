@@ -26,10 +26,10 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdDo "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/do"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
@@ -196,9 +196,9 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	err := workspace.StoreCredentials(workspace.Credentials{
+	err := pkgWorkspace.StoreCredentials(pkgWorkspace.Credentials{
 		Current: srv.URL,
-		Accounts: map[string]workspace.Account{
+		Accounts: map[string]pkgWorkspace.Account{
 			srv.URL: {
 				AccessToken: token,
 			},
@@ -265,9 +265,9 @@ func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	err := workspace.StoreCredentials(workspace.Credentials{
+	err := pkgWorkspace.StoreCredentials(pkgWorkspace.Credentials{
 		Current: "https://example.com",
-		Accounts: map[string]workspace.Account{
+		Accounts: map[string]pkgWorkspace.Account{
 			srv.URL: {
 				AccessToken: token,
 			},

@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type Options struct {
@@ -181,7 +180,7 @@ func valueOrDefault[T comparable](v, def T) T {
 func (esc *escCommand) lookupDefaultOrg(ctx context.Context, backendURL, username string) (string, error) {
 	// Read the locally-configured default org from Pulumi's shared config, exactly as the rest of
 	// the Pulumi CLI does (see pkg/backend/organizations.go).
-	cfg, err := workspace.GetPulumiConfig()
+	cfg, err := pkgWorkspace.GetPulumiConfig()
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return "", err
 	}

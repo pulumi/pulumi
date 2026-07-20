@@ -56,6 +56,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -677,7 +678,7 @@ func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Proj
 	if err != nil {
 		return nil, err
 	}
-	return be, workspace.StoreAccount(be.URL(), workspace.Account{}, true)
+	return be, pkgWorkspace.StoreAccount(be.URL(), pkgWorkspace.Account{}, true)
 }
 
 func (b *diyBackend) getReference(ref backend.StackReference) (*diyBackendReference, error) {

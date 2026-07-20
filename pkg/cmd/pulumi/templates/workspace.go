@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
 type getProjectTemplateFunc = func(ctx context.Context, templateNamePathOrURL string, offline bool,
@@ -72,7 +72,7 @@ func retrievePrivatePulumiCloudTemplate(templateURL string) (TemplateRepository,
 	// e.g. `pulumi login https://api.pulumi.com` or `pulumi login https://api.acme.org`
 	templatePulumiCloudHost := "https://" + u.Host
 
-	account, _, err := workspace.GetAccountWithAgentFallback(templatePulumiCloudHost)
+	account, _, err := pkgWorkspace.GetAccountWithAgentFallback(templatePulumiCloudHost)
 	if err != nil {
 		return TemplateRepository{}, fmt.Errorf(
 			"looking up pulumi cloud backend %s: %w",

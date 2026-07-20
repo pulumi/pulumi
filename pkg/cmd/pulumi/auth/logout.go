@@ -118,30 +118,30 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 // deleteAllAccounts removes user credentials and, in agent mode, any shared
 // temporary agent credentials.
 func deleteAllAccounts() error {
-	if !workspace.AgentCredentialsFallbackEnabled() {
-		return workspace.DeleteAllAccounts()
+	if !pkgWorkspace.AgentCredentialsFallbackEnabled() {
+		return pkgWorkspace.DeleteAllAccounts()
 	}
-	if err := workspace.DeleteAllAccounts(); err != nil {
-		return workspace.DeleteAgentCredentials()
+	if err := pkgWorkspace.DeleteAllAccounts(); err != nil {
+		return pkgWorkspace.DeleteAgentCredentials()
 	}
-	return workspace.DeleteAgentCredentials()
+	return pkgWorkspace.DeleteAgentCredentials()
 }
 
 // deleteAccount removes credentials for a cloud URL, falling back to shared
 // temporary agent credentials when default credentials are unavailable.
 func deleteAccount(cloudURL string) error {
-	if !workspace.AgentCredentialsFallbackEnabled() {
-		return workspace.DeleteAccount(cloudURL)
+	if !pkgWorkspace.AgentCredentialsFallbackEnabled() {
+		return pkgWorkspace.DeleteAccount(cloudURL)
 	}
-	creds, err := workspace.GetStoredCredentials()
+	creds, err := pkgWorkspace.GetStoredCredentials()
 	// Tokenless backends, such as DIY backends, still belong to the default credential store.
 	if err == nil && credentialsContainAccount(creds, cloudURL) {
-		return workspace.DeleteAccount(cloudURL)
+		return pkgWorkspace.DeleteAccount(cloudURL)
 	}
-	return workspace.DeleteAgentAccount(cloudURL)
+	return pkgWorkspace.DeleteAgentAccount(cloudURL)
 }
 
-func credentialsContainAccount(creds workspace.Credentials, cloudURL string) bool {
+func credentialsContainAccount(creds pkgWorkspace.Credentials, cloudURL string) bool {
 	if creds.Current == cloudURL {
 		return true
 	}

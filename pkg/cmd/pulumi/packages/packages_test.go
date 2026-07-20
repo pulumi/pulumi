@@ -96,8 +96,8 @@ func (m mockInstallContext) LoadBaseProjectFrom(
 	return m.baseProject, "Pulumi.yaml", nil
 }
 
-func (mockInstallContext) GetStoredCredentials() (workspace.Credentials, error) {
-	return workspace.Credentials{}, nil
+func (mockInstallContext) GetStoredCredentials() (pkgWorkspace.Credentials, error) {
+	return pkgWorkspace.Credentials{}, nil
 }
 
 func (m mockInstallContext) GetPluginPath(context.Context, workspace.PluginDescriptor) (string, error) {

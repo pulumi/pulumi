@@ -23,7 +23,7 @@ import (
 type MockContext struct {
 	NewF                  func(dir string) (W, error)
 	ReadProjectF          func(dir string) (*workspace.Project, string, error)
-	GetStoredCredentialsF func() (workspace.Credentials, error)
+	GetStoredCredentialsF func() (Credentials, error)
 	LoadPluginProjectAtF  func(ctx context.Context, path string) (*workspace.PluginProject, string, error)
 	LoadBaseProjectFromF  func(ctx context.Context, path string) (workspace.BaseProject, string, error)
 }
@@ -42,11 +42,11 @@ func (c *MockContext) ReadProject(dir string) (*workspace.Project, string, error
 	return nil, "", workspace.ErrProjectNotFound
 }
 
-func (c *MockContext) GetStoredCredentials() (workspace.Credentials, error) {
+func (c *MockContext) GetStoredCredentials() (Credentials, error) {
 	if c.GetStoredCredentialsF != nil {
 		return c.GetStoredCredentialsF()
 	}
-	return workspace.Credentials{}, nil
+	return Credentials{}, nil
 }
 
 func (c *MockContext) LoadPluginProjectAt(ctx context.Context, path string) (*workspace.PluginProject, string, error) {

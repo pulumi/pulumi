@@ -277,7 +277,7 @@ func New(ctx context.Context, d diag.Sink,
 ) (Backend, error) {
 	contract.Requiref(d != nil, "d", "expected a non-nil diag.Sink")
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
-	account, err := getBackendAccount(ctx, cloudURL)
+	account, fromAgent, err := getBackendAccount(ctx, cloudURL)
 	if err != nil {
 		return nil, fmt.Errorf("getting stored credentials: %w", err)
 	}
@@ -286,11 +286,14 @@ func New(ctx context.Context, d diag.Sink,
 	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
 	apiClient.WithRefresh(account.RefreshToken, func(at string, expiresAt time.Time, rt string) error {
 		account.SetCredentials(at, expiresAt, rt)
-		return account.Save(cloudURL, false)
+		if fromAgent {
+			return pkgWorkspace.StoreAgentAccount(cloudURL, account, false)
+		}
+		return pkgWorkspace.StoreAccount(cloudURL, account, false)
 	})
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
-	config, err := workspace.GetPulumiConfig()
+	config, err := pkgWorkspace.GetPulumiConfig()
 	if err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("get Pulumi config: %w", err)
 	}
@@ -330,11 +333,13 @@ func New(ctx context.Context, d diag.Sink,
 }
 
 // getBackendAccount returns account credentials for a backend, falling back to
-// the shared agent cache when an agent cannot read the default credentials.
-func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account, error) {
-	account, fromAgent, err := workspace.GetAccountWithAgentFallback(cloudURL)
+// the shared agent cache when an agent cannot read the default credentials. The
+// returned fromAgent flag identifies which credentials file the account came
+// from so callers can persist refreshes back to the same file.
+func getBackendAccount(ctx context.Context, cloudURL string) (pkgWorkspace.Account, bool, error) {
+	account, fromAgent, err := pkgWorkspace.GetAccountWithAgentFallback(cloudURL)
 	if err != nil {
-		return workspace.Account{}, err
+		return pkgWorkspace.Account{}, false, err
 	}
 	if fromAgent {
 		logging.V(7).Infof("Using backend account for %q from shared agent credentials", cloudURL)
@@ -344,20 +349,20 @@ func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account,
 	} else {
 		logging.V(7).Infof("No backend account for %q found", cloudURL)
 	}
-	return account, nil
+	return account, fromAgent, nil
 }
 
 // hasExplicitPulumiPathEnv reports whether the user explicitly selected a
 // Pulumi credential or home path, disabling implicit agent fallback paths.
 func hasExplicitPulumiPathEnv() bool {
-	return os.Getenv(workspace.PulumiCredentialsPathEnvVar) != "" || os.Getenv(env.Home.Var().Name()) != ""
+	return os.Getenv(pkgWorkspace.PulumiCredentialsPathEnvVar) != "" || os.Getenv(env.Home.Var().Name()) != ""
 }
 
 // storeUserAccount stores credentials from a user-controlled source. In agent
 // mode, if the default path is not writable, it skips persistence rather than
 // copying user credentials into the shared agent cache.
-func storeUserAccount(cloudURL string, account workspace.Account, setCurrent bool) error {
-	err := workspace.StoreAccount(cloudURL, account, setCurrent)
+func storeUserAccount(cloudURL string, account pkgWorkspace.Account, setCurrent bool) error {
+	err := pkgWorkspace.StoreAccount(cloudURL, account, setCurrent)
 	if err == nil {
 		logging.V(7).Infof("Stored credentials for %q in default credentials", cloudURL)
 		return nil
@@ -384,7 +389,7 @@ func loginWithBrowser(
 	welcome func(display.Options),
 	current bool,
 	opts display.Options,
-) (*workspace.Account, error) {
+) (*pkgWorkspace.Account, error) {
 	// Locally, we generate a nonce and spin up a web server listening on a random port on localhost. We then open a
 	// browser to a special endpoint on the Pulumi.com console, passing the generated nonce as well as the port of the
 	// webserver we launched. This endpoint does the OAuth flow and when it completes, redirects to localhost passing
@@ -459,7 +464,7 @@ func loginWithBrowser(
 		return nil, err
 	}
 
-	account := workspace.Account{
+	account := pkgWorkspace.Account{
 		AccessToken:      accessToken,
 		Username:         username,
 		Organizations:    organizations,
@@ -467,7 +472,7 @@ func loginWithBrowser(
 		Insecure:         insecure,
 		TokenInformation: tokenInfo,
 	}
-	if err = workspace.StoreAccount(cloudURL, account, current); err != nil {
+	if err = pkgWorkspace.StoreAccount(cloudURL, account, current); err != nil {
 		return nil, err
 	}
 
@@ -482,7 +487,7 @@ func loginWithBrowser(
 // LoginManager provides a slim wrapper around functions related to backend logins.
 type LoginManager interface {
 	// Current returns the current cloud backend if one is already logged in.
-	Current(ctx context.Context, cloudURL string, insecure, setCurrent bool) (*workspace.Account, error)
+	Current(ctx context.Context, cloudURL string, insecure, setCurrent bool) (*pkgWorkspace.Account, error)
 
 	// Login logs into the target cloud URL and returns the cloud backend for it.
 	Login(
@@ -494,7 +499,7 @@ type LoginManager interface {
 		welcome func(display.Options),
 		setCurrent bool,
 		opts display.Options,
-	) (*workspace.Account, error)
+	) (*pkgWorkspace.Account, error)
 
 	// LoginWithOIDCToken logs into the target cloud URL using OIDC token exchange.
 	// It exchanges the provided OIDC token for a cloud backend access token and stores the credentials.
@@ -509,7 +514,7 @@ type LoginManager interface {
 		scope string,
 		expiration time.Duration,
 		setCurrent bool,
-	) (*workspace.Account, error)
+	) (*pkgWorkspace.Account, error)
 }
 
 // NewLoginManager returns a LoginManager for handling backend logins.
@@ -533,8 +538,8 @@ func validateStoredAccount(
 	ctx context.Context,
 	cloudURL string,
 	insecure bool,
-	account workspace.Account,
-) (workspace.Account, bool, error) {
+	account pkgWorkspace.Account,
+) (pkgWorkspace.Account, bool, error) {
 	if !account.HasCredential() {
 		return account, false, nil
 	}
@@ -563,7 +568,7 @@ func validateStoredAccount(
 		if errors.Is(err, ErrUnauthorized) {
 			valid = false
 		} else if err != nil {
-			return workspace.Account{}, false, err
+			return pkgWorkspace.Account{}, false, err
 		} else {
 			username, organizations = fetchedUser, fetchedOrgs
 			// /api/user reports Name/Organization/Team only; preserve the locally
@@ -597,7 +602,7 @@ func (m defaultLoginManager) Current(
 	cloudURL string,
 	insecure bool,
 	setCurrent bool,
-) (*workspace.Account, error) {
+) (*pkgWorkspace.Account, error) {
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
@@ -608,7 +613,7 @@ func (m defaultLoginManager) Current(
 	// either matches PULUMI_ACCESS_TOKEN or PULUMI_ACCESS_TOKEN
 	// is not set use it.  If PULUMI_ACCESS_TOKEN does not match,
 	// we prefer that.
-	existingAccount, err := workspace.GetAccount(cloudURL)
+	existingAccount, err := pkgWorkspace.GetAccount(cloudURL)
 	if err == nil && existingAccount.HasCredential() {
 		logging.V(7).Infof("Found stored credentials for %q in default credentials", cloudURL)
 	} else if err != nil {
@@ -661,7 +666,7 @@ func (m defaultLoginManager) Current(
 		return nil, err
 	}
 
-	account := workspace.Account{
+	account := pkgWorkspace.Account{
 		AccessToken:      accessToken,
 		Username:         username,
 		Organizations:    organizations,
@@ -685,15 +690,15 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	insecure bool,
 	setCurrent bool,
 	agentName string,
-) (*workspace.Account, error) {
+) (*pkgWorkspace.Account, error) {
 	now := time.Now()
-	if deleted, err := workspace.DeleteExpiredAgentCredentials(now); err != nil {
+	if deleted, err := pkgWorkspace.DeleteExpiredAgentCredentials(now); err != nil {
 		return nil, err
 	} else if deleted {
 		logging.V(7).Infof("Deleted expired shared agent credentials")
 	}
 
-	agentAccount, err := workspace.GetAgentAccount(cloudURL)
+	agentAccount, err := pkgWorkspace.GetAgentAccount(cloudURL)
 	if err != nil {
 		return nil, err
 	}
@@ -706,13 +711,13 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		}
 		if valid {
 			logging.V(7).Infof("Using valid shared agent credentials for %q", cloudURL)
-			if err = agentAccount.Save(cloudURL, setCurrent); err != nil {
+			if err = pkgWorkspace.StoreAgentAccount(cloudURL, agentAccount, setCurrent); err != nil {
 				return nil, err
 			}
 			MarkAgentCredentialsUsed(ctx, cloudURL)
 			return &agentAccount, nil
 		}
-		if expiresAt, tokenValid := workspace.AgentAccessTokenExpiresAt(agentAccount, now); tokenValid {
+		if expiresAt, tokenValid := pkgWorkspace.AgentAccessTokenExpiresAt(agentAccount, now); tokenValid {
 			logging.V(7).Infof(
 				"Shared agent credentials for %q were rejected by the service but are locally valid until %s; "+
 					"not creating a new agent account",
@@ -721,7 +726,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 				"shared agent credentials for %q can no longer authenticate; ask the user to run `pulumi login`: %w",
 				cloudURL, errors.Join(ErrUnauthorized, backenderr.LoginRequiredError{}))
 		}
-		claim, err := workspace.GetAgentClaim()
+		claim, err := pkgWorkspace.GetAgentClaim()
 		if err != nil {
 			return nil, err
 		}
@@ -758,7 +763,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	if err != nil {
 		return nil, err
 	}
-	account := workspace.Account{
+	account := pkgWorkspace.Account{
 		Username:         username,
 		Organizations:    organizations,
 		TokenInformation: tokenInfo,
@@ -766,18 +771,18 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		Insecure:         insecure,
 	}
 	account.SetCredentials(signup.AccessToken, signup.AccessTokenValidUntil, signup.RefreshToken)
-	if err = workspace.StoreAgentAccount(cloudURL, account, setCurrent); err != nil {
+	if err = pkgWorkspace.StoreAgentAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
 	MarkAgentCredentialsUsed(ctx, cloudURL)
 	logging.V(7).Infof("Stored shared agent credentials for %q", cloudURL)
-	claim := workspace.AgentClaim{
+	claim := pkgWorkspace.AgentClaim{
 		ClaimURL:   claimURL,
 		ClaimToken: signup.ClaimToken,
 		CloudURL:   cloudURL,
 		ValidUntil: signup.ClaimTokenValidUntil,
 	}
-	if err = workspace.StoreAgentClaim(claim); err != nil {
+	if err = pkgWorkspace.StoreAgentClaim(claim); err != nil {
 		return nil, err
 	}
 	logging.V(7).Infof("Stored shared agent claim metadata for %q; valid until %s", cloudURL, claim.ValidUntil)
@@ -795,7 +800,7 @@ func (m defaultLoginManager) Login(
 	welcome func(display.Options),
 	setCurrent bool,
 	opts display.Options,
-) (*workspace.Account, error) {
+) (*pkgWorkspace.Account, error) {
 	current, err := m.Current(ctx, cloudURL, insecure, setCurrent)
 	if err != nil {
 		return nil, err
@@ -870,7 +875,7 @@ func (m defaultLoginManager) Login(
 		return nil, err
 	}
 
-	account := workspace.Account{
+	account := pkgWorkspace.Account{
 		AccessToken:      accessToken,
 		Username:         username,
 		Organizations:    organizations,
@@ -895,7 +900,7 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	scope string,
 	expiration time.Duration,
 	setCurrent bool,
-) (*workspace.Account, error) {
+) (*pkgWorkspace.Account, error) {
 	accessToken, expiresAt, err := exchangeOidcToken(
 		ctx, sink, cloudURL, insecure, oidcTokenSource, organization, scope, expiration)
 	if err != nil {
@@ -907,7 +912,7 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 		return nil, err
 	}
 
-	account := workspace.Account{
+	account := pkgWorkspace.Account{
 		Username:         username,
 		Organizations:    organizations,
 		TokenInformation: tokenInfo,
@@ -2945,7 +2950,7 @@ func detectUserInfo(
 	client *client.Client,
 ) *promise.Promise[userInfo] {
 	return promise.Run(func() (userInfo, error) {
-		account, err := workspace.GetAccount(cloudURL)
+		account, err := pkgWorkspace.GetAccount(cloudURL)
 		if err == nil && account.Username != "" {
 			logging.V(1).Infof("found cached username for access token")
 			return userInfo{

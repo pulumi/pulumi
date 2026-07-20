@@ -23,7 +23,7 @@ import (
 )
 
 func getBackendConfigDefaultOrg(project *workspace.Project) (string, error) {
-	config, err := workspace.GetPulumiConfig()
+	config, err := pkgWorkspace.GetPulumiConfig()
 	if err != nil && !os.IsNotExist(err) {
 		return "", err
 	}

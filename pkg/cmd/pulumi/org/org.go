@@ -134,7 +134,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 				return err
 			}
 
-			return workspace.SetBackendConfigDefaultOrg(cloudURL, orgName)
+			return pkgWorkspace.SetBackendConfigDefaultOrg(cloudURL, orgName)
 		},
 	}
 

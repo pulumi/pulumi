@@ -34,27 +34,28 @@ import (
 //nolint:paralleltest // mutates environment and shared temporary agent credentials
 func TestGetCurrentCloudURLFallsBackToAgentCredentials(t *testing.T) {
 	clearAIAgentEnv(t)
-	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	oldAgentCreds, err := pkgWorkspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
-	oldAgentClaim, err := workspace.GetAgentClaim()
+	oldAgentClaim, err := pkgWorkspace.GetAgentClaim()
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, workspace.DeleteAgentCredentials())
-		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		require.NoError(t, pkgWorkspace.DeleteAgentCredentials())
+		require.NoError(t, pkgWorkspace.StoreAgentCredentials(oldAgentCreds))
 		if oldAgentClaim.ClaimURL != "" {
-			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+			require.NoError(t, pkgWorkspace.StoreAgentClaim(oldAgentClaim))
 		}
 	})
 
 	t.Setenv(env.BackendURL.Var().Name(), "")
 	t.Setenv("CODEX_SANDBOX", "1")
 
-	err = workspace.StoreAgentAccount("https://api.agent.example", workspace.Account{AccessToken: "token-value"}, true)
+	err = pkgWorkspace.StoreAgentAccount(
+		"https://api.agent.example", pkgWorkspace.Account{AccessToken: "token-value"}, true)
 	require.NoError(t, err)
 
 	ws := &pkgWorkspace.MockContext{
-		GetStoredCredentialsF: func() (workspace.Credentials, error) {
-			return workspace.Credentials{}, assert.AnError
+		GetStoredCredentialsF: func() (pkgWorkspace.Credentials, error) {
+			return pkgWorkspace.Credentials{}, assert.AnError
 		},
 	}
 
@@ -71,8 +72,8 @@ func TestGetCurrentCloudURLReturnsEmptyAgentCurrent(t *testing.T) {
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
 
 	ws := &pkgWorkspace.MockContext{
-		GetStoredCredentialsF: func() (workspace.Credentials, error) {
-			return workspace.Credentials{}, assert.AnError
+		GetStoredCredentialsF: func() (pkgWorkspace.Credentials, error) {
+			return pkgWorkspace.Credentials{}, assert.AnError
 		},
 	}
 
@@ -91,8 +92,8 @@ func TestGetCurrentCloudURLReturnsAgentCredentialReadError(t *testing.T) {
 	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", agentDir)
 
 	ws := &pkgWorkspace.MockContext{
-		GetStoredCredentialsF: func() (workspace.Credentials, error) {
-			return workspace.Credentials{}, assert.AnError
+		GetStoredCredentialsF: func() (pkgWorkspace.Credentials, error) {
+			return pkgWorkspace.Credentials{}, assert.AnError
 		},
 	}
 
@@ -104,12 +105,12 @@ func TestGetCurrentCloudURLReturnsAgentCredentialReadError(t *testing.T) {
 func TestGetCurrentCloudURLDoesNotFallbackWithExplicitPath(t *testing.T) {
 	clearAIAgentEnv(t)
 	t.Setenv(env.BackendURL.Var().Name(), "")
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, "/explicit/pulumi")
+	t.Setenv(pkgWorkspace.PulumiCredentialsPathEnvVar, "/explicit/pulumi")
 	t.Setenv("CODEX_SANDBOX", "1")
 
 	ws := &pkgWorkspace.MockContext{
-		GetStoredCredentialsF: func() (workspace.Credentials, error) {
-			return workspace.Credentials{}, assert.AnError
+		GetStoredCredentialsF: func() (pkgWorkspace.Credentials, error) {
+			return pkgWorkspace.Credentials{}, assert.AnError
 		},
 	}
 
@@ -123,8 +124,8 @@ func TestGetCurrentCloudURLReturnsDefaultCredentialErrorsOutsideAgents(t *testin
 	t.Setenv(env.BackendURL.Var().Name(), "")
 
 	ws := &pkgWorkspace.MockContext{
-		GetStoredCredentialsF: func() (workspace.Credentials, error) {
-			return workspace.Credentials{}, assert.AnError
+		GetStoredCredentialsF: func() (pkgWorkspace.Credentials, error) {
+			return pkgWorkspace.Credentials{}, assert.AnError
 		},
 	}
 
@@ -147,8 +148,8 @@ func TestCurrentBackendReturnsCloudURLError(t *testing.T) {
 	clearAIAgentEnv(t)
 	t.Setenv(env.BackendURL.Var().Name(), "")
 	ws := &pkgWorkspace.MockContext{
-		GetStoredCredentialsF: func() (workspace.Credentials, error) {
-			return workspace.Credentials{}, assert.AnError
+		GetStoredCredentialsF: func() (pkgWorkspace.Credentials, error) {
+			return pkgWorkspace.Credentials{}, assert.AnError
 		},
 	}
 
@@ -162,8 +163,8 @@ func TestNonInteractiveCurrentBackendReturnsCloudURLError(t *testing.T) {
 	clearAIAgentEnv(t)
 	t.Setenv(env.BackendURL.Var().Name(), "")
 	ws := &pkgWorkspace.MockContext{
-		GetStoredCredentialsF: func() (workspace.Credentials, error) {
-			return workspace.Credentials{}, assert.AnError
+		GetStoredCredentialsF: func() (pkgWorkspace.Credentials, error) {
+			return pkgWorkspace.Credentials{}, assert.AnError
 		},
 	}
 
@@ -198,7 +199,7 @@ func TestNonInteractiveCurrentBackendPassesDefaultURL(t *testing.T) {
 func clearAIAgentEnv(t *testing.T) {
 	t.Helper()
 
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, "")
+	t.Setenv(pkgWorkspace.PulumiCredentialsPathEnvVar, "")
 	t.Setenv(env.Home.Var().Name(), "")
 
 	for _, name := range agentdetect.DetectionEnvVars() {
