@@ -13,7 +13,7 @@ node = "22"
 "npm:yarn" = "1.22.22"
 bun = "1.3.14"
 python = '3.11'
-uv = "0.10.0"
+uv = "0.11.28"
 # This is a dev only dependency that fails to install on windows
 "go:github.com/mitranim/gow" = { version = "0.0.0-20260515002309-3b8e4d082711", os = ["linux", "macos"] }
 protoc = "29.5"
