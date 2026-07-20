@@ -2,3 +2,5 @@ component: protobuf
 kind: improvement
 body: Allow state converters to supply resource inputs and outputs in ConvertState responses
 time: 2026-07-20T15:42:43.421412+01:00
+custom:
+    PR: "23987"
