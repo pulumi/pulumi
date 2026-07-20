@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
@@ -90,7 +89,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 			encrypter := sm.Encrypter()
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+			configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 				ctx,
 				stackName,
 				proj,

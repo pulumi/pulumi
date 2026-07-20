@@ -279,7 +279,7 @@ func NewDestroyCmd() *cobra.Command {
 			// where config may diverge between branches.
 			if runProgram && !skipConfigValidation {
 				// Running the program: validate the stack config (and apply project defaults).
-				configError := workspace.ValidateStackConfigAndApplyProjectConfig(
+				configError := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 					ctx,
 					stackName,
 					proj,
@@ -293,7 +293,7 @@ func NewDestroyCmd() *cobra.Command {
 			} else {
 				// The program isn't run, or validation was explicitly skipped: still apply
 				// project config defaults onto the stack config, but skip validation.
-				if configError := workspace.ApplyProjectConfig(
+				if configError := pkgWorkspace.ApplyProjectConfig(
 					ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configError != nil {
 					return fmt.Errorf("applying stack config: %w", configError)
 				}

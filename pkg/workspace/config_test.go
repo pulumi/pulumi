@@ -20,13 +20,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestValidateStackConfigValues(t *testing.T) {
 	t.Run("No Decrypter Returns Nil", func(t *testing.T) {
 		t.Parallel()
 		// If decrypter is nil, function should return immediately with no error.
-		project := &Project{Name: "testProject"}
+		project := &workspace.Project{Name: "testProject"}
 		stackCfg := config.Map{}
 		err := validateStackConfigValues("stackA", project, stackCfg, nil)
 		require.NoError(t, err)
@@ -35,7 +36,7 @@ func TestValidateStackConfigValues(t *testing.T) {
 	t.Run("Empty Project With Decrypter Returns Nil", func(t *testing.T) {
 		t.Parallel()
 		// Non-nil decrypter but no project config entries -> nothing to validate.
-		project := &Project{Name: "testProject"}
+		project := &workspace.Project{Name: "testProject"}
 		stackCfg := config.Map{}
 
 		err := validateStackConfigValues("stackA", project, stackCfg, config.NopDecrypter)
@@ -45,7 +46,7 @@ func TestValidateStackConfigValues(t *testing.T) {
 	t.Run("Decrypt Error Is Propagated", func(t *testing.T) {
 		t.Parallel()
 		// Decrypter returns an error; validateStackConfigValues should return that error.
-		project := &Project{Name: "testProject"}
+		project := &workspace.Project{Name: "testProject"}
 		stackCfg := config.Map{
 			config.MustMakeKey("testProject", "someKey"): config.NewSecureValue("someVal"),
 		}
@@ -59,12 +60,12 @@ func TestValidateStackConfigValues(t *testing.T) {
 
 	t.Run("Typed Config Validates", func(t *testing.T) {
 		t.Parallel()
-		intType := integerTypeName
-		stringType := stringTypeName
-		boolType := booleanTypeName
-		project := &Project{
+		intType := "integer"
+		stringType := "string"
+		boolType := "boolean"
+		project := &workspace.Project{
 			Name: "testProject",
-			Config: map[string]ProjectConfigType{
+			Config: map[string]workspace.ProjectConfigType{
 				"testInt": {
 					Type: &intType,
 				},
@@ -95,7 +96,7 @@ func TestValidateStackConfigValues(t *testing.T) {
 		t.Parallel()
 		// When project says config is secret, stack value must be secure.
 		projectConfigKey := "proj:secretKey"
-		pct := ProjectConfigType{
+		pct := workspace.ProjectConfigType{
 			Secret: true,
 		}
 		// create a non-secure stack value
@@ -110,7 +111,7 @@ func TestValidateStackConfigValues(t *testing.T) {
 		projectConfigKey := "proj:objKey"
 		// object stack value with invalid JSON content should return unmarshal error
 		stackVal := config.NewObjectValue("not-a-json")
-		pct := ProjectConfigType{}
+		pct := workspace.ProjectConfigType{}
 		err := validateStackConfigValue("stackX", projectConfigKey, pct, stackVal, "not-a-json")
 		require.Error(t, err)
 		// error should be json unmarshal related
@@ -122,7 +123,7 @@ func TestValidateStackConfigValues(t *testing.T) {
 		// Project config expects a numeric type but the stack value is a non-numeric string.
 		projectConfigKey := "proj:typeKey"
 		typ := "number"
-		pct := ProjectConfigType{
+		pct := workspace.ProjectConfigType{
 			Type: &typ,
 		}
 		// non-numeric stack value

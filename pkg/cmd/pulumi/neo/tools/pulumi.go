@@ -269,7 +269,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 
 	decrypter := sm.Decrypter()
 	encrypter := sm.Encrypter()
-	if err := workspace.ValidateStackConfigAndApplyProjectConfig(
+	if err := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 		ctx, s.Ref().Name().String(), proj, cfg.Environment, cfg.Config, encrypter, decrypter,
 	); err != nil {
 		return failedResult(a, "", fmt.Errorf("validating stack config: %w", err))
