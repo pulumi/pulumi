@@ -15,9 +15,9 @@
 package ints
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -45,12 +45,12 @@ func TestDebuggerAttachBun(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", "debugger-test")
 	e.RunCommand("pulumi", "stack", "select", "debugger-test")
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	var previewStdout, previewStderr string
 	var previewErr error
+	previewDone := make(chan struct{})
 	go func() {
-		defer wg.Done()
-		_, _, previewErr = e.GetCommandResults("pulumi", "preview", "--attach-debugger",
+		defer close(previewDone)
+		previewStdout, previewStderr, previewErr = e.GetCommandResults("pulumi", "preview", "--attach-debugger",
 			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
 	}()
 
@@ -72,40 +72,52 @@ outer:
 			wait *= 2
 		}
 	}
-	require.NotNil(t, debugEvent)
+	if debugEvent == nil {
+		detail := "pulumi preview is still running"
+		select {
+		case <-previewDone:
+			detail = fmt.Sprintf("pulumi preview exited early: %v\nstdout:\n%s\nstderr:\n%s",
+				previewErr, previewStdout, previewStderr)
+		default:
+		}
+		require.NotNilf(t, debugEvent, "no StartDebuggingEvent appeared in the event log; %s", detail)
+	}
 
 	wsURL, ok := debugEvent.Config["url"].(string)
 	require.True(t, ok)
 	require.NotEmpty(t, wsURL)
 
-	// Use the JavaScriptCore Debug Protocol to resume the paused program.
+	// bun is launched with BUN_INSPECT=...?wait=1, which blocks the program from running until a
+	// debug frontend sends Inspector.initialized. Send it to let the program run, then wait for
+	// bun to acknowledge it before detaching: closing the WebSocket while bun is still waiting
+	// leaves the program blocked indefinitely.
 	ws, err := websocket.Dial(wsURL, "", "http://localhost")
 	require.NoError(t, err)
 	require.NoError(t, ws.SetDeadline(time.Now().Add(30*time.Second)))
 	require.NoError(t, websocket.Message.Send(ws, `{"id":1,"method":"Runtime.enable"}`))
 	require.NoError(t, websocket.Message.Send(ws, `{"id":2,"method":"Inspector.initialized"}`))
-	require.NoError(t, websocket.Message.Send(ws, `{"id":3,"method":"Debugger.resume"}`))
-	// Wait for bun to acknowledge Debugger.resume before closing. If we close the WebSocket
-	// before bun processes the resume, the program can remain paused indefinitely.
+	var received []string
 	for {
 		var msg string
-		require.NoError(t, websocket.Message.Receive(ws, &msg))
-		if strings.Contains(msg, `"id":3`) {
+		err := websocket.Message.Receive(ws, &msg)
+		require.NoErrorf(t, err, "failed waiting for bun to acknowledge Inspector.initialized; "+
+			"messages received so far:\n%s", strings.Join(received, "\n"))
+		received = append(received, msg)
+		if strings.Contains(msg, `"id":2`) {
 			break
 		}
 	}
 	require.NoError(t, ws.Close())
 
 	// Verify the program completed successfully.
-	waitDone := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(waitDone)
-	}()
 	select {
-	case <-waitDone:
-		require.NoError(t, previewErr, "pulumi preview failed")
+	case <-previewDone:
+		require.NoError(t, previewErr, "pulumi preview failed:\nstdout:\n%s\nstderr:\n%s",
+			previewStdout, previewStderr)
 	case <-time.After(60 * time.Second):
-		t.Fatal("timed out waiting for program to complete")
+		events, _ := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
+		require.FailNowf(t, "timed out waiting for program to complete after detaching the debugger",
+			"bun likely never resumed execution.\ndebugger responses received:\n%s\n"+
+				"event log contained %d events", strings.Join(received, "\n"), len(events))
 	}
 }
