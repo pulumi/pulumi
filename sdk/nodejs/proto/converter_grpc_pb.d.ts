@@ -6,6 +6,7 @@
 
 import * as grpc from "@grpc/grpc-js";
 import * as pulumi_converter_pb from "./converter_pb";
+import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 import * as pulumi_codegen_hcl_pb from "./codegen/hcl_pb";
 import * as pulumi_codegen_loader_pb from "./codegen/loader_pb";
 

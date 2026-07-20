@@ -93,10 +93,31 @@ func parseResourceSpec(spec string) (string, resource.URN, error) {
 	return name, urn, nil
 }
 
-func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFile, error) {
+func makeImportFileFromResourceList(ctx context.Context, resources []plugin.ResourceImport) (importFile, error) {
+	// Serialized with secrets in plain text, marked with the secret signature: the converter response
+	// carries them the same way, and parseImportFile deserializes them back into secret values.
+	serialize := func(props resource.PropertyMap, name, kind string) (map[string]any, error) {
+		if props == nil {
+			return nil, nil
+		}
+		serialized, err := resourcestack.SerializeProperties(ctx, props, sdkconfig.NopEncrypter, true /*showSecrets*/)
+		if err != nil {
+			return nil, fmt.Errorf("serializing %s for resource %q: %w", kind, name, err)
+		}
+		return serialized, nil
+	}
+
 	nameTable := map[string]resource.URN{}
 	specs := make([]importSpec, len(resources))
 	for i, res := range resources {
+		inputs, err := serialize(res.Inputs, res.Name, "inputs")
+		if err != nil {
+			return importFile{}, err
+		}
+		outputs, err := serialize(res.Outputs, res.Name, "outputs")
+		if err != nil {
+			return importFile{}, err
+		}
 		specs[i] = importSpec{
 			Type:              tokens.Type(res.Type),
 			Name:              res.Name,
@@ -109,6 +130,8 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 			Parent:            res.Parent,
 			Properties:        res.Properties,
 			Provider:          res.Provider,
+			Inputs:            inputs,
+			Outputs:           outputs,
 		}
 		if p := res.Parameterization; p != nil {
 			specs[i].Parameterization = &importParameterization{
@@ -966,7 +989,7 @@ func NewImportCmd() *cobra.Command {
 					return errors.New("conversion failed")
 				}
 
-				f, err := makeImportFileFromResourceList(resp.Resources)
+				f, err := makeImportFileFromResourceList(ctx, resp.Resources)
 				if err != nil {
 					return err
 				}

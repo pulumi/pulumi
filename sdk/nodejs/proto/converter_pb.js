@@ -15,6 +15,8 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var proto = { codegen: { }, pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
+var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
+goog.object.extend(proto, google_protobuf_struct_pb);
 var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
 goog.object.extend(proto, pulumi_codegen_hcl_pb);
 var pulumi_codegen_loader_pb = require('./codegen/loader_pb.js');
@@ -454,7 +456,9 @@ parameterization: (f = msg.getParameterization()) && proto.pulumirpc.ResourcePar
 extension: (f = msg.getExtension$()) && proto.pulumirpc.ResourceExtension.toObject(includeInstance, f),
 parent: jspb.Message.getFieldWithDefault(msg, 11, ""),
 propertiesList: (f = jspb.Message.getRepeatedField(msg, 12)) == null ? undefined : f,
-provider: jspb.Message.getFieldWithDefault(msg, 13, "")
+provider: jspb.Message.getFieldWithDefault(msg, 13, ""),
+inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+outputs: (f = msg.getOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -544,6 +548,16 @@ proto.pulumirpc.ResourceImport.deserializeBinaryFromReader = function(msg, reade
     case 13:
       var value = /** @type {string} */ (reader.readString());
       msg.setProvider(value);
+      break;
+    case 14:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setInputs(value);
+      break;
+    case 15:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setOutputs(value);
       break;
     default:
       reader.skipField();
@@ -665,6 +679,22 @@ proto.pulumirpc.ResourceImport.serializeBinaryToWriter = function(message, write
     writer.writeString(
       13,
       f
+    );
+  }
+  f = message.getInputs();
+  if (f != null) {
+    writer.writeMessage(
+      14,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getOutputs();
+  if (f != null) {
+    writer.writeMessage(
+      15,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
 };
@@ -958,6 +988,80 @@ proto.pulumirpc.ResourceImport.prototype.getProvider = function() {
  */
 proto.pulumirpc.ResourceImport.prototype.setProvider = function(value) {
   return jspb.Message.setProto3StringField(this, 13, value);
+};
+
+
+/**
+ * optional google.protobuf.Struct inputs = 14;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ResourceImport.prototype.getInputs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 14));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+*/
+proto.pulumirpc.ResourceImport.prototype.setInputs = function(value) {
+  return jspb.Message.setWrapperField(this, 14, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+ */
+proto.pulumirpc.ResourceImport.prototype.clearInputs = function() {
+  return this.setInputs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceImport.prototype.hasInputs = function() {
+  return jspb.Message.getField(this, 14) != null;
+};
+
+
+/**
+ * optional google.protobuf.Struct outputs = 15;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.ResourceImport.prototype.getOutputs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 15));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+*/
+proto.pulumirpc.ResourceImport.prototype.setOutputs = function(value) {
+  return jspb.Message.setWrapperField(this, 15, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ResourceImport} returns this
+ */
+proto.pulumirpc.ResourceImport.prototype.clearOutputs = function() {
+  return this.setOutputs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceImport.prototype.hasOutputs = function() {
+  return jspb.Message.getField(this, 15) != null;
 };
 
 
