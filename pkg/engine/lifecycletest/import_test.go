@@ -958,12 +958,24 @@ func TestImportPlanSuppliedOutputs(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 4)
 
-	assert.Equal(t, tokens.Type("my:module:Component"), snap.Resources[2].Type)
-	assert.Equal(t, componentOutputs, snap.Resources[2].Outputs)
+	// Import steps run in parallel, so look resources up by name rather than snapshot position.
+	byName := func(name string) int {
+		for i, r := range snap.Resources {
+			if r.URN.Name() == name {
+				return i
+			}
+		}
+		t.Fatalf("resource %q not found in snapshot", name)
+		return -1
+	}
 
-	assert.Equal(t, resource.ID("imported-id"), snap.Resources[3].ID)
-	assert.Equal(t, suppliedInputs, snap.Resources[3].Inputs)
-	assert.Equal(t, suppliedOutputs, snap.Resources[3].Outputs)
+	comp := snap.Resources[byName("comp")]
+	assert.Equal(t, componentOutputs, comp.Outputs)
+
+	resB := snap.Resources[byName("resB")]
+	assert.Equal(t, resource.ID("imported-id"), resB.ID)
+	assert.Equal(t, suppliedInputs, resB.Inputs)
+	assert.Equal(t, suppliedOutputs, resB.Outputs)
 }
 
 func TestImportPlanSuppliedInputsMerge(t *testing.T) {
