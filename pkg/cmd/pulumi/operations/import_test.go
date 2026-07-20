@@ -315,6 +315,31 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 		},
 		{
+			desc: "component with outputs",
+			give: importFile{Resources: []importSpec{{
+				Name:      "comp",
+				Type:      "foo:bar:baz",
+				Component: true,
+				Outputs:   map[string]any{"foo": "bar"},
+			}}},
+			wantErrs: []string{
+				"1 error occurred",
+				"resource 'comp' of type 'foo:bar:baz' has outputs, but is not a custom resource",
+			},
+		},
+		{
+			desc: "provider with outputs",
+			give: importFile{Resources: []importSpec{{
+				Name:    "prov",
+				Type:    "pulumi:providers:aws",
+				Outputs: map[string]any{"foo": "bar"},
+			}}},
+			wantErrs: []string{
+				"1 error occurred",
+				"resource 'prov' of type 'pulumi:providers:aws' has outputs, but is not a custom resource",
+			},
+		},
+		{
 			desc: "component with ID",
 			give: importFile{Resources: []importSpec{{
 				Name:      "comp",
@@ -601,6 +626,45 @@ func TestParseImportFileProviderInputs(t *testing.T) {
 	require.NotNil(t, imports[0].ProviderInputs)
 	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].ProviderInputs["region"])
 	assert.Equal(t, resource.NewProperty("6.0.0"), imports[0].ProviderInputs["version"])
+}
+
+func TestParseImportFileInputsOutputs(t *testing.T) {
+	t.Parallel()
+
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name: "my-prov",
+				Type: "pulumi:providers:aws",
+				Inputs: map[string]any{
+					"region": "eu-west-1",
+				},
+			},
+			{
+				Name:     "thing",
+				ID:       "thing-id",
+				Type:     "aws:s3:Bucket",
+				Provider: "my-prov",
+				Inputs: map[string]any{
+					"bucket": "my-bucket",
+				},
+				Outputs: map[string]any{
+					"bucket": "my-bucket",
+					"arn":    "arn:aws:s3:::my-bucket",
+				},
+			},
+		},
+	}
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+	require.NoError(t, err)
+	require.Len(t, imports, 2)
+
+	// A provider spec's inputs become its configuration.
+	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].ProviderInputs["region"])
+	require.Nil(t, imports[0].Inputs)
+
+	assert.Equal(t, resource.NewProperty("my-bucket"), imports[1].Inputs["bucket"])
+	assert.Equal(t, resource.NewProperty("arn:aws:s3:::my-bucket"), imports[1].Outputs["arn"])
 }
 
 func TestParseImportFileDeclaredProvider(t *testing.T) {
