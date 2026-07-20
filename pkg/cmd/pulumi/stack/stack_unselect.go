@@ -15,12 +15,16 @@
 package stack
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Resets the currently selected stack from the current workspace such that
@@ -34,27 +38,32 @@ func newStackUnselectCmd() *cobra.Command {
 			"This way, next time pulumi needs to execute an operation, the user is prompted with one of the stacks to select\n" +
 			"from.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			currentWorkspace, err := pkgWorkspace.Instance.New("")
+			ws := pkgWorkspace.Instance
+			proj, _, err := ws.ReadProject("")
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
+			backendURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), proj)
 			if err != nil {
 				return err
 			}
 
-			settings := currentWorkspace.Settings()
-			if settings.Stack != "" {
-				// a stack is selected
-				// reset it
-				settings.Stack = ""
-				err = currentWorkspace.Save()
-				if err == nil {
-					// saving changes was successful
-					fmt.Fprintln(cmd.OutOrStdout(), "Stack was unselected")
-				} else {
-					fmt.Fprintf(cmd.OutOrStdout(), "Could not unselect the current stack from the workspace: %s", err)
-				}
-
+			currentWorkspace, err := ws.New("")
+			if err != nil {
 				return err
 			}
 
+			name, _ := currentWorkspace.Settings().StackForBackend(backendURL)
+			if name == "" {
+				return nil
+			}
+
+			if err := state.SetCurrentStack(ws, backendURL, ""); err != nil {
+				fmt.Fprintf(cmd.OutOrStdout(), "Could not unselect the current stack from the workspace: %s", err)
+				return err
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), "Stack was unselected")
 			return nil
 		},
 	}

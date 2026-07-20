@@ -35,7 +35,7 @@ func CurrentStack(ctx context.Context, ws pkgWorkspace.Context, b backend.Backen
 func CurrentStackAt(
 	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, dir string,
 ) (backend.Stack, error) {
-	stackName, err := getCurrentStackName(ws, dir)
+	stackName, fromLegacy, err := getCurrentStackName(ws, dir, b.URL())
 	if err != nil {
 		return nil, err
 	} else if stackName == "" {
@@ -49,25 +49,33 @@ func CurrentStackAt(
 
 	ref, err := b.ParseStackReference(qualifiedStackName)
 	if err != nil {
+		// A legacy unscoped workspace selection may belong to a different backend
+		// (for example a cloud FQN after `pulumi login --local`). Treat that as
+		// unset for this backend. Explicit per-backend selections and PULUMI_STACK
+		// still surface parse errors.
+		if fromLegacy {
+			return nil, nil
+		}
 		return nil, err
 	}
 
 	return b.GetStack(ctx, ref)
 }
 
-func getCurrentStackName(ws pkgWorkspace.Context, dir string) (string, error) {
+func getCurrentStackName(ws pkgWorkspace.Context, dir, backendURL string) (name string, fromLegacy bool, err error) {
 	// PULUMI_STACK environment variable overrides any stack name in the workspace settings
 	if stackName, ok := os.LookupEnv("PULUMI_STACK"); ok {
-		return stackName, nil
+		return stackName, false, nil
 	}
 
 	// An empty dir resolves to the process working directory inside ws.New.
 	w, err := ws.New(dir)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 
-	return w.Settings().Stack, nil
+	name, fromLegacy = w.Settings().StackForBackend(backendURL)
+	return name, fromLegacy, nil
 }
 
 // Potentially qualifies a stack name with the username as the org, if orgs are supported by the backend.
@@ -91,8 +99,8 @@ func getStackNameWithLegacyOrgNameIfNeeded(b backend.Backend, stackName string) 
 	return stackName, nil
 }
 
-// SetCurrentStack changes the current stack to the given stack name.
-func SetCurrentStack(ws pkgWorkspace.Context, name string) error {
+// SetCurrentStack changes the current stack for the given backend URL.
+func SetCurrentStack(ws pkgWorkspace.Context, backendURL, name string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("getting current working directory: %w", err)
@@ -104,6 +112,6 @@ func SetCurrentStack(ws pkgWorkspace.Context, name string) error {
 		return err
 	}
 
-	w.Settings().Stack = name
+	w.Settings().SetStackForBackend(backendURL, name)
 	return w.Save()
 }

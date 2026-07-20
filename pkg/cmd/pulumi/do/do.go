@@ -486,7 +486,8 @@ func currentStackIdentity(ws pkgWorkspace.Context) (organization, stack string) 
 	if err != nil {
 		return "", ""
 	}
-	name := w.Settings().Stack
+	backendURL, _ := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), nil)
+	name, _ := w.Settings().StackForBackend(backendURL)
 	if name == "" {
 		return "", ""
 	}
