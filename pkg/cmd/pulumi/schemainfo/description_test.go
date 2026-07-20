@@ -81,7 +81,8 @@ func TestDescriptionMarkdown(t *testing.T) {
 		t.Parallel()
 		got := descriptionMarkdown("See {{% ref #/resources/example:index:BucketPolicy %}} to attach a policy, " +
 			"or the {{% ref #/resources/example:index:Bucket/properties/versioning %}} property.")
-		assert.Equal(t, "See `BucketPolicy` to attach a policy, or the `versioning` property.", got)
+		assert.Equal(t, "See `example:index:BucketPolicy` to attach a policy, "+
+			"or the `example:index:Bucket.versioning` property.", got)
 	})
 
 	t.Run("empty description yields empty output", func(t *testing.T) {

@@ -32,15 +32,13 @@ func ptr[T any](v T) *T { return &v }
 const helpWrapWidth = 80
 
 // linkStartMarker and linkEndMarker are emitted by the style around a link's text and URL so
-// tidyRendered can keep the whole link on one line when wrapping; wordJoiner temporarily replaces
-// the spaces between them.
+// wrapLine can keep the whole link on one line when wrapping.
 const (
 	linkStartMarker = "\x02"
 	linkEndMarker   = "\x03"
-	wordJoiner      = "\x01"
 )
 
-var linkRegexp = regexp.MustCompile(linkStartMarker + "[^" + linkEndMarker + "]*" + linkEndMarker)
+var markerReplacer = strings.NewReplacer(linkStartMarker, "", linkEndMarker, "")
 
 // helpMarkdownStyle returns the glamour style for description Markdown: default text color, bold
 // and underline only. When styled is false the same layout renders without escape sequences, so
@@ -95,24 +93,18 @@ func RenderDescription(comment string) string {
 // tidyRendered wraps glamour's output to helpWrapWidth without splitting links, drops the trailing
 // whitespace glamour pads each line with, and trims surrounding blank lines.
 func tidyRendered(s string) string {
-	// Join each link into a single unbreakable word for wrapLine; the joiners become spaces again
-	// after wrapping.
-	s = linkRegexp.ReplaceAllStringFunc(s, func(link string) string {
-		return strings.ReplaceAll(link, " ", wordJoiner)
-	})
-	s = strings.NewReplacer(linkStartMarker, "", linkEndMarker, "").Replace(s)
-
 	lines := strings.Split(s, "\n")
 	wrapped := make([]string, 0, len(lines))
 	for _, line := range lines {
 		wrapped = append(wrapped, wrapLine(strings.TrimRight(line, " \t"), helpWrapWidth)...)
 	}
 	s = strings.Trim(strings.Join(wrapped, "\n"), "\n")
-	return strings.ReplaceAll(s, wordJoiner, " ")
+	return markerReplacer.Replace(s)
 }
 
-// wrapLine wraps a line at width columns, breaking only at spaces. Continuation lines of a
-// blockquote keep the `│ ` rail.
+// wrapLine wraps a line at width columns, breaking only at spaces. A link, delimited by
+// linkStartMarker and linkEndMarker, is treated as a single unbreakable token so its text and URL
+// stay together. Continuation lines of a blockquote keep the `│ ` rail.
 func wrapLine(line string, width int) []string {
 	if visibleWidth(line) <= width {
 		return []string{line}
@@ -126,7 +118,7 @@ func wrapLine(line string, width int) []string {
 	var out []string
 	var current string
 	currentWidth := 0
-	for _, word := range strings.Split(line, " ") {
+	for _, word := range wrapTokens(line) {
 		w := visibleWidth(word)
 		switch {
 		case current == "":
@@ -143,6 +135,29 @@ func wrapLine(line string, width int) []string {
 	return append(out, current)
 }
 
+// wrapTokens splits a line into the words wrapLine may break between, keeping each link (the span
+// from linkStartMarker to linkEndMarker) as a single token so it is never split across lines.
+func wrapTokens(line string) []string {
+	words := strings.Split(line, " ")
+	tokens := make([]string, 0, len(words))
+	var link []string
+	for _, word := range words {
+		if len(link) > 0 || strings.Contains(word, linkStartMarker) {
+			link = append(link, word)
+			if strings.Contains(word, linkEndMarker) {
+				tokens = append(tokens, strings.Join(link, " "))
+				link = nil
+			}
+			continue
+		}
+		tokens = append(tokens, word)
+	}
+	if len(link) > 0 {
+		tokens = append(tokens, strings.Join(link, " "))
+	}
+	return tokens
+}
+
 var ansiEscapeRegexp = regexp.MustCompile("\x1b\\[[0-9;]*m")
 
 func stripEscapes(s string) string {
@@ -150,7 +165,7 @@ func stripEscapes(s string) string {
 }
 
 func visibleWidth(s string) int {
-	return len([]rune(stripEscapes(s)))
+	return len([]rune(markerReplacer.Replace(stripEscapes(s))))
 }
 
 // descriptionMarkdown returns the cleaned Markdown of a schema description, before any terminal
@@ -227,15 +242,22 @@ func resolveDocRefs(node ast.Node) {
 }
 
 // docRefName returns a readable name for a `{{% ref %}}` destination, e.g.
-// "#/resources/pkg:mod:Bucket/properties/versioning" -> "versioning".
+// "#/resources/pkg:mod:Bucket/properties/versioning" -> "pkg:mod:Bucket.versioning".
 func docRefName(destination string) string {
 	if _, fragment, ok := strings.Cut(destination, "#"); ok {
 		destination = fragment
 	}
 	segments := strings.Split(strings.Trim(destination, "/"), "/")
-	name := segments[len(segments)-1]
-	if i := strings.LastIndex(name, ":"); i >= 0 {
-		name = name[i+1:]
+	switch segments[0] {
+	case "resources", "types", "functions":
+		segments = segments[1:]
+	}
+	if len(segments) == 0 {
+		return destination
+	}
+	name := segments[0]
+	if len(segments) > 1 {
+		name += "." + segments[len(segments)-1]
 	}
 	return name
 }

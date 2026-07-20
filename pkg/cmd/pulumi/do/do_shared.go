@@ -22,7 +22,6 @@ import (
 	"io"
 	"maps"
 	"os"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -577,17 +577,8 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 	}
 }
 
-var langChoiceSpanRegexp = regexp.MustCompile(`(?s)<span\b[^>]*>(.*?)</span>`)
-
-var envVarChoiceRegexp = regexp.MustCompile("(?s)(`[A-Z][A-Z0-9_]*`) or <span\\b[^>]*>.*?</span> environment variables")
-
-func cleanComment(comment string) string {
-	comment = envVarChoiceRegexp.ReplaceAllString(comment, "$1 environment variable")
-	return langChoiceSpanRegexp.ReplaceAllString(comment, "$1")
-}
-
 func flagUsage(comment string) string {
-	return strings.ReplaceAll(cleanComment(comment), "`", "")
+	return strings.ReplaceAll(schemainfo.CleanComment(comment), "`", "")
 }
 
 func inputFlagName(name string) string {
