@@ -31,33 +31,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func deleteFile(t *testing.T, file *os.File) {
-	if file != nil {
-		err := os.Remove(file.Name())
-		require.NoError(t, err, "Error while deleting file")
-	}
+func writeTempYAML(t *testing.T, content string) string {
+	tmp, err := os.CreateTemp(t.TempDir(), "*.yaml")
+	require.NoError(t, err)
+	// Close the handle before writing/reading via the path — on Windows an
+	// open handle blocks t.TempDir's cleanup from removing the file.
+	require.NoError(t, tmp.Close())
+	require.NoError(t, os.WriteFile(tmp.Name(), []byte(content), 0o600))
+	return tmp.Name()
 }
 
 func loadProjectFromText(t *testing.T, content string) (*workspace.Project, error) {
-	tmp, err := os.CreateTemp(t.TempDir(), "*.yaml")
-	require.NoError(t, err)
-	path := tmp.Name()
-	err = os.WriteFile(path, []byte(content), 0o600)
-	require.NoError(t, err)
-	defer deleteFile(t, tmp)
-	return workspace.LoadProject(path)
+	return workspace.LoadProject(writeTempYAML(t, content))
 }
 
 func loadProjectStackFromText(
 	t *testing.T, sink diag.Sink, project *workspace.Project, content string,
 ) (*workspace.ProjectStack, error) {
-	tmp, err := os.CreateTemp(t.TempDir(), "*.yaml")
-	require.NoError(t, err)
-	path := tmp.Name()
-	err = os.WriteFile(path, []byte(content), 0o600)
-	require.NoError(t, err)
-	defer deleteFile(t, tmp)
-	return workspace.LoadProjectStack(sink, project, path)
+	return workspace.LoadProjectStack(sink, project, writeTempYAML(t, content))
 }
 
 func getConfigValue(t *testing.T, stackConfig config.Map, key string) string {
