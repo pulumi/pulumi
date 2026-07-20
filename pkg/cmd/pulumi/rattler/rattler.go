@@ -57,6 +57,10 @@ func Install(c *cobra.Command) {
 		// arg-count validator the command may have declared. A bare group
 		// invocation shows help but still exits non-zero; the bail error sets
 		// the exit code without printing anything after the help.
+		if c.Annotations == nil {
+			c.Annotations = make(map[string]string)
+		}
+		c.Annotations[syntheticRunAnnotation] = "true"
 		c.Args = func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return nil
@@ -85,6 +89,18 @@ func Install(c *cobra.Command) {
 			return nil
 		}
 	}
+}
+
+// syntheticRunAnnotation marks commands whose run function was installed by
+// Install rather than declared by the command itself.
+const syntheticRunAnnotation = "rattler:synthetic-run"
+
+// HasSyntheticRun reports whether cmd's run function was installed by Install
+// rather than declared by the command itself. Such a command only prints help
+// and fails, so consumers inspecting the tree (like the CLI spec generator)
+// should not treat it as runnable.
+func HasSyntheticRun(cmd *cobra.Command) bool {
+	return cmd != nil && cmd.Annotations[syntheticRunAnnotation] == "true"
 }
 
 // argsPastSpec returns the positional arguments beyond what the command's

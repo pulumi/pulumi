@@ -216,6 +216,33 @@ func TestRunnableParentBlamesArgPastSpec(t *testing.T) {
 	require.NoError(t, root.Execute())
 }
 
+// Install's synthetic run functions only print help and fail, so commands
+// that received one must be distinguishable from genuinely runnable commands
+// by consumers inspecting the tree (like the CLI spec generator).
+func TestHasSyntheticRun(t *testing.T) {
+	t.Parallel()
+
+	root := newSuggestionsTestTree()
+	Install(root)
+
+	find := func(path ...string) *cobra.Command {
+		c := root
+		for _, name := range path {
+			next, _, err := c.Find([]string{name})
+			require.NoError(t, err)
+			c = next
+		}
+		return c
+	}
+
+	assert.True(t, HasSyntheticRun(root), "root")
+	assert.True(t, HasSyntheticRun(find("stack")), "group command")
+	assert.True(t, HasSyntheticRun(find("org", "member")), "nested group command")
+	assert.False(t, HasSyntheticRun(find("import")), "runnable leaf")
+	assert.False(t, HasSyntheticRun(find("stack", "export")), "nested runnable leaf")
+	assert.False(t, HasSyntheticRun(nil), "nil command")
+}
+
 func TestNormalize(t *testing.T) {
 	t.Parallel()
 
