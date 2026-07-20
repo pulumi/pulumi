@@ -315,19 +315,6 @@ func TestParseImportFile_errors(t *testing.T) {
 			},
 		},
 		{
-			desc: "component with outputs",
-			give: importFile{Resources: []importSpec{{
-				Name:      "comp",
-				Type:      "foo:bar:baz",
-				Component: true,
-				Outputs:   map[string]any{"foo": "bar"},
-			}}},
-			wantErrs: []string{
-				"1 error occurred",
-				"resource 'comp' of type 'foo:bar:baz' has outputs, but is not a custom resource",
-			},
-		},
-		{
 			desc: "provider with outputs",
 			give: importFile{Resources: []importSpec{{
 				Name:    "prov",
@@ -336,7 +323,7 @@ func TestParseImportFile_errors(t *testing.T) {
 			}}},
 			wantErrs: []string{
 				"1 error occurred",
-				"resource 'prov' of type 'pulumi:providers:aws' has outputs, but is not a custom resource",
+				"resource 'prov' of type 'pulumi:providers:aws' is a provider and may not have outputs",
 			},
 		},
 		{

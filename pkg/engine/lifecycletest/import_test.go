@@ -937,8 +937,17 @@ func TestImportPlanSuppliedOutputs(t *testing.T) {
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
+	componentOutputs := resource.PropertyMap{
+		"result": resource.NewProperty("value"),
+	}
+
 	project := p.GetProject()
 	snap, err := lt.ImportOp([]deploy.Import{{
+		Type:      "my:module:Component",
+		Name:      "comp",
+		Component: true,
+		Outputs:   componentOutputs,
+	}, {
 		Type:    "pkgA:m:typA",
 		Name:    "resB",
 		ID:      "imported-id",
@@ -947,11 +956,14 @@ func TestImportPlanSuppliedOutputs(t *testing.T) {
 	}}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	require.NoError(t, err)
-	require.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 4)
 
-	assert.Equal(t, resource.ID("imported-id"), snap.Resources[2].ID)
-	assert.Equal(t, suppliedInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, suppliedOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, tokens.Type("my:module:Component"), snap.Resources[2].Type)
+	assert.Equal(t, componentOutputs, snap.Resources[2].Outputs)
+
+	assert.Equal(t, resource.ID("imported-id"), snap.Resources[3].ID)
+	assert.Equal(t, suppliedInputs, snap.Resources[3].Inputs)
+	assert.Equal(t, suppliedOutputs, snap.Resources[3].Outputs)
 }
 
 func TestImportPlanSuppliedInputsMerge(t *testing.T) {

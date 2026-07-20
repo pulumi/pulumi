@@ -1956,11 +1956,18 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		}
 	}
 
-	// Only need to do anything here for custom resources, components just import as empty
 	suppliedInputs := s.new.Inputs
 	suppliedOutputs := s.new.Outputs
 	inputs := resource.PropertyMap{}
 	outputs := resource.PropertyMap{}
+	if s.planned {
+		if suppliedInputs != nil {
+			inputs = suppliedInputs
+		}
+		if suppliedOutputs != nil {
+			outputs = suppliedOutputs
+		}
+	}
 	var prov plugin.Provider
 	rst := resource.StatusOK
 	if s.new.Custom && s.planned && len(suppliedOutputs) > 0 {
@@ -1975,8 +1982,6 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
 
-		inputs = suppliedInputs
-		outputs = suppliedOutputs
 		s.new.ID = s.new.ImportID
 	} else if s.new.Custom {
 		// Read the current state of the resource to import. If the provider does not hand us back any inputs for the

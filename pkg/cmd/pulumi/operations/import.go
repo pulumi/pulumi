@@ -233,6 +233,8 @@ type importFile struct {
 	// ProviderInputs maps provider names (as used in NameTable and importSpec.Provider) to
 	// their serialized inputs. This allows the import system to create explicit providers
 	// that are not yet in state with the correct configuration. Secrets are encrypted.
+	//
+	// Deprecated: declare the provider in Resources and set its configuration via its Inputs instead.
 	ProviderInputs map[string]map[string]any `json:"providerInputs,omitempty"`
 }
 
@@ -375,13 +377,13 @@ func parseImportFile(
 			if spec.Parent != "" {
 				pusherrf("%v is a provider and may not have a parent", describeResource(i, spec))
 			}
+			if len(spec.Outputs) > 0 {
+				pusherrf("%v is a provider and may not have outputs", describeResource(i, spec))
+			}
 		} else if !spec.Component && spec.ID == "" {
 			pusherrf("%v has no ID", describeResource(i, spec))
 		} else if spec.Component && spec.ID != "" {
 			pusherrf("%v has an ID, but is marked as a component", describeResource(i, spec))
-		}
-		if len(spec.Outputs) > 0 && (spec.Component || providers.IsProviderType(spec.Type)) {
-			pusherrf("%v has outputs, but is not a custom resource", describeResource(i, spec))
 		}
 		if spec.Remote && !spec.Component {
 			pusherrf("%v is marked as remote, but not as a component", describeResource(i, spec))
