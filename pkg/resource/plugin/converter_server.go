@@ -38,6 +38,7 @@ func (c *converterServer) ConvertState(ctx context.Context,
 	resp, err := c.converter.ConvertState(ctx, &ConvertStateRequest{
 		MapperTarget: req.MapperTarget,
 		Args:         req.Args,
+		LoaderTarget: req.LoaderTarget,
 	})
 	if err != nil {
 		return nil, err

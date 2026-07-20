@@ -42,6 +42,9 @@ func (c *testConverterClient) ConvertState(
 	if req.MapperTarget != "localhost:1234" {
 		return nil, fmt.Errorf("unexpected MapperTarget: %s", req.MapperTarget)
 	}
+	if req.LoaderTarget != "localhost:4321" {
+		return nil, fmt.Errorf("unexpected LoaderTarget: %s", req.LoaderTarget)
+	}
 
 	return &pulumirpc.ConvertStateResponse{
 		Resources: []*pulumirpc.ResourceImport{
@@ -135,6 +138,7 @@ func TestConverterPlugin_State(t *testing.T) {
 	resp, err := plugin.ConvertState(t.Context(), &ConvertStateRequest{
 		Args:         []string{"arg1", "arg2"},
 		MapperTarget: "localhost:1234",
+		LoaderTarget: "localhost:4321",
 	})
 
 	require.NoError(t, err)
