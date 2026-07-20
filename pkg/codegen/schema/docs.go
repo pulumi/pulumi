@@ -537,3 +537,11 @@ func parseDocRef(ref string) internalDocRef {
 		return docRefUnknown
 	}
 }
+
+func ParseDocRef(ref string) (token tokens.Type, property string, ok bool) {
+	iref := parseDocRef(ref)
+	if iref.Kind == DocRefKindUnknown {
+		return "", "", false
+	}
+	return iref.Token, iref.Property, true
+}

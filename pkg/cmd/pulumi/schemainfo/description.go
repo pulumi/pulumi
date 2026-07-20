@@ -244,22 +244,14 @@ func resolveDocRefs(node ast.Node) {
 // docRefName returns a readable name for a `{{% ref %}}` destination, e.g.
 // "#/resources/pkg:mod:Bucket/properties/versioning" -> "pkg:mod:Bucket.versioning".
 func docRefName(destination string) string {
-	if _, fragment, ok := strings.Cut(destination, "#"); ok {
-		destination = fragment
-	}
-	segments := strings.Split(strings.Trim(destination, "/"), "/")
-	switch segments[0] {
-	case "resources", "types", "functions":
-		segments = segments[1:]
-	}
-	if len(segments) == 0 {
+	token, property, ok := schema.ParseDocRef(destination)
+	if !ok {
 		return destination
 	}
-	name := segments[0]
-	if len(segments) > 1 {
-		name += "." + segments[len(segments)-1]
+	if property != "" {
+		return string(token) + "." + property
 	}
-	return name
+	return string(token)
 }
 
 // renderMarkdown renders Markdown for the terminal, falling back to the input unchanged on any
