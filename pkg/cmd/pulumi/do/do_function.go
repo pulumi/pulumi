@@ -63,8 +63,8 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 
 	shorthelp := fmt.Sprintf("Invoke the %s function", name)
 	longhelp := shorthelp + "."
-	if fn.Comment != "" {
-		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, cleanComment(fn.Comment))
+	if description := schemainfo.RenderDescription(fn.Comment); description != "" {
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, description)
 	}
 	if schemaHelp := functionSchemaHelp(fn); schemaHelp != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, schemaHelp)

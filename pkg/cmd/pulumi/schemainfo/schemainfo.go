@@ -89,13 +89,24 @@ func Underline(c colors.Colorization, s string) string {
 	return c.Colorize(colors.Underline + s + colors.Reset)
 }
 
-var langChoiceSpanRegexp = regexp.MustCompile(`(?s)<span\b[^>]*>(.*?)</span>`)
+var (
+	langChoiceSpanRegexp = regexp.MustCompile(`(?s)<span\b[^>]*>(.*?)</span>`)
+	envVarChoiceRegexp   = regexp.MustCompile("(?s)(`[A-Z][A-Z0-9_]*`) or <span\\b[^>]*>.*?</span> environment variables")
+)
+
+// CleanComment resolves the language-choice `<span>` markup that bridged-provider descriptions
+// embed to its canonical text, collapsing paired environment-variable references to the uppercase
+// name.
+func CleanComment(comment string) string {
+	comment = envVarChoiceRegexp.ReplaceAllString(comment, "$1 environment variable")
+	return langChoiceSpanRegexp.ReplaceAllString(comment, "$1")
+}
 
 // Summarize returns the first paragraph of a schema description for use as a one-line summary. It
 // resolves the language-choice `<span>` markup that bridged-provider descriptions embed to its
 // canonical text and collapses the paragraph's internal newlines into spaces.
 func Summarize(description string) string {
-	description = langChoiceSpanRegexp.ReplaceAllString(description, "$1")
+	description = CleanComment(description)
 
 	var summary strings.Builder
 	for _, line := range strings.Split(strings.TrimSpace(description), "\n") {
