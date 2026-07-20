@@ -143,41 +143,41 @@ func TestNeedsCrypter(t *testing.T) {
 	t.Run("no secrets, no env", func(t *testing.T) {
 		t.Parallel()
 		m := config.Map{config.MustMakeKey("test", "foo"): config.NewValue("bar")}
-		assert.False(t, needsCrypter(m, esc.Value{}))
+		assert.False(t, needsCrypter(m, esc.Value{}, nil))
 	})
 
 	t.Run("secrets, no env", func(t *testing.T) {
 		t.Parallel()
 		m := config.Map{config.MustMakeKey("test", "foo"): config.NewSecureValue("bar")}
-		assert.True(t, needsCrypter(m, esc.Value{}))
+		assert.True(t, needsCrypter(m, esc.Value{}, nil))
 	})
 
 	t.Run("no secrets, no secrets in env", func(t *testing.T) {
 		t.Parallel()
 		m := config.Map{config.MustMakeKey("test", "foo"): config.NewValue("bar")}
 		env := esc.NewValue(map[string]esc.Value{"password": esc.NewValue("hunter2")})
-		assert.False(t, needsCrypter(m, env))
+		assert.False(t, needsCrypter(m, env, nil))
 	})
 
 	t.Run("no secrets, secrets in env", func(t *testing.T) {
 		t.Parallel()
 		m := config.Map{config.MustMakeKey("test", "foo"): config.NewValue("bar")}
 		env := esc.NewValue(map[string]esc.Value{"password": esc.NewSecret("hunter2")})
-		assert.True(t, needsCrypter(m, env))
+		assert.True(t, needsCrypter(m, env, nil))
 	})
 
 	t.Run("no secrets, secrets in env array", func(t *testing.T) {
 		t.Parallel()
 		m := config.Map{config.MustMakeKey("test", "foo"): config.NewValue("bar")}
 		env := esc.NewValue(map[string]esc.Value{"password": esc.NewValue([]esc.Value{esc.NewSecret("hunter2")})})
-		assert.True(t, needsCrypter(m, env))
+		assert.True(t, needsCrypter(m, env, nil))
 	})
 
 	t.Run("secrets, secrets in env", func(t *testing.T) {
 		t.Parallel()
 		m := config.Map{config.MustMakeKey("test", "foo"): config.NewSecureValue("bar")}
 		env := esc.NewValue(map[string]esc.Value{"password": esc.NewSecret("hunter2")})
-		assert.True(t, needsCrypter(m, env))
+		assert.True(t, needsCrypter(m, env, nil))
 	})
 }
 

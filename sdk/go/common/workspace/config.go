@@ -330,7 +330,15 @@ func mergeConfig(
 			}
 			// it is not found on the stack we are currently validating / merging values with
 			// then we assign the value to that stack whatever that value is
-			configValue, err := createConfigValue(value)
+			var configValue config.Value
+			if projectConfigType.Secret && encrypter != nil && isPrimitiveValue(value) {
+				// A secret config key's default must be stored encrypted, otherwise stack
+				// config validation rejects it. See #21865.
+				secret := config.PlaintextSecret(fmt.Sprintf("%v", value))
+				configValue, err = config.NewPlaintext(secret).Encrypt(ctx, encrypter)
+			} else {
+				configValue, err = createConfigValue(value)
+			}
 			if err != nil {
 				return err
 			}
