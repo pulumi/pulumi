@@ -1,0 +1,16 @@
+run: esc open default/test --format string
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+      environmentVariables:
+        FOO: ${foo}
+      files:
+        FILE: hello
+
+---
+> esc open default/test --format string
+"environmentVariables"="\"FILE\"=\"temp/esc-temp-0\",\"FOO\"=\"bar\"","files"="\"FILE\"=\"hello\"","foo"="bar"
+
+---
+> esc open default/test --format string

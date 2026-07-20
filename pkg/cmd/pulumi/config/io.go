@@ -151,7 +151,7 @@ func getStackConfigurationFromProjectStack(
 
 		pulumiEnv = env.Properties["pulumiConfig"]
 
-		_, environ, secrets, err := cli.PrepareEnvironment(env, nil)
+		_, environ, secrets, _, err := cli.PrepareEnvironment(env, nil)
 		if err != nil {
 			return backend.StackConfiguration{}, fmt.Errorf("preparing environment: %w", err)
 		}

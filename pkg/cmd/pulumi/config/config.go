@@ -1253,7 +1253,7 @@ func listConfig(
 		}, nil)
 
 		if env != nil {
-			_, environ, _, err := cli.PrepareEnvironment(env, &cli.PrepareOptions{
+			_, environ, _, _, err := cli.PrepareEnvironment(env, &cli.PrepareOptions{
 				Pretend: !openEnvironment,
 				Redact:  !showSecrets,
 			})
