@@ -1,0 +1,7 @@
+component: cli
+kind: improvement
+body: Remove the template count from `pulumi new --help`, which required a slow
+  template listing before help could display
+time: 2026-07-17T09:00:00.000000000-07:00
+custom:
+  PR: "23973"

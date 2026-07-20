@@ -1,0 +1,4 @@
+component: cli/do
+kind: feat
+body: Allow expressions for boolean inputs
+time: 2026-07-16T17:53:21.38219+01:00

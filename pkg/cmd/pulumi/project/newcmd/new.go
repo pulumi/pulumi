@@ -638,26 +638,6 @@ func NewNewCmd() *cobra.Command {
 		Required:  0,
 	})
 
-	// Add additional help that includes a list of available templates.
-	defaultHelp := cmd.HelpFunc()
-	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
-		// Show default help.
-		defaultHelp(cmd, args)
-
-		templates, closer, err := getTemplates(cmd.Context())
-		contract.IgnoreClose(closer)
-		if err != nil {
-			slog.Warn("could not list templates", "err", err)
-			return
-		}
-
-		// If we have any templates, show them.
-		if len(templates) > 0 {
-			fmt.Fprintln(cmd.OutOrStdout())
-			fmt.Fprintf(cmd.OutOrStdout(), "There are %d available templates.\n", len(templates))
-		}
-	})
-
 	cmd.PersistentFlags().StringArrayVarP(
 		&args.configArray, "config", "c", []string{},
 		"Config to save")
