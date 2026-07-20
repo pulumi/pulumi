@@ -66,6 +66,8 @@ export class ResourceImport extends jspb.Message {
     getPropertiesList(): Array<string>;
     setPropertiesList(value: Array<string>): ResourceImport;
     addProperties(value: string, index?: number): string;
+    getProvider(): string;
+    setProvider(value: string): ResourceImport;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceImport.AsObject;
@@ -91,6 +93,7 @@ export namespace ResourceImport {
         extension?: ResourceExtension.AsObject,
         parent: string,
         propertiesList: Array<string>,
+        provider: string,
     }
 }
 

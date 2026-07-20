@@ -496,15 +496,24 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			inputs = resource.PropertyMap{}
 		}
 
-		// Overlay version/URL/checksums from the Import if present and not already in inputs.
-		if imp.Version != nil {
-			providers.SetProviderVersion(inputs, imp.Version)
+		// Overlay version/URL/checksums/parameterization from the Import if present and not already
+		// in inputs.
+		pkg, version, parameterization, err := imp.Parameterization.ToProviderParameterization(imp.Type, imp.Version)
+		if err != nil {
+			return nil, err
+		}
+		if version != nil {
+			providers.SetProviderVersion(inputs, version)
 		}
 		if imp.PluginDownloadURL != "" {
 			providers.SetProviderURL(inputs, imp.PluginDownloadURL)
 		}
 		if len(imp.PluginChecksums) > 0 {
 			providers.SetProviderChecksums(inputs, imp.PluginChecksums)
+		}
+		if parameterization != nil {
+			providers.SetProviderName(inputs, pkg)
+			providers.SetProviderParameterization(inputs, parameterization)
 		}
 
 		resp, err := i.deployment.providers.Check(ctx, plugin.CheckRequest{

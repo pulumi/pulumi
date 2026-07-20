@@ -81,6 +81,11 @@ message ResourceImport {
     // the input properties to include when generating code for the resource. Defaults to the resource's
     // required properties.
     repeated string properties = 12;
+
+    // the name of the resource's explicit provider, if any. Must reference the name of a provider
+    // declared as another resource (of type "pulumi:providers:<package>") in the same response;
+    // resources without a provider are served by an appropriate default provider.
+    string provider = 13;
 }
 
 // A ResourceParameterization describes the base plugin that a resource's parameterized provider is built
