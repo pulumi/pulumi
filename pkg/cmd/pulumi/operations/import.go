@@ -533,12 +533,8 @@ func parseImportFile(
 				pusherrf("%v has an ambiguous provider",
 					describeResource(i, spec))
 			}
-			// The name table maps to providers that already exist in the stack; providers declared in
-			// the resources block resolve like parents do, via the URNs built above.
-			urn, ok := f.NameTable[spec.Provider]
-			if !ok {
-				urn, ok = urnMapping[spec.Provider]
-			}
+			// urnMapping covers both the name table and the URNs built above for in-file resources.
+			urn, ok := urnMapping[spec.Provider]
 			if !ok {
 				pusherrf("the provider '%v' for %v has no entry in 'nameTable' or 'resources'",
 					spec.Provider, describeResource(i, spec))
