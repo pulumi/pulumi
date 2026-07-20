@@ -41,7 +41,7 @@ func init() {
 					"roundtrip": resource.NewProperty(input),
 				}
 
-				assert.Equal(l, want, stack.Outputs, "expected stack outputs to be %v", want)
+				assert.Equal(l, want, resource.ToResourcePropertyMap(stack.Outputs), "expected stack outputs to be %v", want)
 			},
 		}
 	}

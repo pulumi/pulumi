@@ -87,7 +87,8 @@ func init() {
 						"value": assetValue,
 					})
 
-					assert.Equal(l, want, asset.Inputs, "expected inputs to be {value: %v}", assetValue)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(asset.Inputs),
+						"expected inputs to be {value: %v}", assetValue)
 					assert.Equal(l, asset.Inputs, asset.Outputs, "expected inputs and outputs to match")
 
 					archiveValue, err := resource.NewPathArchiveWithWD("../archive.tar", main)
@@ -98,7 +99,8 @@ func init() {
 						"value": archiveValue,
 					})
 
-					assert.Equal(l, want, archive.Inputs, "expected inputs to be {value: %v}", archiveValue)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(archive.Inputs),
+						"expected inputs to be {value: %v}", archiveValue)
 					assert.Equal(l, archive.Inputs, archive.Outputs, "expected inputs and outputs to match")
 
 					folderValue, err := resource.NewPathArchiveWithWD("../folder", main)
@@ -109,7 +111,8 @@ func init() {
 						"value": folderValue,
 					})
 
-					assert.Equal(l, want, folder.Inputs, "expected inputs to be {value: %v}", folderValue)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(folder.Inputs),
+						"expected inputs to be {value: %v}", folderValue)
 					assert.Equal(l, folder.Inputs, folder.Outputs, "expected inputs and outputs to match")
 
 					stringAsset, err := resource.NewTextAsset("file contents")
@@ -127,7 +130,8 @@ func init() {
 						"value": assarcValue,
 					})
 
-					assert.Equal(l, want, assarc.Inputs, "expected inputs to be {value: %v}", assarcValue)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(assarc.Inputs),
+						"expected inputs to be {value: %v}", assarcValue)
 					assert.Equal(l, assarc.Inputs, assarc.Outputs, "expected inputs and outputs to match")
 
 					remoteassValue, err := resource.NewURIAsset(
@@ -140,7 +144,8 @@ func init() {
 						"value": remoteassValue,
 					})
 
-					assert.Equal(l, want, remoteass.Inputs, "expected inputs to be {value: %v}", remoteassValue)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(remoteass.Inputs),
+						"expected inputs to be {value: %v}", remoteassValue)
 					assert.Equal(l, remoteass.Inputs, remoteass.Outputs, "expected inputs and outputs to match")
 					bs, err := remoteassValue.Bytes()
 					require.NoError(l, err)
@@ -155,7 +160,8 @@ func init() {
 
 					assert.Equal(l,
 						resource.PropertyMap{"value": resource.NewProperty(remotearcValue)},
-						remotearc.Inputs, "expected inputs to be {value: %v}", remotearcValue)
+						resource.ToResourcePropertyMap(remotearc.Inputs),
+						"expected inputs to be {value: %v}", remotearcValue)
 					assert.Equal(l, remotearc.Inputs, remotearc.Outputs, "expected inputs and outputs to match")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")

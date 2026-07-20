@@ -39,20 +39,20 @@ func init() {
 					assert.Equal(l, "outerComponent", outer.URN.Name())
 					assert.Equal(l,
 						resource.NewPropertyMapFromMap(map[string]any{"input": true}),
-						outer.Inputs)
+						resource.ToResourcePropertyMap(outer.Inputs))
 					assert.Equal(l,
 						resource.NewPropertyMapFromMap(map[string]any{"output": true}),
-						outer.Outputs)
+						resource.ToResourcePropertyMap(outer.Outputs))
 
 					inner := RequireSingleResource(l, snap.Resources, "components:index:InnerComponent")
 					assert.Equal(l, "outerComponent-innerComponent", inner.URN.Name())
 					assert.Equal(l, outer.URN, inner.Parent)
 					assert.Equal(l,
 						resource.NewPropertyMapFromMap(map[string]any{"input": false}),
-						inner.Inputs)
+						resource.ToResourcePropertyMap(inner.Inputs))
 					assert.Equal(l,
 						resource.NewPropertyMapFromMap(map[string]any{"output": true}),
-						inner.Outputs)
+						resource.ToResourcePropertyMap(inner.Outputs))
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
 
@@ -61,7 +61,7 @@ func init() {
 					assert.Equal(l, inner.URN, simple.Parent)
 					assert.Equal(l,
 						resource.NewPropertyMapFromMap(map[string]any{"value": true}),
-						simple.Inputs)
+						resource.ToResourcePropertyMap(simple.Inputs))
 					assert.Equal(l, simple.Inputs, simple.Outputs)
 				},
 			},

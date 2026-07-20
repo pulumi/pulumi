@@ -64,7 +64,7 @@ func init() {
 						resource.NewProperty("single"),
 					})
 
-					assert.Equal(l, want, stack.Outputs)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(stack.Outputs))
 				},
 			},
 			{
@@ -103,7 +103,7 @@ func init() {
 						resource.NewNullProperty(),
 					})
 
-					assert.Equal(l, want, stack.Outputs)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(stack.Outputs))
 				},
 			},
 		},

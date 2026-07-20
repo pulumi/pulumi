@@ -55,7 +55,7 @@ func init() {
 							},
 						}),
 					})
-					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(simple.Inputs), "expected inputs to be %v", want)
 					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
 				},
 			},

@@ -59,12 +59,12 @@ func init() {
 						"numberArray": []any{-1.0, 0.0, 1.0},
 						"booleanMap":  map[string]any{"t": true, "f": false},
 					})
-					require.Equal(l, want, setA.Inputs)
-					require.Equal(l, want, setA.Outputs)
-					require.Equal(l, want, setB.Inputs)
-					require.Equal(l, want, setB.Outputs)
-					require.Equal(l, want, fromPrimitive.Inputs)
-					require.Equal(l, want, fromPrimitive.Outputs)
+					require.Equal(l, want, resource.ToResourcePropertyMap(setA.Inputs))
+					require.Equal(l, want, resource.ToResourcePropertyMap(setA.Outputs))
+					require.Equal(l, want, resource.ToResourcePropertyMap(setB.Inputs))
+					require.Equal(l, want, resource.ToResourcePropertyMap(setB.Outputs))
+					require.Equal(l, want, resource.ToResourcePropertyMap(fromPrimitive.Inputs))
+					require.Equal(l, want, resource.ToResourcePropertyMap(fromPrimitive.Outputs))
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					outputs := resource.ToResourcePropertyMap(stack.Outputs)

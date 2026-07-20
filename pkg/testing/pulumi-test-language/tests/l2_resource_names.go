@@ -42,7 +42,7 @@ func init() {
 					for _, typ := range (&providers.NamesProvider{}).Types() {
 						simple := RequireSingleResource(l, snap.Resources, tokens.Type(typ))
 						want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
-						assert.Equal(l, want, simple.Inputs, "expected inputs to be {value: true}")
+						assert.Equal(l, want, resource.ToResourcePropertyMap(simple.Inputs), "expected inputs to be {value: true}")
 						assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
 					}
 				},

@@ -53,14 +53,14 @@ func init() {
 							"booleanMap":  map[string]any{"t": true, "f": false},
 						}),
 					})
-					assert.Equal(l, setWant, setRes.Inputs, "setRes inputs")
-					assert.Equal(l, setWant, setRes.Outputs, "setRes outputs")
+					assert.Equal(l, setWant, resource.ToResourcePropertyMap(setRes.Inputs), "setRes inputs")
+					assert.Equal(l, setWant, resource.ToResourcePropertyMap(setRes.Outputs), "setRes outputs")
 
 					unsetWant := resource.NewPropertyMapFromMap(map[string]any{
 						"data": resource.NewPropertyMapFromMap(map[string]any{}),
 					})
-					assert.Equal(l, unsetWant, unsetRes.Inputs, "unsetRes inputs")
-					assert.Equal(l, unsetWant, unsetRes.Outputs, "unsetRes outputs")
+					assert.Equal(l, unsetWant, resource.ToResourcePropertyMap(unsetRes.Inputs), "unsetRes inputs")
+					assert.Equal(l, unsetWant, resource.ToResourcePropertyMap(unsetRes.Outputs), "unsetRes outputs")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					outputs := resource.ToResourcePropertyMap(stack.Outputs)

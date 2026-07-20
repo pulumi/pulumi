@@ -85,7 +85,7 @@ func init() {
 						"in":           true,
 						"externalEnum": "one",
 					})
-					assert.Equal(l, want, res.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(res.Inputs), "expected inputs to be %v", want)
 					want = resource.NewPropertyMapFromMap(map[string]any{
 						"in":           true,
 						"out":          false,
@@ -94,7 +94,7 @@ func init() {
 							"state": "internal data",
 						},
 					})
-					assert.Equal(l, want, res.Outputs, "expected outputs to be %v", want)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(res.Outputs), "expected outputs to be %v", want)
 				},
 			},
 		},

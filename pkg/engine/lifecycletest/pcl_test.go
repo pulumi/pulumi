@@ -186,7 +186,9 @@ func TestPclSnippet(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	require.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[0].Type)
 	require.Equal(t, tokens.Type("pkgA:index:res"), snap.Resources[1].Type)
-	require.Equal(t, resource.PropertyMap{"propA": resource.NewProperty(true)}, snap.Resources[1].Inputs)
+	require.Equal(t,
+		resource.PropertyMap{"propA": resource.NewProperty(true)},
+		resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
 }
 
 // TestPclInvalidSnippet checks that a snippet that does not type-check returns an error.
@@ -303,7 +305,9 @@ func TestPclSnippetUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, created, 1)
 	require.Empty(t, updated)
-	require.Equal(t, resource.PropertyMap{"propA": resource.NewProperty(true)}, snap.Resources[1].Inputs)
+	require.Equal(t,
+		resource.PropertyMap{"propA": resource.NewProperty(true)},
+		resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
 
 	// Change the snippet code and rerun: we expect an Update, not a Create or Delete.
 	snap.Snippets[0].Code = `propA = false`
@@ -313,7 +317,9 @@ func TestPclSnippetUpdate(t *testing.T) {
 	require.Len(t, created, 1, "resource should not be recreated")
 	require.Len(t, updated, 1, "resource should be updated once")
 	require.Empty(t, deleted)
-	require.Equal(t, resource.PropertyMap{"propA": resource.NewProperty(false)}, snap.Resources[1].Inputs)
+	require.Equal(t,
+		resource.PropertyMap{"propA": resource.NewProperty(false)},
+		resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
 }
 
 // TestPclSnippetDelete checks that removing a snippet from the snapshot causes the engine to
@@ -1071,7 +1077,8 @@ func TestPclSnippetMissingProgramReference(t *testing.T) {
 		}
 	}
 	require.NotNil(t, res, "snippet resource should have been created on the first run")
-	require.Equal(t, resource.PropertyMap{"message": resource.NewProperty("value-of-hello")}, res.Inputs)
+	require.Equal(t, resource.PropertyMap{"message": resource.NewProperty("value-of-hello")},
+		resource.ToResourcePropertyMap(res.Inputs))
 
 	// Step 1: the program stops registering producer. Once all remaining sources are blocked, the
 	// observer rejects the unresolved reference and the update fails instead of hanging.
@@ -1188,7 +1195,8 @@ func TestPclSnippetMissingSnippetReference(t *testing.T) {
 		}
 	}
 	require.NotNil(t, consumer, "consumer snippet resource should have been created")
-	require.Equal(t, resource.PropertyMap{"message": resource.NewProperty("value-of-value-of-abc")}, consumer.Inputs)
+	require.Equal(t, resource.PropertyMap{"message": resource.NewProperty("value-of-value-of-abc")},
+		resource.ToResourcePropertyMap(consumer.Inputs))
 
 	// Step 1: drop the first producer. Its old state remains at the start of the update, but snippet
 	// references resolve from current registrations, so the remaining sources become blocked.
@@ -1314,7 +1322,8 @@ func TestPclSnippetReferenceFollowsAlias(t *testing.T) {
 		}
 	}
 	require.NotNil(t, consumer, "consumer snippet resource should have been created on the first run")
-	require.Equal(t, resource.PropertyMap{"message": resource.NewProperty("hello")}, consumer.Inputs)
+	require.Equal(t, resource.PropertyMap{"message": resource.NewProperty("hello")},
+		resource.ToResourcePropertyMap(consumer.Inputs))
 	require.Equal(t, aURN, snap.Snippets[0].References["comp"], "References should still point at A before the rename")
 
 	// Second update: rename A to B via an alias. The observer resolves the old reference through
@@ -1332,7 +1341,8 @@ func TestPclSnippetReferenceFollowsAlias(t *testing.T) {
 		}
 	}
 	require.NotNil(t, consumer, "consumer should survive the producer being aliased to a new name")
-	require.Equal(t, resource.PropertyMap{"message": resource.NewProperty("hello")}, consumer.Inputs)
+	require.Equal(t, resource.PropertyMap{"message": resource.NewProperty("hello")},
+		resource.ToResourcePropertyMap(consumer.Inputs))
 
 	require.Len(t, snap.Snippets, 1)
 	require.Equal(t, bURN, snap.Snippets[0].References["comp"],

@@ -55,7 +55,8 @@ func init() {
 					thisRes := RequireSingleNamedResource(l, snap.Resources, "comp-this")
 					assert.Equal(l, "simple:index:Resource", thisRes.Type.String())
 					assert.Equal(l, component.URN, thisRes.Parent, "expected `this` resource to have the component as parent")
-					assert.Equal(l, want, thisRes.Inputs, "expected `this` resource inputs to be %v", want)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(thisRes.Inputs),
+						"expected `this` resource inputs to be %v", want)
 
 					// `parent.value = this.value` exercises that the rename is applied to references as well
 					// as the declaration: it must read the renamed resource variable, not the class
@@ -65,7 +66,8 @@ func init() {
 					assert.Equal(l, "simple:index:Resource", parent.Type.String())
 					assert.Equal(l, component.URN, parent.Parent,
 						"expected `parent` resource to have the component as parent")
-					assert.Equal(l, want, parent.Inputs, "expected `parent` resource inputs to be %v", want)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(parent.Inputs),
+						"expected `parent` resource inputs to be %v", want)
 				},
 			},
 		},

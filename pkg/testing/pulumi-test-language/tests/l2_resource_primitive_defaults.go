@@ -53,10 +53,12 @@ func init() {
 						"string":  "default",
 					})
 
-					assert.Equal(l, wantExplicit, explicit.Inputs, "expected explicit inputs to be %v", wantExplicit)
+					assert.Equal(l, wantExplicit, resource.ToResourcePropertyMap(explicit.Inputs),
+						"expected explicit inputs to be %v", wantExplicit)
 					assert.Equal(l, explicit.Inputs, explicit.Outputs, "expected explicit inputs and outputs to match")
 
-					assert.Equal(l, wantDefaulted, defaulted.Inputs, "expected defaulted inputs to be %v", wantDefaulted)
+					assert.Equal(l, wantDefaulted, resource.ToResourcePropertyMap(defaulted.Inputs),
+						"expected defaulted inputs to be %v", wantDefaulted)
 					assert.Equal(l, defaulted.Inputs, defaulted.Outputs, "expected defaulted inputs and outputs to match")
 				},
 			},

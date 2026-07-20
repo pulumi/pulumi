@@ -49,20 +49,26 @@ func init() {
 						"lambda":   resource.NewProperty("lambda"),
 						"property": resource.NewProperty("property"),
 					})
-					assert.Equal(l, wantInputs, first.Inputs, "expected inputs to be %v", wantInputs)
-					assert.Equal(l, wantInputs, second.Inputs, "expected inputs to be %v", wantInputs)
-					assert.Equal(l, wantInputs, lambdaModule.Inputs, "expected inputs to be %v", wantInputs)
-					assert.Equal(l, wantInputs, lambdaResource.Inputs, "expected inputs to be %v", wantInputs)
+					assert.Equal(l, wantInputs, resource.ToResourcePropertyMap(first.Inputs), "expected inputs to be %v", wantInputs)
+					assert.Equal(l, wantInputs, resource.ToResourcePropertyMap(second.Inputs), "expected inputs to be %v", wantInputs)
+					assert.Equal(l, wantInputs, resource.ToResourcePropertyMap(lambdaModule.Inputs),
+						"expected inputs to be %v", wantInputs)
+					assert.Equal(l, wantInputs, resource.ToResourcePropertyMap(lambdaResource.Inputs),
+						"expected inputs to be %v", wantInputs)
 
 					wantOutputs := resource.NewPropertyMapFromMap(map[string]any{
 						"builtins": resource.NewProperty("builtins"),
 						"lambda":   resource.NewProperty("lambda"),
 						"property": resource.NewProperty("property"),
 					})
-					assert.Equal(l, wantOutputs, first.Outputs, "expected outputs to be %v", wantOutputs)
-					assert.Equal(l, wantOutputs, second.Outputs, "expected outputs to be %v", wantOutputs)
-					assert.Equal(l, wantOutputs, lambdaModule.Outputs, "expected outputs to be %v", wantOutputs)
-					assert.Equal(l, wantOutputs, lambdaResource.Outputs, "expected outputs to be %v", wantOutputs)
+					assert.Equal(l, wantOutputs, resource.ToResourcePropertyMap(first.Outputs),
+						"expected outputs to be %v", wantOutputs)
+					assert.Equal(l, wantOutputs, resource.ToResourcePropertyMap(second.Outputs),
+						"expected outputs to be %v", wantOutputs)
+					assert.Equal(l, wantOutputs, resource.ToResourcePropertyMap(lambdaModule.Outputs),
+						"expected outputs to be %v", wantOutputs)
+					assert.Equal(l, wantOutputs, resource.ToResourcePropertyMap(lambdaResource.Outputs),
+						"expected outputs to be %v", wantOutputs)
 				},
 			},
 		},

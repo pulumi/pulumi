@@ -60,11 +60,11 @@ func init() {
 						"input":  expectedStash,
 						"output": expectedStash,
 					}
-					assert.Equal(l, want, myStash.Outputs, "expected myStash outputs to be %v", want)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(myStash.Outputs), "expected myStash outputs to be %v", want)
 					want = resource.PropertyMap{
 						"input": expectedStash,
 					}
-					assert.Equal(l, want, myStash.Inputs, "expected myStash inputs to be %v", want)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(myStash.Inputs), "expected myStash inputs to be %v", want)
 				},
 			},
 		},

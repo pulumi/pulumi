@@ -54,8 +54,8 @@ func init() {
 						resource.NewPropertyMapFromMap(map[string]any{
 							"pluginDownloadURL": "http://example.com",
 						}))
-					require.Equal(l, expectedInputs, explicitProvider.Inputs)
-					require.Equal(l, expectedOutputs, explicitProvider.Outputs)
+					require.Equal(l, expectedInputs, resource.ToResourcePropertyMap(explicitProvider.Inputs))
+					require.Equal(l, expectedOutputs, resource.ToResourcePropertyMap(explicitProvider.Outputs))
 
 					defaultProvider := RequireSingleNamedResource(l, snap.Resources, "default_9_0_0_http_/example.com")
 					require.Equal(l, "pulumi:providers:config", defaultProvider.Type.String(), "expected default provider resource")
@@ -69,8 +69,8 @@ func init() {
 						resource.NewPropertyMapFromMap(map[string]any{
 							"pluginDownloadURL": "http://example.com",
 						}))
-					require.Equal(l, expectedInputs, defaultProvider.Inputs)
-					require.Equal(l, expectedOutputs, defaultProvider.Outputs)
+					require.Equal(l, expectedInputs, resource.ToResourcePropertyMap(defaultProvider.Inputs))
+					require.Equal(l, expectedOutputs, resource.ToResourcePropertyMap(defaultProvider.Outputs))
 				},
 			},
 		},

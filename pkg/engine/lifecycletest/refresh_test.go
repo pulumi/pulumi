@@ -342,7 +342,7 @@ func TestRefreshInitFailure(t *testing.T) {
 			assert.Empty(t, res.InitErrors)
 			assert.Equal(t, resource.ID("0"), res.ID)
 		case res2URN:
-			assert.Equal(t, res2Outputs, res.Outputs)
+			assert.Equal(t, res2Outputs, resource.ToResourcePropertyMap(res.Outputs))
 			assert.Equal(t, resource.ID("1"), res.ID)
 		default:
 			t.Fatalf("unexpected resource %v", urn)
@@ -368,7 +368,7 @@ func TestRefreshInitFailure(t *testing.T) {
 			assert.Equal(t, []string{"Refresh reports continued to fail to initialize"}, res.InitErrors)
 			assert.Equal(t, resource.ID("0"), res.ID)
 		case res2URN:
-			assert.Equal(t, res2Outputs, res.Outputs)
+			assert.Equal(t, res2Outputs, resource.ToResourcePropertyMap(res.Outputs))
 			assert.Equal(t, resource.ID("1"), res.ID)
 		default:
 			t.Fatalf("unexpected resource %v", urn)
@@ -1337,8 +1337,8 @@ func TestRefreshWithProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")
@@ -1349,8 +1349,8 @@ func TestRefreshWithProgram(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Inputs should match what the provider returned, not what was in the program.
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 // Test that we can run a refresh with a provider that has a dependency on a resource
@@ -1579,8 +1579,8 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")
@@ -1594,8 +1594,8 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Inputs should match what the provider returned, not what was in the program.
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 // Test that we can run a refresh by executing the program for it and get updated provider configuration for
@@ -1711,8 +1711,8 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")
@@ -1729,8 +1729,8 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Inputs should match what the provider returned, not what was in the program.
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 // Test that we can run a refresh by executing the program for it and get stale provider configuration for
@@ -1845,8 +1845,8 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")
@@ -1862,8 +1862,8 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Inputs should match what the provider returned, not what was in the program.
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 // Test that if refresh detects a resource has been deleted we flow that information to the program.
@@ -2100,8 +2100,8 @@ func TestRefreshWithBigProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")
@@ -2112,8 +2112,8 @@ func TestRefreshWithBigProgram(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Inputs should match what the provider returned, not what was in the program.
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/19561. Run a refresh with a resource that
@@ -2223,8 +2223,8 @@ func TestRefreshWithAlias(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")
@@ -2235,8 +2235,8 @@ func TestRefreshWithAlias(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Inputs should match what the provider returned, not what was in the program.
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 // When running a --refresh update with --run-program if a resource has been deleted we should re-create it.
@@ -3059,7 +3059,7 @@ func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
 	require.NotNil(t, finalResource, "resource should exist in final snapshot")
 
 	// Assert that inputs were not updated, but the outputs were in final snapshot
-	assert.Equal(t, updatedInputs, finalResource.Inputs,
+	assert.Equal(t, updatedInputs, resource.ToResourcePropertyMap(finalResource.Inputs),
 		"inputs are not updated in final snapshot when Read returns no inputs")
 }
 

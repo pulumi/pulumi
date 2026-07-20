@@ -71,8 +71,8 @@ func init() {
 						"numberArray": []any{-1.0, 0.0, 1.0},
 						"booleanMap":  map[string]any{"t": true, "f": false},
 					})
-					require.Equal(l, expectedPlain, plain.Inputs)
-					require.Equal(l, expectedPlain, plain.Outputs)
+					require.Equal(l, expectedPlain, resource.ToResourcePropertyMap(plain.Inputs))
+					require.Equal(l, expectedPlain, resource.ToResourcePropertyMap(plain.Outputs))
 
 					expectedSecret := resource.NewPropertyMapFromMap(map[string]any{
 						"boolean":     resource.MakeSecret(resource.NewProperty(false)),
@@ -82,8 +82,8 @@ func init() {
 						"numberArray": []any{-1.0, 0.0, 1.0},
 						"booleanMap":  map[string]any{"t": true, "f": false},
 					})
-					require.Equal(l, expectedSecret, secret.Inputs)
-					require.Equal(l, expectedSecret, secret.Outputs)
+					require.Equal(l, expectedSecret, resource.ToResourcePropertyMap(secret.Inputs))
+					require.Equal(l, expectedSecret, resource.ToResourcePropertyMap(secret.Outputs))
 				},
 			},
 		},

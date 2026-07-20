@@ -146,8 +146,8 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider for refresh
 	programInputs["foo"] = resource.NewProperty("qux")

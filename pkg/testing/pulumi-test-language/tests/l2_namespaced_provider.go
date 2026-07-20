@@ -56,7 +56,7 @@ func init() {
 							ID:   resource.NewProperty("id-foo-bar-baz"),
 						}),
 					})
-					require.Equal(l, want, namespaced.Inputs)
+					require.Equal(l, want, resource.ToResourcePropertyMap(namespaced.Inputs))
 					require.Equal(l, namespaced.Inputs, namespaced.Outputs, "expected inputs and outputs to match")
 
 					component := RequireSingleResource(l, snap.Resources, "component:index:Custom")

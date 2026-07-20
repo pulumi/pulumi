@@ -46,26 +46,28 @@ func init() {
 					wantInputs := resource.NewPropertyMapFromMap(map[string]any{
 						"theInput": resource.NewProperty(true),
 					})
-					assert.Equal(l, wantInputs, first.Inputs, "expected inputs to be %v", wantInputs)
-					assert.Equal(l, wantInputs, second.Inputs, "expected inputs to be %v", wantInputs)
+					assert.Equal(l, wantInputs, resource.ToResourcePropertyMap(first.Inputs), "expected inputs to be %v", wantInputs)
+					assert.Equal(l, wantInputs, resource.ToResourcePropertyMap(second.Inputs), "expected inputs to be %v", wantInputs)
 
 					wantOutputs := resource.NewPropertyMapFromMap(map[string]any{
 						"theOutput": resource.NewProperty(true),
 					})
-					assert.Equal(l, wantOutputs, first.Outputs, "expected outputs to be %v", wantOutputs)
-					assert.Equal(l, wantOutputs, second.Outputs, "expected outputs to be %v", wantOutputs)
+					assert.Equal(l, wantOutputs, resource.ToResourcePropertyMap(first.Outputs),
+						"expected outputs to be %v", wantOutputs)
+					assert.Equal(l, wantOutputs, resource.ToResourcePropertyMap(second.Outputs),
+						"expected outputs to be %v", wantOutputs)
 
 					wantThirdInputs := resource.NewPropertyMapFromMap(map[string]any{
 						"theInput":     resource.NewProperty(true),
 						"resourceName": "my-cluster",
 					})
-					assert.Equal(l, wantThirdInputs, third.Inputs)
+					assert.Equal(l, wantThirdInputs, resource.ToResourcePropertyMap(third.Inputs))
 
 					wantThirdOutputs := resource.NewPropertyMapFromMap(map[string]any{
 						"theOutput":    resource.NewProperty(true),
 						"resourceName": "my-cluster",
 					})
-					assert.Equal(l, wantThirdOutputs, third.Outputs)
+					assert.Equal(l, wantThirdOutputs, resource.ToResourcePropertyMap(third.Outputs))
 				},
 			},
 		},

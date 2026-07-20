@@ -77,7 +77,7 @@ func init() {
 							}),
 						},
 					})
-					assert.Equal(l, want, plain.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(plain.Inputs), "expected inputs to be %v", want)
 					assert.Equal(l, plain.Inputs, plain.Outputs, "expected inputs and outputs to match")
 
 					emptyListRes := RequireSingleNamedResource(l, snap.Resources, "emptyListRes")
@@ -100,7 +100,7 @@ func init() {
 						}),
 						"dataList": []any{},
 					})
-					assert.Equal(l, wantEmpty, emptyListRes.Inputs)
+					assert.Equal(l, wantEmpty, resource.ToResourcePropertyMap(emptyListRes.Inputs))
 					assert.Equal(l, emptyListRes.Inputs, emptyListRes.Outputs)
 				},
 			},

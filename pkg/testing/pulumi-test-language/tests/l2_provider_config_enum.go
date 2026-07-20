@@ -50,7 +50,8 @@ func init() {
 						"theString": "hello",
 						"theEnum":   "two",
 					})
-					assert.Equal(l, want, downstream.Inputs, "expected inputs sourced from provider outputs")
+					assert.Equal(l, want, resource.ToResourcePropertyMap(downstream.Inputs),
+						"expected inputs sourced from provider outputs")
 					assert.Equal(l, downstream.Inputs, downstream.Outputs, "expected inputs and outputs to match")
 				},
 			},

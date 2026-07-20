@@ -55,7 +55,8 @@ func init() {
 							"f": false,
 						},
 					})
-					assert.Equal(l, wantDirect, direct.Inputs, "expected direct inputs to be rewritten")
+					assert.Equal(l, wantDirect, resource.ToResourcePropertyMap(direct.Inputs),
+						"expected direct inputs to be rewritten")
 
 					wantComponentInputs := resource.NewPropertyMapFromMap(map[string]any{
 						"boolean":     false,
@@ -68,8 +69,10 @@ func init() {
 							"right": false,
 						},
 					})
-					assert.Equal(l, wantComponentInputs, converted.Inputs, "expected component inputs to be rewritten")
-					assert.Equal(l, wantComponentInputs, child.Inputs, "expected child inputs to reflect rewritten component inputs")
+					assert.Equal(l, wantComponentInputs, resource.ToResourcePropertyMap(converted.Inputs),
+						"expected component inputs to be rewritten")
+					assert.Equal(l, wantComponentInputs, resource.ToResourcePropertyMap(child.Inputs),
+						"expected child inputs to reflect rewritten component inputs")
 					assert.Equal(l, child.Inputs, child.Outputs, "expected child inputs and outputs to match")
 				},
 			},

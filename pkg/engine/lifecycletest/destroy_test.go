@@ -129,10 +129,10 @@ func TestDestroyWithProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
-	assert.Equal(t, programInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, programInputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, programInputs, resource.ToResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")
@@ -237,10 +237,10 @@ func TestTargetedDestroyWithProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
-	assert.Equal(t, programInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, programInputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, programInputs, resource.ToResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")
@@ -368,10 +368,10 @@ func TestProviderUpdateDestroyWithProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
-	assert.Equal(t, programInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, programInputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, programInputs, resource.ToResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")
@@ -494,10 +494,10 @@ func TestExplicitProviderUpdateDestroyWithProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
-	assert.Equal(t, programInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, programInputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, programInputs, resource.ToResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")
@@ -597,8 +597,8 @@ func TestDestroyWithProgramWithComponents(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, programInputs, resource.ToResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")
@@ -712,8 +712,8 @@ func TestDestroyWithProgramWithSkippedComponents(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, programInputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")
@@ -831,8 +831,8 @@ func TestDestroyWithProgramWithSkippedAlias(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, programInputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, programInputs, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")
@@ -960,10 +960,10 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, resource.PropertyMap{}, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
-	assert.Equal(t, programInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, resource.PropertyMap{}, resource.ToResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, programInputs, resource.ToResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, createOutputs, resource.ToResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider
 	programInputs["foo"] = resource.NewProperty("qux")

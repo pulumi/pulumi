@@ -69,7 +69,8 @@ func init() {
 					})
 					want["booleanMap"] = resource.NewProperty(adversarialMap)
 
-					assert.Equal(l, want, primResource.Inputs, "resource inputs should preserve adversarial map keys")
+					assert.Equal(l, want, resource.ToResourcePropertyMap(primResource.Inputs),
+						"resource inputs should preserve adversarial map keys")
 					assert.Equal(l, primResource.Inputs, primResource.Outputs, "expected inputs and outputs to match")
 
 					AssertPropertyMapMember(l, resource.ToResourcePropertyMap(stack.Outputs),

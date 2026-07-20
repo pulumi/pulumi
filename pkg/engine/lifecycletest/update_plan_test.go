@@ -149,7 +149,7 @@ func TestPlannedUpdate(t *testing.T) {
 		},
 		"zed": "grr",
 	})
-	assert.Equal(t, expected, snap.Resources[1].Outputs)
+	assert.Equal(t, expected, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 func TestUnplannedCreate(t *testing.T) {
@@ -713,7 +713,7 @@ func TestResoucesWithSames(t *testing.T) {
 	expected := resource.NewPropertyMapFromMap(map[string]any{
 		"X": "Y",
 	})
-	assert.Equal(t, expected, snap.Resources[1].Outputs)
+	assert.Equal(t, expected, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Attempt to run an update with the plan on the stack that creates A and sames B
 	createA = true
@@ -732,13 +732,13 @@ func TestResoucesWithSames(t *testing.T) {
 	expected = resource.NewPropertyMapFromMap(map[string]any{
 		"X": "Y",
 	})
-	assert.Equal(t, expected, snap.Resources[2].Outputs)
+	assert.Equal(t, expected, resource.ToResourcePropertyMap(snap.Resources[2].Outputs))
 
 	expected = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 		"zed": 24,
 	})
-	assert.Equal(t, expected, snap.Resources[1].Outputs)
+	assert.Equal(t, expected, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 func TestPlannedPreviews(t *testing.T) {
@@ -924,7 +924,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 		"foo": "bar",
 		"zed": 26,
 	})
-	assert.Equal(t, expected, snap.Resources[1].Outputs)
+	assert.Equal(t, expected, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 func TestPlannedOutputChanges(t *testing.T) {
@@ -1262,8 +1262,8 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Check the resource's state.
 	require.Len(t, snap.Resources, 3)
 
-	assert.Equal(t, partialPropertySet, snap.Resources[1].Outputs)
-	assert.Equal(t, partialPropertySet, snap.Resources[2].Outputs)
+	assert.Equal(t, partialPropertySet, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, partialPropertySet, resource.ToResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Now run an update to set the values of the computed properties...
 	resourceInputs = fullPropertySet
@@ -1274,8 +1274,8 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Check the resource's state.
 	require.Len(t, snap.Resources, 3)
 
-	assert.Equal(t, fullPropertySet, snap.Resources[1].Outputs)
-	assert.Equal(t, fullPropertySet, snap.Resources[2].Outputs)
+	assert.Equal(t, fullPropertySet, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, fullPropertySet, resource.ToResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// ...and then build a new plan where they're computed updates (vs above where its computed creates)
 	resourceInputs = computedPropertySet
@@ -1291,8 +1291,8 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Check the resource's state.
 	require.Len(t, snap.Resources, 3)
 
-	assert.Equal(t, partialPropertySet, snap.Resources[1].Outputs)
-	assert.Equal(t, partialPropertySet, snap.Resources[2].Outputs)
+	assert.Equal(t, partialPropertySet, resource.ToResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, partialPropertySet, resource.ToResourcePropertyMap(snap.Resources[2].Outputs))
 }
 
 func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {

@@ -65,7 +65,7 @@ func init() {
 							"myKey":  true,
 						},
 					})
-					assert.Equal(l, want, primResource.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(primResource.Inputs), "expected inputs to be %v", want)
 					assert.Equal(l, primResource.Inputs, primResource.Outputs, "expected inputs and outputs to match")
 
 					want = resource.NewPropertyMapFromMap(map[string]any{
@@ -85,7 +85,7 @@ func init() {
 							},
 						}),
 					})
-					assert.Equal(l, want, refResource.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(refResource.Inputs), "expected inputs to be %v", want)
 					assert.Equal(l, refResource.Inputs, refResource.Outputs, "expected inputs and outputs to match")
 
 					want = resource.NewPropertyMapFromMap(map[string]any{
@@ -120,7 +120,7 @@ func init() {
 							},
 						}),
 					})
-					assert.Equal(l, want, rrefResource.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(rrefResource.Inputs), "expected inputs to be %v", want)
 					assert.Equal(l, rrefResource.Inputs, rrefResource.Outputs, "expected inputs and outputs to match")
 
 					want = resource.NewPropertyMapFromMap(map[string]any{
@@ -185,7 +185,7 @@ func init() {
 							},
 						}),
 					})
-					assert.Equal(l, want, plainResource.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(plainResource.Inputs), "expected inputs to be %v", want)
 					assert.Equal(l, plainResource.Inputs, plainResource.Outputs, "expected inputs and outputs to match")
 				},
 			},

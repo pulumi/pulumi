@@ -4051,12 +4051,12 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"foo":     "bar",
 		"default": "default",
-	}), resA.Inputs)
+	}), resource.ToResourcePropertyMap(resA.Inputs))
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"foo":      "bar",
 		"default":  "default",
 		"computed": "computed",
-	}), resA.Outputs)
+	}), resource.ToResourcePropertyMap(resA.Outputs))
 
 	// Now run another update with new inputs
 	insA = resource.NewPropertyMapFromMap(map[string]any{
@@ -4072,12 +4072,12 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"foo":     "baz",
 		"default": "default",
-	}), resA.Inputs)
+	}), resource.ToResourcePropertyMap(resA.Inputs))
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"foo":      "baz",
 		"default":  "default",
 		"computed": "computed",
-	}), resA.Outputs)
+	}), resource.ToResourcePropertyMap(resA.Outputs))
 
 	// Now run a destroy to delete the resource and check the stored inputs and outputs are sent
 	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
@@ -4651,7 +4651,7 @@ func TestStackOutputsProgramError(t *testing.T) {
 	validateSnapshot := func(snap *deploy.Snapshot, expectedResourceCount int, expectedOutputs resource.PropertyMap) {
 		require.Len(t, snap.Resources, expectedResourceCount)
 		assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
-		assert.Equal(t, expectedOutputs, snap.Resources[0].Outputs)
+		assert.Equal(t, expectedOutputs, resource.ToResourcePropertyMap(snap.Resources[0].Outputs))
 	}
 
 	// Run the initial update which sets some stack outputs.
@@ -4757,7 +4757,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 	validateSnapshot := func(snap *deploy.Snapshot, expectedResourceCount int, expectedOutputs resource.PropertyMap) {
 		require.Len(t, snap.Resources, expectedResourceCount)
 		assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
-		assert.Equal(t, expectedOutputs, snap.Resources[0].Outputs)
+		assert.Equal(t, expectedOutputs, resource.ToResourcePropertyMap(snap.Resources[0].Outputs))
 	}
 
 	// Run the initial update which sets some stack outputs.

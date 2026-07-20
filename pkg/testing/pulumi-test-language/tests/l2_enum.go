@@ -44,9 +44,9 @@ func init() {
 					"stringEnum": resource.NewProperty("two"),
 				}
 
-				assert.Equal(l, expect, sink1.Outputs)
-				assert.Equal(l, expect, sink2.Outputs)
-				assert.Equal(l, expect, sink3.Outputs)
+				assert.Equal(l, expect, resource.ToResourcePropertyMap(sink1.Outputs))
+				assert.Equal(l, expect, resource.ToResourcePropertyMap(sink2.Outputs))
+				assert.Equal(l, expect, resource.ToResourcePropertyMap(sink3.Outputs))
 
 				assert.Equal(l, resource.PropertyMap{
 					"numberEnum": resource.NewProperty(0.1),

@@ -43,7 +43,7 @@ func init() {
 					alpha := RequireSingleResource(l, snap.Resources, "alpha:index:Resource")
 
 					want := resource.NewPropertyMapFromMap(map[string]any{"value": true})
-					assert.Equal(l, want, alpha.Inputs, "expected inputs to be {value: true}")
+					assert.Equal(l, want, resource.ToResourcePropertyMap(alpha.Inputs), "expected inputs to be {value: true}")
 					assert.Equal(l, alpha.Inputs, alpha.Outputs, "expected inputs and outputs to match")
 				},
 			},

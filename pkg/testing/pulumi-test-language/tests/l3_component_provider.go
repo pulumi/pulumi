@@ -57,9 +57,9 @@ func init() {
 						"expected config resource to use the explicit provider")
 
 					want := resource.NewPropertyMapFromMap(map[string]any{"text": "hello"})
-					assert.Equal(l, want, configRes.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, want, resource.ToResourcePropertyMap(configRes.Inputs), "expected inputs to be %v", want)
 					wantOut := resource.NewPropertyMapFromMap(map[string]any{"text": ": hello"})
-					assert.Equal(l, wantOut, configRes.Outputs, "expected outputs to be %v", wantOut)
+					assert.Equal(l, wantOut, resource.ToResourcePropertyMap(configRes.Outputs), "expected outputs to be %v", wantOut)
 				},
 			},
 		},

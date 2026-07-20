@@ -48,14 +48,18 @@ func init() {
 					wantNames := resource.NewPropertyMapFromMap(map[string]any{
 						"value": true,
 					})
-					assert.Equal(l, wantNames, namesResource.Inputs, "expected names resource inputs to be %v", wantNames)
-					assert.Equal(l, wantNames, namesResource.Outputs, "expected names resource outputs to be %v", wantNames)
+					assert.Equal(l, wantNames, resource.ToResourcePropertyMap(namesResource.Inputs),
+						"expected names resource inputs to be %v", wantNames)
+					assert.Equal(l, wantNames, resource.ToResourcePropertyMap(namesResource.Outputs),
+						"expected names resource outputs to be %v", wantNames)
 
 					wantMod := resource.NewPropertyMapFromMap(map[string]any{
 						"text": "module-format",
 					})
-					assert.Equal(l, wantMod, modResource.Inputs, "expected module-format resource inputs to be %v", wantMod)
-					assert.Equal(l, wantMod, modResource.Outputs, "expected module-format resource outputs to be %v", wantMod)
+					assert.Equal(l, wantMod, resource.ToResourcePropertyMap(modResource.Inputs),
+						"expected module-format resource inputs to be %v", wantMod)
+					assert.Equal(l, wantMod, resource.ToResourcePropertyMap(modResource.Outputs),
+						"expected module-format resource outputs to be %v", wantMod)
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					wantOutputs := resource.NewPropertyMapFromMap(map[string]any{
@@ -64,7 +68,8 @@ func init() {
 						"namesResourceVal": true,
 						"nameVariables":    true,
 					})
-					assert.Equal(l, wantOutputs, stack.Outputs, "expected stack outputs to be %v", wantOutputs)
+					assert.Equal(l, wantOutputs, resource.ToResourcePropertyMap(stack.Outputs),
+						"expected stack outputs to be %v", wantOutputs)
 				},
 			},
 		},
