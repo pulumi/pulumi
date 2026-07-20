@@ -71,7 +71,7 @@ func TestDoCmdNoArgsPrintsHelp(t *testing.T) {
 			mws := &pkgWorkspace.MockContext{}
 
 			var stdout bytes.Buffer
-			cmd := NewDoCmd(mlm, mws, panicLoader, testHost, panicLoadConverterPlugin)
+			cmd := NewDoCmd(mlm, mws, panicLoader, testHost, panicLoadConverterPlugin, nil)
 			cmd.SetOut(&stdout)
 			cmd.SetErr(&stdout)
 			cmd.SetArgs(tc.args)
@@ -149,7 +149,7 @@ func TestDoCmdWithPkgFlagPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -215,7 +215,7 @@ func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -273,7 +273,7 @@ func TestDoCmdWithPkgArgPrintsHelpWithModuleFormat(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -372,7 +372,7 @@ func TestDoCmdWithPkgArgPrintsHelpSkipsMethods(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -443,7 +443,7 @@ func TestDoCmdWithPkgArgPrintsHelpUnderRoot(t *testing.T) {
 			postRunCount++
 		},
 	}
-	rootCmd.AddCommand(NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin))
+	rootCmd.AddCommand(NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil))
 
 	var stdout bytes.Buffer
 	rootCmd.SetOut(&stdout)
@@ -496,7 +496,7 @@ func TestDoCmdWithModuleArgPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -542,7 +542,7 @@ func TestDoCmdWithNestedModulesPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -712,7 +712,7 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 				mws := &pkgWorkspace.MockContext{}
 
 				var stdout bytes.Buffer
-				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 				cmd.SetOut(&stdout)
 				cmd.SetErr(&stdout)
 				cmd.SetArgs([]string{"aws:s3"})
@@ -733,7 +733,7 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 					mws := &pkgWorkspace.MockContext{}
 
 					var stdout bytes.Buffer
-					cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+					cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 					cmd.SetOut(&stdout)
 					cmd.SetErr(&stdout)
 					cmd.SetArgs(tc.args)
@@ -814,7 +814,7 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 				mws := &pkgWorkspace.MockContext{}
 
 				var stdout bytes.Buffer
-				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 				cmd.SetOut(&stdout)
 				cmd.SetErr(&stdout)
 				cmd.SetArgs(tc.args)
@@ -861,7 +861,7 @@ func TestDoCmdParameterizedModuleResolves(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"terraform-provider hashicorp/aws:s3"})
@@ -984,7 +984,7 @@ stack = stack()
 `)
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
@@ -1054,7 +1054,7 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		inputFile := writeHCLFile(t, "inputs.pcl", `project = project()`)
 
 		var stdout bytes.Buffer
-		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
 		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
@@ -1072,7 +1072,7 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		inputFile := writeHCLFile(t, "inputs.pcl", `organization = organization()`)
 
 		var stdout bytes.Buffer
-		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
 		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})

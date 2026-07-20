@@ -96,7 +96,7 @@ func newDoResourceCommand(
 	}
 
 	var stdout, stderr bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 	return cmd, &stdout, &stderr
@@ -139,6 +139,7 @@ Available Commands:
   list        List resources
   patch       Patch a resource
   read        Read a resource
+  upsert      Create a resource or fully update an existing one
 
 Flags:
       --dry-run                Run the operation in preview mode
@@ -189,6 +190,7 @@ Available Commands:
   delete      Delete a resource
   patch       Patch a resource
   read        Read a resource
+  upsert      Create a resource or fully update an existing one
 
 Flags:
       --dry-run                Run the operation in preview mode
@@ -980,7 +982,7 @@ func providerFlagStackContext(
 		return provider, nil
 	}
 	var stdout, stderr bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 	return cmd, &stdout, &stderr
