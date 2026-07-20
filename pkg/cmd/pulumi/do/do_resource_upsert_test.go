@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/blang/semver"
@@ -196,6 +197,13 @@ func TestDoCmdResourceUpsertReusesExistingSnippet(t *testing.T) {
 //
 //nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
 func TestDoCmdResourceUpsertEndToEnd(t *testing.T) {
+	// The lifecycletest framework hardcodes UpdateInfo.Root to "/", which is not an absolute path
+	// on Windows and trips plugin.NewProgramInfo's IsAbs check. The rest of pkg/engine/lifecycletest
+	// is skipped on Windows for the same class of issues (see TODO[pulumi/pulumi#19675]).
+	if runtime.GOOS == "windows" {
+		t.Skip("lifecycletest framework is not supported on windows (pulumi/pulumi#19675)")
+	}
+
 	// Schema matches doResourceSpec(false); the loader serves it back on GetSchema so PCL binding
 	// inside the engine's snippet runner resolves `azure:index:myResource` and validates propA/name.
 	const azureSchemaJSON = `{
