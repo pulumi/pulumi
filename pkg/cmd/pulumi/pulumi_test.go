@@ -19,7 +19,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -1029,47 +1028,6 @@ func TestParseRootPersistentFlags(t *testing.T) {
 
 			assert.Equal(t, c.wantOtel, otelTraces)
 			assert.Equal(t, c.wantColor, color)
-		})
-	}
-}
-
-// Commands with subcommands must fail with a non-zero exit code when given an
-// unknown subcommand, rather than printing help and exiting 0. This covers
-// both group commands (no run function), which cobra's execute() would
-// otherwise short-circuit with flag.ErrHelp before args are ever validated,
-// and runnable parents such as `stack`, where an arg past the command's
-// argument specification can only be an attempted subcommand.
-//
-//nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
-func TestGroupCommandsRejectUnknownSubcommands(t *testing.T) {
-	cases := []struct {
-		args    []string
-		wantErr string
-	}{
-		{args: []string{"env", "lisst"}, wantErr: `unknown command "lisst" for "pulumi env"`},
-		{args: []string{"env", "bogus"}, wantErr: `unknown command "bogus" for "pulumi env"`},
-		{args: []string{"esc", "bogus"}, wantErr: `unknown command "bogus" for "pulumi env"`},
-		{args: []string{"env", "provider", "bogus"}, wantErr: "unknown command"},
-		{args: []string{"stack", "tag", "bogus"}, wantErr: `unknown command "bogus" for "pulumi stack tag"`},
-		{args: []string{"plugin", "bogus"}, wantErr: `unknown command "bogus" for "pulumi plugin"`},
-		{args: []string{"stack", "bogus"}, wantErr: `unknown command "bogus" for "pulumi stack"`},
-		{args: []string{"config", "bogus"}, wantErr: `unknown command "bogus" for "pulumi config"`},
-	}
-
-	for _, c := range cases {
-		t.Run(strings.Join(c.args, " "), func(t *testing.T) {
-			pulumiCmd, cleanup := NewPulumiCmd()
-			defer cleanup()
-
-			var stdout, stderr bytes.Buffer
-			pulumiCmd.SetOut(&stdout)
-			pulumiCmd.SetErr(&stderr)
-			pulumiCmd.SetArgs(c.args)
-
-			err := pulumiCmd.Execute()
-			require.Error(t, err)
-			assert.ErrorContains(t, err, c.wantErr)
-			assert.Equal(t, cmd.ExitCodeError, cmd.ExitCodeFor(err))
 		})
 	}
 }

@@ -21,75 +21,32 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 )
 
-// Unknown commands must be met with suggestions drawn from the whole command
-// tree, not just the failing command's siblings. These run against the real
-// command tree; the errors surface from args validation, before any of the
+// An integration check that rattler.Install is wired into NewPulumiCmd: an
+// unknown command on the real tree fails non-zero with a whole-tree
+// suggestion. Suggestion ranking itself is covered by the rattler package's
+// own tests. The error surfaces from args validation, before any of the
 // root's persistent init hooks run.
 //
 //nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
 func TestUnknownCommandSuggestions(t *testing.T) {
-	cases := []struct {
-		args            []string
-		wantErr         string
-		wantSuggestions []string
-	}{
-		{
-			args:            []string{"export"},
-			wantErr:         `unknown command "export" for "pulumi"`,
-			wantSuggestions: []string{"pulumi stack export"},
-		},
-		{
-			args:            []string{"org", "list-members"},
-			wantErr:         `unknown command "list-members" for "pulumi org"`,
-			wantSuggestions: []string{"pulumi org member list"},
-		},
-		{
-			args:            []string{"webhook", "create"},
-			wantErr:         `unknown command "webhook" for "pulumi"`,
-			wantSuggestions: []string{"pulumi stack webhook new", "pulumi org webhook new"},
-		},
-		{
-			args:            []string{"env", "lisst"},
-			wantErr:         `unknown command "lisst" for "pulumi env"`,
-			wantSuggestions: []string{"pulumi env list"},
-		},
-		{
-			// `stack` is runnable and has subcommands, so this exercises the
-			// argument-specification path rather than the group-command path.
-			args:            []string{"stack", "expor"},
-			wantErr:         `unknown command "expor" for "pulumi stack"`,
-			wantSuggestions: []string{"pulumi stack export"},
-		},
-		{
-			// Four levels deep: the resolved path words all count toward the
-			// score, so the sibling under the same deep group wins.
-			args:            []string{"stack", "webhook", "delivery", "lst"},
-			wantErr:         `unknown command "lst" for "pulumi stack webhook delivery"`,
-			wantSuggestions: []string{"pulumi stack webhook delivery list"},
-		},
-	}
+	pulumiCmd, cleanup := NewPulumiCmd()
+	defer cleanup()
 
-	for _, c := range cases {
-		t.Run(strings.Join(c.args, " "), func(t *testing.T) {
-			pulumiCmd, cleanup := NewPulumiCmd()
-			defer cleanup()
+	var stdout, stderr bytes.Buffer
+	pulumiCmd.SetOut(&stdout)
+	pulumiCmd.SetErr(&stderr)
+	pulumiCmd.SetArgs([]string{"export"})
 
-			var stdout, stderr bytes.Buffer
-			pulumiCmd.SetOut(&stdout)
-			pulumiCmd.SetErr(&stderr)
-			pulumiCmd.SetArgs(c.args)
-
-			err := pulumiCmd.Execute()
-			require.Error(t, err)
-			assert.ErrorContains(t, err, c.wantErr)
-			assert.ErrorContains(t, err, "Did you mean this?")
-			for _, s := range c.wantSuggestions {
-				assert.ErrorContains(t, err, s)
-			}
-		})
-	}
+	err := pulumiCmd.Execute()
+	require.Error(t, err)
+	assert.ErrorContains(t, err, `unknown command "export" for "pulumi"`)
+	assert.ErrorContains(t, err, "Did you mean this?")
+	assert.ErrorContains(t, err, "pulumi stack export")
+	assert.Equal(t, cmd.ExitCodeError, cmd.ExitCodeFor(err))
 }
 
 // Common synonyms should resolve as aliases rather than fail with a

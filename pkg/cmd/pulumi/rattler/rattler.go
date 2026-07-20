@@ -22,9 +22,6 @@
 // for `pulumi export`; and non-runnable group commands return flag.ErrHelp
 // before args are ever validated, which Execute turns into "print help,
 // exit 0".
-//
-// The name continues the snake theme set by cobra and constrictor: a rattler
-// rattles a warning when you are headed down a bad path.
 package rattler
 
 import (
@@ -33,7 +30,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"unicode"
 
 	"github.com/spf13/cobra"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
@@ -342,19 +338,11 @@ func normalize(token string) []string {
 	return parts
 }
 
-var levenshteinOptions = func() levenshtein.Options {
-	op := levenshtein.DefaultOptionsWithSub
-	op.Matches = func(r1, r2 rune) bool {
-		return unicode.ToLower(r1) == unicode.ToLower(r2)
-	}
-	return op
-}()
-
 // closeEnough scales the allowed edit distance with the longer string.
 func closeEnough(a, b string) bool {
 	threshold := 2
 	if max(len(a), len(b)) < 6 {
 		threshold = 1
 	}
-	return levenshtein.DistanceForStrings([]rune(a), []rune(b), levenshteinOptions) <= threshold
+	return levenshtein.DistanceForStrings([]rune(a), []rune(b), levenshtein.DefaultOptionsWithSub) <= threshold
 }
