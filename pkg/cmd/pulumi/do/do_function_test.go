@@ -127,6 +127,10 @@ Outputs:
  - output3 (boolean*): Whether it worked.
 Outputs marked with '*' are always present
 
+Simple inputs can be set with flags and are parsed as expressions in the
+input format, except string values, which are taken verbatim; append + to a
+string flag (--<input>+ <value>) to parse its value as an expression too.
+
 Usage:
   do azure:myModule:myOtherFunction [flags]
 
@@ -2613,9 +2617,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 				switch filepath.Base(req.Filename) {
 				case "provider.yaml":
 					assert.Equal(t, "opt1: val1\n", string(req.Source))
-					assert.Equal(t, map[string]string{
-						"optTwo": "val2",
-					}, req.Attributes)
+					assert.Empty(t, req.Attributes)
 					// The converter should be told this is a provider-config snippet via the provider's resource token,
 					// not the function token.
 					assert.Equal(t, "pulumi:providers:azure", req.Token)
@@ -2624,26 +2626,21 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 					return &plugin.ConvertSnippetResponse{
 						Filename: "provider.pp",
 						Source:   []byte(`opt1 = "val1"` + "\n"),
-						Attributes: map[string]string{
-							"optTwo": "\"val2\"",
-						},
 					}, nil
 				case "inputs.yaml":
-					assert.Equal(t, "in1: file\n", string(req.Source))
+					assert.Equal(t, "in1: file\ninTwo: fromfile\n", string(req.Source))
 					assert.Equal(t, map[string]string{
 						"dryRun": "true",
 						"in1":    "p1",
-						"inTwo":  "p2",
 					}, req.Attributes)
 					assert.Equal(t, "azure:index:myFunction", req.Token)
 					require.NotNil(t, req.Package)
 					assert.Equal(t, "azure", req.Package.Package)
 					return &plugin.ConvertSnippetResponse{
 						Filename: "inputs.pp",
-						Source:   []byte(`in1 = "file"` + "\n"),
+						Source:   []byte("in1 = \"file\"\ninTwo = \"fromfile\"\n"),
 						Attributes: map[string]string{
 							"in1":    "\"p1\"",
-							"inTwo":  "\"p2\"",
 							"dryRun": "true",
 						},
 					}, nil
@@ -2704,7 +2701,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 	}
 
 	providerFile := writeHCLFile(t, "provider.yaml", "opt1: val1\n")
-	inputFile := writeHCLFile(t, "inputs.yaml", "in1: file\n")
+	inputFile := writeHCLFile(t, "inputs.yaml", "in1: file\ninTwo: fromfile\n")
 
 	var stdout bytes.Buffer
 	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter, nil)
@@ -2715,7 +2712,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 		"--provider-file", providerFile,
 		"--input-file", inputFile, "--input", "yaml",
 		"--azure:opt-two", "val2",
-		"--in1", "p1",
+		"--in1+", "p1",
 		"--input:in-two", "p2",
 		"--input:dry-run",
 	})
@@ -2807,11 +2804,64 @@ func TestDoCmdFunctionInvokeWithYAMLInputFlagsNoInputFile(t *testing.T) {
 	cmd.SetArgs([]string{
 		"azure:index:myFunction",
 		"--input", "yaml",
-		"--input:message", "instring",
+		"--input:message+", "instring",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)
-	assert.True(t, converterCalled, "ConvertSnippet should be called for YAML flags even without --input-file")
+	assert.True(t, converterCalled, "ConvertSnippet should be called for expression flags even without --input-file")
+	assert.JSONEq(t, `{"output1": "world"}`, stdout.String())
+}
+
+func TestDoCmdFunctionInvokeWithPlainFlagsSkipsConverter(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"message": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+						Required: []string{"message"},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"output1": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t,
+						"convert: allow empty files):\nwith ${not.interpolated} and %{no.directive}",
+						req.Args["message"].StringValue())
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{
+		"azure:index:myFunction",
+		"--input:message", "convert: allow empty files):\nwith ${not.interpolated} and %{no.directive}",
+	})
+	err := cmd.Execute()
+	require.NoError(t, err)
 	assert.JSONEq(t, `{"output1": "world"}`, stdout.String())
 }
 
@@ -2915,6 +2965,6 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)
-	assert.True(t, converterCalled, "ConvertSnippet should be called for YAML flags even without --input-file")
+	assert.True(t, converterCalled, "ConvertSnippet should be called for non-string flags even without --input-file")
 	assert.JSONEq(t, `{"output1": "world"}`, stdout.String())
 }
