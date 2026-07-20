@@ -1970,19 +1970,23 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 	}
 	var prov plugin.Provider
 	rst := resource.StatusOK
-	if s.new.Custom && s.planned && len(suppliedOutputs) > 0 {
+	if s.planned && len(suppliedOutputs) > 0 {
 		// The import supplied the resource's full state (e.g. from a state converter): trust it rather
 		// than reading from the provider, so the import can run without access to the underlying cloud.
-		var err error
-		prov, err = getProvider(s, s.provider)
-		if err != nil {
-			return resource.StatusOK, nil, err
+		if s.new.Custom {
+			var err error
+			prov, err = getProvider(s, s.provider)
+			if err != nil {
+				return resource.StatusOK, nil, err
+			}
 		}
 
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
 
-		s.new.ID = s.new.ImportID
+		if s.new.Custom {
+			s.new.ID = s.new.ImportID
+		}
 	} else if s.new.Custom {
 		// Read the current state of the resource to import. If the provider does not hand us back any inputs for the
 		// resource, it probably needs to be updated. If the resource does not exist at all, fail the import.
