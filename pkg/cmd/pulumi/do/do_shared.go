@@ -552,12 +552,12 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 		switch typ {
 		case schema.BoolType:
 			flagFunc = func(name, extraHelp string) {
-				flags.Bool(name, false, comment+extraHelp)
-				// N.B. This is hardcoded in the engine to the literal string "true" for the literal true. This works
-				// for PCL, and happens to also work for YAML, but if we add any new converters that _don't_ use the
-				// string "true" for their boolean true literal (for example Python uses "True"), then we'll need to add
-				// something here to support that. Probably pre-fetching the true literal text from the converter plugin
-				// to create the NoOptDefVal to match.
+				// N.B. This is hardcoded in the engine to the literal string "true/false" for the literal true/false.
+				// This works for PCL, and happens to also work for YAML, but if we add any new converters that _don't_
+				// use the string "true" for their boolean true literal (for example Python uses "True"), then we'll
+				// need to add something here to support that. Probably pre-fetching the literal text from the
+				// converter plugin to create the flag values to match.
+				flags.String(name, "false", comment+extraHelp)
 				flags.Lookup(name).NoOptDefVal = "true"
 			}
 		case schema.StringType, schema.IntType, schema.NumberType:
