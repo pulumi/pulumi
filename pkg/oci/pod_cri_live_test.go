@@ -106,3 +106,58 @@ func TestCriLiveRunWaitLogs(t *testing.T) {
 	assert.False(t, strings.Contains(logs, " F ") || strings.Contains(logs, " P "),
 		"the K8s full/partial tag must be stripped, got %q", logs)
 }
+
+// TestCriLiveRunToCompletion drives the build primitive against live CRI, proving RunToCompletion
+// as code — not just as constructed requests. A source-less builder (busybox) prints a ref to
+// stdout and progress to stderr, then exits; the test proves the two design departures documented
+// on RunToCompletion hold against real containerd log framing:
+//
+//   - the COMBINED stream reaches the writer (both the stderr progress and the stdout ref, de-framed
+//     of the K8s tags), and
+//   - the return is "" — the ref on stdout is streamed, NOT captured (no docker-style split).
+//
+// A second, failing builder proves a non-zero exit surfaces as an error (a build has no bail). The
+// `sleep` keeps the container running across at least one WaitContainer poll, so the follow-tailer
+// streams concurrently rather than racing a sub-poll-interval exit.
+func TestCriLiveRunToCompletion(t *testing.T) {
+	t.Parallel()
+	if os.Getenv(criLiveEnvVar) == "" {
+		t.Skipf("set %s (and run inside crienv) to exercise the live CRI build primitive; see the CRI findings kit", criLiveEnvVar)
+	}
+	require.NotEmpty(t, os.Getenv(CRISandboxIDEnvVar),
+		"orchestration must create a sandbox (crictl runp) and set %s", CRISandboxIDEnvVar)
+	require.NotEmpty(t, os.Getenv(CRILogDirEnvVar),
+		"orchestration must set %s to the sandbox's log_directory", CRILogDirEnvVar)
+
+	ctx := t.Context()
+	m := NewCriPodManager("crilive-build")
+	t.Cleanup(func() { _ = m.Cleanup(context.WithoutCancel(ctx)) })
+
+	const image = "docker.io/library/busybox:latest"
+	require.NoError(t, m.PullImage(ctx, image), "PullImage should fetch busybox into the CRI image store")
+
+	var out strings.Builder
+	ref, err := m.RunToCompletion(ctx, ContainerConfig{
+		Image:      image,
+		Name:       "build-ok",
+		Entrypoint: []string{"/bin/sh", "-c"},
+		Cmd:        []string{"echo building-progress 1>&2; sleep 1; echo BUILT_REF_sha256"},
+	}, &out)
+	require.NoError(t, err, "RunToCompletion should run the builder to a clean exit")
+	assert.Empty(t, ref, "CRI RunToCompletion captures no stdout — the ref on stdout is streamed, not returned")
+
+	logs := out.String()
+	assert.Contains(t, logs, "building-progress", "stderr progress must reach the writer")
+	assert.Contains(t, logs, "BUILT_REF_sha256", "stdout (the ref) must also reach the writer — combined, not captured")
+	assert.NotContains(t, logs, " stdout ", "the K8s stream tag must be stripped from real containerd output")
+	assert.NotContains(t, logs, " stderr ", "the K8s stream tag must be stripped from real containerd output")
+
+	_, err = m.RunToCompletion(ctx, ContainerConfig{
+		Image:      image,
+		Name:       "build-fail",
+		Entrypoint: []string{"/bin/sh", "-c"},
+		Cmd:        []string{"echo oops 1>&2; exit 3"},
+	}, io.Discard)
+	require.Error(t, err, "a non-zero build exit must surface as an error (a build has no bail)")
+	assert.Contains(t, err.Error(), "exited 3")
+}

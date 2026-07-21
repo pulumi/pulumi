@@ -15,6 +15,7 @@
 package oci
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"os"
@@ -276,18 +277,92 @@ func TestCriImageExistsAndPull(t *testing.T) {
 	assert.Equal(t, []string{"img:2"}, present.pulled)
 }
 
-// TestCriUnimplementedVerbs pins that the deferred verbs fail loudly (with a pointer to the design
-// call) rather than silently misbehaving.
+// TestCriUnimplementedVerbs pins that the still-deferred verbs fail loudly (with a pointer to the
+// design call) rather than silently misbehaving. RunToCompletion is no longer here — it is
+// implemented and covered by TestCriRunToCompletion*.
 func TestCriUnimplementedVerbs(t *testing.T) {
 	t.Parallel()
 	m := newFakeCriManager(t, &fakeCRI{}, "p1")
 	ctx := t.Context()
 
 	assert.Error(t, m.ImportImage(ctx, "/layout", "ref:1"))
-	_, err := m.RunToCompletion(ctx, ContainerConfig{Image: "i"}, io.Discard)
+	_, err := m.ReadImageFile(ctx, "img", "/path")
 	assert.Error(t, err)
-	_, err = m.ReadImageFile(ctx, "img", "/path")
-	assert.Error(t, err)
+}
+
+// TestCriRunToCompletionStreamsAndCleansUp proves the build primitive: it creates+starts an
+// ephemeral container in the sandbox, streams its de-framed COMBINED output (stdout and stderr
+// both) to the progress writer, returns "" (no stdout/stderr split — a ref printed to stdout is
+// streamed, not captured), and stops+removes the container on exit.
+func TestCriRunToCompletionStreamsAndCleansUp(t *testing.T) {
+	t.Parallel()
+	// Two RUNNING polls before EXITED give the log tailer ample time to drain the file before
+	// WaitContainer returns and the stream is closed — so the streamed-output assertion is
+	// deterministic rather than racing the 200ms poll.
+	fake := &fakeCRI{nextID: "build-1", statuses: []*runtimeapi.ContainerStatus{
+		{State: runtimeapi.ContainerState_CONTAINER_RUNNING},
+		{State: runtimeapi.ContainerState_CONTAINER_EXITED, ExitCode: 0},
+	}}
+	m := newFakeCriManager(t, fake, "p1")
+	ctx := t.Context()
+
+	// containerd would write this as the container runs; the tailer reads it from logDir/build_0.log.
+	// A ref lands on stdout and progress on stderr — both must reach the writer, undivided.
+	framed := "" +
+		"2026-07-21T00:00:00Z stderr F building step 1\n" +
+		"2026-07-21T00:00:00Z stdout F built ref sha256:abc\n"
+	require.NoError(t, os.WriteFile(filepath.Join(m.logDir, "build_0.log"), []byte(framed), 0o600))
+
+	var out bytes.Buffer
+	ref, err := m.RunToCompletion(ctx, ContainerConfig{
+		Image:      "builder:1",
+		Name:       "build",
+		Entrypoint: []string{"sh", "-c"},
+		Cmd:        []string{"do-the-build"},
+	}, &out)
+	require.NoError(t, err)
+	assert.Empty(t, ref, "CRI RunToCompletion captures no stdout; the ref on stdout is streamed, not returned")
+	assert.Equal(t, "building step 1\nbuilt ref sha256:abc\n", out.String(),
+		"both stdout and stderr must reach the writer as one combined stream")
+
+	require.Len(t, fake.createReqs, 1)
+	cfg := fake.createReqs[0].GetConfig()
+	assert.Equal(t, "build", cfg.GetMetadata().GetName())
+	assert.Equal(t, "build_0.log", cfg.GetLogPath())
+	assert.Equal(t, []string{"sh", "-c"}, cfg.GetCommand())
+	assert.Equal(t, []string{"do-the-build"}, cfg.GetArgs())
+	assert.Equal(t, []string{"build-1"}, fake.started, "the build container must be started")
+	assert.Equal(t, []string{"build-1"}, fake.stopped, "ephemeral: the build container must be stopped on exit")
+	assert.Equal(t, []string{"build-1"}, fake.removed, "ephemeral: the build container must be removed on exit")
+}
+
+// TestCriRunToCompletionNonZeroExitErrors proves a failed build is surfaced as an error (a build
+// has no "bail", unlike a program Run) and the container is still reaped.
+func TestCriRunToCompletionNonZeroExitErrors(t *testing.T) {
+	t.Parallel()
+	fake := &fakeCRI{nextID: "build-2", statuses: []*runtimeapi.ContainerStatus{
+		{State: runtimeapi.ContainerState_CONTAINER_EXITED, ExitCode: 2},
+	}}
+	m := newFakeCriManager(t, fake, "p1")
+
+	_, err := m.RunToCompletion(t.Context(), ContainerConfig{Image: "builder:1", Name: "build"}, io.Discard)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exited 2")
+	assert.Equal(t, []string{"build-2"}, fake.removed, "the container is reaped even on a failed build")
+}
+
+// TestCriRunToCompletionNeedsLogDir proves the honest asterisk (like ContainerLogs): with no pod
+// log directory mounted there is nowhere to read build progress from, so it fails with an
+// actionable error naming the env var rather than running blind.
+func TestCriRunToCompletionNeedsLogDir(t *testing.T) {
+	t.Parallel()
+	m := NewCriPodManager("p1",
+		WithCRIClients(&fakeCRI{}, &fakeCRI{}), WithCRISandboxID("sb-1"), WithCRILogDir(""),
+	).(*criPodManager)
+
+	_, err := m.RunToCompletion(t.Context(), ContainerConfig{Image: "builder:1", Name: "build"}, io.Discard)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), CRILogDirEnvVar)
 }
 
 // TestCriCreateVolumeCreatesHostDir proves CreateVolume creates a host directory under the

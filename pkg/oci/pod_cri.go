@@ -59,11 +59,14 @@ import (
 //     "engine needs only the endpoint" story: one shared *data* dir, not a host-binary callback),
 //     and ContainerLogs tails that file and strips the K8s log framing before the caller sees it.
 //
-// This is an early, deliberately partial implementation. Run + network + image existence/pull are
-// here; ImportImage (a genuine ctr-vs-proxy-pull design call), RunToCompletion (the build
-// primitive, which recovers docker's stdout/stderr split by filtering the log on its stream tag),
-// and the volume verbs (CRI has no named-volume analog — the workspace becomes a host dir) return
-// documented not-yet-implemented errors rather than pretending to work.
+// This is an early, deliberately partial implementation. Run + network + image existence/pull, the
+// volume verbs (CRI has no named-volume analog — the workspace becomes a host dir), and
+// RunToCompletion (the build primitive — runs a builder to completion and streams its combined
+// output, deliberately without docker's stdout/stderr split; see its doc) are here. Still stubbed
+// with documented not-yet-implemented errors: ImportImage (a genuine ctr-vs-proxy-pull design call)
+// and ReadImageFile. The build path also still needs source-reaching — BuildInContainer feeds the
+// builder via VolumesFrom, which CRI does not yet honor (the planned analog reads the engine's
+// mounts via ContainerStatus and replicates them; see RunToCompletion).
 type criPodManager struct {
 	podID     string // unique id for this pod; labels containers and scopes log paths
 	sandboxID string // the PodSandbox the engine runs in and adds siblings to (from the wrapper)
@@ -452,13 +455,95 @@ func (m *criPodManager) ImportImage(ctx context.Context, layoutPath, ref string)
 		"see the CRI PodManager findings", layoutPath, ref)
 }
 
-// RunToCompletion is not yet implemented on CRI. It is the build primitive, and building on CRI
-// pulls in the still-docker-coupled build mechanism (the `docker build --output type=oci` command
-// plus `--volumes-from` and the socket). The CRI-specific part, when built, recovers docker's
-// stdout/stderr split by filtering the container log on its stream tag (only `stdout F` lines feed
-// the captured ref).
+// RunToCompletion runs a one-shot builder container to completion and streams its output to the
+// progress writer. It is the build primitive behind BuildInContainer, and it is built on the same
+// create+start / poll-status / tail-log path the run verbs already prove — the container is just
+// ephemeral (stopped and removed on exit, docker's --rm) rather than tracked.
+//
+// Two deliberate departures from docker's RunToCompletion:
+//
+//   - No stdout/stderr split. CRI's on-disk log is a single framed stream (stdout and stderr
+//     interleaved), so this streams the de-framed combination to the writer and returns "". The
+//     split docker keeps exists only to capture a ref printed to stdout by the program-image
+//     build — which is docker-coupled anyway (`docker build -t` into the daemon) — and the build
+//     paths CRI targets, package and component builds, discard the return value: they load an OCI
+//     layout the build wrote to disk, applied at the ImportImage sink. So "" is the correct return
+//     for those, and the split is deferred until program-image builds are wanted on CRI.
+//   - Source-reaching is not wired yet. BuildInContainer hands the builder its source via
+//     VolumesFrom (inherit the engine's mounts), which containerConfig does not consult — CRI has
+//     no server-side inherit-the-engine concept. The planned analog is to read the engine
+//     container's mounts via ContainerStatus and replicate them (the way autoSeedVolumes simulates
+//     copy-up); until then a build that needs source starts but finds none, so this verb is proven
+//     with a source-less builder and a real build awaits the source-reaching increment.
+//
+// A non-zero exit is returned as an error: unlike a program Run, a failed build has no bail.
 func (m *criPodManager) RunToCompletion(ctx context.Context, cfg ContainerConfig, stderr io.Writer) (string, error) {
-	return "", errors.New("oci: RunToCompletion (the build primitive) is not yet implemented for the CRI runtime")
+	if cfg.Image == "" {
+		return "", errors.New("container config requires an Image")
+	}
+	if cfg.Name == "" {
+		return "", errors.New("container config requires a Name")
+	}
+	if m.sandboxID == "" {
+		return "", fmt.Errorf("oci: no CRI pod sandbox to run %q in (set %s)", cfg.Name, CRISandboxIDEnvVar)
+	}
+	if m.logDir == "" {
+		return "", fmt.Errorf("oci: cannot stream build output for %q: no pod log directory (set %s). "+
+			"CRI has no log-read RPC; the engine must have the sandbox log directory mounted", cfg.Name, CRILogDirEnvVar)
+	}
+	runtime, _, err := m.clients()
+	if err != nil {
+		return "", err
+	}
+
+	attempt := m.nextAttempt(cfg.Name)
+	logPath := criLogPath(cfg.Name, attempt)
+	created, err := runtime.CreateContainer(ctx, &runtimeapi.CreateContainerRequest{
+		PodSandboxId:  m.sandboxID,
+		Config:        m.containerConfig(cfg, attempt, logPath),
+		SandboxConfig: m.sandboxConfig(),
+	})
+	if err != nil {
+		return "", fmt.Errorf("oci: creating build container %q from %s: %w", cfg.Name, cfg.Image, err)
+	}
+	id := created.GetContainerId()
+	// Ephemeral: one-shot, so stop+remove on exit regardless of outcome (WithoutCancel so a
+	// cancelled build still cleans up). Not tracked — there is nothing for Cleanup to reap.
+	defer func() {
+		_, _ = runtime.StopContainer(context.WithoutCancel(ctx),
+			&runtimeapi.StopContainerRequest{ContainerId: id, Timeout: 0})
+		_, _ = runtime.RemoveContainer(context.WithoutCancel(ctx),
+			&runtimeapi.RemoveContainerRequest{ContainerId: id})
+	}()
+
+	if _, err := runtime.StartContainer(ctx, &runtimeapi.StartContainerRequest{ContainerId: id}); err != nil {
+		return "", fmt.Errorf("oci: starting build container %q (%s): %w", cfg.Name, id, err)
+	}
+
+	// Follow the combined log onto the progress writer while the build runs. newCRILogStream reads
+	// from the start of the file and retries until it appears, so no output is lost by attaching
+	// just after start; WaitContainer then blocks until exit, and closing the stream drains the
+	// tailer. This mirrors the program-run path (see the language host's Run).
+	logs, err := newCRILogStream(ctx, filepath.Join(m.logDir, logPath), true)
+	if err != nil {
+		return "", fmt.Errorf("oci: streaming build output for %q: %w", cfg.Name, err)
+	}
+	copied := make(chan struct{})
+	go func() {
+		defer close(copied)
+		_, _ = io.Copy(stderr, logs)
+	}()
+
+	code, waitErr := m.WaitContainer(ctx, Container{ID: id, Name: cfg.Name})
+	_ = logs.Close()
+	<-copied
+	if waitErr != nil {
+		return "", fmt.Errorf("oci: waiting for build container %q: %w", cfg.Name, waitErr)
+	}
+	if code != 0 {
+		return "", fmt.Errorf("oci: build container %q exited %d", cfg.Name, code)
+	}
+	return "", nil
 }
 
 func (m *criPodManager) CreateVolume(ctx context.Context, name string) (Volume, error) {
