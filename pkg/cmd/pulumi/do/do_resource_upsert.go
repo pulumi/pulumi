@@ -231,11 +231,11 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
 
-	snippetUUID, existed, err := resolveSnippetUUID(snap, name, res.Token)
+	snippetUUID, exists, err := resolveSnippetUUID(snap, name, res.Token)
 	if err != nil {
 		return err
 	}
-	if !existed {
+	if !exists {
 		return fmt.Errorf("resource %s %q does not exist in stack %s", res.Token, name, stack.Ref())
 	}
 
