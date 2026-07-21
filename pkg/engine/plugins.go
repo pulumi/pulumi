@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"slices"
 	"time"
@@ -870,9 +871,7 @@ func computeDefaultProviderPackages(
 	}
 
 	defaultProviderInfo := make(map[tokens.Package]workspace.PackageDescriptor)
-	for name, plugin := range defaultProviderPlugins {
-		defaultProviderInfo[name] = plugin
-	}
+	maps.Copy(defaultProviderInfo, defaultProviderPlugins)
 
 	return defaultProviderInfo, nil
 }

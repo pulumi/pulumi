@@ -170,7 +170,7 @@ type testInputs struct {
 }
 
 func (testInputs) ElementType() reflect.Type {
-	return reflect.TypeOf(test{})
+	return reflect.TypeFor[test]()
 }
 
 // TestMarshalRoundtrip ensures that marshaling a complex structure to and from its on-the-wire gRPC format succeeds.
@@ -198,7 +198,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 
 	out, resolve, _ := ctx.NewOutput()
 	resolve("outputty")
-	out2 := ctx.newOutputState(reflect.TypeOf(""))
+	out2 := ctx.newOutputState(reflect.TypeFor[string]())
 	internal.FulfillOutput(out2, nil, false, false, resourcesToInternal(nil), nil)
 	inputs := testInputs{
 		S:           String("a string"),
@@ -240,7 +240,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, err)
-	assert.Equal(t, reflect.TypeOf(inputs).NumField(), len(resolved))
+	assert.Equal(t, reflect.TypeFor[testInputs]().NumField(), len(resolved))
 	require.Len(t, deps, 10)
 	require.Len(t, pdeps, 25)
 
@@ -331,7 +331,7 @@ type nestedTypeInput interface {
 	Input
 }
 
-var nestedTypeType = reflect.TypeOf((*nestedType)(nil)).Elem()
+var nestedTypeType = reflect.TypeFor[nestedType]()
 
 type nestedType struct {
 	Foo string `pulumi:"foo"`
@@ -396,7 +396,7 @@ type testResourceInputs struct {
 }
 
 func (*testResourceInputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*testResourceArgs)(nil))
+	return reflect.TypeFor[*testResourceArgs]()
 }
 
 type testResource struct {
@@ -552,7 +552,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 
 	out, resolve, _ := NewOutput()
 	resolve("outputty")
-	out2 := ctx.newOutputState(reflect.TypeOf(""))
+	out2 := ctx.newOutputState(reflect.TypeFor[string]())
 	internal.FulfillOutput(out2, nil, false, true, resourcesToInternal(nil), nil)
 	inputs := testInputs{
 		S:           String("a string"),
@@ -587,7 +587,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 	// The value we marshaled above omits the 10 Resource-typed fields, so we don't expect those fields to appear
 	// in the unmarshaled value.
 	const resourceFields = 10
-	assert.Equal(t, reflect.TypeOf(inputs).NumField()-resourceFields, len(resolved))
+	assert.Equal(t, reflect.TypeFor[testInputs]().NumField()-resourceFields, len(resolved))
 	assert.Empty(t, deps)
 	require.Len(t, pdeps, 15)
 
@@ -631,14 +631,14 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 type UntypedArgs map[string]any
 
 func (UntypedArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]any)(nil)).Elem()
+	return reflect.TypeFor[map[string]any]()
 }
 
 func TestMapInputMarshalling(t *testing.T) {
 	t.Parallel()
 
 	var theResource simpleCustomResource
-	out := internal.NewOutput(nil, reflect.TypeOf((*StringOutput)(nil)).Elem(), &theResource)
+	out := internal.NewOutput(nil, reflect.TypeFor[StringOutput](), &theResource)
 	internal.ResolveOutput(out, "outputty", true, false, resourcesToInternal(nil))
 
 	inputs1 := Map(map[string]Input{
@@ -1059,7 +1059,7 @@ type fooArgs struct {
 }
 
 func (fooArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*foo)(nil)).Elem()
+	return reflect.TypeFor[foo]()
 }
 
 type TemplateOptions struct {
@@ -1080,7 +1080,7 @@ type TemplateOptionsArgs struct {
 }
 
 func (TemplateOptionsArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*TemplateOptions)(nil)).Elem()
+	return reflect.TypeFor[TemplateOptions]()
 }
 
 func (i TemplateOptionsArgs) ToTemplateOptionsOutput() TemplateOptionsOutput {
@@ -1113,7 +1113,7 @@ func TemplateOptionsPtr(v *TemplateOptionsArgs) TemplateOptionsPtrInput {
 }
 
 func (*templateOptionsPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**TemplateOptions)(nil)).Elem()
+	return reflect.TypeFor[*TemplateOptions]()
 }
 
 func (i *templateOptionsPtrType) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
@@ -1127,7 +1127,7 @@ func (i *templateOptionsPtrType) ToTemplateOptionsPtrOutputWithContext(ctx conte
 type TemplateOptionsOutput struct{ *OutputState }
 
 func (TemplateOptionsOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*TemplateOptions)(nil)).Elem()
+	return reflect.TypeFor[TemplateOptions]()
 }
 
 func (o TemplateOptionsOutput) ToTemplateOptionsOutput() TemplateOptionsOutput {
@@ -1151,7 +1151,7 @@ func (o TemplateOptionsOutput) ToTemplateOptionsPtrOutputWithContext(ctx context
 type TemplateOptionsPtrOutput struct{ *OutputState }
 
 func (TemplateOptionsPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**TemplateOptions)(nil)).Elem()
+	return reflect.TypeFor[*TemplateOptions]()
 }
 
 func (o TemplateOptionsPtrOutput) ToTemplateOptionsPtrOutput() TemplateOptionsPtrOutput {
@@ -1180,7 +1180,7 @@ type TemplateTagSpecificationArgs struct {
 }
 
 func (TemplateTagSpecificationArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*TemplateTagSpecification)(nil)).Elem()
+	return reflect.TypeFor[TemplateTagSpecification]()
 }
 
 func (i TemplateTagSpecificationArgs) ToTemplateTagSpecificationOutput() TemplateTagSpecificationOutput {
@@ -1201,7 +1201,7 @@ type TemplateTagSpecificationArrayInput interface {
 type TemplateTagSpecificationArray []TemplateTagSpecificationInput
 
 func (TemplateTagSpecificationArray) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]TemplateTagSpecification)(nil)).Elem()
+	return reflect.TypeFor[[]TemplateTagSpecification]()
 }
 
 func (i TemplateTagSpecificationArray) ToTemplateTagSpecificationArrayOutput() TemplateTagSpecificationArrayOutput {
@@ -1215,7 +1215,7 @@ func (i TemplateTagSpecificationArray) ToTemplateTagSpecificationArrayOutputWith
 type TemplateTagSpecificationOutput struct{ *OutputState }
 
 func (TemplateTagSpecificationOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*TemplateTagSpecification)(nil)).Elem()
+	return reflect.TypeFor[TemplateTagSpecification]()
 }
 
 func (o TemplateTagSpecificationOutput) ToTemplateTagSpecificationOutput() TemplateTagSpecificationOutput {
@@ -1229,7 +1229,7 @@ func (o TemplateTagSpecificationOutput) ToTemplateTagSpecificationOutputWithCont
 type TemplateTagSpecificationArrayOutput struct{ *OutputState }
 
 func (TemplateTagSpecificationArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]TemplateTagSpecification)(nil)).Elem()
+	return reflect.TypeFor[[]TemplateTagSpecification]()
 }
 
 func (o TemplateTagSpecificationArrayOutput) ToTemplateTagSpecificationArrayOutput() TemplateTagSpecificationArrayOutput {
@@ -1249,7 +1249,7 @@ type BucketObjectArgs struct {
 }
 
 func (BucketObjectArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*bucketObjectArgs)(nil)).Elem()
+	return reflect.TypeFor[bucketObjectArgs]()
 }
 
 type myResourceArgs struct {
@@ -1261,7 +1261,7 @@ type MyResourceArgs struct {
 }
 
 func (MyResourceArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*myResourceArgs)(nil)).Elem()
+	return reflect.TypeFor[myResourceArgs]()
 }
 
 type myNestedOutputArgs struct {
@@ -1273,7 +1273,7 @@ type MyNestedOutputArgs struct {
 }
 
 func (MyNestedOutputArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*myNestedOutputArgs)(nil)).Elem()
+	return reflect.TypeFor[myNestedOutputArgs]()
 }
 
 func TestOutputValueMarshallingNested(t *testing.T) {
@@ -1287,18 +1287,18 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 	RegisterOutputType(TemplateTagSpecificationOutput{})
 	RegisterOutputType(TemplateTagSpecificationArrayOutput{})
 
-	templateOptionsPtrOutputType := reflect.TypeOf((*TemplateOptionsPtrOutput)(nil)).Elem()
+	templateOptionsPtrOutputType := reflect.TypeFor[TemplateOptionsPtrOutput]()
 	unknownTemplateOptionsPtrOutput := ctx.newOutput(templateOptionsPtrOutputType).(TemplateOptionsPtrOutput)
 	internal.ResolveOutput(unknownTemplateOptionsPtrOutput, nil, false, false, resourcesToInternal(nil)) /*known*/ /*secret*/
 
 	unknownSecretTemplateOptionsPtrOutput := ctx.newOutput(templateOptionsPtrOutputType).(TemplateOptionsPtrOutput)
 	internal.ResolveOutput(unknownSecretTemplateOptionsPtrOutput, nil, false, true, resourcesToInternal(nil)) /*known*/ /*secret*/
 
-	stringOutputType := reflect.TypeOf((*StringOutput)(nil)).Elem()
+	stringOutputType := reflect.TypeFor[StringOutput]()
 	unknownStringOutput := ctx.newOutput(stringOutputType).(StringOutput)
 	internal.ResolveOutput(unknownStringOutput, "", false, false, resourcesToInternal(nil)) /*known*/ /*secret*/
 
-	assetOutputType := reflect.TypeOf((*AssetOutput)(nil)).Elem()
+	assetOutputType := reflect.TypeFor[AssetOutput]()
 	fileAssetOutput := ctx.newOutput(assetOutputType).(AssetOutput)
 	internal.ResolveOutput(fileAssetOutput, &asset{path: "foo.txt"}, true, false, resourcesToInternal(nil)) /*known*/ /*secret*/
 	fileAssetSecretOutput := ctx.newOutput(assetOutputType).(AssetOutput)
@@ -1306,7 +1306,7 @@ func TestOutputValueMarshallingNested(t *testing.T) {
 	fileAssetOutputDeps := ctx.newOutput(assetOutputType).(AssetOutput)
 	internal.ResolveOutput(fileAssetOutputDeps, &asset{path: "foo.txt"}, true, false, resourcesToInternal([]Resource{newSimpleCustomResource(ctx, "fakeURN", "fakeID")})) /*known*/ /*secret*/
 
-	anyOutputType := reflect.TypeOf((*AnyOutput)(nil)).Elem()
+	anyOutputType := reflect.TypeFor[AnyOutput]()
 
 	nestedOutput := ctx.newOutput(anyOutputType).(AnyOutput)
 	internal.ResolveOutput(nestedOutput, fileAssetOutput, true, false, resourcesToInternal(nil)) /*known*/ /*secret*/
@@ -1576,7 +1576,7 @@ type RubberTreeArgs struct {
 }
 
 func (RubberTreeArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*rubberTreeArgs)(nil)).Elem()
+	return reflect.TypeFor[rubberTreeArgs]()
 }
 
 type TreeSize string
@@ -1588,7 +1588,7 @@ const (
 )
 
 func (TreeSize) ElementType() reflect.Type {
-	return reflect.TypeOf((*TreeSize)(nil)).Elem()
+	return reflect.TypeFor[TreeSize]()
 }
 
 func (e TreeSize) ToTreeSizeOutput() TreeSizeOutput {
@@ -1626,7 +1626,7 @@ func (e TreeSize) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOut
 type TreeSizeOutput struct{ *OutputState }
 
 func (TreeSizeOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*TreeSize)(nil)).Elem()
+	return reflect.TypeFor[TreeSize]()
 }
 
 func (o TreeSizeOutput) ToTreeSizeOutput() TreeSizeOutput {
@@ -1671,7 +1671,7 @@ func (o TreeSizeOutput) ToStringPtrOutputWithContext(ctx context.Context) String
 type TreeSizePtrOutput struct{ *OutputState }
 
 func (TreeSizePtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**TreeSize)(nil)).Elem()
+	return reflect.TypeFor[*TreeSize]()
 }
 
 func (o TreeSizePtrOutput) ToTreeSizePtrOutput() TreeSizePtrOutput {
@@ -1713,7 +1713,7 @@ type TreeSizeInput interface {
 	ToTreeSizeOutputWithContext(context.Context) TreeSizeOutput
 }
 
-var treeSizePtrType = reflect.TypeOf((**TreeSize)(nil)).Elem()
+var treeSizePtrType = reflect.TypeFor[*TreeSize]()
 
 type TreeSizePtrInput interface {
 	Input
@@ -1750,7 +1750,7 @@ type TreeSizeMapInput interface {
 type TreeSizeMap map[string]TreeSize
 
 func (TreeSizeMap) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]TreeSize)(nil)).Elem()
+	return reflect.TypeFor[map[string]TreeSize]()
 }
 
 func (i TreeSizeMap) ToTreeSizeMapOutput() TreeSizeMapOutput {
@@ -1764,7 +1764,7 @@ func (i TreeSizeMap) ToTreeSizeMapOutputWithContext(ctx context.Context) TreeSiz
 type TreeSizeMapOutput struct{ *OutputState }
 
 func (TreeSizeMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]TreeSize)(nil)).Elem()
+	return reflect.TypeFor[map[string]TreeSize]()
 }
 
 func (o TreeSizeMapOutput) ToTreeSizeMapOutput() TreeSizeMapOutput {
@@ -2089,7 +2089,7 @@ type ComponentArgs struct {
 }
 
 func (ComponentArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*componentArgs)(nil)).Elem()
+	return reflect.TypeFor[componentArgs]()
 }
 
 func TestResourceReferenceDependencies(t *testing.T) {

@@ -203,8 +203,8 @@ func getStructFields(fields map[string]reflect.Value, v reflect.Value) reflect.V
 }
 
 var (
-	nodeType       = reflect.TypeOf((*syntax.Node)(nil)).Elem()
-	jsonNumberType = reflect.TypeOf((*json.Number)(nil)).Elem()
+	nodeType       = reflect.TypeFor[syntax.Node]()
+	jsonNumberType = reflect.TypeFor[json.Number]()
 )
 
 func encodeValue(n syntax.Node, v reflect.Value) syntax.Diagnostics {
@@ -251,7 +251,7 @@ func encodeValue(n syntax.Node, v reflect.Value) syntax.Diagnostics {
 	switch n := n.(type) {
 	case *syntax.BooleanNode:
 		if v.Kind() == reflect.Interface && v.NumMethod() == 0 {
-			ev := reflect.New(reflect.TypeOf((*bool)(nil)).Elem()).Elem()
+			ev := reflect.New(reflect.TypeFor[bool]()).Elem()
 			defer v.Set(ev)
 			v = ev
 		}
@@ -340,7 +340,7 @@ func encodeValue(n syntax.Node, v reflect.Value) syntax.Diagnostics {
 		}
 	case *syntax.StringNode:
 		if v.Kind() == reflect.Interface && v.NumMethod() == 0 {
-			ev := reflect.New(reflect.TypeOf((*string)(nil)).Elem()).Elem()
+			ev := reflect.New(reflect.TypeFor[string]()).Elem()
 			defer v.Set(ev)
 			v = ev
 		}
@@ -353,7 +353,7 @@ func encodeValue(n syntax.Node, v reflect.Value) syntax.Diagnostics {
 		return nil
 	case *syntax.ArrayNode:
 		if v.Kind() == reflect.Interface && v.NumMethod() == 0 {
-			ev := reflect.New(reflect.TypeOf((*[]any)(nil)).Elem()).Elem()
+			ev := reflect.New(reflect.TypeFor[[]any]()).Elem()
 			defer v.Set(ev)
 			v = ev
 		}
@@ -369,20 +369,17 @@ func encodeValue(n syntax.Node, v reflect.Value) syntax.Diagnostics {
 			return syntax.Diagnostics{syntax.Error(rng, fmt.Sprintf("cannot encode list into location of type %v", v.Type()), "")} //nolint:lll
 		}
 
-		l := n.Len()
-		if v.Len() < l {
-			l = v.Len()
-		}
+		l := min(v.Len(), n.Len())
 
 		var diags syntax.Diagnostics
-		for i := 0; i < l; i++ {
+		for i := range l {
 			ediags := encodeValue(n.Index(i), v.Index(i))
 			diags.Extend(ediags...)
 		}
 		return diags
 	case *syntax.ObjectNode:
 		if v.Kind() == reflect.Interface && v.NumMethod() == 0 {
-			ev := reflect.New(reflect.TypeOf((*map[string]any)(nil)).Elem()).Elem()
+			ev := reflect.New(reflect.TypeFor[map[string]any]()).Elem()
 			defer v.Set(ev)
 			v = ev
 		}

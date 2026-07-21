@@ -73,8 +73,8 @@ func RenderNeoErrorSummary(
 		return
 	}
 
-	summaryLines := strings.Split(summary.Summary, "\n")
-	for _, line := range summaryLines {
+	summaryLines := strings.SplitSeq(summary.Summary, "\n")
+	for line := range summaryLines {
 		fmt.Fprintln(out, "  "+line)
 	}
 

@@ -403,7 +403,7 @@ func TestParallelStackFetch_legacy(t *testing.T) {
 	// Create multiple stacks to test parallel fetching
 	numStacks := 10
 	stackRefs := make([]backend.StackReference, numStacks)
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		stackRef, err := b.ParseStackReference(stackName)
 		require.NoError(t, err)
@@ -427,7 +427,7 @@ func TestParallelStackFetch_legacy(t *testing.T) {
 		stackNames[stack.Name().String()] = true
 	}
 
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
 	}

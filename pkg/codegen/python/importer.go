@@ -58,7 +58,7 @@ type PackageInfo struct {
 	// If enabled, a pyproject.toml file will be generated.
 	PyProject struct {
 		Enabled bool `json:"enabled,omitempty"`
-	} `json:"pyproject,omitempty"`
+	} `json:"pyproject"`
 
 	// Specifies what types are used for inputs.
 	// Allowed values are the following:

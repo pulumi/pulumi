@@ -1,6 +1,5 @@
 // Copyright 2026, Pulumi Corporation.  All rights reserved.
 //go:build !all
-// +build !all
 
 package main
 
@@ -33,7 +32,7 @@ func newRetypeParentsResource(ctx *pulumi.Context, name string, opts ...pulumi.R
 func newRetypeParentsComponentSix(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*retypeParentsComponentSix, error) {
 	comp := &retypeParentsComponentSix{}
 	aliases := make([]pulumi.Alias, 0)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		aliases = append(aliases, pulumi.Alias{
 			Type: pulumi.Sprintf("my:module:ComponentSix-v%d", i),
 		})
@@ -57,7 +56,7 @@ func newRetypeParentsComponentSixParent(ctx *pulumi.Context, name string,
 ) (*retypeParentsComponentSixParent, error) {
 	comp := &retypeParentsComponentSixParent{}
 	aliases := make([]pulumi.Alias, 0)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		aliases = append(aliases, pulumi.Alias{
 			Type: pulumi.Sprintf("my:module:ComponentSixParent-v%d", i),
 		})

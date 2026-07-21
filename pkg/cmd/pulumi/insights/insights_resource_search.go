@@ -306,10 +306,7 @@ func renderSearchTable(w io.Writer, r apitype.InsightsResourceSearchResponse) er
 	// each side = 3*ncols + 1.
 	cols := termWidth(w, searchTableFallbackCols)
 	borderWidth := 3*len(header) + 1
-	urnWidth := cols - borderWidth - fixedTableColsWidth
-	if urnWidth < minURNColWidth {
-		urnWidth = minURNColWidth
-	}
+	urnWidth := max(cols-borderWidth-fixedTableColsWidth, minURNColWidth)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Name: "URN", WidthMax: urnWidth, WidthMaxEnforcer: text.WrapText},
 	})

@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -306,8 +307,8 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	}
 
 	// Is it a provider resource?
-	if strings.HasPrefix(r.Token, "pulumi:providers:") {
-		pkgName := strings.TrimPrefix(r.Token, "pulumi:providers:")
+	if after, ok := strings.CutPrefix(r.Token, "pulumi:providers:"); ok {
+		pkgName := after
 		return fmt.Sprintf("pulumi_%s.Provider", pkgName)
 	}
 
@@ -505,7 +506,7 @@ func relPathToRelImport(relPath string) string {
 	}
 	var relImport strings.Builder
 	relImport.WriteString(".")
-	for _, component := range strings.Split(relPath, "/") {
+	for component := range strings.SplitSeq(relPath, "/") {
 		if component == ".." {
 			relImport.WriteString(".")
 		} else {
@@ -3524,9 +3525,7 @@ func GeneratePackage(
 		requires[namespace+"_"+ref.Name()] = ">=" + dep.Version.String()
 	}
 	// Add language specific dependenceis
-	for name, version := range info.Requires {
-		requires[name] = version
-	}
+	maps.Copy(requires, info.Requires)
 	// Add typing-extensions if we're using TypedDicts
 	if typedDictEnabled(info.InputTypes) {
 		requires["typing-extensions"] = ">=4.11,<5; python_version < \"3.11\""

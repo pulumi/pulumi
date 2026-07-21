@@ -337,12 +337,7 @@ func (ctx *Context) GetConfig(key string) (string, bool) {
 
 // IsConfigSecret returns true if the config value is a secret.
 func (ctx *Context) IsConfigSecret(key string) bool {
-	for _, secretKey := range ctx.state.info.ConfigSecretKeys {
-		if key == secretKey {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ctx.state.info.ConfigSecretKeys, key)
 }
 
 // registerTransform starts up a callback server if not already running and registers the given transform.
@@ -1103,7 +1098,7 @@ func (ctx *Context) CallPackage(
 		// Convert the arg dependencies map for RPC and remove duplicates.
 		rpcArgDeps := make(map[string]*pulumirpc.ResourceCallRequest_ArgumentDependencies)
 		for k, deps := range argDeps {
-			sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
+			slices.Sort(deps)
 
 			urns := slice.Prealloc[string](len(deps))
 			for i, d := range deps {
@@ -2084,15 +2079,11 @@ func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderR
 	// copy parent providers
 	result := make(map[string]ProviderResource)
 	if parent != nil {
-		for k, v := range parent.getProviders() {
-			result[k] = v
-		}
+		maps.Copy(result, parent.getProviders())
 	}
 
 	// copy provider map
-	for k, v := range providerMap {
-		result[k] = v
-	}
+	maps.Copy(result, providerMap)
 
 	// copy specific provider, if any
 	if provider != nil {
@@ -2181,7 +2172,7 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 	return aliasURNs, nil
 }
 
-var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
+var mapOutputType = reflect.TypeFor[MapOutput]()
 
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.

@@ -35,7 +35,7 @@ type StackSummary struct {
 	ResourceCount *int `json:"resourceCount,omitempty"`
 
 	// Links to the stack in the Pulumi Console
-	Links StackLinks `json:"links,omitempty"`
+	Links StackLinks `json:"links"`
 }
 
 type StackLinks struct {

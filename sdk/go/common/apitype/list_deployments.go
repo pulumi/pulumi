@@ -86,9 +86,9 @@ type DeploymentJob struct {
 	// `failed`, `succeeded`, `skipped`.
 	Status string `json:"status"`
 	// Started is when the job started; zero when the job has not started yet.
-	Started time.Time `json:"started,omitempty"`
+	Started time.Time `json:"started"`
 	// LastUpdated is when the job was last updated; zero when never updated.
-	LastUpdated time.Time `json:"lastUpdated,omitempty"`
+	LastUpdated time.Time `json:"lastUpdated"`
 	// Steps is the list of steps in the job.
 	Steps []DeploymentStepRun `json:"steps"`
 }
@@ -101,9 +101,9 @@ type DeploymentStepRun struct {
 	// `succeeded`.
 	Status string `json:"status"`
 	// Started is when the step started; zero when the step has not started yet.
-	Started time.Time `json:"started,omitempty"`
+	Started time.Time `json:"started"`
 	// LastUpdated is when the step was last updated; zero when never updated.
-	LastUpdated time.Time `json:"lastUpdated,omitempty"`
+	LastUpdated time.Time `json:"lastUpdated"`
 }
 
 // DeploymentNestedUpdate is a stack update produced by a deployment. The

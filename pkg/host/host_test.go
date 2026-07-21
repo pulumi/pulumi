@@ -299,16 +299,14 @@ func TestClosePanic(t *testing.T) {
 
 	// Spin up a load of loadPlugin calls and then Close the context. This should not panic.
 	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 100 {
+		wg.Go(func() {
 			// We expect some of these to error that the host is shutting down, that's fine this test is just
 			// checking nothing panics.
 			_, _ = host.loadPlugin(host.loadRequests, func() (any, error) {
 				return nil, nil
 			})
-		}()
+		})
 	}
 	err := host.Close()
 	require.NoError(t, err)

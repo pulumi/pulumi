@@ -233,16 +233,13 @@ func TestConcurrentInstalls(t *testing.T) {
 	// Run several installs concurrently.
 	const iterations = 12
 	var wg sync.WaitGroup
-	for i := 0; i < iterations; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+	for range iterations {
+		wg.Go(func() {
 			err := InstallPluginContent(t.Context(), plugin, pluginstorage.TarPlugin(tarball), false, nil)
 			require.NoError(t, err)
 
 			assertSuccess()
-		}()
+		})
 	}
 	wg.Wait()
 

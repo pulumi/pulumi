@@ -15,6 +15,8 @@
 package tests
 
 import (
+	"maps"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
@@ -46,9 +48,7 @@ func init() {
 				// Run 1: singleOrNone with a single-element list returns that element.
 				Config: func() config.Map {
 					cfg := config.Map{}
-					for k, v := range commonConfig {
-						cfg[k] = v
-					}
+					maps.Copy(cfg, commonConfig)
 					cfg[config.MustMakeKey("l1-builtin-list", "singleOrNoneList")] = config.NewObjectValue(`["single"]`)
 					return cfg
 				}(),
@@ -57,9 +57,7 @@ func init() {
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
 					want := resource.PropertyMap{}
-					for k, v := range commonOutputs {
-						want[k] = v
-					}
+					maps.Copy(want, commonOutputs)
 					want["singleOrNoneOutput"] = resource.NewProperty([]resource.PropertyValue{
 						resource.NewProperty("single"),
 					})
@@ -71,9 +69,7 @@ func init() {
 				// Run 2: singleOrNone with a multi-element list errors at runtime.
 				Config: func() config.Map {
 					cfg := config.Map{}
-					for k, v := range commonConfig {
-						cfg[k] = v
-					}
+					maps.Copy(cfg, commonConfig)
 					cfg[config.MustMakeKey("l1-builtin-list", "singleOrNoneList")] = config.NewObjectValue(`["a","b"]`)
 					return cfg
 				}(),
@@ -85,9 +81,7 @@ func init() {
 				// Run 3: singleOrNone with an empty list returns null.
 				Config: func() config.Map {
 					cfg := config.Map{}
-					for k, v := range commonConfig {
-						cfg[k] = v
-					}
+					maps.Copy(cfg, commonConfig)
 					cfg[config.MustMakeKey("l1-builtin-list", "singleOrNoneList")] = config.NewObjectValue(`[]`)
 					return cfg
 				}(),
@@ -96,9 +90,7 @@ func init() {
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
 					want := resource.PropertyMap{}
-					for k, v := range commonOutputs {
-						want[k] = v
-					}
+					maps.Copy(want, commonOutputs)
 					want["singleOrNoneOutput"] = resource.NewProperty([]resource.PropertyValue{
 						resource.NewNullProperty(),
 					})

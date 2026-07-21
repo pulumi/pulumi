@@ -395,9 +395,7 @@ func parseFile(
 		if filename == "" {
 			filename = fmt.Sprintf("<converted %s>", fileType)
 		}
-		for name, attr := range resp.Attributes {
-			literals[name] = attr
-		}
+		maps.Copy(literals, resp.Attributes)
 	}
 
 	merged, err := mergeAttributeLiteralsIntoPCL(pcl, filename, fileType, literals)
@@ -553,7 +551,7 @@ func mergeAttributeLiteralsIntoPCL(
 	overlayName := fmt.Sprintf("%s flags for %s", fileType, filename)
 	for _, name := range names {
 		overlay, diags := hclwrite.ParseConfig(
-			[]byte(fmt.Sprintf("%s = %s\n", name, attrs[name])), overlayName, hcl.Pos{Line: 1, Column: 1},
+			fmt.Appendf(nil, "%s = %s\n", name, attrs[name]), overlayName, hcl.Pos{Line: 1, Column: 1},
 		)
 		if diags.HasErrors() {
 			return nil, fmt.Errorf("parse %s flag %s: %w", fileType, name, diags)

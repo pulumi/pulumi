@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"slices"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
@@ -157,12 +158,7 @@ type AssertNoSecretLeaksOpts struct {
 }
 
 func (opts *AssertNoSecretLeaksOpts) isIgnored(ty tokens.Type) bool {
-	for _, t := range opts.IgnoreResourceTypes {
-		if ty == t {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(opts.IgnoreResourceTypes, ty)
 }
 
 func AssertNoSecretLeaks(l require.TestingT, snap *deploy.Snapshot, opts AssertNoSecretLeaksOpts) {

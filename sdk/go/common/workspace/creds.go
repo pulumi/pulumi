@@ -193,7 +193,7 @@ type Account struct {
 	// The organizations for this account.
 	Organizations []string `json:"organizations,omitempty"`
 	// The last time this token was validated.
-	LastValidatedAt time.Time `json:"lastValidatedAt,omitempty"`
+	LastValidatedAt time.Time `json:"lastValidatedAt"`
 	// Allow insecure server connections when using SSL.
 	Insecure bool `json:"insecure,omitempty"`
 	// Information about the token used to authenticate.

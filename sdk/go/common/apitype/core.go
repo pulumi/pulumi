@@ -163,7 +163,7 @@ type DeploymentV3 struct {
 	// PendingOperations are all operations that were known by the engine to be currently executing.
 	PendingOperations []OperationV2 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
 	// Metadata associated with the snapshot.
-	Metadata SnapshotMetadataV1 `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	Metadata SnapshotMetadataV1 `json:"metadata" yaml:"metadata,omitempty"`
 	// Snippets are any PCL snippets associated with the snapshot. The engine reruns these on every update to
 	// produce additional resources alongside the program's. Deployments that include snippets must declare the
 	// "snippets" feature so older CLIs that cannot evaluate them refuse the snapshot rather than silently

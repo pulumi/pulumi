@@ -77,7 +77,7 @@ type Accessor struct {
 	Key *string `json:"key,omitempty"`
 
 	// The range of the accessor.
-	Range Range `json:"range,omitempty"`
+	Range Range `json:"range"`
 }
 
 // A PropertyAccessor is a single accessor that is associated with a resolved value.

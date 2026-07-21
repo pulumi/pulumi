@@ -31,7 +31,7 @@ func TestWorkGroupActsAsWaitGroup(t *testing.T) {
 			wg := &WorkGroup{}
 			wg.Add(j)
 
-			for k := 0; k < j; k++ {
+			for range j {
 				go func() {
 					time.Sleep(10 * time.Millisecond)
 					atomic.AddInt64(&n, 1)

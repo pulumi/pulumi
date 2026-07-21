@@ -2632,8 +2632,8 @@ func exchangeOidcToken(
 func getTokenValue(source string) (string, error) {
 	if isExpectedTokenFormat(source) {
 		return source, nil
-	} else if strings.HasPrefix(source, "file://") {
-		filePath := strings.TrimPrefix(source, "file://")
+	} else if after, ok := strings.CutPrefix(source, "file://"); ok {
+		filePath := after
 		data, err := os.ReadFile(filePath)
 		if err != nil {
 			return "", fmt.Errorf("reading token from file '%s': %w", filePath, err)
@@ -2795,7 +2795,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	kind apitype.UpdateKind, deploymentID string, opts display.Options,
 ) error {
 	getUpdateID := func() (string, int, error) {
-		for tries := 0; tries < 10; tries++ {
+		for range 10 {
 			updates, err := b.client.GetDeploymentUpdates(ctx, stackID, deploymentID)
 			if err != nil {
 				return "", 0, err

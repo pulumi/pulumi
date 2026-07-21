@@ -17,6 +17,7 @@ package clispec
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 
@@ -287,12 +288,8 @@ func buildStructure(
 
 	// Accumulated flags for children = inherited + this node's local flags (unmodified).
 	childInherited := make(map[string]Flag, len(inherited)+len(localFlags))
-	for k, v := range inherited {
-		childInherited[k] = v
-	}
-	for k, v := range merged {
-		childInherited[k] = v
-	}
+	maps.Copy(childInherited, inherited)
+	maps.Copy(childInherited, merged)
 
 	subcommands := cmd.Commands()
 	if len(subcommands) > 0 {

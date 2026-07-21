@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -203,9 +204,7 @@ func NewPolicyAnalyzer(
 		analyzerEnv := env.Global()
 		if opts != nil && len(opts.AdditionalEnv) > 0 {
 			additionalStore := envutil.MapStore{}
-			for k, v := range opts.AdditionalEnv {
-				additionalStore[k] = v
-			}
+			maps.Copy(additionalStore, opts.AdditionalEnv)
 			analyzerEnv = envutil.NewEnv(envutil.JoinStore(additionalStore, env.Global().GetStore()))
 		}
 
@@ -994,9 +993,7 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) (env.Env, error) 
 		maybeAppendEnv("PULUMI_DRY_RUN", strconv.FormatBool(opts.DryRun))
 
 		// Inject per-pack environment variables (e.g., from ESC environments).
-		for k, v := range opts.AdditionalEnv {
-			store[k] = v
-		}
+		maps.Copy(store, opts.AdditionalEnv)
 	}
 
 	return envutil.NewEnv(envutil.JoinStore(store, env.Global().GetStore())), nil

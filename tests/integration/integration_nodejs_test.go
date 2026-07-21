@@ -3493,7 +3493,7 @@ func TestTsExecute(t *testing.T) {
 func getNodeInspectorWSURL(t *testing.T, port int) string {
 	t.Helper()
 	url := fmt.Sprintf("http://127.0.0.1:%d/json", port)
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		resp, err := http.Get(url) //nolint:gosec
 		if err == nil {
 			var targets []struct {
@@ -3529,18 +3529,16 @@ func TestDebuggerAttachNodejs(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "select", "debugger-test")
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		e.RunCommand("pulumi", "preview", "--attach-debugger",
 			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
-	}()
+	})
 
 	// Wait for the debugging event
 	wait := 20 * time.Millisecond
 	var debugEvent *apitype.StartDebuggingEvent
 outer:
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
 		require.NoError(t, err)
 		for _, event := range events {

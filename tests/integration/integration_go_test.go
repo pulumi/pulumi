@@ -1514,21 +1514,19 @@ func TestDebuggerAttach(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		e.Env = append(e.Env, "PULUMI_DEBUG_COMMANDS=true")
 		e.RunCommand("pulumi", "stack", "init", "debugger-test")
 		e.RunCommand("pulumi", "stack", "select", "debugger-test")
 		e.RunCommand("pulumi", "preview", "--attach-debugger",
 			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
-	}()
+	})
 
 	// Wait for the debugging event
 	wait := 20 * time.Millisecond
 	var debugEvent *apitype.StartDebuggingEvent
 outer:
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
 		require.NoError(t, err)
 		for _, event := range events {
@@ -1653,7 +1651,7 @@ func TestPluginDebuggerAttach(t *testing.T) {
 	wait := 20 * time.Millisecond
 	var debugEvent *apitype.StartDebuggingEvent
 outer:
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		events, err := readUpdateEventLog(eventLogPath)
 		if err != nil && !os.IsNotExist(err) {
 			require.NoError(t, err)

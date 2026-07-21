@@ -40,12 +40,12 @@ type ParsedField struct {
 // `@path` (or `@-` for stdin) is honoured for both typed and raw fields.
 // typed=false always emits the value verbatim as a string (for `-f`).
 func parseField(spec string, typed bool, stdin io.Reader) (ParsedField, error) {
-	eq := strings.IndexByte(spec, '=')
-	if eq < 0 {
+	before, after, ok := strings.Cut(spec, "=")
+	if !ok {
 		return ParsedField{}, NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags,
 			"field must be key=value: "+spec).WithField("field")
 	}
-	key, val := spec[:eq], spec[eq+1:]
+	key, val := before, after
 	if key == "" {
 		return ParsedField{}, NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags,
 			"field key must not be empty: "+spec).WithField("field")
