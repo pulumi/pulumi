@@ -297,11 +297,40 @@ func TestCriUnimplementedVerbs(t *testing.T) {
 	assert.Error(t, m.ImportImage(ctx, "/layout", "ref:1"))
 	_, err := m.RunToCompletion(ctx, ContainerConfig{Image: "i"}, io.Discard)
 	assert.Error(t, err)
-	_, err = m.CreateVolume(ctx, "ws")
-	assert.Error(t, err)
 	assert.Error(t, m.CopyFromImage(ctx, "img", "/src", Volume{Name: "v"}, "/dst"))
 	_, err = m.ReadImageFile(ctx, "img", "/path")
 	assert.Error(t, err)
+}
+
+// TestCriCreateVolumeCreatesHostDir proves CreateVolume creates a host directory under the
+// configured volume root, names it by pod+logical-name convention, and returns the host path
+// as the volume's Name (so criMounts maps it to HostPath directly).
+func TestCriCreateVolumeCreatesHostDir(t *testing.T) {
+	t.Parallel()
+	m := NewCriPodManager("p1",
+		WithCRIClients(&fakeCRI{}, &fakeCRI{}),
+		WithCRISandboxID("sb-1"),
+		WithCRILogDir(t.TempDir()),
+		WithCRIVolumeDir(t.TempDir()),
+	).(*criPodManager)
+
+	vol, err := m.CreateVolume(t.Context(), "workspace")
+	require.NoError(t, err)
+	assert.Contains(t, vol.Name, "pulumi-pod-p1-vol-workspace")
+
+	info, err := os.Stat(vol.Name)
+	require.NoError(t, err, "the host dir must exist")
+	assert.True(t, info.IsDir())
+
+	// A second volume with a different name creates a distinct directory.
+	vol2, err := m.CreateVolume(t.Context(), "plugin-random")
+	require.NoError(t, err)
+	assert.NotEqual(t, vol.Name, vol2.Name)
+
+	// Cleanup removes the directories.
+	require.NoError(t, m.Cleanup(t.Context()))
+	_, err = os.Stat(vol.Name)
+	assert.True(t, os.IsNotExist(err), "volume dir should be removed by Cleanup")
 }
 
 // TestDeframeCRILogLine is the pure-function table for undoing the K8s log framing:

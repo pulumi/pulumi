@@ -69,6 +69,7 @@ type criPodManager struct {
 	sandboxID string // the PodSandbox the engine runs in and adds siblings to (from the wrapper)
 	logDir    string // the sandbox log directory, mounted into the engine so logs can be tailed
 	endpoint  string // the CRI gRPC endpoint (a unix socket target for grpc.NewClient)
+	volumeDir string // root directory for host-dir volumes (default: os.MkdirTemp)
 
 	// runtime and image are the CRI services. They are narrow interfaces (not the full generated
 	// clients) so tests can supply small fakes; the real runtimeapi clients satisfy them
@@ -92,6 +93,15 @@ type criPodManager struct {
 	// logPaths maps a started container's id to its log file path relative to logDir, so
 	// ContainerLogs can find the file to tail without re-deriving the attempt.
 	logPaths map[string]string
+	// volumes tracks host directories created by CreateVolume, so Cleanup can remove them.
+	volumes []criVolume
+}
+
+// criVolume is a volume backed by a host directory. CRI has no named-volume concept, so
+// the workspace (and any injected-binary volume) is a host dir that containers bind by path.
+type criVolume struct {
+	name    string // the logical name the caller passed (e.g. "workspace")
+	hostDir string // the absolute host path that containers mount
 }
 
 // criRuntimeService is the subset of the CRI RuntimeService (k8s.io/cri-api) the pod manager
@@ -136,6 +146,11 @@ const CRILogDirEnvVar = "PULUMI_POD_LOG_DIR"
 // socket, on which the CRI plugin listens.
 const CRIEndpointEnvVar = "PULUMI_POD_CRI_ENDPOINT"
 
+// CRIVolumeDirEnvVar names the root directory for host-dir volumes. CRI has no named-volume
+// concept, so volumes are host directories under this root. The wrapper mounts it into the engine
+// container and sets this variable. When unset, a temporary directory is created automatically.
+const CRIVolumeDirEnvVar = "PULUMI_POD_VOLUME_DIR"
+
 // defaultCRIEndpoint is containerd's socket as a grpc.NewClient target (grpc has a built-in unix
 // resolver, so the unix:// scheme dials the socket directly).
 const defaultCRIEndpoint = "unix:///run/containerd/containerd.sock"
@@ -168,6 +183,11 @@ func WithCRILogDir(dir string) CriOption {
 	return func(m *criPodManager) { m.logDir = dir }
 }
 
+// WithCRIVolumeDir sets the root directory for host-dir volumes, overriding the env var.
+func WithCRIVolumeDir(dir string) CriOption {
+	return func(m *criPodManager) { m.volumeDir = dir }
+}
+
 // NewCriPodManager returns a PodManager that drives containerd through the CRI. By default it
 // reads the sandbox id, log directory, and endpoint from the environment (the wrapper forwards
 // them into the engine container); options override any of these — WithCRIClients in particular
@@ -178,6 +198,7 @@ func NewCriPodManager(podID string, opts ...CriOption) PodManager {
 		sandboxID: os.Getenv(CRISandboxIDEnvVar),
 		logDir:    os.Getenv(CRILogDirEnvVar),
 		endpoint:  envOr(CRIEndpointEnvVar, defaultCRIEndpoint),
+		volumeDir: os.Getenv(CRIVolumeDirEnvVar),
 		attempts:  map[string]uint32{},
 		logPaths:  map[string]string{},
 	}
@@ -432,12 +453,19 @@ func (m *criPodManager) RunToCompletion(ctx context.Context, cfg ContainerConfig
 	return "", errors.New("oci: RunToCompletion (the build primitive) is not yet implemented for the CRI runtime")
 }
 
-// CreateVolume is not yet implemented on CRI. CRI has no named-volume concept; the shared
-// workspace becomes a host directory the containers bind by path. Wiring that host-dir mapping is
-// the deferred volume work.
 func (m *criPodManager) CreateVolume(ctx context.Context, name string) (Volume, error) {
-	return Volume{}, errors.New("oci: CreateVolume is not yet implemented for the CRI runtime " +
-		"(CRI has no named-volume analog; the workspace becomes a host dir)")
+	root, err := m.ensureVolumeDir()
+	if err != nil {
+		return Volume{}, fmt.Errorf("oci: creating volume root: %w", err)
+	}
+	volName := fmt.Sprintf("pulumi-pod-%s-vol-%s", m.podID, name)
+	hostDir := filepath.Join(root, volName)
+	if err := os.MkdirAll(hostDir, 0o755); err != nil {
+		return Volume{}, fmt.Errorf("oci: creating volume dir %s: %w", volName, err)
+	}
+	vol := criVolume{name: volName, hostDir: hostDir}
+	m.track(func() { m.volumes = append(m.volumes, vol) })
+	return Volume{Name: hostDir}, nil
 }
 
 // CopyFromImage is not yet implemented on CRI. It seeds a named volume from an image's filesystem;
@@ -459,10 +487,11 @@ func (m *criPodManager) Cleanup(ctx context.Context) error {
 	if _, _, err := m.clients(); err != nil {
 		return err
 	}
-	// Snapshot and clear tracked containers under the lock, then tear down without holding it.
+	// Snapshot and clear tracked state under the lock, then tear down without holding it.
 	m.mu.Lock()
 	containers := m.containers
-	m.containers, m.logPaths = nil, map[string]string{}
+	volumes := m.volumes
+	m.containers, m.logPaths, m.volumes = nil, map[string]string{}, nil
 	m.mu.Unlock()
 
 	var errs []error
@@ -471,9 +500,13 @@ func (m *criPodManager) Cleanup(ctx context.Context) error {
 			errs = append(errs, err)
 		}
 	}
+	for _, v := range volumes {
+		if err := os.RemoveAll(v.hostDir); err != nil {
+			errs = append(errs, fmt.Errorf("removing volume %s: %w", v.name, err))
+		}
+	}
 	// The sandbox is NOT torn down here: the wrapper created it (the engine lives in it) and owns
-	// its lifecycle, the same division as the docker network the wrapper creates. Likewise there
-	// are no manager-owned volumes to remove.
+	// its lifecycle, the same division as the docker network the wrapper creates.
 	if m.conn != nil {
 		errs = append(errs, m.conn.Close())
 	}
@@ -501,6 +534,22 @@ func (m *criPodManager) track(fn func()) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	fn()
+}
+
+// ensureVolumeDir returns the root directory for host-dir volumes, creating a temporary one
+// if none was configured. The temporary dir is cleaned up by Cleanup.
+func (m *criPodManager) ensureVolumeDir() (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.volumeDir != "" {
+		return m.volumeDir, nil
+	}
+	dir, err := os.MkdirTemp("", "pulumi-pod-volumes-")
+	if err != nil {
+		return "", err
+	}
+	m.volumeDir = dir
+	return dir, nil
 }
 
 // criLogPath is a container's log file path relative to the sandbox log directory. It embeds the
