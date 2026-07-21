@@ -20,8 +20,29 @@ import (
 )
 
 const (
+	// BackupDir is the name of the folder where backup stack information is stored.
+	BackupDir = "backups"
 	// CachedVersionFile is the name of the file we use to store when we last checked if the CLI was out of date
 	CachedVersionFile = ".cachedVersionInfo"
+	// GitDir is the name of the folder git uses to store information.
+	GitDir = ".git"
+	// HistoryDir is the name of the directory that holds historical information for projects.
+	HistoryDir = "history"
+	// StackDir is the name of the directory that holds stack information for projects.
+	StackDir = "stacks"
+	// LockDir is the name of the directory that holds locking information for projects.
+	LockDir = "locks"
+	// TemplateDir is the name of the directory containing templates.
+	TemplateDir = "templates"
+	// TemplatePolicyDir is the name of the directory containing templates for Policy Packs.
+	TemplatePolicyDir = "templates-policy"
+	// TemplatePackageDir is the name of the directory containing templates for Pulumi packages.
+	TemplatePackageDir = "templates-packages"
+	// WorkspaceDir is the name of the directory that holds workspace information for projects.
+	WorkspaceDir = "workspaces"
+
+	// WorkspaceFile is the name of the file that holds workspace information.
+	WorkspaceFile = "workspace.json"
 )
 
 // SaveProject saves the project file on top of the existing one, using the standard location.

@@ -34,33 +34,15 @@ import (
 )
 
 const (
-	// BackupDir is the name of the folder where backup stack information is stored.
-	BackupDir = "backups"
 	// BookkeepingDir is the name of our bookkeeping folder, we store state here (like .git for git).
 	BookkeepingDir = ".pulumi"
-	// GitDir is the name of the folder git uses to store information.
-	GitDir = ".git"
-	// HistoryDir is the name of the directory that holds historical information for projects.
-	HistoryDir = "history"
 	// PluginDir is the name of the directory containing plugins.
 	PluginDir = "plugins"
 	// PolicyDir is the name of the directory that holds policy packs.
 	PolicyDir = "policies"
-	// StackDir is the name of the directory that holds stack information for projects.
-	StackDir = "stacks"
-	// LockDir is the name of the directory that holds locking information for projects.
-	LockDir = "locks"
-	// TemplateDir is the name of the directory containing templates.
-	TemplateDir = "templates"
-	// TemplatePolicyDir is the name of the directory containing templates for Policy Packs.
-	TemplatePolicyDir = "templates-policy"
-	// TemplatePackageDir is the name of the directory containing templates for Pulumi packages.
-	TemplatePackageDir = "templates-packages"
 
 	// ProjectFile is the base name of a project file.
 	ProjectFile = "Pulumi"
-	// WorkspaceFile is the name of the file that holds workspace information.
-	WorkspaceFile = "workspace.json"
 
 	// PulumiHomeEnvVar is a path to the '.pulumi' folder with plugins, access token, etc.
 	// The folder can have any name, not necessarily '.pulumi'.
