@@ -19,6 +19,11 @@ import (
 	sdkWorkspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+const (
+	// CachedVersionFile is the name of the file we use to store when we last checked if the CLI was out of date
+	CachedVersionFile = ".cachedVersionInfo"
+)
+
 // SaveProject saves the project file on top of the existing one, using the standard location.
 func SaveProject(proj *sdkWorkspace.Project) error {
 	path, err := sdkWorkspace.DetectProjectPath()
@@ -36,4 +41,10 @@ func SaveProjectStack(stackName tokens.QName, stack *sdkWorkspace.ProjectStack) 
 	}
 
 	return stack.Save(path)
+}
+
+// GetCachedVersionFilePath returns the location where the CLI caches information from pulumi.com on the newest
+// available version of the CLI
+func GetCachedVersionFilePath() (string, error) {
+	return sdkWorkspace.GetPulumiPath(CachedVersionFile)
 }

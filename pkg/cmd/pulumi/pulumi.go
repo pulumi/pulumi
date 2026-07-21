@@ -851,7 +851,7 @@ func getCLIVersionInfo(
 
 // cacheVersionInfo saves version information in a cache file to be looked up later.
 func cacheVersionInfo(info cachedVersionInfo) error {
-	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	updateCheckFile, err := pkgWorkspace.GetCachedVersionFilePath()
 	if err != nil {
 		return err
 	}
@@ -867,7 +867,7 @@ func cacheVersionInfo(info cachedVersionInfo) error {
 
 // readVersionInfo reads version information from the cache file.
 func readVersionInfo() (cachedVersionInfo, error) {
-	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	updateCheckFile, err := pkgWorkspace.GetCachedVersionFilePath()
 	if err != nil {
 		return cachedVersionInfo{}, err
 	}
@@ -893,7 +893,7 @@ func readVersionInfo() (cachedVersionInfo, error) {
 // If we can't read the cached versions file, we return true and a zero time,
 // indicating that we want to possibly prompt the user for an upgrade.
 func checkVersionPrompt(devVersion bool) (bool, int64) {
-	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	updateCheckFile, err := pkgWorkspace.GetCachedVersionFilePath()
 	if err != nil {
 		return true, 0
 	}

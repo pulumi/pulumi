@@ -70,8 +70,6 @@ const (
 	RepoFile = "settings.json"
 	// WorkspaceFile is the name of the file that holds workspace information.
 	WorkspaceFile = "workspace.json"
-	// CachedVersionFile is the name of the file we use to store when we last checked if the CLI was out of date
-	CachedVersionFile = ".cachedVersionInfo"
 
 	// PulumiHomeEnvVar is a path to the '.pulumi' folder with plugins, access token, etc.
 	// The folder can have any name, not necessarily '.pulumi'.
@@ -316,12 +314,6 @@ func isMarkupFile(path string, expect string) bool {
 	}
 
 	return false
-}
-
-// GetCachedVersionFilePath returns the location where the CLI caches information from pulumi.com on the newest
-// available version of the CLI
-func GetCachedVersionFilePath() (string, error) {
-	return GetPulumiPath(CachedVersionFile)
 }
 
 // GetPulumiHomeDir returns the path of the '.pulumi' folder where Pulumi puts its artifacts.
