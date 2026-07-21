@@ -1,0 +1,1 @@
+built by kaniko, in a CRI pod, published via ImportImage proxy-pull

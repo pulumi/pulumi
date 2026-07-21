@@ -1,0 +1,22 @@
+# Self-describing package for the kaniko->CRI build+publish smoke test. Unlike
+# component-greeter (whose build shells out to `docker build` against a socket — a
+# second ambient dependency CRI deliberately does not project), this build runs
+# KANIKO in the builder container: a single daemonless executor that reads the
+# Dockerfile from the (inherited) source mount and writes a runtime-neutral OCI
+# layout to $PULUMI_PACKAGE_LAYOUT. That is the thesis-preserving build — "a
+# container runtime" stays the sole ambient dependency — and it is the forcing
+# function that proves the runtime-neutral build contract (kaniko cannot reach a
+# daemon socket to cheat).
+#
+# FROM scratch keeps the build hermetic: no base image to pull (crienv has no
+# internet), while still exercising source-reaching (the COPY reads marker.txt from
+# the inherited engine mount) and the outbound layout round-trip. The image is built
+# and published, not run, so a contentful runtime is unnecessary for this test.
+runtime:
+  name: oci
+  options:
+    name: kanikoprobe
+    version: "0.1.0"
+    build:
+      image: gcr.io/kaniko-project/executor:debug
+      command: /kaniko/executor --context=dir://$PULUMI_BUILD_CONTEXT --dockerfile=Dockerfile --no-push --oci-layout-path=$PULUMI_PACKAGE_LAYOUT --destination=$PULUMI_PACKAGE_NAME:v$PULUMI_PACKAGE_VERSION
