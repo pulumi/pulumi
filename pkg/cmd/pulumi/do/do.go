@@ -458,7 +458,7 @@ to use another format.`,
 	cmd.PersistentFlags().BoolVar(&stateless, "stateless", false,
 		"Run create/patch/delete directly against the provider without persisting state. "+
 			"Required for now: the stateful (engine-driven) implementation is still in development, "+
-			"so create/patch/delete error out unless --stateless is set.")
+			"so patch/delete error out unless --stateless is set.")
 	cmd.PersistentFlags().StringVar(
 		&pkg, "package", "", "The package to load, in the form 'name@version' or "+
 			"a path to a plugin binary or folder. If the package supports "+
