@@ -1083,6 +1083,11 @@ func NewImportCmd() *cobra.Command {
 			decrypter := sm.Decrypter()
 			encrypter := sm.Encrypter()
 
+			if len(importFile.ProviderInputs) > 0 {
+				sink.Warningf(diag.Message("", "the 'providerInputs' field is deprecated: declare the "+
+					"provider in 'resources' and set its configuration via its 'inputs' instead"))
+			}
+
 			imports, nameTable, err := parseImportFile(
 				importFile, s.Ref().Name(), proj.Name, protectResources, decrypter)
 			if err != nil {
