@@ -44,6 +44,7 @@ type newPolicyArgs struct {
 	force             bool
 	generateOnly      bool
 	offline           bool
+	runtimeOptions    []string
 	templateNameOrURL string
 	stdout            io.Writer
 }
@@ -96,6 +97,10 @@ func newPolicyNewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&args.offline, "offline", "o", false,
 		"Use locally cached templates without making any network requests",
+	)
+	cmd.PersistentFlags().StringSliceVar(
+		&args.runtimeOptions, "runtime-options", []string{},
+		"Additional options for the language runtime (format: key1=value1,key2=value2)",
 	)
 
 	return cmd
@@ -191,6 +196,14 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	proj, projPath, root, err := ReadPolicyProject(cwd)
 	if err != nil {
 		return err
+	}
+
+	for _, opt := range args.runtimeOptions {
+		parts := strings.Split(strings.TrimSpace(opt), "=")
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid runtime option: %s", opt)
+		}
+		proj.Runtime.SetOption(parts[0], parts[1])
 	}
 
 	// Workaround for python, most of our templates don't specify a venv but we want to use one
