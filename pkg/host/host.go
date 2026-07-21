@@ -215,11 +215,10 @@ func (host *defaultHost) releaseContextServers(ctx *plugin.Context) error {
 // instead booted from an explicit path and configured by their options. A host shared across
 // workspaces must not serve one workspace's analyzer process to another.
 type analyzerPluginKey struct {
-	name             tokens.QName
-	policy           bool   // true for policy analyzers.
-	workingDirectory string // the workspace's working directory; empty for policy analyzers.
-	path             string // the policy pack path; empty for regular analyzers.
-	options          string // the policy analyzer's options, deterministically rendered; empty for regular analyzers.
+	name    tokens.QName
+	policy  bool   // true for policy analyzers.
+	path    string // the policy pack path; empty for regular analyzers.
+	options string // the policy analyzer's options, deterministically rendered; empty for regular analyzers.
 }
 
 type pluginLoadRequest struct {
@@ -304,38 +303,6 @@ func (host *defaultHost) loadPlugin(
 	return plugin, <-result
 }
 
-func (host *defaultHost) Analyzer(ctx *plugin.Context, name tokens.QName) (plugin.Analyzer, error) {
-	key := analyzerPluginKey{name: name, workingDirectory: ctx.Pwd}
-	hostedPlugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
-		// First see if we already loaded this plugin.
-		if plug, has := host.analyzerPlugins[key]; has {
-			contract.Assertf(plug != nil, "analyzer plugin %v was loaded but is nil", name)
-			plug.refs[ctx] = struct{}{}
-			return plug.Plugin, nil
-		}
-
-		// If not, try to load and bind to a plugin.
-		plug, err := plugin.NewAnalyzer(host, ctx, name)
-		if err == nil && plug != nil {
-			info, infoerr := plug.GetPluginInfo(ctx.Request())
-			if infoerr != nil {
-				return nil, infoerr
-			}
-
-			// Memoize the result.
-			host.analyzerPlugins[key] = &analyzerPlugin{
-				Plugin: plug, Info: info, Name: string(name), refs: map[*plugin.Context]struct{}{ctx: {}},
-			}
-		}
-
-		return plug, err
-	})
-	if hostedPlugin == nil || err != nil {
-		return nil, err
-	}
-	return hostedPlugin.(plugin.Analyzer), nil
-}
-
 func (host *defaultHost) PolicyAnalyzer(
 	ctx *plugin.Context, name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
@@ -400,7 +367,8 @@ func (host *defaultHost) Provider(
 		}
 		plug, err := plugin.NewProvider(
 			host, ctx, descriptor,
-			ctx.RuntimeOptions(), ctx.DisableProviderPreview(), string(jsonConfig), ctx.ProjectName(), e)
+			ctx.RuntimeOptions(), ctx.DisableProviderPreview(), string(jsonConfig), ctx.ProjectName(), e,
+		)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(ctx.Request())
 			if infoerr != nil {
@@ -418,7 +386,8 @@ func (host *defaultHost) Provider(
 						diag.Message("", /*urn*/
 							"resource plugin %s is expected to have version >=%s, but has %s; "+
 								"the wrong version may be on your path, or this may be a bug in the plugin"),
-						pkg, version.String(), v)
+						pkg, version.String(), v,
+					)
 				}
 			}
 
@@ -625,7 +594,8 @@ func (host *defaultHost) SignalCancellation() error {
 				if err := plug.Plugin.SignalCancellation(cancelCtx); err != nil {
 					mu.Lock()
 					errs = append(errs, fmt.Errorf(
-						"error signaling cancellation to resource provider '%s': %w", plug.Name, err))
+						"error signaling cancellation to resource provider '%s': %w", plug.Name, err,
+					))
 					mu.Unlock()
 				}
 			})
@@ -635,7 +605,8 @@ func (host *defaultHost) SignalCancellation() error {
 				if err := plug.Plugin.Cancel(cancelCtx); err != nil {
 					mu.Lock()
 					errs = append(errs, fmt.Errorf(
-						"error signaling cancellation to analyzer '%s': %w", plug.Name, err))
+						"error signaling cancellation to analyzer '%s': %w", plug.Name, err,
+					))
 					mu.Unlock()
 				}
 			})
@@ -647,7 +618,8 @@ func (host *defaultHost) SignalCancellation() error {
 				if err := plug.Plugin.Cancel(cancelCtx); err != nil {
 					mu.Lock()
 					errs = append(errs, fmt.Errorf(
-						"error signaling cancellation to language runtime '%s': %w", plug.Name, err))
+						"error signaling cancellation to language runtime '%s': %w", plug.Name, err,
+					))
 					mu.Unlock()
 				}
 			})
