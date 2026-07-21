@@ -90,21 +90,37 @@ type podPlugin struct {
 }
 
 // WorkspaceMountPath is where the per-pod shared workspace volume is mounted, and the
-// working directory, in EVERY pod member — program, MLCs, and providers. It is the one
-// canonical working directory (the container analogue of stock Pulumi's single ctx.Pwd,
-// which the program, every provider plugin, and every MLC's Construct all share). A
-// relative asset path or a provider file-path property travels verbatim and resolves
-// against whoever reads it via filepath.Join(getwd, path); mounting the same volume at
-// this same path with this same CWD everywhere is what makes those reads agree.
+// working directory, in every RUNTIME pod member — the program, MLCs, and providers. It is
+// their one canonical working directory (the container analogue of stock Pulumi's single
+// ctx.Pwd, which the program, every provider plugin, and every MLC's Construct all share). A
+// relative asset path or a provider file-path property travels verbatim and resolves against
+// whoever reads it via filepath.Join(getwd, path); mounting the same volume at this same path
+// with this same CWD everywhere is what makes those reads agree.
 //
-// It is deliberately DISTINCT from where a plugin's own code lives (providers stage their
-// binary at /plugin; an MLC image bakes its code at /plugin too). If the workspace were
-// mounted over a plugin's own code path, Docker's empty-volume seeding would shadow that
-// code — the program seeds the volume first, so a later-mounting MLC would find its own
-// files replaced by the program's. Keeping workspace (/workspace) and own-code (/plugin)
-// on separate paths is what lets program and MLC run under one uniform primitive without
-// stepping on each other. The program is the workspace root: its image seeds /workspace;
-// MLCs and providers are guests that mount it.
+// Read carefully: this is the RUN-phase workspace, and it is easy to conflate with the
+// BUILD-phase authoring source, because today both wear the path /workspace. They are three
+// distinct roles — distinguishing them is the whole point of this comment:
+//
+//  1. Authoring source (BUILD phase) — the engine/CLI's working directory, where `pulumi`
+//     reads and MUTATES source (config set writes stack YAML, package add generates SDKs) and
+//     a build reads its context. It is RPC/cwd-derived (the language host takes it from the
+//     request's ProgramDirectory), NOT this constant — a different volume with a live,
+//     host-authored lifecycle. The wrapper currently also mounts it at /workspace, which is the
+//     whole source of the confusion: two roles of different lifecycles wearing one path.
+//  2. Program image baked layout (BUILD output) — the program Dockerfile builds its runtime
+//     workspace INTO /workspace (WORKDIR /workspace); this is what seeds role 3.
+//  3. Shared run-phase volume (RUN phase) — this constant. Docker's empty-volume copy-up (and
+//     criPodManager.autoSeedVolumes) seeds it from the program image's content at EXACTLY this
+//     mount path, so roles 2 and 3 MUST share the path; role 1 shares it only by convention.
+//
+// WorkspaceMountPath is also deliberately DISTINCT from where a plugin's own code lives
+// (providers stage their binary at /plugin; an MLC image bakes its code at /plugin too). If the
+// workspace were mounted over a plugin's own code path, the empty-volume seeding would shadow
+// that code — the program seeds the volume first, so a later-mounting MLC would find its own
+// files replaced by the program's. Keeping workspace (/workspace) and own-code (/plugin) on
+// separate paths is what lets program and MLC run under one uniform primitive without stepping
+// on each other. The program is the workspace root: its image seeds /workspace; MLCs and
+// providers are guests that mount it.
 const WorkspaceMountPath = "/workspace"
 
 // WorkspaceVolumeLogical is the logical name passed to PodManager.CreateVolume for the
