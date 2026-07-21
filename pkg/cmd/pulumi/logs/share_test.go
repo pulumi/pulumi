@@ -28,6 +28,10 @@ import (
 )
 
 func TestShareGzipLogIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that runs the pulumi CLI in short mode")
+	}
+
 	t.Parallel()
 
 	e := newTestEnv(t)
@@ -48,6 +52,10 @@ func TestShareGzipLogIntegration(t *testing.T) {
 }
 
 func TestShareEncryptedLogIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that runs the pulumi CLI in short mode")
+	}
+
 	t.Parallel()
 
 	e := newTestEnv(t)

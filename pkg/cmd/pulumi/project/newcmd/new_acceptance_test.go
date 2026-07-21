@@ -236,6 +236,10 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestRunNewYesWithTemplate(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping template download test in short mode")
+	}
+
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 

@@ -67,6 +67,10 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process, mocks login manager
 func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test that runs the nodejs language plugin in short mode")
+	}
+
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
