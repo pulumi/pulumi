@@ -149,7 +149,8 @@ func DetectProjectPathFrom(dir string) (string, error) {
 		// Embed/wrap ErrProjectNotFound
 		return "", fmt.Errorf(
 			"no Pulumi.yaml project file found (searching upwards from %s). If you have not "+
-				"created a project yet, use `pulumi new` to do so: %w", dir, ErrProjectNotFound)
+				"created a project yet, use `pulumi new` to do so: %w", dir, ErrProjectNotFound,
+		)
 	}
 	return path, nil
 }
@@ -247,25 +248,6 @@ func DetectProjectAndPath() (*Project, string, error) {
 
 	proj, err := LoadProject(path)
 	return proj, path, err
-}
-
-// SaveProject saves the project file on top of the existing one, using the standard location.
-func SaveProject(proj *Project) error {
-	path, err := DetectProjectPath()
-	if err != nil {
-		return err
-	}
-
-	return proj.Save(path)
-}
-
-func SaveProjectStack(stackName tokens.QName, stack *ProjectStack) error {
-	_, path, err := DetectProjectStackPath(stackName)
-	if err != nil {
-		return err
-	}
-
-	return stack.Save(path)
 }
 
 // Given a directory path search for files that appear to be a valid project that is satisfy [isProject].
@@ -391,7 +373,8 @@ func pulumiHomeDirForPath(homeDir string) (string, error) {
 	} else {
 		logging.V(7).Infof(
 			"Could not use default Pulumi home directory %q in agent mode (%s); using shared agent Pulumi directory: %v",
-			homeDir, agent, err)
+			homeDir, agent, err,
+		)
 	}
 	return getAgentPulumiDir()
 }
