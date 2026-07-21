@@ -21,7 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -82,7 +82,7 @@ func init() {
 						"expected replacement trigger resource to use default provider",
 					)
 					require.EqualValues(
-						l, resource.NewProperty("test"), replacementTrigger.ReplacementTrigger,
+						l, property.New("test"), replacementTrigger.ReplacementTrigger,
 						"expected replacement trigger resource to have the replacement trigger value from the program",
 					)
 
@@ -108,7 +108,7 @@ func init() {
 						"expected replacement trigger resource to use default provider",
 					)
 					require.EqualValues(
-						l, resource.NewProperty("hellohello"), unknownReplacementTrigger.ReplacementTrigger,
+						l, property.New("hellohello"), unknownReplacementTrigger.ReplacementTrigger,
 						"expected replacement trigger resource to have the replacement trigger value from the program",
 					)
 
@@ -121,11 +121,11 @@ func init() {
 						"expected secret replacement trigger resource to use default provider",
 					)
 					require.Equal(
-						l, resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(1.0),
-							resource.NewProperty(2.0),
-							resource.NewProperty(3.0),
-						})), secretReplacementTrigger.ReplacementTrigger,
+						l, property.New([]property.Value{
+							property.New(1.0),
+							property.New(2.0),
+							property.New(3.0),
+						}).WithSecret(true), secretReplacementTrigger.ReplacementTrigger,
 						"expected replacement trigger resource to have a secret replacement trigger value",
 					)
 				},
@@ -188,7 +188,7 @@ func init() {
 						"expected replacement trigger resource to use default provider",
 					)
 					require.EqualValues(
-						l, resource.NewProperty("test2"), replacementTrigger.ReplacementTrigger,
+						l, property.New("test2"), replacementTrigger.ReplacementTrigger,
 						"expected replacement trigger resource to have the replacement trigger value from the program",
 					)
 
@@ -214,7 +214,7 @@ func init() {
 						"expected replacement trigger resource to use default provider",
 					)
 					require.EqualValues(
-						l, resource.NewProperty("hellohello"), unknownReplacementTrigger.ReplacementTrigger,
+						l, property.New("hellohello"), unknownReplacementTrigger.ReplacementTrigger,
 						"expected replacement trigger resource to have the replacement trigger value from the program",
 					)
 
@@ -241,11 +241,11 @@ func init() {
 						"expected secret replacement trigger resource to use default provider",
 					)
 					require.Equal(
-						l, resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(3.0),
-							resource.NewProperty(2.0),
-							resource.NewProperty(1.0),
-						})), secretReplacementTrigger.ReplacementTrigger,
+						l, property.New([]property.Value{
+							property.New(3.0),
+							property.New(2.0),
+							property.New(1.0),
+						}).WithSecret(true), secretReplacementTrigger.ReplacementTrigger,
 						"expected replacement trigger resource to have a secret replacement trigger value",
 					)
 

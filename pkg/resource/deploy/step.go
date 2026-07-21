@@ -25,6 +25,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -2042,7 +2043,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		IgnoreChanges:           s.new.IgnoreChanges,
 		HideDiff:                s.new.HideDiff,
 		ReplaceOnChanges:        s.new.ReplaceOnChanges,
-		ReplacementTrigger:      resource.NewNullProperty(),
+		ReplacementTrigger:      property.Value{},
 		RefreshBeforeUpdate:     s.new.RefreshBeforeUpdate,
 		ViewOf:                  s.new.ViewOf,
 		ResourceHooks:           nil,

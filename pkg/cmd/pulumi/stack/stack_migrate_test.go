@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // prefixCrypter is a test crypter that wraps plaintexts with a fixed tag so a test can assert
@@ -2075,7 +2076,7 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 			resource.MakeSecret(resource.NewProperty(resource.ResourceReference{URN: siblingURN, Type: "pkg:Sibling"})),
 		}),
 	}
-	replacementTrigger := resource.NewProperty(resource.ResourceReference{URN: siblingURN, Type: "pkg:Sibling"})
+	replacementTrigger := property.New(property.ResourceReference{URN: siblingURN, Type: "pkg:Sibling"})
 
 	snap := &deploy.Snapshot{
 		SecretsManager: srcSM,

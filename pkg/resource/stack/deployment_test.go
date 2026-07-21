@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // TestDeploymentSerialization creates a basic snapshot of a given resource state.
@@ -116,7 +117,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		StackTrace:              nil,
 		IgnoreChanges:           nil,
 		ReplaceOnChanges:        nil,
-		ReplacementTrigger:      resource.NewNullProperty(),
+		ReplacementTrigger:      property.Value{},
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks: map[resource.HookType][]string{
@@ -1012,7 +1013,8 @@ func LiteralArchiveObjectGenerator(maxDepth int) *rapid.Generator[map[string]any
 				rapid.OneOf(
 					AssetObjectGenerator().AsAny(),
 					ArchiveObjectGenerator(maxDepth-1).AsAny(),
-				), 0, 16)
+				), 0, 16,
+			)
 		} else {
 			contentsGenerator = rapid.Just(map[string]any{})
 		}

@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,7 +51,7 @@ func init() {
 					assert.Equal(l, component.Inputs, component.Outputs, "expected inputs and outputs to match")
 
 					require.EqualValues(
-						l, resource.NewProperty("trigger-value"),
+						l, property.New("trigger-value"),
 						component.ReplacementTrigger,
 						"expected component to have replacementTrigger set",
 					)
@@ -108,7 +109,7 @@ func init() {
 					assert.Equal(l, component.Inputs, component.Outputs, "expected inputs and outputs to match")
 
 					require.EqualValues(
-						l, resource.NewProperty("trigger-value-updated"),
+						l, property.New("trigger-value-updated"),
 						component.ReplacementTrigger,
 						"expected component to have updated replacementTrigger",
 					)

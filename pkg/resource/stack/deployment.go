@@ -671,7 +671,7 @@ func SerializeResource(
 
 	encodedByteString := propertyMapNeedsByteString(res.Inputs) ||
 		propertyMapNeedsByteString(res.Outputs) ||
-		propertyValueNeedsByteString(res.ReplacementTrigger)
+		propertyValueNeedsByteString(resource.ToResourcePropertyValue(res.ReplacementTrigger))
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
 	var inputs map[string]any
@@ -691,7 +691,9 @@ func SerializeResource(
 		outputs = soutp
 	}
 
-	trigger, err := SerializePropertyValue(ctx, res.ReplacementTrigger, enc, showSecrets)
+	trigger, err := SerializePropertyValue(
+		ctx, resource.ToResourcePropertyValue(res.ReplacementTrigger), enc, showSecrets,
+	)
 	if err != nil {
 		return apitype.ResourceV3{}, false, err
 	}
@@ -973,7 +975,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*pkgreso
 			IgnoreChanges:           res.IgnoreChanges,
 			HideDiff:                res.HideDiff,
 			ReplaceOnChanges:        res.ReplaceOnChanges,
-			ReplacementTrigger:      trigger,
+			ReplacementTrigger:      resource.FromResourcePropertyValue(trigger),
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 			ViewOf:                  res.ViewOf,
 			ResourceHooks:           res.ResourceHooks,
