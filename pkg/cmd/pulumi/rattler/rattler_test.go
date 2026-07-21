@@ -58,8 +58,10 @@ func newSuggestionsTestTree() *cobra.Command {
 func TestSuggestCommands(t *testing.T) {
 	t.Parallel()
 
-	root := newSuggestionsTestTree()
-	find := func(path ...string) *cobra.Command {
+	// Each subtest builds its own tree: cobra's Commands() lazily sorts the
+	// child slice in place, so sharing one tree across parallel subtests
+	// races.
+	find := func(t *testing.T, root *cobra.Command, path ...string) *cobra.Command {
 		c, _, err := root.Find(path)
 		require.NoError(t, err)
 		return c
@@ -67,14 +69,14 @@ func TestSuggestCommands(t *testing.T) {
 
 	t.Run("exact leaf name beats levenshtein sibling", func(t *testing.T) {
 		t.Parallel()
-		got := suggestCommands(root, []string{"export"})
+		got := suggestCommands(newSuggestionsTestTree(), []string{"export"})
 		require.NotEmpty(t, got)
 		assert.Equal(t, "pulumi stack export", got[0])
 	})
 
 	t.Run("synonyms match", func(t *testing.T) {
 		t.Parallel()
-		got := suggestCommands(root, []string{"webhook", "create"})
+		got := suggestCommands(newSuggestionsTestTree(), []string{"webhook", "create"})
 		assert.Equal(t, []string{"pulumi org webhook new", "pulumi stack webhook new"}, got)
 	})
 
@@ -84,21 +86,21 @@ func TestSuggestCommands(t *testing.T) {
 		// and candidate names normalize through the same table as typed words,
 		// so `rm` finds a command named `delete` even though neither appears
 		// as the other's value in the table.
-		got := suggestCommands(find("env"), []string{"rm"})
+		got := suggestCommands(find(t, newSuggestionsTestTree(), "env"), []string{"rm"})
 		require.NotEmpty(t, got)
 		assert.Equal(t, "pulumi env delete", got[0])
 	})
 
 	t.Run("hyphen splitting and plural stemming", func(t *testing.T) {
 		t.Parallel()
-		got := suggestCommands(find("org"), []string{"list-members"})
+		got := suggestCommands(find(t, newSuggestionsTestTree(), "org"), []string{"list-members"})
 		require.NotEmpty(t, got)
 		assert.Equal(t, "pulumi org member list", got[0])
 	})
 
 	t.Run("subtree preferred over rest of tree", func(t *testing.T) {
 		t.Parallel()
-		got := suggestCommands(find("env"), []string{"lisst"})
+		got := suggestCommands(find(t, newSuggestionsTestTree(), "env"), []string{"lisst"})
 		assert.Equal(t, []string{"pulumi env list"}, got)
 	})
 
@@ -108,7 +110,7 @@ func TestSuggestCommands(t *testing.T) {
 		// both match exactly and only `stack` goes untyped. The `webhook`
 		// groups themselves also match the failing word, but land too far
 		// below the winner to be offered alongside it.
-		got := suggestCommands(root, []string{"webhook", "list"})
+		got := suggestCommands(newSuggestionsTestTree(), []string{"webhook", "list"})
 		assert.Equal(t, []string{"pulumi stack webhook list"}, got)
 	})
 
@@ -117,19 +119,19 @@ func TestSuggestCommands(t *testing.T) {
 		// `new` matches `stack webhook new` and `org webhook new` exactly,
 		// but two untyped path words each cost a point, dropping the score
 		// below the cutoff: deep commands need more typed context.
-		got := suggestCommands(root, []string{"new"})
+		got := suggestCommands(newSuggestionsTestTree(), []string{"new"})
 		assert.Empty(t, got)
 	})
 
 	t.Run("hidden commands are not suggested", func(t *testing.T) {
 		t.Parallel()
-		got := suggestCommands(root, []string{"secret-cmd"})
+		got := suggestCommands(newSuggestionsTestTree(), []string{"secret-cmd"})
 		assert.Empty(t, got)
 	})
 
 	t.Run("no suggestions for gibberish", func(t *testing.T) {
 		t.Parallel()
-		got := suggestCommands(root, []string{"xyzzyq"})
+		got := suggestCommands(newSuggestionsTestTree(), []string{"xyzzyq"})
 		assert.Empty(t, got)
 	})
 
