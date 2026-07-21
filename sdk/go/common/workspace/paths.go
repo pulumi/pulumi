@@ -105,7 +105,7 @@ func DetectProjectPath() (string, error) {
 // DetectProjectStackPath returns the name of the file to store stack specific project settings in. We place stack
 // specific settings next to the Pulumi.yaml file, named like: Pulumi.<stack-name>.yaml
 func DetectProjectStackPath(stackName tokens.QName) (*Project, string, error) {
-	proj, projPath, err := DetectProjectAndPath()
+	proj, projPath, err := detectProjectAndPath()
 	if err != nil {
 		return nil, "", err
 	}
@@ -224,7 +224,7 @@ func DetectPolicyPackPathAt(path string) (string, error) {
 
 // DetectProject loads the closest project from the current working directory, or an error if not found.
 func DetectProject() (*Project, error) {
-	proj, _, err := DetectProjectAndPath()
+	proj, _, err := detectProjectAndPath()
 	return proj, err
 }
 
@@ -237,9 +237,9 @@ func DetectProjectStack(diags diag.Sink, stackName tokens.QName) (*ProjectStack,
 	return LoadProjectStack(diags, project, path)
 }
 
-// DetectProjectAndPath loads the closest package from the current working directory, or an error if not found.  It
+// detectProjectAndPath loads the closest package from the current working directory, or an error if not found.  It
 // also returns the path where the package was found.
-func DetectProjectAndPath() (*Project, string, error) {
+func detectProjectAndPath() (*Project, string, error) {
 	path, err := DetectProjectPath()
 	if err != nil {
 		return nil, "", err
