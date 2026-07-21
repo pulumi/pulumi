@@ -31,6 +31,7 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -893,9 +894,10 @@ func assertBackupStackFile(t *testing.T, stackName string, file os.DirEntry, bef
 }
 
 func getStackProjectBackupDir(e *ptesting.Environment, projectName, stackName string) (string, error) {
-	return filepath.Join(e.RootPath,
+	return filepath.Join(
+		e.RootPath,
 		workspace.BookkeepingDir,
-		workspace.BackupDir,
+		pkgWorkspace.BackupDir,
 		projectName,
 		stackName,
 	), nil
