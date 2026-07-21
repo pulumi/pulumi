@@ -16,18 +16,17 @@ package cli
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strconv"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"golang.org/x/exp/maps"
 )
 
 func getEnvironmentVariables(env *esc.Environment, quote, redact bool) (environ, secrets []string) {
 	vars := env.GetEnvironmentVariables()
-	keys := maps.Keys(vars)
-	sort.Strings(keys)
+	keys := slices.Sorted(maps.Keys(vars))
 
 	for _, k := range keys {
 		v := vars[k]
@@ -72,8 +71,7 @@ func removeTemporaryFiles(fs escFS, paths []string) {
 
 func createTemporaryFiles(e *esc.Environment, opts PrepareOptions) (paths, environ, secrets []string, err error) {
 	files := e.GetTemporaryFiles()
-	keys := maps.Keys(files)
-	sort.Strings(keys)
+	keys := slices.Sorted(maps.Keys(files))
 
 	for _, k := range keys {
 		v := files[k]
