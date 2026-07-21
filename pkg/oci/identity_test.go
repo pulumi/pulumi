@@ -30,22 +30,26 @@ func TestParseProviderImageRef(t *testing.T) {
 		// The org-published form the publish flow produces.
 		{
 			"localhost:5062/spikeorg/pulumi-provider-greeting:v0.1.0",
-			PackageIdentity{Org: "spikeorg", Name: "greeting", Version: "0.1.0"}, true,
+			PackageIdentity{Org: "spikeorg", Name: "greeting", Version: "0.1.0"},
+			true,
 		},
 		// A released first-party provider: the pulumi org is an org like any other.
 		{
 			"ghcr.io/pulumi/pulumi-provider-random:v4.21.0",
-			PackageIdentity{Org: "pulumi", Name: "random", Version: "4.21.0"}, true,
+			PackageIdentity{Org: "pulumi", Name: "random", Version: "4.21.0"},
+			true,
 		},
 		// No registry host: still identity — org plus kind-prefixed leaf.
 		{
 			"spikeorg/pulumi-provider-greeting:v0.1.0",
-			PackageIdentity{Org: "spikeorg", Name: "greeting", Version: "0.1.0"}, true,
+			PackageIdentity{Org: "spikeorg", Name: "greeting", Version: "0.1.0"},
+			true,
 		},
 		// The '+'→'_' tag mapping reverses (semver never contains '_').
 		{
 			"localhost:5062/pulumi/pulumi-provider-dev:v0.1.0-alpha.0_dev",
-			PackageIdentity{Org: "pulumi", Name: "dev", Version: "0.1.0-alpha.0+dev"}, true,
+			PackageIdentity{Org: "pulumi", Name: "dev", Version: "0.1.0-alpha.0+dev"},
+			true,
 		},
 
 		// Un-namespaced refs carry no identity: the grammar has exactly one
