@@ -937,6 +937,9 @@ func TestImportPlanSuppliedOutputs(t *testing.T) {
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
+	componentInputs := resource.PropertyMap{
+		"size": resource.NewProperty(3.0),
+	}
 	componentOutputs := resource.PropertyMap{
 		"result": resource.NewProperty("value"),
 	}
@@ -946,6 +949,7 @@ func TestImportPlanSuppliedOutputs(t *testing.T) {
 		Type:      "my:module:Component",
 		Name:      "comp",
 		Component: true,
+		Inputs:    componentInputs,
 		Outputs:   componentOutputs,
 	}, {
 		Type:    "pkgA:m:typA",
@@ -959,20 +963,21 @@ func TestImportPlanSuppliedOutputs(t *testing.T) {
 	require.Len(t, snap.Resources, 4)
 
 	// Import steps run in parallel, so look resources up by name rather than snapshot position.
-	byName := func(name string) int {
-		for i, r := range snap.Resources {
+	byName := func(name string) *pkgresource.State {
+		for _, r := range snap.Resources {
 			if r.URN.Name() == name {
-				return i
+				return r
 			}
 		}
 		t.Fatalf("resource %q not found in snapshot", name)
-		return -1
+		return nil
 	}
 
-	comp := snap.Resources[byName("comp")]
+	comp := byName("comp")
+	assert.Equal(t, componentInputs, comp.Inputs)
 	assert.Equal(t, componentOutputs, comp.Outputs)
 
-	resB := snap.Resources[byName("resB")]
+	resB := byName("resB")
 	assert.Equal(t, resource.ID("imported-id"), resB.ID)
 	assert.Equal(t, suppliedInputs, resB.Inputs)
 	assert.Equal(t, suppliedOutputs, resB.Outputs)

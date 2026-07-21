@@ -1960,19 +1960,13 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 	suppliedOutputs := s.new.Outputs
 	inputs := resource.PropertyMap{}
 	outputs := resource.PropertyMap{}
-	if s.planned {
-		if suppliedInputs != nil {
-			inputs = suppliedInputs
-		}
-		if suppliedOutputs != nil {
-			outputs = suppliedOutputs
-		}
-	}
 	var prov plugin.Provider
 	rst := resource.StatusOK
-	if s.planned && len(suppliedOutputs) > 0 {
+	if len(suppliedOutputs) > 0 {
 		// The import supplied the resource's full state (e.g. from a state converter): trust it rather
 		// than reading from the provider, so the import can run without access to the underlying cloud.
+		contract.Assertf(s.planned, "only planned imports may supply outputs")
+
 		if s.new.Custom {
 			var err error
 			prov, err = getProvider(s, s.provider)
@@ -1984,6 +1978,10 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
 
+		if suppliedInputs != nil {
+			inputs = suppliedInputs
+		}
+		outputs = suppliedOutputs
 		if s.new.Custom {
 			s.new.ID = s.new.ImportID
 		}
@@ -2051,13 +2049,18 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 	} else {
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
+
+		// Local components have no state to read; keep any inputs the import supplied.
+		if s.planned && suppliedInputs != nil {
+			inputs = suppliedInputs
+		}
 	}
 
 	s.new.Inputs = inputs
 	s.new.Outputs = outputs
-	// Magic up an old state so the frontend can display a proper diff. This state is the output of the just-executed
-	// `Read` combined with the resource identity and metadata from the desired state. This ensures that the only
-	// differences between the old and new states are between the inputs and outputs.
+	// Magic up an old state so the frontend can display a proper diff. The old state takes the same inputs and
+	// outputs as the new state (assigned just above), so any diff shown comes from later adjustments to the new
+	// state's inputs.
 	s.old = pkgresource.NewState{
 		Type:                    s.new.Type,
 		URN:                     s.new.URN,
