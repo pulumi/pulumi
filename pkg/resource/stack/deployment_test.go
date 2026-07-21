@@ -1013,7 +1013,8 @@ func LiteralArchiveObjectGenerator(maxDepth int) *rapid.Generator[map[string]any
 				rapid.OneOf(
 					AssetObjectGenerator().AsAny(),
 					ArchiveObjectGenerator(maxDepth-1).AsAny(),
-				), 0, 16)
+				), 0, 16,
+			)
 		} else {
 			contentsGenerator = rapid.Just(map[string]any{})
 		}
@@ -1287,8 +1288,8 @@ func TestByteStringDeploymentRoundTrip(t *testing.T) {
 		Type:    tokens.Type("pkgA:index:res"),
 		URN:     resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
 		Custom:  true,
-		Inputs:  resource.PropertyMap{"propA": resource.NewProperty(raw)},
-		Outputs: resource.PropertyMap{"propA": resource.MakeSecret(resource.NewProperty(raw))},
+		Inputs:  property.NewMap(map[string]property.Value{"propA": property.New(raw)}),
+		Outputs: property.NewMap(map[string]property.Value{"propA": property.New(raw).WithSecret(true)}),
 	}
 
 	snap := &deploy.Snapshot{
@@ -1317,12 +1318,12 @@ func TestSerializeResourceReportsByteString(t *testing.T) {
 
 	const raw = "\x00hello \x80\xfe\xff world\xf0\x28"
 
-	makeState := func(outputs resource.PropertyMap) *pkgresource.State {
+	makeState := func(outputs property.Map) *pkgresource.State {
 		return &pkgresource.State{
 			Type:    tokens.Type("pkgA:index:res"),
 			URN:     resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
 			Custom:  true,
-			Inputs:  resource.PropertyMap{},
+			Inputs:  property.Map{},
 			Outputs: outputs,
 		}
 	}
@@ -1330,13 +1331,13 @@ func TestSerializeResourceReportsByteString(t *testing.T) {
 	// A raw byte string hidden inside a secret must still be reported: once serialized the secret is
 	// encrypted and the encoding is invisible to callers.
 	_, encoded, err := SerializeResource(ctx,
-		makeState(resource.PropertyMap{"out": resource.MakeSecret(resource.NewProperty(raw))}),
+		makeState(property.NewMap(map[string]property.Value{"out": property.New(raw).WithSecret(true)})),
 		b64.NewBase64SecretsManager().Encrypter(), false)
 	require.NoError(t, err)
 	assert.True(t, encoded)
 
 	_, encoded, err = SerializeResource(ctx,
-		makeState(resource.PropertyMap{"out": resource.NewProperty("plain")}),
+		makeState(property.NewMap(map[string]property.Value{"out": property.New("plain")})),
 		config.NopEncrypter, false)
 	require.NoError(t, err)
 	assert.False(t, encoded)

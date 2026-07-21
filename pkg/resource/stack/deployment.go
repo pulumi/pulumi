@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -187,30 +188,24 @@ func ApplyFeatures(res apitype.ResourceV3, encodedByteString bool, features map[
 // propertyValueNeedsByteString reports whether the value contains a string with bytes that are not
 // valid UTF-8. Such strings serialize with the byte string signature, which requires the
 // byteString feature so that older engines refuse to read state they would corrupt.
-func propertyValueNeedsByteString(v resource.PropertyValue) bool {
+func propertyValueNeedsByteString(v property.Value) bool {
 	switch {
 	case v.IsString():
-		return !utf8.ValidString(v.StringValue())
+		return !utf8.ValidString(v.AsString())
 	case v.IsArray():
-		for _, elem := range v.ArrayValue() {
+		for _, elem := range v.AsArray().All {
 			if propertyValueNeedsByteString(elem) {
 				return true
 			}
 		}
-	case v.IsObject():
-		return propertyMapNeedsByteString(v.ObjectValue())
-	case v.IsSecret():
-		return propertyValueNeedsByteString(v.SecretValue().Element)
-	case v.IsOutput():
-		return propertyValueNeedsByteString(v.OutputValue().Element)
-	case v.IsComputed():
-		return propertyValueNeedsByteString(v.Input().Element)
+	case v.IsMap():
+		return propertyMapNeedsByteString(v.AsMap())
 	}
 	return false
 }
 
-func propertyMapNeedsByteString(m resource.PropertyMap) bool {
-	for _, v := range m {
+func propertyMapNeedsByteString(m property.Map) bool {
+	for _, v := range m.All {
 		if propertyValueNeedsByteString(v) {
 			return true
 		}
