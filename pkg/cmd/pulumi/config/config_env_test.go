@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
-	"github.com/acarl005/stripansi"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -265,5 +265,5 @@ func newConfigEnvCmdForInitTest(
 // cleanStdout strips ANSI escape codes and carriage returns from captured output so
 // assertions can compare plain text.
 func cleanStdout(stdout string) string {
-	return strings.ReplaceAll(stripansi.Strip(stdout), "\r", "")
+	return strings.ReplaceAll(ansi.Strip(stdout), "\r", "")
 }

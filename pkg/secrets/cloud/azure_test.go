@@ -22,7 +22,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys"
+	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/stretchr/testify/assert"
@@ -47,7 +47,7 @@ func createAzureKey(ctx context.Context, t *testing.T, credentials *azidentity.D
 	require.NoError(t, err)
 	keyName := "test-key-" + randomName(t)
 	keySize := int32(2048)
-	kty := azkeys.JSONWebKeyTypeRSA
+	kty := azkeys.KeyTypeRSA
 	params := azkeys.CreateKeyParameters{
 		KeySize: &keySize,
 		Kty:     &kty,

@@ -16,10 +16,9 @@ package schema
 
 import (
 	"encoding/json"
-	"sort"
+	"maps"
+	"slices"
 	"strconv"
-
-	"golang.org/x/exp/maps"
 )
 
 type ObjectBuilder struct {
@@ -33,8 +32,7 @@ func Object() *ObjectBuilder {
 func Record(m MapBuilder) *ObjectBuilder {
 	props := m.Build()
 
-	names := maps.Keys(props)
-	sort.Strings(names)
+	names := slices.Sorted(maps.Keys(props))
 
 	return Object().Properties(SchemaMap(props)).Required(names...)
 }

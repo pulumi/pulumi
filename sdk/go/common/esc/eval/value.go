@@ -17,7 +17,8 @@ package eval
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -25,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/ast"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax"
-	"golang.org/x/exp/maps"
 )
 
 // A value represents the result of evaluating an expr.
@@ -196,7 +196,7 @@ func (v *value) keys() []string {
 
 		baseKeys := v.base.keys()
 		if len(baseKeys) == 0 {
-			v.mergedKeys = maps.Keys(m)
+			v.mergedKeys = slices.Sorted(maps.Keys(m))
 		} else {
 			l := len(baseKeys)
 			if l < len(m) {
@@ -210,9 +210,8 @@ func (v *value) keys() []string {
 			for k := range m {
 				keySet[k] = struct{}{}
 			}
-			v.mergedKeys = maps.Keys(keySet)
+			v.mergedKeys = slices.Sorted(maps.Keys(keySet))
 		}
-		sort.Strings(v.mergedKeys)
 	}
 	return v.mergedKeys
 }
@@ -306,8 +305,7 @@ func (v *value) toString() (str string, unknown bool, secret bool) {
 		}
 		s = strings.Join(vals, ",")
 	case map[string]*value:
-		keys := maps.Keys(repr)
-		sort.Strings(keys)
+		keys := slices.Sorted(maps.Keys(repr))
 
 		pairs := make([]string, len(repr))
 		for i, k := range keys {
