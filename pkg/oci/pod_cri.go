@@ -468,11 +468,75 @@ func (m *criPodManager) CreateVolume(ctx context.Context, name string) (Volume, 
 	return Volume{Name: volName}, nil
 }
 
-// CopyFromImage is not yet implemented on CRI. It seeds a named volume from an image's filesystem;
-// on CRI, with the workspace a host dir, the seeding step needs a different mechanism (an explicit
-// copy, since there is no create-time volume copy-up).
+// CopyFromImage seeds a host-dir volume with the contents of srcPath from an image. CRI has no
+// docker-style copy-up (where an empty named volume is auto-seeded from the image's content at
+// the mount path on container create), so this runs a short-lived container that copies the files
+// explicitly. The container runs from the source image and `cp -a`s srcPath's contents into the
+// host-dir volume mounted at dstPath, then exits.
+//
+// This requires the source image to have a POSIX shell and cp — alpine-based provider images
+// (Dockerfile.provider) do; scratch/distroless images would not. That is a known limitation vs
+// docker's copy-up (which reads the layer filesystem directly and needs no shell). The tradeoff
+// is documented: the alternative (containerd client library or `ctr`) reintroduces the second
+// binary the CRI design was built to avoid. A future implementation may use the containerd
+// content store API to extract files without a shell.
 func (m *criPodManager) CopyFromImage(ctx context.Context, image, srcPath string, vol Volume, dstPath string) error {
-	return errors.New("oci: CopyFromImage is not yet implemented for the CRI runtime")
+	if m.sandboxID == "" {
+		return fmt.Errorf("oci: no CRI pod sandbox for CopyFromImage (set %s)", CRISandboxIDEnvVar)
+	}
+	runtime, _, err := m.clients()
+	if err != nil {
+		return err
+	}
+
+	name := fmt.Sprintf("copy-%s-%d", filepath.Base(srcPath), containerSeq.Add(1))
+	attempt := m.nextAttempt(name)
+	src := strings.TrimRight(srcPath, "/")
+
+	// Mount the volume at a staging path rather than at srcPath, so the mount does not shadow
+	// the image's baked content at srcPath. This matters when srcPath == dstPath (the workspace
+	// seeding case: both are /workspace), and is harmless when they differ.
+	const stagingMount = "/mnt/pulumi-copy-target"
+	cc := &runtimeapi.ContainerConfig{
+		Metadata: &runtimeapi.ContainerMetadata{Name: name, Attempt: attempt},
+		Image:    &runtimeapi.ImageSpec{Image: image},
+		Command:  []string{"/bin/sh"},
+		Args:     []string{"-c", fmt.Sprintf("cp -a %s/. %s/", src, stagingMount)},
+		Mounts:   m.criMounts([]VolumeMount{{Source: vol.Name, Target: stagingMount}}),
+		Labels:   map[string]string{podLabel: m.podID},
+		LogPath:  criLogPath(name, attempt),
+	}
+
+	created, err := runtime.CreateContainer(ctx, &runtimeapi.CreateContainerRequest{
+		PodSandboxId:  m.sandboxID,
+		Config:        cc,
+		SandboxConfig: m.sandboxConfig(),
+	})
+	if err != nil {
+		return fmt.Errorf("oci: creating copy container from %s: %w", image, err)
+	}
+	id := created.GetContainerId()
+	defer func() {
+		_, _ = runtime.StopContainer(context.WithoutCancel(ctx),
+			&runtimeapi.StopContainerRequest{ContainerId: id, Timeout: 0})
+		_, _ = runtime.RemoveContainer(context.WithoutCancel(ctx),
+			&runtimeapi.RemoveContainerRequest{ContainerId: id})
+	}()
+
+	if _, err := runtime.StartContainer(ctx, &runtimeapi.StartContainerRequest{ContainerId: id}); err != nil {
+		return fmt.Errorf("oci: starting copy container from %s: %w", image, err)
+	}
+
+	// Wait for the copy to complete.
+	c := Container{ID: id, Name: name}
+	code, err := m.WaitContainer(ctx, c)
+	if err != nil {
+		return fmt.Errorf("oci: waiting for copy container from %s: %w", image, err)
+	}
+	if code != 0 {
+		return fmt.Errorf("oci: copy from %s:%s exited %d (image may lack sh+cp)", image, srcPath, code)
+	}
+	return nil
 }
 
 // ReadImageFile is not yet implemented on CRI. Docker reads a file out of an image's layers via

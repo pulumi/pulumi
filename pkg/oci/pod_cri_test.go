@@ -297,7 +297,6 @@ func TestCriUnimplementedVerbs(t *testing.T) {
 	assert.Error(t, m.ImportImage(ctx, "/layout", "ref:1"))
 	_, err := m.RunToCompletion(ctx, ContainerConfig{Image: "i"}, io.Discard)
 	assert.Error(t, err)
-	assert.Error(t, m.CopyFromImage(ctx, "img", "/src", Volume{Name: "v"}, "/dst"))
 	_, err = m.ReadImageFile(ctx, "img", "/path")
 	assert.Error(t, err)
 }
