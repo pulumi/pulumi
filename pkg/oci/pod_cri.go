@@ -297,8 +297,8 @@ func (m *criPodManager) RunContainer(ctx context.Context, cfg ContainerConfig) (
 // Several ContainerConfig fields are docker/nerdctl concepts with no CRI meaning and are
 // intentionally not consulted: Network (there is one network, the sandbox — see CreateNetwork),
 // HostGateway (the engine-on-host mode, docker-only), and VolumesFrom (a docker inheritance verb;
-// on CRI the workspace is a host dir). Volumes ARE mapped, but only host-path binds translate
-// today — a named volume has no CRI analog and is the deferred volume work.
+// on CRI the workspace is a host dir). Volumes are mapped as host-path binds; bare volume names
+// (from CreateVolume / WorkspaceVolumeName) are resolved to host paths under the volume dir.
 func (m *criPodManager) containerConfig(
 	cfg ContainerConfig, attempt uint32, logPath string,
 ) *runtimeapi.ContainerConfig {
@@ -309,7 +309,7 @@ func (m *criPodManager) containerConfig(
 		Args:       cfg.Cmd,
 		WorkingDir: cfg.WorkingDir,
 		Envs:       criEnv(cfg.Env),
-		Mounts:     criMounts(cfg.Volumes),
+		Mounts:     m.criMounts(cfg.Volumes),
 		Labels:     map[string]string{podLabel: m.podID},
 		LogPath:    logPath,
 	}
@@ -465,7 +465,7 @@ func (m *criPodManager) CreateVolume(ctx context.Context, name string) (Volume, 
 	}
 	vol := criVolume{name: volName, hostDir: hostDir}
 	m.track(func() { m.volumes = append(m.volumes, vol) })
-	return Volume{Name: hostDir}, nil
+	return Volume{Name: volName}, nil
 }
 
 // CopyFromImage is not yet implemented on CRI. It seeds a named volume from an image's filesystem;
@@ -573,17 +573,23 @@ func criEnv(env map[string]string) []*runtimeapi.KeyValue {
 	return kvs
 }
 
-// criMounts converts VolumeMounts to CRI Mounts. CRI mounts are host-path binds, so Source maps to
-// HostPath directly — which is correct for an absolute host path but not for a named volume, whose
-// host-dir mapping is the deferred volume work.
-func criMounts(vols []VolumeMount) []*runtimeapi.Mount {
+// criMounts converts VolumeMounts to CRI Mounts, resolving volume names to host paths. A source
+// that is already an absolute path (an explicit host-path bind, like the CRI socket) passes
+// through; a bare name (a volume created by CreateVolume, or referenced by WorkspaceVolumeName)
+// is resolved to a host directory under the volume root. This is the CRI analog of docker's
+// automatic named-volume resolution — the naming convention is the same, the storage is a host dir.
+func (m *criPodManager) criMounts(vols []VolumeMount) []*runtimeapi.Mount {
 	if len(vols) == 0 {
 		return nil
 	}
 	mounts := make([]*runtimeapi.Mount, 0, len(vols))
 	for _, v := range vols {
+		source := v.Source
+		if !filepath.IsAbs(source) && m.volumeDir != "" {
+			source = filepath.Join(m.volumeDir, source)
+		}
 		mounts = append(mounts, &runtimeapi.Mount{
-			HostPath:      v.Source,
+			HostPath:      source,
 			ContainerPath: v.Target,
 			Readonly:      v.ReadOnly,
 		})

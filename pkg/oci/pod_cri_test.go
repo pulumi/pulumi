@@ -303,24 +303,38 @@ func TestCriUnimplementedVerbs(t *testing.T) {
 }
 
 // TestCriCreateVolumeCreatesHostDir proves CreateVolume creates a host directory under the
-// configured volume root, names it by pod+logical-name convention, and returns the host path
-// as the volume's Name (so criMounts maps it to HostPath directly).
+// configured volume root and returns the logical volume name (matching docker's convention, so
+// WorkspaceVolumeName and CreateVolume agree). criMounts resolves the logical name to a host path.
 func TestCriCreateVolumeCreatesHostDir(t *testing.T) {
 	t.Parallel()
+	volDir := t.TempDir()
 	m := NewCriPodManager("p1",
 		WithCRIClients(&fakeCRI{}, &fakeCRI{}),
 		WithCRISandboxID("sb-1"),
 		WithCRILogDir(t.TempDir()),
-		WithCRIVolumeDir(t.TempDir()),
+		WithCRIVolumeDir(volDir),
 	).(*criPodManager)
 
 	vol, err := m.CreateVolume(t.Context(), "workspace")
 	require.NoError(t, err)
-	assert.Contains(t, vol.Name, "pulumi-pod-p1-vol-workspace")
+	assert.Equal(t, "pulumi-pod-p1-vol-workspace", vol.Name,
+		"Volume.Name must be the logical name, matching WorkspaceVolumeName's convention")
 
-	info, err := os.Stat(vol.Name)
+	// The host directory is at volumeDir/volName.
+	hostDir := filepath.Join(volDir, vol.Name)
+	info, err := os.Stat(hostDir)
 	require.NoError(t, err, "the host dir must exist")
 	assert.True(t, info.IsDir())
+
+	// criMounts resolves the bare name to the host path.
+	mounts := m.criMounts([]VolumeMount{{Source: vol.Name, Target: "/workspace"}})
+	require.Len(t, mounts, 1)
+	assert.Equal(t, hostDir, mounts[0].HostPath, "bare volume name must resolve to host path")
+
+	// An absolute path passes through unchanged.
+	absMounts := m.criMounts([]VolumeMount{{Source: "/run/containerd/containerd.sock", Target: "/sock"}})
+	require.Len(t, absMounts, 1)
+	assert.Equal(t, "/run/containerd/containerd.sock", absMounts[0].HostPath)
 
 	// A second volume with a different name creates a distinct directory.
 	vol2, err := m.CreateVolume(t.Context(), "plugin-random")
@@ -329,7 +343,7 @@ func TestCriCreateVolumeCreatesHostDir(t *testing.T) {
 
 	// Cleanup removes the directories.
 	require.NoError(t, m.Cleanup(t.Context()))
-	_, err = os.Stat(vol.Name)
+	_, err = os.Stat(hostDir)
 	assert.True(t, os.IsNotExist(err), "volume dir should be removed by Cleanup")
 }
 
