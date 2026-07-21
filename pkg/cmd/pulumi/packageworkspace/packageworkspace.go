@@ -523,32 +523,43 @@ func (p pluginProvider) GetSchema(
 	//
 	// TODO[https://github.com/pulumi/pulumi/issues/21258]: Download lock files would
 	// allow us to push this deeper through the plugin loading process.
-
-	var pkgSpec schema.PackageSpec
-	if json.Unmarshal(resp.Schema, &pkgSpec) != nil {
-		// If we can't un-marshal, give up.
-		return resp, nil
-	}
 	source := p.originalSpec.Source
 	if p.originalSpec.Version != "" {
 		source += "@" + p.originalSpec.Version
 	}
 	pd, err := workspace.NewPluginDescriptor(ctx, source, apitype.ResourcePlugin, nil, "", nil)
-	if err == nil && pd.IsGitPlugin() {
-		pkgSpec.PluginDownloadURL = pd.PluginDownloadURL
-		if pd.Version != nil {
-			pkgSpec.Version = pd.Version.String()
-		}
+	if err != nil || !pd.IsGitPlugin() {
+		return resp, nil
+	}
 
-		if pkgSpec.Namespace == "" {
-			namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
-			matches := namespaceRegex.FindStringSubmatch(pd.PluginDownloadURL)
-			if len(matches) == 2 {
-				pkgSpec.Namespace = strings.ToLower(matches[1])
-			}
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := tracer.Start(ctx, "packageworkspace.injectSchemaMetadata")
+	defer span.End()
+
+	var pkgSpec schema.PackageSpec
+	_, unmarshalSpan := tracer.Start(ctx, "packageworkspace.unmarshalSchema")
+	unmarshalErr := json.Unmarshal(resp.Schema, &pkgSpec)
+	unmarshalSpan.End()
+	if unmarshalErr != nil {
+		// If we can't un-marshal, give up.
+		return resp, nil
+	}
+
+	pkgSpec.PluginDownloadURL = pd.PluginDownloadURL
+	if pd.Version != nil {
+		pkgSpec.Version = pd.Version.String()
+	}
+	if pkgSpec.Namespace == "" {
+		namespaceRegex := regexp.MustCompile(`git://[^/]+/([^/]+)/`)
+		matches := namespaceRegex.FindStringSubmatch(pd.PluginDownloadURL)
+		if len(matches) == 2 {
+			pkgSpec.Namespace = strings.ToLower(matches[1])
 		}
 	}
+
+	_, marshalSpan := tracer.Start(ctx, "packageworkspace.marshalSchema")
 	bytes, err := json.Marshal(pkgSpec)
+	marshalSpan.End()
 	contract.AssertNoErrorf(err, "schema.PackageSpec is safe to marshal")
 	return plugin.GetSchemaResponse{Schema: bytes}, nil
 }
