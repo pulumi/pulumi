@@ -38,8 +38,6 @@ const (
 	BackupDir = "backups"
 	// BookkeepingDir is the name of our bookkeeping folder, we store state here (like .git for git).
 	BookkeepingDir = ".pulumi"
-	// ConfigDir is the name of the folder that holds local configuration information.
-	ConfigDir = "config"
 	// GitDir is the name of the folder git uses to store information.
 	GitDir = ".git"
 	// HistoryDir is the name of the directory that holds historical information for projects.
@@ -58,16 +56,9 @@ const (
 	TemplatePolicyDir = "templates-policy"
 	// TemplatePackageDir is the name of the directory containing templates for Pulumi packages.
 	TemplatePackageDir = "templates-packages"
-	// WorkspaceDir is the name of the directory that holds workspace information for projects.
-	WorkspaceDir = "workspaces"
-
-	// IgnoreFile is the name of the file that we use to control what to upload to the service.
-	IgnoreFile = ".pulumiignore"
 
 	// ProjectFile is the base name of a project file.
 	ProjectFile = "Pulumi"
-	// RepoFile is the name of the file that holds information specific to the entire repository.
-	RepoFile = "settings.json"
 	// WorkspaceFile is the name of the file that holds workspace information.
 	WorkspaceFile = "workspace.json"
 
