@@ -16,20 +16,21 @@
 # the thesis-preserving build, and the forcing function for the runtime-neutral
 # build contract (it cannot reach a daemon socket to cheat).
 #
-# The sink is `plainregistry` (a bare ggcr registry.New()), NOT the synthesizing
-# registry-proxy: the build ref is ProviderImageRef -> pulumi/pulumi-provider-<name>,
-# a namespace the proxy reserves read-only (it 405s the push). That collision is a
-# real finding; the plain registry sidesteps it so the CRI build+publish mechanism
-# can be proven on its own. The registry sits at 10.88.0.1:5000 — the cri0 gateway,
-# reachable from BOTH the pod netns (engine push) and the host netns (containerd
-# pull) — and containerd pulls it over plain-http via a certs.d hosts.toml.
+# The sink is the registry-proxy's PRIVATE port. The build ref is ProviderImageRef ->
+# pulumi/pulumi-provider-<name>, which the proxy's PUBLIC port reserves read-only for
+# first-party synthesis (it 405s the push). That is not a bug but the registry's source
+# axis (<source>/<publisher>/<name>, source ≈ registry host): a local build is
+# source=private, so it publishes to the proxy's private port — same publisher (pulumi),
+# different source, no collision. The proxy serves both on the cri0 gateway 10.88.0.1
+# (both-netns): public :5000, private :5001. containerd pulls the private port over
+# plain-http via a certs.d hosts.toml.
 #
 # Prerequisites (see the CRI spike kit ~/scratch/2026-07-18_cri-podmanager/):
 #   - docker daemon; the `crienv` container (kubelet-free containerd+CRI)
 #   - crienv's containerd registry.config_path set to /etc/containerd/certs.d
 #     (the (c) probe set this; survives restart)
 #   - kaniko (gcr.io/kaniko-project/executor:debug) loaded into crienv's k8s.io store
-#   - the plainregistry binary cross-compiled at the spike kit
+#   (the registry-proxy binary is cross-compiled here by build_engine_image)
 #
 # Usage: run-pod-cri-build.sh
 set -euo pipefail
@@ -43,7 +44,6 @@ BUILDER="${OCI_BUILDER:-desktop-linux}"
 GOARCH="$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')"
 
 CRIENV=crienv
-SPIKE_KIT="$HOME/scratch/2026-07-18_cri-podmanager"
 ENGINE_IMAGE="pulumi-cli-oci:latest"
 KANIKO_IMAGE="gcr.io/kaniko-project/executor:debug"
 POD_ID="cri-build-$$"
@@ -53,13 +53,20 @@ BUILDDIR_HOST="/cri-build/$POD_ID/pulumi-build"   # PULUMI_POD_BUILD_DIR — the
 META_HOST="/cri-build/$POD_ID/meta"               # engine-id injection (create-time chicken/egg)
 PROJ_HOST="/cri-build/$POD_ID/project"            # the package source the builder inherits
 
-# The registry sink: both-netns address (cri0 gateway); the build ref lands here.
-REG_ADDR="10.88.0.1:5000"
+# The registry-proxy serves TWO sources on two ports at the cri0 gateway (both-netns):
+# the PUBLIC port (:5000) synthesizes first-party pulumi/pulumi-provider-* read-only;
+# the PRIVATE port (:5001) is a plain read-write registry that accepts any namespace.
+# A local build is source=private, so it publishes to (and is pulled from) the private
+# port — the same publisher (pulumi) as first-party, disambiguated by source ≈ host.
+REG_HOST="10.88.0.1"
+PUBLIC_ADDR="$REG_HOST:5000"
+PRIVATE_ADDR="$REG_HOST:5001"
 CERTS_D=/etc/containerd/certs.d
 COMPONENT_PKG="kanikoprobe"
 COMPONENT_VERSION="0.1.0"
-# ProviderImageRef(registry, name, version) = <reg>/pulumi/pulumi-provider-<name>:v<version>
-BUILT_REF="$REG_ADDR/pulumi/pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION"
+# ProviderImageRef(registry, name, version) = <reg>/pulumi/pulumi-provider-<name>:v<version>,
+# with <reg> = the PRIVATE source host (where a local build legitimately lands).
+BUILT_REF="$PRIVATE_ADDR/pulumi/pulumi-provider-$COMPONENT_PKG:v$COMPONENT_VERSION"
 
 WORK="$(mktemp -d)"
 SB=""
@@ -80,27 +87,30 @@ docker info >/dev/null 2>&1 || { echo "!! docker daemon not available"; exit 1; 
 docker exec "$CRIENV" crictl version >/dev/null 2>&1 || { echo "!! crienv not running — see the CRI spike kit"; exit 1; }
 docker exec "$CRIENV" crictl images 2>/dev/null | grep -q kaniko || {
   echo "!! kaniko not loaded in crienv. Load it: docker pull $KANIKO_IMAGE && docker save $KANIKO_IMAGE | docker exec -i $CRIENV ctr -n k8s.io images import -"; exit 1; }
-[ -x "$SPIKE_KIT/plainregistry" ] || {
-  echo "!! plainregistry binary missing. Build it: (cd $SMOKE_DIR/registry-proxy && GOOS=linux GOARCH=$GOARCH go build -o $SPIKE_KIT/plainregistry ./plainregistry)"; exit 1; }
 
 # ── build + load the engine image ───────────────────────────────────────────
 build_engine_image
 echo "==> loading $ENGINE_IMAGE into crienv k8s.io store"
 docker save "$ENGINE_IMAGE" | docker exec -i "$CRIENV" ctr -n k8s.io images import - >/dev/null
 
-# ── start the plain registry sink on :5000 (kill any squatter first) ────────
-docker cp "$SPIKE_KIT/plainregistry" "$CRIENV:/usr/local/bin/plainregistry"
+# ── start the registry-proxy with BOTH sources (public :5000 + private :5001) ─
+# The proxy binary is the one build_engine_image just cross-compiled ($WORK/cli).
+docker cp "$WORK/cli/registry-proxy-linux" "$CRIENV:/usr/local/bin/registry-proxy"
 docker exec "$CRIENV" pkill -f 'registry-proxy|plainregistry' 2>/dev/null || true
 sleep 1
-docker exec -d "$CRIENV" sh -c 'PLAIN_REGISTRY_ADDR=:5000 /usr/local/bin/plainregistry >/tmp/plainreg.log 2>&1'
+docker exec -d "$CRIENV" sh -c 'PROXY_ADDR=:5000 PROXY_PRIVATE_ADDR=:5001 /usr/local/bin/registry-proxy >/tmp/proxy.log 2>&1'
 for i in $(seq 1 15); do
-  docker exec "$CRIENV" sh -c 'curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1' && break; sleep 1
+  docker exec "$CRIENV" sh -c 'curl -sf http://127.0.0.1:5001/v2/ >/dev/null 2>&1' && break; sleep 1
 done
-# Discriminator: the sink must ACCEPT a provider-namespace upload (202), where the
-# synthesizing proxy would 405 — proving plainregistry is really the server on :5000.
-UP="$(docker exec "$CRIENV" sh -c "curl -s -X POST -o /dev/null -w '%{http_code}' http://127.0.0.1:5000/v2/pulumi/pulumi-provider-$COMPONENT_PKG/blobs/uploads/")"
-[ "$UP" = "202" ] || { echo "!! sink on :5000 returned $UP (want 202) — not plainregistry"; docker exec "$CRIENV" cat /tmp/plainreg.log; exit 1; }
-echo "==> plainregistry up on :5000 (provider-namespace upload -> $UP)"
+# Discriminator that also DEMONSTRATES the source split: a provider-namespace upload
+# must be ACCEPTED (202) on the PRIVATE port but REJECTED (405) on the PUBLIC port
+# (which reserves pulumi/pulumi-provider-* for read-only synthesis). Same publisher,
+# different source — the collision resolved by host, live.
+UPRIV="$(docker exec "$CRIENV" sh -c "curl -s -X POST -o /dev/null -w '%{http_code}' http://127.0.0.1:5001/v2/pulumi/pulumi-provider-$COMPONENT_PKG/blobs/uploads/")"
+UPUB="$(docker exec "$CRIENV" sh -c "curl -s -X POST -o /dev/null -w '%{http_code}' http://127.0.0.1:5000/v2/pulumi/pulumi-provider-$COMPONENT_PKG/blobs/uploads/")"
+{ [ "$UPRIV" = "202" ] && [ "$UPUB" = "405" ]; } || {
+  echo "!! source split wrong: private=$UPRIV (want 202), public=$UPUB (want 405)"; docker exec "$CRIENV" cat /tmp/proxy.log; exit 1; }
+echo "==> registry-proxy up: private :5001 accepts provider ns ($UPRIV), public :5000 reserves it ($UPUB)"
 
 # ── remove any prior built image so the run must produce it ─────────────────
 docker exec "$CRIENV" crictl rmi "$BUILT_REF" >/dev/null 2>&1 || true
@@ -126,10 +136,11 @@ JSON"
 SB="$(docker exec "$CRIENV" crictl runp /tmp/$POD_ID-sandbox.json)"
 echo "==> sandbox: $SB"
 
-# ── (re)assert the 10.88.0.1:5000 plain-http hosts.toml (hot-reloads) ───────
-docker exec "$CRIENV" sh -c "mkdir -p '$CERTS_D/$REG_ADDR' && cat > '$CERTS_D/$REG_ADDR/hosts.toml' <<TOML
-server = \"http://$REG_ADDR\"
-[host.\"http://$REG_ADDR\"]
+# ── (re)assert the private-port plain-http hosts.toml (hot-reloads) ─────────
+# Only the PRIVATE port is pulled from in this e2e (the build's source).
+docker exec "$CRIENV" sh -c "mkdir -p '$CERTS_D/$PRIVATE_ADDR' && cat > '$CERTS_D/$PRIVATE_ADDR/hosts.toml' <<TOML
+server = \"http://$PRIVATE_ADDR\"
+[host.\"http://$PRIVATE_ADDR\"]
   capabilities = [\"pull\", \"resolve\"]
 TOML"
 
@@ -163,7 +174,7 @@ docker exec "$CRIENV" sh -c "cat > /tmp/$POD_ID-engine.json <<JSON
     { \"key\": \"PULUMI_POD_ID\",             \"value\": \"$POD_ID\" },
     { \"key\": \"PULUMI_POD_VOLUME_DIR\",     \"value\": \"$VOLDIR\" },
     { \"key\": \"PULUMI_POD_BUILD_DIR\",      \"value\": \"/pulumi-build\" },
-    { \"key\": \"PULUMI_POD_PLUGIN_REGISTRY\", \"value\": \"$REG_ADDR\" }
+    { \"key\": \"PULUMI_POD_PLUGIN_REGISTRY\", \"value\": \"$PRIVATE_ADDR\" }
   ],
   \"mounts\": [
     { \"host_path\": \"/run/containerd/containerd.sock\", \"container_path\": \"/run/containerd/containerd.sock\" },
@@ -222,21 +233,24 @@ if ! grep -qx "$BUILT_REF" "$WORK/engine.log"; then
 fi
 # 4. THE PUSH (direct): the built image is queryable at the plainregistry sink — proving
 #    ImportImage's remote.Write landed it in the registry (not just inferred via the pull).
-TAGS="$(docker exec "$CRIENV" sh -c "curl -sf http://127.0.0.1:5000/v2/pulumi/pulumi-provider-$COMPONENT_PKG/tags/list" 2>/dev/null || true)"
+TAGS="$(docker exec "$CRIENV" sh -c "curl -sf http://127.0.0.1:5001/v2/pulumi/pulumi-provider-$COMPONENT_PKG/tags/list" 2>/dev/null || true)"
 if echo "$TAGS" | grep -q "v$COMPONENT_VERSION"; then
   echo "    pushed to sink: $TAGS"
 else
-  echo "!! $BUILT_REF not found at the plainregistry sink — ImportImage push did not land: ${TAGS:-<no response>}"; exit 1
+  echo "!! $BUILT_REF not found at the private-source sink — ImportImage push did not land: ${TAGS:-<no response>}"; exit 1
 fi
 # 5. THE PULL: ImportImage's PullImage landed the freshly-built image in the k8s.io store.
 #    (On CRI a filesystem layout can only enter the store via a registry pull — there is no
 #    direct-load path — so a fresh ref here, after `crictl rmi` at start, closes the chain.)
-if docker exec "$CRIENV" crictl images | grep -q "pulumi-provider-$COMPONENT_PKG"; then
-  echo "    $BUILT_REF present in k8s.io: $(docker exec "$CRIENV" crictl images | grep "pulumi-provider-$COMPONENT_PKG")"
+#    Match the EXACT ref (incl. the :5001 private-source host) so a stale single-port image
+#    from an earlier run cannot satisfy the check.
+BUILT_REPO="$PRIVATE_ADDR/pulumi/pulumi-provider-$COMPONENT_PKG"
+if docker exec "$CRIENV" crictl images | grep -q "$BUILT_REPO "; then
+  echo "    $BUILT_REF present in k8s.io: $(docker exec "$CRIENV" crictl images | grep "$BUILT_REPO ")"
 else
   echo "!! $BUILT_REF is not in crienv's k8s.io store — ImportImage push+pull did not complete"; exit 1
 fi
 
 echo "==> ✅ CRI build+publish smoke test PASS"
 echo "    kaniko built a layout in a one-shot CRI container, the engine imported it via"
-echo "    proxy-pull (push to $REG_ADDR + PullImage), and it landed in the k8s.io store."
+echo "    proxy-pull (push to $PRIVATE_ADDR + PullImage), and it landed in the k8s.io store."

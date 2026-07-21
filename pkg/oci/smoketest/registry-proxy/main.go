@@ -36,6 +36,22 @@
 //     (e.g. http://registry:5000), a straight reverse proxy to a real registry
 //     sidecar, which then owns storage and any persistence.
 //
+// A second listener — the PRIVATE source — makes the registry's source axis
+// physically evident. The registry identity is <source>/<publisher>/<name>, and
+// source ≈ the registry host (the publishing design maps "the source made a real
+// network location"); the real registry resolves `private` before `pulumi`, so a
+// private package shadows a first-party one under the SAME publisher. Set
+// PROXY_PRIVATE_ADDR and the proxy also serves a bare read-write registry on that
+// port: the main port is the simulated PUBLIC source (first-party providers,
+// synthesized read-only), the private port is the simulated PRIVATE source (your
+// own builds), which accepts pushes to ANY namespace — including
+// pulumi/pulumi-provider-*, the very namespace the public port reserves for
+// synthesis. So a locally-built pulumi/pulumi-provider-<mine> publishes to and
+// resolves from the private host while first-party pulumi/pulumi-provider-<theirs>
+// resolves from the public host: same publisher, different source, no collision.
+// That is exactly how the real registry avoids the `pulumi/` overload, surfaced as
+// two ports so a pod build sink and the trial kit have a private source to target.
+//
 // The proxy is a bootstrap/testing helper, deliberately NOT real infra: no auth, no
 // TLS (localhost only), and in embedded mode the store lives and dies with the
 // proxy container (the wrapper replaces that container whenever it would run a
@@ -187,6 +203,22 @@ func main() {
 		backend = registry.New(registry.Logger(log.Default()))
 	}
 	p := newProxy(arch, backend)
+
+	// The PRIVATE source (see the package doc): a bare read-write registry on a
+	// SEPARATE port, so `source ≈ registry host` is physically evident. It accepts
+	// pushes to any namespace — including pulumi/pulumi-provider-*, which the public
+	// port reserves for synthesis — so a local build publishes here without colliding
+	// with the first-party namespace the public port simulates.
+	if privateAddr := os.Getenv("PROXY_PRIVATE_ADDR"); privateAddr != "" {
+		private := registry.New(registry.Logger(log.Default()))
+		log.Printf("registry-proxy: private source (plain read-write registry, all namespaces) on %s", privateAddr)
+		go func() {
+			if err := http.ListenAndServe(privateAddr, private); err != nil { //nolint:gosec // dev tool, no timeouts needed
+				log.Fatalf("registry-proxy: private listener: %v", err)
+			}
+		}()
+	}
+
 	log.Printf(
 		"registry-proxy: serving on %s — synthesizing linux/%s provider images from get.pulumi.com "+
 			"(pulumi-provider-*, pulumi/pulumi-provider-*); %s for everything else",
