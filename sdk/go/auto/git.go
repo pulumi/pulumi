@@ -38,6 +38,7 @@ func setupGitRepo(ctx context.Context, workDir string, repoArgs *GitRepo) (strin
 	if repoArgs.Shallow {
 		cloneOptions.Depth = 1
 		cloneOptions.SingleBranch = true
+		cloneOptions.Tags = git.NoTags
 	}
 
 	if repoArgs.Auth != nil {
