@@ -1,0 +1,4 @@
+component: cli/do
+kind: feat
+body: Add support for stateful delete
+time: 2026-07-21T09:04:21+01:00

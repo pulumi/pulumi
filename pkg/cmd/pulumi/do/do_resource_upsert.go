@@ -54,6 +54,7 @@ type StatefulUpdateRequest struct {
 	DryRun      bool
 	Yes         bool
 	ShowSecrets bool
+	Delete      bool
 	Proj        *workspace.Project
 	Root        string
 	Sink        diag.Sink
@@ -203,6 +204,65 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	return nil
 }
 
+func (pc *packageCommand) runStatefulSnippetDelete(
+	cmd *cobra.Command, res *schema.Resource, name string, yes bool,
+) error {
+	contract.Assertf(pc.runStatefulUpdate != nil, "stateful snippet update is not wired up in this build")
+
+	if pc.proj == nil {
+		return fmt.Errorf("`%s` requires a Pulumi project (run inside a project directory)", cmd.Name())
+	}
+	if err := pc.requireYesIfNonInteractive(yes); err != nil {
+		return err
+	}
+
+	ctx := cmd.Context()
+	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
+	stack, err := cmdStack.RequireStack(
+		ctx, pc.diagFwd, pc.ws, pc.lm,
+		"",                                 /*stackName — use currently selected*/
+		cmdStack.LoadOnly, displayOpts, "", /*configFile*/
+	)
+	if err != nil {
+		return fmt.Errorf("load stack: %w", err)
+	}
+	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	if err != nil {
+		return fmt.Errorf("load stack snapshot: %w", err)
+	}
+
+	snippetUUID, existed, err := resolveSnippetUUID(snap, name, res.Token)
+	if err != nil {
+		return err
+	}
+	if !existed {
+		return fmt.Errorf("resource %s %q does not exist in stack %s", res.Token, name, stack.Ref())
+	}
+
+	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
+		Snippet: resource.Snippet{
+			UUID: snippetUUID,
+			Name: name,
+			Type: res.Token,
+		},
+		Stack:       stack,
+		DryRun:      pc.dryrun,
+		Yes:         yes,
+		ShowSecrets: pc.showSecrets,
+		Delete:      true,
+		Proj:        pc.proj,
+		Root:        pc.root,
+		Sink:        pc.diagFwd,
+	})
+	if err != nil {
+		return err
+	}
+	if result != nil && !pc.dryrun {
+		fmt.Fprintf(cmd.OutOrStdout(), "deleted %s (snippet %s)\n", name, result.SnippetUUID)
+	}
+	return nil
+}
+
 // addStatefulSnippetUpdateFlags installs the flag set shared by stateful `create` and `upsert`.
 func addStatefulSnippetUpdateFlags(
 	cmd *cobra.Command, inputFile, inputFormat *string, yes *bool, inputs []*schema.Property,
@@ -218,8 +278,7 @@ func addStatefulSnippetUpdateFlags(
 // resolveSnippetUUID looks up an existing snippet in snap matching (name, resourceToken) and
 // returns its UUID for reuse (with existed=true); otherwise it mints a fresh UUIDv4 (existed=false).
 // Callers use existed to enforce operation-specific invariants: stateful `create` errors when a
-// snippet already exists, `upsert` doesn't care, and (future) stateful `delete` errors when it
-// doesn't.
+// snippet already exists, `upsert` doesn't care, and stateful `delete` errors when it doesn't.
 //
 // Snippet identity within a snapshot is (Name, Type): a second snippet with the same pair would
 // register the same resource URN and race with the first, so any resolver that reuses an existing
@@ -270,10 +329,13 @@ func DefaultRunStatefulUpdate(
 	if err != nil {
 		return nil, fmt.Errorf("snippet uuid: %w", err)
 	}
-	snippet := req.Snippet
+	var snippet *resource.Snippet
+	if !req.Delete {
+		snippet = &req.Snippet
+	}
 
 	engineOpts := engine.UpdateOptions{
-		Snippets:       map[uuid.UUID]*resource.Snippet{snippetUUIDVal: &snippet},
+		Snippets:       map[uuid.UUID]*resource.Snippet{snippetUUIDVal: snippet},
 		TargetSnippets: []string{snippetUUIDVal.String()},
 		ShowSecrets:    req.ShowSecrets,
 	}
