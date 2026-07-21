@@ -42,8 +42,12 @@ type fakeCRI struct {
 	nextID    string                        // id CreateContainer returns
 	statuses  []*runtimeapi.ContainerStatus // returned by successive ContainerStatus calls
 	statusIdx int
-	removeErr error // returned by RemoveContainer (e.g. a NotFound)
-	stopErr   error // returned by StopContainer
+	// statusByID overrides the sequential statuses for specific container ids — used to give an
+	// engine container a status carrying mounts (for the VolumesFrom inheritance path) while the
+	// build container still polls the sequential statuses for its exit.
+	statusByID map[string]*runtimeapi.ContainerStatus
+	removeErr  error // returned by RemoveContainer (e.g. a NotFound)
+	stopErr    error // returned by StopContainer
 
 	imageStatus *runtimeapi.Image // ImageStatus result (nil = absent)
 	imageErr    error             // ImageStatus error
@@ -82,9 +86,12 @@ func (f *fakeCRI) RemoveContainer(_ context.Context, req *runtimeapi.RemoveConta
 	return &runtimeapi.RemoveContainerResponse{}, f.removeErr
 }
 
-func (f *fakeCRI) ContainerStatus(_ context.Context, _ *runtimeapi.ContainerStatusRequest,
+func (f *fakeCRI) ContainerStatus(_ context.Context, req *runtimeapi.ContainerStatusRequest,
 	_ ...grpc.CallOption,
 ) (*runtimeapi.ContainerStatusResponse, error) {
+	if st, ok := f.statusByID[req.GetContainerId()]; ok {
+		return &runtimeapi.ContainerStatusResponse{Status: st}, nil
+	}
 	st := f.statuses[min(f.statusIdx, len(f.statuses)-1)]
 	f.statusIdx++
 	return &runtimeapi.ContainerStatusResponse{Status: st}, nil
@@ -363,6 +370,73 @@ func TestCriRunToCompletionNeedsLogDir(t *testing.T) {
 	_, err := m.RunToCompletion(t.Context(), ContainerConfig{Image: "builder:1", Name: "build"}, io.Discard)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), CRILogDirEnvVar)
+}
+
+// TestCriRunToCompletionInheritsEngineMounts proves the VolumesFrom analog: a build container with
+// VolumesFrom set inherits the ENGINE container's mounts (read via ContainerStatus, since CRI has
+// no --volumes-from), and an explicit builder mount wins over an inherited one at the same path.
+func TestCriRunToCompletionInheritsEngineMounts(t *testing.T) {
+	t.Parallel()
+	fake := &fakeCRI{
+		nextID: "build-1",
+		statusByID: map[string]*runtimeapi.ContainerStatus{
+			// The engine's mounts: a source at /src and a build-scratch at /pulumi-build.
+			"engine-abc": {Mounts: []*runtimeapi.Mount{
+				{HostPath: "/host/src", ContainerPath: "/src"},
+				{HostPath: "/host/engine-build", ContainerPath: "/pulumi-build"},
+			}},
+		},
+		statuses: []*runtimeapi.ContainerStatus{
+			{State: runtimeapi.ContainerState_CONTAINER_EXITED, ExitCode: 0},
+		},
+	}
+	m := NewCriPodManager("p1",
+		WithCRIClients(fake, fake),
+		WithCRISandboxID("sb-1"),
+		WithCRILogDir(t.TempDir()),
+		WithCRIEngineContainerID("engine-abc"),
+	).(*criPodManager)
+	require.NoError(t, os.WriteFile(filepath.Join(m.logDir, "build_0.log"), nil, 0o600))
+
+	_, err := m.RunToCompletion(t.Context(), ContainerConfig{
+		Image:       "builder:1",
+		Name:        "build",
+		VolumesFrom: []string{"engine"}, // the docker-idiom value; on CRI the engine is found via the env id
+		// An explicit builder mount at the same path as an inherited engine mount must win.
+		Volumes: []VolumeMount{{Source: "/host/build", Target: "/pulumi-build"}},
+	}, io.Discard)
+	require.NoError(t, err)
+
+	require.Len(t, fake.createReqs, 1)
+	mounts := fake.createReqs[0].GetConfig().GetMounts()
+	assert.Contains(t, mounts, &runtimeapi.Mount{HostPath: "/host/src", ContainerPath: "/src"},
+		"the engine's source mount must be inherited onto the builder")
+
+	var atBuildDir []*runtimeapi.Mount
+	for _, mt := range mounts {
+		if mt.GetContainerPath() == "/pulumi-build" {
+			atBuildDir = append(atBuildDir, mt)
+		}
+	}
+	require.Len(t, atBuildDir, 1, "explicit builder mount must win a path collision, not duplicate the inherited one")
+	assert.Equal(t, "/host/build", atBuildDir[0].GetHostPath(),
+		"the explicit builder mount wins over the inherited engine mount at the same path")
+}
+
+// TestCriRunToCompletionVolumesFromNeedsEngineID proves the wrapper-gated wrinkle is surfaced, not
+// swallowed: VolumesFrom with no engine container id forwarded fails with an actionable error
+// naming the env var (os.Hostname() is the sandbox pause id on CRI, so it cannot name the engine).
+func TestCriRunToCompletionVolumesFromNeedsEngineID(t *testing.T) {
+	t.Parallel()
+	m := NewCriPodManager("p1",
+		WithCRIClients(&fakeCRI{}, &fakeCRI{}), WithCRISandboxID("sb-1"), WithCRILogDir(t.TempDir()),
+	).(*criPodManager) // no engine container id
+
+	_, err := m.RunToCompletion(t.Context(), ContainerConfig{
+		Image: "builder:1", Name: "build", VolumesFrom: []string{"engine"},
+	}, io.Discard)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), CRIEngineContainerIDEnvVar)
 }
 
 // TestCriCreateVolumeCreatesHostDir proves CreateVolume creates a host directory under the

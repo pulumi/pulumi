@@ -18,6 +18,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -122,7 +123,7 @@ func TestCriLiveRunWaitLogs(t *testing.T) {
 func TestCriLiveRunToCompletion(t *testing.T) {
 	t.Parallel()
 	if os.Getenv(criLiveEnvVar) == "" {
-		t.Skipf("set %s (and run inside crienv) to exercise the live CRI build primitive; see the CRI findings kit", criLiveEnvVar)
+		t.Skipf("set %s and run inside crienv to exercise the live CRI build primitive", criLiveEnvVar)
 	}
 	require.NotEmpty(t, os.Getenv(CRISandboxIDEnvVar),
 		"orchestration must create a sandbox (crictl runp) and set %s", CRISandboxIDEnvVar)
@@ -160,4 +161,59 @@ func TestCriLiveRunToCompletion(t *testing.T) {
 	}, io.Discard)
 	require.Error(t, err, "a non-zero build exit must surface as an error (a build has no bail)")
 	assert.Contains(t, err.Error(), "exited 3")
+}
+
+// TestCriLiveRunToCompletionInheritsEngineMounts proves the VolumesFrom analog against live CRI: a
+// stand-in "engine" container mounts a host dir at /src, and a build container with VolumesFrom set
+// inherits that mount (read from the engine's real ContainerStatus.Mounts) and reads a file from
+// it. This is the decisive proof that source-reaching works as code — that containerd actually
+// reports a container's mounts and that replicating them lands the source in the builder — the CRI
+// analog of docker's --volumes-from, standing in for how the wrapper's engine feeds a build.
+func TestCriLiveRunToCompletionInheritsEngineMounts(t *testing.T) {
+	t.Parallel()
+	if os.Getenv(criLiveEnvVar) == "" {
+		t.Skipf("set %s and run inside crienv to exercise live CRI VolumesFrom inheritance", criLiveEnvVar)
+	}
+	require.NotEmpty(t, os.Getenv(CRISandboxIDEnvVar),
+		"orchestration must create a sandbox (crictl runp) and set %s", CRISandboxIDEnvVar)
+	require.NotEmpty(t, os.Getenv(CRILogDirEnvVar),
+		"orchestration must set %s to the sandbox's log_directory", CRILogDirEnvVar)
+
+	ctx := t.Context()
+	m := NewCriPodManager("crilive-inherit").(*criPodManager)
+	t.Cleanup(func() { _ = m.Cleanup(context.WithoutCancel(ctx)) })
+
+	const image = "docker.io/library/busybox:latest"
+	require.NoError(t, m.PullImage(ctx, image), "PullImage should fetch busybox into the CRI image store")
+
+	// A host dir with a marker, standing in for the engine's mounted source tree.
+	srcDir := t.TempDir()
+	const marker = "SOURCE_REACHED_VIA_INHERIT"
+	require.NoError(t, os.WriteFile(filepath.Join(srcDir, "marker"), []byte(marker), 0o600))
+
+	// The "engine": a long-lived container that mounts the source at /src. The build inherits this
+	// mount by reading the engine's ContainerStatus, exactly as the wrapper's real engine would.
+	engine, err := m.RunContainer(ctx, ContainerConfig{
+		Image:      image,
+		Name:       "engine-standin",
+		Entrypoint: []string{"/bin/sh", "-c"},
+		Cmd:        []string{"sleep 60"},
+		Volumes:    []VolumeMount{{Source: srcDir, Target: "/src"}},
+	})
+	require.NoError(t, err)
+	// In production the wrapper forwards this via CRIEngineContainerIDEnvVar; here the test knows it
+	// directly because it created the stand-in.
+	m.engineContainerID = engine.ID
+
+	var out strings.Builder
+	_, err = m.RunToCompletion(ctx, ContainerConfig{
+		Image:       image,
+		Name:        "build-inherit",
+		Entrypoint:  []string{"/bin/sh", "-c"},
+		Cmd:         []string{"cat /src/marker"},
+		VolumesFrom: []string{"engine"}, // the docker-idiom value; the engine is found via its id
+	}, &out)
+	require.NoError(t, err, "the build should reach the engine's inherited source and read it")
+	assert.Contains(t, out.String(), marker,
+		"the build must read a file from the engine's inherited /src mount (the VolumesFrom analog)")
 }

@@ -60,19 +60,21 @@ import (
 //     and ContainerLogs tails that file and strips the K8s log framing before the caller sees it.
 //
 // This is an early, deliberately partial implementation. Run + network + image existence/pull, the
-// volume verbs (CRI has no named-volume analog — the workspace becomes a host dir), and
-// RunToCompletion (the build primitive — runs a builder to completion and streams its combined
-// output, deliberately without docker's stdout/stderr split; see its doc) are here. Still stubbed
-// with documented not-yet-implemented errors: ImportImage (a genuine ctr-vs-proxy-pull design call)
-// and ReadImageFile. The build path also still needs source-reaching — BuildInContainer feeds the
-// builder via VolumesFrom, which CRI does not yet honor (the planned analog reads the engine's
-// mounts via ContainerStatus and replicates them; see RunToCompletion).
+// volume verbs (CRI has no named-volume analog — the workspace becomes a host dir), RunToCompletion
+// (the build primitive — runs a builder to completion and streams its combined output, deliberately
+// without docker's stdout/stderr split), and its VolumesFrom source-reaching (inherit the engine's
+// mounts via ContainerStatus, since CRI has no --volumes-from — see RunToCompletion / inheritedMounts)
+// are here. The remaining gap for an end-to-end build is ImportImage (a genuine ctr-vs-proxy-pull
+// design call), still stubbed along with ReadImageFile.
 type criPodManager struct {
 	podID     string // unique id for this pod; labels containers and scopes log paths
 	sandboxID string // the PodSandbox the engine runs in and adds siblings to (from the wrapper)
 	logDir    string // the sandbox log directory, mounted into the engine so logs can be tailed
 	endpoint  string // the CRI gRPC endpoint (a unix socket target for grpc.NewClient)
 	volumeDir string // root directory for host-dir volumes (default: os.MkdirTemp)
+	// engineContainerID is the engine's own container in the sandbox, whose mounts a build inherits
+	// (the VolumesFrom analog). Forwarded by the wrapper because os.Hostname() is the pause id here.
+	engineContainerID string
 
 	// runtime and image are the CRI services. They are narrow interfaces (not the full generated
 	// clients) so tests can supply small fakes; the real runtimeapi clients satisfy them
@@ -154,6 +156,15 @@ const CRIEndpointEnvVar = "PULUMI_POD_CRI_ENDPOINT"
 // container and sets this variable. When unset, a temporary directory is created automatically.
 const CRIVolumeDirEnvVar = "PULUMI_POD_VOLUME_DIR"
 
+// CRIEngineContainerIDEnvVar names the engine's OWN container id in the sandbox. A build container
+// reaches its source and scratch by inheriting the engine's mounts (RunToCompletion's analog of
+// docker's --volumes-from), but os.Hostname() inside the engine returns the sandbox's pause
+// container id (a shared UTS namespace), not the engine container — so the VolumesFrom value
+// BuildInContainer passes cannot identify the engine on CRI. The wrapper, which created the engine
+// container, forwards its id here so the manager can read the engine's mounts via ContainerStatus
+// and replicate them onto the builder.
+const CRIEngineContainerIDEnvVar = "PULUMI_POD_ENGINE_CONTAINER_ID"
+
 // defaultCRIEndpoint is containerd's socket as a grpc.NewClient target (grpc has a built-in unix
 // resolver, so the unix:// scheme dials the socket directly).
 const defaultCRIEndpoint = "unix:///run/containerd/containerd.sock"
@@ -191,19 +202,26 @@ func WithCRIVolumeDir(dir string) CriOption {
 	return func(m *criPodManager) { m.volumeDir = dir }
 }
 
+// WithCRIEngineContainerID sets the engine container whose mounts a build inherits (the VolumesFrom
+// analog), overriding the env var. Tests use it to point at a stand-in engine container.
+func WithCRIEngineContainerID(id string) CriOption {
+	return func(m *criPodManager) { m.engineContainerID = id }
+}
+
 // NewCriPodManager returns a PodManager that drives containerd through the CRI. By default it
 // reads the sandbox id, log directory, and endpoint from the environment (the wrapper forwards
 // them into the engine container); options override any of these — WithCRIClients in particular
 // supplies a fake for tests without a live containerd.
 func NewCriPodManager(podID string, opts ...CriOption) PodManager {
 	m := &criPodManager{
-		podID:     podID,
-		sandboxID: os.Getenv(CRISandboxIDEnvVar),
-		logDir:    os.Getenv(CRILogDirEnvVar),
-		endpoint:  envOr(CRIEndpointEnvVar, defaultCRIEndpoint),
-		volumeDir: os.Getenv(CRIVolumeDirEnvVar),
-		attempts:  map[string]uint32{},
-		logPaths:  map[string]string{},
+		podID:             podID,
+		sandboxID:         os.Getenv(CRISandboxIDEnvVar),
+		logDir:            os.Getenv(CRILogDirEnvVar),
+		endpoint:          envOr(CRIEndpointEnvVar, defaultCRIEndpoint),
+		volumeDir:         os.Getenv(CRIVolumeDirEnvVar),
+		engineContainerID: os.Getenv(CRIEngineContainerIDEnvVar),
+		attempts:          map[string]uint32{},
+		logPaths:          map[string]string{},
 	}
 	for _, o := range opts {
 		o(m)
@@ -306,10 +324,12 @@ func (m *criPodManager) RunContainer(ctx context.Context, cfg ContainerConfig) (
 // "--entrypoint takes a single executable" splitting. A nil Command/Args leaves the image's own.
 //
 // Several ContainerConfig fields are docker/nerdctl concepts with no CRI meaning and are
-// intentionally not consulted: Network (there is one network, the sandbox — see CreateNetwork),
-// HostGateway (the engine-on-host mode, docker-only), and VolumesFrom (a docker inheritance verb;
-// on CRI the workspace is a host dir). Volumes are mapped as host-path binds; bare volume names
-// (from CreateVolume / WorkspaceVolumeName) are resolved to host paths under the volume dir.
+// intentionally not consulted here: Network (there is one network, the sandbox — see
+// CreateNetwork) and HostGateway (the engine-on-host mode, docker-only). VolumesFrom IS honored,
+// but by RunToCompletion (its only caller) rather than here — inheriting the engine's mounts needs
+// a ContainerStatus call this pure translation avoids (see inheritedMounts). Volumes are mapped as
+// host-path binds; bare volume names (from CreateVolume / WorkspaceVolumeName) are resolved to host
+// paths under the volume dir.
 func (m *criPodManager) containerConfig(
 	cfg ContainerConfig, attempt uint32, logPath string,
 ) *runtimeapi.ContainerConfig {
@@ -469,12 +489,14 @@ func (m *criPodManager) ImportImage(ctx context.Context, layoutPath, ref string)
 //     paths CRI targets, package and component builds, discard the return value: they load an OCI
 //     layout the build wrote to disk, applied at the ImportImage sink. So "" is the correct return
 //     for those, and the split is deferred until program-image builds are wanted on CRI.
-//   - Source-reaching is not wired yet. BuildInContainer hands the builder its source via
-//     VolumesFrom (inherit the engine's mounts), which containerConfig does not consult — CRI has
-//     no server-side inherit-the-engine concept. The planned analog is to read the engine
-//     container's mounts via ContainerStatus and replicate them (the way autoSeedVolumes simulates
-//     copy-up); until then a build that needs source starts but finds none, so this verb is proven
-//     with a source-less builder and a real build awaits the source-reaching increment.
+//   - Source-reaching is the VolumesFrom analog. BuildInContainer hands the builder its source via
+//     VolumesFrom (inherit the engine's mounts); CRI has no such verb, so when VolumesFrom is set
+//     this reads the engine container's mounts via ContainerStatus and replicates them onto the
+//     builder (the way autoSeedVolumes simulates copy-up). The engine is identified by
+//     CRIEngineContainerIDEnvVar, forwarded by the wrapper — os.Hostname() here is the sandbox
+//     pause id, so the VolumesFrom value BuildInContainer passes cannot name the engine on CRI. All
+//     the engine's mounts are inherited (docker's over-sharing, faithfully); an explicit builder
+//     mount wins a path collision.
 //
 // A non-zero exit is returned as an error: unlike a program Run, a failed build has no bail.
 func (m *criPodManager) RunToCompletion(ctx context.Context, cfg ContainerConfig, stderr io.Writer) (string, error) {
@@ -498,9 +520,20 @@ func (m *criPodManager) RunToCompletion(ctx context.Context, cfg ContainerConfig
 
 	attempt := m.nextAttempt(cfg.Name)
 	logPath := criLogPath(cfg.Name, attempt)
+	containerCfg := m.containerConfig(cfg, attempt, logPath)
+	// VolumesFrom on CRI: the builder reaches its source and scratch by inheriting the engine
+	// container's mounts (see inheritedMounts) — the analog of docker's --volumes-from. An explicit
+	// builder mount wins a path collision, as docker's -v wins over --volumes-from.
+	if len(cfg.VolumesFrom) > 0 {
+		inherited, err := m.inheritedMounts(ctx)
+		if err != nil {
+			return "", err
+		}
+		containerCfg.Mounts = appendInheritedMounts(containerCfg.Mounts, inherited)
+	}
 	created, err := runtime.CreateContainer(ctx, &runtimeapi.CreateContainerRequest{
 		PodSandboxId:  m.sandboxID,
-		Config:        m.containerConfig(cfg, attempt, logPath),
+		Config:        containerCfg,
 		SandboxConfig: m.sandboxConfig(),
 	})
 	if err != nil {
@@ -780,6 +813,48 @@ func (m *criPodManager) criMounts(vols []VolumeMount) []*runtimeapi.Mount {
 		})
 	}
 	return mounts
+}
+
+// inheritedMounts implements the build path's VolumesFrom on CRI: it reads the engine container's
+// mounts and returns them for replication onto the build container. docker's --volumes-from copies
+// a source container's mount config by name; CRI has no such verb, so this reads the engine's
+// mounts via ContainerStatus and re-applies them — the same "re-create a docker behavior CRI
+// lacks" move as autoSeedVolumes (copy-up). The engine is named by CRIEngineContainerIDEnvVar
+// (forwarded by the wrapper) rather than the VolumesFrom value, because os.Hostname() inside the
+// engine is the sandbox pause id, not the engine container. Every engine mount is inherited,
+// preserving docker's over-sharing faithfully; scoping to explicit mounts is a separate,
+// cross-runtime cleanup.
+func (m *criPodManager) inheritedMounts(ctx context.Context) ([]*runtimeapi.Mount, error) {
+	if m.engineContainerID == "" {
+		return nil, fmt.Errorf("oci: the build inherits the engine's mounts (VolumesFrom) but the engine "+
+			"container id is unknown (set %s). On CRI os.Hostname() is the sandbox pause id, not the engine, "+
+			"so the wrapper must forward the engine's own container id", CRIEngineContainerIDEnvVar)
+	}
+	runtime, _, err := m.clients()
+	if err != nil {
+		return nil, err
+	}
+	st, err := runtime.ContainerStatus(ctx, &runtimeapi.ContainerStatusRequest{ContainerId: m.engineContainerID})
+	if err != nil {
+		return nil, fmt.Errorf("oci: reading engine container %q mounts to inherit: %w", m.engineContainerID, err)
+	}
+	return st.GetStatus().GetMounts(), nil
+}
+
+// appendInheritedMounts adds a VolumesFrom source's mounts to a container's own mounts, skipping any
+// whose container path an own mount already claims — so an explicit mount wins over an inherited one
+// at the same path, as docker's -v wins over --volumes-from.
+func appendInheritedMounts(own, inherited []*runtimeapi.Mount) []*runtimeapi.Mount {
+	claimed := make(map[string]bool, len(own))
+	for _, mnt := range own {
+		claimed[mnt.GetContainerPath()] = true
+	}
+	for _, mnt := range inherited {
+		if !claimed[mnt.GetContainerPath()] {
+			own = append(own, mnt)
+		}
+	}
+	return own
 }
 
 // isCRINotFound reports whether err is a CRI "not found", which StopContainer/RemoveContainer
