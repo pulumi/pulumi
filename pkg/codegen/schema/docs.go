@@ -408,22 +408,8 @@ type internalDocRef struct {
 	Property string
 }
 
-// Parses a doc reference string into an internalDocRef. The supported formats mirror schema `$ref`: a
-// fragment-only ref points to the current package, and a ref with a `/{pkg}/{version}/schema.json`
-// path prefix points to a package in the Dependencies list.
-//
-//	#/resources/{token}
-//	#/functions/{token}
-//	#/types/{token}
-//	#/resources/{token}/properties/{property}
-//	#/resources/{token}/inputProperties/{property}
-//	#/functions/{token}/inputs/properties/{property}
-//	#/functions/{token}/outputs/properties/{property}
-//	#/types/{token}/properties/{property}
-//	/{pkg}/{version}/schema.json#/resources/{token}
-//	...etc, with any of the fragments above.
-//
-// Note: Tokens containing a slash ("/") must be encoded as "%2F".
+// parseDocRef parses a doc reference string into an internalDocRef. For the supported formats see
+// [ParseDocRef].
 func parseDocRef(ref string) internalDocRef {
 	docRefUnknown := internalDocRef{Ref: ref, Kind: DocRefKindUnknown}
 
@@ -536,4 +522,29 @@ func parseDocRef(ref string) internalDocRef {
 	default:
 		return docRefUnknown
 	}
+}
+
+// ParseDocRef parses a doc reference string into its token and, for property refs, the referenced
+// property; ok is false when ref is not a recognized doc ref. The supported formats mirror schema
+// `$ref`: a fragment-only ref points to the current package, and a ref with a
+// `/{pkg}/{version}/schema.json` path prefix points to a package in the Dependencies list.
+//
+//	#/resources/{token}
+//	#/functions/{token}
+//	#/types/{token}
+//	#/resources/{token}/properties/{property}
+//	#/resources/{token}/inputProperties/{property}
+//	#/functions/{token}/inputs/properties/{property}
+//	#/functions/{token}/outputs/properties/{property}
+//	#/types/{token}/properties/{property}
+//	/{pkg}/{version}/schema.json#/resources/{token}
+//	...etc, with any of the fragments above.
+//
+// Note: Tokens containing a slash ("/") must be encoded as "%2F".
+func ParseDocRef(ref string) (token tokens.Type, property string, ok bool) {
+	iref := parseDocRef(ref)
+	if iref.Kind == DocRefKindUnknown {
+		return "", "", false
+	}
+	return iref.Token, iref.Property, true
 }

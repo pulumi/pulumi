@@ -97,7 +97,7 @@ func newDoResourceCommand(
 	}
 
 	var stdout, stderr bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 	return cmd, &stdout, &stderr
@@ -140,6 +140,7 @@ Available Commands:
   list        List resources
   patch       Patch a resource
   read        Read a resource
+  upsert      Create a resource or fully update an existing one
 
 Flags:
       --dry-run                Run the operation in preview mode
@@ -150,7 +151,7 @@ Flags:
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
-      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.
+      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so patch/delete error out unless --stateless is set.
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `
@@ -190,6 +191,7 @@ Available Commands:
   delete      Delete a resource
   patch       Patch a resource
   read        Read a resource
+  upsert      Create a resource or fully update an existing one
 
 Flags:
       --dry-run                Run the operation in preview mode
@@ -200,7 +202,7 @@ Flags:
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
-      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.
+      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so patch/delete error out unless --stateless is set.
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `
@@ -981,7 +983,7 @@ func providerFlagStackContext(
 		return provider, nil
 	}
 	var stdout, stderr bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 	return cmd, &stdout, &stderr

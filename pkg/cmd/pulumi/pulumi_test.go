@@ -529,7 +529,7 @@ func TestGetCLIMetadata(t *testing.T) {
 
 func newDoTestCmd() *cobra.Command {
 	root := &cobra.Command{Use: "pulumi"}
-	doCmd := cmdDo.NewDoCmd(nil, nil, nil, nil, nil)
+	doCmd := cmdDo.NewDoCmd(nil, nil, nil, nil, nil, nil)
 	root.AddCommand(doCmd)
 	return doCmd
 }

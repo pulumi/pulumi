@@ -15,6 +15,8 @@ export class ConvertStateRequest extends jspb.Message {
     getArgsList(): Array<string>;
     setArgsList(value: Array<string>): ConvertStateRequest;
     addArgs(value: string, index?: number): string;
+    getLoaderTarget(): string;
+    setLoaderTarget(value: string): ConvertStateRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConvertStateRequest.AsObject;
@@ -30,6 +32,7 @@ export namespace ConvertStateRequest {
     export type AsObject = {
         mapperTarget: string,
         argsList: Array<string>,
+        loaderTarget: string,
     }
 }
 
@@ -66,6 +69,8 @@ export class ResourceImport extends jspb.Message {
     getPropertiesList(): Array<string>;
     setPropertiesList(value: Array<string>): ResourceImport;
     addProperties(value: string, index?: number): string;
+    getProvider(): string;
+    setProvider(value: string): ResourceImport;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceImport.AsObject;
@@ -91,6 +96,7 @@ export namespace ResourceImport {
         extension?: ResourceExtension.AsObject,
         parent: string,
         propertiesList: Array<string>,
+        provider: string,
     }
 }
 

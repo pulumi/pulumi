@@ -71,7 +71,7 @@ func TestDoCmdNoArgsPrintsHelp(t *testing.T) {
 			mws := &pkgWorkspace.MockContext{}
 
 			var stdout bytes.Buffer
-			cmd := NewDoCmd(mlm, mws, panicLoader, testHost, panicLoadConverterPlugin)
+			cmd := NewDoCmd(mlm, mws, panicLoader, testHost, panicLoadConverterPlugin, nil)
 			cmd.SetOut(&stdout)
 			cmd.SetErr(&stdout)
 			cmd.SetArgs(tc.args)
@@ -149,7 +149,7 @@ func TestDoCmdWithPkgFlagPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -215,7 +215,7 @@ func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -273,7 +273,7 @@ func TestDoCmdWithPkgArgPrintsHelpWithModuleFormat(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -372,7 +372,7 @@ func TestDoCmdWithPkgArgPrintsHelpSkipsMethods(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -443,7 +443,7 @@ func TestDoCmdWithPkgArgPrintsHelpUnderRoot(t *testing.T) {
 			postRunCount++
 		},
 	}
-	rootCmd.AddCommand(NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin))
+	rootCmd.AddCommand(NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil))
 
 	var stdout bytes.Buffer
 	rootCmd.SetOut(&stdout)
@@ -496,7 +496,7 @@ func TestDoCmdWithModuleArgPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -542,7 +542,7 @@ func TestDoCmdWithNestedModulesPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -712,7 +712,7 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 				mws := &pkgWorkspace.MockContext{}
 
 				var stdout bytes.Buffer
-				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 				cmd.SetOut(&stdout)
 				cmd.SetErr(&stdout)
 				cmd.SetArgs([]string{"aws:s3"})
@@ -733,7 +733,7 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 					mws := &pkgWorkspace.MockContext{}
 
 					var stdout bytes.Buffer
-					cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+					cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 					cmd.SetOut(&stdout)
 					cmd.SetErr(&stdout)
 					cmd.SetArgs(tc.args)
@@ -814,7 +814,7 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 				mws := &pkgWorkspace.MockContext{}
 
 				var stdout bytes.Buffer
-				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 				cmd.SetOut(&stdout)
 				cmd.SetErr(&stdout)
 				cmd.SetArgs(tc.args)
@@ -861,7 +861,7 @@ func TestDoCmdParameterizedModuleResolves(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"terraform-provider hashicorp/aws:s3"})
@@ -984,7 +984,7 @@ stack = stack()
 `)
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
@@ -1054,7 +1054,7 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		inputFile := writeHCLFile(t, "inputs.pcl", `project = project()`)
 
 		var stdout bytes.Buffer
-		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
 		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
@@ -1072,75 +1072,13 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		inputFile := writeHCLFile(t, "inputs.pcl", `organization = organization()`)
 
 		var stdout bytes.Buffer
-		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
 		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 		err := cmd.Execute()
 		require.ErrorContains(t, err, "organization is not supported")
 	})
-}
-
-func TestCleanComment(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "empty",
-			input:    "",
-			expected: "",
-		},
-		{
-			name:     "no markup",
-			input:    "Function entry point in your code.",
-			expected: "Function entry point in your code.",
-		},
-		{
-			name: "language-choice span renders the canonical camelCase choice",
-			input: "Required if <span pulumi-lang-nodejs=\"`packageType`\" " +
-				"pulumi-lang-python=\"`package_type`\">`packageType`</span> is `Zip`.",
-			expected: "Required if `packageType` is `Zip`.",
-		},
-		{
-			name: "multiple spans on one line are handled independently",
-			input: "Conflicts with <span pulumi-lang-go=\"`imageUri`\">`imageUri`</span> " +
-				"and <span pulumi-lang-go=\"`s3Bucket`\">`s3Bucket`</span>.",
-			expected: "Conflicts with `imageUri` and `s3Bucket`.",
-		},
-		{
-			name:     "span nested in backticks",
-			input:    "Valid values are `[<span pulumi-lang-python=\"x86_64\">\"x8664\"</span>]` and `[\"arm64\"]`.",
-			expected: "Valid values are `[\"x8664\"]` and `[\"arm64\"]`.",
-		},
-		{
-			name:     "literal angle-bracket placeholders are left untouched",
-			input:    "Use the form arn:aws:s3:::<bucket>/<key>.",
-			expected: "Use the form arn:aws:s3:::<bucket>/<key>.",
-		},
-		{
-			name: "a paired env var collapses to the uppercase name",
-			input: "Can also be set using the `HTTP_PROXY` or " +
-				"<span pulumi-lang-nodejs=\"`httpProxy`\" " +
-				"pulumi-lang-python=\"`http_proxy`\">`httpProxy`</span> environment variables.",
-			expected: "Can also be set using the `HTTP_PROXY` environment variable.",
-		},
-		{
-			name:     "a lone env var is left untouched",
-			input:    "Can also be configured using the `AWS_RETRY_MODE` environment variable.",
-			expected: "Can also be configured using the `AWS_RETRY_MODE` environment variable.",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, tt.expected, cleanComment(tt.input))
-		})
-	}
 }
 
 func TestFlagUsage(t *testing.T) {

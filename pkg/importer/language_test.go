@@ -94,10 +94,8 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 				assert.Equal(t, state.Provider, actualState.Provider)
 			}
 			assert.Equal(t, state.Protect, actualState.Protect)
-			actualInputs := resource.ToResourcePropertyMap(actualState.Inputs)
-			expectedInputs := resource.ToResourcePropertyMap(state.Inputs)
-			if !assert.True(t, actualInputs.DeepEquals(expectedInputs)) {
-				actual, err := stack.SerializeResource(t.Context(), actualState, config.NopEncrypter, false)
+			if !assert.True(t, actualState.Inputs.Equals(state.Inputs)) {
+				actual, _, err := stack.SerializeResource(t.Context(), actualState, config.NopEncrypter, false)
 				contract.IgnoreError(err)
 
 				sb, err := json.MarshalIndent(s, "", "    ")
@@ -385,7 +383,8 @@ func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T
 		"project",
 		"example:index:MyComponent",
 		"random:index/randomPet:RandomPet",
-		"randomPet")
+		"randomPet",
+	)
 
 	nameTable := NameTable{
 		componentURN: "parentComponent",

@@ -67,8 +67,8 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 
 	shorthelp := fmt.Sprintf("Operate on the %s resource", name)
 	longhelp := shorthelp + "."
-	if res.Comment != "" {
-		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, cleanComment(res.Comment))
+	if description := schemainfo.RenderDescription(res.Comment); description != "" {
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, description)
 	}
 	if schemaHelp := resourceSchemaHelp(res); schemaHelp != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, schemaHelp)
@@ -89,7 +89,15 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 		"The URN of a provider resource in the current stack whose inputs to use as the "+
 			"base of the provider configuration (requires a stack context)")
 	addPersistentInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties)
-	cmd.AddCommand(pc.newResourceCreateCommand(res))
+	// `create` and `upsert` have different UX between stateful (takes a resource <name> and adds a
+	// snippet to the stack) and stateless (uses the resource type's short name and calls the
+	// provider directly), so the command trees diverge here.
+	if pc.stateless {
+		cmd.AddCommand(pc.newStatelessResourceCreateCommand(res))
+	} else {
+		cmd.AddCommand(pc.newStatefulResourceCreateCommand(res))
+		cmd.AddCommand(pc.newResourceUpsertCommand(res))
+	}
 	cmd.AddCommand(pc.newResourceReadCommand(res))
 	cmd.AddCommand(pc.newResourcePatchCommand(res))
 	cmd.AddCommand(pc.newResourceDeleteCommand(res))
@@ -99,7 +107,39 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	return cmd
 }
 
-func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.Command {
+// newStatefulResourceCreateCommand adds a snippet to the current stack and runs the deployment
+// engine targeting only that snippet. Errors if a snippet with the same (Name, Type) already
+// exists — `upsert` is the command for replacing one in place.
+func (pc *packageCommand) newStatefulResourceCreateCommand(res *schema.Resource) *cobra.Command {
+	var inputFile string
+	var inputFormat string
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "create <name>",
+		Short: "Create a resource",
+		Long: "Create a resource.\n\n" +
+			"The created resource is tracked in the stack, so Pulumi can manage its lifecycle. " +
+			"Fails if a resource with the given name already exists — use `upsert` to replace " +
+			"one in place.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			contract.Assertf(!pc.stateless, "stateful create should not be registered in stateless mode")
+			return pc.runStatefulSnippetUpdate(cmd, statefulSnippetUpdate{
+				res:          res,
+				name:         args[0],
+				inputFile:    inputFile,
+				inputFormat:  inputFormat,
+				yes:          yes,
+				verb:         "created",
+				requireFresh: true,
+			})
+		},
+	}
+	addStatefulSnippetUpdateFlags(cmd, &inputFile, &inputFormat, &yes, res.InputProperties)
+	return cmd
+}
+
+func (pc *packageCommand) newStatelessResourceCreateCommand(res *schema.Resource) *cobra.Command {
 	var inputFile string
 	var yes bool
 	cmd := &cobra.Command{
@@ -107,9 +147,7 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 		Short: "Create a resource",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !pc.stateless {
-				return errStatefulNotImplemented("create")
-			}
+			contract.Assertf(pc.stateless, "stateless create should not be registered in stateful mode")
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err
 			}

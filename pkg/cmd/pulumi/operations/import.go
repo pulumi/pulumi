@@ -108,6 +108,7 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 			LogicalName:       res.LogicalName,
 			Parent:            res.Parent,
 			Properties:        res.Properties,
+			Provider:          res.Provider,
 		}
 		if p := res.Parameterization; p != nil {
 			specs[i].Parameterization = &importParameterization{
@@ -353,7 +354,20 @@ func parseImportFile(
 		if spec.Name == "" {
 			pusherrf("%v has no name", describeResource(i, spec))
 		}
-		if !spec.Component && spec.ID == "" {
+		if providers.IsProviderType(spec.Type) {
+			// Providers declared in the resources block are created during import rather than read
+			// from a cloud, so they take no ID.
+			if spec.ID != "" {
+				pusherrf("%v has an ID, but is a provider, which is created rather than read",
+					describeResource(i, spec))
+			}
+			if spec.Component {
+				pusherrf("%v is a provider and may not be marked as a component", describeResource(i, spec))
+			}
+			if spec.Parent != "" {
+				pusherrf("%v is a provider and may not have a parent", describeResource(i, spec))
+			}
+		} else if !spec.Component && spec.ID == "" {
 			pusherrf("%v has no ID", describeResource(i, spec))
 		} else if spec.Component && spec.ID != "" {
 			pusherrf("%v has an ID, but is marked as a component", describeResource(i, spec))
@@ -520,10 +534,13 @@ func parseImportFile(
 				pusherrf("%v has an ambiguous provider",
 					describeResource(i, spec))
 			}
-			urn, ok := f.NameTable[spec.Provider]
+			// urnMapping covers both the name table and the URNs built above for in-file resources.
+			urn, ok := urnMapping[spec.Provider]
 			if !ok {
-				pusherrf("the provider '%v' for %v has no entry in 'nameTable'",
+				pusherrf("the provider '%v' for %v has no entry in 'nameTable' or 'resources'",
 					spec.Provider, describeResource(i, spec))
+			} else if !urn.IsValid() || !providers.IsProviderType(urn.Type()) {
+				pusherrf("the provider '%v' for %v is not a provider", spec.Provider, describeResource(i, spec))
 			} else {
 				imp.Provider = urn
 			}
@@ -531,6 +548,18 @@ func parseImportFile(
 			// If the import file includes full inputs for this provider, deserialize them
 			// so the import system can create the provider with the correct configuration.
 			if serializedInputs, ok := f.ProviderInputs[spec.Provider]; ok {
+				providerInputs, err := resourcestack.DeserializeProperties(serializedInputs, dec)
+				if err != nil {
+					pusherrf("could not deserialize provider inputs for %v: %w",
+						describeResource(i, spec), err)
+				} else {
+					imp.ProviderInputs = providerInputs
+				}
+			}
+		}
+
+		if providers.IsProviderType(spec.Type) {
+			if serializedInputs, ok := f.ProviderInputs[spec.Name]; ok {
 				providerInputs, err := resourcestack.DeserializeProperties(serializedInputs, dec)
 				if err != nil {
 					pusherrf("could not deserialize provider inputs for %v: %w",
@@ -878,7 +907,10 @@ func NewImportCmd() *cobra.Command {
 				}
 
 				mapperServer := convert.NewMapperServer(mapper)
-				grpcServer, err := plugin.NewServer(pCtx, convert.MapperRegistration(mapperServer))
+				loaderServer := schema.NewLoaderServer(schema.NewPluginLoader(pCtx))
+				grpcServer, err := plugin.NewServer(pCtx,
+					convert.MapperRegistration(mapperServer),
+					schema.LoaderRegistration(loaderServer))
 				if err != nil {
 					return err
 				}
@@ -886,6 +918,7 @@ func NewImportCmd() *cobra.Command {
 				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{
 					MapperTarget: grpcServer.Addr(),
 					Args:         args,
+					LoaderTarget: grpcServer.Addr(),
 				})
 				if err != nil {
 					rpcErr := rpcerror.Convert(err)
@@ -1081,7 +1114,7 @@ func NewImportCmd() *cobra.Command {
 			cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+			configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 				ctx,
 				stackName,
 				proj,

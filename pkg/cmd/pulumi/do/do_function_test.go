@@ -103,7 +103,7 @@ func TestDoCmdWithFunctionHelpArgPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -141,7 +141,7 @@ Flags:
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
-      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.
+      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so patch/delete error out unless --stateless is set.
 `
 	assert.Equal(t, expected, stdout.String())
 }
@@ -208,7 +208,7 @@ func TestDoCmdFunctionInvoke(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -267,7 +267,7 @@ func TestDoCmdFunctionInvokeFiltersOutputsToSchema(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -360,7 +360,7 @@ func TestDoCmdFunctionInvokeFiltersNestedObjectsInCollections(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -418,7 +418,7 @@ func TestDoCmdFunctionInvokeReturnType(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -497,7 +497,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchema(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -581,7 +581,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchemaSecrets(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -654,7 +654,7 @@ func TestDoCmdFunctionInvokeNestedModule(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -719,7 +719,7 @@ func TestDoCmdFunctionInvoke_MissingRequiredInput(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -771,7 +771,7 @@ func TestDoCmdFunctionInvoke_NoInputFileWithRequired(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction"})
@@ -898,7 +898,7 @@ param3 = {
 			}
 
 			var stdout bytes.Buffer
-			cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+			cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 			cmd.SetOut(&stdout)
 			cmd.SetErr(&stdout)
 
@@ -949,7 +949,7 @@ func TestDoCmdFunctionInvokeInputFileForInputlessFunction(t *testing.T) {
 	inputFile := writeHCLFile(t, "inputs.pcl", `bogus = "hello"`)
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
@@ -1005,7 +1005,7 @@ stuff {
 `)
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
@@ -1058,7 +1058,7 @@ func TestDoCmdFunctionInvokeInputFileSchemaConversions(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1141,7 +1141,7 @@ func TestDoCmdFunctionInvokeDryRun(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1220,7 +1220,7 @@ param2 = max(1, length(split(":", "a:b:c")), 6)
 `, dataFile))
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1283,7 +1283,7 @@ func TestDoCmdFunctionInvokeWithUnsupportedBuiltinFunction(t *testing.T) {
 			}
 
 			var stdout bytes.Buffer
-			cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+			cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 			cmd.SetOut(&stdout)
 			cmd.SetErr(&stdout)
 
@@ -1364,7 +1364,7 @@ project = project()
 `)
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1450,7 +1450,7 @@ func TestDoCmdFunctionInvokeWithConfiguration(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1540,7 +1540,7 @@ func TestDoCmdFunctionInvokeNestedResults(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1607,7 +1607,7 @@ func TestDoCmdFunctionInvokeShowSecrets(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1676,7 +1676,7 @@ func TestDoCmdFunctionInvokeAssetArchiveResults(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1794,7 +1794,7 @@ func TestDoCmdFunctionInvokeWithParameterizedPackage(t *testing.T) {
 	inputFile := writeHCLFile(t, "inputs.pcl", `x = "hello"`)
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	// First positional is the package spec: base provider name plus any Parameterize args, shlex-quoted.
@@ -1919,7 +1919,7 @@ param3 = true
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -2010,7 +2010,7 @@ func TestDoCmdFunctionInvokeYAMLInputByDefault(t *testing.T) {
 	inputFile := writeHCLFile(t, "inputs.yaml", "x: hello\n")
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input-file", inputFile})
@@ -2114,7 +2114,7 @@ func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
 	inputFile := writeHCLFile(t, "inputs.yaml", `x: hello`+"\n")
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{
@@ -2158,7 +2158,7 @@ func TestDoCmdFunctionInvokeParameterizedSchemaWithoutArgs(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction"})
@@ -2249,7 +2249,7 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 	providerFile := writeHCLFile(t, "provider.yaml", "opt1: val1\n")
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{
@@ -2309,7 +2309,7 @@ func TestDoCmdFunctionInvokeWithUnknownInputFormat(t *testing.T) {
 	inputFile := writeHCLFile(t, "inputs.fictional", "x: hello")
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter)
+	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "fictional", "--input-file", inputFile})
@@ -2367,7 +2367,7 @@ func TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet(t *testing.T) {
 	inputFile := writeHCLFile(t, "inputs.yaml", "x: hello")
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter)
+	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:myFunction", "--input", "yaml", "--input-file", inputFile})
@@ -2435,7 +2435,7 @@ func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
 	inputFile := writeHCLFile(t, "inputs.yaml", "x: hello")
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter)
+	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "yaml", "--input-file", inputFile})
@@ -2502,7 +2502,7 @@ func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
 	inputFile := writeHCLFile(t, "inputs.yaml", "x: hello")
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter)
+	cmd := NewDoCmd(mlm, mws, loader, host, loadConverter, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "yaml", "--input-file", inputFile})
@@ -2569,7 +2569,7 @@ func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
 	providerFile := writeHCLFile(t, "provider.pcl", "opt1 = \"val1\"\n")
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{
@@ -2707,7 +2707,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 	inputFile := writeHCLFile(t, "inputs.yaml", "in1: file\n")
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{
@@ -2801,7 +2801,7 @@ func TestDoCmdFunctionInvokeWithYAMLInputFlagsNoInputFile(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{
@@ -2851,6 +2851,7 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 				assert.Equal(t, map[string]string{
 					"number": "0o45",
 					"expr":   "{\"fn::secret\": 45}",
+					"flag":   "no",
 				}, req.Attributes)
 
 				return &plugin.ConvertSnippetResponse{
@@ -2858,6 +2859,7 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 					Attributes: map[string]string{
 						"number": "37", // 0o45 is octal in yaml, pcl doesn't have octal
 						"expr":   "secret(45)",
+						"flag":   "false", // no is false in yaml
 					},
 				}, nil
 			},
@@ -2873,6 +2875,7 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 						Properties: map[string]schema.PropertySpec{
 							"number": {TypeSpec: schema.TypeSpec{Type: "number"}},
 							"expr":   {TypeSpec: schema.TypeSpec{Type: "number"}},
+							"flag":   {TypeSpec: schema.TypeSpec{Type: "boolean"}},
 						},
 						Required: []string{"number", "expr"},
 					},
@@ -2889,6 +2892,8 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, 37.0, req.Args["number"].NumberValue())
+					assert.Equal(t, 45.0, req.Args["expr"].SecretValue().Element.NumberValue())
+					assert.Equal(t, false, req.Args["flag"].BoolValue())
 					return plugin.InvokeResponse{
 						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
 					}, nil
@@ -2898,7 +2903,7 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd := NewDoCmd(mlm, mws, loader, yamlHost, loadConverter, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{
@@ -2906,6 +2911,7 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 		"--input", "yaml",
 		"--input:number", "0o45",
 		"--input:expr", "{\"fn::secret\": 45}",
+		"--input:flag=no",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)

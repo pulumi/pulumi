@@ -60,6 +60,7 @@ func NewDoCmd(
 	loadConverterPlugin func(
 		*plugin.Context, string, func(sev diag.Severity, msg string),
 	) (plugin.Converter, error),
+	runStatefulUpdate RunStatefulUpdateFunc,
 ) *cobra.Command {
 	if pluginFromSource == nil {
 		pluginFromSource = func(
@@ -288,6 +289,7 @@ func NewDoCmd(
 			lm:                lm,
 			diagFwd:           diagFwd,
 			statusFwd:         statusFwd,
+			runStatefulUpdate: runStatefulUpdate,
 		}).newCommand()
 		if err != nil {
 			cleanup()
@@ -456,7 +458,7 @@ to use another format.`,
 	cmd.PersistentFlags().BoolVar(&stateless, "stateless", false,
 		"Run create/patch/delete directly against the provider without persisting state. "+
 			"Required for now: the stateful (engine-driven) implementation is still in development, "+
-			"so create/patch/delete error out unless --stateless is set.")
+			"so patch/delete error out unless --stateless is set.")
 	cmd.PersistentFlags().StringVar(
 		&pkg, "package", "", "The package to load, in the form 'name@version' or "+
 			"a path to a plugin binary or folder. If the package supports "+
@@ -526,6 +528,11 @@ type packageCommand struct {
 	lm        cmdBackend.LoginManager
 	diagFwd   *forwardingSink
 	statusFwd *forwardingSink
+
+	// runStatefulUpdate drives `backend.UpdateStack` for stateful subcommands (currently `upsert`).
+	// Nil in stateless mode or when the caller (tests, prod bootstrap) hasn't provided an
+	// implementation. See RunStatefulUpdateFunc in do_resource_upsert.go.
+	runStatefulUpdate RunStatefulUpdateFunc
 }
 
 // evalContext builds the PCL evaluation context from the workspace state we captured at construction

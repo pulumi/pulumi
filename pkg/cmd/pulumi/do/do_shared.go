@@ -22,7 +22,6 @@ import (
 	"io"
 	"maps"
 	"os"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -312,6 +312,84 @@ func evaluatePCL(
 	return result, nil
 }
 
+// parseFile reads an input file in the given format and returns it ready for evaluation. For non-PCL formats the source
+// is routed through the named converter plugin's ConvertSnippet RPC and the resulting PCL is treated the same as a
+// direct read of a PCL file.
+func parseFile(
+	ctx context.Context,
+	path, fileType, inputFormat, token string,
+	loadConverter func(string) (plugin.Converter, error),
+	loaderTarget string,
+	packageDescriptor *codegenrpc.GetSchemaRequest,
+	inputFlags map[string]inputFlagValue,
+) ([]byte, string, error) {
+	contract.Requiref(inputFormat != "", "inputFormat", "inputFormat must be non-empty")
+	filename := path
+
+	var pcl []byte
+	if path == "" {
+		// Bind still runs against an empty file so the schema's required-input check fires.
+		filename = fmt.Sprintf("<no %s file>", fileType)
+	} else {
+		var err error
+		pcl, err = os.ReadFile(path)
+		if err != nil {
+			return nil, "", fmt.Errorf("open %s file: %w", fileType, err)
+		}
+	}
+
+	var literals map[string]string
+	if len(pcl) == 0 && len(inputFlags) == 0 {
+		// No input provided; pcl and literals are empty
+	} else if inputFormat == "pcl" {
+		var err error
+		literals, err = inputFlagLiterals(inputFlags)
+		if err != nil {
+			return nil, "", err
+		}
+	} else {
+		converter, err := loadConverter(inputFormat)
+		if err != nil {
+			return nil, "", fmt.Errorf("load %s input converter: %w", inputFormat, err)
+		}
+		defer contract.IgnoreClose(converter)
+
+		resp, err := converter.ConvertSnippet(ctx, &plugin.ConvertSnippetRequest{
+			Filename:     filename,
+			Source:       pcl,
+			TargetLoader: loaderTarget,
+			Package:      packageDescriptor,
+			Token:        token,
+			Attributes:   inputFlagAttributes(inputFlags),
+		})
+		if err != nil {
+			if status.Code(err) == codes.Unimplemented {
+				return nil, "", fmt.Errorf(
+					"%s %s converter does not support snippet conversion; use pcl format or try installing a newer %s converter",
+					inputFormat, fileType, inputFormat,
+				)
+			}
+			return nil, "", fmt.Errorf("generate PCL from %s file: %w", fileType, err)
+		}
+		if resp.Diagnostics.HasErrors() {
+			return nil, "", resp.Diagnostics
+		}
+		pcl = resp.Source
+		filename = resp.Filename
+		if filename == "" {
+			filename = fmt.Sprintf("<converted %s>", fileType)
+		}
+		literals = resp.Attributes
+	}
+
+	merged, err := mergeAttributeLiteralsIntoPCL(pcl, filename, fileType, literals)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return merged, filename, nil
+}
+
 // evaluateFile reads an input file in the given format and evaluates it. For non-PCL formats the source is routed
 // through the named converter plugin's ConvertSnippet RPC and the resulting PCL is fed into the same bind pipeline.
 // An empty path with no input flags is treated as "no input provided"; converter-backed formats still run for
@@ -327,66 +405,10 @@ func evaluateFile(
 	evalContext functionEvalContext,
 	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
-	contract.Requiref(inputFormat != "", "inputFormat", "inputFormat must be non-empty")
-	filename := path
-
-	var pcl []byte
-	if path == "" {
-		// Bind still runs against an empty file so the schema's required-input check fires.
-		filename = fmt.Sprintf("<no %s file>", fileType)
-	} else {
-		var err error
-		pcl, err = os.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("open %s file: %w", fileType, err)
-		}
-	}
-
-	var literals map[string]string
-	if len(pcl) == 0 && len(inputFlags) == 0 {
-		// No input provided; pcl and literals are empty
-	} else if inputFormat == "pcl" {
-		var err error
-		literals, err = inputFlagLiterals(inputFlags)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		converter, err := loadConverter(inputFormat)
-		if err != nil {
-			return nil, fmt.Errorf("load %s input converter: %w", inputFormat, err)
-		}
-		defer contract.IgnoreClose(converter)
-
-		resp, err := converter.ConvertSnippet(ctx, &plugin.ConvertSnippetRequest{
-			Filename:     filename,
-			Source:       pcl,
-			TargetLoader: loaderTarget,
-			Package:      packageDescriptor,
-			Token:        token,
-			Attributes:   inputFlagAttributes(inputFlags),
-		})
-		if err != nil {
-			if status.Code(err) == codes.Unimplemented {
-				return nil, fmt.Errorf(
-					"%s %s converter does not support snippet conversion; use pcl format or try installing a newer %s converter",
-					inputFormat, fileType, inputFormat,
-				)
-			}
-			return nil, fmt.Errorf("generate PCL from %s file: %w", fileType, err)
-		}
-		if resp.Diagnostics.HasErrors() {
-			return nil, resp.Diagnostics
-		}
-		pcl = resp.Source
-		filename = resp.Filename
-		if filename == "" {
-			filename = fmt.Sprintf("<converted %s>", fileType)
-		}
-		literals = resp.Attributes
-	}
-
-	merged, err := mergeAttributeLiteralsIntoPCL(pcl, filename, fileType, literals)
+	merged, filename, err := parseFile(
+		ctx, path, fileType, inputFormat, token,
+		loadConverter, loaderTarget, packageDescriptor, inputFlags,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -552,7 +574,13 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 		switch typ {
 		case schema.BoolType:
 			flagFunc = func(name, extraHelp string) {
-				flags.Bool(name, false, comment+extraHelp)
+				// N.B. This is hardcoded in the engine to the literal string "true/false" for the literal true/false.
+				// This works for PCL, and happens to also work for YAML, but if we add any new converters that _don't_
+				// use the string "true" for their boolean true literal (for example Python uses "True"), then we'll
+				// need to add something here to support that. Probably pre-fetching the literal text from the
+				// converter plugin to create the flag values to match.
+				flags.String(name, "false", comment+extraHelp)
+				flags.Lookup(name).NoOptDefVal = "true"
 			}
 		case schema.StringType, schema.IntType, schema.NumberType:
 			flagFunc = func(name, extraHelp string) {
@@ -574,17 +602,8 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 	}
 }
 
-var langChoiceSpanRegexp = regexp.MustCompile(`(?s)<span\b[^>]*>(.*?)</span>`)
-
-var envVarChoiceRegexp = regexp.MustCompile("(?s)(`[A-Z][A-Z0-9_]*`) or <span\\b[^>]*>.*?</span> environment variables")
-
-func cleanComment(comment string) string {
-	comment = envVarChoiceRegexp.ReplaceAllString(comment, "$1 environment variable")
-	return langChoiceSpanRegexp.ReplaceAllString(comment, "$1")
-}
-
 func flagUsage(comment string) string {
-	return strings.ReplaceAll(cleanComment(comment), "`", "")
+	return strings.ReplaceAll(schemainfo.CleanComment(comment), "`", "")
 }
 
 func inputFlagName(name string) string {
