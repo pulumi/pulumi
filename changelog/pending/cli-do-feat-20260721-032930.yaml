@@ -1,0 +1,4 @@
+component: cli/do
+kind: feat
+body: Add support for stateful create
+time: 2026-07-21T03:29:30.705192+01:00

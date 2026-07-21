@@ -132,6 +132,10 @@ jobs:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
           cache: npm
           cache-dependency-path: sdk/nodejs/package-lock.json
+      - name: Install npm
+        # npm added min-release-age-exclude in 11.17.0. Use a compatible npm 11 version so the
+        # cooldown and first-party exceptions work across every Node.js version in the matrix.
+        run: npm install -g npm@^11.17.0
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet

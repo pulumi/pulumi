@@ -90,6 +90,9 @@ enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS = 10;
     RESOURCE_MONITOR_FEATURE_ERROR_HOOKS = 11;
     RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS = 12;
+    // The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
+    // string bytes signature and a base64 encoding of the string's bytes.
+    RESOURCE_MONITOR_FEATURE_BYTE_STRING = 13;
 }
 
 // DeploymentInfo returns monitor execution state currently sent to programs
@@ -163,6 +166,10 @@ message ReadResourceRequest {
     string parentStackTraceHandle = 18; // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
 
     string packageRef = 16; // a reference from RegisterPackageRequest.
+
+    // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
+    // carrying the byte string signature and a base64 encoding of the string's bytes.
+    bool accepts_byte_string = 19;
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -249,6 +256,10 @@ message RegisterResourceRequest {
     repeated string hideDiffs = 37;
     map<string, string> envVarMappings = 41;   // environment variable remappings for provider resources (NEW_KEY -> OLD_KEY)
     string snippetId = 40;                     // if set, the UUID of the snippet that issued this registration.
+
+    // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
+    // carrying the byte string signature and a base64 encoding of the string's bytes.
+    bool accepts_byte_string = 42;
 }
 
 enum Result {
@@ -294,6 +305,10 @@ message ResourceInvokeRequest {
     string parentStackTraceHandle = 11; // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
 
     string packageRef = 9; // a reference from RegisterPackageRequest.
+
+    // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
+    // carrying the byte string signature and a base64 encoding of the string's bytes.
+    bool accepts_byte_string = 12;
 }
 
 message ResourceCallRequest {
@@ -321,6 +336,10 @@ message ResourceCallRequest {
     string parentStackTraceHandle = 19; // the optional parent stack trace handle for the request. Supports stitching stack traces across plugins.
 
     string packageRef = 17; // a reference from RegisterPackageRequest.
+
+    // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
+    // carrying the byte string signature and a base64 encoding of the string's bytes.
+    bool accepts_byte_string = 20;
 }
 
 // TransformResourceOptions is a subset of all resource options that are relevant to transforms.

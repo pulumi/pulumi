@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/rattler"
 )
 
 // A single CLI flag.
@@ -375,6 +376,12 @@ func isFlagRequired(flag *pflag.Flag) bool {
 
 func isExecutable(cmd *cobra.Command) bool {
 	if cmd == nil {
+		return false
+	}
+
+	// A synthetic run function installed by rattler only prints help and
+	// fails, so it does not make the command executable.
+	if rattler.HasSyntheticRun(cmd) {
 		return false
 	}
 

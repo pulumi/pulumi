@@ -71,10 +71,12 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 		})
 	case v.IsNull():
 		r = NewNullProperty()
+	case v.IsComputed():
+		r = MakeComputed(NewProperty(""))
 	}
 
 	switch {
-	case len(v.Dependencies()) > 0 || (v.Secret() && v.IsComputed()):
+	case len(v.Dependencies()) > 0:
 		r = NewProperty(Output{
 			Element:      r,
 			Known:        !v.IsComputed(),
@@ -83,8 +85,6 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 		})
 	case v.Secret():
 		r = MakeSecret(r)
-	case v.IsComputed():
-		r = MakeComputed(NewProperty(""))
 	}
 
 	return r
