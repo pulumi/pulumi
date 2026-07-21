@@ -343,7 +343,7 @@ func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 		inSnapshot := sp.SavedSnapshots[0].Resources[2]
 		// The snapshot might edit the URN so don't check against that
 		c.URN = inSnapshot.URN
-		sres, err := stack.SerializeResource(
+		sres, _, err := stack.SerializeResource(
 			t.Context(), c, b64.NewBase64SecretsManager().Encrypter(), false)
 		require.NoError(t, err)
 
@@ -373,7 +373,7 @@ func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 	assert.NotEmpty(t, sp.SavedSnapshots)
 	assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
 	inSnapshot := sp.SavedSnapshots[0].Resources[0]
-	sres, err := stack.SerializeResource(
+	sres, _, err := stack.SerializeResource(
 		t.Context(), sourceUpdated, b64.NewBase64SecretsManager().Encrypter(), false)
 	require.NoError(t, err)
 	assert.Equal(t, sres, inSnapshot)
@@ -435,7 +435,7 @@ func TestSamesWithOtherMeaningfulChangesJournaling(t *testing.T) {
 		assert.NotEmpty(t, sp.SavedSnapshots[0].Resources)
 
 		inSnapshot := sp.SavedSnapshots[0].Resources[2]
-		sres, err := stack.SerializeResource(
+		sres, _, err := stack.SerializeResource(
 			t.Context(), c, b64.NewBase64SecretsManager().Encrypter(), false)
 		require.NoError(t, err)
 		assert.Equal(t, sres, inSnapshot)
