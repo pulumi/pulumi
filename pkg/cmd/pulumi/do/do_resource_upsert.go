@@ -60,9 +60,7 @@ type StatefulUpdateRequest struct {
 	Sink        diag.Sink
 }
 
-// StatefulUpdateResult carries whatever the caller wants to render after the update. For the first
-// cut we only echo the snippet identity — the resource's post-update outputs will be plumbed
-// through once we're reading them out of the returned snapshot.
+// StatefulUpdateResult carries whatever the caller wants to render after the update.
 type StatefulUpdateResult struct {
 	SnippetUUID string
 }
@@ -311,6 +309,11 @@ func DefaultRunStatefulUpdate(
 	displayOpts := display.Options{
 		Color:       cmdutil.GetGlobalColorization(),
 		ShowSecrets: req.ShowSecrets,
+	}
+	if req.DryRun {
+		displayOpts.Type = display.DisplayDiff
+	} else {
+		displayOpts.ShowDiff = true
 	}
 
 	ssml := cmdStack.SecretsManagerLoader{FallbackToState: true}

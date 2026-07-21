@@ -131,6 +131,12 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		return plan, changes, err
 	}
 
+	if op.Opts.Display.ShowDiff {
+		diffOpts := op.Opts.Display
+		diffOpts.Type = display.DisplayDiff
+		contract.IgnoreError(printDiff(events, diffOpts))
+	}
+
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
 	if op.Opts.AutoApprove || kind == apitype.PreviewUpdate {
 		close(eventsChannel)
@@ -171,6 +177,20 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	return plan, changes, err
 }
 
+func printDiff(events []engine.Event, displayOpts display.Options) error {
+	displayOpts.TruncateOutput = false // We want to always show the full details
+	diff, err := display.CreateDiff(events, displayOpts)
+	if err != nil {
+		return err
+	}
+	stdout := displayOpts.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	_, err = fmt.Fprintln(stdout, diff)
+	return err
+}
+
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRef StackReference, op UpdateOperation,
 	events []engine.Event, plan *deploy.Plan, explainer Explainer,
@@ -187,7 +207,9 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 
 		// For non-previews, we can also offer a detailed summary.
 		if !opts.SkipPreview {
-			choices = append(choices, string(details))
+			if !opts.Display.ShowDiff {
+				choices = append(choices, string(details))
+			}
 
 			// If we have an explainer (pulumi-cloud) we can offer to explain the changes.
 			if explainer != nil && explainer.IsExplainPreviewEnabled(ctx, opts.Display) {
@@ -226,14 +248,9 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 		}
 
 		if response == string(details) {
-			displayOpts := opts.Display
-			displayOpts.TruncateOutput = false // We want to always show the full details
-			diff, err := display.CreateDiff(events, displayOpts)
-			if err != nil {
+			if err := printDiff(events, opts.Display); err != nil {
 				return nil, err
 			}
-			_, err = os.Stdout.WriteString(diff + "\n")
-			contract.IgnoreError(err)
 			continue
 		}
 
@@ -300,7 +317,37 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	// No need to generate a plan at this stage, there's no way for the system or user to extract the plan
 	// after here.
 	op.Opts.Engine.GeneratePlan = false
-	_, changes, res := apply(ctx, kind, stack, op, opts, events)
+
+	if !op.Opts.Display.ShowDiff {
+		_, changes, res := apply(ctx, kind, stack, op, opts, events)
+		return changes, res
+	}
+
+	// Collect the update's events so we can render the resolved diff afterwards, mirroring the
+	// preview diff shown before the confirmation.
+	collected := make(chan engine.Event)
+	var updateEvents []engine.Event
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for e := range collected {
+			if !e.Internal() && (e.Type == engine.ResourcePreEvent || e.Type == engine.ResourceOutputsEvent ||
+				e.Type == engine.PolicyRemediationEvent) {
+				updateEvents = append(updateEvents, e)
+			}
+			if events != nil {
+				events <- e
+			}
+		}
+	}()
+	_, changes, res := apply(ctx, kind, stack, op, opts, collected)
+	close(collected)
+	<-done
+	if res == nil {
+		diffOpts := op.Opts.Display
+		diffOpts.Type = display.DisplayDiff
+		contract.IgnoreError(printDiff(updateEvents, diffOpts))
+	}
 	return changes, res
 }
 
