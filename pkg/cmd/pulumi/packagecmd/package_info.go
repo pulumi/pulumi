@@ -195,7 +195,7 @@ func showProviderInfo(
 	bold := func(s string) string { return schemainfo.Bold(color, s) }
 	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
 	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
+	fmt.Fprintf(stdout, bold("Description")+": %s\n", schemainfo.Summarize(spec.Description))
 	fmt.Fprintf(stdout, bold("Total resources")+" %d\n", len(spec.Resources))
 	fmt.Fprintf(stdout, bold("Total functions")+" %d\n", len(spec.Functions))
 	fmt.Fprintf(stdout, bold("Total modules")+": %d\n", len(modules))
@@ -221,21 +221,19 @@ func showProviderInfo(
 	return nil
 }
 
-func summaryFromDescription(description string) string {
-	// The description of a resource is markdown formatted.  We only want to provide a
-	// short summary of the description, so we will only show the first paragraph. Note
-	// that an empty newline denotes the end of the paragraph, but a regular newline might
-	// still be part of the first paragraph, and may be in the middle of a sentence.
-	// Therefore we split the description into lines, and join the first paragraph, replacing
-	// newlines with spaces.
-	var summary strings.Builder
-	for _, line := range strings.Split(description, "\n") {
-		if strings.TrimSpace(line) == "" {
-			break
-		}
-		summary.WriteString(line + " ")
+// writeDescription renders the full schema description below a Description label, inline when it
+// fits on one line.
+func writeDescription(stdout io.Writer, color colors.Colorization, comment string) {
+	description := schemainfo.RenderDescription(comment)
+	if description == "" {
+		return
 	}
-	return strings.TrimSpace(summary.String())
+	label := schemainfo.Bold(color, "Description")
+	if strings.Contains(description, "\n") {
+		fmt.Fprintf(stdout, label+":\n%s\n", description)
+	} else {
+		fmt.Fprintf(stdout, label+": %s\n", description)
+	}
 }
 
 func simplifyModuleName(typ string, name string) (string, error) {
@@ -252,7 +250,7 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
 	fmt.Fprintf(stdout, bold("Module")+": %s\n", moduleName)
 	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
+	fmt.Fprintf(stdout, bold("Description")+": %s\n", schemainfo.Summarize(spec.Description))
 
 	resources := make(map[string]schema.ResourceSpec)
 	for res, spec := range spec.Resources {
@@ -295,7 +293,7 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 
 	fmt.Fprintln(stdout)
 	for _, name := range slices.Sorted(maps.Keys(resources)) {
-		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), summaryFromDescription(resources[name].Description))
+		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), schemainfo.Summarize(resources[name].Description))
 	}
 	fmt.Fprintln(stdout)
 
@@ -303,7 +301,7 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 
 	fmt.Fprintln(stdout)
 	for _, name := range slices.Sorted(maps.Keys(functions)) {
-		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), summaryFromDescription(functions[name].Description))
+		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), schemainfo.Summarize(functions[name].Description))
 	}
 	return nil
 }
@@ -329,7 +327,7 @@ func showFunctionInfo(
 
 	bold := func(s string) string { return schemainfo.Bold(color, s) }
 	fmt.Fprintf(stdout, bold("Function")+": %s\n", fun.Token)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(fun.Comment))
+	writeDescription(stdout, color, fun.Comment)
 
 	fmt.Fprintln(stdout)
 	var inputProperties []*schema.Property
@@ -374,7 +372,7 @@ func showResourceInfo(
 
 	bold := func(s string) string { return schemainfo.Bold(color, s) }
 	fmt.Fprintf(stdout, bold("Resource")+": %s\n", res.Token)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(res.Comment))
+	writeDescription(stdout, color, res.Comment)
 
 	fmt.Fprintln(stdout)
 	schemainfo.WriteProperties(
