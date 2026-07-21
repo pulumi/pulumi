@@ -68,18 +68,9 @@ func NewPodManager(podID string, opts ...Option) PodManager {
 }
 
 // normalizedPodRuntime is the configured runtime, lower-cased and trimmed — the single place
-// PULUMI_POD_RUNTIME is parsed, shared by NewPodManager's selection and RuntimeIsCRI so the two
-// cannot disagree about what "cri" means.
+// PULUMI_POD_RUNTIME is parsed. Used by NewPodManager's runtime selection.
 func normalizedPodRuntime() string {
 	return strings.ToLower(strings.TrimSpace(os.Getenv(PodRuntimeEnvVar)))
-}
-
-// RuntimeIsCRI reports whether the configured pod runtime is CRI. It is exported so the language
-// host can adjust the program→engine address wiring: on CRI every pod member shares one sandbox
-// network namespace and reaches the engine over loopback, whereas on the docker/nerdctl bridge
-// the program dials the engine by its advertised container DNS name (see rewriteHost).
-func RuntimeIsCRI() bool {
-	return normalizedPodRuntime() == "cri"
 }
 
 // PodManager orchestrates the containers, network, and volumes that make up a

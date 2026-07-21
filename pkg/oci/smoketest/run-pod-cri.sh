@@ -147,7 +147,8 @@ cat > "$WORK/engine-container.json" <<JSON
   "args": ["/cri-smoke/engine-run.sh"],
   "working_dir": "/project",
   "envs": [
-    { "key": "PULUMI_POD_MODE",       "value": "true" },
+    { "key": "PULUMI_POD_MODE",             "value": "true" },
+    { "key": "PULUMI_POD_ADVERTISE_HOST",  "value": "127.0.0.1" },
     { "key": "PULUMI_POD_RUNTIME",     "value": "cri" },
     { "key": "PULUMI_POD_SANDBOX_ID",  "value": "$SB" },
     { "key": "PULUMI_POD_LOG_DIR",     "value": "$LOGDIR" },

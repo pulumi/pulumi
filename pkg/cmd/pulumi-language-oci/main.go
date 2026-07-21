@@ -486,16 +486,11 @@ func rewriteHost(addr, newHost string) string {
 // gRPC servers, which the engine binds to 0.0.0.0 but advertises on a loopback it cannot know
 // is reachable elsewhere.
 //
-// On CRI every pod member — program included — shares the one sandbox network namespace, so the
-// engine is reachable on loopback and there is no per-pod bridge or container DNS name to
-// advertise (providers already loopback; the program is the last DNS-by-name consumer, and this
-// is where it stops being one). On the docker/nerdctl bridge the program runs in its own netns
-// and must dial the engine by its advertised container DNS name (PULUMI_POD_ADVERTISE_HOST, set
-// by the wrapper; absent it, this engine container's own hostname, which equals its name).
+// The wrapper sets PULUMI_POD_ADVERTISE_HOST to the right value for the runtime: on docker it is
+// the engine container's DNS name (reachable by bridge DNS), on CRI it is 127.0.0.1 (shared
+// sandbox netns). Absent the env var, the engine's hostname is used (which equals its container
+// name on docker, and is the sandbox hostname on CRI — both correct).
 func podAdvertiseHost() string {
-	if oci.RuntimeIsCRI() {
-		return "127.0.0.1"
-	}
 	if h := os.Getenv("PULUMI_POD_ADVERTISE_HOST"); h != "" {
 		return h
 	}
