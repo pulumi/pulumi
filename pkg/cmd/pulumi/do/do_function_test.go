@@ -127,9 +127,9 @@ Outputs:
  - output3 (boolean*): Whether it worked.
 Outputs marked with '*' are always present
 
-Simple inputs can be set with flags and are parsed as expressions in the
-input format, except string values, which are taken verbatim; append + to a
-string flag (--<input>+ <value>) to parse its value as an expression too.
+Simple inputs can be set with flags: --<input> <value> takes the value as a
+literal, while --<input>+ <value> parses the value as an expression in the
+input format.
 
 Usage:
   do azure:myModule:myOtherFunction [flags]
@@ -2630,8 +2630,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 				case "inputs.yaml":
 					assert.Equal(t, "in1: file\ninTwo: fromfile\n", string(req.Source))
 					assert.Equal(t, map[string]string{
-						"dryRun": "true",
-						"in1":    "p1",
+						"in1": "p1",
 					}, req.Attributes)
 					assert.Equal(t, "azure:index:myFunction", req.Token)
 					require.NotNil(t, req.Package)
@@ -2640,8 +2639,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 						Filename: "inputs.pp",
 						Source:   []byte("in1 = \"file\"\ninTwo = \"fromfile\"\n"),
 						Attributes: map[string]string{
-							"in1":    "\"p1\"",
-							"dryRun": "true",
+							"in1": "\"p1\"",
 						},
 					}, nil
 				default:
@@ -2853,7 +2851,7 @@ func TestDoCmdFunctionInvokeWithPlainFlagsSkipsConverter(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{
@@ -2959,12 +2957,12 @@ func TestDoCmdFunctionInvokeWithYAMLExpression(t *testing.T) {
 	cmd.SetArgs([]string{
 		"azure:index:myFunction",
 		"--input", "yaml",
-		"--input:number", "0o45",
-		"--input:expr", "{\"fn::secret\": 45}",
-		"--input:flag=no",
+		"--input:number+", "0o45",
+		"--input:expr+", "{\"fn::secret\": 45}",
+		"--input:flag+=no",
 	})
 	err := cmd.Execute()
 	require.NoError(t, err)
-	assert.True(t, converterCalled, "ConvertSnippet should be called for non-string flags even without --input-file")
+	assert.True(t, converterCalled, "ConvertSnippet should be called for expression flags even without --input-file")
 	assert.JSONEq(t, `{"output1": "world"}`, stdout.String())
 }

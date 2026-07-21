@@ -130,9 +130,9 @@ Outputs:
 List Inputs:
  - prefix (string)
 
-Simple inputs can be set with flags and are parsed as expressions in the
-input format, except string values, which are taken verbatim; append + to a
-string flag (--<input>+ <value>) to parse its value as an expression too.
+Simple inputs can be set with flags: --<input> <value> takes the value as a
+literal, while --<input>+ <value> parses the value as an expression in the
+input format.
 
 Usage:
   do azure:index:myResource [command]
@@ -186,9 +186,9 @@ Outputs:
  - name (string)
  - size (integer)
 
-Simple inputs can be set with flags and are parsed as expressions in the
-input format, except string values, which are taken verbatim; append + to a
-string flag (--<input>+ <value>) to parse its value as an expression too.
+Simple inputs can be set with flags: --<input> <value> takes the value as a
+literal, while --<input>+ <value> parses the value as an expression in the
+input format.
 
 Usage:
   do azure:index:myResource [command]

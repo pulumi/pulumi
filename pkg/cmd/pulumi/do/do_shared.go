@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"math"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode"
@@ -483,9 +485,7 @@ func collectInputFlags(cmd *cobra.Command, namespace string, inputs []*schema.Pr
 		}
 		for _, name := range names {
 			if flag := cmd.Flag(name); flag != nil && flag.Changed {
-				values[input.Name] = inputFlagValue{
-					value: flag.Value.String(), typ: typ, expr: typ != schema.StringType,
-				}
+				values[input.Name] = inputFlagValue{value: flag.Value.String(), typ: typ}
 				break
 			}
 			if flag := cmd.Flag(name + "+"); flag != nil && flag.Changed {
@@ -516,7 +516,7 @@ func inputFlagLiterals(inputFlags map[string]inputFlagValue) (map[string]string,
 	for name, flag := range inputFlags {
 		literal, err := pclLiteral(flag)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("--%s: %w", inputFlagName(name), err)
 		}
 		attrs[name] = literal
 	}
@@ -572,8 +572,24 @@ func pclLiteral(flag inputFlagValue) (string, error) {
 	switch flag.typ {
 	case schema.StringType:
 		return string(hclwrite.TokensForValue(cty.StringVal(flag.value)).Bytes()), nil
-	case schema.BoolType, schema.IntType, schema.NumberType:
-		return flag.value, nil
+	case schema.BoolType:
+		v, err := strconv.ParseBool(flag.value)
+		if err != nil {
+			return "", fmt.Errorf("invalid boolean value %q", flag.value)
+		}
+		return string(hclwrite.TokensForValue(cty.BoolVal(v)).Bytes()), nil
+	case schema.IntType:
+		v, err := strconv.ParseInt(flag.value, 10, 64)
+		if err != nil {
+			return "", fmt.Errorf("invalid integer value %q", flag.value)
+		}
+		return string(hclwrite.TokensForValue(cty.NumberIntVal(v)).Bytes()), nil
+	case schema.NumberType:
+		v, err := strconv.ParseFloat(flag.value, 64)
+		if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
+			return "", fmt.Errorf("invalid number value %q", flag.value)
+		}
+		return string(hclwrite.TokensForValue(cty.NumberFloatVal(v)).Bytes()), nil
 	default:
 		return "", fmt.Errorf("unsupported flag type %s", flag.typ)
 	}
@@ -581,9 +597,9 @@ func pclLiteral(flag inputFlagValue) (string, error) {
 
 const exprFlagHelp = " (value is parsed as an expression in the input format)"
 
-const inputFlagsHelp = "Simple inputs can be set with flags and are parsed as expressions in the\n" +
-	"input format, except string values, which are taken verbatim; append + to a\n" +
-	"string flag (--<input>+ <value>) to parse its value as an expression too."
+const inputFlagsHelp = "Simple inputs can be set with flags: --<input> <value> takes the value as a\n" +
+	"literal, while --<input>+ <value> parses the value as an expression in the\n" +
+	"input format."
 
 func addInputFlags(cmd *cobra.Command, namespace string, inputs []*schema.Property) {
 	addInputFlagsTo(cmd, cmd.Flags(), namespace, inputs)
@@ -603,11 +619,6 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 		switch typ {
 		case schema.BoolType:
 			flagFunc = func(name, extraHelp string) {
-				// N.B. This is hardcoded in the engine to the literal string "true/false" for the literal true/false.
-				// This works for PCL, and happens to also work for YAML, but if we add any new converters that _don't_
-				// use the string "true" for their boolean true literal (for example Python uses "True"), then we'll
-				// need to add something here to support that. Probably pre-fetching the literal text from the
-				// converter plugin to create the flag values to match.
 				flags.String(name, "false", comment+extraHelp)
 				flags.Lookup(name).NoOptDefVal = "true"
 			}
@@ -623,24 +634,17 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 			}
 			flagName := inputFlagName(input.Name)
 			key := fmt.Sprintf("%s:%s", namespace, flagName)
-			hasExpr := typ == schema.StringType
 			flagFunc(key, "")
-			if hasExpr {
-				exprFunc(key+"+", exprFlagHelp)
-				flags.Lookup(key + "+").Hidden = true
-			}
+			exprFunc(key+"+", exprFlagHelp)
+			flags.Lookup(key + "+").Hidden = true
 			if namespace == "input" && flags.Lookup(flagName) == nil {
 				flagFunc(flagName, " (alias for --"+key+")")
-				if hasExpr {
-					exprFunc(flagName+"+", exprFlagHelp)
-					flags.Lookup(flagName + "+").Hidden = true
-					cmd.MarkFlagsMutuallyExclusive(key, flagName, key+"+", flagName+"+")
-				} else {
-					cmd.MarkFlagsMutuallyExclusive(key, flagName)
-				}
+				exprFunc(flagName+"+", exprFlagHelp)
+				flags.Lookup(flagName + "+").Hidden = true
+				cmd.MarkFlagsMutuallyExclusive(key, flagName, key+"+", flagName+"+")
 				// Mark the namespaced flag as hidden
 				flags.Lookup(key).Hidden = true
-			} else if hasExpr {
+			} else {
 				cmd.MarkFlagsMutuallyExclusive(key, key+"+")
 			}
 		}

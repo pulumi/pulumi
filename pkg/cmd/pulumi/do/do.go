@@ -413,10 +413,9 @@ Provider configuration can be supplied via:
 Function inputs come from --input-file. YAML is the default; pass --input
 to use another format.
 
-Simple properties can also be set with flags and are parsed as expressions in
-the input format, except string values, which are taken verbatim; append + to
-a string flag (--<property>+ <value>) to parse its value as an expression too
-(e.g. YAML interpolations or fn:: invocations).`,
+Simple properties can also be set with flags: --<property> <value> takes the
+value as a literal, while --<property>+ <value> parses the value as an
+expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			subcmd, cleanup, err := buildSubcommand(cmd, args)
