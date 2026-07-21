@@ -73,6 +73,9 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	if schemaHelp := resourceSchemaHelp(res); schemaHelp != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, schemaHelp)
 	}
+	if len(res.InputProperties) > 0 {
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, inputFlagsHelp)
+	}
 
 	cmd := &cobra.Command{
 		Use:   name,

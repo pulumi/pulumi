@@ -1125,6 +1125,39 @@ func TestFlagUsage(t *testing.T) {
 	}
 }
 
+func TestInputFlagLiterals(t *testing.T) {
+	t.Parallel()
+
+	literals, err := inputFlagLiterals(map[string]inputFlagValue{
+		"name":    {value: "convert: ${not.a.template}\nline two", typ: schema.StringType},
+		"size":    {value: "42", typ: schema.IntType},
+		"ratio":   {value: "1.5", typ: schema.NumberType},
+		"enabled": {value: "true", typ: schema.BoolType},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{
+		"name":    `"convert: $${not.a.template}\nline two"`,
+		"size":    "42",
+		"ratio":   "1.5",
+		"enabled": "true",
+	}, literals)
+
+	_, err = inputFlagLiterals(map[string]inputFlagValue{
+		"intValue": {value: "0o45", typ: schema.IntType},
+	})
+	assert.ErrorContains(t, err, `--int-value: invalid integer value "0o45"`)
+
+	_, err = inputFlagLiterals(map[string]inputFlagValue{
+		"enabled": {value: "no", typ: schema.BoolType},
+	})
+	assert.ErrorContains(t, err, `--enabled: invalid boolean value "no"`)
+
+	_, err = inputFlagLiterals(map[string]inputFlagValue{
+		"ratio": {value: "1.5.3", typ: schema.NumberType},
+	})
+	assert.ErrorContains(t, err, `--ratio: invalid number value "1.5.3"`)
+}
+
 func TestMergeAttributeLiteralsIntoPCL(t *testing.T) {
 	t.Parallel()
 
