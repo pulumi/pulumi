@@ -37,12 +37,22 @@
 package main
 
 import (
+	"os"
+
 	"github.com/pulumi/pulumi-command/sdk/go/command/local"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
+		// Write a file at runtime into the shared workspace. This is the discriminator
+		// for live volume sharing: the file does not exist in the program image (only
+		// /workspace/marker is baked in), so a provider container can only read it if
+		// it mounts the SAME workspace volume the program writes to — not a copy, not
+		// a second volume, and not the image's baked content.
+		if err := os.WriteFile("/workspace/runtime-output", []byte("written-at-runtime"), 0o644); err != nil {
+			return err
+		}
 		// Run a binary that exists only on the program image's PATH. -n takes no input,
 		// so the output is exactly the constant — deterministic enough to assert on.
 		// "jq: not found" here means the provider did not run from the program image.
@@ -73,6 +83,18 @@ func main() {
 			return err
 		}
 		ctx.Export("cred", cred.Stdout)
+
+		// Read the runtime-written file. This proves live volume sharing: the program
+		// wrote it into /workspace at runtime, and the command provider — running in a
+		// separate container — reads it from the same shared mount. If volumes were
+		// per-container or re-seeded from the image, this file would not exist.
+		runtimeFile, err := local.NewCommand(ctx, "read-runtime-output", &local.CommandArgs{
+			Create: pulumi.String("cat /workspace/runtime-output"),
+		})
+		if err != nil {
+			return err
+		}
+		ctx.Export("runtimeOutput", runtimeFile.Stdout)
 		return nil
 	})
 }

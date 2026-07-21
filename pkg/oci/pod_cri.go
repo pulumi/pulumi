@@ -257,6 +257,14 @@ func (m *criPodManager) RunContainer(ctx context.Context, cfg ContainerConfig) (
 		return Container{}, err
 	}
 
+	// Docker seeds an empty named volume from the container image's content at the mount path
+	// on first mount (copy-up). CRI has no copy-up, so replicate it: for each volume mount
+	// whose source is a managed volume (bare name, not an absolute host-path bind), seed the
+	// host dir from the container's image if the dir is empty. This is what makes the
+	// workspace volume contain the program image's baked files (e.g. /workspace/marker) without
+	// the caller needing to know what runtime is underneath.
+	m.autoSeedVolumes(ctx, cfg)
+
 	attempt := m.nextAttempt(cfg.Name)
 	logPath := criLogPath(cfg.Name, attempt)
 	containerCfg := m.containerConfig(cfg, attempt, logPath)
@@ -598,6 +606,34 @@ func (m *criPodManager) track(fn func()) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	fn()
+}
+
+// autoSeedVolumes replicates docker's empty-volume copy-up for CRI. For each volume mount whose
+// source is a managed volume (a bare name that resolves under volumeDir, not an absolute
+// host-path bind), it checks whether the host directory is empty. If so, it seeds it from the
+// container image's content at the mount path via CopyFromImage. This is best-effort: a seed
+// failure is logged but does not block the container start, because (a) many images have nothing
+// at the mount path, and (b) the caller may have already explicitly seeded the volume (e.g.
+// plugin binary injection via CopyFromImage, which makes the dir non-empty, so this skips it).
+func (m *criPodManager) autoSeedVolumes(ctx context.Context, cfg ContainerConfig) {
+	if m.volumeDir == "" || cfg.Image == "" {
+		return
+	}
+	for _, v := range cfg.Volumes {
+		if filepath.IsAbs(v.Source) {
+			continue
+		}
+		hostDir := filepath.Join(m.volumeDir, v.Source)
+		entries, err := os.ReadDir(hostDir)
+		if err != nil || len(entries) > 0 {
+			continue
+		}
+		vol := Volume{Name: v.Source}
+		if err := m.CopyFromImage(ctx, cfg.Image, v.Target, vol, v.Target); err != nil {
+			fmt.Fprintf(os.Stderr, "oci: auto-seeding volume %s from %s:%s: %v (continuing)\n",
+				v.Source, cfg.Image, v.Target, err)
+		}
+	}
 }
 
 // ensureVolumeDir returns the root directory for host-dir volumes, creating a temporary one

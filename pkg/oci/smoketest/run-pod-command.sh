@@ -152,4 +152,13 @@ if [ "$CRED" != "$EXPECTED_CRED" ]; then
   exit 1
 fi
 echo "    cred = $CRED (projected from the engine env onto the provider container)"
-echo "==> run-from-program-image provider smoke test PASS — toolchain + workspace + projected-env (credentials)"
+
+RUNTIME_OUTPUT="$("$WRAPPER" stack output runtimeOutput)"
+echo "==> asserting live volume sharing (program wrote a file at runtime, provider reads it)"
+if [ "$RUNTIME_OUTPUT" != "written-at-runtime" ]; then
+  echo "!! runtimeOutput mismatch: got '${RUNTIME_OUTPUT:-<empty>}', want 'written-at-runtime'"
+  echo "   (the provider did not read a file the program wrote at runtime — volume sharing broken)"
+  exit 1
+fi
+echo "    runtimeOutput = $RUNTIME_OUTPUT (live volume sharing confirmed)"
+echo "==> run-from-program-image provider smoke test PASS — toolchain + workspace + projected-env + live sharing"

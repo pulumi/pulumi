@@ -131,10 +131,11 @@ set -e
 pulumi login "$PULUMI_BACKEND_URL"
 pulumi stack select --create "$STACK"
 pulumi up --yes --skip-preview --stack "$STACK"
-printf 'SMOKE toolchain=<<%s>> marker=<<%s>> cred=<<%s>>\n' \
+printf 'SMOKE toolchain=<<%s>> marker=<<%s>> cred=<<%s>> runtimeOutput=<<%s>>\n' \
   "$(pulumi stack output toolchain --stack "$STACK")" \
   "$(pulumi stack output marker --stack "$STACK")" \
-  "$(pulumi stack output cred --stack "$STACK")"
+  "$(pulumi stack output cred --stack "$STACK")" \
+  "$(pulumi stack output runtimeOutput --stack "$STACK")"
 SCRIPT
 docker cp "$WORK/engine-run.sh" "$CRIENV:/cri-smoke/engine-run.sh"
 docker exec "$CRIENV" chmod +x /cri-smoke/engine-run.sh
@@ -224,7 +225,8 @@ fi
 
 TOOLCHAIN="$(sed -n 's/.*SMOKE toolchain=<<\(.*\)>> marker=.*/\1/p' "$WORK/engine.log" | head -1)"
 MARKER="$(sed -n 's/.*marker=<<\(.*\)>> cred=.*/\1/p' "$WORK/engine.log" | head -1)"
-CRED="$(sed -n 's/.*cred=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1)"
+CRED="$(sed -n 's/.*cred=<<\(.*\)>> runtimeOutput=.*/\1/p' "$WORK/engine.log" | head -1)"
+RUNTIME_OUTPUT="$(sed -n 's/.*runtimeOutput=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1)"
 
 if [ "$TOOLCHAIN" != "$EXPECTED_TOOLCHAIN" ]; then
   echo "!! toolchain mismatch: got '${TOOLCHAIN:-<empty>}', want '$EXPECTED_TOOLCHAIN'"
@@ -237,7 +239,7 @@ if [ "$MARKER" != "$EXPECTED_MARKER" ]; then
   echo "!! marker mismatch: got '${MARKER:-<empty>}', want '$EXPECTED_MARKER'"
   exit 1
 fi
-echo "    marker = $MARKER (via the shared workspace)"
+echo "    marker = $MARKER (workspace seed from the image)"
 
 if [ "$CRED" != "$EXPECTED_CRED" ]; then
   echo "!! cred mismatch: got '${CRED:-<empty>}', want '$EXPECTED_CRED'"
@@ -245,4 +247,12 @@ if [ "$CRED" != "$EXPECTED_CRED" ]; then
   exit 1
 fi
 echo "    cred = $CRED (projected from engine env)"
+
+EXPECTED_RUNTIME_OUTPUT="written-at-runtime"
+if [ "$RUNTIME_OUTPUT" != "$EXPECTED_RUNTIME_OUTPUT" ]; then
+  echo "!! runtimeOutput mismatch: got '${RUNTIME_OUTPUT:-<empty>}', want '$EXPECTED_RUNTIME_OUTPUT'"
+  echo "   (the provider did not read a file the program wrote at runtime — volume sharing broken)"
+  exit 1
+fi
+echo "    runtimeOutput = $RUNTIME_OUTPUT (live volume sharing: program wrote, provider read)"
 echo "==> CRI command provider smoke test PASS"

@@ -333,15 +333,6 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 	if err != nil {
 		return nil, fmt.Errorf("oci: creating shared workspace volume: %w", err)
 	}
-	// On CRI there is no docker-style copy-up (where an empty named volume is auto-seeded from
-	// the image's content at the mount path). Seed the workspace from the program image
-	// explicitly so providers that read files baked into /workspace (e.g. the command smoke
-	// test's marker) find them. On docker this is a no-op — the daemon does it at mount time.
-	if oci.RuntimeIsCRI() {
-		if err := pod.CopyFromImage(ctx, image, oci.WorkspaceMountPath, wsVol, oci.WorkspaceMountPath); err != nil {
-			fmt.Fprintf(os.Stderr, "oci: seeding workspace from program image: %v (continuing without seed)\n", err)
-		}
-	}
 
 	network := os.Getenv("PULUMI_POD_NETWORK")
 	cfg := oci.ContainerConfig{
