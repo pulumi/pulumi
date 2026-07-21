@@ -286,6 +286,11 @@ message ProviderHandshakeRequest {
     // The target of a [](pulumirpc.PackageResolver) service the provider can use to resolve package specifications to
     // concrete package dependencies. May be empty on older engines.
     optional string resolver_target = 10;
+
+    // True if and only if the engine supports strings containing bytes that are not valid UTF-8, marshaled as objects
+    // carrying the byte string signature and a base64 encoding of the string's bytes. If true, the provider may
+    // return such values to the engine.
+    bool accepts_byte_string = 11;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -312,6 +317,11 @@ message ProviderHandshakeResponse {
     // confusion.
     reserved 5;
     reserved "pulumi_version_range";
+
+    // True if and only if the provider supports strings containing bytes that are not valid UTF-8, marshaled as
+    // objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
+    // caller may pass such values to the provider.
+    bool accepts_byte_string = 6;
 }
 
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
