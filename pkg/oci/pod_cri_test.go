@@ -284,15 +284,15 @@ func TestCriImageExistsAndPull(t *testing.T) {
 	assert.Equal(t, []string{"img:2"}, present.pulled)
 }
 
-// TestCriUnimplementedVerbs pins that the still-deferred verbs fail loudly (with a pointer to the
-// design call) rather than silently misbehaving. RunToCompletion is no longer here — it is
-// implemented and covered by TestCriRunToCompletion*.
+// TestCriUnimplementedVerbs pins that the still-deferred verbs fail loudly rather than silently
+// misbehaving. RunToCompletion (build primitive) and ImportImage (proxy-pull sink) are no longer
+// here — they are implemented and covered by TestCriRunToCompletion* and TestCriImportImage*.
+// ReadImageFile is the last stub.
 func TestCriUnimplementedVerbs(t *testing.T) {
 	t.Parallel()
 	m := newFakeCriManager(t, &fakeCRI{}, "p1")
 	ctx := t.Context()
 
-	assert.Error(t, m.ImportImage(ctx, "/layout", "ref:1"))
 	_, err := m.ReadImageFile(ctx, "img", "/path")
 	assert.Error(t, err)
 }

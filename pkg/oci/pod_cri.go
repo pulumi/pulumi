@@ -25,6 +25,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -62,10 +64,11 @@ import (
 // This is an early, deliberately partial implementation. Run + network + image existence/pull, the
 // volume verbs (CRI has no named-volume analog — the workspace becomes a host dir), RunToCompletion
 // (the build primitive — runs a builder to completion and streams its combined output, deliberately
-// without docker's stdout/stderr split), and its VolumesFrom source-reaching (inherit the engine's
-// mounts via ContainerStatus, since CRI has no --volumes-from — see RunToCompletion / inheritedMounts)
-// are here. The remaining gap for an end-to-end build is ImportImage (a genuine ctr-vs-proxy-pull
-// design call), still stubbed along with ReadImageFile.
+// without docker's stdout/stderr split), its VolumesFrom source-reaching (inherit the engine's
+// mounts via ContainerStatus, since CRI has no --volumes-from — see RunToCompletion / inheritedMounts),
+// and ImportImage (the build-contract sink, taken via proxy-pull — push the layout to ref's registry
+// in-process, then pull it back through the CRI image service; see ImportImage) are here. ReadImageFile
+// remains a non-fatal stub.
 type criPodManager struct {
 	podID     string // unique id for this pod; labels containers and scopes log paths
 	sandboxID string // the PodSandbox the engine runs in and adds siblings to (from the wrapper)
@@ -453,7 +456,8 @@ func (m *criPodManager) PullImage(ctx context.Context, ref string) error {
 	}
 	// PullImage through the CRI image service lands the image in the k8s.io content namespace,
 	// which is the one CRI-run containers see — so a pull is namespace-correct for free (unlike a
-	// raw `ctr import`, the wrinkle ImportImage still has to settle).
+	// raw `ctr import`, which must name the namespace and gets it wrong by default). ImportImage
+	// reuses this exact call after pushing a layout, to inherit that namespace-correctness.
 	if _, err := image.PullImage(ctx, &runtimeapi.PullImageRequest{
 		Image: &runtimeapi.ImageSpec{Image: ref},
 	}); err != nil {
@@ -462,17 +466,58 @@ func (m *criPodManager) PullImage(ctx context.Context, ref string) error {
 	return nil
 }
 
-// ImportImage is not yet implemented on CRI. The verb is de-risked but carries a genuine design
-// call (spike 2026-07-19): the CRI image service is the containerd `k8s.io` namespace, so an
-// import must target it — either `ctr -n k8s.io images import` (one local op, but needs the ctr
-// binary and the right namespace) or push the build's layout through the registry proxy and let
-// CRI PullImage fetch it (namespace-correct by construction, but push-then-pull plus the pod-mode
-// credential surface). Neither is a clear win; it is the user's call, so it is stubbed rather than
-// silently picked.
+// ImportImage lands a runtime-neutral OCI image layout into the store CRI-run containers see,
+// under ref. It is the one build-contract sink that must re-couple a decoupled build's artifact to
+// a runtime, and on CRI it takes the *proxy-pull* path: push the layout to ref's registry
+// in-process (ggcr, the same mechanism the publish story uses), then pull it back through the CRI
+// image service.
+//
+// Why not a local import. The docker and nerdctl sinks ingest the layout straight into the runtime
+// store (`daemon.Write`, `ctr images import`). CRI has no such verb — the image service exposes
+// only ImageStatus/PullImage — and the alternatives break this manager's defining invariant, pure
+// in-process gRPC with no CLI / second binary: `ctr -n k8s.io images import` reintroduces the very
+// binary the manager exists to avoid, and the containerd client *library* dodges the binary only by
+// reaching around CRI to the native content API (a new dependency and a namespace it must name
+// itself). Pulling through the CRI image service instead lands the image in the `k8s.io` content
+// namespace CRI-run containers read — namespace-correct for free — and adds no runtime coupling
+// the pull path did not already have.
+//
+// The cost proxy-pull carries — and the honest asterisk on this verb — is that ref's registry host
+// becomes load-bearing where a daemon-local import never made it so: it must be reachable to PUSH
+// from the engine (in the pod's netns) and to PULL from containerd (in the host's netns), which are
+// different network namespaces on CRI. A localhost proxy that the shared-sandbox netns reaches will
+// NOT be the localhost containerd resolves. So the ref a pod setup hands the build must name an
+// address both sides route to (a host/CNI-gateway IP, not loopback). ggcr treats exactly those
+// address classes — RFC-1918 private IPs, *.local, and loopback — as plaintext HTTP automatically
+// (name.Registry.Scheme), so the same call reaches a local bootstrap proxy over HTTP and a real
+// registry over HTTPS with no flag. The push is anonymous, which suits the bootstrap proxy; a real
+// registry that needs credentials is the pod-mode credential surface this defers (a keychain option
+// here, from wherever the pod projects registry creds — publishing happens where credentials live).
 func (m *criPodManager) ImportImage(ctx context.Context, layoutPath, ref string) error {
-	return fmt.Errorf("oci: ImportImage is not yet implemented for the CRI runtime (%s -> %s). "+
-		"The open choice is `ctr -n k8s.io images import` vs. proxy-pull through the registry router; "+
-		"see the CRI PodManager findings", layoutPath, ref)
+	// The host-arch image is selected from the layout exactly as the docker/nerdctl sinks do
+	// (shared imageFromLayout): a real build's layout may carry an attestation manifest and
+	// other-arch entries, and only the one runnable image is pushed under ref.
+	img, err := imageFromLayout(layoutPath)
+	if err != nil {
+		return err
+	}
+	dst, err := name.ParseReference(ref)
+	if err != nil {
+		return fmt.Errorf("oci: parsing target ref %q: %w", ref, err)
+	}
+	// Anonymous push: the bootstrap proxy needs no auth. A real registry's credentials are the
+	// pod-mode credential surface deferred here — a remote.WithAuthFromKeychain option fed from
+	// wherever the pod projects registry creds (see the doc comment).
+	if err := remote.Write(dst, img, remote.WithContext(ctx)); err != nil {
+		return fmt.Errorf("oci: pushing %s to its registry for CRI import: %w", ref, err)
+	}
+	// Pull it back through the CRI image service so it lands in the k8s.io content namespace
+	// CRI-run containers see. PullImage already targets that service, so a plain reuse is
+	// namespace-correct — no raw-ctr namespace flip to get wrong.
+	if err := m.PullImage(ctx, ref); err != nil {
+		return fmt.Errorf("oci: pulling %s back through the CRI image service after push: %w", ref, err)
+	}
+	return nil
 }
 
 // RunToCompletion runs a one-shot builder container to completion and streams its output to the
