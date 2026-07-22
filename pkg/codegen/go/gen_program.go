@@ -465,10 +465,21 @@ func (g *generator) genComponentDefinition(w io.Writer, componentName string, co
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 		} else {
+			// An output's expression has to be lowered before it can be emitted, exactly as a top-level
+			// output's is by genOutputAssignment: a traversal into an invoke or resource result becomes an
+			// ApplyT, which is not something the raw expression can be written as.
+			values := make([]model.Expression, len(outputs))
+			for i, output := range outputs {
+				value, destType := liftValueToOutput(output.Value)
+				expr, temps := g.lowerExpression(value, destType)
+				g.genTemps(w, temps)
+				values[i] = expr
+			}
+
 			g.Fgenf(w, "err = %sctx.RegisterResourceOutputs(&componentResource, pulumi.Map{\n", g.Indent)
 			g.Indented(func() {
-				for _, output := range outputs {
-					g.Fgenf(w, "%s\"%s\": %v,\n", g.Indent, output.LogicalName(), output.Value)
+				for i, output := range outputs {
+					g.Fgenf(w, "%s\"%s\": %.3v,\n", g.Indent, output.LogicalName(), values[i])
 				}
 			})
 			g.Fgenf(w, "%s})\n", g.Indent)
@@ -479,8 +490,10 @@ func (g *generator) genComponentDefinition(w io.Writer, componentName string, co
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
 
-			for _, output := range outputs {
-				g.Fgenf(w, "%scomponentResource.%s = %v\n", g.Indent, Title(output.Name()), output.Value)
+			for i, output := range outputs {
+				// The field is declared as pulumi.AnyOutput, so the concrete output type the expression
+				// produces has to be converted rather than assigned.
+				g.Fgenf(w, "%scomponentResource.%s = pulumi.Any(%.3v)\n", g.Indent, Title(output.Name()), values[i])
 			}
 		}
 		g.Fgenf(w, "%sreturn &componentResource, nil\n", g.Indent)
@@ -896,6 +909,14 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
+		if g.isComponent {
+			switch n.(type) {
+			case *pcl.Resource, *pcl.ReadResource, *pcl.Component:
+				// A child registered inside a component derives its name from the
+				// component's, which the generated code builds with fmt.Sprintf.
+				g.importer.Import("fmt", "fmt")
+			}
+		}
 		switch r := n.(type) {
 		case *pcl.Resource:
 			token, tokenRange := r.GetToken()
@@ -998,11 +1019,6 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 			return n, nil
 		})
 		contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
-
-		if g.isComponent {
-			// needed for resource names
-			g.importer.Import("fmt", "fmt")
-		}
 
 		diags = n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {

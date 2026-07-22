@@ -134,8 +134,7 @@ var expectedFailures = map[string]string{
 	"l3-component-config-objects":        "does not compile; missing necessary casts for pulumi inputs",
 	"l3-component-provider":              "does not compile; missing necessary casts for pulumi inputs and untyped component outputs", //nolint:lll
 	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",   //nolint:lll
-	"l3-component-invoke":                "invokes in a component are not parented to it, so they miss its providers",
-	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
+	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",   //nolint:lll
 
 	"l3-range-list-ref": "fails with syntax errors: undefined: err",
 	"l3-range-map-ref":  "fails with syntax errors: mapResource.K1 undefined (type []*nestedobject.Target has no field or method K1)", //nolint:lll

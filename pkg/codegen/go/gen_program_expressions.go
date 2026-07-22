@@ -523,46 +523,46 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.Fgenf(w, "%.v", expr.Args[1])
 		}
 
-		var optionsBag string
-		var buf bytes.Buffer
-		if len(expr.Args) == 3 {
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
-				g.Fgen(&buf, ", ")
-				for i, item := range invokeOptions.Items {
-					last := i == len(invokeOptions.Items)-1
-					switch pcl.LiteralValueString(item.Key) {
-					case "provider":
-						g.Fgenf(&buf, "pulumi.Provider(%v)", item.Value)
-					case "parent":
-						g.Fgenf(&buf, "pulumi.Parent(%v)", item.Value)
-					case "version":
-						g.Fgenf(&buf, "pulumi.Version(%v)", item.Value)
-					case "pluginDownloadUrl":
-						g.Fgenf(&buf, "pulumi.PluginDownloadURL(%v)", item.Value)
-					case "dependsOn":
-						destType := model.NewListType(resourceType)
-						value, temps := g.lowerExpression(item.Value, destType)
-						contract.Assertf(len(temps) == 0, "can not have temporary variables when converting dependsOn option: %v", temps)
-						if isInputty(value.Type()) {
-							g.Fgenf(&buf, "pulumi.DependsOnInputs(%v)", value)
-						} else {
-							g.Fgenf(&buf, "pulumi.DependsOn(%v)", value)
-						}
+		var options []string
+		if g.isComponent && !pcl.InvokeOptionSet(expr, "parent") {
+			options = append(options, "pulumi.Parent(&componentResource)")
+		}
+		if invokeOptions, ok := pcl.InvokeOptions(expr); ok {
+			for _, item := range invokeOptions.Items {
+				var buf bytes.Buffer
+				switch pcl.LiteralValueString(item.Key) {
+				case "provider":
+					g.Fgenf(&buf, "pulumi.Provider(%v)", item.Value)
+				case "parent":
+					g.Fgenf(&buf, "pulumi.Parent(%v)", item.Value)
+				case "version":
+					g.Fgenf(&buf, "pulumi.Version(%v)", item.Value)
+				case "pluginDownloadUrl":
+					g.Fgenf(&buf, "pulumi.PluginDownloadURL(%v)", item.Value)
+				case "dependsOn":
+					destType := model.NewListType(resourceType)
+					value, temps := g.lowerExpression(item.Value, destType)
+					contract.Assertf(len(temps) == 0, "can not have temporary variables when converting dependsOn option: %v", temps)
+					if isInputty(value.Type()) {
+						g.Fgenf(&buf, "pulumi.DependsOnInputs(%v)", value)
+					} else {
+						g.Fgenf(&buf, "pulumi.DependsOn(%v)", value)
 					}
-
-					if !last {
-						g.Fgen(&buf, ", ")
-					}
+				default:
+					continue
 				}
+				options = append(options, buf.String())
 			}
+		}
+		if len(options) > 0 {
+			g.Fgenf(w, ", %s", strings.Join(options, ", "))
 		} else if !expr.Signature.MultiArgumentInputs {
 			// A multi-argument invoke passes its inputs positionally and takes invokeOptions as a
 			// trailing variadic parameter, so when there are no options nothing is emitted. Other
 			// invokes pass a single options argument positionally, defaulting to nil.
-			g.Fgenf(&buf, ", nil")
+			g.Fgen(w, ", nil")
 		}
-		optionsBag = buf.String()
-		g.Fgenf(w, "%v)", optionsBag)
+		g.Fgen(w, ")")
 	case "max":
 		g.Fgen(w, "max(")
 		for i, arg := range expr.Args {
