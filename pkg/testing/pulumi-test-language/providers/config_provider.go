@@ -32,6 +32,10 @@ type ConfigProvider struct {
 	plugin.UnimplementedProvider
 
 	prefix string
+
+	// name is the "name" configuration this instance was configured with. getConfig echoes it back,
+	// which is how a program can observe which provider instance served an invoke.
+	name string
 }
 
 var _ plugin.Provider = (*ConfigProvider)(nil)
@@ -41,8 +45,11 @@ func (p *ConfigProvider) Close() error {
 }
 
 func (p *ConfigProvider) Configure(
-	context.Context, plugin.ConfigureRequest,
+	_ context.Context, req plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
+	if name, ok := req.Inputs["name"]; ok && name.IsString() {
+		p.name = name.StringValue()
+	}
 	return plugin.ConfigureResponse{}, nil
 }
 
@@ -95,6 +102,24 @@ func (p *ConfigProvider) GetSchema(
 			},
 			InputProperties: providerProperties,
 			RequiredInputs:  []string{"name"},
+		},
+		Functions: map[string]schema.FunctionSpec{
+			// Returns the text given, prefixed with the "name" configuration of the provider that served
+			// the invoke.
+			"config:index:getConfig": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type:       "object",
+					Properties: resourceProperties,
+					Required:   resourceRequired,
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type:       "object",
+						Properties: resourceProperties,
+						Required:   resourceRequired,
+					},
+				},
+			},
 		},
 		Resources: map[string]schema.ResourceSpec{
 			"config:index:Resource": {
@@ -163,6 +188,32 @@ func (p *ConfigProvider) CheckConfig(
 	}
 
 	return plugin.CheckConfigResponse{Properties: req.News}, nil
+}
+
+func (p *ConfigProvider) Invoke(
+	_ context.Context, req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	if req.Tok != "config:index:getConfig" {
+		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
+	}
+
+	text, ok := req.Args["text"]
+	if !ok {
+		return plugin.InvokeResponse{
+			Failures: makeCheckFailure("text", "missing text"),
+		}, nil
+	}
+	if !text.IsString() {
+		return plugin.InvokeResponse{
+			Failures: makeCheckFailure("text", "text is not a string"),
+		}, nil
+	}
+
+	return plugin.InvokeResponse{
+		Properties: resource.PropertyMap{
+			"text": resource.NewProperty(p.name + ": " + text.StringValue()),
+		},
+	}, nil
 }
 
 func (p *ConfigProvider) Check(
