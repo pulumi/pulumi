@@ -17,12 +17,13 @@ package azuresetup
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
 	"slices"
 
-	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
-	"github.com/microsoftgraph/msgraph-sdk-go/applications"
-	"github.com/microsoftgraph/msgraph-sdk-go/models"
-	"github.com/microsoftgraph/msgraph-sdk-go/serviceprincipals"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 )
 
 // GraphClient is a wrapper around the Azure Graph API
@@ -49,186 +50,255 @@ type GraphClient interface {
 	DeleteAppRegistration(ctx context.Context, appObjectID string) error
 }
 
-// graphClientWrapper wraps the real Microsoft Graph SDK to implement our GraphClient interface
-type graphClientWrapper struct {
-	client *msgraphsdk.GraphServiceClient
+// graphBaseURL is the Microsoft Graph v1.0 endpoint.
+const graphBaseURL = "https://graph.microsoft.com/v1.0"
+
+// graphScope is the OAuth scope requested for Microsoft Graph calls; ".default" grants whatever
+// Graph permissions the caller's credential already holds.
+var graphScope = []string{"https://graph.microsoft.com/.default"}
+
+// graphClient talks to Microsoft Graph directly over REST. It replaces the msgraph-sdk-go client,
+// whose generated bindings for the entire Graph API added roughly 150MB to the CLI binary; only a
+// handful of endpoints are needed here.
+type graphClient struct {
+	pipeline runtime.Pipeline
 }
 
-// NewGraphClientWrapper creates a GraphClient from a Microsoft Graph SDK client.
-// This is exported to allow other packages to create GraphClient instances.
-func NewGraphClientWrapper(client *msgraphsdk.GraphServiceClient) GraphClient {
-	return &graphClientWrapper{client: client}
+// NewGraphClient builds a GraphClient backed by direct Microsoft Graph REST calls, authenticated
+// with the given credential (which must be able to issue tokens for the Graph scope).
+func NewGraphClient(cred azcore.TokenCredential) GraphClient {
+	authPolicy := runtime.NewBearerTokenPolicy(cred, graphScope, nil)
+	pl := runtime.NewPipeline("pulumi-cloudsetup-graph", "v1.0",
+		runtime.PipelineOptions{PerRetry: []policy.Policy{authPolicy}}, nil)
+	return &graphClient{pipeline: pl}
 }
 
-func (g *graphClientWrapper) FindAppRegistrationByName(
+// Request/response bodies for the Graph endpoints used below. Only the fields we read or write are
+// modeled; omitempty keeps PATCH/POST bodies to just the properties being set.
+type (
+	graphApp struct {
+		ID             string    `json:"id,omitempty"`
+		AppID          string    `json:"appId,omitempty"`
+		DisplayName    string    `json:"displayName,omitempty"`
+		SignInAudience string    `json:"signInAudience,omitempty"`
+		Notes          *string   `json:"notes,omitempty"`
+		Description    *string   `json:"description,omitempty"`
+		Web            *graphWeb `json:"web,omitempty"`
+	}
+	graphWeb struct {
+		HomePageURL *string `json:"homePageUrl,omitempty"`
+	}
+	graphFedCred struct {
+		ID          string   `json:"id,omitempty"`
+		Name        string   `json:"name,omitempty"`
+		Issuer      string   `json:"issuer,omitempty"`
+		Subject     string   `json:"subject,omitempty"`
+		Description string   `json:"description,omitempty"`
+		Audiences   []string `json:"audiences,omitempty"`
+	}
+	graphServicePrincipal struct {
+		ID          string `json:"id,omitempty"`
+		AppID       string `json:"appId,omitempty"`
+		DisplayName string `json:"displayName,omitempty"`
+	}
+	// graphList is the OData collection envelope Graph wraps list results in.
+	graphList[T any] struct {
+		Value []T `json:"value"`
+	}
+)
+
+// do issues a Graph request, marshaling body when non-nil and verifying the response status. When
+// okCodes is empty, 200 OK is required. The response is returned for the caller to unmarshal.
+func (c *graphClient) do(
+	ctx context.Context, method, path string, query url.Values, body any, okCodes ...int,
+) (*http.Response, error) {
+	req, err := runtime.NewRequest(ctx, method, graphBaseURL+path)
+	if err != nil {
+		return nil, err
+	}
+	if len(query) > 0 {
+		req.Raw().URL.RawQuery = query.Encode()
+	}
+	if body != nil {
+		if err := runtime.MarshalAsJSON(req, body); err != nil {
+			return nil, err
+		}
+	}
+	resp, err := c.pipeline.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if len(okCodes) == 0 {
+		okCodes = []int{http.StatusOK}
+	}
+	if !runtime.HasStatusCode(resp, okCodes...) {
+		return nil, runtime.NewResponseError(resp)
+	}
+	return resp, nil
+}
+
+func (c *graphClient) FindAppRegistrationByName(
 	ctx context.Context, displayName, signInAudience string,
 ) (appObjectID, appClientID string, found bool, err error) {
-	filter := fmt.Sprintf("displayName eq '%s' and signInAudience eq '%s'", displayName, signInAudience)
-	requestConfig := &applications.ApplicationsRequestBuilderGetRequestConfiguration{
-		QueryParameters: &applications.ApplicationsRequestBuilderGetQueryParameters{
-			Filter: &filter,
-		},
-	}
-	existingApps, err := g.client.Applications().Get(ctx, requestConfig)
+	query := url.Values{"$filter": {fmt.Sprintf(
+		"displayName eq '%s' and signInAudience eq '%s'", displayName, signInAudience)}}
+	resp, err := c.do(ctx, http.MethodGet, "/applications", query, nil)
 	if err != nil {
 		return "", "", false, err
 	}
-
-	if len(existingApps.GetValue()) > 0 {
-		existingAppsList := existingApps.GetValue()
-		existingApp := existingAppsList[len(existingAppsList)-1]
-		return *existingApp.GetId(), *existingApp.GetAppId(), true, nil
+	var list graphList[graphApp]
+	if err := runtime.UnmarshalAsJSON(resp, &list); err != nil {
+		return "", "", false, err
 	}
-
+	if len(list.Value) > 0 {
+		app := list.Value[len(list.Value)-1]
+		return app.ID, app.AppID, true, nil
+	}
 	return "", "", false, nil
 }
 
-func (g *graphClientWrapper) GetAppRegistrationByObjectID(
+func (c *graphClient) GetAppRegistrationByObjectID(
 	ctx context.Context, appObjectID string,
 ) (appClientID, displayName string, err error) {
-	app, err := g.client.Applications().ByApplicationId(appObjectID).Get(ctx, nil)
+	resp, err := c.do(ctx, http.MethodGet, "/applications/"+url.PathEscape(appObjectID), nil, nil)
 	if err != nil {
 		return "", "", err
 	}
-	appID := app.GetAppId()
-	if appID == nil {
+	var app graphApp
+	if err := runtime.UnmarshalAsJSON(resp, &app); err != nil {
+		return "", "", err
+	}
+	if app.AppID == "" {
 		return "", "", fmt.Errorf("application %s is missing an app ID", appObjectID)
 	}
-	name := app.GetDisplayName()
-	if name == nil {
+	if app.DisplayName == "" {
 		return "", "", fmt.Errorf("application %s is missing a display name", appObjectID)
 	}
-	return *appID, *name, nil
+	return app.AppID, app.DisplayName, nil
 }
 
-func (g *graphClientWrapper) CreateAppRegistration(
+func (c *graphClient) CreateAppRegistration(
 	ctx context.Context, displayName, signInAudience string,
 ) (appObjectID, appClientID string, err error) {
-	app := models.NewApplication()
-	app.SetDisplayName(&displayName)
-	app.SetSignInAudience(&signInAudience)
-
-	createdApp, err := g.client.Applications().Post(ctx, app, nil)
+	body := graphApp{DisplayName: displayName, SignInAudience: signInAudience}
+	resp, err := c.do(ctx, http.MethodPost, "/applications", nil, body, http.StatusCreated)
 	if err != nil {
 		return "", "", err
 	}
-
-	return *createdApp.GetId(), *createdApp.GetAppId(), nil
+	var app graphApp
+	if err := runtime.UnmarshalAsJSON(resp, &app); err != nil {
+		return "", "", err
+	}
+	return app.ID, app.AppID, nil
 }
 
-func (g *graphClientWrapper) UpdateAppRegistration(
+func (c *graphClient) UpdateAppRegistration(
 	ctx context.Context, appObjectID string, notes, description, homePageURL *string,
 ) error {
-	app := models.NewApplication()
-
-	if notes != nil {
-		app.SetNotes(notes)
-	}
-	if description != nil {
-		app.SetDescription(description)
-	}
+	body := graphApp{Notes: notes, Description: description}
 	if homePageURL != nil {
-		web := models.NewWebApplication()
-		web.SetHomePageUrl(homePageURL)
-		app.SetWeb(web)
+		body.Web = &graphWeb{HomePageURL: homePageURL}
 	}
-
-	_, err := g.client.Applications().ByApplicationId(appObjectID).Patch(ctx, app, nil)
+	_, err := c.do(ctx, http.MethodPatch,
+		"/applications/"+url.PathEscape(appObjectID), nil, body, http.StatusNoContent)
 	return err
 }
 
-func (g *graphClientWrapper) FindFederatedCredential(
+func (c *graphClient) FindFederatedCredential(
 	ctx context.Context, appObjectID, issuer, subject, audience string,
 ) (found bool, err error) {
-	existingFedCreds, err := g.client.Applications().
-		ByApplicationId(appObjectID).FederatedIdentityCredentials().Get(ctx, nil)
+	resp, err := c.do(ctx, http.MethodGet,
+		"/applications/"+url.PathEscape(appObjectID)+"/federatedIdentityCredentials", nil, nil)
 	if err != nil {
 		return false, err
 	}
-
-	if existingFedCreds != nil && existingFedCreds.GetValue() != nil {
-		for _, existing := range existingFedCreds.GetValue() {
-			if existing.GetIssuer() != nil && *existing.GetIssuer() == issuer &&
-				existing.GetSubject() != nil && *existing.GetSubject() == subject &&
-				slices.Contains(existing.GetAudiences(), audience) {
-				return true, nil
-			}
+	var list graphList[graphFedCred]
+	if err := runtime.UnmarshalAsJSON(resp, &list); err != nil {
+		return false, err
+	}
+	for _, fc := range list.Value {
+		if fc.Issuer == issuer && fc.Subject == subject && slices.Contains(fc.Audiences, audience) {
+			return true, nil
 		}
 	}
-
 	return false, nil
 }
 
-func (g *graphClientWrapper) CreateFederatedCredential(
+func (c *graphClient) CreateFederatedCredential(
 	ctx context.Context, appObjectID, name, issuer, subject, audience, description string,
 ) (credentialID string, err error) {
-	fedCred := models.NewFederatedIdentityCredential()
-	fedCred.SetName(&name)
-	fedCred.SetIssuer(&issuer)
-	fedCred.SetSubject(&subject)
-	fedCred.SetDescription(&description)
-	fedCred.SetAudiences([]string{audience})
-
-	createdFedCred, err := g.client.Applications().
-		ByApplicationId(appObjectID).FederatedIdentityCredentials().Post(ctx, fedCred, nil)
+	body := graphFedCred{
+		Name:        name,
+		Issuer:      issuer,
+		Subject:     subject,
+		Description: description,
+		Audiences:   []string{audience},
+	}
+	resp, err := c.do(ctx, http.MethodPost,
+		"/applications/"+url.PathEscape(appObjectID)+"/federatedIdentityCredentials",
+		nil, body, http.StatusCreated)
 	if err != nil {
 		return "", err
 	}
-
-	return *createdFedCred.GetId(), nil
+	var fc graphFedCred
+	if err := runtime.UnmarshalAsJSON(resp, &fc); err != nil {
+		return "", err
+	}
+	return fc.ID, nil
 }
 
-func (g *graphClientWrapper) FindServicePrincipalByAppID(
+func (c *graphClient) FindServicePrincipalByAppID(
 	ctx context.Context, appClientID string,
 ) (principalID string, found bool, err error) {
-	filter := fmt.Sprintf("appId eq '%s'", appClientID)
-	requestConfig := &serviceprincipals.ServicePrincipalsRequestBuilderGetRequestConfiguration{
-		QueryParameters: &serviceprincipals.ServicePrincipalsRequestBuilderGetQueryParameters{
-			Filter: &filter,
-		},
-	}
-
-	existingPrincipals, err := g.client.ServicePrincipals().Get(ctx, requestConfig)
+	query := url.Values{"$filter": {fmt.Sprintf("appId eq '%s'", appClientID)}}
+	resp, err := c.do(ctx, http.MethodGet, "/servicePrincipals", query, nil)
 	if err != nil {
 		return "", false, err
 	}
-
-	if existingPrincipals != nil && len(existingPrincipals.GetValue()) > 0 {
-		existing := existingPrincipals.GetValue()[0]
-		return *existing.GetId(), true, nil
+	var list graphList[graphServicePrincipal]
+	if err := runtime.UnmarshalAsJSON(resp, &list); err != nil {
+		return "", false, err
 	}
-
+	if len(list.Value) > 0 {
+		return list.Value[0].ID, true, nil
+	}
 	return "", false, nil
 }
 
-func (g *graphClientWrapper) GetServicePrincipalByID(
+func (c *graphClient) GetServicePrincipalByID(
 	ctx context.Context, principalID string,
 ) (appClientID string, err error) {
-	servicePrincipal, err := g.client.ServicePrincipals().ByServicePrincipalId(principalID).Get(ctx, nil)
+	resp, err := c.do(ctx, http.MethodGet, "/servicePrincipals/"+url.PathEscape(principalID), nil, nil)
 	if err != nil {
 		return "", err
 	}
-	appID := servicePrincipal.GetAppId()
-	if appID == nil {
+	var sp graphServicePrincipal
+	if err := runtime.UnmarshalAsJSON(resp, &sp); err != nil {
+		return "", err
+	}
+	if sp.AppID == "" {
 		return "", fmt.Errorf("service principal %s is missing an app ID", principalID)
 	}
-	return *appID, nil
+	return sp.AppID, nil
 }
 
-func (g *graphClientWrapper) CreateServicePrincipal(
+func (c *graphClient) CreateServicePrincipal(
 	ctx context.Context, appClientID string,
 ) (principalID, displayName string, err error) {
-	servicePrincipal := models.NewServicePrincipal()
-	servicePrincipal.SetAppId(&appClientID)
-
-	createdServicePrincipal, err := g.client.ServicePrincipals().Post(ctx, servicePrincipal, nil)
+	body := graphServicePrincipal{AppID: appClientID}
+	resp, err := c.do(ctx, http.MethodPost, "/servicePrincipals", nil, body, http.StatusCreated)
 	if err != nil {
 		return "", "", err
 	}
-
-	return *createdServicePrincipal.GetId(), *createdServicePrincipal.GetDisplayName(), nil
+	var sp graphServicePrincipal
+	if err := runtime.UnmarshalAsJSON(resp, &sp); err != nil {
+		return "", "", err
+	}
+	return sp.ID, sp.DisplayName, nil
 }
 
-func (g *graphClientWrapper) DeleteAppRegistration(ctx context.Context, appObjectID string) error {
-	return g.client.Applications().ByApplicationId(appObjectID).Delete(ctx, nil)
+func (c *graphClient) DeleteAppRegistration(ctx context.Context, appObjectID string) error {
+	_, err := c.do(ctx, http.MethodDelete,
+		"/applications/"+url.PathEscape(appObjectID), nil, nil, http.StatusNoContent)
+	return err
 }

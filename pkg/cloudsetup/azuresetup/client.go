@@ -27,7 +27,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization/v3"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
-	msgraphsdk "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/pgavlin/fx/v2"
 
 	"github.com/google/uuid"
@@ -149,10 +148,7 @@ func newClient(
 		maxRetryAttempts:       6,
 	}
 
-	graphClient, err := msgraphsdk.NewGraphServiceClientWithCredentials(graphCred, []string{})
-	if err == nil {
-		client.graphClient = NewGraphClientWrapper(graphClient)
-	}
+	client.graphClient = NewGraphClient(graphCred)
 
 	subClient, err := armsubscriptions.NewClient(armCred, nil)
 	if err == nil {
