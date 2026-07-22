@@ -407,3 +407,47 @@ func TestWorkspaceVolumeIntegration(t *testing.T) {
 	require.Equal(t, 0, code, "could not read seeded file from volume; logs:\n%s", logs)
 	assert.Contains(t, logs, "3.", "expected an alpine version string from the seeded /etc/alpine-release")
 }
+
+// remapPullEndpoint is the docker address layer: it redirects a pull to a
+// configured endpoint for the ref's registry host while leaving the identity ref
+// (the name the image is tagged and run under) untouched. A host with no endpoint,
+// an org-only leading segment, or an empty map all pass through unchanged.
+func TestRemapPullEndpoint(t *testing.T) {
+	t.Parallel()
+	endpoints := map[string]string{
+		"pulumi.registry.internal":  "localhost:5064",
+		"private.registry.internal": "localhost:5065",
+	}
+	cases := []struct {
+		ref      string
+		wantPull string
+		wantMap  bool
+	}{
+		// A configured identity host redirects to its endpoint; the repo/tag is kept.
+		{
+			"pulumi.registry.internal/pulumi/pulumi-provider-random:v4.21.0",
+			"localhost:5064/pulumi/pulumi-provider-random:v4.21.0", true,
+		},
+		{
+			"private.registry.internal/pulumi/pulumi-provider-random:v4.21.0",
+			"localhost:5065/pulumi/pulumi-provider-random:v4.21.0", true,
+		},
+		// An unconfigured host (a real registry) passes through — production pulls direct.
+		{
+			"ghcr.io/acme/pulumi-provider-greeting:v0.1.0",
+			"ghcr.io/acme/pulumi-provider-greeting:v0.1.0", false,
+		},
+		// A leading org segment is not a host (no "."/":"/localhost), so no remap.
+		{"pulumi/pulumi-provider-random:v4.21.0", "pulumi/pulumi-provider-random:v4.21.0", false},
+	}
+	for _, c := range cases {
+		got, remapped := remapPullEndpoint(c.ref, endpoints)
+		assert.Equal(t, c.wantMap, remapped, "remap flag for %s", c.ref)
+		assert.Equal(t, c.wantPull, got, "pull ref for %s", c.ref)
+	}
+
+	// An empty map never remaps.
+	got, remapped := remapPullEndpoint("pulumi.registry.internal/pulumi/pulumi-provider-random:v4.21.0", nil)
+	assert.False(t, remapped)
+	assert.Equal(t, "pulumi.registry.internal/pulumi/pulumi-provider-random:v4.21.0", got)
+}

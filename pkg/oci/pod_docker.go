@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"runtime"
 	"sort"
@@ -384,8 +385,70 @@ func (m *dockerPodManager) ImageExists(ctx context.Context, ref string) (bool, e
 }
 
 func (m *dockerPodManager) PullImage(ctx context.Context, ref string) error {
+	// The docker analog of containerd's hosts.toml: a per-source address map that
+	// redirects where an image is PULLED from without touching its identity. It
+	// exists because the docker daemon resolves and pulls a ref itself (it only
+	// auto-trusts loopback as insecure and does not read an injectable per-registry
+	// endpoint config), so a made-up identity host can't be reached the way CRI
+	// reaches one. When the ref's host has a configured endpoint we pull from there
+	// and tag the result back to the identity ref, so the image runs under its real
+	// name — identity is never rewritten. Unset in production, where refs name real
+	// registries the daemon reaches directly.
+	if pullRef, remapped := remapPullEndpoint(ref, registryEndpoints()); remapped {
+		if _, err := m.docker(ctx, "pull", pullRef); err != nil {
+			return err
+		}
+		_, err := m.docker(ctx, "tag", pullRef, ref)
+		return err
+	}
 	_, err := m.docker(ctx, "pull", ref)
 	return err
+}
+
+// registryEndpoints parses PULUMI_POD_REGISTRY_ENDPOINTS — a comma-separated
+// "<identity-host>=<address-endpoint>" map (e.g.
+// "pulumi.registry.internal=localhost:5064,private.registry.internal=localhost:5065").
+// It is the dev-bootstrap address layer for docker; nil when unset.
+func registryEndpoints() map[string]string {
+	raw := os.Getenv("PULUMI_POD_REGISTRY_ENDPOINTS")
+	if raw == "" {
+		return nil
+	}
+	m := map[string]string{}
+	for _, pair := range strings.Split(raw, ",") {
+		if k, v, ok := strings.Cut(pair, "="); ok {
+			k, v = strings.TrimSpace(k), strings.TrimSpace(v)
+			if k != "" && v != "" {
+				m[k] = v
+			}
+		}
+	}
+	return m
+}
+
+// remapPullEndpoint redirects a pull to a configured endpoint for the ref's
+// registry host, returning the ref to pull from and whether a remap applied. The
+// image should be tagged back to the original (identity) ref afterwards. When the
+// host has no configured endpoint the ref is returned unchanged.
+func remapPullEndpoint(ref string, endpoints map[string]string) (pullRef string, remapped bool) {
+	if len(endpoints) == 0 {
+		return ref, false
+	}
+	i := strings.IndexByte(ref, '/')
+	if i < 0 {
+		return ref, false
+	}
+	host := ref[:i]
+	// A leading segment is a registry host by docker's heuristic: it contains "."
+	// or ":" or is "localhost". Otherwise it is an org (identity carries no host).
+	if !strings.ContainsAny(host, ".:") && host != "localhost" {
+		return ref, false
+	}
+	endpoint, ok := endpoints[host]
+	if !ok {
+		return ref, false
+	}
+	return endpoint + ref[i:], true
 }
 
 // ImportImage loads the OCI image layout at layoutPath into the docker daemon and
