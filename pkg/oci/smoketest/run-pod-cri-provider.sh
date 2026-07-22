@@ -1,18 +1,28 @@
 #!/usr/bin/env bash
 #
-# CRI provider smoke test. Extends the CRI pod-up smoke (run-pod-cri.sh) with a
-# real resource provider: the engine starts the random provider as a sibling CRI
-# container in the same sandbox, the program creates a RandomPet through it, and
-# the test asserts the output. This proves the full provider boot path through
-# the CRI pod manager: image pull/existence check, RunContainer for the provider,
+# CRI provider smoke test — and the ADDRESS-LAYER consume proof. The engine starts
+# the random provider as a sibling CRI container, the program creates a RandomPet
+# through it, and the test asserts the output. This proves the full provider boot
+# path through the CRI pod manager: image pull, RunContainer for the provider,
 # scrapeServingPort from CRI logs, NewProviderAttached over loopback, and the
 # workspace volume mount shared between program and provider.
+#
+# What makes this the address-layer proof: `random` is an UNPINNED first-party
+# provider, so the engine resolves it under the baked constant public source
+# (oci.DefaultPublicRegistry = pulumi.registry.internal) — a stable, made-up
+# hostname that is pure IDENTITY. There is no registry knob and no pre-loaded
+# image. The provider image is PULLED: containerd maps the identity hostname to the
+# proxy's real endpoint (http://10.88.0.1:5000) through a certs.d hosts.toml — the
+# address layer — and the proxy synthesizes the image from the released binary. So
+# identity (the ref's host) and location (the hosts.toml endpoint) are decoupled,
+# exactly as production DNS/mirror config would do, with nothing rewritten.
 #
 # The `random` provider is stateless — it runs from its own image, not the
 # program image — so it avoids CopyFromImage (the binary-injection path used by
 # `command`). That path is still stubbed and is a separate test.
 #
-# Prerequisites: same as run-pod-cri.sh (docker, crienv, Go toolchain).
+# Prerequisites: same as run-pod-cri.sh (docker, crienv, Go toolchain), and crienv
+# must have outbound access to get.pulumi.com (the proxy synthesizes from it).
 set -euo pipefail
 
 SMOKE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -29,7 +39,16 @@ ENGINE_IMAGE="pulumi-cli-oci:latest"
 PROGRAM_IMAGE="oci-smoke-random:latest"
 PROVIDER_PKG="random"
 PROVIDER_VERSION="4.21.0"
-PROVIDER_IMAGE="pulumi/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
+# The address layer under test. An unpinned provider resolves under the baked
+# constant public source (a stable hostname = pure identity); containerd maps that
+# identity to the proxy's real endpoint via a certs.d hosts.toml, so the engine
+# pulls the synthesized image over the address layer with nothing pre-loaded.
+PUBLIC_HOSTNAME="pulumi.registry.internal" # = oci.DefaultPublicRegistry
+REG_HOST="10.88.0.1"                       # the cri0 gateway (reachable both-netns)
+PUBLIC_ENDPOINT="http://$REG_HOST:5000"    # where the proxy public port actually lives
+CERTS_D=/etc/containerd/certs.d
+# The ref the engine computes for random, and the image containerd must pull.
+PROVIDER_REF="$PUBLIC_HOSTNAME/pulumi/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
 POD_ID="cri-prov-$$"
 LOGDIR="/var/log/pods/$POD_ID"
 VOLDIR="/var/lib/pulumi-pod/$POD_ID/volumes"
@@ -37,7 +56,7 @@ STACK="dev"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
-mkdir -p "$WORK/cli" "$WORK/provctx" "$WORK/state" "$WORK/project"
+mkdir -p "$WORK/cli" "$WORK/state" "$WORK/project"
 
 cleanup() {
   echo "== cleanup =="
@@ -46,6 +65,9 @@ cleanup() {
     docker exec "$CRIENV" crictl rmp -f "$SB" >/dev/null 2>&1 || true
     echo "   reaped sandbox $SB"
   fi
+  docker exec "$CRIENV" pkill -f 'registry-proxy' >/dev/null 2>&1 || true
+  docker exec "$CRIENV" rm -rf "$CERTS_D/$PUBLIC_HOSTNAME" >/dev/null 2>&1 || true
+  docker exec "$CRIENV" crictl rmi "$PROVIDER_REF" >/dev/null 2>&1 || true
   rm -f "$SMOKE_DIR/program-linux"
   rm -rf "$WORK"
 }
@@ -70,21 +92,46 @@ echo "==> building program image $PROGRAM_IMAGE"
 docker buildx build --builder "$BUILDER" --load \
   -t "$PROGRAM_IMAGE" -f "$SMOKE_DIR/Dockerfile" "$SMOKE_DIR"
 
-echo "==> downloading stock $PROVIDER_PKG provider v$PROVIDER_VERSION (linux/$GOARCH)"
-PROVIDER_URL="https://get.pulumi.com/releases/plugins/pulumi-resource-$PROVIDER_PKG-v$PROVIDER_VERSION-linux-$GOARCH.tar.gz"
-curl -fsSL "$PROVIDER_URL" -o "$WORK/provider.tar.gz"
-tar -xzf "$WORK/provider.tar.gz" -C "$WORK/provctx" "pulumi-resource-$PROVIDER_PKG"
-mv "$WORK/provctx/pulumi-resource-$PROVIDER_PKG" "$WORK/provctx/provider-bin"
+# The provider image is NOT built or pre-loaded — that is the point. It is pulled
+# through the address layer (the registry-proxy synthesizes it on demand).
 
-echo "==> building provider image $PROVIDER_IMAGE"
-docker buildx build --builder "$BUILDER" --load \
-  -t "$PROVIDER_IMAGE" -f "$SMOKE_DIR/Dockerfile.provider" "$WORK/provctx"
-
-# ── load all three images into crienv's k8s.io store ───────────────────────
-for img in "$ENGINE_IMAGE" "$PROGRAM_IMAGE" "$PROVIDER_IMAGE"; do
+# ── load engine + program images into crienv's k8s.io store ────────────────
+for img in "$ENGINE_IMAGE" "$PROGRAM_IMAGE"; do
   echo "==> loading $img into crienv k8s.io store"
   docker save "$img" | docker exec -i "$CRIENV" ctr -n k8s.io images import -
 done
+
+# ── start the registry-proxy (public port) inside crienv ────────────────────
+# The public port synthesizes first-party pulumi/pulumi-provider-* on demand from
+# get.pulumi.com. It binds the cri0 gateway so containerd (crienv host netns) reaches
+# it. The binary was cross-compiled by build_engine_image.
+echo "==> starting registry-proxy (public :5000) in crienv"
+docker cp "$WORK/cli/registry-proxy-linux" "$CRIENV:/usr/local/bin/registry-proxy"
+docker exec "$CRIENV" pkill -f 'registry-proxy|plainregistry' 2>/dev/null || true
+sleep 1
+docker exec -d "$CRIENV" sh -c 'PROXY_ADDR=:5000 /usr/local/bin/registry-proxy >/tmp/proxy.log 2>&1'
+for _ in $(seq 1 15); do
+  docker exec "$CRIENV" sh -c 'curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1' && break; sleep 1
+done
+docker exec "$CRIENV" sh -c 'curl -sf http://127.0.0.1:5000/v2/ >/dev/null 2>&1' || {
+  echo "!! registry-proxy did not come up on :5000"; docker exec "$CRIENV" cat /tmp/proxy.log; exit 1; }
+echo "   registry-proxy up on $PUBLIC_ENDPOINT"
+
+# ── the address layer: map the identity hostname to the proxy endpoint ──────
+# certs.d/<identity-host>/hosts.toml. The directory names the IDENTITY host the ref
+# carries (pulumi.registry.internal); the [host."..."] entry is the real ADDRESS
+# (10.88.0.1:5000, plain-http). containerd dials the endpoint and never DNS-resolves
+# the identity — the decoupling the whole design rests on. Hot-reloads (config_path
+# is /etc/containerd/certs.d).
+echo "==> writing hosts.toml: $PUBLIC_HOSTNAME -> $PUBLIC_ENDPOINT"
+docker exec "$CRIENV" sh -c "mkdir -p '$CERTS_D/$PUBLIC_HOSTNAME' && cat > '$CERTS_D/$PUBLIC_HOSTNAME/hosts.toml' <<TOML
+server = \"https://$PUBLIC_HOSTNAME\"
+[host.\"$PUBLIC_ENDPOINT\"]
+  capabilities = [\"pull\", \"resolve\"]
+TOML"
+
+# Remove any image from a prior run so the pull must happen fresh.
+docker exec "$CRIENV" crictl rmi "$PROVIDER_REF" >/dev/null 2>&1 || true
 
 # ── reap any stale sandbox ─────────────────────────────────────────────────
 for p in $(docker exec "$CRIENV" crictl pods --name "$POD_ID" -q 2>/dev/null); do
@@ -216,10 +263,29 @@ if ! grep -q 'oci: provider random running as container' "$WORK/engine.log"; the
   exit 1
 fi
 
+# The address-layer proof: random was PULLED (not pre-loaded) under the stable
+# identity hostname, which containerd resolved to the proxy endpoint via hosts.toml.
+if ! grep -q "oci: installed plugin $PROVIDER_REF by pulling its image" "$WORK/engine.log"; then
+  echo "!! random was not pulled under $PROVIDER_REF — the address layer did not route the pull"
+  grep -n "oci: .*plugin" "$WORK/engine.log" || true
+  exit 1
+fi
+echo "    address layer: random pulled as $PROVIDER_REF (identity) via $PUBLIC_ENDPOINT (address)"
+
+# Corroborate at the other end: the pull actually reached the proxy, which synthesized
+# the image — so the hosts.toml endpoint mapping was exercised, not a lucky store hit.
+docker exec "$CRIENV" cat /tmp/proxy.log >"$WORK/proxy.log" 2>&1 || true
+if ! grep -q "synthesizing pulumi/pulumi-provider-$PROVIDER_PKG" "$WORK/proxy.log"; then
+  echo "!! the proxy did not synthesize random — the pull did not traverse the address layer"
+  cat "$WORK/proxy.log" || true
+  exit 1
+fi
+echo "    proxy synthesized pulumi/pulumi-provider-$PROVIDER_PKG on demand — the endpoint was reached"
+
 PET="$(sed -n 's/.*SMOKE petName=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1)"
 if [ -z "$PET" ]; then
   echo "!! no petName output — the provider did not create the resource"
   exit 1
 fi
 echo "    petName = $PET"
-echo "==> CRI provider smoke test PASS"
+echo "==> CRI provider smoke test PASS — provider consumed through the address layer"

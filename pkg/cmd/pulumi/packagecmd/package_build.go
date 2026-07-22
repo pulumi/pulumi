@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/oci"
@@ -40,6 +41,12 @@ import (
 // package describing its own build. A future change makes the language host's
 // InstallDependencies a *caller* of this for local components.
 func newPackageBuildCmd() *cobra.Command {
+	// registry is the source the built image is tagged under — a location, not
+	// identity. It defaults to the public convention host (so a local iteration build
+	// lands where the container host resolves an unpinned package), and is set
+	// explicitly when building a package destined for a private source (the same host
+	// it will be published to and pulled from).
+	var registry string
 	cmd := &cobra.Command{
 		Use:   "build [dir]",
 		Short: "Build a local package's source into a plugin image",
@@ -81,11 +88,15 @@ into the local container store under the convention ref, which is printed to std
 			}
 
 			// The same build-from-manifest logic the language host uses for local
-			// components, so a package builds identically however it is reached. A
-			// locally built package is tagged under the public source's convention
-			// host — the same ref the container host resolves an unpinned package to —
-			// so the build and the run agree with no registry configured.
-			ref, err := oci.BuildPackage(cmd.Context(), dir, oci.DefaultPublicRegistry, cmd.ErrOrStderr())
+			// components, so a package builds identically however it is reached. The
+			// destination host defaults to the public convention source (so a local
+			// iteration build lands where the container host resolves an unpinned
+			// package) and is overridable for a build destined for a private source.
+			host := oci.DefaultPublicRegistry
+			if registry != "" {
+				host = strings.TrimPrefix(registry, "oci://")
+			}
+			ref, err := oci.BuildPackage(cmd.Context(), dir, host, cmd.ErrOrStderr())
 			if err != nil {
 				return err
 			}
@@ -96,6 +107,13 @@ into the local container store under the convention ref, which is printed to std
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVar(
+		&registry, "registry", "",
+		"Tag the built image under this OCI source host (oci://<host>) instead of the "+
+			"default public convention host. Set it to build a package destined for a "+
+			"private source — the same host it will be published to and pulled from. This "+
+			"applies a location, not identity; the build leaves the image local, publish moves it.")
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{{Name: "dir", Usage: "[dir]"}},

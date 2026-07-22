@@ -154,7 +154,7 @@ docker exec "$CRIENV" sh -c "cat > $PROJ_HOST/engine-run.sh <<'SCRIPT'
 set -e
 export PULUMI_POD_ENGINE_CONTAINER_ID=\"\$(cat /pod-meta/engine-id)\"
 echo \"engine container id: \$PULUMI_POD_ENGINE_CONTAINER_ID\"
-pulumi package build package-kaniko
+pulumi package build package-kaniko --registry oci://$PRIVATE_ADDR
 SCRIPT
 chmod +x $PROJ_HOST/engine-run.sh"
 
@@ -173,8 +173,7 @@ docker exec "$CRIENV" sh -c "cat > /tmp/$POD_ID-engine.json <<JSON
     { \"key\": \"PULUMI_POD_LOG_DIR\",        \"value\": \"$LOGDIR\" },
     { \"key\": \"PULUMI_POD_ID\",             \"value\": \"$POD_ID\" },
     { \"key\": \"PULUMI_POD_VOLUME_DIR\",     \"value\": \"$VOLDIR\" },
-    { \"key\": \"PULUMI_POD_BUILD_DIR\",      \"value\": \"/pulumi-build\" },
-    { \"key\": \"PULUMI_POD_PLUGIN_REGISTRY\", \"value\": \"$PRIVATE_ADDR\" }
+    { \"key\": \"PULUMI_POD_BUILD_DIR\",      \"value\": \"/pulumi-build\" }
   ],
   \"mounts\": [
     { \"host_path\": \"/run/containerd/containerd.sock\", \"container_path\": \"/run/containerd/containerd.sock\" },
