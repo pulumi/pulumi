@@ -285,8 +285,13 @@ func New(ctx context.Context, d diag.Sink,
 
 	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
 	apiClient.WithRefresh(account.RefreshToken, func(at string, expiresAt time.Time, rt string) error {
+		prev := account.AccessToken
 		account.SetCredentials(at, expiresAt, rt)
-		return account.Save(cloudURL, false)
+		if err := account.Save(cloudURL, false); err != nil {
+			return err
+		}
+		cleanupAgentClaimIfSubjectChanged(prev, at, cloudURL)
+		return nil
 	})
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
@@ -556,7 +561,9 @@ func validateStoredAccount(
 		fetchedUser, fetchedOrgs, fetchedTokenInfo, err := getAccountDetails(
 			ctx, cloudURL, insecure, account.AccessToken, account.RefreshToken,
 			func(at string, expiresAt time.Time, rt string) error {
+				prev := account.AccessToken
 				account.SetCredentials(at, expiresAt, rt)
+				cleanupAgentClaimIfSubjectChanged(prev, at, cloudURL)
 				return nil
 			},
 		)
@@ -2656,6 +2663,39 @@ func isExpectedTokenFormat(token string) bool {
 		return true
 	}
 	return false
+}
+
+// cleanupAgentClaimIfSubjectChanged removes the cached agent-claim file when an access-token
+// refresh returns an OBO whose subject differs from the previous one. The subject is the bound
+// user — when it changes, the agent's refresh token has been repointed onto a different identity
+// (the post-signup claim flow). Without this cleanup, MaybePrintClaimWarning keeps surfacing the
+// stale claim URL on every subsequent command.
+//
+// Best-effort: a failure here is logged but doesn't fail the refresh, since the access token is
+// already minted and persisted by the time we get here.
+func cleanupAgentClaimIfSubjectChanged(prevAccessToken, newAccessToken, cloudURL string) {
+	prevSub := jwtSubject(prevAccessToken)
+	newSub := jwtSubject(newAccessToken)
+	if prevSub == "" || newSub == "" || prevSub == newSub {
+		return
+	}
+	if err := workspace.DeleteAgentClaim(cloudURL); err != nil {
+		logging.V(7).Infof("Could not clean up agent-claim file for %q after subject change: %v", cloudURL, err)
+	}
+}
+
+// jwtSubject returns the sub claim of a JWT without verifying its signature. Returns "" when the
+// input is empty, not a parseable JWT, or carries no sub claim.
+func jwtSubject(token string) string {
+	if token == "" {
+		return ""
+	}
+	claims := jwt.MapClaims{}
+	if _, _, err := jwt.NewParser().ParseUnverified(token, claims); err != nil {
+		return ""
+	}
+	sub, _ := claims["sub"].(string)
+	return sub
 }
 
 // getAccountDetails makes a request to get the authenticated user. If it returns a successful response,

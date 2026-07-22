@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -60,6 +61,17 @@ import (
 //
 //nolint:lll // JWT token is long
 const testJWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+// unsignedJWTWithSub builds a parseable-but-unsigned JWT carrying the given subject and a unique
+// jti. The jti keeps successive tokens distinguishable on the wire even when the subject hasn't
+// changed — that's the real-world shape (two OBOs minted minutes apart never byte-match).
+func unsignedJWTWithSub(t *testing.T, sub, jti string) string {
+	t.Helper()
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none","typ":"JWT"}`))
+	payload, err := json.Marshal(map[string]string{"sub": sub, "jti": jti})
+	require.NoError(t, err)
+	return header + "." + base64.RawURLEncoding.EncodeToString(payload) + "."
+}
 
 //nolint:paralleltest // mutates global configuration
 func TestEnabledFullyQualifiedStackNames(t *testing.T) {
@@ -557,6 +569,162 @@ func TestCurrentRefreshesLocallyExpiredAccessTokenWhenRefreshTokenStored(t *test
 			"without this the next cold-start can't take the local-expiry refresh path")
 	assert.True(t, saved.TokenInformation.ExpiresAt.After(time.Now()),
 		"the new ExpiresAt must be in the future (roughly now + ExpiresIn)")
+}
+
+//nolint:paralleltest // mutates env vars and shared temporary agent credentials
+func TestCurrentRemovesAgentClaimWhenRefreshedAccessTokenRepointsSubject(t *testing.T) {
+	// Post-claim flow: the agent's stored OBO carries sub=<agent>; the claim repoints the refresh
+	// token onto the human, so the next refresh response carries sub=<human>. The cached agent-
+	// claim file is now stale — without cleanup, MaybePrintClaimWarning keeps surfacing the old
+	// claim URL on every command.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, "")
+
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	staleAccessToken := unsignedJWTWithSub(t, "urn:pulumi:user:agent-c3d44c15", "jti-stale")
+	freshAccessToken := unsignedJWTWithSub(t, "urn:pulumi:user:human-3f9a8b21", "jti-fresh")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/oauth/token":
+			err := json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken:  freshAccessToken,
+				TokenType:    "Bearer",
+				ExpiresIn:    3600,
+				RefreshToken: "stored-refresh-token",
+			})
+			require.NoError(t, err)
+		case "/api/user":
+			switch req.Header.Get("Authorization") {
+			case "token " + staleAccessToken:
+				rw.WriteHeader(http.StatusUnauthorized)
+				err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+				require.NoError(t, err)
+			case "token " + freshAccessToken:
+				err := json.NewEncoder(rw).Encode(map[string]any{
+					"githubLogin":   "alice",
+					"organizations": []map[string]string{},
+				})
+				require.NoError(t, err)
+			default:
+				t.Errorf("unexpected Authorization header: %q", req.Header.Get("Authorization"))
+				rw.WriteHeader(http.StatusUnauthorized)
+			}
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken:  staleAccessToken,
+		RefreshToken: "stored-refresh-token",
+	}, true))
+	require.NoError(t, workspace.StoreAgentClaim(workspace.AgentClaim{
+		CloudURL:   server.URL,
+		ClaimURL:   "https://app.example.com/claim/abc123",
+		ValidUntil: time.Now().Add(24 * time.Hour),
+	}))
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, freshAccessToken, account.AccessToken)
+
+	claim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	assert.Empty(t, claim.ClaimURL,
+		"agent-claim file must be removed when the refreshed OBO subject differs from the previous one")
+}
+
+//nolint:paralleltest // mutates env vars and shared temporary agent credentials
+func TestCurrentKeepsAgentClaimWhenRefreshedAccessTokenSubjectUnchanged(t *testing.T) {
+	// Refresh ahead of a claim: pre-claim refreshes return the same agent subject. The agent-claim
+	// file must survive these — premature deletion would lose the only record of the claim URL the
+	// CLI was instructed to surface.
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, "")
+
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	staleAccessToken := unsignedJWTWithSub(t, "urn:pulumi:user:agent-c3d44c15", "jti-stale")
+	freshAccessToken := unsignedJWTWithSub(t, "urn:pulumi:user:agent-c3d44c15", "jti-fresh")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/oauth/token":
+			err := json.NewEncoder(rw).Encode(apitype.TokenExchangeGrantResponse{
+				AccessToken:  freshAccessToken,
+				TokenType:    "Bearer",
+				ExpiresIn:    3600,
+				RefreshToken: "stored-refresh-token",
+			})
+			require.NoError(t, err)
+		case "/api/user":
+			switch req.Header.Get("Authorization") {
+			case "token " + staleAccessToken:
+				rw.WriteHeader(http.StatusUnauthorized)
+				err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{Code: 401, Message: "Unauthorized"})
+				require.NoError(t, err)
+			case "token " + freshAccessToken:
+				err := json.NewEncoder(rw).Encode(map[string]any{
+					"githubLogin":   "agent-display",
+					"organizations": []map[string]string{},
+				})
+				require.NoError(t, err)
+			default:
+				t.Errorf("unexpected Authorization header: %q", req.Header.Get("Authorization"))
+				rw.WriteHeader(http.StatusUnauthorized)
+			}
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	claimURL := "https://app.example.com/claim/keep-me"
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken:  staleAccessToken,
+		RefreshToken: "stored-refresh-token",
+	}, true))
+	require.NoError(t, workspace.StoreAgentClaim(workspace.AgentClaim{
+		CloudURL:   server.URL,
+		ClaimURL:   claimURL,
+		ValidUntil: time.Now().Add(24 * time.Hour),
+	}))
+
+	_, err = NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+
+	claim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	assert.Equal(t, claimURL, claim.ClaimURL,
+		"agent-claim file must be preserved when the refresh keeps the same subject (no claim event)")
 }
 
 //nolint:paralleltest // mutates env vars and shared temporary agent credentials

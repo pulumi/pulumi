@@ -1,0 +1,6 @@
+component: cli/auth
+kind: fix
+body: Auto-refresh now installs for agents that set `PULUMI_HOME` or `PULUMI_CREDENTIALS_PATH` for state isolation; previously the refresh wrapper silently did not install and mid-session token expiry surfaced as a "login required" error
+time: 2026-06-15T00:00:00+00:00
+custom:
+  PR: ""
