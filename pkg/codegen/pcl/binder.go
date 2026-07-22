@@ -500,6 +500,14 @@ func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption)
 		diagnostics = append(diagnostics, fileDiags...)
 	}
 
+	// Declare package blocks once every program node has been declared, so that
+	// a node owning the same name keeps it. A resource or invoke may reference
+	// what remains as its provider option, which resolves its token against
+	// that package (see resolveSchemaResourceForBind).
+	for _, f := range files {
+		b.declarePackageVariables(f)
+	}
+
 	// Now bind the nodes.
 	for _, n := range b.nodes {
 		diagnostics = append(diagnostics, b.bindNode(ctx, n)...)
@@ -661,6 +669,44 @@ func makeObjectPropertiesOptional(objectType *model.ObjectType) *model.ObjectTyp
 	}
 
 	return objectType
+}
+
+// declarePackageVariables defines a scope entry for each of the file's package
+// blocks, under the name of the package it declares, and records the package as
+// referenced by the program. A name already claimed by a program node is left
+// alone: package variables are scope definitions only, not program nodes.
+func (b *binder) declarePackageVariables(file *syntax.File) {
+	for _, item := range model.SourceOrderBody(file.Body) {
+		block, ok := item.(*hclsyntax.Block)
+		if !ok || block.Type != "package" {
+			continue
+		}
+		// Diagnostics for invalid package blocks are reported when the binder
+		// reads the program's package descriptors.
+		descriptor, name, _ := readPackageBlock(block)
+		if descriptor == nil {
+			continue
+		}
+		// Declaring a package is what makes the program depend on it. A resource
+		// or invoke that redirects to it through the provider option contributes
+		// no package of its own, since its token names a different one.
+		// A package that fails to load is reported where it is used, so that an
+		// unused declaration is not an error on its own.
+		if _, ok := b.referencedPackages[name]; !ok {
+			if pkg, err := b.options.packageCache.loadPackageSchemaFromDescriptor(
+				b.options.loader, descriptor); err == nil {
+				b.referencedPackages[name] = pkg.schema
+			}
+		}
+		if _, declared := b.root.BindReference(name); declared {
+			continue
+		}
+		b.root.Define(name, &PackageVariable{
+			syntax:     block,
+			LocalName:  name,
+			Descriptor: descriptor,
+		})
+	}
 }
 
 // declareNodes declares all of the top-level nodes in the given file. This includes config, resources, outputs, and
@@ -965,97 +1011,10 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 				continue
 			}
 
-			labels := node.Labels
-			if len(labels) > 1 {
-				diagnostics = append(diagnostics,
-					labelsErrorf(node, "package blocks must have at most one label"))
+			packageDescriptor, _, diags := readPackageBlock(node)
+			diagnostics = append(diagnostics, diags...)
+			if packageDescriptor == nil {
 				continue
-			}
-
-			if len(labels) == 1 {
-				labelRange := node.LabelRanges[0]
-				diagnostics = append(diagnostics, &hcl.Diagnostic{
-					Severity: hcl.DiagWarning,
-					Summary:  "package block label is deprecated",
-					Detail:   "Package block labels should be replaced by baseProviderName.",
-					Subject:  &labelRange,
-				})
-			}
-
-			// read the attributes of the package block to fill in the package descriptor data
-			packageDescriptor := &schema.PackageDescriptor{}
-
-			if node.Body == nil {
-				diagnostics = append(diagnostics,
-					errorf(node.Range(), "package blocks must set base provider information"))
-				continue
-			}
-
-			for _, attribute := range node.Body.Attributes {
-				switch attribute.Name {
-				case "baseProviderName":
-					baseProviderName, err := evaluateLiteralExpr(attribute.Expr)
-					if err != nil {
-						diagnostics = append(diagnostics,
-							errorf(attribute.Range(), "invalid base provider name for package: %v", err))
-						continue
-					}
-
-					packageDescriptor.Name = baseProviderName
-				case "baseProviderVersion":
-					version, _ := evaluateLiteralExpr(attribute.Expr)
-					parsedVersion, err := semver.Make(version)
-					if err != nil {
-						// parsing the version failed, error out and skip this package
-						diagnostics = append(diagnostics,
-							errorf(attribute.Range(),
-								"invalid baseProviderVersion %q for package: %v", version, err))
-						continue
-					}
-					packageDescriptor.Version = &parsedVersion
-				case "baseProviderDownloadUrl":
-					downloadURLValue, err := evaluateLiteralExpr(attribute.Expr)
-					if err != nil {
-						diagnostics = append(diagnostics,
-							errorf(attribute.Range(), "invalid download URL for package: %v", err))
-						continue
-					}
-
-					if _, err := url.ParseRequestURI(downloadURLValue); err != nil {
-						diagnostics = append(diagnostics,
-							errorf(attribute.Range(), "invalid download URL for package: %v", err))
-						continue
-					}
-					packageDescriptor.DownloadURL = downloadURLValue
-				}
-			}
-
-			if packageDescriptor.Name == "" && len(labels) == 1 {
-				// Backwards compatibility: if the package block has a single label and doesn't set baseProviderName,
-				// use the label as the package name
-				packageDescriptor.Name = labels[0]
-			}
-
-			if packageDescriptor.Name == "" {
-				diagnostics = append(diagnostics,
-					errorf(node.Range(), "package blocks must set baseProviderName"))
-				continue
-			}
-
-			for _, block := range node.Body.Blocks {
-				switch block.Type {
-				case "parameterization":
-					attributes := map[string]hclsyntax.Expression{}
-					for _, item := range block.Body.Attributes {
-						attributes[item.Name] = item.Expr
-					}
-					descriptor, diag := readParameterizationDescriptor(packageDescriptor.Name, attributes)
-					if diag != nil {
-						diagnostics = append(diagnostics, diag)
-						continue
-					}
-					packageDescriptor.Parameterization = descriptor
-				}
 			}
 
 			packageName := packageDescriptor.PackageName()
@@ -1075,6 +1034,104 @@ func ReadPackageDescriptors(file *syntax.File) (map[string]*schema.PackageDescri
 		}
 	}
 	return packageDescriptors, diagnostics
+}
+
+// readPackageBlock reads a single package block into a package descriptor. The
+// second return value is the package's name, by which the block can be
+// referenced as a resource or invoke `provider` option (see PackageVariable).
+// A nil descriptor indicates the block was invalid.
+func readPackageBlock(node *hclsyntax.Block) (*schema.PackageDescriptor, string, hcl.Diagnostics) {
+	var diagnostics hcl.Diagnostics
+
+	labels := node.Labels
+	if len(labels) > 1 {
+		return nil, "", hcl.Diagnostics{labelsErrorf(node, "package blocks must have at most one label")}
+	}
+
+	if len(labels) == 1 {
+		labelRange := node.LabelRanges[0]
+		diagnostics = append(diagnostics, &hcl.Diagnostic{
+			Severity: hcl.DiagWarning,
+			Summary:  "package block label is deprecated",
+			Detail:   "Package block labels should be replaced by baseProviderName.",
+			Subject:  &labelRange,
+		})
+	}
+
+	// read the attributes of the package block to fill in the package descriptor data
+	packageDescriptor := &schema.PackageDescriptor{}
+
+	if node.Body == nil {
+		return nil, "", hcl.Diagnostics{errorf(node.Range(), "package blocks must set base provider information")}
+	}
+
+	for _, attribute := range node.Body.Attributes {
+		switch attribute.Name {
+		case "baseProviderName":
+			baseProviderName, err := evaluateLiteralExpr(attribute.Expr)
+			if err != nil {
+				diagnostics = append(diagnostics,
+					errorf(attribute.Range(), "invalid base provider name for package: %v", err))
+				continue
+			}
+
+			packageDescriptor.Name = baseProviderName
+		case "baseProviderVersion":
+			version, _ := evaluateLiteralExpr(attribute.Expr)
+			parsedVersion, err := semver.Make(version)
+			if err != nil {
+				// parsing the version failed, error out and skip this package
+				diagnostics = append(diagnostics,
+					errorf(attribute.Range(),
+						"invalid baseProviderVersion %q for package: %v", version, err))
+				continue
+			}
+			packageDescriptor.Version = &parsedVersion
+		case "baseProviderDownloadUrl":
+			downloadURLValue, err := evaluateLiteralExpr(attribute.Expr)
+			if err != nil {
+				diagnostics = append(diagnostics,
+					errorf(attribute.Range(), "invalid download URL for package: %v", err))
+				continue
+			}
+
+			if _, err := url.ParseRequestURI(downloadURLValue); err != nil {
+				diagnostics = append(diagnostics,
+					errorf(attribute.Range(), "invalid download URL for package: %v", err))
+				continue
+			}
+			packageDescriptor.DownloadURL = downloadURLValue
+		}
+	}
+
+	if packageDescriptor.Name == "" && len(labels) == 1 {
+		// Backwards compatibility: if the package block has a single label and doesn't set baseProviderName,
+		// use the label as the package name
+		packageDescriptor.Name = labels[0]
+	}
+
+	if packageDescriptor.Name == "" {
+		return nil, "", append(diagnostics,
+			errorf(node.Range(), "package blocks must set baseProviderName"))
+	}
+
+	for _, block := range node.Body.Blocks {
+		switch block.Type {
+		case "parameterization":
+			attributes := map[string]hclsyntax.Expression{}
+			for _, item := range block.Body.Attributes {
+				attributes[item.Name] = item.Expr
+			}
+			descriptor, diag := readParameterizationDescriptor(packageDescriptor.Name, attributes)
+			if diag != nil {
+				diagnostics = append(diagnostics, diag)
+				continue
+			}
+			packageDescriptor.Parameterization = descriptor
+		}
+	}
+
+	return packageDescriptor, packageDescriptor.PackageName(), diagnostics
 }
 
 // extensionDescriptorsForBase returns the descriptors that extend the given base

@@ -951,6 +951,37 @@ func (pkg *Package) Equals(other *Package) bool {
 	return pkg == other || pkg.Identity() == other.Identity()
 }
 
+// IsForeignToken reports whether tok names a package other than the one
+// defining it, which schemas may do for members declared under
+// allowedPackageNames. Registrations for such members carry the defining
+// package's reference, since their token does not name the package that
+// serves them.
+func (pkg *Package) IsForeignToken(tok string) bool {
+	tokenPkg, _, _, ok := decomposeToken(tok)
+	// The pulumi namespace holds built-in tokens such as pulumi:providers:<name>,
+	// which belong to the package they name rather than to a foreign one.
+	return ok && tokenPkg != pkg.Name && tokenPkg != "pulumi"
+}
+
+// HasForeignTokens reports whether any resource or function of the package is
+// declared under a foreign package name (see IsForeignToken).
+func (pkg *Package) HasForeignTokens() bool {
+	if len(pkg.AllowedPackageNames) == 0 {
+		return false
+	}
+	for _, r := range pkg.Resources {
+		if pkg.IsForeignToken(r.Token) {
+			return true
+		}
+	}
+	for _, f := range pkg.Functions {
+		if pkg.IsForeignToken(f.Token) {
+			return true
+		}
+	}
+	return false
+}
+
 var defaultModuleFormat = regexp.MustCompile("(.*)")
 
 func (pkg *Package) CanonicalizeToken(tok string) string {

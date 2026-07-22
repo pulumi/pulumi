@@ -149,6 +149,14 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return b.zeroSignature(), diagnostics
 	}
 
+	// An invoke that passes the provider option resolves its token against the
+	// passed provider's package rather than against the package the token names.
+	// That is what lets a token name a foreign package declared via
+	// allowedPackageNames, whose own name has no schema behind it.
+	if redirect := b.invokeProviderRedirect(args); redirect != nil {
+		pkg = redirect.schema.Name()
+	}
+
 	// The function token's package portion may be a plain package or a base
 	// provider whose functions are supplied by an extension layered on it; the
 	// function is defined by whichever candidate schema contains the token.
@@ -192,6 +200,43 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 
 	lit.Value = cty.StringVal(canonicalToken)
 
+	return b.invokeSignature(fn, token, tokenRange, args)
+}
+
+// invokeProviderRedirect resolves the schema an invoke's provider option
+// redirects token resolution to, mirroring providerRedirectSchema for
+// resources. The invoke's arguments are already bound, so the provider option
+// is inspected semantically.
+func (b *binder) invokeProviderRedirect(args []model.Expression) *packageSchema {
+	if len(args) < 3 {
+		return nil
+	}
+	options, ok := args[2].(*model.ObjectConsExpression)
+	if !ok {
+		return nil
+	}
+	for _, item := range options.Items {
+		if key, ok := literalExprValue(item.Key); !ok || key.Type() != cty.String || key.AsString() != "provider" {
+			continue
+		}
+		traversal, ok := item.Value.(*model.ScopeTraversalExpression)
+		if !ok || len(traversal.Parts) != 1 {
+			return nil
+		}
+		def, ok := traversal.Parts[0].(model.Definition)
+		if !ok {
+			return nil
+		}
+		return b.redirectSchemaForDefinition(context.TODO(), def)
+	}
+	return nil
+}
+
+// invokeSignature computes the signature for a bound function, shared by the
+// provider-redirected and token-package resolution paths.
+func (b *binder) invokeSignature(
+	fn *schema.Function, token string, tokenRange hcl.Range, args []model.Expression,
+) (model.StaticFunctionSignature, hcl.Diagnostics) {
 	if len(args) < 2 {
 		return b.zeroSignature(), hcl.Diagnostics{errorf(tokenRange, "missing second arg")}
 	}

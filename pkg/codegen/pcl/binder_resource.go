@@ -55,6 +55,96 @@ func (b *binder) bindResource(ctx context.Context, node *Resource) hcl.Diagnosti
 	return diagnostics
 }
 
+// SyntacticProviderOption returns the name of the single identifier assigned
+// to the block's options.provider attribute, if any. It operates on raw syntax
+// so that it can run before the resource's body is bound.
+func SyntacticProviderOption(block *hclsyntax.Block) (string, bool) {
+	if block.Body == nil {
+		return "", false
+	}
+	for _, options := range block.Body.Blocks {
+		if options.Type != "options" || options.Body == nil {
+			continue
+		}
+		provider, ok := options.Body.Attributes["provider"]
+		if !ok {
+			continue
+		}
+		traversal, ok := provider.Expr.(*hclsyntax.ScopeTraversalExpr)
+		if !ok || len(traversal.Traversal) != 1 {
+			return "", false
+		}
+		return traversal.Traversal.RootName(), true
+	}
+	return "", false
+}
+
+// SyntacticInvokeProviderOption reports whether an invoke call passes the
+// provider invoke option. Like SyntacticProviderOption it operates on raw
+// syntax, so that it can run before the call's arguments are bound.
+func SyntacticInvokeProviderOption(call *hclsyntax.FunctionCallExpr) bool {
+	if len(call.Args) < 3 {
+		return false
+	}
+	obj, ok := call.Args[2].(*hclsyntax.ObjectConsExpr)
+	if !ok {
+		return false
+	}
+	for _, item := range obj.Items {
+		key, ok := item.KeyExpr.(*hclsyntax.ObjectConsKeyExpr)
+		if !ok {
+			continue
+		}
+		traversal, ok := key.Wrapped.(*hclsyntax.ScopeTraversalExpr)
+		if ok && len(traversal.Traversal) == 1 && traversal.Traversal.RootName() == "provider" {
+			return true
+		}
+	}
+	return false
+}
+
+// providerRedirectSchema resolves the schema a block's options.provider
+// redirects token resolution to: the passed provider's package. The provider
+// option may name an explicit provider resource or a package block. A nil
+// result means the token resolves normally, by its package portion; any
+// binding error is then reported by the normal path.
+func (b *binder) providerRedirectSchema(ctx context.Context, block *hclsyntax.Block) *packageSchema {
+	name, ok := SyntacticProviderOption(block)
+	if !ok {
+		return nil
+	}
+	def, ok := b.root.BindReference(name)
+	if !ok {
+		return nil
+	}
+	return b.redirectSchemaForDefinition(ctx, def)
+}
+
+// redirectSchemaForDefinition resolves the package schema a provider option's
+// referent redirects token resolution to: the package of an explicit provider
+// resource, or the package a package block declares.
+func (b *binder) redirectSchemaForDefinition(ctx context.Context, def model.Definition) *packageSchema {
+	switch def := def.(type) {
+	case *PackageVariable:
+		schema, err := b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, def.Descriptor)
+		if err != nil {
+			return nil
+		}
+		return schema
+	case *Resource:
+		pkg, module, providerName, diags := DecomposeToken(def.syntax.Labels[1], def.syntax.LabelRanges[1])
+		if diags.HasErrors() || pkg != pulumiPackage || module != "providers" {
+			return nil
+		}
+		schema, err := b.loadDeclaredOrBarePackageSchema(ctx, providerName, "", "")
+		if err != nil {
+			return nil
+		}
+		return schema
+	}
+	return nil
+}
+
 func (b *binder) resolveSchemaResourceForBind(
 	ctx context.Context,
 	token string,
@@ -62,6 +152,7 @@ func (b *binder) resolveSchemaResourceForBind(
 	allowProviderToken bool,
 	allowComponent bool,
 	makeResourceDynamic func(),
+	redirect *packageSchema,
 ) (*schema.Resource, string, hcl.Diagnostics) {
 	pkg, module, name, diagnostics := DecomposeToken(token, tokenRange)
 	if diagnostics.HasErrors() {
@@ -74,6 +165,14 @@ func (b *binder) resolveSchemaResourceForBind(
 			return nil, token, hcl.Diagnostics{errorf(tokenRange, "provider resources cannot be read: '%s'", token)}
 		}
 		pkg, isProvider = name, true
+	}
+
+	// A resource that passes the provider option resolves its token against the
+	// passed provider's package rather than against the package the token names.
+	// That is what lets a token name a foreign package declared via
+	// allowedPackageNames, whose own name has no schema behind it.
+	if redirect != nil && !isProvider {
+		pkg = redirect.schema.Name()
 	}
 
 	// It is important that we call `loadPackageSchema`/`loadPackageSchemaFromDescriptor`
@@ -643,7 +742,7 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 	}
 
 	res, resolvedToken, diagnostics := b.resolveSchemaResourceForBind(
-		ctx, token, tokenRange, true, true, makeResourceDynamic)
+		ctx, token, tokenRange, true, true, makeResourceDynamic, b.providerRedirectSchema(ctx, node.syntax))
 	if diagnostics.HasErrors() || res == nil {
 		return diagnostics
 	}

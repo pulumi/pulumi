@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"reflect"
 	"sort"
 	"strconv"
 	"sync"
@@ -87,6 +88,12 @@ type Interpreter struct {
 	// to the default provider.
 	packageRefs map[string]string
 
+	// packageResources and packageFunctions index the resources and functions
+	// of every registered package block by token, letting tokens naming a
+	// foreign package (allowedPackageNames) resolve to their defining package.
+	packageResources map[string]*schema.Resource
+	packageFunctions map[string]*schema.Function
+
 	// callbacks is the server that handles resource hook callbacks.
 	callbacks     *pclCallbackServer
 	callbacksOnce sync.Once
@@ -99,9 +106,11 @@ type Interpreter struct {
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
 	return &Interpreter{
-		program:     program,
-		info:        info,
-		packageRefs: map[string]string{},
+		program:          program,
+		info:             info,
+		packageRefs:      map[string]string{},
+		packageResources: map[string]*schema.Resource{},
+		packageFunctions: map[string]*schema.Function{},
 	}
 }
 
@@ -718,6 +727,10 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		pkgName = typ
 	}
 
+	if schemaResource, ok := i.packageResources[token]; ok && pkgName == pkg {
+		return schemaResource, nil
+	}
+
 	var loadErr error
 	for _, descriptor := range i.lookupPackageDescriptors(pkgName) {
 		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
@@ -747,6 +760,10 @@ func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema
 	contract.Assertf(!diags.HasErrors(), "invalid token format for function token %s", token)
 
 	token = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
+
+	if schemaFunction, ok := i.packageFunctions[token]; ok {
+		return schemaFunction, nil
+	}
 
 	var loadErr error
 	for _, descriptor := range i.lookupPackageDescriptors(pkg) {
@@ -808,6 +825,12 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 	if i.monitor == nil {
 		return nil
 	}
+	if i.packageResources == nil {
+		i.packageResources = map[string]*schema.Resource{}
+	}
+	if i.packageFunctions == nil {
+		i.packageFunctions = map[string]*schema.Function{}
+	}
 
 	keys := make([]string, 0, len(i.info.PackageDescriptors))
 	for k := range i.info.PackageDescriptors {
@@ -820,7 +843,36 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 		if descriptor == nil {
 			continue
 		}
-		if descriptor.Parameterization == nil {
+
+		// Let bare references to the package block evaluate: the provider option
+		// recognizes the marker as selecting the package. A program node of the
+		// same name owns the name, and a reference to it binds to that node.
+		name := descriptor.PackageName()
+		if i.evalContext != nil && !i.programDeclares(name) {
+			i.evalContext.SetVariable(name, packageBlockMarker(name))
+		}
+
+		// A package is registered when its members cannot be reached without a
+		// package reference: a parameterized package, whose plugin serves a
+		// different package than it is named by, and a package declaring members
+		// whose tokens name a foreign package (allowedPackageNames), which the
+		// engine would otherwise route to a provider for that phantom package.
+		parameterized := descriptor.Parameterization != nil
+		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+		if err != nil {
+			if !parameterized {
+				continue
+			}
+			return fmt.Errorf("load package %q for register: %w", key, err)
+		}
+		def, err := pkgref.Definition()
+		if err != nil {
+			if !parameterized {
+				continue
+			}
+			return fmt.Errorf("load definition for package %q: %w", key, err)
+		}
+		if !parameterized && !def.HasForeignTokens() {
 			continue
 		}
 
@@ -831,24 +883,18 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 		if descriptor.Version != nil {
 			request.Version = descriptor.Version.String()
 		}
-		param := &pulumirpc.Parameterization{
-			Name:    descriptor.Parameterization.Name,
-			Version: descriptor.Parameterization.Version.String(),
-			Value:   descriptor.Parameterization.Value,
-		}
-		// Route to the wire field matching the schema's parameterization flavor.
-		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
-		if err != nil {
-			return fmt.Errorf("load package %q for register: %w", key, err)
-		}
-		def, err := pkgref.Definition()
-		if err != nil {
-			return fmt.Errorf("load definition for package %q: %w", key, err)
-		}
-		if def.ExtensionParameterization != nil {
-			request.Extension = param
-		} else {
-			request.Parameterization = param
+		if parameterized {
+			param := &pulumirpc.Parameterization{
+				Name:    descriptor.Parameterization.Name,
+				Version: descriptor.Parameterization.Version.String(),
+				Value:   descriptor.Parameterization.Value,
+			}
+			// Route to the wire field matching the schema's parameterization flavor.
+			if def.ExtensionParameterization != nil {
+				request.Extension = param
+			} else {
+				request.Parameterization = param
+			}
 		}
 
 		resp, err := i.monitor.RegisterPackage(ctx, request)
@@ -864,13 +910,45 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 		i.packageRefs["pulumi:providers:"+descriptor.PackageName()] = ref
 		for _, r := range def.Resources {
 			i.packageRefs[r.Token] = ref
+			i.packageResources[r.Token] = r
 		}
 		for _, f := range def.Functions {
 			i.packageRefs[f.Token] = ref
+			i.packageFunctions[f.Token] = f
 		}
 	}
 
 	return nil
+}
+
+// packageBlockRef is what a bare reference to a `package` block evaluates to.
+// It names the package the block declares, so that a provider option holding it
+// selects the package a token resolves against rather than an explicit
+// provider. It is a capsule type because it is a value of its own kind, not a
+// resource: nothing may read attributes off it. Compare assetType and
+// archiveType in convert.go.
+type packageBlockRef struct {
+	name string
+}
+
+var packageBlockType = cty.Capsule("package block", reflect.TypeFor[packageBlockRef]())
+
+// programDeclares reports whether the program declares a node with the given
+// name, which then owns that name in the evaluation scope.
+func (i *Interpreter) programDeclares(name string) bool {
+	if i.program == nil {
+		return false
+	}
+	for _, node := range i.program.Nodes {
+		if node.Name() == name {
+			return true
+		}
+	}
+	return false
+}
+
+func packageBlockMarker(name string) cty.Value {
+	return cty.CapsuleVal(packageBlockType, &packageBlockRef{name: name})
 }
 
 // requiredVersionGate returns the pulumi block that enforces a required engine version, or nil if the
@@ -1776,7 +1854,10 @@ func (i *Interpreter) registerResourceWith(
 				request.Parent = urn
 			}
 		}
-		if res.Options.Provider != nil {
+		// A provider option referencing a package block selects the package the
+		// resource's token resolves against; the registration routes through the
+		// package reference rather than an explicit provider.
+		if res.Options.Provider != nil && !pcl.ReferencesPackageBlock(res.Options.Provider) {
 			provider, poison, diags := evalCtx.Evaluate(res.Options.Provider)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
@@ -2096,15 +2177,17 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		i.call,
 	)
 	componentInterpreter := &Interpreter{
-		program:     component.Program,
-		info:        i.info,
-		monitor:     i.monitor,
-		engine:      i.engine,
-		loader:      i.loader,
-		evalContext: componentEval,
-		stackURN:    resp.GetUrn(),
-		namePrefix:  componentName,
-		packageRefs: i.packageRefs,
+		program:          component.Program,
+		info:             i.info,
+		monitor:          i.monitor,
+		engine:           i.engine,
+		loader:           i.loader,
+		evalContext:      componentEval,
+		stackURN:         resp.GetUrn(),
+		namePrefix:       componentName,
+		packageRefs:      i.packageRefs,
+		packageResources: i.packageResources,
+		packageFunctions: i.packageFunctions,
 	}
 
 	for k, v := range inputs {
