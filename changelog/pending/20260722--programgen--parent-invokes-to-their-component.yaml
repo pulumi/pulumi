@@ -1,0 +1,4 @@
+component: programgen
+kind: fix
+body: Parent invokes written inside a component to that component, so they resolve the component's `providers`
+time: 2026-07-22T00:00:00+00:00

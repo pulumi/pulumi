@@ -1,0 +1,12 @@
+{
+	"name": "l3-component-invoke-provider",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/config": "ROOT/artifacts/pulumi-config-9.0.0.tgz",
+		"@pulumi/multi-argument-invoke": "ROOT/artifacts/pulumi-multi-argument-invoke-44.0.0.tgz"
+	}
+}

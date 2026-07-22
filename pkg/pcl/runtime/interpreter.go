@@ -81,6 +81,11 @@ type Interpreter struct {
 	// the resource is registered as "myComp-res". Nested components accumulate the prefix.
 	namePrefix string
 
+	// providers maps a package name to the provider reference the enclosing component was given via
+	// its `providers` option. The engine resolves this inheritance itself for resources, but an
+	// invoke has no parent on the wire, so invokes are resolved against this map here.
+	providers map[string]string
+
 	// packageRefs maps a fully-qualified token (resource, function, or
 	// pulumi:providers:<pkg>) to the package reference RegisterPackage returned.
 	// Keying on the exact token, not package name, keeps extensions that share the
@@ -408,6 +413,19 @@ func (i *Interpreter) invoke(
 		return nil, err
 	}
 	req.PackageRef = ref
+
+	// An invoke inside a component is parented to that component, and so is served by whichever
+	// provider the component was given for the invoke's package.
+	if req.Provider == "" && len(i.providers) > 0 {
+		pkg, err := PackageNameFromToken(req.Tok)
+		if err != nil {
+			return nil, err
+		}
+		if provider, ok := i.providers[pkg]; ok {
+			req.Provider = provider
+		}
+	}
+
 	resp, err := i.monitor.Invoke(ctx, req)
 	return resp, err
 }
@@ -1071,6 +1089,51 @@ func unwrapOutputs(value resource.PropertyValue) (resource.PropertyValue, []reso
 		return resource.NewProperty(obj), deps
 	}
 	return value, nil
+}
+
+// providerReferences translates an evaluated `providers` option into the package name to provider
+// reference map the resource monitor expects. The option may be written either as an array of
+// provider resources, in which case each provider's package is taken from its URN, or as a map from
+// package name to provider resource.
+func providerReferences(providers resource.PropertyValue) (map[string]string, error) {
+	reference := func(v resource.PropertyValue) (string, string, error) {
+		urn, id, err := unwrapResource(v)
+		if err != nil {
+			return "", "", fmt.Errorf("providers: %w", err)
+		}
+		idstr := plugin.UnknownStringValue
+		if id.IsString() {
+			idstr = id.StringValue()
+		}
+		return urn, fmt.Sprintf("%s::%s", urn, idstr), nil
+	}
+
+	psopt := map[string]string{}
+	switch {
+	case providers.IsObject():
+		for k, v := range providers.ObjectValue() {
+			_, ref, err := reference(v)
+			if err != nil {
+				return nil, err
+			}
+			psopt[string(k)] = ref
+		}
+	case providers.IsArray():
+		for _, v := range providers.ArrayValue() {
+			urn, ref, err := reference(v)
+			if err != nil {
+				return nil, err
+			}
+			typ := resource.URN(urn).Type()
+			_, _, pkg, diags := pcl.DecomposeToken(string(typ), hcl.Range{})
+			contract.Assertf(!diags.HasErrors(), "invalid token format from URN %s: %s", urn, typ)
+			psopt[pkg] = ref
+		}
+	default:
+		return nil, errors.New(
+			"providers must be an array of provider objects or a map of provider name to provider objects")
+	}
+	return psopt, nil
 }
 
 func unwrapResource(value resource.PropertyValue) (string, resource.PropertyValue, error) {
@@ -1805,44 +1868,9 @@ func (i *Interpreter) registerResourceWith(
 				return cty.NilVal, diags
 			}
 			if !providers.IsNull() && !providers.IsComputed() {
-				// Providers is either a list of provider objects or a map of provider name to provider objects. We need
-				// to support both forms and translate the list into the map form expected by the RPC.
-				psopt := map[string]string{}
-				if providers.IsObject() {
-					for k, v := range providers.ObjectValue() {
-						urn, id, err := unwrapResource(v)
-						if err != nil {
-							return cty.NilVal, fmt.Errorf("providers: %w", err)
-						}
-						var idstr string
-						if id.IsString() {
-							idstr = id.StringValue()
-						} else {
-							idstr = plugin.UnknownStringValue
-						}
-						psopt[string(k)] = fmt.Sprintf("%s::%s", urn, idstr)
-					}
-				} else if providers.IsArray() {
-					for _, v := range providers.ArrayValue() {
-						urn, id, err := unwrapResource(v)
-						if err != nil {
-							return cty.NilVal, fmt.Errorf("providers: %w", err)
-						}
-						typ := resource.URN(urn).Type()
-						_, _, pkg, diags := pcl.DecomposeToken(string(typ), hcl.Range{})
-						contract.Assertf(!diags.HasErrors(), "invalid token format from URN %s: %s", urn, typ)
-
-						var idstr string
-						if id.IsString() {
-							idstr = id.StringValue()
-						} else {
-							idstr = plugin.UnknownStringValue
-						}
-						psopt[pkg] = fmt.Sprintf("%s::%s", urn, idstr)
-					}
-				} else {
-					return cty.NilVal, errors.New(
-						"providers must be an array of provider objects or a map of provider name to provider objects")
+				psopt, err := providerReferences(providers)
+				if err != nil {
+					return cty.NilVal, err
 				}
 				request.Providers = psopt
 			}
@@ -2065,6 +2093,36 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		}
 	}
 
+	// Providers given to a component apply to everything the component registers, so they are both
+	// sent to the engine, which applies them to child resources, and carried into the component's
+	// interpreter below, which applies them to invokes.
+	componentProviders := i.providers
+	if component.Options != nil && component.Options.Providers != nil {
+		providers, poison, diags := i.evalContext.Evaluate(component.Options.Providers)
+		if poison != nil {
+			i.evalContext.SetVariable(component.Name(), makePoisonValue(*poison))
+			return nil
+		}
+		if diags.HasErrors() {
+			return diags
+		}
+		if !providers.IsNull() && !providers.IsComputed() {
+			psopt, err := providerReferences(providers)
+			if err != nil {
+				return hcl.Diagnostics{{
+					Severity: hcl.DiagError,
+					Summary:  "Failed to evaluate component providers",
+					Detail:   err.Error(),
+				}}
+			}
+			request.Providers = psopt
+
+			componentProviders = make(map[string]string, len(i.providers)+len(psopt))
+			maps.Copy(componentProviders, i.providers)
+			maps.Copy(componentProviders, psopt)
+		}
+	}
+
 	resp, err := i.monitor.RegisterResource(ctx, request)
 	if err != nil {
 		return hcl.Diagnostics{{
@@ -2081,7 +2139,20 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		}}
 	}
 
-	componentEval := NewEvalContext(
+	componentInterpreter := &Interpreter{
+		program:     component.Program,
+		info:        i.info,
+		monitor:     i.monitor,
+		engine:      i.engine,
+		loader:      i.loader,
+		stackURN:    resp.GetUrn(),
+		namePrefix:  componentName,
+		packageRefs: i.packageRefs,
+		providers:   componentProviders,
+	}
+	// The eval context must call back into the component's own interpreter so that invokes written
+	// in the component resolve against the component's providers.
+	componentInterpreter.evalContext = NewEvalContext(
 		i.info.WorkingDir,
 		i.info.RootDirectory,
 		i.info.Organization,
@@ -2090,20 +2161,9 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		i.lookupResource,
 		i.lookupFunction,
 		i.getResource,
-		i.invoke,
-		i.call,
+		componentInterpreter.invoke,
+		componentInterpreter.call,
 	)
-	componentInterpreter := &Interpreter{
-		program:     component.Program,
-		info:        i.info,
-		monitor:     i.monitor,
-		engine:      i.engine,
-		loader:      i.loader,
-		evalContext: componentEval,
-		stackURN:    resp.GetUrn(),
-		namePrefix:  componentName,
-		packageRefs: i.packageRefs,
-	}
 
 	for k, v := range inputs {
 		if err := componentInterpreter.setVariable(ctx, string(k), v); err != nil {
