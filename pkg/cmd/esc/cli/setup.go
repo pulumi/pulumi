@@ -49,6 +49,7 @@ func newEnvSetupCmd(env *envCommand) *cobra.Command {
 	setup := &setupCommand{env: env}
 
 	cmd.AddCommand(newSetupAWSCmd(setup))
+	cmd.AddCommand(newSetupAzureCmd(setup))
 
 	return cmd
 }
