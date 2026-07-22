@@ -89,9 +89,13 @@ func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.
 			"The resource created or updated is tracked in the stack, " +
 			"so Pulumi can manage its lifecycle. No other resources in " +
 			"the stack are affected when running this command.",
-		Args: cobra.ExactArgs(1),
+		Args:   cobra.ExactArgs(1),
+		Hidden: pc.stateless,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			contract.Assertf(!pc.stateless, "upsert should not be registered in stateless mode")
+			if pc.stateless {
+				return errors.New("`upsert` is not supported in stateless mode; remove --stateless, " +
+					"or use `create` or `patch` to call the provider directly")
+			}
 			return pc.runStatefulSnippetUpdate(cmd, statefulSnippetUpdate{
 				res:          res,
 				name:         args[0],
@@ -102,6 +106,10 @@ func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.
 				requireFresh: false,
 			})
 		},
+	}
+	if pc.stateless {
+		cmd.Args = cobra.ArbitraryArgs
+		cmd.FParseErrWhitelist = cobra.FParseErrWhitelist{UnknownFlags: true}
 	}
 	addStatefulSnippetUpdateFlags(cmd, &inputFile, &inputFormat, &yes, res.InputProperties)
 	return cmd

@@ -93,15 +93,17 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 		"The URN of a provider resource in the current stack whose inputs to use as the "+
 			"base of the provider configuration (requires a stack context)")
 	addPersistentInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties)
-	// `create` and `upsert` have different UX between stateful (takes a resource <name> and adds a
-	// snippet to the stack) and stateless (uses the resource type's short name and calls the
-	// provider directly), so the command trees diverge here.
+	// `create` has different UX between stateful (takes a resource <name> and adds a snippet to
+	// the stack) and stateless (uses the resource type's short name and calls the provider
+	// directly), so the command trees diverge here. `upsert` is stateful-only, but stays
+	// registered (hidden) in stateless mode so `upsert --stateless` reports the mode conflict
+	// instead of whichever upsert flag cobra fails to find on the parent command.
 	if pc.stateless {
 		cmd.AddCommand(pc.newStatelessResourceCreateCommand(res))
 	} else {
 		cmd.AddCommand(pc.newStatefulResourceCreateCommand(res))
-		cmd.AddCommand(pc.newResourceUpsertCommand(res))
 	}
+	cmd.AddCommand(pc.newResourceUpsertCommand(res))
 	cmd.AddCommand(pc.newResourceReadCommand(res))
 	cmd.AddCommand(pc.newResourcePatchCommand(res))
 	cmd.AddCommand(pc.newResourceDeleteCommand(res))

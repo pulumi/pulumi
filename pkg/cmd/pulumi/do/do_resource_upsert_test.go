@@ -307,9 +307,9 @@ size = 3
 	_ = stderr
 }
 
-// TestDoCmdResourceUpsertHiddenInStatelessMode verifies that `upsert` is not registered as a
-// subcommand when the user opts into stateless mode. The subcommand tree shouldn't advertise
-// commands the user can't actually run.
+// TestDoCmdResourceUpsertHiddenInStatelessMode verifies that `upsert` is hidden from help when the
+// user opts into stateless mode. The subcommand tree shouldn't advertise commands the user can't
+// actually run.
 func TestDoCmdResourceUpsertHiddenInStatelessMode(t *testing.T) {
 	t.Parallel()
 
@@ -317,6 +317,37 @@ func TestDoCmdResourceUpsertHiddenInStatelessMode(t *testing.T) {
 	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "--help"})
 	require.NoError(t, cmd.Execute())
 	assert.NotContains(t, stdout.String(), "upsert")
+}
+
+// TestDoCmdResourceUpsertStatelessErrors verifies that running `upsert` with --stateless fails
+// with an error that names the incompatible flag rather than tripping over upsert's own flags
+// (which used to be reported as unknown because the subcommand wasn't registered at all).
+func TestDoCmdResourceUpsertStatelessErrors(t *testing.T) {
+	t.Parallel()
+
+	cmd, _, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(false)})
+	cmd.SetArgs([]string{
+		"--stateless", "azure:index:myResource", "upsert", "myres",
+		"--input-file", "inputs.yaml",
+	})
+	err := cmd.Execute()
+	require.ErrorContains(t, err, "`upsert` is not supported in stateless mode")
+	require.ErrorContains(t, err, "--stateless")
+}
+
+// TestDoCmdResourceUpsertStatelessErrorBeatsUnknownFlag verifies that the stateless-mode error
+// takes priority over flag diagnostics: the whole invocation is invalid, so an unknown flag like
+// --timeout shouldn't be reported before the real problem.
+func TestDoCmdResourceUpsertStatelessErrorBeatsUnknownFlag(t *testing.T) {
+	t.Parallel()
+
+	cmd, _, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(false)})
+	cmd.SetArgs([]string{
+		"--stateless", "azure:index:myResource", "upsert", "myres",
+		"--input-file", "inputs.yaml", "--timeout", "10s",
+	})
+	err := cmd.Execute()
+	require.ErrorContains(t, err, "`upsert` is not supported in stateless mode")
 }
 
 // TestDoCmdResourceStatefulCreateConstructsSnippet mirrors the upsert-constructs-snippet test but
