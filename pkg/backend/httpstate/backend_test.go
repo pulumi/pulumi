@@ -1784,7 +1784,7 @@ func TestListStackNames(t *testing.T) {
 	stackNames := make([]string, numStacks)
 	stacks := make([]backend.Stack, numStacks)
 
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := ptesting.RandomStackName()
 		stackNames[i] = stackName
 		ref, err := b.ParseStackReference(stackName)
@@ -1817,7 +1817,7 @@ func TestListStackNames(t *testing.T) {
 
 	// Fetch limited pages to test pagination functionality
 	foundAllTestStacks := false
-	for page := 0; page < maxPages; page++ {
+	for range maxPages {
 		stackRefs, nextToken, err := b.ListStackNames(ctx, filter, token)
 		require.NoError(t, err)
 
@@ -1921,7 +1921,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	var token1 backend.ContinuationToken
 	foundTestStackInSummaries := false
 
-	for page := 0; page < maxPages; page++ {
+	for range maxPages {
 		summaries, nextToken, err := b.ListStacks(ctx, filter, token1)
 		require.NoError(t, err)
 
@@ -1954,7 +1954,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 		Organization: filter.Organization,
 	}
 
-	for page := 0; page < maxPages; page++ {
+	for range maxPages {
 		stackRefs, nextToken, err := b.ListStackNames(ctx, namesFilter, token2)
 		require.NoError(t, err)
 

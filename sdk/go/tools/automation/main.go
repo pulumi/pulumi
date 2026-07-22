@@ -22,6 +22,7 @@ import (
 	"go/ast"
 	"go/format"
 	"go/token"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -266,12 +267,8 @@ func walkStructure(node Structure, breadcrumbs []string, inherited map[string]Fl
 
 	// Merge inherited and local flags, with local flags winning on conflicts.
 	flags := make(map[string]Flag, len(inherited)+len(node.Flags))
-	for k, v := range inherited {
-		flags[k] = v
-	}
-	for k, v := range node.Flags {
-		flags[k] = v
-	}
+	maps.Copy(flags, inherited)
+	maps.Copy(flags, node.Flags)
 
 	spec, fields, err := buildOptionsSpec(typeName, flags)
 	if err != nil {
@@ -877,12 +874,8 @@ func walkCommands(
 	optPkgs map[string]struct{},
 ) error {
 	flags := make(map[string]Flag, len(inherited)+len(node.Flags))
-	for k, v := range inherited {
-		flags[k] = v
-	}
-	for k, v := range node.Flags {
-		flags[k] = v
-	}
+	maps.Copy(flags, inherited)
+	maps.Copy(flags, node.Flags)
 
 	isExecutable := node.Type == "command" || (node.Type == "menu" && node.Executable)
 	if isExecutable {

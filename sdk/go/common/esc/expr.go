@@ -23,7 +23,7 @@ import (
 // An Expr holds information about an expression in an environment definition.
 type Expr struct {
 	// The range of the expression.
-	Range Range `json:"range"`
+	Range Range `json:"range,omitempty"`
 
 	// The schema of the expression's result.
 	Schema *schema.Schema `json:"schema,omitempty"`
@@ -77,7 +77,7 @@ type Accessor struct {
 	Key *string `json:"key,omitempty"`
 
 	// The range of the accessor.
-	Range Range `json:"range,omitempty"`
+	Range Range `json:"range"`
 }
 
 // A PropertyAccessor is a single accessor that is associated with a resolved value.

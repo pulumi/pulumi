@@ -383,8 +383,7 @@ func TestGenerateLanguageDefinitionsAllowsGeneratingParentVariables(t *testing.T
 		"project",
 		"example:index:MyComponent",
 		"random:index/randomPet:RandomPet",
-		"randomPet",
-	)
+		"randomPet")
 
 	nameTable := NameTable{
 		componentURN: "parentComponent",

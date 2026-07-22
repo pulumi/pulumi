@@ -145,12 +145,7 @@ func (sg *stepGenerator) snippetTargetsContains(res *pkgresource.State) bool {
 	if res == nil || res.SnippetID == "" {
 		return false
 	}
-	for _, id := range sg.deployment.opts.TargetSnippets {
-		if id == res.SnippetID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(sg.deployment.opts.TargetSnippets, res.SnippetID)
 }
 
 // Check whether `res` is explicitly (via `targets`) or implicitly (via
@@ -590,8 +585,8 @@ func (sg *stepGenerator) inheritedChildAlias(
 	// * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
 
 	aliasName := childName
-	if strings.HasPrefix(childName, parentName) {
-		aliasName = parentAlias.Name() + strings.TrimPrefix(childName, parentName)
+	if after, ok := strings.CutPrefix(childName, parentName); ok {
+		aliasName = parentAlias.Name() + after
 	}
 	return resource.NewURN(
 		sg.deployment.Target().Name.Q(),

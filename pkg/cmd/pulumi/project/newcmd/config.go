@@ -17,6 +17,7 @@ package newcmd
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 
@@ -347,9 +348,7 @@ func SaveConfig(
 		return err
 	}
 
-	for k, v := range c {
-		ps.Config[k] = v
-	}
+	maps.Copy(ps.Config, c)
 
 	return cmdStack.SaveProjectStack(ctx, stack, ps, configFile)
 }

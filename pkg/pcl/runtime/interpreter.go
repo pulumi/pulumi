@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os/exec"
 	"sort"
 	"strconv"
@@ -1223,15 +1224,12 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	}
 
 	if rangeValue.IsNumber() {
-		count := int(rangeValue.NumberValue())
-		if count < 0 {
-			count = 0
-		}
+		count := max(int(rangeValue.NumberValue()), 0)
 		items := make([]struct {
 			suffix  string
 			evalCtx *EvalContext
 		}, 0, count)
-		for idx := 0; idx < count; idx++ {
+		for idx := range count {
 			idxVal := cty.NumberIntVal(int64(idx))
 			items = append(items, struct {
 				suffix  string
@@ -2153,9 +2151,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		"id":  resource.NewProperty(resp.GetId()),
 		"urn": resource.NewProperty(resp.GetUrn()),
 	}
-	for k, v := range componentOutputs {
-		componentObject[k] = v
-	}
+	maps.Copy(componentObject, componentOutputs)
 
 	result := resource.NewProperty(resource.Output{
 		Element:      resource.NewProperty(componentObject),

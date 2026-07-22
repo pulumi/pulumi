@@ -345,11 +345,11 @@ func (p positionIndex) yamlEndPos(n *yaml.Node) hcl.Pos {
 		switch n.Style {
 		case yaml.LiteralStyle:
 			for {
-				nl := strings.IndexByte(s, '\n')
-				if nl == -1 {
+				_, after, ok := strings.Cut(s, "\n")
+				if !ok {
 					break
 				}
-				line, s = line+1, s[nl+1:]
+				line, s = line+1, after
 			}
 		case yaml.TaggedStyle:
 			col += len(n.Tag) + 1

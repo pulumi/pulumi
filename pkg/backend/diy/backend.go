@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"os/user"
@@ -1587,9 +1588,7 @@ func (b *diyBackend) UpdateStackTags(ctx context.Context,
 
 	if diyStack, ok := stack.(*diyStack); ok {
 		tagsCopy := make(map[apitype.StackTagName]string, len(tags))
-		for k, v := range tags {
-			tagsCopy[k] = v
-		}
+		maps.Copy(tagsCopy, tags)
 		diyStack.tags.Store(&tagsCopy)
 	}
 

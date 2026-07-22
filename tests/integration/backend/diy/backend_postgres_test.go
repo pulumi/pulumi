@@ -506,7 +506,7 @@ func TestPostgresBackendConcurrency(t *testing.T) {
 	stacks := make([]backend.Stack, numConcurrentOperations)
 
 	// Create multiple backend instances
-	for i := 0; i < numConcurrentOperations; i++ {
+	for i := range numConcurrentOperations {
 		b, err := diy.New(ctx, diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}), url, nil)
@@ -517,7 +517,7 @@ func TestPostgresBackendConcurrency(t *testing.T) {
 
 	// Create stacks concurrently
 	stackRefs := make([]backend.StackReference, numConcurrentOperations)
-	for i := 0; i < numConcurrentOperations; i++ {
+	for i := range numConcurrentOperations {
 		stackName := "concurrent-stack-" + pgtest.GenerateID()
 		stackRef, err := backends[i].ParseStackReference(stackName)
 		require.NoError(t, err, "Failed to parse stack reference %d", i)
@@ -535,7 +535,7 @@ func TestPostgresBackendConcurrency(t *testing.T) {
 	require.Len(t, allStacks, numConcurrentOperations, "Should have all created stacks")
 
 	// Clean up all stacks
-	for i := 0; i < numConcurrentOperations; i++ {
+	for i := range numConcurrentOperations {
 		removed, err := backends[i].RemoveStack(ctx, stacks[i], true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err, "Failed to remove stack %d", i)
 		assert.False(t, removed, "Stack %d should be removed without confirmation", i)

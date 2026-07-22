@@ -311,7 +311,7 @@ func (c dynamicStackCase) getRun(
 var recordedReplayCases = []recordedReplayCase{}
 
 func init() {
-	for _, c := range strings.Split(os.Getenv("PULUMI_TEST_SNAPSHOT_REPLAY"), ",") {
+	for c := range strings.SplitSeq(os.Getenv("PULUMI_TEST_SNAPSHOT_REPLAY"), ",") {
 		if c != "" {
 			recordedReplayCases = append(recordedReplayCases, recordedReplayCase(c))
 		}

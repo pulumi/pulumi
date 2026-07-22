@@ -369,7 +369,7 @@ func resolveWindowsExecutionAlias(pythonCmds []string) (string, string, error) {
 	exts := []string{""}
 	x := os.Getenv(`PATHEXT`)
 	if x != "" {
-		for _, e := range strings.Split(strings.ToLower(x), `;`) {
+		for e := range strings.SplitSeq(strings.ToLower(x), `;`) {
 			if e == "" {
 				continue
 			}

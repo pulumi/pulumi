@@ -1016,9 +1016,7 @@ func makeOptionalType(t schema.Type) schema.Type {
 
 func makeObject(input map[string]property.Value) property.Value {
 	properties := make(map[string]property.Value)
-	for key, value := range input {
-		properties[key] = value
-	}
+	maps.Copy(properties, input)
 
 	return property.New(properties)
 }
@@ -1076,13 +1074,11 @@ func TestStructuralTypeChecks(t *testing.T) {
 		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.NumberType, makeArrayType(schema.StringType))))
 		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(
 			makeArrayType(schema.StringType),
-			makeArrayType(schema.NumberType),
-		)))
+			makeArrayType(schema.NumberType))))
 
 		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(
 			makeArrayType(schema.NumberType),
-			makeArrayType(schema.StringType),
-		)))
+			makeArrayType(schema.StringType))))
 
 		assert.False(t, valueStructurallyTypedAs(value, makeArrayType(schema.BoolType)))
 		assert.False(t, valueStructurallyTypedAs(value, makeArrayType(schema.NumberType)))
@@ -1140,8 +1136,7 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 		objectATypeWithRequiredPropertyBar := makeObjectType(
 			makeProperty("foo", schema.StringType),
-			makeProperty("bar", schema.NumberType),
-		)
+			makeProperty("bar", schema.NumberType))
 
 		// property "bar" is missing from the value
 		// but the type requires it to be present
@@ -1150,8 +1145,7 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 		objectATypeWithOptionalPropertyBar := makeObjectType(
 			makeProperty("foo", schema.StringType),
-			makeProperty("bar", makeOptionalType(schema.NumberType)),
-		)
+			makeProperty("bar", makeOptionalType(schema.NumberType)))
 
 		// property "bar" is missing from the value, but it is optional
 		// so the value is structurally typed just fine
@@ -1164,8 +1158,7 @@ func TestStructuralTypeChecks(t *testing.T) {
 			),
 			makeObjectType(
 				makeProperty("foo", makeUnionType(schema.NumberType, schema.StringType)),
-			),
-		)
+			))
 
 		// fits the second object of the union
 		complexFittingValue := makeObject(map[string]property.Value{
@@ -1199,8 +1192,7 @@ func TestStructuralTypeChecks(t *testing.T) {
 		// Enum wrapped in InputType is unwrapped too.
 		assert.True(t, valueStructurallyTypedAs(
 			property.New(false),
-			&schema.InputType{ElementType: boolEnum},
-		))
+			&schema.InputType{ElementType: boolEnum}))
 	})
 
 	t.Run("MissingTypeCases", func(t *testing.T) {
@@ -1220,15 +1212,13 @@ func TestStructuralTypeChecks(t *testing.T) {
 		stringMap := &schema.MapType{ElementType: schema.StringType}
 		assert.True(t, valueStructurallyTypedAs(
 			makeObject(map[string]property.Value{"k": property.New("v")}),
-			stringMap,
-		))
+			stringMap))
 		// Empty maps trivially match.
 		assert.True(t, valueStructurallyTypedAs(makeObject(nil), stringMap))
 		// Mismatched element type is still rejected.
 		assert.False(t, valueStructurallyTypedAs(
 			makeObject(map[string]property.Value{"k": property.New(42.0)}),
-			stringMap,
-		))
+			stringMap))
 	})
 
 	t.Run("UnionOfInputWrappedObjects", func(t *testing.T) {
@@ -1253,13 +1243,11 @@ func TestStructuralTypeChecks(t *testing.T) {
 		// *schema.InputType inside the union.
 		assert.True(t, valueStructurallyTypedAs(
 			makeObject(map[string]property.Value{"foo": property.New("x")}),
-			union,
-		))
+			union))
 		// A map that does not fit Obj (unknown property) is still rejected.
 		assert.False(t, valueStructurallyTypedAs(
 			makeObject(map[string]property.Value{"unknown": property.New("x")}),
-			union,
-		))
+			union))
 	})
 
 	t.Run("OptionalWrappers", func(t *testing.T) {
@@ -1267,26 +1255,22 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 		assert.True(t, valueStructurallyTypedAs(
 			property.New(false),
-			&schema.OptionalType{ElementType: schema.BoolType},
-		))
+			&schema.OptionalType{ElementType: schema.BoolType}))
 		assert.True(t, valueStructurallyTypedAs(
 			property.New(""),
-			&schema.OptionalType{ElementType: &schema.InputType{ElementType: schema.AnyType}},
-		))
+			&schema.OptionalType{ElementType: &schema.InputType{ElementType: schema.AnyType}}))
 		// Optional<Object> with a present, conforming value.
 		assert.True(t, valueStructurallyTypedAs(
 			makeObject(map[string]property.Value{"foo": property.New("x")}),
 			&schema.OptionalType{ElementType: makeObjectType(
 				makeProperty("foo", schema.StringType),
-			)},
-		))
+			)}))
 		// Optional<Object> with a present, non-conforming value still rejected.
 		assert.False(t, valueStructurallyTypedAs(
 			makeObject(map[string]property.Value{"foo": property.New(42.0)}),
 			&schema.OptionalType{ElementType: makeObjectType(
 				makeProperty("foo", schema.StringType),
-			)},
-		))
+			)}))
 	})
 
 	t.Run("OptionalAcceptsNull", func(t *testing.T) {
@@ -1294,17 +1278,14 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 		assert.True(t, valueStructurallyTypedAs(
 			property.New(property.Null),
-			&schema.OptionalType{ElementType: schema.StringType},
-		))
+			&schema.OptionalType{ElementType: schema.StringType}))
 		assert.True(t, valueStructurallyTypedAs(
 			property.New(property.Null),
-			&schema.OptionalType{ElementType: &schema.InputType{ElementType: schema.BoolType}},
-		))
+			&schema.OptionalType{ElementType: &schema.InputType{ElementType: schema.BoolType}}))
 		// A required (non-Optional) T must still reject null.
 		assert.False(t, valueStructurallyTypedAs(
 			property.New(property.Null),
-			schema.StringType,
-		))
+			schema.StringType))
 	})
 
 	t.Run("UnionOfInputWrappedEnums", func(t *testing.T) {
@@ -1328,23 +1309,19 @@ func TestStructuralTypeChecks(t *testing.T) {
 		}
 		assert.True(t, valueStructurallyTypedAs(
 			property.New(false),
-			makeUnionType(&schema.InputType{ElementType: boolEnum}),
-		))
+			makeUnionType(&schema.InputType{ElementType: boolEnum})))
 		assert.True(t, valueStructurallyTypedAs(
 			property.New(true),
-			makeUnionType(&schema.InputType{ElementType: boolEnum}, schema.NumberType),
-		))
+			makeUnionType(&schema.InputType{ElementType: boolEnum}, schema.NumberType)))
 		assert.True(t, valueStructurallyTypedAs(
 			property.New("x"),
-			makeUnionType(&schema.InputType{ElementType: stringEnum}),
-		))
+			makeUnionType(&schema.InputType{ElementType: stringEnum})))
 		assert.True(t, valueStructurallyTypedAs(
 			property.New(1.5),
 			makeUnionType(
 				&schema.InputType{ElementType: boolEnum},
 				&schema.InputType{ElementType: schema.NumberType},
-			),
-		))
+			)))
 	})
 
 	t.Run("Archive", func(t *testing.T) {
@@ -1359,8 +1336,7 @@ func TestStructuralTypeChecks(t *testing.T) {
 		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.StringType, schema.ArchiveType)))
 		assert.True(t, valueStructurallyTypedAs(
 			property.New(map[string]property.Value{"k": value}),
-			makeMapType(schema.ArchiveType),
-		))
+			makeMapType(schema.ArchiveType)))
 
 		assert.False(t, valueStructurallyTypedAs(value, schema.AssetType))
 		assert.False(t, valueStructurallyTypedAs(value, schema.StringType))
@@ -1380,8 +1356,7 @@ func TestStructuralTypeChecks(t *testing.T) {
 		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.AssetType, schema.StringType)))
 		assert.True(t, valueStructurallyTypedAs(
 			property.New([]property.Value{value}),
-			makeArrayType(schema.AssetType),
-		))
+			makeArrayType(schema.AssetType)))
 
 		assert.False(t, valueStructurallyTypedAs(value, schema.ArchiveType))
 		assert.False(t, valueStructurallyTypedAs(value, schema.StringType))
@@ -1519,10 +1494,7 @@ func TestReduceUnionTypeEliminatesUnionsRecursively(t *testing.T) {
 		makeUnionType(
 			makeUnionType(
 				schema.StringType,
-				schema.BoolType,
-			),
-		),
-	)
+				schema.BoolType)))
 
 	reduced := reduceUnionType(unionType, value)
 	assert.Equal(t, schema.StringType, reduced)

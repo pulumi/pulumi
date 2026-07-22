@@ -797,12 +797,9 @@ func writeAllBytes(filename string, bytes []byte, overwrite bool, mode os.FileMo
 func isBinary(bytes []byte) bool {
 	const firstFewBytes = 8000
 
-	length := len(bytes)
-	if firstFewBytes < length {
-		length = firstFewBytes
-	}
+	length := min(firstFewBytes, len(bytes))
 
-	for i := 0; i < length; i++ {
+	for i := range length {
 		if bytes[i] == 0 {
 			return true
 		}

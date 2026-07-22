@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
+	maps0 "maps"
 	"net/http"
 	"os"
 	"os/exec"
@@ -933,9 +934,7 @@ func (c *testPulumiClient) ListEnvironmentReferrers(
 	resp := &client.ListEnvironmentReferrersResponse{
 		Referrers: map[string][]client.EnvironmentReferrer{},
 	}
-	for k, v := range env.referrers {
-		resp.Referrers[k] = v
-	}
+	maps0.Copy(resp.Referrers, env.referrers)
 	return resp, nil
 }
 
@@ -1633,9 +1632,7 @@ func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 				hc := interp.HandlerCtx(ctx)
 
 				environ := testEnviron{}
-				for k, v := range c.environ {
-					environ[k] = v
-				}
+				maps0.Copy(environ, c.environ)
 				hc.Env.Each(func(name string, vr expand.Variable) bool {
 					environ[name] = vr.String()
 					return true

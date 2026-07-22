@@ -321,7 +321,7 @@ func GeneratedSnapshotSpec(sso StackSpecOptions, snso SnapshotSpecOptions) *rapi
 
 		resourceCount := snso.ResourceCount.Draw(t, "SnapshotSpec.ResourceCount")
 
-		for i := 0; i < resourceCount; i++ {
+		for i := range resourceCount {
 			action := snso.Action.Draw(t, "SnapshotSpec.Action")
 
 			switch action {

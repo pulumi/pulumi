@@ -896,8 +896,8 @@ func GetGitReferenceNameOrHashAndSubDirectory(url string, urlPath string) (
 			for _, ref := range refs {
 				shortName := ref.Short()
 				prefix := shortName + "/"
-				if strings.HasPrefix(path, prefix) {
-					subDir := strings.TrimPrefix(path, prefix)
+				if after, ok := strings.CutPrefix(path, prefix); ok {
+					subDir := after
 					return ref, plumbing.ZeroHash, strings.TrimSuffix(subDir, "/"), nil
 				}
 			}

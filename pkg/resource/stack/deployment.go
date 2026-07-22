@@ -343,9 +343,7 @@ func SerializeSnippet(s resource.Snippet) apitype.SnippetV1 {
 	var refs map[string]string
 	if len(s.References) > 0 {
 		refs = make(map[string]string, len(s.References))
-		for k, v := range s.References {
-			refs[k] = v
-		}
+		maps.Copy(refs, s.References)
 	}
 	return apitype.SnippetV1{
 		UUID:       s.UUID,
@@ -378,9 +376,7 @@ func DeserializeSnippet(s apitype.SnippetV1) resource.Snippet {
 	var refs map[string]string
 	if len(s.References) > 0 {
 		refs = make(map[string]string, len(s.References))
-		for k, v := range s.References {
-			refs[k] = v
-		}
+		maps.Copy(refs, s.References)
 	}
 	return resource.Snippet{
 		UUID:       s.UUID,
@@ -666,7 +662,7 @@ func SerializeResource(
 
 	encodedByteString := propertyMapNeedsByteString(res.Inputs) ||
 		propertyMapNeedsByteString(res.Outputs) ||
-		propertyValueNeedsByteString(resource.ToResourcePropertyValue(res.ReplacementTrigger))
+		propertyValueNeedsByteString(res.ReplacementTrigger)
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
 	var inputs map[string]any

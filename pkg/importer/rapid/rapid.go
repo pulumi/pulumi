@@ -116,7 +116,7 @@ func drawSample(t *rapid.T, pkg *schema.Package, pickable []*schema.Resource) *S
 	satelliteCount := rapid.IntRange(0, 3).Draw(t, "satellite-count")
 	taken := map[resource.URN]bool{state.URN: true, provider.URN: true}
 	satellites := make([]*pkgresource.State, 0, satelliteCount)
-	for i := 0; i < satelliteCount; i++ {
+	for i := range satelliteCount {
 		s := drawSatellite(t, pickable, provider, taken, i)
 		taken[s.URN] = true
 		satellites = append(satellites, s)
@@ -212,7 +212,7 @@ func drawPropertyNames(t *rapid.T, label string, props []*schema.Property) []str
 		return nil
 	}
 	names := make([]string, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		idx := rapid.IntRange(0, len(props)-1).Draw(t, fmt.Sprintf("%s:%d", label, i))
 		names[i] = props[idx].Name
 	}
@@ -225,7 +225,7 @@ func drawAliases(t *rapid.T, typ tokens.Type) []resource.URN {
 		return nil
 	}
 	out := make([]resource.URN, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		name := drawIdentifier(t, fmt.Sprintf("alias-%d-name", i))
 		out[i] = resource.NewURN(stackName, projectName, "", typ, name)
 	}
@@ -243,7 +243,7 @@ func drawDistinctURNs(t *rapid.T, satellites []*pkgresource.State, label string)
 	}
 	seen := map[resource.URN]bool{}
 	out := []resource.URN{}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		u := satellites[rapid.IntRange(0, len(satellites)-1).Draw(t, fmt.Sprintf("%s:%d", label, i))].URN
 		if seen[u] {
 			continue
@@ -270,7 +270,7 @@ func drawPropertyDependencies(
 		return nil
 	}
 	out := map[resource.PropertyKey][]resource.URN{}
-	for i := 0; i < count; i++ {
+	for i := range count {
 		pi := rapid.IntRange(0, len(props)-1).Draw(t, fmt.Sprintf("propdep-%d-prop", i))
 		k := resource.PropertyKey(props[pi].Name)
 		if _, has := out[k]; has {

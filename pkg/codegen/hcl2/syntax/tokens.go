@@ -799,7 +799,7 @@ func (t *FunctionCallTokens) GetCommas(argCount int) []Token {
 		}
 
 		commas := make([]Token, argCount-1)
-		for i := 0; i < len(commas); i++ {
+		for i := range commas {
 			commas[i] = Token{Raw: newRawToken(hclsyntax.TokenComma)}
 		}
 		return commas
@@ -975,7 +975,7 @@ func (t *ObjectConsTokens) GetOpenBrace(itemCount int) Token {
 func (t *ObjectConsTokens) GetItems(itemCount int) []ObjectConsItemTokens {
 	if t == nil {
 		items := make([]ObjectConsItemTokens, itemCount)
-		for i := 0; i < len(items); i++ {
+		for i := range items {
 			items[i] = NewObjectConsItemTokens(i == len(items)-1)
 		}
 		return items
@@ -1274,7 +1274,7 @@ func (t *TupleConsTokens) GetCommas(elementCount int) []Token {
 		}
 
 		commas := make([]Token, elementCount-1)
-		for i := 0; i < len(commas); i++ {
+		for i := range commas {
 			commas[i] = Token{Raw: newRawToken(hclsyntax.TokenComma)}
 		}
 		return commas

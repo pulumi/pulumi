@@ -1601,129 +1601,129 @@ func testPerfOf(
 	high := resources[resourceCount-1]
 
 	t.Run("DependenciesOf/low", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.DependenciesOf(low)
 		}
 	})
 	t.Run("DependenciesOf/mid", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.DependenciesOf(mid)
 		}
 	})
 	t.Run("DependenciesOf/high", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.DependenciesOf(high)
 		}
 	})
 
 	t.Run("ParentsOf/low", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.ParentsOf(low)
 		}
 	})
 	t.Run("ParentsOf/mid", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.ParentsOf(mid)
 		}
 	})
 	t.Run("ParentsOf/high", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.ParentsOf(high)
 		}
 	})
 
 	t.Run("ChildrenOf/low", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.ChildrenOf(low)
 		}
 	})
 	t.Run("ChildrenOf/mid", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.ChildrenOf(mid)
 		}
 	})
 	t.Run("ChildrenOf/high", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.ChildrenOf(high)
 		}
 	})
 
 	t.Run("TransitiveDependenciesOf/low", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.TransitiveDependenciesOf(low)
 		}
 	})
 	t.Run("TransitiveDependenciesOf/mid", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.TransitiveDependenciesOf(mid)
 		}
 	})
 	t.Run("TransitiveDependenciesOf/high", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.TransitiveDependenciesOf(high)
 		}
 	})
 
 	t.Run("Contains/low", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.Contains(low)
 		}
 	})
 	t.Run("Contains/mid", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.Contains(mid)
 		}
 	})
 	t.Run("Contains/high", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.Contains(high)
 		}
 	})
 
 	t.Run("DependingOn/low", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.DependingOn(low, nil, false)
 		}
 	})
 	t.Run("DependingOn/mid", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.DependingOn(mid, nil, false)
 		}
 	})
 	t.Run("DependingOn/high", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.DependingOn(high, nil, false)
 		}
 	})
 
 	t.Run("DependingOnWithChildren/low", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.DependingOn(low, nil, true)
 		}
 	})
 	t.Run("DependingOnWithChildren/mid", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.DependingOn(mid, nil, true)
 		}
 	})
 	t.Run("DependingOnWithChildren/high", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.DependingOn(high, nil, true)
 		}
 	})
 
 	t.Run("OnlyDependsOn/low", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.OnlyDependsOn(low)
 		}
 	})
 	t.Run("OnlyDependsOn/mid", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.OnlyDependsOn(mid)
 		}
 	})
 	t.Run("OnlyDependsOn/high", func(t *testing.T) {
-		for i := 0; i < iterations; i++ {
+		for range iterations {
 			dg.OnlyDependsOn(high)
 		}
 	})
@@ -1733,7 +1733,7 @@ func testPerfOf(
 // relationship).
 func linearResourceGraph(n int) []*pkgresource.State {
 	resources := make([]*pkgresource.State, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		resources[i] = &pkgresource.State{
 			URN: resource.URN(fmt.Sprintf("urn%d", i)),
 		}
@@ -1749,7 +1749,7 @@ func linearResourceGraph(n int) []*pkgresource.State {
 // dependencies list).
 func triangleResourceGraph(n int) []*pkgresource.State {
 	resources := make([]*pkgresource.State, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		r := &pkgresource.State{
 			URN: resource.URN(fmt.Sprintf("urn%d", i)),
 		}

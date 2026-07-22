@@ -167,7 +167,7 @@ func ctyTypeToType(t cty.Type, optional bool) Type {
 	return result
 }
 
-var typeCapsule = cty.Capsule("type", reflect.TypeOf((*Type)(nil)).Elem())
+var typeCapsule = cty.Capsule("type", reflect.TypeFor[Type]())
 
 // encapsulateType wraps the given type in a cty capsule for use in TraverseIndex values.
 func encapsulateType(t Type) cty.Value {

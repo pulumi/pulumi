@@ -15,6 +15,8 @@
 package migrate
 
 import (
+	"maps"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -24,9 +26,7 @@ func UpToCheckpointV2(v1 apitype.CheckpointV1) apitype.CheckpointV2 {
 	var v2 apitype.CheckpointV2
 	v2.Stack = v1.Stack
 	v2.Config = make(config.Map)
-	for key, value := range v1.Config {
-		v2.Config[key] = value
-	}
+	maps.Copy(v2.Config, v1.Config)
 
 	var v2deploy *apitype.DeploymentV2
 	if v1.Latest != nil {

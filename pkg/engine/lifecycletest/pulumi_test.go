@@ -19,6 +19,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"maps"
 	"os"
 	"regexp"
 	"runtime"
@@ -581,7 +582,7 @@ func TestProviderCancellation(t *testing.T) {
 		errors := make([]error, resourceCount)
 		var resources sync.WaitGroup
 		resources.Add(resourceCount)
-		for i := 0; i < resourceCount; i++ {
+		for i := range resourceCount {
 			go func(idx int) {
 				_, errors[idx] = monitor.RegisterResource("pkgA:m:typA", fmt.Sprintf("res%d", idx), true)
 				resources.Done()
@@ -3920,9 +3921,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 
 					// Add a default property
 					results := resource.PropertyMap{}
-					for k, v := range req.News {
-						results[k] = v
-					}
+					maps.Copy(results, req.News)
 					results["default"] = resource.NewProperty("default")
 
 					return plugin.CheckResponse{Properties: results}, nil
@@ -3957,9 +3956,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id := resource.ID("")
 					results := resource.PropertyMap{}
-					for k, v := range req.Properties {
-						results[k] = v
-					}
+					maps.Copy(results, req.Properties)
 					// Add a computed property
 					results["computed"] = resource.MakeComputed(resource.NewProperty(""))
 
@@ -3990,9 +3987,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					}), req.NewInputs)
 
 					results := resource.PropertyMap{}
-					for k, v := range req.NewInputs {
-						results[k] = v
-					}
+					maps.Copy(results, req.NewInputs)
 					// Add a computed property
 					results["computed"] = resource.MakeComputed(resource.NewProperty(""))
 

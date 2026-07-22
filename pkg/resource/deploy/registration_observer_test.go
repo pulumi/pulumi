@@ -149,13 +149,11 @@ func TestRegistrationObserver_ConcurrentObserversAndResolves(t *testing.T) {
 
 	for _, urn := range all {
 		for range gettersPerURN {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				got, err := observeRegistration(b, urn).Result(ctx)
 				require.NoError(t, err)
 				require.Equal(t, want[urn], got.Outputs)
-			}()
+			})
 		}
 	}
 

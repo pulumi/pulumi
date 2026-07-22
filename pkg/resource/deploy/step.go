@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -38,7 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // StepCompleteFunc is the type of functions returned from Step.Apply. These
@@ -2349,12 +2349,7 @@ func ConstrainedTo(op display.StepOp, constraint display.StepOp) bool {
 	case OpReplace, OpCreateReplacement, OpDeleteReplaced:
 		allowed = []display.StepOp{OpSame, OpUpdate, constraint}
 	}
-	for _, candidate := range allowed {
-		if candidate == op {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(allowed, op)
 }
 
 // getProvider fetches the provider for the given step.

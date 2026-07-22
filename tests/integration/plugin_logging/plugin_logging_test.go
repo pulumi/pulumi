@@ -103,7 +103,7 @@ plugins:
 		stdout, _ := e.RunCommand("pulumi", "logs", "decrypt", logFile)
 
 		isStackLog := strings.Contains(entry.Name(), "test-plugin-logging")
-		for _, line := range strings.Split(stdout, "\n") {
+		for line := range strings.SplitSeq(stdout, "\n") {
 			stripped := timeRe.ReplaceAllString(line, "")
 			if strings.Contains(line, "plugin-log-test-marker") {
 				assert.True(t, isStackLog,

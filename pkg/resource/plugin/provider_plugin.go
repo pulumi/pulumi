@@ -147,7 +147,7 @@ func GetProviderAttachPort(pkg tokens.Package) (*int, error) {
 	var optAttach string
 
 	if providersEnvVar, has := os.LookupEnv("PULUMI_DEBUG_PROVIDERS"); has {
-		for _, provider := range strings.Split(providersEnvVar, ",") {
+		for provider := range strings.SplitSeq(providersEnvVar, ",") {
 			parts := strings.SplitN(provider, ":", 2)
 
 			if parts[0] == pkg.String() {

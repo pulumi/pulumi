@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -66,8 +67,8 @@ type PolicyEnvironmentResolver interface {
 // prefix and the policy name. Keys may be "policyName" or "packName:policyName".
 // This mirrors pulumiConfig's optional namespace pattern (e.g., "aws:region").
 func parsePolicyConfigKey(key string) (packName, policyName string) {
-	if i := strings.IndexByte(key, ':'); i >= 0 {
-		return key[:i], key[i+1:]
+	if before, after, ok := strings.Cut(key, ":"); ok {
+		return before, after
 	}
 	return "", key
 }
@@ -87,9 +88,7 @@ func mergePolicyConfig(
 		return base
 	}
 	merged := make(map[string]*json.RawMessage, len(base)+len(escConfig))
-	for k, v := range base {
-		merged[k] = v
-	}
+	maps.Copy(merged, base)
 	for rawKey, v := range escConfig {
 		packPrefix, policyName := parsePolicyConfigKey(rawKey)
 		if packPrefix != "" && packPrefix != packName {
@@ -163,9 +162,7 @@ func mergeAnalyzerConfig(
 		return base
 	}
 	result := make(map[string]plugin.AnalyzerPolicyConfig, len(base)+len(overlay))
-	for k, v := range base {
-		result[k] = v
-	}
+	maps.Copy(result, base)
 	for k, ov := range overlay {
 		bv, exists := result[k]
 		if !exists {
@@ -180,9 +177,7 @@ func mergeAnalyzerConfig(
 		// Clone base properties first to avoid mutating the original map.
 		if len(ov.Properties) > 0 {
 			merged := make(map[string]any, len(bv.Properties)+len(ov.Properties))
-			for pk, pv := range bv.Properties {
-				merged[pk] = pv
-			}
+			maps.Copy(merged, bv.Properties)
 			deepMergeMap(merged, ov.Properties)
 			bv.Properties = merged
 		}

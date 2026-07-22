@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -311,9 +312,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 
 			oldInputs := read.Inputs
 			newInputs := oldInputs.Copy()
-			for key, value := range patch {
-				newInputs[key] = value
-			}
+			maps.Copy(newInputs, patch)
 			checked, err := pc.checkResourceInputs(ctx, urn, res, oldInputs, newInputs)
 			if err != nil {
 				return err

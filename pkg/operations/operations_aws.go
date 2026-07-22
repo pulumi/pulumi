@@ -261,8 +261,8 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 	}
 
 	// Collect responses on the channel and append logs into combined log array
-	var logs []LogEntry
-	for i := 0; i < len(logGroups); i++ {
+	logs := make([]LogEntry, 0, len(logGroups))
+	for i := range logGroups {
 		logEvents := <-ch
 		for _, event := range logEvents {
 			logs = append(logs, LogEntry{

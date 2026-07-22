@@ -1522,7 +1522,7 @@ type DoEchoArgs struct {
 type DoEchoResultOutput struct{ *OutputState }
 
 func (DoEchoResultOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*DoEchoResult)(nil)).Elem()
+	return reflect.TypeFor[DoEchoResult]()
 }
 
 func TestInvokeDependsOn(t *testing.T) {

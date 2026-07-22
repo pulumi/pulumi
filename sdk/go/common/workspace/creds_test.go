@@ -60,7 +60,7 @@ func TestConcurrentCredentialsWrites(t *testing.T) {
 	err = StoreCredentials(testCreds)
 	require.NoError(t, err)
 
-	for i := 0; i < n; i++ {
+	for range n {
 		go func() {
 			defer wg.Done()
 			err := StoreCredentials(testCreds)

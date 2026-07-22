@@ -16,6 +16,7 @@ package test
 
 import (
 	"flag"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -614,12 +615,8 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			// test-specific checks, with test-specific
 			// having precedence.
 			allChecks := make(map[string]CodegenCheck)
-			for k, v := range opts.Checks {
-				allChecks[k] = v
-			}
-			for k, v := range tt.Checks {
-				allChecks[k] = v
-			}
+			maps.Copy(allChecks, opts.Checks)
+			maps.Copy(allChecks, tt.Checks)
 
 			// Sort the checks in alphabetical order.
 			var checkOrder []string

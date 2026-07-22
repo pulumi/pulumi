@@ -140,7 +140,7 @@ func renderWebhookPingText(w io.Writer, d apitype.WebhookDelivery) error {
 	fmt.Fprintf(w, "Duration:          %dms\n", d.Duration)
 	if d.RequestHeaders != "" {
 		fmt.Fprintln(w, "Request headers:")
-		for _, line := range strings.Split(d.RequestHeaders, "\n") {
+		for line := range strings.SplitSeq(d.RequestHeaders, "\n") {
 			if line = strings.TrimSpace(line); line != "" {
 				fmt.Fprintf(w, "  %s\n", line)
 			}
@@ -152,7 +152,7 @@ func renderWebhookPingText(w io.Writer, d apitype.WebhookDelivery) error {
 	fmt.Fprintf(w, "Response code:     %d\n", d.ResponseCode)
 	if d.ResponseBody != "" {
 		fmt.Fprintln(w, "Response body:")
-		for _, line := range strings.Split(d.ResponseBody, "\n") {
+		for line := range strings.SplitSeq(d.ResponseBody, "\n") {
 			if line = strings.TrimSpace(line); line != "" {
 				fmt.Fprintf(w, "  %s\n", line)
 			}

@@ -81,7 +81,7 @@ func TestGenResourceMappingsIsDeterministic(t *testing.T) {
 	}
 
 	h1 := generateInitHash()
-	for i := 0; i < 16; i++ {
+	for range 16 {
 		assert.Equal(t, h1, generateInitHash())
 	}
 }
