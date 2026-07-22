@@ -78,6 +78,10 @@ class Settings:
         # programs each register against their own engine and receive distinct
         # refs.
         self.package_refs = {}
+        # Maps a package reference to the name of the package it serves, which
+        # for a parameterized package is the parameter's name rather than the
+        # plugin's.
+        self.package_ref_names = {}
 
         if self.legacy_apply_enabled is None:
             self.legacy_apply_enabled = (
@@ -149,6 +153,9 @@ class Settings:
 
     @contextproperty
     def package_refs(self) -> Optional[dict]: ...
+
+    @contextproperty
+    def package_ref_names(self) -> Optional[dict]: ...
 
     @contextproperty
     def callbacks(self) -> Optional[_CallbackServicer]: ...
@@ -396,26 +403,28 @@ async def register_package(
     base_provider_name: str,
     base_provider_version: str,
     base_provider_download_url: str,
-    package_name: str,
-    package_version: str,
-    base64_parameter: str,
+    package_name: Optional[str] = None,
+    package_version: Optional[str] = None,
+    base64_parameter: Optional[str] = None,
     extension: bool = False,
 ) -> str:
     """
-    Registers a parameterized provider package with the resource monitor and
-    returns its package reference. The result is cached per deployment so that
-    concurrent inline programs each register against their own engine and
-    receive distinct refs. When extension is True, the package is registered as
-    an extension parameterization rather than a replacement.
+    Registers a provider package with the resource monitor and returns its
+    package reference. The result is cached per deployment so that concurrent
+    inline programs each register against their own engine and receive distinct
+    refs. When extension is True, the package is registered as an extension
+    parameterization rather than a replacement. A package that is not
+    parameterized omits package_name and registers under its own name and
+    version.
     """
     key = "\0".join(
         [
             base_provider_name,
             base_provider_version,
             base_provider_download_url,
-            package_name,
-            package_version,
-            base64_parameter,
+            package_name or "",
+            package_version or "",
+            base64_parameter or "",
             str(extension),
         ]
     )
@@ -434,24 +443,36 @@ async def register_package(
     if monitor is None:
         raise Exception("No monitor available")
 
-    parameterization = resource_pb2.Parameterization(
-        name=package_name,
-        version=package_version,
-        value=base64.b64decode(base64_parameter),
-    )
     request = resource_pb2.RegisterPackageRequest(
         name=base_provider_name,
         version=base_provider_version,
         download_url=base_provider_download_url,
     )
-    if extension:
-        request.extension.CopyFrom(parameterization)
-    else:
-        request.parameterization.CopyFrom(parameterization)
+    if package_name is not None:
+        parameterization = resource_pb2.Parameterization(
+            name=package_name,
+            version=package_version or "",
+            value=base64.b64decode(base64_parameter or ""),
+        )
+        if extension:
+            request.extension.CopyFrom(parameterization)
+        else:
+            request.parameterization.CopyFrom(parameterization)
     response = monitor.RegisterPackage(request)
     ref = response.ref
     package_refs[key] = ref
+    SETTINGS.package_ref_names[ref] = package_name or base_provider_name
     return ref
+
+
+def package_name_for_ref(package_ref: Optional[str]) -> Optional[str]:
+    """
+    Returns the name of the package the given reference serves, or None if this
+    deployment did not register it.
+    """
+    if package_ref is None:
+        return None
+    return SETTINGS.package_ref_names.get(package_ref)
 
 
 async def monitor_supports_resource_hooks() -> bool:

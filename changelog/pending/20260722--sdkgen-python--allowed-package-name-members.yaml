@@ -1,0 +1,6 @@
+component: sdkgen/python
+kind: fix
+body: Generate a package reference for members whose token names a package declared
+    in allowedPackageNames, so an explicit provider is no longer dropped
+custom:
+    PR: "24012"

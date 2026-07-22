@@ -93,7 +93,8 @@ class BarResource(pulumi.ComponentResource):
             resource_name,
             __props__,
             opts,
-            remote=True)
+            remote=True,
+            package_ref=_utilities.get_package())
 
     @_builtins.property
     @pulumi.getter

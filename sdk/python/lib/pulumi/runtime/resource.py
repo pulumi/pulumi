@@ -44,6 +44,7 @@ from .settings import (
     monitor_supports_error_hooks,
     monitor_supports_resource_hooks,
     handle_grpc_error,
+    package_name_for_ref,
 )
 
 if TYPE_CHECKING:
@@ -169,6 +170,21 @@ async def prepare_aliases(
             aliases.append(alias_pb2.Alias(urn=alias_urn))
 
     return aliases
+
+
+def _provider_for_package_ref(
+    res: "Resource", opts: "ResourceOptions", package_ref_str: str
+) -> Optional["ProviderResource"]:
+    """
+    Returns the explicit provider to register the resource with, dropping one
+    that serves a different package than the reference does. The resource's type
+    token may name a foreign package (allowedPackageNames), so the reference,
+    not the token, decides which package the resource belongs to.
+    """
+    pkg = package_name_for_ref(package_ref_str)
+    if pkg is None or opts.provider is None or opts.provider.package == pkg:
+        return opts.provider
+    return (res._providers or {}).get(pkg)
 
 
 async def _create_provider_ref(provider: "ProviderResource") -> str:
@@ -845,6 +861,9 @@ def read_resource(
                 if package_ref_str is not None:
                     opts.plugin_download_url = None
                     opts.version = None
+                    opts.provider = _provider_for_package_ref(
+                        res, opts, package_ref_str
+                    )
                     log.debug(f"Read using package reference {package_ref_str}")
 
             req = resource_pb2.ReadResourceRequest(
@@ -1029,6 +1048,9 @@ def register_resource(
                 if package_ref_str is not None:
                     opts.plugin_download_url = None
                     opts.version = None
+                    opts.provider = _provider_for_package_ref(
+                        res, opts, package_ref_str
+                    )
 
             try:
                 resolver = await prepare_resource(

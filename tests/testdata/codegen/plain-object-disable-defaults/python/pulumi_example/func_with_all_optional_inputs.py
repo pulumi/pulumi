@@ -57,7 +57,7 @@ def func_with_all_optional_inputs(a: Optional[Union['HelmReleaseSettings', 'Helm
     __args__['a'] = a
     __args__['b'] = b
     opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
-    __ret__ = pulumi.runtime.invoke('mypkg::funcWithAllOptionalInputs', __args__, opts=opts, typ=FuncWithAllOptionalInputsResult).value
+    __ret__ = pulumi.runtime.invoke('mypkg::funcWithAllOptionalInputs', __args__, opts=opts, typ=FuncWithAllOptionalInputsResult, package_ref=_utilities.get_package()).value
 
     return AwaitableFuncWithAllOptionalInputsResult(
         r=pulumi.get(__ret__, 'r'))
@@ -74,6 +74,6 @@ def func_with_all_optional_inputs_output(a: pulumi.Input[Optional[Optional[Union
     __args__['a'] = a
     __args__['b'] = b
     opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
-    __ret__ = pulumi.runtime.invoke_output('mypkg::funcWithAllOptionalInputs', __args__, opts=opts, typ=FuncWithAllOptionalInputsResult)
+    __ret__ = pulumi.runtime.invoke_output('mypkg::funcWithAllOptionalInputs', __args__, opts=opts, typ=FuncWithAllOptionalInputsResult, package_ref=_utilities.get_package())
     return __ret__.apply(lambda __response__: FuncWithAllOptionalInputsResult(
         r=pulumi.get(__response__, 'r')))

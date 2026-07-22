@@ -1002,11 +1002,18 @@ class Resource:
             self._providers = opts.parent._providers
 
         pkg = _pkg_from_type(t)
+        # A resource registered with a package reference takes its package
+        # identity from that reference, not from its type token, which may name
+        # a foreign package (allowedPackageNames). The reference is not resolved
+        # yet, so an explicit provider is kept here and dropped at registration
+        # if the reference turns out to serve a different package.
+        if package_ref is not None:
+            pkg = None
         opts.provider, opts.providers = self._get_providers(t, pkg, opts)
 
         self._protect = opts.protect
         self._provider = opts.provider if (custom or remote) else None
-        if self._provider and self._provider.package != pkg:
+        if self._provider and pkg is not None and self._provider.package != pkg:
             action = (
                 "get"
                 if opts.urn is not None
@@ -1089,8 +1096,11 @@ class Resource:
         if opts.provider:
             # If an explicit provider was passed in,
             # its package may or may not match the package we're looking for.
+            # A resource identified by a package reference (pkg is None) keeps
+            # the provider here; registration drops it if the reference serves
+            # a different package.
             provider_pkg = opts.provider.package
-            if pkg == provider_pkg:
+            if pkg is None or pkg == provider_pkg:
                 # Explicit provider takes precedence over parent or ambient providers.
                 provider = opts.provider
 
