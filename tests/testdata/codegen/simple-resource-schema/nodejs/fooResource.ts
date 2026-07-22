@@ -39,7 +39,7 @@ export class FooResource extends pulumi.ComponentResource {
             resourceInputs["foo"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
-        super(FooResource.__pulumiType, name, resourceInputs, opts, true /*remote*/);
+        super(FooResource.__pulumiType, name, resourceInputs, opts, true /*remote*/, utilities.getPackage());
     }
 }
 

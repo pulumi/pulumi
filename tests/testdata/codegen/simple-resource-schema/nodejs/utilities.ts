@@ -94,3 +94,11 @@ export async function callAsync<T>(
     }
     return value;
 }
+
+export async function getPackage(): Promise<string | undefined> {
+	return runtime.registerPackage({
+		baseProviderName: "example",
+		baseProviderVersion: "1.2.3",
+		baseProviderDownloadUrl: "example.com/download",
+	});
+}

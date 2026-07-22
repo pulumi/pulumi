@@ -1,0 +1,11 @@
+{
+	"name": "l2-allowed-package-name",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/extra-package-names": "ROOT/artifacts/pulumi-extra-package-names-47.0.0.tgz"
+	}
+}
