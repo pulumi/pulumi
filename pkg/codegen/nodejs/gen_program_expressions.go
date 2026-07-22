@@ -389,7 +389,11 @@ func enumNameWithPackage(enumToken string, pkgRef schema.PackageReference) (stri
 	components := strings.Split(enumToken, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", enumToken)
 	name := tokenToName(enumToken)
-	pkg := makeValidIdentifier(components[0])
+	pkgName := components[0]
+	if pkgRef != nil {
+		pkgName = pkgRef.Name()
+	}
+	pkg := makeValidIdentifier(pkgName)
 	if mod := components[1]; mod != "" && mod != "index" {
 		// if the token has the format {pkg}:{mod}/{name}:{Name}
 		// then we simplify into {pkg}:{mod}:{Name}
@@ -628,10 +632,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			}
 		}
 		if len(expr.Args) == 3 {
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
+			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok &&
+				len(pcl.GeneratedInvokeOptions(invokeOptions)) > 0 {
 				g.Fgen(w, ", {")
 				g.Indented(func() {
-					for _, item := range invokeOptions.Items {
+					for _, item := range pcl.GeneratedInvokeOptions(invokeOptions) {
 						key := pcl.LiteralValueString(item.Key)
 						g.Fgenf(w, "\n%s", g.Indent)
 						switch key {

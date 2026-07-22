@@ -972,12 +972,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/", name)
 	} else {
 		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts", name)
-		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
+		if needsPackageRef(pkg, r.Token) {
 			fmt.Fprintf(w, ", false /*dependency*/")
 		}
 	}
 
-	if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
+	if needsPackageRef(pkg, r.Token) {
 		fmt.Fprintf(w, ", utilities.getPackage()")
 	}
 
@@ -1101,7 +1101,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		// If the call is on a parameterized package, make sure we pass the parameter.
 		pkg, err := fun.PackageReference.Definition()
 		contract.AssertNoErrorf(err, "can not load package definition for %s: %s", pkg.Name, err)
-		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
+		if needsPackageRef(pkg, fun.Token) {
 			fmt.Fprintf(w, ", utilities.getPackage()")
 		}
 
@@ -1371,7 +1371,7 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 		if err != nil {
 			return info, err
 		}
-		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
+		if needsPackageRef(pkg, fun.Token) {
 			fmt.Fprintf(w, ", utilities.getPackage()")
 		}
 
@@ -3056,25 +3056,28 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 		return err
 	}
 
-	if def.Parameterization != nil || def.ExtensionParameterization != nil {
-		isExtension := def.Parameterization == nil
-		var baseProvider schema.BaseProvider
-		var parameter []byte
-		if isExtension {
-			baseProvider = def.ExtensionParameterization.BaseProvider
-			parameter = def.ExtensionParameterization.Parameter
-		} else {
-			baseProvider = schema.BaseProvider{Name: def.Parameterization.BasePlugin.Name, Version: def.Parameterization.BasePlugin.Version}
-			parameter = def.Parameterization.Parameter
-		}
-		base64Parameter := base64.StdEncoding.EncodeToString(parameter)
+	if emitsPackageRef(def) {
+		parameterized := def.Parameterization != nil || def.ExtensionParameterization != nil
+		isExtension := parameterized && def.Parameterization == nil
 
-		// Only extension parameterization sets the extension flag; replacement
-		// parameterization omits it so generated SDKs stay byte-compatible with
-		// runtimes that predate the field.
-		extensionField := ""
-		if isExtension {
-			extensionField = "\n\t\textension: true,"
+		// A package that is not parameterized registers under its own name and
+		// version: the reference identifies the package serving members whose
+		// tokens name a foreign package.
+		baseProvider := schema.BaseProvider{Name: def.Name}
+		if def.Version != nil {
+			baseProvider.Version = *def.Version
+		}
+		var parameterFields string
+		switch {
+		case isExtension:
+			baseProvider = def.ExtensionParameterization.BaseProvider
+			// Only extension parameterization sets the extension flag; replacement
+			// parameterization omits it so generated SDKs stay byte-compatible with
+			// runtimes that predate the field.
+			parameterFields = parameterizationFields(def, def.ExtensionParameterization.Parameter) + "\n\t\textension: true,"
+		case parameterized:
+			baseProvider = schema.BaseProvider{Name: def.Parameterization.BasePlugin.Name, Version: def.Parameterization.BasePlugin.Version}
+			parameterFields = parameterizationFields(def, def.Parameterization.Parameter)
 		}
 
 		_, err = fmt.Fprintf(w, `
@@ -3082,20 +3085,14 @@ export async function getPackage(): Promise<string | undefined> {
 	return runtime.registerPackage({
 		baseProviderName: "%s",
 		baseProviderVersion: "%s",
-		baseProviderDownloadUrl: "%s",
-		packageName: "%s",
-		packageVersion: "%s",
-		base64Parameter: "%s",%s
+		baseProviderDownloadUrl: "%s",%s
 	});
 }
 `,
 			baseProvider.Name,
 			baseProvider.Version.String(),
 			def.PluginDownloadURL,
-			def.Name,
-			def.Version,
-			base64Parameter,
-			extensionField)
+			parameterFields)
 	}
 
 	return err
@@ -3116,4 +3113,25 @@ func objectTypeLessThan(a, b *schema.ObjectType) bool {
 	default:
 		return false
 	}
+}
+
+// needsPackageRef reports whether a registration for the given token must
+// carry the package's reference: parameterized packages identify themselves
+// that way, and so do members whose token names a foreign package, since the
+// token alone does not name the package that serves them.
+func needsPackageRef(pkg *schema.Package, token string) bool {
+	return pkg.Parameterization != nil || pkg.ExtensionParameterization != nil || pkg.IsForeignToken(token)
+}
+
+// emitsPackageRef reports whether a package's SDK includes the helper that
+// registers it and returns its reference.
+func emitsPackageRef(pkg *schema.Package) bool {
+	return pkg.Parameterization != nil || pkg.ExtensionParameterization != nil || pkg.HasForeignTokens()
+}
+
+// parameterizationFields renders the registerPackage fields that carry a
+// package's parameterization.
+func parameterizationFields(pkg *schema.Package, parameter []byte) string {
+	return fmt.Sprintf("\n\t\tpackageName: %q,\n\t\tpackageVersion: %q,\n\t\tbase64Parameter: %q,",
+		pkg.Name, pkg.Version.String(), base64.StdEncoding.EncodeToString(parameter))
 }

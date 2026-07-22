@@ -39,7 +39,7 @@ export class BarResource extends pulumi.ComponentResource {
             resourceInputs["foo"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
-        super(BarResource.__pulumiType, name, resourceInputs, opts, true /*remote*/);
+        super(BarResource.__pulumiType, name, resourceInputs, opts, true /*remote*/, utilities.getPackage());
     }
 }
 

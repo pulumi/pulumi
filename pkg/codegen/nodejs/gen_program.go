@@ -1207,7 +1207,10 @@ func (g *generator) genResourceOptions(
 	if opts.Parent != nil {
 		appendOption("parent", opts.Parent)
 	}
-	if opts.Provider != nil {
+	// A bare package block reference selects the package the token resolves
+	// against; the SDK routes such resources through the package reference, so
+	// there is no provider to pass.
+	if opts.Provider != nil && !pcl.ReferencesPackageBlock(opts.Provider) {
 		appendOption("provider", opts.Provider)
 	}
 	if opts.Providers != nil {

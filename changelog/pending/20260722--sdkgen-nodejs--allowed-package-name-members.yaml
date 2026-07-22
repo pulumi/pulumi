@@ -1,0 +1,6 @@
+component: sdkgen/nodejs
+kind: fix
+body: Generate a package reference for members whose token names a package declared
+    in allowedPackageNames, so they are served by the package that defines them
+custom:
+    PR: "24011"

@@ -103,7 +103,6 @@ var expectedFailures = map[string]string{
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
 	"l3-range-invoke-output-traversal":   "pulumi#12507: range loop variable captured by reference; indexed output resolves with the wrong index", //nolint:lll
-	"l2-allowed-package-name":            "codegen does not yet resolve members declared under an allowed package name",
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").

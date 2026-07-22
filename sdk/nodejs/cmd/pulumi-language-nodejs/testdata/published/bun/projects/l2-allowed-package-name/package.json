@@ -1,0 +1,15 @@
+{
+	"name": "l2-allowed-package-name",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/extra-package-names": "ROOT/artifacts/pulumi-extra-package-names-47.0.0.tgz"
+	}
+}

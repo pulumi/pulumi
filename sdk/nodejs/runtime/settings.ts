@@ -776,27 +776,31 @@ export interface RegisterPackageArgs {
     baseProviderName: string;
     baseProviderVersion: string;
     baseProviderDownloadUrl: string;
-    packageName: string;
-    packageVersion: string;
-    base64Parameter: string;
+    /**
+     * The parameterization to register. Omitted for a package that is not
+     * parameterized, which registers under its own name and version.
+     */
+    packageName?: string;
+    packageVersion?: string;
+    base64Parameter?: string;
     /** When true, register an extension parameterization rather than a replacement. */
     extension?: boolean;
 }
 
 /**
- * Registers a parameterized provider package with the resource monitor and
- * returns its package reference. The result is cached per deployment so that
- * concurrent inline programs each register against their own engine and
- * receive distinct refs.
+ * Registers a provider package with the resource monitor and returns its
+ * package reference. The result is cached per deployment so that concurrent
+ * inline programs each register against their own engine and receive distinct
+ * refs.
  */
 export function registerPackage(args: RegisterPackageArgs): Promise<string> {
     const key = [
         args.baseProviderName,
         args.baseProviderVersion,
         args.baseProviderDownloadUrl,
-        args.packageName,
-        args.packageVersion,
-        args.base64Parameter,
+        args.packageName ?? "",
+        args.packageVersion ?? "",
+        args.base64Parameter ?? "",
         String(args.extension ?? false),
     ].join("\0");
 
@@ -809,18 +813,20 @@ export function registerPackage(args: RegisterPackageArgs): Promise<string> {
         throw new Error("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI");
     }
 
-    const params = new resproto.Parameterization();
-    params.setName(args.packageName);
-    params.setVersion(args.packageVersion);
-    params.setValue(Uint8Array.from(atob(args.base64Parameter), (c) => c.charCodeAt(0)));
     const req = new resproto.RegisterPackageRequest();
     req.setName(args.baseProviderName);
     req.setVersion(args.baseProviderVersion);
     req.setDownloadUrl(args.baseProviderDownloadUrl);
-    if (args.extension) {
-        req.setExtension$(params);
-    } else {
-        req.setParameterization(params);
+    if (args.packageName !== undefined) {
+        const params = new resproto.Parameterization();
+        params.setName(args.packageName);
+        params.setVersion(args.packageVersion ?? "");
+        params.setValue(Uint8Array.from(atob(args.base64Parameter ?? ""), (c) => c.charCodeAt(0)));
+        if (args.extension) {
+            req.setExtension$(params);
+        } else {
+            req.setParameterization(params);
+        }
     }
 
     const mon = getMonitor();
