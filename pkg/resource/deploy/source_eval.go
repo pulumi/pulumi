@@ -924,6 +924,8 @@ func (rm *resmon) supportsFeatureID(id string) bool {
 		return true
 	case "sendsOptionsToHooks":
 		return true
+	case "invokeParent":
+		return true
 	}
 	return false
 }
@@ -970,6 +972,9 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS)
 	}
 	features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING)
+	if rm.supportsFeatureID("invokeParent") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_PARENT)
+	}
 	return features
 }
 
@@ -1017,8 +1022,13 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
 
+	parent, err := resource.ParseOptionalURN(req.GetParent())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
+	}
+
 	opts := &pulumirpc.TransformInvokeOptions{
-		Provider:          req.GetProvider(),
+		Provider:          rm.resolveProvider(req.GetProvider(), nil, parent, tok.Package()),
 		Version:           req.GetVersion(),
 		PluginDownloadUrl: req.GetPluginDownloadURL(),
 		PluginChecksums:   req.GetPluginChecksums(),

@@ -1,0 +1,5 @@
+component: engine
+kind: feat
+body: Resolve an invoke's provider from the `providers` option of the parent named
+  on the request, matching the resolution applied to resource registrations
+time: 2026-07-24T00:00:00+00:00

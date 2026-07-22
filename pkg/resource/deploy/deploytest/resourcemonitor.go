@@ -726,9 +726,20 @@ func (rm *ResourceMonitor) ReadResource(
 	return resource.URN(resp.Urn), outs, nil
 }
 
+// InvokeOptions is an optional bag of options for the Invoke method.
+type InvokeOptions struct {
+	// Parent is the URN of the resource the invoke is parented to.
+	Parent resource.URN
+}
+
 func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.PropertyMap,
-	provider string, version string, packageRef string,
+	provider string, version string, packageRef string, options ...InvokeOptions,
 ) (resource.PropertyMap, []*pulumirpc.CheckFailure, error) {
+	var opts InvokeOptions
+	for _, o := range options {
+		opts = o
+	}
+
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
 		KeepUnknowns:  true,
@@ -743,6 +754,7 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
 		Tok:        string(tok),
 		Provider:   provider,
+		Parent:     string(opts.Parent),
 		Args:       ins,
 		Version:    version,
 		PackageRef: packageRef,

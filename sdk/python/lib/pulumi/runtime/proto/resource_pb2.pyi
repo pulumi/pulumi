@@ -59,6 +59,8 @@ class _ResourceMonitorFeatureEnumTypeWrapper(google.protobuf.internal.enum_type_
     """The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
     string bytes signature and a base64 encoding of the string's bytes.
     """
+    RESOURCE_MONITOR_FEATURE_INVOKE_PARENT: _ResourceMonitorFeature.ValueType  # 15
+    """The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`."""
 
 class ResourceMonitorFeature(_ResourceMonitorFeature, metaclass=_ResourceMonitorFeatureEnumTypeWrapper):
     """ResourceMonitorFeature is a strongly typed monitor capability identifier.
@@ -84,6 +86,8 @@ RESOURCE_MONITOR_FEATURE_BYTE_STRING: ResourceMonitorFeature.ValueType  # 13
 """The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
 string bytes signature and a base64 encoding of the string's bytes.
 """
+RESOURCE_MONITOR_FEATURE_INVOKE_PARENT: ResourceMonitorFeature.ValueType  # 15
+"""The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`."""
 global___ResourceMonitorFeature = ResourceMonitorFeature
 
 class _Result:
@@ -886,6 +890,7 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     PARENTSTACKTRACEHANDLE_FIELD_NUMBER: builtins.int
     PACKAGEREF_FIELD_NUMBER: builtins.int
     ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
+    PARENT_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
     provider: builtins.str
@@ -903,6 +908,11 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     accepts_byte_string: builtins.bool
     """When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
     carrying the byte string signature and a base64 encoding of the string's bytes.
+    """
+    parent: builtins.str
+    """An optional URN of the resource this invoke is parented to. When `provider` is empty, the invoke is served by
+    the provider its parent's `providers` option names for the invoke's package, the same resolution applied to
+    resource registrations. Only respected when the monitor advertises `INVOKE_PARENT`.
     """
     @property
     def args(self) -> google.protobuf.struct_pb2.Struct:
@@ -935,9 +945,10 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
         parentStackTraceHandle: builtins.str = ...,
         packageRef: builtins.str = ...,
         accepts_byte_string: builtins.bool = ...,
+        parent: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["args", b"args", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "accepts_byte_string", b"accepts_byte_string", "args", b"args", "packageRef", b"packageRef", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "accepts_byte_string", b"accepts_byte_string", "args", b"args", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceInvokeRequest = ResourceInvokeRequest
 

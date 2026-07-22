@@ -5586,7 +5586,8 @@ sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition
 stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
 parentstacktracehandle: jspb.Message.getFieldWithDefault(msg, 11, ""),
 packageref: jspb.Message.getFieldWithDefault(msg, 9, ""),
-acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 12, false)
+acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
+parent: jspb.Message.getFieldWithDefault(msg, 15, "")
   };
 
   if (includeInstance) {
@@ -5675,6 +5676,10 @@ proto.pulumirpc.ResourceInvokeRequest.deserializeBinaryFromReader = function(msg
     case 12:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsByteString(value);
+      break;
+    case 15:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setParent(value);
       break;
     default:
       reader.skipField();
@@ -5786,6 +5791,13 @@ proto.pulumirpc.ResourceInvokeRequest.serializeBinaryToWriter = function(message
   if (f) {
     writer.writeBool(
       12,
+      f
+    );
+  }
+  f = message.getParent();
+  if (f.length > 0) {
+    writer.writeString(
+      15,
       f
     );
   }
@@ -6067,6 +6079,24 @@ proto.pulumirpc.ResourceInvokeRequest.prototype.getAcceptsByteString = function(
  */
 proto.pulumirpc.ResourceInvokeRequest.prototype.setAcceptsByteString = function(value) {
   return jspb.Message.setProto3BooleanField(this, 12, value);
+};
+
+
+/**
+ * optional string parent = 15;
+ * @return {string}
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.getParent = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 15, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.setParent = function(value) {
+  return jspb.Message.setProto3StringField(this, 15, value);
 };
 
 
@@ -12393,7 +12423,8 @@ proto.pulumirpc.ResourceMonitorFeature = {
   RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS: 10,
   RESOURCE_MONITOR_FEATURE_ERROR_HOOKS: 11,
   RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS: 12,
-  RESOURCE_MONITOR_FEATURE_BYTE_STRING: 13
+  RESOURCE_MONITOR_FEATURE_BYTE_STRING: 13,
+  RESOURCE_MONITOR_FEATURE_INVOKE_PARENT: 15
 };
 
 /**
