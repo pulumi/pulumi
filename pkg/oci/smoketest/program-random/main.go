@@ -12,20 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// A Pulumi program for the CRI multi-source consume proof. It creates one resource
-// through each of TWO explicit `random` providers that resolve to DIFFERENT sources:
+// A Pulumi program for the multi-source consume proof (CRI and docker). It creates one
+// resource through each of TWO explicit `random` providers that resolve to DIFFERENT
+// sources:
 //
-//   - pub:  an unpinned first-party provider. With no oci:// pin it resolves by
-//           convention under the constant public source (pulumi.registry.internal),
-//           which the proxy synthesizes.
-//   - priv: the SAME package (pulumi/pulumi-provider-random) pinned to a PRIVATE
-//           source. Its oci:// ref names its own host, so it resolves there verbatim.
+//   - pub:  an unpinned first-party provider. With no oci:// pin it resolves by convention
+//     under the PUBLIC source (the container host's public-registry knob), which the
+//     proxy synthesizes.
+//   - priv: the SAME package (pulumi/pulumi-provider-random) pinned to a PRIVATE source.
+//     Its oci:// ref names its own host, so it resolves there verbatim.
 //
-// Same publisher, same name, different SOURCE — the exact case a single registry knob
-// could never express (one knob = one host). Explicit providers are keyed by URN, not
-// package name, so each carries its own PluginDownloadURL into the engine's provider
-// descriptor and the container host resolves each to its own image. A green run with
-// both pets, each pulled from its own registry host, is the proof.
+// Same publisher, same name, different SOURCE — the case a single FLATTENING registry knob
+// could never express (one knob = one host), but source-preserving resolution does: the pin
+// keeps its own host, and the unpinned one resolves under the separate public source.
+// Explicit providers are keyed by URN, not package name, so each carries its own
+// PluginDownloadURL into the engine's provider descriptor and the container host resolves
+// each to its own image. A green run with both pets, each pulled from its own registry
+// host, is the proof.
 package main
 
 import (

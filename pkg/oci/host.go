@@ -53,11 +53,12 @@ import (
 type containerHost struct {
 	plugin.Host
 
-	pod          PodManager
-	engineHost   string                                  // engine container name; providers share its netns
-	programImage string                                  // program image; run-from-program-image providers run from it
-	podID        string                                  // pod id; names the shared workspace volume both hosts mount
-	imageFor     func(workspace.PluginDescriptor) string // provider descriptor -> image ref
+	pod            PodManager
+	engineHost     string                                  // engine container name; providers share its netns
+	programImage   string                                  // program image; run-from-program-image providers run from it
+	podID          string                                  // pod id; names the shared workspace volume both hosts mount
+	publicRegistry string                                  // public source host; unpinned convention refs resolve here
+	imageFor       func(workspace.PluginDescriptor) string // provider descriptor -> image ref
 
 	// startedMu guards started, which records the provider and policy-pack containers this
 	// host started for each booting context. ReleaseContext stops a context's containers when
@@ -146,20 +147,23 @@ var _ plugin.Host = (*containerHost)(nil)
 //
 // Provider images resolve by source-preserving identity (see the imageFor body
 // and package-identity-and-publishing): a pinned ref is used verbatim — its host
-// is its source — and an unpinned package resolves by convention under the
-// constant public source DefaultPublicRegistry. There is no registry knob: the
-// host a pin names is never rewritten, so consuming a first-party package and a
-// private one together just works, each pulled from its own source.
+// is its source — and an unpinned package resolves by convention under
+// publicRegistry, the public source host (PublicRegistry() reads it from the
+// pod environment). The two are kept strictly apart: publicRegistry qualifies
+// only an unpinned ref, and the host a pin names is never rewritten — so
+// consuming a first-party package and a private one together just works, each
+// pulled from its own source, regardless of what publicRegistry is set to.
 func NewContainerHost(
-	base plugin.Host, pod PodManager, engineHost, programImage, podID string,
+	base plugin.Host, pod PodManager, engineHost, programImage, podID, publicRegistry string,
 ) plugin.Host {
 	h := &containerHost{
-		Host:         base,
-		pod:          pod,
-		engineHost:   engineHost,
-		programImage: programImage,
-		podID:        podID,
-		started:      map[*plugin.Context][]podPlugin{},
+		Host:           base,
+		pod:            pod,
+		engineHost:     engineHost,
+		programImage:   programImage,
+		podID:          podID,
+		publicRegistry: publicRegistry,
+		started:        map[*plugin.Context][]podPlugin{},
 		imageFor: func(spec workspace.PluginDescriptor) string {
 			// A pin — the oci:// ref recorded by `package add`, carried back to us
 			// through the generated SDK and resource registration — is self-locating
@@ -167,12 +171,12 @@ func NewContainerHost(
 			// verbatim and never rewritten. That is what lets two sources coexist —
 			// a first-party package and a private one resolve to their own hosts.
 			// An unpinned package (a released provider, or a local component build)
-			// carries no host, so it resolves by convention under the constant public
-			// source, exactly as a bare Docker name resolves under docker.io.
+			// carries no host, so it resolves by convention under the public source,
+			// exactly as a bare Docker name resolves under docker.io.
 			if ref, ok := pinnedImageRef(spec); ok {
 				return ref
 			}
-			return providerImageRef(DefaultPublicRegistry, spec)
+			return providerImageRef(publicRegistry, spec)
 		},
 	}
 	// Warm the provider images the program declares, in the background — a no-op unless
@@ -200,7 +204,7 @@ func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 		podID = engineHost
 	}
 	programImage := os.Getenv("PULUMI_POD_PROGRAM_IMAGE")
-	return NewContainerHost(base, NewPodManager(podID), engineHost, programImage, podID), nil
+	return NewContainerHost(base, NewPodManager(podID), engineHost, programImage, podID, PublicRegistry()), nil
 }
 
 // programImageRef resolves the program image that run-from-program-image (`command`) and
@@ -645,15 +649,16 @@ func (h *containerHost) providerContainer(
 // downloading a plugin binary). If it is already present, this is a no-op;
 // otherwise it is pulled from the source its ref names and run under that same
 // fully-qualified name — no retag. The ref always names a source: a pin names its
-// own registry, and a convention ref is qualified with the public source
-// (DefaultPublicRegistry) by providerImageRef.
+// own registry, and an unpinned convention ref is qualified with the public
+// source by providerImageRef.
 //
-// pinned tailors only the failure message. A local component built via
-// `components:` resolves to a convention ref under the public source but is never
-// published there, so a store miss means the build did not run — the pull will
-// 404 and the wrapped error points at `pulumi install` rather than leaving a
-// cryptic pull failure. A pinned ref that misses is a genuinely unreachable
-// source, a different diagnosis.
+// pinned tailors only the failure message. An unpinned convention ref that
+// misses is a released first-party package the public source could not serve. A
+// pinned ref that misses is either a published package whose own registry is
+// unreachable or a local `components:` build that was never built — its pin
+// names the private source, which holds it only once `pulumi install` has tagged
+// it there — so that message points at `pulumi install` rather than leaving a
+// cryptic pull failure.
 //
 // This runs in Provider() (acquire-on-use), which is provably reached for every
 // provider. prefetch is the pre-flight companion: it warms the same images earlier,
@@ -671,10 +676,14 @@ func (h *containerHost) ensureImage(ctx context.Context, name, ref string, pinne
 		if !pinned {
 			return fmt.Errorf(
 				"oci: provider %q has no image: %s is not present locally and could not be "+
-					"pulled from the public registry (%w). Run `pulumi install` if it is a local component",
+					"pulled from the public source (%w)",
 				name, ref, err)
 		}
-		return fmt.Errorf("oci: pulling plugin image %s: %w", ref, err)
+		return fmt.Errorf(
+			"oci: provider %q has no image: %s is not present locally and could not be pulled "+
+				"from its source (%w). Run `pulumi install` if it is a local `components:` build "+
+				"that has not been built yet",
+			name, ref, err)
 	}
 	fmt.Fprintf(os.Stderr, "oci: installed plugin %s by pulling its image\n", ref)
 	return nil
@@ -733,7 +742,7 @@ func (h *containerHost) prefetchNow(ctx context.Context) {
 		if p.Version == "" {
 			continue
 		}
-		ref := ProviderImageRef(DefaultPublicRegistry, p.Name, p.Version)
+		ref := ProviderImageRef(h.publicRegistry, p.Name, p.Version)
 		wg.Add(1)
 		go func(ref string) {
 			defer wg.Done()

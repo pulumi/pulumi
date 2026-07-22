@@ -89,10 +89,10 @@ into the local container store under the convention ref, which is printed to std
 
 			// The same build-from-manifest logic the language host uses for local
 			// components, so a package builds identically however it is reached. The
-			// destination host defaults to the public convention source (so a local
-			// iteration build lands where the container host resolves an unpinned
-			// package) and is overridable for a build destined for a private source.
-			host := oci.DefaultPublicRegistry
+			// destination host defaults to the private source (where a built package
+			// is tagged and later pinned from, matching the language host's local
+			// component build) and is overridable to publish to a different registry.
+			host := oci.PrivateRegistry()
 			if registry != "" {
 				host = strings.TrimPrefix(registry, "oci://")
 			}
@@ -111,9 +111,9 @@ into the local container store under the convention ref, which is printed to std
 	cmd.Flags().StringVar(
 		&registry, "registry", "",
 		"Tag the built image under this OCI source host (oci://<host>) instead of the "+
-			"default public convention host. Set it to build a package destined for a "+
-			"private source — the same host it will be published to and pulled from. This "+
-			"applies a location, not identity; the build leaves the image local, publish moves it.")
+			"default private source. This is the host the package will be published to and "+
+			"pulled from. This applies a location, not identity; the build leaves the image "+
+			"local, publish moves it.")
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{{Name: "dir", Usage: "[dir]"}},

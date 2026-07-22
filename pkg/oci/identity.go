@@ -14,7 +14,10 @@
 
 package oci
 
-import "strings"
+import (
+	"os"
+	"strings"
+)
 
 // DefaultPackageOrg is the org under which a package with no pin resolves —
 // released first-party providers. This mirrors how the registry resolves a bare
@@ -26,29 +29,63 @@ import "strings"
 // "library/ubuntu" and the wire always sees both segments).
 const DefaultPackageOrg = "pulumi"
 
-// DefaultPublicRegistry is the host an unpinned package resolves under — the
-// public source of first-party providers. It is a baked constant, exactly as
-// "docker.io" is Docker's default registry (bare "ubuntu" resolves to
-// docker.io/library/ubuntu with the host hardcoded, never an app knob). A
-// pinned package names its own host and is never rewritten to this one; only
-// convention refs (released providers, local component builds) resolve here.
+// DefaultPublicRegistry is the fallback host for the PUBLIC source — where an
+// unpinned package (a released first-party provider, or a component consumed
+// without a pin) resolves by convention, exactly as bare "ubuntu" resolves under
+// docker.io. It is only the fallback: PublicRegistry() lets the pod override it
+// with PULUMI_POD_PUBLIC_REGISTRY, and the bootstrap wrapper points it at a
+// routable registry. A pinned package names its own host and is NEVER rewritten
+// to this one — the public host qualifies only unpinned convention refs, never a
+// pin — which is what lets a first-party package and a private one resolve to
+// their own sources side by side.
 //
-// The value is a clearly-fake simulation host: it advertises that this is a
-// stand-in for a real public registry (the prototype has none yet), it splits
-// the public source cleanly from any private source (a pin's own host), and it
-// flips to the real host in one line the day one exists — the ref grammar is
-// unchanged, so pins and convention refs keep working. Reachability is an
-// address-layer concern, not an identity one: the host resolves to wherever the
-// bootstrap proxy lives via DNS/hosts + a containerd hosts.toml endpoint (which
-// also carries the port and plain-http scheme), so no port belongs in this
-// constant.
+// The fallback is a clearly-fake simulation host (the prototype has no real
+// public registry yet); it flips to a real host in one line the day one exists,
+// with the ref grammar unchanged so pins and convention refs keep working.
+// Reachability is an address-layer concern, not an identity one, so no port
+// belongs here — the routable override the wrapper supplies carries the port.
 const DefaultPublicRegistry = "pulumi.registry.internal"
+
+// DefaultPrivateRegistry is the fallback host for the PRIVATE source — where a
+// local component build is tagged, and the default target that `package build`
+// and `package publish` send their output to. PrivateRegistry() lets the pod
+// override it with PULUMI_POD_PRIVATE_REGISTRY; the bootstrap wrapper points it
+// at a routable registry. It is deliberately distinct from DefaultPublicRegistry:
+// the public and private sources are separate hosts, and keeping the build's tag
+// host separate from the public resolve host is the whole point — conflating them
+// is the bug this split fixes. A consumer pins a built package to this host and
+// the engine resolves that pin verbatim.
+const DefaultPrivateRegistry = "private.registry.internal"
+
+// PublicRegistry returns the public source host: where unpinned convention refs
+// resolve. It is read at resolve time by the container host.
+// PULUMI_POD_PUBLIC_REGISTRY overrides DefaultPublicRegistry. It only qualifies
+// an unpinned ref — a pin is always used verbatim — so setting it can never
+// relocate a package that names its own source.
+func PublicRegistry() string {
+	if r := os.Getenv("PULUMI_POD_PUBLIC_REGISTRY"); r != "" {
+		return r
+	}
+	return DefaultPublicRegistry
+}
+
+// PrivateRegistry returns the private source host: the default host `package
+// build`/`publish` tag their output with, and the host the language host tags a
+// local component build under. PULUMI_POD_PRIVATE_REGISTRY overrides
+// DefaultPrivateRegistry. Like the public host it only stamps a host onto a ref
+// being created; it never rewrites an existing pin.
+func PrivateRegistry() string {
+	if r := os.Getenv("PULUMI_POD_PRIVATE_REGISTRY"); r != "" {
+		return r
+	}
+	return DefaultPrivateRegistry
+}
 
 // PackageIdentity is a package's identity: the publishing org, the package
 // name, and a version. A convention-shaped image ref carries its identity
-// (ParseProviderImageRef recovers it); the location — which registry serves
-// the image — is chosen at resolution time: the registry knob when set, else
-// the ref's own host.
+// (ParseProviderImageRef recovers it); the location — which registry serves the
+// image — is separate: a pin names its own host and is used verbatim, while an
+// unpinned convention ref is qualified with the public source at resolve time.
 type PackageIdentity struct {
 	Org     string // publishing org ("pulumi" for released first-party providers)
 	Name    string // package name ("greeting", "random")
@@ -60,7 +97,7 @@ type PackageIdentity struct {
 // encodes. ok is false when the ref does not follow the convention (no org
 // segment, wrong repo prefix, no v-tag, deeper repository paths); such a ref
 // carries no identity and callers must treat it as an opaque location — usable
-// verbatim, but not relocatable by the registry knob.
+// verbatim, but never re-qualified under the public source.
 //
 // The grammar has exactly one shape: an org segment, then the kind-prefixed
 // leaf. A single-segment repository is NOT a degenerate convention ref —

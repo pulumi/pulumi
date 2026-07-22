@@ -149,10 +149,12 @@ func (h *ociHost) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error
 
 // InstallDependencies builds the program's local component images. In the OCI
 // model the "dependency" that needs installing is a local program-as-component:
-// its image does not exist yet (unlike a published MLC, whose image is pulled by
-// convention), so we build it here and tag it by the provider convention
-// (pulumi-provider-<name>:v<version>) — the same ref the container host resolves
-// when it starts the component at Construct time.
+// its image does not exist yet (unlike a published package, whose image already
+// lives in a registry and is pulled by its pin), so we build it here and tag it
+// under the private source by the provider convention
+// (<private>/pulumi/pulumi-provider-<name>:v<version>) — the ref the consumer
+// pins with `package add`, so the container host resolves it verbatim when it
+// starts the component at Construct time.
 //
 // This works across the process split that defeated stashing the *program* image
 // ref (the up pre-install host, this, and the engine-update host are all different
@@ -196,10 +198,11 @@ func (h *ociHost) InstallDependencies(
 			cdir = filepath.Join(dir, path)
 		}
 		// Build via the shared package-build mechanism: it reads the component's own
-		// PulumiPlugin.yaml and tags the image by convention (so the container host
-		// resolves it at Construct time). The returned ref is not needed here — the
-		// image lands in the shared daemon under that tag.
-		if _, err := oci.BuildPackage(stream.Context(), cdir, oci.DefaultPublicRegistry, out); err != nil {
+		// PulumiPlugin.yaml and tags the image under the private source (where the
+		// consumer's `package add` pin points, so the container host resolves it at
+		// Construct time). The returned ref is not needed here — the image lands in
+		// the shared daemon under that tag.
+		if _, err := oci.BuildPackage(stream.Context(), cdir, oci.PrivateRegistry(), out); err != nil {
 			return fmt.Errorf("oci: building local component %s: %w", path, err)
 		}
 		fmt.Fprintf(out, "oci: built local component %s\n", path)

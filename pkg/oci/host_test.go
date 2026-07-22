@@ -95,21 +95,21 @@ func (failingPullPod) PullImage(context.Context, string) error {
 	return errors.New("manifest unknown: 404")
 }
 
-// An unpinned provider image resolves under the public source and is pull-eligible;
-// when the pull fails (e.g. a local component that was never built and so is not at
-// the public source), ensureImage must return an actionable error naming the
-// provider, the missing ref, and the local-component fix — rather than leaving a
-// cryptic pull failure.
+// A pinned ref that misses after a pull is most often a local `components:` build
+// that was never built — its pin names the private source, which holds it only once
+// `pulumi install` has tagged it there. ensureImage must return an actionable error
+// naming the provider, the missing ref, and the `pulumi install` fix, rather than
+// leaving a cryptic pull failure.
 func TestEnsureImageBailsActionablyWhenAbsentAndUnpullable(t *testing.T) {
 	t.Parallel()
 	h := &containerHost{pod: failingPullPod{fakePod: fakePod{imageExists: false}}}
 	err := h.ensureImage(
-		t.Context(), "random", DefaultPublicRegistry+"/pulumi/pulumi-provider-random:v4.21.0", false)
+		t.Context(), "greeting", DefaultPrivateRegistry+"/pulumi/pulumi-provider-greeting:v0.1.0", true)
 	require.Error(t, err)
 	// Names the provider and the missing ref, points at the local-component fix, and
 	// wraps the underlying pull error.
-	require.Contains(t, err.Error(), `provider "random"`)
-	require.Contains(t, err.Error(), "pulumi-provider-random:v4.21.0")
+	require.Contains(t, err.Error(), `provider "greeting"`)
+	require.Contains(t, err.Error(), "pulumi-provider-greeting:v0.1.0")
 	require.Contains(t, err.Error(), "pulumi install")
 	require.Contains(t, err.Error(), "404")
 }
@@ -147,10 +147,13 @@ func TestEnsureImagePullsPinnedRefWithoutRegistry(t *testing.T) {
 
 // imageFor resolves a provider image by source-preserving identity: a pin names
 // its own registry (its source) and is used verbatim; an unpinned package
-// resolves by convention under the constant public source. The load-bearing
-// property is that the two do NOT collapse onto one host — a first-party package
-// and a privately published one resolve to different sources in the same program,
-// which is what makes multi-source consumption possible.
+// resolves by convention under the configured public source (knob A). The
+// load-bearing property — the de-conflation invariant — is that the two do NOT
+// collapse onto one host even when a public source IS configured: a pin to a
+// different host still resolves verbatim, so a first-party package and a privately
+// published one resolve to different sources in the same program. That is what
+// makes multi-source consumption possible, and what keeps the public knob from
+// ever rewriting a pin.
 func TestImageForResolvesEachSourceIndependently(t *testing.T) {
 	t.Parallel()
 	// A pin whose host is a *private* source — a package published to some
@@ -173,23 +176,27 @@ func TestImageForResolvesEachSourceIndependently(t *testing.T) {
 		PluginDownloadURL: "https://get.example.com/releases",
 	}
 
-	h := NewContainerHost(nil, fakePod{}, "engine", "", "pod").(*containerHost)
+	// The public source is a configured host (knob A) deliberately DIFFERENT from any
+	// pin's host: a pin must still resolve verbatim, proving the knob never rewrites it.
+	const publicRegistry = "pub.example.com"
+	h := NewContainerHost(nil, fakePod{}, "engine", "", "pod", publicRegistry).(*containerHost)
 
-	// A pin resolves to its own host — its source is never rewritten.
+	// A pin resolves to its own host — its source is never rewritten, even with a
+	// public source configured.
 	require.Equal(t, "ghcr.io/spikeorg/pulumi-provider-greeting:v0.1.0", h.imageFor(privatePin))
 	require.Equal(t, "internal.example.com/custom-image:v2.0.0", h.imageFor(opaquePin))
 
-	// An unpinned package resolves under the constant public source.
-	require.Equal(t, DefaultPublicRegistry+"/pulumi/pulumi-provider-random:", h.imageFor(unpinned))
-	require.Equal(t, DefaultPublicRegistry+"/pulumi/pulumi-provider-random:", h.imageFor(server))
+	// An unpinned package resolves under the configured public source.
+	require.Equal(t, publicRegistry+"/pulumi/pulumi-provider-random:", h.imageFor(unpinned))
+	require.Equal(t, publicRegistry+"/pulumi/pulumi-provider-random:", h.imageFor(server))
 
 	// The claim that makes two sources coexist: the private pin and the unpinned
-	// first-party package land on different hosts in the same program — no knob
-	// flattens them onto one.
+	// first-party package land on different hosts in the same program — the public
+	// knob qualifies the unpinned one but never flattens the pin onto it.
 	privateHost := strings.SplitN(h.imageFor(privatePin), "/", 2)[0]
 	publicHost := strings.SplitN(h.imageFor(unpinned), "/", 2)[0]
 	require.Equal(t, "ghcr.io", privateHost)
-	require.Equal(t, DefaultPublicRegistry, publicHost)
+	require.Equal(t, publicRegistry, publicHost)
 	require.NotEqual(t, privateHost, publicHost, "a pin and an unpinned package must resolve to different sources")
 }
 

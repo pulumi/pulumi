@@ -53,7 +53,7 @@ func TestPrefetchNowPullsVersionedImagesSkipsVersionless(t *testing.T) {
 		{"resource":true,"name":"random","version":"4.16.0"},
 		{"resource":true,"name":"noversion"},
 		{"resource":true,"name":"tls","version":"5.0.0"}]}`)}
-	h := &containerHost{pod: pod, programImage: "prog:latest"}
+	h := &containerHost{pod: pod, programImage: "prog:latest", publicRegistry: DefaultPublicRegistry}
 
 	h.prefetchNow(t.Context())
 
