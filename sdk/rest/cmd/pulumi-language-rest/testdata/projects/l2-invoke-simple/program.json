@@ -1,0 +1,6 @@
+{
+  "outputs": {
+    "goodbye": "${main.pp:5,13-70.result}",
+    "hello": "${main.pp:1,13-68.result}"
+  }
+}

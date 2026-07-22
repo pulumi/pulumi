@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk
+  description: Add REST HTTP gateway and language host for the Pulumi engine, with support for literal outputs in programgen

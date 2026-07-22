@@ -1,0 +1,24 @@
+{
+  "resources": [
+    {
+      "name": "res",
+      "type": "primitive:index:Resource",
+      "custom": true,
+      "properties": {
+        "boolean": true,
+        "booleanMap": {
+          "f": false,
+          "t": true
+        },
+        "float": 3.14e+00,
+        "integer": 42,
+        "numberArray": [
+          -1,
+          0,
+          1
+        ],
+        "string": "hello"
+      }
+    }
+  ]
+}
