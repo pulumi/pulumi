@@ -16,9 +16,8 @@
 #      `test -e` and produces nothing. So the image being present afterwards, under the
 #      exact convention ref, proves the build ran in the builder and tagged it correctly.
 #
-# (Build-then-consume — running an MLC program that Constructs this built image — is
-# proven separately when the language host's InstallDependencies is made a caller of this
-# command; run-pod-mlc-localbuild.sh already exercises the Construct chain.)
+# (Build-then-consume — publishing this built image and Constructing it from a pinned
+# `package add` ref — is proven separately by run-pod-publish.sh.)
 #
 # Usage: run-pod-package-build.sh
 # Requires a running Docker daemon and the repo Go toolchain (to cross-compile).

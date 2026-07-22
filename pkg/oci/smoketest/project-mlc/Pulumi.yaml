@@ -1,6 +1,0 @@
-name: oci-smoketest-mlc
-description: MLC demo — a Go program consuming a Node multi-language component in the pod
-runtime:
-  name: oci
-  options:
-    image: oci-smoke-mlc:latest

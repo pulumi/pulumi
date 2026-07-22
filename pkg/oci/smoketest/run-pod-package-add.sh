@@ -26,8 +26,8 @@
 # because the delegation mechanism is language-agnostic (proven hermetically in the unit
 # tests) and a static Go host runs on the alpine engine image with no extra toolchain.
 #
-# The oci:// ref is fully qualified (it carries the proxy host); PULUMI_POD_PLUGIN_REGISTRY
-# only gates that an absent image MAY be pulled. The image pull rides the mounted docker
+# The oci:// ref is fully qualified (it carries the proxy host), so it is a self-locating
+# pin resolved verbatim — no registry knob involved. The image pull rides the mounted docker
 # socket to the host daemon, which resolves localhost:5005 (the proxy's published port).
 #
 # Usage: run-pod-package-add.sh
@@ -141,7 +141,6 @@ engine_run() {
     -e PULUMI_POD_NETWORK="$NET" \
     -e PULUMI_POD_ADVERTISE_HOST="$ENGINE_NAME" \
     -e PULUMI_POD_ID="$POD_ID" \
-    -e PULUMI_POD_PLUGIN_REGISTRY="$REGISTRY_HOST" \
     -e PULUMI_BACKEND_URL=file:///state \
     -e PULUMI_CONFIG_PASSPHRASE="$PULUMI_CONFIG_PASSPHRASE" \
     --entrypoint sh \
