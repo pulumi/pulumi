@@ -1389,7 +1389,7 @@ func (ctx *Context) readPackageResource(
 	}
 
 	// Get the provider for the resource.
-	provider := getProvider(t, options.Provider, providers)
+	provider := ctx.getProvider(t, options.Provider, providers, packageRef)
 	protect := options.Protect
 	if parent != nil && protect == nil {
 		protect = parent.getProtect()
@@ -1763,7 +1763,7 @@ func (ctx *Context) registerResource(
 	}
 
 	// Get the provider for the resource.
-	provider := getProvider(t, options.Provider, providers)
+	provider := ctx.getProvider(t, options.Provider, providers, packageRef)
 	protect := options.Protect
 	if parent != nil && protect == nil {
 		protect = parent.getProtect()
@@ -1997,7 +1997,10 @@ func (ctx *Context) RegisterPackage(
 type packageRefEntry struct {
 	once sync.Once
 	ref  string
-	err  error
+	// pkg is the name of the package the reference serves, which for a
+	// parameterized package is the parameter's name rather than the plugin's.
+	pkg string
+	err error
 }
 
 // GetOrRegisterPackageRef returns a cached package reference for the given key,
@@ -2023,6 +2026,10 @@ func (ctx *Context) GetOrRegisterPackageRef(
 			return
 		}
 		entry.ref = resp.Ref
+		entry.pkg = r.Name
+		if r.Parameterization != nil {
+			entry.pkg = r.Parameterization.Name
+		}
 	})
 	return entry.ref, entry.err
 }
@@ -2119,13 +2126,40 @@ func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderR
 	return result, nil
 }
 
-// getProvider gets the provider for the resource.
-func getProvider(t string, provider ProviderResource, providers map[string]ProviderResource) ProviderResource {
+// getProvider gets the provider for the resource, dropping a provider that
+// serves a different package. A resource registered with a package reference
+// takes its package identity from that reference rather than from its type
+// token, which may name a foreign package (allowedPackageNames).
+func (ctx *Context) getProvider(
+	t string, provider ProviderResource, providers map[string]ProviderResource, packageRef string,
+) ProviderResource {
 	pkg := getPackage(t)
+	if refPkg, ok := ctx.packageForRef(packageRef); ok {
+		pkg = refPkg
+	}
 	if provider == nil || provider.getPackage() != pkg {
 		provider = providers[pkg]
 	}
 	return provider
+}
+
+// packageForRef returns the name of the package a registered package reference
+// serves. Only references this context registered are known; the zero
+// reference, used by packages that need none, has no package.
+func (ctx *Context) packageForRef(packageRef string) (string, bool) {
+	if packageRef == "" {
+		return "", false
+	}
+	var pkg string
+	var found bool
+	ctx.state.packageRefs.Range(func(_ string, entry *packageRefEntry) bool {
+		if entry.ref != packageRef {
+			return true
+		}
+		pkg, found = entry.pkg, true
+		return false
+	})
+	return pkg, found
 }
 
 // getPackage takes in a type and returns the pkg

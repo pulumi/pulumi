@@ -13,6 +13,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 import (
@@ -159,6 +160,20 @@ func callPlainInner(
 	}
 
 	return value, nil
+}
+
+// PkgGetPackageRef returns the package reference for the current package.
+// The reference is cached per pulumi.Context so that concurrent inline
+// programs each register with their own engine and receive distinct refs.
+func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
+	return ctx.GetOrRegisterPackageRef("example:1.2.3", func() (*pulumirpc.RegisterPackageRequest, error) {
+
+		return &pulumirpc.RegisterPackageRequest{
+			Name:        "example",
+			Version:     "1.2.3",
+			DownloadUrl: "example.com/download",
+		}, nil
+	})
 }
 
 // PkgResourceDefaultOpts provides package level defaults to pulumi.OptionResource.

@@ -264,6 +264,15 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 	g.genNYI(w, "For expression")
 }
 
+func enumPackageName(t *model.EnumType, fallback string) string {
+	if e, ok := pcl.GetSchemaForType(t); ok {
+		if et, ok := e.(*schema.EnumType); ok && et.PackageReference != nil {
+			return et.PackageReference.Name()
+		}
+	}
+	return fallback
+}
+
 func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType, dest model.Type) func(member *schema.Enum) {
 	return func(member *schema.Enum) {
 		// We know the enum value at the call site, so we can directly stamp in a
@@ -276,7 +285,7 @@ func (g *generator) genSafeEnum(w io.Writer, to *model.EnumType, dest model.Type
 		memberTag, err := makeSafeEnumName(memberTag, enumName)
 		contract.AssertNoErrorf(err, "Enum is invalid")
 		pkg, mod, _, _ := pcl.DecomposeToken(to.Token, to.SyntaxNode().Range())
-		mod = g.getModOrAlias(pkg, mod, mod)
+		mod = g.getModOrAlias(enumPackageName(to, pkg), mod, mod)
 
 		if union, isUnion := dest.(*model.UnionType); isUnion && len(union.Annotations) > 0 {
 			if input, ok := union.Annotations[0].(schema.Type); ok {
@@ -317,7 +326,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				underlyingType = "float64"
 			}
 			pkg, mod, typ, _ := pcl.DecomposeToken(to.Token, to.SyntaxNode().Range())
-			mod = g.getModOrAlias(pkg, mod, mod)
+			mod = g.getModOrAlias(enumPackageName(to, pkg), mod, mod)
 			enumTag := fmt.Sprintf("%s.%s", mod, typ)
 			if isOutput {
 				// If the source is already typed as the same enum, emit it as-is rather than
@@ -525,10 +534,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		var optionsBag string
 		var buf bytes.Buffer
 		if len(expr.Args) == 3 {
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
+			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok &&
+				len(pcl.GeneratedInvokeOptions(invokeOptions)) > 0 {
+				items := pcl.GeneratedInvokeOptions(invokeOptions)
 				g.Fgen(&buf, ", ")
-				for i, item := range invokeOptions.Items {
-					last := i == len(invokeOptions.Items)-1
+				for i, item := range items {
+					last := i == len(items)-1
 					switch pcl.LiteralValueString(item.Key) {
 					case "provider":
 						g.Fgenf(&buf, "pulumi.Provider(%v)", item.Value)

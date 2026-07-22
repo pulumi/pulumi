@@ -25,8 +25,12 @@ func NewFooResource(ctx *pulumi.Context,
 	}
 
 	opts = internal.PkgResourceDefaultOpts(opts)
+	ref, err := internal.PkgGetPackageRef(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var resource FooResource
-	err := ctx.RegisterRemoteComponentResource("foo::FooResource", name, args, &resource, opts...)
+	err = ctx.RegisterPackageRemoteComponentResource("foo::FooResource", name, args, &resource, ref, opts...)
 	if err != nil {
 		return nil, err
 	}
