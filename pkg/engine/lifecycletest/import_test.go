@@ -904,6 +904,145 @@ func TestImportPlanExistingImport(t *testing.T) {
 	require.Len(t, snap.Resources, 3)
 }
 
+func TestImportPlanSuppliedOutputs(t *testing.T) {
+	t.Parallel()
+
+	suppliedInputs := resource.PropertyMap{
+		"foo":  resource.NewProperty("bar"),
+		"frob": resource.MakeSecret(resource.NewProperty(1.0)),
+	}
+	suppliedOutputs := resource.PropertyMap{
+		"foo":  resource.NewProperty("bar"),
+		"frob": resource.MakeSecret(resource.NewProperty(1.0)),
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
+				},
+				DiffF: diffImportResource,
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					t.Fatal("Read should not be called when outputs are supplied")
+					return plugin.ReadResponse{}, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	componentInputs := resource.PropertyMap{
+		"size": resource.NewProperty(3.0),
+	}
+	componentOutputs := resource.PropertyMap{
+		"result": resource.NewProperty("value"),
+	}
+
+	project := p.GetProject()
+	snap, err := lt.ImportOp([]deploy.Import{{
+		Type:      "my:module:Component",
+		Name:      "comp",
+		Component: true,
+		Inputs:    componentInputs,
+		Outputs:   componentOutputs,
+	}, {
+		Type:    "pkgA:m:typA",
+		Name:    "resB",
+		ID:      "imported-id",
+		Inputs:  suppliedInputs,
+		Outputs: suppliedOutputs,
+	}}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
+
+	// Import steps run in parallel, so look resources up by name rather than snapshot position.
+	byName := func(name string) *pkgresource.State {
+		for _, r := range snap.Resources {
+			if r.URN.Name() == name {
+				return r
+			}
+		}
+		t.Fatalf("resource %q not found in snapshot", name)
+		return nil
+	}
+
+	comp := byName("comp")
+	assert.Equal(t, componentInputs, comp.Inputs)
+	assert.Equal(t, componentOutputs, comp.Outputs)
+
+	resB := byName("resB")
+	assert.Equal(t, resource.ID("imported-id"), resB.ID)
+	assert.Equal(t, suppliedInputs, resB.Inputs)
+	assert.Equal(t, suppliedOutputs, resB.Outputs)
+}
+
+func TestImportPlanSuppliedInputsMerge(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
+				},
+				DiffF: diffImportResource,
+				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// "foo" is a write-only attribute the importer cannot return; "frob" comes back
+					// in plain text even though it was supplied as a secret.
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID: "actual-id",
+							Inputs: resource.PropertyMap{
+								"foo":  resource.NewNullProperty(),
+								"frob": resource.NewProperty(1.0),
+							},
+							Outputs: resource.PropertyMap{
+								"frob": resource.NewProperty(1.0),
+							},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(nil)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+	snap, err := lt.ImportOp([]deploy.Import{{
+		Type: "pkgA:m:typA",
+		Name: "resB",
+		ID:   "imported-id",
+		Inputs: resource.PropertyMap{
+			"foo":  resource.NewProperty("supplied"),
+			"frob": resource.MakeSecret(resource.NewProperty(2.0)),
+		},
+	}}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
+
+	// The provider's Read wins where it returned a value, lifted to a secret where the supplied value
+	// was one; the supplied value fills the null.
+	assert.Equal(t, resource.ID("actual-id"), snap.Resources[2].ID)
+	assert.Equal(t, resource.PropertyMap{
+		"foo":  resource.NewProperty("supplied"),
+		"frob": resource.MakeSecret(resource.NewProperty(1.0)),
+	}, snap.Resources[2].Inputs)
+}
+
 func TestImportPlanEmptyState(t *testing.T) {
 	t.Parallel()
 
