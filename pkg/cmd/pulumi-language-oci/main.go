@@ -178,7 +178,6 @@ func (h *ociHost) InstallDependencies(
 		dir = req.GetDirectory()
 	}
 	components := req.GetInfo().GetOptions().GetFields()["components"].GetListValue().GetValues()
-	registry := os.Getenv("PULUMI_POD_PLUGIN_REGISTRY")
 
 	out := &installStreamWriter{stream: stream}
 	// Log the parsed count so a silent options round-trip failure (the `components`
@@ -200,7 +199,7 @@ func (h *ociHost) InstallDependencies(
 		// PulumiPlugin.yaml and tags the image by convention (so the container host
 		// resolves it at Construct time). The returned ref is not needed here — the
 		// image lands in the shared daemon under that tag.
-		if _, err := oci.BuildPackage(stream.Context(), cdir, registry, out); err != nil {
+		if _, err := oci.BuildPackage(stream.Context(), cdir, oci.DefaultPublicRegistry, out); err != nil {
 			return fmt.Errorf("oci: building local component %s: %w", path, err)
 		}
 		fmt.Fprintf(out, "oci: built local component %s\n", path)

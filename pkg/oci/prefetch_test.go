@@ -53,23 +53,22 @@ func TestPrefetchNowPullsVersionedImagesSkipsVersionless(t *testing.T) {
 		{"resource":true,"name":"random","version":"4.16.0"},
 		{"resource":true,"name":"noversion"},
 		{"resource":true,"name":"tls","version":"5.0.0"}]}`)}
-	h := &containerHost{pod: pod, programImage: "prog:latest", pluginRegistry: "reg.example"}
+	h := &containerHost{pod: pod, programImage: "prog:latest"}
 
 	h.prefetchNow(t.Context())
 
 	assert.ElementsMatch(t, []string{
-		"reg.example/pulumi/pulumi-provider-random:v4.16.0",
-		"reg.example/pulumi/pulumi-provider-tls:v5.0.0",
+		DefaultPublicRegistry + "/pulumi/pulumi-provider-random:v4.16.0",
+		DefaultPublicRegistry + "/pulumi/pulumi-provider-tls:v5.0.0",
 	}, pod.pulled, "versioned entries are warmed; a versionless entry has no resolvable ref and is skipped")
 }
 
-// prefetch is gated: without both a program image and a registry there is nothing to read
-// or nowhere to pull from, so it must spawn no work (fakePod.ReadImageFile would panic).
-func TestPrefetchGuardIsNoopWithoutRegistryOrProgramImage(t *testing.T) {
+// prefetch is gated on a program image to read: with none there is nothing to warm, so it
+// must spawn no work (it returns before touching the pod — fakePod.ReadImageFile would panic).
+func TestPrefetchGuardIsNoopWithoutProgramImage(t *testing.T) {
 	t.Parallel()
 	require.NotPanics(t, func() {
-		(&containerHost{pod: fakePod{}, programImage: "prog", pluginRegistry: ""}).prefetch()
-		(&containerHost{pod: fakePod{}, programImage: "", pluginRegistry: "reg"}).prefetch()
+		(&containerHost{pod: fakePod{}, programImage: ""}).prefetch()
 	})
 }
 

@@ -26,6 +26,24 @@ import "strings"
 // "library/ubuntu" and the wire always sees both segments).
 const DefaultPackageOrg = "pulumi"
 
+// DefaultPublicRegistry is the host an unpinned package resolves under — the
+// public source of first-party providers. It is a baked constant, exactly as
+// "docker.io" is Docker's default registry (bare "ubuntu" resolves to
+// docker.io/library/ubuntu with the host hardcoded, never an app knob). A
+// pinned package names its own host and is never rewritten to this one; only
+// convention refs (released providers, local component builds) resolve here.
+//
+// The value is a clearly-fake simulation host: it advertises that this is a
+// stand-in for a real public registry (the prototype has none yet), it splits
+// the public source cleanly from any private source (a pin's own host), and it
+// flips to the real host in one line the day one exists — the ref grammar is
+// unchanged, so pins and convention refs keep working. Reachability is an
+// address-layer concern, not an identity one: the host resolves to wherever the
+// bootstrap proxy lives via DNS/hosts + a containerd hosts.toml endpoint (which
+// also carries the port and plain-http scheme), so no port belongs in this
+// constant.
+const DefaultPublicRegistry = "pulumi.registry.internal"
+
 // PackageIdentity is a package's identity: the publishing org, the package
 // name, and a version. A convention-shaped image ref carries its identity
 // (ParseProviderImageRef recovers it); the location — which registry serves

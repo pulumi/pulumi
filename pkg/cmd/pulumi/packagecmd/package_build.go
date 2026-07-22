@@ -81,9 +81,11 @@ into the local container store under the convention ref, which is printed to std
 			}
 
 			// The same build-from-manifest logic the language host uses for local
-			// components, so a package builds identically however it is reached.
-			registry := os.Getenv("PULUMI_POD_PLUGIN_REGISTRY")
-			ref, err := oci.BuildPackage(cmd.Context(), dir, registry, cmd.ErrOrStderr())
+			// components, so a package builds identically however it is reached. A
+			// locally built package is tagged under the public source's convention
+			// host — the same ref the container host resolves an unpinned package to —
+			// so the build and the run agree with no registry configured.
+			ref, err := oci.BuildPackage(cmd.Context(), dir, oci.DefaultPublicRegistry, cmd.ErrOrStderr())
 			if err != nil {
 				return err
 			}

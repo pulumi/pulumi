@@ -16,9 +16,11 @@ package oci
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -86,19 +88,30 @@ func trackedIDs(ps []podPlugin) []string {
 // exercise SignalCancellation.
 func noSignal(context.Context) error { return nil }
 
-// When a provider image is absent and no registry is configured to install it,
-// ensureImage must bail out with an actionable error rather than letting the
-// downstream docker run/copy fail cryptically.
-func TestEnsureImageBailsActionablyWhenAbsentAndNoRegistry(t *testing.T) {
+// failingPullPod fails every pull, to drive ensureImage's pull-failure path.
+type failingPullPod struct{ fakePod }
+
+func (failingPullPod) PullImage(context.Context, string) error {
+	return errors.New("manifest unknown: 404")
+}
+
+// An unpinned provider image resolves under the public source and is pull-eligible;
+// when the pull fails (e.g. a local component that was never built and so is not at
+// the public source), ensureImage must return an actionable error naming the
+// provider, the missing ref, and the local-component fix — rather than leaving a
+// cryptic pull failure.
+func TestEnsureImageBailsActionablyWhenAbsentAndUnpullable(t *testing.T) {
 	t.Parallel()
-	h := &containerHost{pod: fakePod{imageExists: false}}
-	err := h.ensureImage(t.Context(), "random", "pulumi-provider-random:v4.21.0", false)
+	h := &containerHost{pod: failingPullPod{fakePod: fakePod{imageExists: false}}}
+	err := h.ensureImage(
+		t.Context(), "random", DefaultPublicRegistry+"/pulumi/pulumi-provider-random:v4.21.0", false)
 	require.Error(t, err)
-	// Names the provider and the missing ref, and points at both fixes.
+	// Names the provider and the missing ref, points at the local-component fix, and
+	// wraps the underlying pull error.
 	require.Contains(t, err.Error(), `provider "random"`)
 	require.Contains(t, err.Error(), "pulumi-provider-random:v4.21.0")
 	require.Contains(t, err.Error(), "pulumi install")
-	require.Contains(t, err.Error(), "PULUMI_POD_PLUGIN_REGISTRY")
+	require.Contains(t, err.Error(), "404")
 }
 
 // When the image is already present, ensureImage is a no-op regardless of registry.
@@ -121,8 +134,8 @@ func (p pullingPod) PullImage(_ context.Context, ref string) error {
 }
 
 // A pinned ref (an oci:// plugin download URL) is fully qualified — it names its own
-// registry — so an absent image is pulled even when no plugin registry knob is set.
-// The knob exists to qualify convention refs; a pin needs no qualifying.
+// registry (its source) — so an absent image is pulled from that host verbatim, with
+// no configuration. A pin needs no qualifying.
 func TestEnsureImagePullsPinnedRefWithoutRegistry(t *testing.T) {
 	t.Parallel()
 	var pulled []string
@@ -132,22 +145,26 @@ func TestEnsureImagePullsPinnedRefWithoutRegistry(t *testing.T) {
 	require.Equal(t, []string{"example.com/spikeorg/pulumi-provider-greeting:v0.1.0"}, pulled)
 }
 
-// imageFor implements the layered resolution of the identity & publishing design:
-// the registry knob, when set, overrides a convention-shaped pin's host while
-// keeping its identity; without a knob the pin resolves verbatim; a pin that
-// carries no identity (not convention-shaped) is verbatim regardless; and an
-// unpinned package resolves by convention under the default org.
-func TestImageForLayeredResolution(t *testing.T) {
+// imageFor resolves a provider image by source-preserving identity: a pin names
+// its own registry (its source) and is used verbatim; an unpinned package
+// resolves by convention under the constant public source. The load-bearing
+// property is that the two do NOT collapse onto one host — a first-party package
+// and a privately published one resolve to different sources in the same program,
+// which is what makes multi-source consumption possible.
+func TestImageForResolvesEachSourceIndependently(t *testing.T) {
 	t.Parallel()
-	pinned := workspace.PluginDescriptor{
+	// A pin whose host is a *private* source — a package published to some
+	// registry and consumed by its full oci:// ref.
+	privatePin := workspace.PluginDescriptor{
 		Name:              "greeting",
 		PluginDownloadURL: "oci://ghcr.io/spikeorg/pulumi-provider-greeting:v0.1.0",
 	}
 	opaquePin := workspace.PluginDescriptor{
 		Name: "custom",
-		// No org segment: carries no identity, so the knob cannot relocate it.
+		// Not convention-shaped, but still a pin: used verbatim.
 		PluginDownloadURL: "oci://internal.example.com/custom-image:v2.0.0",
 	}
+	// A released first-party provider: no pin, so it resolves by convention.
 	unpinned := workspace.PluginDescriptor{Name: "random"}
 	// A non-oci download URL (a classic plugin download server) is NOT a pin: the
 	// convention computation stands.
@@ -156,18 +173,24 @@ func TestImageForLayeredResolution(t *testing.T) {
 		PluginDownloadURL: "https://get.example.com/releases",
 	}
 
-	// Knob set: identity from the pin, location from the knob.
-	withKnob := NewContainerHost(nil, fakePod{}, "engine", "", "reg.example.com", "pod").(*containerHost)
-	require.Equal(t, "reg.example.com/spikeorg/pulumi-provider-greeting:v0.1.0", withKnob.imageFor(pinned))
-	require.Equal(t, "internal.example.com/custom-image:v2.0.0", withKnob.imageFor(opaquePin))
-	require.Equal(t, "reg.example.com/pulumi/pulumi-provider-random:", withKnob.imageFor(unpinned))
-	require.Equal(t, "reg.example.com/pulumi/pulumi-provider-random:", withKnob.imageFor(server))
+	h := NewContainerHost(nil, fakePod{}, "engine", "", "pod").(*containerHost)
 
-	// Knob unset: the pin's own host is the default route — zero-config consumption.
-	noKnob := NewContainerHost(nil, fakePod{}, "engine", "", "", "pod").(*containerHost)
-	require.Equal(t, "ghcr.io/spikeorg/pulumi-provider-greeting:v0.1.0", noKnob.imageFor(pinned))
-	require.Equal(t, "internal.example.com/custom-image:v2.0.0", noKnob.imageFor(opaquePin))
-	require.Equal(t, "pulumi/pulumi-provider-random:", noKnob.imageFor(unpinned))
+	// A pin resolves to its own host — its source is never rewritten.
+	require.Equal(t, "ghcr.io/spikeorg/pulumi-provider-greeting:v0.1.0", h.imageFor(privatePin))
+	require.Equal(t, "internal.example.com/custom-image:v2.0.0", h.imageFor(opaquePin))
+
+	// An unpinned package resolves under the constant public source.
+	require.Equal(t, DefaultPublicRegistry+"/pulumi/pulumi-provider-random:", h.imageFor(unpinned))
+	require.Equal(t, DefaultPublicRegistry+"/pulumi/pulumi-provider-random:", h.imageFor(server))
+
+	// The claim that makes two sources coexist: the private pin and the unpinned
+	// first-party package land on different hosts in the same program — no knob
+	// flattens them onto one.
+	privateHost := strings.SplitN(h.imageFor(privatePin), "/", 2)[0]
+	publicHost := strings.SplitN(h.imageFor(unpinned), "/", 2)[0]
+	require.Equal(t, "ghcr.io", privateHost)
+	require.Equal(t, DefaultPublicRegistry, publicHost)
+	require.NotEqual(t, privateHost, publicHost, "a pin and an unpinned package must resolve to different sources")
 }
 
 // A dynamic provider runs from the program image with the SDK's own entrypoint,
