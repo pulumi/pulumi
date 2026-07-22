@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/blang/semver"
 	"google.golang.org/grpc"
@@ -63,40 +62,6 @@ type analyzer struct {
 }
 
 var _ Analyzer = (*analyzer)(nil)
-
-// NewAnalyzer binds to a given analyzer's plugin by name and creates a gRPC connection to it.  If the associated plugin
-// could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
-func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
-	// Load the plugin's path by using the standard workspace logic.
-	path, err := workspace.GetPluginPath(
-		ctx.baseContext,
-		ctx.Diag,
-		workspace.PluginDescriptor{
-			Name: strings.ReplaceAll(string(name), tokens.QNameDelimiter, "_"),
-			Kind: apitype.AnalyzerPlugin,
-		},
-		ctx.ProjectPlugins())
-	if err != nil {
-		return nil, rpcerror.Convert(err)
-	}
-	contract.Assertf(path != "", "unexpected empty path for analyzer plugin %s", name)
-
-	dialOpts := rpcutil.TracingInterceptorDialOptions()
-
-	plug, _, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (analyzer)", name),
-		apitype.AnalyzerPlugin, []string{host.ServerAddr(), ctx.Pwd}, nil, /*env*/
-		testConnection, dialOpts, host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
-	if err != nil {
-		return nil, err
-	}
-	contract.Assertf(plug != nil, "unexpected nil analyzer plugin for %s", name)
-
-	return &analyzer{
-		name:   name,
-		plug:   plug,
-		client: pulumirpc.NewAnalyzerClient(plug.Conn),
-	}, nil
-}
 
 // NewPolicyAnalyzer boots the analyzer plugin located at `policyPackpath`. `hasPlugin` is a function that allows the
 // caller to configure how it is determined if the language plugin is available. If nil it will default to looking for
@@ -152,7 +117,8 @@ func NewPolicyAnalyzer(
 				ctx.baseContext,
 				ctx.Diag,
 				spec,
-				ctx.ProjectPlugins())
+				ctx.ProjectPlugins(),
+			)
 			return err == nil && path != ""
 		}
 	}
@@ -168,7 +134,8 @@ func NewPolicyAnalyzer(
 		var pluginPath string
 		pluginPath, err = workspace.GetPluginPath(
 			ctx.baseContext, ctx.Diag,
-			workspace.PluginDescriptor{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, ctx.ProjectPlugins())
+			workspace.PluginDescriptor{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, ctx.ProjectPlugins(),
+		)
 		if err != nil {
 			return nil, err
 		}

@@ -18,12 +18,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/schema"
-	"golang.org/x/exp/maps"
 )
 
 var testProviderSchema = schema.Object().
@@ -129,9 +129,7 @@ values:
 `
 
 func sortedKeys[T any](m map[string]T) []string {
-	keys := maps.Keys(m)
-	sort.Strings(keys)
-	return keys
+	return slices.Sorted(maps.Keys(m))
 }
 
 func visitExprs(env *esc.Environment, visitor func(path string, x esc.Expr)) {

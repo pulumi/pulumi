@@ -226,7 +226,8 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	assert.Equal(t, defaultProjectName, proj.Name.String())
 	// Expect the stack directory to have a checkpoint file for the stack.
 	_, err = os.Stat(filepath.Join(
-		backendDir, workspace.BookkeepingDir, workspace.StackDir, defaultProjectName, stackName+".json"))
+		backendDir, workspace.BookkeepingDir, pkgWorkspace.StackDir, defaultProjectName, stackName+".json",
+	))
 	require.NoError(t, err)
 
 	b, err = backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})

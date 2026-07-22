@@ -526,7 +526,8 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 					step.Op() == deploy.OpDiscardReplaced ||
 					step.Op() == deploy.OpDeleteReplaced,
 				"Old must be unprotected (got %v) or the operation must be a replace (got %q)",
-				step.Old().Protect, step.Op())
+				step.Old().Protect, step.Op(),
+			)
 
 			if !step.Old().PendingReplacement {
 				dsm.manager.markDone(step.Old())
@@ -803,7 +804,8 @@ func (sm *SnapshotManager) Deployment() (apitype.TypedDeployment, error) {
 	}
 
 	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(
-		context.TODO(), snap, false /*showSecrets*/)
+		context.TODO(), snap, false, /*showSecrets*/
+	)
 	if err != nil {
 		return apitype.TypedDeployment{}, fmt.Errorf("failed to serialize snapshot: %w", err)
 	}
@@ -905,7 +907,8 @@ func (sm *SnapshotManager) repairAndSerialize() (apitype.TypedDeployment, error)
 	}
 
 	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(
-		context.TODO(), normalizedSnap, false /*showSecrets*/)
+		context.TODO(), normalizedSnap, false, /*showSecrets*/
+	)
 	if err != nil {
 		return apitype.TypedDeployment{}, fmt.Errorf("failed to serialize repaired snapshot: %w", err)
 	}

@@ -29,8 +29,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/acarl005/stripansi"
 	"github.com/blang/semver"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -2768,7 +2768,7 @@ func TestNodejsSourcemapTest(t *testing.T) {
 
       at willThrow (index.ts:3:15)
 `
-	require.Contains(t, stripansi.Strip(stderr), expectedTrace)
+	require.Contains(t, ansi.Strip(stderr), expectedTrace)
 }
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()

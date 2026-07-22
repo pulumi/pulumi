@@ -73,6 +73,9 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	if schemaHelp := resourceSchemaHelp(res); schemaHelp != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, schemaHelp)
 	}
+	if len(res.InputProperties) > 0 {
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, inputFlagsHelp)
+	}
 
 	cmd := &cobra.Command{
 		Use:   name,
@@ -368,13 +371,17 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 
 func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.Command {
 	var yes bool
+	use := "delete <id>"
+	if !pc.stateless {
+		use = "delete <name>"
+	}
 	cmd := &cobra.Command{
-		Use:   "delete <id>",
+		Use:   use,
 		Short: "Delete a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !pc.stateless {
-				return errStatefulNotImplemented("delete")
+				return pc.runStatefulSnippetDelete(cmd, res, args[0], yes)
 			}
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err

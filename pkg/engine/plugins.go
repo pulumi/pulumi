@@ -358,7 +358,8 @@ func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plu
 	for _, pkg := range pkgs {
 		logging.V(preparePluginLog).Infof(
 			"gatherPackagesFromProgram(): package %s (%s) is required by language host",
-			pkg.String(), pkg.PluginDownloadURL)
+			pkg.String(), pkg.PluginDownloadURL,
+		)
 		set.Add(pkg)
 	}
 	return set, nil
@@ -378,7 +379,8 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 		urn := res.URN
 		if !sdkproviders.IsProviderType(urn.Type()) {
 			logging.V(preparePluginVerboseLog).Infof(
-				"gatherPackagesFromSnapshot(): skipping %q, not a provider", urn)
+				"gatherPackagesFromSnapshot(): skipping %q, not a provider", urn,
+			)
 			continue
 		}
 		pkg := sdkproviders.GetProviderPackage(urn.Type())
@@ -414,7 +416,8 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 		}
 
 		logging.V(preparePluginLog).Infof(
-			"gatherPackagesFromSnapshot(): package %s %s is required by first-class provider %q", name, version, urn)
+			"gatherPackagesFromSnapshot(): package %s %s is required by first-class provider %q", name, version, urn,
+		)
 		set.Add(workspace.PackageDescriptor{
 			PluginDescriptor: workspace.PluginDescriptor{
 				Name:              name.String(),
@@ -479,7 +482,8 @@ func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 		path, err := pluginManager.GetPluginPath(ctx, d, plug, projectPlugins)
 		if err == nil && path != "" {
 			logging.V(preparePluginLog).Infof(
-				"ensurePluginsAreInstalled(): plugin %s %s already installed", plug.Name, plug.Version)
+				"ensurePluginsAreInstalled(): plugin %s %s already installed", plug.Name, plug.Version,
+			)
 
 			if !reinstall {
 				continue
@@ -524,7 +528,8 @@ func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 		// Launch an install task asynchronously and add it to the current error group.
 		manager.InstallPlugin(func() error {
 			logging.V(preparePluginLog).Infof(
-				"EnsurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
+				"EnsurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version,
+			)
 			return installPlugin(ctx, opts, pluginManager, info)
 		})
 	}
@@ -542,13 +547,6 @@ func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins PluginSet, kinds pl
 	var result error
 	for _, p := range plugins {
 		switch p.Kind {
-		case apitype.AnalyzerPlugin:
-			if kinds&plugin.AnalyzerPlugins != 0 {
-				if _, err := host.Analyzer(plugctx, tokens.QName(p.Name)); err != nil {
-					result = multierror.Append(result,
-						fmt.Errorf("failed to load analyzer plugin %s: %w", p.Name, err))
-				}
-			}
 		case apitype.LanguagePlugin:
 			if kinds&plugin.LanguagePlugins != 0 {
 				if _, err := host.LanguageRuntime(plugctx, p.Name); err != nil {
@@ -563,7 +561,7 @@ func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins PluginSet, kinds pl
 						fmt.Errorf("failed to load resource plugin %s: %w", p.Name, err))
 				}
 			}
-		case apitype.ConverterPlugin, apitype.ToolPlugin:
+		case apitype.AnalyzerPlugin, apitype.ConverterPlugin, apitype.ToolPlugin:
 			contract.Failf("unexpected plugin kind: %s", p.Kind)
 		}
 	}
@@ -595,7 +593,8 @@ func installPlugin(
 	// If we don't have a version yet try and call GetLatestVersion to fill it in
 	if plugin.Version == nil {
 		logging.V(preparePluginVerboseLog).Infof(
-			"installPlugin(%s): version not specified, trying to lookup latest version", plugin.Name)
+			"installPlugin(%s): version not specified, trying to lookup latest version", plugin.Name,
+		)
 
 		version, err := pluginManager.GetLatestVersion(ctx, plugin)
 		if err != nil {
@@ -605,7 +604,8 @@ func installPlugin(
 	}
 
 	logging.V(preparePluginVerboseLog).Infof(
-		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version)
+		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version,
+	)
 
 	pluginID := fmt.Sprintf("%s-%s", plugin.Name, plugin.Version)
 	downloadMessage := "Downloading plugin " + pluginID
@@ -642,7 +642,8 @@ func installPlugin(
 	}
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
 		logging.V(preparePluginVerboseLog).Infof(
-			"Error downloading plugin: %s\nWill retry in %v [%d/%d]", err, delay, attempt, limit)
+			"Error downloading plugin: %s\nWill retry in %v [%d/%d]", err, delay, attempt, limit,
+		)
 	}
 
 	tarball, size, err := pluginManager.DownloadPlugin(ctx, plugin, withDownloadProgress, retry)
@@ -652,7 +653,8 @@ func installPlugin(
 	defer contract.IgnoreClose(tarball)
 
 	logging.V(preparePluginVerboseLog).Infof(
-		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
+		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version,
+	)
 
 	// In a similar manner to downloads, we'll use a progress bar to show install
 	// progress by wrapping the download stream with a progress reporting
@@ -746,7 +748,8 @@ func (err ambigiousPluginSourceError) Error() string {
 			"  %s\n"+
 			"Remove one of the packages, or pass an explicit `provider` "+
 			"option on each resource to disambiguate.",
-		err.pkg, describePluginSource(err.a), describePluginSource(err.b))
+		err.pkg, describePluginSource(err.a), describePluginSource(err.b),
+	)
 }
 
 // computeDefaultProviderPackages computes, for every package, a mapping from packages to semver versions reflecting the
@@ -786,7 +789,8 @@ func computeDefaultProviderPackages(
 	sourceSet := languagePackages
 	if !languageReportedProviderPlugins {
 		logging.V(preparePluginLog).Infoln(
-			"computeDefaultProviderPlugins(): language host reported empty set of provider plugins, using all plugins")
+			"computeDefaultProviderPlugins(): language host reported empty set of provider plugins, using all plugins",
+		)
 		sourceSet = allPackages
 	}
 
@@ -808,7 +812,8 @@ func computeDefaultProviderPackages(
 		if p.Kind != apitype.ResourcePlugin {
 			// Default providers are only relevant for resource plugins.
 			logging.V(preparePluginVerboseLog).Infof(
-				"computeDefaultProviderPlugins(): skipping %s, not a resource provider", p)
+				"computeDefaultProviderPlugins(): skipping %s, not a resource provider", p,
+			)
 			continue
 		}
 
@@ -817,7 +822,8 @@ func computeDefaultProviderPackages(
 			// of their own: extension resources register against an explicit package ref,
 			// and the base plugin is installed via the plugin set, not from here.
 			logging.V(preparePluginVerboseLog).Infof(
-				"computeDefaultProviderPlugins(): skipping extension package %s", p.PackageName())
+				"computeDefaultProviderPlugins(): skipping extension package %s", p.PackageName(),
+			)
 			continue
 		}
 
@@ -831,7 +837,8 @@ func computeDefaultProviderPackages(
 			if seenPlugin.Version == nil {
 				logging.V(preparePluginLog).Infof(
 					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, previous was nil)",
-					p, p.Name)
+					p, p.Name,
+				)
 				defaultProviderPlugins[name] = p
 				continue
 			}
@@ -840,7 +847,8 @@ func computeDefaultProviderPackages(
 			if p.Version != nil && p.Version.GTE(*seenPlugin.Version) {
 				logging.V(preparePluginLog).Infof(
 					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, newer than previous %s)",
-					p, p.Name, seenPlugin.Version)
+					p, p.Name, seenPlugin.Version,
+				)
 				defaultProviderPlugins[name] = p
 				continue
 			}
@@ -851,7 +859,8 @@ func computeDefaultProviderPackages(
 		}
 
 		logging.V(preparePluginLog).Infof(
-			"computeDefaultProviderPlugins(): plugin %s selected for package %s (first seen)", p, p.Name)
+			"computeDefaultProviderPlugins(): plugin %s selected for package %s (first seen)", p, p.Name,
+		)
 		defaultProviderPlugins[name] = p
 	}
 

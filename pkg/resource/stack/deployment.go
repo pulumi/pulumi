@@ -666,7 +666,7 @@ func SerializeResource(
 
 	encodedByteString := propertyMapNeedsByteString(res.Inputs) ||
 		propertyMapNeedsByteString(res.Outputs) ||
-		propertyValueNeedsByteString(res.ReplacementTrigger)
+		propertyValueNeedsByteString(resource.ToResourcePropertyValue(res.ReplacementTrigger))
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
 	var inputs map[string]any
@@ -686,7 +686,9 @@ func SerializeResource(
 		outputs = soutp
 	}
 
-	trigger, err := SerializePropertyValue(ctx, resource.ToResourcePropertyValue(res.ReplacementTrigger), enc, showSecrets)
+	trigger, err := SerializePropertyValue(
+		ctx, resource.ToResourcePropertyValue(res.ReplacementTrigger), enc, showSecrets,
+	)
 	if err != nil {
 		return apitype.ResourceV3{}, false, err
 	}

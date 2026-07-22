@@ -1249,7 +1249,8 @@ func (sg *stepGenerator) continueStepsFromImport(
 	if old != nil {
 		// Set inputs back to their old values (if any) for any "ignored" properties
 		processedInputs := processIgnoreChanges(
-			sg.deployment.Diag(), urn, toLegacyMap(inputs), toLegacyMap(old.Inputs), goal.IgnoreChanges)
+			sg.deployment.Diag(), urn, toLegacyMap(inputs), toLegacyMap(old.Inputs), goal.IgnoreChanges,
+		)
 		inputs = fromLegacyMap(processedInputs)
 	}
 
@@ -1776,16 +1777,14 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	// Unknowns in replacement triggers are fine during preview, but they should raise an error during the actual
 	// operation. This check only applies when we have an old resource (i.e., during updates/replaces), since a
 	// replacement trigger only makes sense when there's something to replace.
-	newReplacementTrigger := resource.ToResourcePropertyValue(new.ReplacementTrigger)
-	oldReplacementTrigger := resource.ToResourcePropertyValue(old.ReplacementTrigger)
-	if !sg.deployment.opts.DryRun && newReplacementTrigger.ContainsUnknowns() {
+	if !sg.deployment.opts.DryRun && new.ReplacementTrigger.HasComputed() {
 		message := fmt.Sprintf("replacement trigger contains unknowns for %s", urn)
 		sg.deployment.ctx.Diag.Errorf(diag.StreamMessage(urn, message, 0))
 		sg.sawError = true
 		return nil, false, result.BailErrorf("%s", message)
 	}
 
-	triggerReplace := shouldTriggerReplace(newReplacementTrigger, oldReplacementTrigger)
+	triggerReplace := shouldTriggerReplace(new.ReplacementTrigger, old.ReplacementTrigger)
 
 	var diff plugin.DiffResult
 	var pcs *promise.CompletionSource[plugin.DiffResult]
@@ -3551,12 +3550,12 @@ func newStepGenerator(
 }
 
 // Should we trigger a replace for the given new and old property values?
-func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue) bool {
+func shouldTriggerReplace(new property.Value, old property.Value) bool {
 	new = unwrapSecretsAndOutputs(new)
 	old = unwrapSecretsAndOutputs(old)
 
 	// Unknowns are always considered to be changed.
-	if old.ContainsUnknowns() || new.ContainsUnknowns() {
+	if old.HasComputed() || new.HasComputed() {
 		return true
 	}
 
@@ -3565,38 +3564,28 @@ func shouldTriggerReplace(new resource.PropertyValue, old resource.PropertyValue
 		return false
 	}
 
-	return !new.DeepEquals(old)
+	return !new.Equals(old)
 }
 
 // unwrapSecretsAndOutputs strips Secret and Output wrappers from a value so that the underlying values can be compared
 // regardless of how they were wrapped.
-func unwrapSecretsAndOutputs(value resource.PropertyValue) resource.PropertyValue {
-	if value.IsSecret() {
-		return unwrapSecretsAndOutputs(value.SecretValue().Element)
-	}
-
-	if value.IsOutput() {
-		output := value.OutputValue()
-		if !output.Known {
-			return resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
-		}
-		return unwrapSecretsAndOutputs(output.Element)
-	}
+func unwrapSecretsAndOutputs(value property.Value) property.Value {
+	value = value.WithSecret(false).WithDependencies(nil)
 
 	if value.IsArray() {
-		arr := []resource.PropertyValue{}
-		for _, e := range value.ArrayValue() {
+		arr := []property.Value{}
+		for _, e := range value.AsArray().All {
 			arr = append(arr, unwrapSecretsAndOutputs(e))
 		}
-		return resource.NewProperty(arr)
+		return property.New(arr)
 	}
 
-	if value.IsObject() {
-		obj := resource.PropertyMap{}
-		for key, e := range value.ObjectValue() {
+	if value.IsMap() {
+		obj := map[string]property.Value{}
+		for key, e := range value.AsMap().All {
 			obj[key] = unwrapSecretsAndOutputs(e)
 		}
-		return resource.NewProperty(obj)
+		return property.New(obj)
 	}
 
 	return value

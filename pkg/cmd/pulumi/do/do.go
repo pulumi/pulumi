@@ -411,7 +411,11 @@ Provider configuration can be supplied via:
     set --input to use another format)
 
 Function inputs come from --input-file. YAML is the default; pass --input
-to use another format.`,
+to use another format.
+
+Simple properties can also be set with flags: --<property> <value> takes the
+value as a literal, while --<property>+ <value> parses the value as an
+expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			subcmd, cleanup, err := buildSubcommand(cmd, args)

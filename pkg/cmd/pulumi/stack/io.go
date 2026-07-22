@@ -72,7 +72,8 @@ func LoadProjectStack(
 		if err == nil {
 			sink.Warningf(
 				diag.Message("", "config file %s exists but will be ignored because this stack uses remote config"),
-				configFilePath)
+				configFilePath,
+			)
 		}
 		return stack.LoadRemoteConfig(ctx, project)
 	}
@@ -88,7 +89,7 @@ func SaveProjectStack(
 	if stack.ConfigLocation().IsRemote {
 		return stack.SaveRemoteConfig(ctx, ps)
 	}
-	return workspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
+	return pkgWorkspace.SaveProjectStack(stack.Ref().Name().Q(), ps)
 }
 
 type LoadOption int
@@ -532,7 +533,8 @@ func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 	if snapshot.PendingOperations != nil {
 		for _, op := range snapshot.PendingOperations {
 			msg := fmt.Sprintf(
-				"removing pending operation '%s' on '%s' from snapshot", op.Type, op.Resource.URN)
+				"removing pending operation '%s' on '%s' from snapshot", op.Type, op.Resource.URN,
+			)
 			cmdutil.Diag().Warningf(diag.Message(op.Resource.URN, msg))
 		}
 

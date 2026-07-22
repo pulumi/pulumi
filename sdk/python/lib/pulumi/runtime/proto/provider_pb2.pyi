@@ -50,6 +50,7 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     MAPPER_TARGET_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
     RESOLVER_TARGET_FIELD_NUMBER: builtins.int
+    ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
     """The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
     of the [](pulumirpc.Engine) service.
@@ -87,6 +88,11 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     """The target of a [](pulumirpc.PackageResolver) service the provider can use to resolve package specifications to
     concrete package dependencies. May be empty on older engines.
     """
+    accepts_byte_string: builtins.bool
+    """True if and only if the engine supports strings containing bytes that are not valid UTF-8, marshaled as objects
+    carrying the byte string signature and a base64 encoding of the string's bytes. If true, the provider may
+    return such values to the engine.
+    """
     def __init__(
         self,
         *,
@@ -100,9 +106,10 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
         mapper_target: builtins.str | None = ...,
         loader_target: builtins.str | None = ...,
         resolver_target: builtins.str | None = ...,
+        accepts_byte_string: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_loader_target", b"_loader_target", "_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_resolver_target", b"_resolver_target", "_root_directory", b"_root_directory", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "resolver_target", b"resolver_target", "root_directory", b"root_directory"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_loader_target", b"_loader_target", "_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_resolver_target", b"_resolver_target", "_root_directory", b"_root_directory", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "invoke_with_preview", b"invoke_with_preview", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "resolver_target", b"resolver_target", "root_directory", b"root_directory", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_loader_target", b"_loader_target", "_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_resolver_target", b"_resolver_target", "_root_directory", b"_root_directory", "accepts_byte_string", b"accepts_byte_string", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "invoke_with_preview", b"invoke_with_preview", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "resolver_target", b"resolver_target", "root_directory", b"root_directory", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_loader_target", b"_loader_target"]) -> typing.Literal["loader_target"] | None: ...
     @typing.overload
@@ -126,6 +133,7 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     ACCEPT_RESOURCES_FIELD_NUMBER: builtins.int
     ACCEPT_OUTPUTS_FIELD_NUMBER: builtins.int
     SUPPORTS_AUTONAMING_CONFIGURATION_FIELD_NUMBER: builtins.int
+    ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
     accept_secrets: builtins.bool
     """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
     values to the provider. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
@@ -144,6 +152,11 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     """True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
     user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
     """
+    accepts_byte_string: builtins.bool
+    """True if and only if the provider supports strings containing bytes that are not valid UTF-8, marshaled as
+    objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
+    caller may pass such values to the provider.
+    """
     def __init__(
         self,
         *,
@@ -151,8 +164,9 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
         accept_resources: builtins.bool = ...,
         accept_outputs: builtins.bool = ...,
         supports_autonaming_configuration: builtins.bool = ...,
+        accepts_byte_string: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "accepts_byte_string", b"accepts_byte_string", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
 
 global___ProviderHandshakeResponse = ProviderHandshakeResponse
 

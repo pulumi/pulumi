@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"math"
 	"os"
 	"sort"
 	"strconv"
@@ -33,6 +34,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/zclconf/go-cty/cty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -97,6 +99,7 @@ type functionEvalContext struct {
 type inputFlagValue struct {
 	value string
 	typ   schema.Type
+	expr  bool
 }
 
 func jsonifyPropertyValue(v resource.PropertyValue, showSecrets bool) (any, error) {
@@ -338,16 +341,29 @@ func parseFile(
 		}
 	}
 
-	var literals map[string]string
-	if len(pcl) == 0 && len(inputFlags) == 0 {
-		// No input provided; pcl and literals are empty
-	} else if inputFormat == "pcl" {
-		var err error
-		literals, err = inputFlagLiterals(inputFlags)
-		if err != nil {
-			return nil, "", err
+	plainFlags := map[string]inputFlagValue{}
+	exprFlags := map[string]inputFlagValue{}
+	for name, flag := range inputFlags {
+		if flag.expr {
+			exprFlags[name] = flag
+		} else {
+			plainFlags[name] = flag
 		}
-	} else {
+	}
+
+	literals, err := inputFlagLiterals(plainFlags)
+	if err != nil {
+		return nil, "", err
+	}
+	if literals == nil {
+		literals = map[string]string{}
+	}
+
+	if inputFormat == "pcl" {
+		for name, flag := range exprFlags {
+			literals[name] = flag.value
+		}
+	} else if len(pcl) > 0 || len(exprFlags) > 0 {
 		converter, err := loadConverter(inputFormat)
 		if err != nil {
 			return nil, "", fmt.Errorf("load %s input converter: %w", inputFormat, err)
@@ -360,7 +376,7 @@ func parseFile(
 			TargetLoader: loaderTarget,
 			Package:      packageDescriptor,
 			Token:        token,
-			Attributes:   inputFlagAttributes(inputFlags),
+			Attributes:   inputFlagAttributes(exprFlags),
 		})
 		if err != nil {
 			if status.Code(err) == codes.Unimplemented {
@@ -379,7 +395,9 @@ func parseFile(
 		if filename == "" {
 			filename = fmt.Sprintf("<converted %s>", fileType)
 		}
-		literals = resp.Attributes
+		for name, attr := range resp.Attributes {
+			literals[name] = attr
+		}
 	}
 
 	merged, err := mergeAttributeLiteralsIntoPCL(pcl, filename, fileType, literals)
@@ -392,9 +410,9 @@ func parseFile(
 
 // evaluateFile reads an input file in the given format and evaluates it. For non-PCL formats the source is routed
 // through the named converter plugin's ConvertSnippet RPC and the resulting PCL is fed into the same bind pipeline.
-// An empty path with no input flags is treated as "no input provided"; converter-backed formats still run for
-// resource/function input flags so those flags are interpreted by the selected converter before the bind step's
-// missing-required check runs.
+// Plain input flags are merged into the PCL as literal values without converter involvement; expression flags
+// (--<flag>+) are interpreted by the selected converter, or merged as PCL expressions when the input format is pcl.
+// The converter only runs when there is file source or at least one expression flag.
 func evaluateFile(
 	ctx context.Context,
 	path, fileType, inputFormat, token string,
@@ -461,13 +479,18 @@ func collectInputFlags(cmd *cobra.Command, namespace string, inputs []*schema.Pr
 		}
 
 		flagName := inputFlagName(input.Name)
-		if flag := cmd.Flag(fmt.Sprintf("%s:%s", namespace, flagName)); flag != nil && flag.Changed {
-			values[input.Name] = inputFlagValue{value: flag.Value.String(), typ: typ}
-			continue
-		}
+		names := []string{fmt.Sprintf("%s:%s", namespace, flagName)}
 		if namespace == "input" {
-			if flag := cmd.Flag(flagName); flag != nil && flag.Changed {
+			names = append(names, flagName)
+		}
+		for _, name := range names {
+			if flag := cmd.Flag(name); flag != nil && flag.Changed {
 				values[input.Name] = inputFlagValue{value: flag.Value.String(), typ: typ}
+				break
+			}
+			if flag := cmd.Flag(name + "+"); flag != nil && flag.Changed {
+				values[input.Name] = inputFlagValue{value: flag.Value.String(), typ: typ, expr: true}
+				break
 			}
 		}
 	}
@@ -493,7 +516,7 @@ func inputFlagLiterals(inputFlags map[string]inputFlagValue) (map[string]string,
 	for name, flag := range inputFlags {
 		literal, err := pclLiteral(flag)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("--%s: %w", inputFlagName(name), err)
 		}
 		attrs[name] = literal
 	}
@@ -548,13 +571,35 @@ func mergeAttributeLiteralsIntoPCL(
 func pclLiteral(flag inputFlagValue) (string, error) {
 	switch flag.typ {
 	case schema.StringType:
-		return strconv.Quote(flag.value), nil
-	case schema.BoolType, schema.IntType, schema.NumberType:
-		return flag.value, nil
+		return string(hclwrite.TokensForValue(cty.StringVal(flag.value)).Bytes()), nil
+	case schema.BoolType:
+		v, err := strconv.ParseBool(flag.value)
+		if err != nil {
+			return "", fmt.Errorf("invalid boolean value %q", flag.value)
+		}
+		return string(hclwrite.TokensForValue(cty.BoolVal(v)).Bytes()), nil
+	case schema.IntType:
+		v, err := strconv.ParseInt(flag.value, 10, 64)
+		if err != nil {
+			return "", fmt.Errorf("invalid integer value %q", flag.value)
+		}
+		return string(hclwrite.TokensForValue(cty.NumberIntVal(v)).Bytes()), nil
+	case schema.NumberType:
+		v, err := strconv.ParseFloat(flag.value, 64)
+		if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
+			return "", fmt.Errorf("invalid number value %q", flag.value)
+		}
+		return string(hclwrite.TokensForValue(cty.NumberFloatVal(v)).Bytes()), nil
 	default:
 		return "", fmt.Errorf("unsupported flag type %s", flag.typ)
 	}
 }
+
+const exprFlagHelp = " (value is parsed as an expression in the input format)"
+
+const inputFlagsHelp = "Simple inputs can be set with flags: --<input> <value> takes the value as a\n" +
+	"literal, while --<input>+ <value> parses the value as an expression in the\n" +
+	"input format."
 
 func addInputFlags(cmd *cobra.Command, namespace string, inputs []*schema.Property) {
 	addInputFlagsTo(cmd, cmd.Flags(), namespace, inputs)
@@ -574,11 +619,6 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 		switch typ {
 		case schema.BoolType:
 			flagFunc = func(name, extraHelp string) {
-				// N.B. This is hardcoded in the engine to the literal string "true/false" for the literal true/false.
-				// This works for PCL, and happens to also work for YAML, but if we add any new converters that _don't_
-				// use the string "true" for their boolean true literal (for example Python uses "True"), then we'll
-				// need to add something here to support that. Probably pre-fetching the literal text from the
-				// converter plugin to create the flag values to match.
 				flags.String(name, "false", comment+extraHelp)
 				flags.Lookup(name).NoOptDefVal = "true"
 			}
@@ -589,14 +629,23 @@ func addInputFlagsTo(cmd *cobra.Command, flags *pflag.FlagSet, namespace string,
 		}
 
 		if flagFunc != nil {
+			exprFunc := func(name, extraHelp string) {
+				flags.String(name, "", comment+extraHelp)
+			}
 			flagName := inputFlagName(input.Name)
 			key := fmt.Sprintf("%s:%s", namespace, flagName)
 			flagFunc(key, "")
+			exprFunc(key+"+", exprFlagHelp)
+			flags.Lookup(key + "+").Hidden = true
 			if namespace == "input" && flags.Lookup(flagName) == nil {
 				flagFunc(flagName, " (alias for --"+key+")")
-				cmd.MarkFlagsMutuallyExclusive(key, flagName)
+				exprFunc(flagName+"+", exprFlagHelp)
+				flags.Lookup(flagName + "+").Hidden = true
+				cmd.MarkFlagsMutuallyExclusive(key, flagName, key+"+", flagName+"+")
 				// Mark the namespaced flag as hidden
 				flags.Lookup(key).Hidden = true
+			} else {
+				cmd.MarkFlagsMutuallyExclusive(key, key+"+")
 			}
 		}
 	}

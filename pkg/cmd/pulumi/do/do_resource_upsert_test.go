@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/gofrs/uuid"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -397,6 +398,77 @@ func TestDoCmdResourceStatefulCreateRejectsExisting(t *testing.T) {
 	_ = stderr
 }
 
+// TestDoCmdResourceStatefulDeleteConstructsSnippetDelete checks that stateful `delete` resolves
+// the existing snippet by (Name, Type), targets that snippet UUID, and marks the request as a
+// snippet deletion.
+//
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceStatefulDeleteConstructsSnippetDelete(t *testing.T) {
+	existing := resource.Snippet{
+		UUID: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+		Name: "myres", Type: "azure:index:myResource",
+		Code:       `name = "old"`,
+		Descriptor: resource.PackageDescriptor{Name: "azure"},
+	}
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{Snippets: []resource.Snippet{existing}})
+
+	var got StatefulUpdateRequest
+	var called bool
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		called = true
+		got = req
+		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	cmd.SetArgs([]string{"azure:index:myResource", "delete", "myres", "--yes"})
+	require.NoError(t, cmd.Execute())
+
+	require.True(t, called, "runStatefulUpdate should have been invoked")
+	assert.True(t, got.Delete)
+	assert.Equal(t, existing.UUID, got.Snippet.UUID)
+	assert.Equal(t, "myres", got.Snippet.Name)
+	assert.Equal(t, "azure:index:myResource", got.Snippet.Type)
+	assert.Contains(t, stdout.String(), "deleted myres")
+	assert.Contains(t, stdout.String(), existing.UUID)
+	_ = stderr
+}
+
+// TestDoCmdResourceStatefulDeleteRejectsMissing checks that delete refuses to run a backend update
+// when the named snippet does not exist in the stack snapshot.
+//
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceStatefulDeleteRejectsMissing(t *testing.T) {
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{})
+
+	stub := func(_ context.Context, _ *pflag.FlagSet, _ StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		require.Fail(t, "runStatefulUpdate should not be called when the snippet is missing")
+		return nil, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	cmd.SetArgs([]string{"azure:index:myResource", "delete", "myres", "--yes"})
+	err := cmd.Execute()
+	require.ErrorContains(t, err, "does not exist")
+	require.ErrorContains(t, err, "myres")
+	_ = stdout
+	_ = stderr
+}
+
 // TestDoCmdResourceCreateStatelessTakesNoNameArg pins the diverging UX between the two `create`
 // variants: stateless `create` uses the resource type's short name (no positional arg), stateful
 // `create` requires an explicit `<name>`.
@@ -604,5 +676,64 @@ func TestDefaultRunStatefulUpdateYesAutoApprovesUpdate(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.True(t, updateCalled, "non-dry-run upsert should call UpdateStack")
+	require.Equal(t, "3fa85f64-5717-4562-b3fc-2c963f66afa6", result.SnippetUUID)
+}
+
+//nolint:paralleltest // Uses t.Chdir
+func TestDefaultRunStatefulUpdateDeletePassesNilSnippet(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(root+"/Pulumi.yaml", []byte("name: proj\nruntime: yaml\n"), 0o600))
+	t.Chdir(root)
+
+	stackRef := &backend.MockStackReference{
+		StringV:             "myorg/proj/dev",
+		NameV:               tokens.MustParseStackName("dev"),
+		FullyQualifiedNameV: "myorg/proj/dev",
+	}
+	var updateCalled bool
+	mockBackend := &backend.MockBackend{
+		UpdateF: func(_ context.Context, _ backend.Stack, op backend.UpdateOperation) (sdkDisplay.ResourceChanges, error) {
+			updateCalled = true
+			require.Len(t, op.Opts.Engine.TargetSnippets, 1)
+			assert.Equal(t, "3fa85f64-5717-4562-b3fc-2c963f66afa6", op.Opts.Engine.TargetSnippets[0])
+			require.Len(t, op.Opts.Engine.Snippets, 1)
+			snippetID := uuid.Must(uuid.FromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"))
+			assert.Nil(t, op.Opts.Engine.Snippets[snippetID])
+			return nil, nil
+		},
+	}
+	mockStack := &backend.MockStack{
+		RefF:            func() backend.StackReference { return stackRef },
+		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{IsRemote: true} },
+		LoadRemoteF: func(context.Context, *workspace.Project) (*workspace.ProjectStack, error) {
+			return &workspace.ProjectStack{}, nil
+		},
+		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+			return b64.NewBase64SecretsManager(), nil
+		},
+		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+			return &deploy.Snapshot{SecretsManager: b64.NewBase64SecretsManager()}, nil
+		},
+		BackendF: func() backend.Backend { return mockBackend },
+	}
+	var stdout, stderr bytes.Buffer
+
+	result, err := DefaultRunStatefulUpdate(
+		t.Context(), pflag.NewFlagSet("test", pflag.ContinueOnError), StatefulUpdateRequest{
+			Snippet: resource.Snippet{
+				UUID: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+				Name: "myres",
+				Type: "azure:index:myResource",
+			},
+			Stack:  mockStack,
+			Yes:    true,
+			Delete: true,
+			Proj:   &workspace.Project{Name: tokens.PackageName("proj")},
+			Root:   root,
+			Sink:   diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{Color: colors.Never}),
+		},
+	)
+	require.NoError(t, err)
+	require.True(t, updateCalled, "stateful delete should call UpdateStack")
 	require.Equal(t, "3fa85f64-5717-4562-b3fc-2c963f66afa6", result.SnippetUUID)
 }

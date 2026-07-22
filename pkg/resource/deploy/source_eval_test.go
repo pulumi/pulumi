@@ -881,7 +881,8 @@ func TestRegistrationObserverResolveOnRegisterResource(t *testing.T) {
 	}
 
 	expectedURN := resource.NewURN(
-		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "res1")
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "res1",
+	)
 	expectedOutputs := resource.PropertyMap{"k": resource.NewProperty("v")}
 
 	steps := []RegisterResourceEvent{
@@ -979,7 +980,8 @@ func TestRegistrationObserverNotResolvedForUnsuccessfulRegisterResource(t *testi
 				Target: &Target{Name: tokens.MustParseStackName("stack")},
 			}
 			expectedURN := resource.NewURN(
-				runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "res1")
+				runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "res1",
+			)
 
 			program := func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, err := monitor.RegisterResource("pkgA:index:res", "res1", true, deploytest.ResourceOptions{
@@ -1052,7 +1054,8 @@ func TestRegistrationObserverNotResolvedForLocalComponentOnRegister(t *testing.T
 	}
 
 	expectedURN := resource.NewURN(
-		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "comp")
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "comp",
+	)
 
 	steps := []RegisterResourceEvent{
 		// A local component resource — Custom=false, Remote=false.
@@ -1147,7 +1150,8 @@ func driveIter(t *testing.T, iter SourceIterator, runInfo *EvalRunInfo) {
 		case RegisterResourceEvent:
 			goal := e.Goal()
 			urn := resource.NewURN(
-				runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name)
+				runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name,
+			)
 			id := resource.ID("")
 			if goal.Custom {
 				id = "id"
@@ -1189,7 +1193,8 @@ func TestRegistrationObserverComponentResolvedAtRegisterResourceOutputs(t *testi
 		Target: &Target{Name: tokens.MustParseStackName("stack")},
 	}
 	expectedURN := resource.NewURN(
-		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "comp")
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "comp",
+	)
 	expectedOutputs := resource.PropertyMap{"out": resource.NewProperty("v")}
 
 	program := func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -1238,7 +1243,8 @@ func TestRegistrationObserverRemoteComponentNotResolvedOnRegister(t *testing.T) 
 		Target: &Target{Name: tokens.MustParseStackName("stack")},
 	}
 	expectedURN := resource.NewURN(
-		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "comp")
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "comp",
+	)
 
 	program := func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:index:Comp", "comp", false, deploytest.ResourceOptions{
@@ -1307,9 +1313,11 @@ func TestRegistrationObserverCustomResourceAliasesArePublished(t *testing.T) {
 		Target: &Target{Name: tokens.MustParseStackName("stack")},
 	}
 	canonicalURN := resource.NewURN(
-		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "new-name")
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "new-name",
+	)
 	aliasURN := resource.NewURN(
-		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "old-name")
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:res", "old-name",
+	)
 	expectedOutputs := resource.PropertyMap{"k": resource.NewProperty("v")}
 
 	program := func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -1345,7 +1353,8 @@ func TestRegistrationObserverCustomResourceAliasesArePublished(t *testing.T) {
 		require.True(t, ok, "expected a RegisterResourceEvent, got %T", ev)
 		goal := reg.Goal()
 		urn := resource.NewURN(
-			runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name)
+			runInfo.Target.Name.Q(), runInfo.Proj.Name, "", goal.Type, goal.Name,
+		)
 		outputs := resource.PropertyMap{}
 		id := resource.ID("prov-id")
 		if !sdkproviders.IsProviderType(goal.Type) {
@@ -1391,9 +1400,11 @@ func TestRegistrationObserverComponentAliasesArePublishedAtROC(t *testing.T) {
 		Target: &Target{Name: tokens.MustParseStackName("stack")},
 	}
 	canonicalURN := resource.NewURN(
-		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "new-name")
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "new-name",
+	)
 	aliasURN := resource.NewURN(
-		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "old-name")
+		runInfo.Target.Name.Q(), runInfo.Proj.Name, "", "pkgA:index:Comp", "old-name",
+	)
 	expectedOutputs := resource.PropertyMap{"k": resource.NewProperty("v")}
 
 	program := func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -1504,7 +1515,8 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
-		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil)).Iterate(t.Context(), providerSource)
+		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
+	).Iterate(t.Context(), providerSource)
 	require.NoError(t, err)
 
 	reads := 0
@@ -1621,7 +1633,8 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
-		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil)).Iterate(t.Context(), providerSource)
+		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
+	).Iterate(t.Context(), providerSource)
 	require.NoError(t, err)
 
 	reads, registers := 0, 0
@@ -1878,7 +1891,8 @@ func TestDisableDefaultProviders(t *testing.T) {
 
 			iter, err := NewEvalSource(
 				ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
-				NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil)).Iterate(t.Context(), providerSource)
+				NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
+			).Iterate(t.Context(), providerSource)
 			require.NoError(t, err)
 
 			for {
