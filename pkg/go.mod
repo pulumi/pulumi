@@ -73,6 +73,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.30.19
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.2
 	github.com/aws/aws-sdk-go-v2/service/sts v1.42.3
+	github.com/aws/smithy-go v1.27.0
 	github.com/ccojocar/zxcvbn-go v1.0.1
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/charmbracelet/x/ansi v0.11.7
@@ -163,7 +164,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.25 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.25 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.1.1 // indirect
-	github.com/aws/smithy-go v1.27.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
