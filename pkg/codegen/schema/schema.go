@@ -2420,7 +2420,7 @@ type PackageSpec struct {
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 
 	// Config describes the set of configuration variables defined by this package.
-	Config ConfigSpec `json:"config" yaml:"config"`
+	Config ConfigSpec `json:"config,omitempty" yaml:"config"`
 	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum)
 	// defined by this package.
 	Types map[string]ComplexTypeSpec `json:"types,omitempty" yaml:"types,omitempty"`

@@ -307,7 +307,7 @@ type Project struct {
 	// Name is a required fully qualified name.
 	Name tokens.PackageName `json:"name" yaml:"name"`
 	// Runtime is an optional runtime that executes code. Its name may be empty.
-	Runtime ProjectRuntimeInfo `json:"runtime" yaml:"runtime,omitempty"`
+	Runtime ProjectRuntimeInfo `json:"runtime,omitempty" yaml:"runtime,omitempty"`
 	// Main is an optional override for the program's main entry-point location.
 	Main string `json:"main,omitempty" yaml:"main,omitempty"`
 

@@ -61,7 +61,7 @@ type RotateEnvironmentResponse struct {
 	Code                int                     `json:"code,omitempty"`
 	Message             string                  `json:"message,omitempty"`
 	Diagnostics         []EnvironmentDiagnostic `json:"diagnostics,omitempty"`
-	SecretRotationEvent SecretRotationEvent     `json:"secretRotationEvent"`
+	SecretRotationEvent SecretRotationEvent     `json:"secretRotationEvent,omitempty"`
 }
 
 type SecretRotationEvent struct {

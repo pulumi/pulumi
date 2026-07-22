@@ -2504,7 +2504,7 @@ type npmPackage struct {
 	DevDependencies  map[string]string       `json:"devDependencies,omitempty"`
 	PeerDependencies map[string]string       `json:"peerDependencies,omitempty"`
 	Resolutions      map[string]string       `json:"resolutions,omitempty"`
-	Pulumi           plugin.PulumiPluginJSON `json:"pulumi"`
+	Pulumi           plugin.PulumiPluginJSON `json:"pulumi,omitempty"`
 }
 
 func genNPMPackageMetadata(

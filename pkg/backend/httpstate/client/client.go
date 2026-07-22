@@ -877,7 +877,7 @@ func (pc *Client) DownloadOrgTemplate(ctx context.Context, org, sourceURL string
 var ErrNoPreviousDeployment = errors.New("no previous deployment")
 
 type getLatestConfigurationResponse struct {
-	Info apitype.UpdateInfo `json:"info"`
+	Info apitype.UpdateInfo `json:"info,omitempty"`
 }
 
 type LatestConfiguration struct {

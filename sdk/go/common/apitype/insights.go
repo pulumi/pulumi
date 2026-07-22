@@ -340,9 +340,9 @@ type InsightsScanJobRun struct {
 	// "failed", "succeeded", "skipped".
 	Status string `json:"status"`
 	// Started is when the job began running. Zero before then.
-	Started time.Time `json:"started"`
+	Started time.Time `json:"started,omitempty"`
 	// LastUpdated is the most recent state-change timestamp for the job.
-	LastUpdated time.Time `json:"lastUpdated"`
+	LastUpdated time.Time `json:"lastUpdated,omitempty"`
 	// Timeout is the per-job timeout in nanoseconds (Go time.Duration).
 	Timeout int64 `json:"timeout"`
 	// Steps is the ordered list of steps within the job.
@@ -360,9 +360,9 @@ type InsightsScanStepRun struct {
 	// "succeeded".
 	Status string `json:"status"`
 	// Started is when the step began running. Zero before then.
-	Started time.Time `json:"started"`
+	Started time.Time `json:"started,omitempty"`
 	// LastUpdated is the most recent state-change timestamp for the step.
-	LastUpdated time.Time `json:"lastUpdated"`
+	LastUpdated time.Time `json:"lastUpdated,omitempty"`
 }
 
 // InsightsScanLogsParams are the query parameters for GetScanLogs. The endpoint
@@ -399,6 +399,6 @@ type InsightsScanLogs struct {
 // InsightsScanLogLine mirrors apitype.DeploymentLogLine.
 type InsightsScanLogLine struct {
 	Header    string    `json:"header,omitempty"`
-	Timestamp time.Time `json:"timestamp"`
+	Timestamp time.Time `json:"timestamp,omitempty"`
 	Line      string    `json:"line,omitempty"`
 }

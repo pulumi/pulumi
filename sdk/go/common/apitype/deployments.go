@@ -344,7 +344,7 @@ type CreateDeploymentResponse struct {
 
 type DeploymentLogLine struct {
 	Header    string    `json:"header,omitempty"`
-	Timestamp time.Time `json:"timestamp"`
+	Timestamp time.Time `json:"timestamp,omitempty"`
 	Line      string    `json:"line,omitempty"`
 }
 

@@ -23,7 +23,7 @@ import (
 // An Expr holds information about an expression in an environment definition.
 type Expr struct {
 	// The range of the expression.
-	Range Range `json:"range"`
+	Range Range `json:"range,omitempty"`
 
 	// The schema of the expression's result.
 	Schema *schema.Schema `json:"schema,omitempty"`
