@@ -536,7 +536,7 @@ func (p pluginProvider) GetSchema(
 	ctx, span := tracer.Start(ctx, "packageworkspace.injectSchemaMetadata")
 	defer span.End()
 
-	var pkgSpec schema.PackageSpec
+	var pkgSpec schema.PartialPackageSpec
 	_, unmarshalSpan := tracer.Start(ctx, "packageworkspace.unmarshalSchema")
 	unmarshalErr := json.Unmarshal(resp.Schema, &pkgSpec)
 	unmarshalSpan.End()
@@ -560,7 +560,7 @@ func (p pluginProvider) GetSchema(
 	_, marshalSpan := tracer.Start(ctx, "packageworkspace.marshalSchema")
 	bytes, err := json.Marshal(pkgSpec)
 	marshalSpan.End()
-	contract.AssertNoErrorf(err, "schema.PackageSpec is safe to marshal")
+	contract.AssertNoErrorf(err, "schema.PartialPackageSpec is safe to marshal")
 	return plugin.GetSchemaResponse{Schema: bytes}, nil
 }
 
