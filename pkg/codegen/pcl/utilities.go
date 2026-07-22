@@ -269,12 +269,16 @@ func SortedFunctionParameters(expr *model.FunctionCallExpression) []*schema.Prop
 // However, when optional parameters are omitted, then <undefinedLiteral> is used where they should be.
 // Take for example { a: 1, c: 3 } with multiInputArguments: ["a", "b", "c"], it becomes 1, <undefinedLiteral>, 3
 // because b was omitted and c was provided so b had to be the provided <undefinedLiteral>
+// trailingArgs reports whether the caller will emit a further positional argument after the spread
+// ones, such as an options bag. When it does, parameters the program left out can no longer be
+// omitted -- they must be filled with undefinedLiteral to keep the trailing argument in its slot.
 func GenerateMultiArguments(
 	f *format.Formatter,
 	w io.Writer,
 	undefinedLiteral string,
 	expr *model.ObjectConsExpression,
 	multiArguments []*schema.Property,
+	trailingArgs bool,
 ) {
 	items := make(map[string]model.Expression)
 	for _, item := range expr.Items {
@@ -297,13 +301,13 @@ func GenerateMultiArguments(
 		value, ok := items[arg.Name]
 		if ok {
 			f.Fgenf(w, "%.v", value)
-		} else if hasMoreArgs(index) {
+		} else if trailingArgs || hasMoreArgs(index) {
 			// a positional argument was not provided in the input bag
 			// assume it is optional
 			f.Fgen(w, undefinedLiteral)
 		}
 
-		if hasMoreArgs(index + 1) {
+		if hasMoreArgs(index+1) || (trailingArgs && index+1 < len(multiArguments)) {
 			f.Fgen(w, ", ")
 		}
 	}

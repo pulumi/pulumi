@@ -1,0 +1,4 @@
+component: programgen/nodejs
+kind: fix
+body: Parent an invoke written inside a component to that component, so it resolves the component's providers
+time: 2026-07-22T00:00:00+00:00
