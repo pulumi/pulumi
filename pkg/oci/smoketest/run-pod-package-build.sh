@@ -16,8 +16,9 @@
 #      `test -e` and produces nothing. So the image being present afterwards, under the
 #      exact convention ref, proves the build ran in the builder and tagged it correctly.
 #
-# (Build-then-consume — publishing this built image and Constructing it from a pinned
-# `package add` ref — is proven separately by run-pod-publish.sh.)
+# (Build-then-consume — publishing a built image and Constructing it from a pinned
+# `package add` ref — is exercised end-to-end by the pulumi-pod kit's publish-go example;
+# the pkg smoke harness does not currently re-cover that arc.)
 #
 # Usage: run-pod-package-build.sh
 # Requires a running Docker daemon and the repo Go toolchain (to cross-compile).
