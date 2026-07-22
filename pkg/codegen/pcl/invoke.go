@@ -28,6 +28,31 @@ import (
 // Invoke is the name of the PCL `invoke` intrinsic, which can be used to invoke provider functions.
 const Invoke = "invoke"
 
+// InvokeOptions returns the options object of a bound invoke call. A bound invoke always has a token
+// and an argument object, so the options are the third argument if present at all. ok is false if the
+// call has no options.
+func InvokeOptions(call *model.FunctionCallExpression) (opts *model.ObjectConsExpression, ok bool) {
+	if len(call.Args) != 3 {
+		return nil, false
+	}
+	opts, ok = call.Args[2].(*model.ObjectConsExpression)
+	return opts, ok
+}
+
+// InvokeOptionSet reports whether the given invoke call explicitly sets the named option.
+func InvokeOptionSet(call *model.FunctionCallExpression, name string) bool {
+	opts, ok := InvokeOptions(call)
+	if !ok {
+		return false
+	}
+	for _, item := range opts.Items {
+		if LiteralValueString(item.Key) == name {
+			return true
+		}
+	}
+	return false
+}
+
 func getInvokeToken(call *hclsyntax.FunctionCallExpr) (string, hcl.Range, bool) {
 	if call.Name != Invoke || len(call.Args) < 1 {
 		return "", hcl.Range{}, false
