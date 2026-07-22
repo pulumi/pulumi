@@ -161,9 +161,56 @@ func (o HolderPtrOutput) Size() IntEnumPtrOutput {
 	}).(IntEnumPtrOutput)
 }
 
+type StringEnumMapArray []StringEnumMapInput
+
+func (StringEnumMapArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]map[string]StringEnum)(nil)).Elem()
+}
+
+func (i StringEnumMapArray) ToStringEnumMapArrayOutput() StringEnumMapArrayOutput {
+	return i.ToStringEnumMapArrayOutputWithContext(context.Background())
+}
+
+func (i StringEnumMapArray) ToStringEnumMapArrayOutputWithContext(ctx context.Context) StringEnumMapArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(StringEnumMapArrayOutput)
+}
+
+// StringEnumMapArrayInput is an input type that accepts StringEnumMapArray and StringEnumMapArrayOutput values.
+// You can construct a concrete instance of `StringEnumMapArrayInput` via:
+//
+//	StringEnumMapArray{ StringEnumMap{ "key": StringEnumArgs{...} } }
+type StringEnumMapArrayInput interface {
+	pulumi.Input
+
+	ToStringEnumMapArrayOutput() StringEnumMapArrayOutput
+	ToStringEnumMapArrayOutputWithContext(context.Context) StringEnumMapArrayOutput
+}
+
+type StringEnumMapArrayOutput struct{ *pulumi.OutputState }
+
+func (StringEnumMapArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]map[string]StringEnum)(nil)).Elem()
+}
+
+func (o StringEnumMapArrayOutput) ToStringEnumMapArrayOutput() StringEnumMapArrayOutput {
+	return o
+}
+
+func (o StringEnumMapArrayOutput) ToStringEnumMapArrayOutputWithContext(ctx context.Context) StringEnumMapArrayOutput {
+	return o
+}
+
+func (o StringEnumMapArrayOutput) Index(i pulumi.IntInput) StringEnumMapOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) map[string]StringEnum {
+		return vs[0].([]map[string]StringEnum)[vs[1].(int)]
+	}).(StringEnumMapOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*HolderInput)(nil)).Elem(), HolderArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*HolderPtrInput)(nil)).Elem(), HolderArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*StringEnumMapArrayInput)(nil)).Elem(), StringEnumMapArray{})
 	pulumi.RegisterOutputType(HolderOutput{})
 	pulumi.RegisterOutputType(HolderPtrOutput{})
+	pulumi.RegisterOutputType(StringEnumMapArrayOutput{})
 }

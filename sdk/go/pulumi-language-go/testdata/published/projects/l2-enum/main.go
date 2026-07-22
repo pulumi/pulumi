@@ -41,6 +41,12 @@ func main() {
 				"small": enum.IntEnumIntOne,
 				"large": enum.IntEnumIntTwo,
 			},
+			ArrayOfMapOfEnum: enum.StringEnumMapArray{
+				enum.StringEnumMap{
+					"first":  enum.StringEnumStringOne,
+					"second": enum.StringEnumStringTwo,
+				},
+			},
 			Holder: &enum.HolderArgs{
 				Size:  enum.IntEnumIntTwo,
 				Color: enum.StringEnumStringOne,

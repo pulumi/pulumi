@@ -575,6 +575,31 @@ func (i StringEnumArray) ToStringEnumArrayOutputWithContext(ctx context.Context)
 	return pulumi.ToOutputWithContext(ctx, i).(StringEnumArrayOutput)
 }
 
+// StringEnumMapInput is an input type that accepts StringEnumMap and StringEnumMapOutput values.
+// You can construct a concrete instance of `StringEnumMapInput` via:
+//
+//	StringEnumMap{ "key": StringEnumArgs{...} }
+type StringEnumMapInput interface {
+	pulumi.Input
+
+	ToStringEnumMapOutput() StringEnumMapOutput
+	ToStringEnumMapOutputWithContext(context.Context) StringEnumMapOutput
+}
+
+type StringEnumMap map[string]StringEnum
+
+func (StringEnumMap) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]StringEnum)(nil)).Elem()
+}
+
+func (i StringEnumMap) ToStringEnumMapOutput() StringEnumMapOutput {
+	return i.ToStringEnumMapOutputWithContext(context.Background())
+}
+
+func (i StringEnumMap) ToStringEnumMapOutputWithContext(ctx context.Context) StringEnumMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(StringEnumMapOutput)
+}
+
 type StringEnumArrayOutput struct{ *pulumi.OutputState }
 
 func (StringEnumArrayOutput) ElementType() reflect.Type {
@@ -592,6 +617,26 @@ func (o StringEnumArrayOutput) ToStringEnumArrayOutputWithContext(ctx context.Co
 func (o StringEnumArrayOutput) Index(i pulumi.IntInput) StringEnumOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) StringEnum {
 		return vs[0].([]StringEnum)[vs[1].(int)]
+	}).(StringEnumOutput)
+}
+
+type StringEnumMapOutput struct{ *pulumi.OutputState }
+
+func (StringEnumMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]StringEnum)(nil)).Elem()
+}
+
+func (o StringEnumMapOutput) ToStringEnumMapOutput() StringEnumMapOutput {
+	return o
+}
+
+func (o StringEnumMapOutput) ToStringEnumMapOutputWithContext(ctx context.Context) StringEnumMapOutput {
+	return o
+}
+
+func (o StringEnumMapOutput) MapIndex(k pulumi.StringInput) StringEnumOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) StringEnum {
+		return vs[0].(map[string]StringEnum)[vs[1].(string)]
 	}).(StringEnumOutput)
 }
 
@@ -773,6 +818,7 @@ func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*StringEnumInput)(nil)).Elem(), StringEnum("one"))
 	pulumi.RegisterInputType(reflect.TypeOf((*StringEnumPtrInput)(nil)).Elem(), StringEnum("one"))
 	pulumi.RegisterInputType(reflect.TypeOf((*StringEnumArrayInput)(nil)).Elem(), StringEnumArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*StringEnumMapInput)(nil)).Elem(), StringEnumMap{})
 	pulumi.RegisterInputType(reflect.TypeOf((*WordyEnumInput)(nil)).Elem(), WordyEnum("A Value With Spaces."))
 	pulumi.RegisterInputType(reflect.TypeOf((*WordyEnumPtrInput)(nil)).Elem(), WordyEnum("A Value With Spaces."))
 	pulumi.RegisterOutputType(IntEnumOutput{})
@@ -783,6 +829,7 @@ func init() {
 	pulumi.RegisterOutputType(StringEnumOutput{})
 	pulumi.RegisterOutputType(StringEnumPtrOutput{})
 	pulumi.RegisterOutputType(StringEnumArrayOutput{})
+	pulumi.RegisterOutputType(StringEnumMapOutput{})
 	pulumi.RegisterOutputType(WordyEnumOutput{})
 	pulumi.RegisterOutputType(WordyEnumPtrOutput{})
 }

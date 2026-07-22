@@ -134,6 +134,13 @@ func (p *EnumProvider) GetSchema(
 			Type:                 "object",
 			AdditionalProperties: &schema.TypeSpec{Ref: "#/types/" + intEnumToken},
 		}},
+		"arrayOfMapOfEnum": {TypeSpec: schema.TypeSpec{
+			Type: "array",
+			Items: &schema.TypeSpec{
+				Type:                 "object",
+				AdditionalProperties: &schema.TypeSpec{Ref: "#/types/" + stringEnumToken},
+			},
+		}},
 		"holder": {TypeSpec: schema.TypeSpec{Ref: "#/types/" + holderToken}},
 		"unionEnum": {TypeSpec: schema.TypeSpec{
 			OneOf: []schema.TypeSpec{

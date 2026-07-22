@@ -35,6 +35,7 @@ export class Deluxe extends pulumi.CustomResource {
     }
 
     declare public readonly arrayOfEnum: pulumi.Output<enums.StringEnum[] | undefined>;
+    declare public readonly arrayOfMapOfEnum: pulumi.Output<{[key: string]: enums.StringEnum}[] | undefined>;
     declare public readonly holder: pulumi.Output<outputs.Holder | undefined>;
     declare public readonly mapOfEnum: pulumi.Output<{[key: string]: enums.IntEnum} | undefined>;
     declare public readonly numberEnum: pulumi.Output<enums.NumberEnum | undefined>;
@@ -53,6 +54,7 @@ export class Deluxe extends pulumi.CustomResource {
         opts = opts || {};
         if (!opts.id) {
             resourceInputs["arrayOfEnum"] = args?.arrayOfEnum;
+            resourceInputs["arrayOfMapOfEnum"] = args?.arrayOfMapOfEnum;
             resourceInputs["holder"] = args?.holder;
             resourceInputs["mapOfEnum"] = args?.mapOfEnum;
             resourceInputs["numberEnum"] = args?.numberEnum;
@@ -60,6 +62,7 @@ export class Deluxe extends pulumi.CustomResource {
             resourceInputs["wordyEnum"] = args?.wordyEnum;
         } else {
             resourceInputs["arrayOfEnum"] = undefined /*out*/;
+            resourceInputs["arrayOfMapOfEnum"] = undefined /*out*/;
             resourceInputs["holder"] = undefined /*out*/;
             resourceInputs["mapOfEnum"] = undefined /*out*/;
             resourceInputs["numberEnum"] = undefined /*out*/;
@@ -76,6 +79,7 @@ export class Deluxe extends pulumi.CustomResource {
  */
 export interface DeluxeArgs {
     arrayOfEnum?: pulumi.Input<pulumi.Input<enums.StringEnum>[] | undefined>;
+    arrayOfMapOfEnum?: pulumi.Input<pulumi.Input<{[key: string]: pulumi.Input<enums.StringEnum>}>[] | undefined>;
     holder?: pulumi.Input<inputs.HolderArgs | undefined>;
     mapOfEnum?: pulumi.Input<{[key: string]: pulumi.Input<enums.IntEnum>} | undefined>;
     numberEnum?: pulumi.Input<enums.NumberEnum | undefined>;

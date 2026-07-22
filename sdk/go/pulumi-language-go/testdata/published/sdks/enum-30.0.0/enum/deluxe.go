@@ -14,12 +14,13 @@ import (
 type Deluxe struct {
 	pulumi.CustomResourceState
 
-	ArrayOfEnum StringEnumArrayOutput  `pulumi:"arrayOfEnum"`
-	Holder      HolderPtrOutput        `pulumi:"holder"`
-	MapOfEnum   IntEnumMapOutput       `pulumi:"mapOfEnum"`
-	NumberEnum  NumberEnumPtrOutput    `pulumi:"numberEnum"`
-	UnionEnum   pulumi.StringPtrOutput `pulumi:"unionEnum"`
-	WordyEnum   WordyEnumPtrOutput     `pulumi:"wordyEnum"`
+	ArrayOfEnum      StringEnumArrayOutput    `pulumi:"arrayOfEnum"`
+	ArrayOfMapOfEnum StringEnumMapArrayOutput `pulumi:"arrayOfMapOfEnum"`
+	Holder           HolderPtrOutput          `pulumi:"holder"`
+	MapOfEnum        IntEnumMapOutput         `pulumi:"mapOfEnum"`
+	NumberEnum       NumberEnumPtrOutput      `pulumi:"numberEnum"`
+	UnionEnum        pulumi.StringPtrOutput   `pulumi:"unionEnum"`
+	WordyEnum        WordyEnumPtrOutput       `pulumi:"wordyEnum"`
 }
 
 // NewDeluxe registers a new resource with the given unique name, arguments, and options.
@@ -62,22 +63,24 @@ func (DeluxeState) ElementType() reflect.Type {
 }
 
 type deluxeArgs struct {
-	ArrayOfEnum []StringEnum       `pulumi:"arrayOfEnum"`
-	Holder      *Holder            `pulumi:"holder"`
-	MapOfEnum   map[string]IntEnum `pulumi:"mapOfEnum"`
-	NumberEnum  *NumberEnum        `pulumi:"numberEnum"`
-	UnionEnum   *string            `pulumi:"unionEnum"`
-	WordyEnum   *WordyEnum         `pulumi:"wordyEnum"`
+	ArrayOfEnum      []StringEnum            `pulumi:"arrayOfEnum"`
+	ArrayOfMapOfEnum []map[string]StringEnum `pulumi:"arrayOfMapOfEnum"`
+	Holder           *Holder                 `pulumi:"holder"`
+	MapOfEnum        map[string]IntEnum      `pulumi:"mapOfEnum"`
+	NumberEnum       *NumberEnum             `pulumi:"numberEnum"`
+	UnionEnum        *string                 `pulumi:"unionEnum"`
+	WordyEnum        *WordyEnum              `pulumi:"wordyEnum"`
 }
 
 // The set of arguments for constructing a Deluxe resource.
 type DeluxeArgs struct {
-	ArrayOfEnum StringEnumArrayInput
-	Holder      HolderPtrInput
-	MapOfEnum   IntEnumMapInput
-	NumberEnum  NumberEnumPtrInput
-	UnionEnum   pulumi.StringPtrInput
-	WordyEnum   WordyEnumPtrInput
+	ArrayOfEnum      StringEnumArrayInput
+	ArrayOfMapOfEnum StringEnumMapArrayInput
+	Holder           HolderPtrInput
+	MapOfEnum        IntEnumMapInput
+	NumberEnum       NumberEnumPtrInput
+	UnionEnum        pulumi.StringPtrInput
+	WordyEnum        WordyEnumPtrInput
 }
 
 func (DeluxeArgs) ElementType() reflect.Type {
@@ -119,6 +122,10 @@ func (o DeluxeOutput) ToDeluxeOutputWithContext(ctx context.Context) DeluxeOutpu
 
 func (o DeluxeOutput) ArrayOfEnum() StringEnumArrayOutput {
 	return o.ApplyT(func(v *Deluxe) StringEnumArrayOutput { return v.ArrayOfEnum }).(StringEnumArrayOutput)
+}
+
+func (o DeluxeOutput) ArrayOfMapOfEnum() StringEnumMapArrayOutput {
+	return o.ApplyT(func(v *Deluxe) StringEnumMapArrayOutput { return v.ArrayOfMapOfEnum }).(StringEnumMapArrayOutput)
 }
 
 func (o DeluxeOutput) Holder() HolderPtrOutput {
