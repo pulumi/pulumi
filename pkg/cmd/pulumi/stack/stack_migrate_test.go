@@ -2103,7 +2103,7 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 				URN:                siblingURN,
 				Type:               "pkg:Sibling",
 				Parent:             rootURN,
-				ReplacementTrigger: resource.FromResourcePropertyValue(replacementTrigger),
+				ReplacementTrigger: replacementTrigger,
 			},
 		},
 	}
