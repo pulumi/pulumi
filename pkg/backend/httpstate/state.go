@@ -358,7 +358,7 @@ func (b *cloudBackend) persistEngineEvents(
 	}
 	// Start N different go-routines which will all pull from the batchesToTransmit channel
 	// and persist those engine events until the channel is closed.
-	for i := 0; i < maxConcurrentRequests; i++ {
+	for range maxConcurrentRequests {
 		wg.Add(1)
 		go transmitBatchLoop()
 	}

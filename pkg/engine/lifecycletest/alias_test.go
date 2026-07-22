@@ -538,15 +538,15 @@ func TestAliases(t *testing.T) {
 
 	// Now change n1's name and type and n2's type, but also add a load of aliases and pre-multiply them out
 	// before sending to the engine
-	n1Aliases := make([]resource.Alias, 0)
-	n2Aliases := make([]resource.Alias, 0)
-	n3Aliases := make([]resource.Alias, 0)
-	for i := 0; i < 100; i++ {
+	n1Aliases := make([]resource.Alias, 0, 100)
+	n2Aliases := make([]resource.Alias, 0, 1000)
+	n3Aliases := make([]resource.Alias, 0, 1000)
+	for i := range 100 {
 		n1Aliases = append(n1Aliases, resource.Alias{URN: resource.URN(
 			fmt.Sprintf("urn:pulumi:test::test::pkgA:index:t1-v%d::n1", i),
 		)})
 
-		for j := 0; j < 10; j++ {
+		for j := range 10 {
 			n2Aliases = append(n2Aliases, resource.Alias{
 				URN: resource.URN(fmt.Sprintf("urn:pulumi:test::test::pkgA:index:t1-v%d$pkgA:index:t2-v%d::n1-sub", i, j)),
 			})
@@ -1078,14 +1078,14 @@ func TestAliasURNs(t *testing.T) {
 
 	// Now change n1's name and type and n2's type, but also add a load of aliases and pre-multiply them out
 	// before sending to the engine
-	n1Aliases := make([]resource.URN, 0)
-	n2Aliases := make([]resource.URN, 0)
-	n3Aliases := make([]resource.URN, 0)
-	for i := 0; i < 100; i++ {
+	n1Aliases := make([]resource.URN, 0, 100)
+	n2Aliases := make([]resource.URN, 0, 1000)
+	n3Aliases := make([]resource.URN, 0, 1000)
+	for i := range 100 {
 		n1Aliases = append(n1Aliases, resource.URN(
 			fmt.Sprintf("urn:pulumi:test::test::pkgA:index:t1-v%d::n1", i)))
 
-		for j := 0; j < 10; j++ {
+		for j := range 10 {
 			n2Aliases = append(n2Aliases, resource.URN(
 				fmt.Sprintf("urn:pulumi:test::test::pkgA:index:t1-v%d$pkgA:index:t2-v%d::n1-sub", i, j)))
 

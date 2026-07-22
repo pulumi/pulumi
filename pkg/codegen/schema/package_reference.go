@@ -17,6 +17,7 @@ package schema
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"sort"
 	"sync"
@@ -852,13 +853,9 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 
 	typeDefs := make(map[string]Type, len(p.types.typeDefs))
-	for token, typ := range p.types.typeDefs {
-		typeDefs[token] = typ
-	}
+	maps.Copy(typeDefs, p.types.typeDefs)
 	resourceTypes := make(map[string]*ResourceType, len(p.types.resources))
-	for token, typ := range p.types.resources {
-		resourceTypes[token] = typ
-	}
+	maps.Copy(resourceTypes, p.types.resources)
 
 	// NOTE: these writes are very much not concurrency-safe. There is a data race on each write to a slice-typed field
 	// because slices are multi-word values. Unfortunately, fixing this is rather involved. The simplest solution--

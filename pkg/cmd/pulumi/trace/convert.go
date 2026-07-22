@@ -234,10 +234,7 @@ func convertTraceToSamples(root *appdash.Trace, start time.Time, quantum time.Du
 	})
 
 	// determine where to start sampling
-	delta := timespanEvent.Start().Sub(start)
-	if delta < 0 {
-		delta = 0
-	}
+	delta := max(timespanEvent.Start().Sub(start), 0)
 
 	// We are multiplying a duration by a duration here, which can be buggy (e.g. consider that time.Second * time.Second
 	// is *not* one second, and that in general multiplying durations is not well-defined). However, in this case it's
@@ -686,10 +683,7 @@ func exportTraceToOtel(w io.Writer, querier appdash.Queryer, ignoreLogSpans bool
 	fmt.Fprintf(w, "exporting spans for trace %v...\n", t.id)
 	spans := t.spans
 	for len(spans) > 0 {
-		batchSize := 1
-		if len(spans) < batchSize {
-			batchSize = len(spans)
-		}
+		batchSize := min(len(spans), 1)
 		if err = exporter.ExportSpans(context.Background(), spans[:batchSize]); err != nil {
 			return err
 		}

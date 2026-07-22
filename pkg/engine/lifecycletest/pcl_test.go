@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sync/atomic"
 	"testing"
 
@@ -770,9 +771,7 @@ func TestPclSnippetResourceReference(t *testing.T) {
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
 					out := resource.PropertyMap{}
-					for k, v := range cr.Properties {
-						out[k] = v
-					}
+					maps.Copy(out, cr.Properties)
 					// Give the producer a deterministic output for the snippet to consume.
 					if seed, ok := cr.Properties["seed"]; ok {
 						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
@@ -1003,9 +1002,7 @@ func TestPclSnippetMissingProgramReference(t *testing.T) {
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
 					out := resource.PropertyMap{}
-					for k, v := range cr.Properties {
-						out[k] = v
-					}
+					maps.Copy(out, cr.Properties)
 					if seed, ok := cr.Properties["seed"]; ok {
 						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
 					}
@@ -1117,9 +1114,7 @@ func TestPclSnippetMissingSnippetReference(t *testing.T) {
 				},
 				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
 					out := resource.PropertyMap{}
-					for k, v := range cr.Properties {
-						out[k] = v
-					}
+					maps.Copy(out, cr.Properties)
 					// Give each producer a deterministic output for the next snippet to consume.
 					if seed, ok := cr.Properties["seed"]; ok {
 						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())

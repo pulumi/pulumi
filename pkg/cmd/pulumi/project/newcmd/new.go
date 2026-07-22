@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -776,9 +777,7 @@ func promptRuntimeOptions(ctx *plugin.Context, language plugin.LanguageRuntime, 
 	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc,
 ) (map[string]any, error) {
 	options := make(map[string]any, len(info.Options()))
-	for k, v := range info.Options() {
-		options[k] = v
-	}
+	maps.Copy(options, info.Options())
 
 	// Keep querying for prompts until there are no more.
 	for {

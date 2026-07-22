@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"regexp"
 	"time"
@@ -182,9 +183,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		}
 		// Convert the config bag.
 		cfg := make(map[string]string)
-		for k, v := range p.Config {
-			cfg[k] = v
-		}
+		maps.Copy(cfg, p.Config)
 		apiEvent.PreludeEvent = &apitype.PreludeEvent{
 			Config: cfg,
 		}

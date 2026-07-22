@@ -192,10 +192,8 @@ func propertyValueNeedsByteString(v resource.PropertyValue) bool {
 	case v.IsString():
 		return !utf8.ValidString(v.StringValue())
 	case v.IsArray():
-		for _, elem := range v.ArrayValue() {
-			if propertyValueNeedsByteString(elem) {
-				return true
-			}
+		if slices.ContainsFunc(v.ArrayValue(), propertyValueNeedsByteString) {
+			return true
 		}
 	case v.IsObject():
 		return propertyMapNeedsByteString(v.ObjectValue())
@@ -348,9 +346,7 @@ func SerializeSnippet(s resource.Snippet) apitype.SnippetV1 {
 	var refs map[string]string
 	if len(s.References) > 0 {
 		refs = make(map[string]string, len(s.References))
-		for k, v := range s.References {
-			refs[k] = v
-		}
+		maps.Copy(refs, s.References)
 	}
 	return apitype.SnippetV1{
 		UUID:       s.UUID,
@@ -383,9 +379,7 @@ func DeserializeSnippet(s apitype.SnippetV1) resource.Snippet {
 	var refs map[string]string
 	if len(s.References) > 0 {
 		refs = make(map[string]string, len(s.References))
-		for k, v := range s.References {
-			refs[k] = v
-		}
+		maps.Copy(refs, s.References)
 	}
 	return resource.Snippet{
 		UUID:       s.UUID,

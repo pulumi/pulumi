@@ -208,8 +208,8 @@ func (mod *modContext) objectType(pkg schema.PackageReference, details *typeDeta
 }
 
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
-	if strings.HasPrefix(r.Token, "pulumi:providers:") {
-		pkgName := strings.TrimPrefix(r.Token, "pulumi:providers:")
+	if after, ok := strings.CutPrefix(r.Token, "pulumi:providers:"); ok {
+		pkgName := after
 		if pkgName == mod.pkg.Name() {
 			// Inside the package's own code, refer to the Provider type unqualified so it resolves
 			// against the local declaration rather than a (non-existent) namespace.

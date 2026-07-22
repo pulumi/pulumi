@@ -113,7 +113,7 @@ func New(t *testing.T) *Database {
 	pingCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		if err := db.PingContext(pingCtx); err == nil {
 			break
 		}

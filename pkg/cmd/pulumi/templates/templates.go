@@ -166,19 +166,15 @@ func newImpl(
 	source.cancel = cancel
 
 	if scope == ScopeAll || scope == ScopeLocal {
-		source.wg.Add(1)
-		go func() {
+		source.wg.Go(func() {
 			source.getProjectTemplates(ctx, templateNamePathOrURL, scope, templateKind, getProjectTemplates)
-			source.wg.Done()
-		}()
+		})
 	}
 
 	if scope == ScopeAll && templateKind == TemplateKindPulumiProject && isTemplateName(templateNamePathOrURL) {
-		source.wg.Add(1)
-		go func() {
+		source.wg.Go(func() {
 			source.getCloudTemplates(ctx, templateNamePathOrURL, &source.wg, e)
-			source.wg.Done()
-		}()
+		})
 	}
 
 	return &source

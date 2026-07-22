@@ -73,8 +73,8 @@ func TestPackageRef(t *testing.T) {
 		require.NoError(t, err)
 
 		// If we register the "same" provider in parallel, we should get the same ref.
-		promises := []*promise.Promise[string]{}
-		for i := 0; i < 100; i++ {
+		promises := make([]*promise.Promise[string], 0, 100)
+		for range 100 {
 			var pcs promise.CompletionSource[string]
 			promises = append(promises, pcs.Promise())
 			go func() {

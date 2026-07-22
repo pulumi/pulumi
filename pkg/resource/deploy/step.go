@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -2333,12 +2334,7 @@ func ConstrainedTo(op display.StepOp, constraint display.StepOp) bool {
 	case OpReplace, OpCreateReplacement, OpDeleteReplaced:
 		allowed = []display.StepOp{OpSame, OpUpdate, constraint}
 	}
-	for _, candidate := range allowed {
-		if candidate == op {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(allowed, op)
 }
 
 // getProvider fetches the provider for the given step.

@@ -608,17 +608,10 @@ func (pc *packageCommand) isKnownModule(typed string) bool {
 		return mod == name || strings.HasPrefix(mod, name+"/")
 	}
 	resources, functions := pc.memberTokens()
-	for _, tok := range functions {
-		if inModule(tok) {
-			return true
-		}
+	if slices.ContainsFunc(functions, inModule) {
+		return true
 	}
-	for _, tok := range resources {
-		if inModule(tok) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(resources, inModule)
 }
 
 func (pc *packageCommand) moduleToken(token string) string {

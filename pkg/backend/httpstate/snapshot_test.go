@@ -889,7 +889,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 				pulumi.ResourceState
 			}
 
-			for i := 0; i < resourceCount; i++ {
+			for i := range resourceCount {
 				var dummy Dummy
 				err := ctx.RegisterComponentResource("examples:dummy:Dummy", fmt.Sprintf("dummy-%d", i), &dummy)
 				if err != nil {
@@ -1154,7 +1154,7 @@ var recordedCases = []diffStackCase{
 }
 
 func init() {
-	for _, c := range strings.Split(os.Getenv("PULUMI_TEST_CHECKPOINT_DIFFS"), ",") {
+	for c := range strings.SplitSeq(os.Getenv("PULUMI_TEST_CHECKPOINT_DIFFS"), ",") {
 		if c != "" {
 			recordedCases = append(recordedCases, recordedStackCase(c))
 		}

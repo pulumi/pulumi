@@ -168,11 +168,8 @@ func MatchPath(idx *Index, method, userPath string) (*MatchResult, error) {
 func compareOps(a, b *Operation) int {
 	asegs := splitSegments(a.Path)
 	bsegs := splitSegments(b.Path)
-	n := len(asegs)
-	if len(bsegs) < n {
-		n = len(bsegs)
-	}
-	for i := 0; i < n; i++ {
+	n := min(len(bsegs), len(asegs))
+	for i := range n {
 		ah, bh := isTemplateSegment(asegs[i]), isTemplateSegment(bsegs[i])
 		if ah != bh {
 			if !ah {

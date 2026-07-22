@@ -16,6 +16,7 @@ package syntax
 
 import (
 	"bytes"
+	"maps"
 	"regexp"
 	"strings"
 
@@ -98,9 +99,7 @@ func (tokenMap) isTokenMap() {}
 func NewTokenMapForFiles(files []*File) TokenMap {
 	tokens := tokenMap{}
 	for _, f := range files {
-		for node, ts := range f.Tokens.(tokenMap) {
-			tokens[node] = ts
-		}
+		maps.Copy(tokens, f.Tokens.(tokenMap))
 	}
 	return tokens
 }

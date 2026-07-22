@@ -219,7 +219,7 @@ func TestSecretConfig(t *testing.T) {
 		return v, nil
 	})
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		select {
 		case err = <-errChan:
 			require.NoError(t, err)
@@ -255,7 +255,7 @@ func TestSecretConfig(t *testing.T) {
 		return v, nil
 	})
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		select {
 		case err = <-errChan:
 			require.NoError(t, err)
@@ -285,7 +285,7 @@ func TestSecretConfig(t *testing.T) {
 		return v, nil
 	})
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		select {
 		case err = <-errChan:
 			require.NoError(t, err)
@@ -315,7 +315,7 @@ func TestSecretConfig(t *testing.T) {
 		return v, nil
 	})
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		select {
 		case err = <-errChan:
 			require.NoError(t, err)

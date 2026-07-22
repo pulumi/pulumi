@@ -1016,9 +1016,7 @@ func makeOptionalType(t schema.Type) schema.Type {
 
 func makeObject(input map[string]property.Value) property.Value {
 	properties := make(map[string]property.Value)
-	for key, value := range input {
-		properties[key] = value
-	}
+	maps.Copy(properties, input)
 
 	return property.New(properties)
 }

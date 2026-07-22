@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -488,9 +489,7 @@ func setEnvVars(l *LocalWorkspace, envvars map[string]string) error {
 	if l.envvars == nil {
 		l.envvars = map[string]string{}
 	}
-	for k, v := range envvars {
-		l.envvars[k] = v
-	}
+	maps.Copy(l.envvars, envvars)
 	return nil
 }
 
@@ -614,9 +613,7 @@ func (l *LocalWorkspace) cliBaseOptions() base.BaseOptions {
 	if l.PulumiHome() != "" {
 		env[pulumiHomeEnv] = l.PulumiHome()
 	}
-	for k, v := range l.GetEnvVars() {
-		env[k] = v
-	}
+	maps.Copy(env, l.GetEnvVars())
 	return base.BaseOptions{
 		Cwd:           l.WorkDir(),
 		AdditionalEnv: env,

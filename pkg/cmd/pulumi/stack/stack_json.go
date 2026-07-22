@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"maps"
 	"time"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -124,9 +125,7 @@ func buildStackJSON(in stackJSONInputs) *stackJSONEnvelope {
 		v := cs.Version
 		env.Version = &v
 		env.ActiveUpdate = cs.ActiveUpdate
-		for k, v := range cs.Tags {
-			env.Tags[k] = v
-		}
+		maps.Copy(env.Tags, cs.Tags)
 		if op := cs.CurrentOperation; op != nil {
 			env.CurrentOperation = &stackOperationJSON{
 				Kind:    string(op.Kind),

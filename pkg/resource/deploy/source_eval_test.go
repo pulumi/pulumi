@@ -3011,9 +3011,8 @@ func TestInvoke(t *testing.T) {
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
-		wg.Add(1)
 		// Needed so defaultProviders.handleRequest() doesn't hang.
-		go func() {
+		wg.Go(func() {
 			evt := <-providerRegChan
 			evt.done <- &RegisterResult{
 				State: &pkgresource.State{
@@ -3021,8 +3020,7 @@ func TestInvoke(t *testing.T) {
 					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				},
 			}
-			wg.Done()
-		}()
+		})
 
 		_, err = mon.Invoke(t.Context(), &pulumirpc.ResourceInvokeRequest{
 			Tok:     "pkgA:index:func",
@@ -3077,9 +3075,8 @@ func TestInvoke(t *testing.T) {
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
-		wg.Add(1)
 		// Needed so defaultProviders.handleRequest() doesn't hang.
-		go func() {
+		wg.Go(func() {
 			evt := <-providerRegChan
 			evt.done <- &RegisterResult{
 				State: &pkgresource.State{
@@ -3087,8 +3084,7 @@ func TestInvoke(t *testing.T) {
 					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				},
 			}
-			wg.Done()
-		}()
+		})
 
 		res, err := mon.Invoke(t.Context(), &pulumirpc.ResourceInvokeRequest{
 			Tok:     "pkgA:index:func",
@@ -3157,9 +3153,8 @@ func TestCall(t *testing.T) {
 		mon.cancel = cancel
 
 		wg := &sync.WaitGroup{}
-		wg.Add(1)
 		// Needed so defaultProviders.handleRequest() doesn't hang.
-		go func() {
+		wg.Go(func() {
 			evt := <-providerRegChan
 			evt.done <- &RegisterResult{
 				State: &pkgresource.State{
@@ -3167,8 +3162,7 @@ func TestCall(t *testing.T) {
 					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				},
 			}
-			wg.Done()
-		}()
+		})
 
 		go func() {
 			// the resource monitor should send a true value to the abort channel to indicate that the
@@ -3200,9 +3194,8 @@ func TestCall(t *testing.T) {
 		providerRegChan := make(chan *registerResourceEvent, 1)
 		wg := &sync.WaitGroup{}
 		defer wg.Wait()
-		wg.Add(1)
 		// Needed so defaultProviders.handleRequest() doesn't hang.
-		go func() {
+		wg.Go(func() {
 			evt := <-providerRegChan
 			evt.done <- &RegisterResult{
 				State: &pkgresource.State{
@@ -3210,8 +3203,7 @@ func TestCall(t *testing.T) {
 					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				},
 			}
-			wg.Done()
-		}()
+		})
 		var called bool
 		expectedErr := errors.New("expected error")
 
@@ -3305,9 +3297,8 @@ func TestCall(t *testing.T) {
 		providerRegChan := make(chan *registerResourceEvent, 1)
 		wg := &sync.WaitGroup{}
 		defer wg.Wait()
-		wg.Add(1)
 		// Needed so defaultProviders.handleRequest() doesn't hang.
-		go func() {
+		wg.Go(func() {
 			evt := <-providerRegChan
 			evt.done <- &RegisterResult{
 				State: &pkgresource.State{
@@ -3315,8 +3306,7 @@ func TestCall(t *testing.T) {
 					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				},
 			}
-			wg.Done()
-		}()
+		})
 
 		mon, err := newResourceMonitor(&evalSource{
 			runinfo: &EvalRunInfo{
@@ -3373,9 +3363,8 @@ func TestCall(t *testing.T) {
 		providerRegChan := make(chan *registerResourceEvent, 1)
 		wg := &sync.WaitGroup{}
 		defer wg.Wait()
-		wg.Add(1)
 		// Needed so defaultProviders.handleRequest() doesn't hang.
-		go func() {
+		wg.Go(func() {
 			evt := <-providerRegChan
 			evt.done <- &RegisterResult{
 				State: &pkgresource.State{
@@ -3383,8 +3372,7 @@ func TestCall(t *testing.T) {
 					URN: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0",
 				},
 			}
-			wg.Done()
-		}()
+		})
 
 		mon, err := newResourceMonitor(&evalSource{
 			runinfo: &EvalRunInfo{
@@ -3527,15 +3515,13 @@ func TestReadResource(t *testing.T) {
 			},
 		}
 		wg := &sync.WaitGroup{}
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			evt := <-regReadChan
 			assert.Equal(t, []resource.PropertyKey{"foo"}, evt.additionalSecretOutputs)
 			evt.done <- &ReadResult{
 				State: &pkgresource.State{},
 			}
-			wg.Done()
-		}()
+		})
 		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
 			Type:                    "pulumi:providers:fake-provider",
 			Version:                 "1.0.0",
@@ -3554,11 +3540,9 @@ func TestReadResource(t *testing.T) {
 			},
 		}
 		wg := &sync.WaitGroup{}
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			cancel <- true
-			wg.Done()
-		}()
+		})
 		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
 			Type:    "pulumi:providers:fake-provider",
 			Version: "1.0.0",
@@ -3579,12 +3563,10 @@ func TestReadResource(t *testing.T) {
 			},
 		}
 		wg := &sync.WaitGroup{}
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			<-regReadChan
 			cancel <- true
-			wg.Done()
-		}()
+		})
 		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
 			Type:    "pulumi:providers:fake-provider",
 			Version: "1.0.0",

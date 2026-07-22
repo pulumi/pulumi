@@ -167,7 +167,7 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 	// Now assume that role and try and use the secret manager
 	stsClient := sts.NewFromConfig(cfg)
 	var assume *sts.AssumeRoleOutput
-	for i := 0; i < MaxAttempts; i++ {
+	for range MaxAttempts {
 		sessionName := "test-session-" + randomName(t)
 		assume, err = stsClient.AssumeRole(ctx, &sts.AssumeRoleInput{
 			RoleArn:         role.Role.Arn,

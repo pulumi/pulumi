@@ -19,6 +19,7 @@ import (
 	cryptorand "crypto/rand"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/blang/semver"
@@ -479,7 +480,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	for urn := range explicitProvidersByURN {
 		explicitURNs = append(explicitURNs, urn)
 	}
-	sort.Slice(explicitURNs, func(a, b int) bool { return explicitURNs[a] < explicitURNs[b] })
+	slices.Sort(explicitURNs)
 
 	for _, providerURN := range explicitURNs {
 		imp := explicitProvidersByURN[providerURN]

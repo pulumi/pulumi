@@ -35,14 +35,14 @@ type Options = sdkprovider.Options
 // Deprecated: use [github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.NewHostClient].
 //
 //go:fix inline
-func NewHostClient(addr string) (*HostClient, error) {
+func NewHostClient(addr string) (*sdkprovider.HostClient, error) {
 	return sdkprovider.NewHostClient(addr)
 }
 
 // Deprecated: use [github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.Main].
 //
 //go:fix inline
-func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderServer, error)) error {
+func Main(name string, provMaker func(*sdkprovider.HostClient) (pulumirpc.ResourceProviderServer, error)) error {
 	return sdkprovider.Main(name, provMaker)
 }
 
@@ -52,7 +52,7 @@ func Main(name string, provMaker func(*HostClient) (pulumirpc.ResourceProviderSe
 func MainContext(
 	ctx context.Context,
 	name string,
-	provMaker func(*HostClient) (pulumirpc.ResourceProviderServer, error),
+	provMaker func(*sdkprovider.HostClient) (pulumirpc.ResourceProviderServer, error),
 ) error {
 	return sdkprovider.MainContext(ctx, name, provMaker)
 }
@@ -60,7 +60,7 @@ func MainContext(
 // Deprecated: use [github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.MainWithOptions].
 //
 //go:fix inline
-func MainWithOptions(opts Options) error {
+func MainWithOptions(opts sdkprovider.Options) error {
 	return sdkprovider.MainWithOptions(opts)
 }
 
