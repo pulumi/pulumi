@@ -24,6 +24,10 @@ const sink4 = new _enum.Deluxe("sink4", {
         small: _enum.IntEnum.IntOne,
         large: _enum.IntEnum.IntTwo,
     },
+    arrayOfMapOfEnum: [{
+        first: _enum.StringEnum.StringOne,
+        second: _enum.StringEnum.StringTwo,
+    }],
     holder: {
         size: _enum.IntEnum.IntTwo,
         color: _enum.StringEnum.StringOne,

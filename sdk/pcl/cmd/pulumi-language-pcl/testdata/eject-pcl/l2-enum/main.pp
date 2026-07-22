@@ -21,6 +21,10 @@ resource "sink4" "enum:index:Deluxe" {
     small = 1
     large = 2
   }
+  arrayOfMapOfEnum = [{
+    first = "one"
+    second = "two"
+  }]
   holder = {
     size = 2
     color = "one"

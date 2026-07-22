@@ -59,6 +59,12 @@ func init() {
 						"small": resource.NewProperty(1.0),
 						"large": resource.NewProperty(2.0),
 					}),
+					"arrayOfMapOfEnum": resource.NewProperty([]resource.PropertyValue{
+						resource.NewProperty(resource.PropertyMap{
+							"first":  resource.NewProperty("one"),
+							"second": resource.NewProperty("two"),
+						}),
+					}),
 					"holder": resource.NewProperty(resource.PropertyMap{
 						"size":  resource.NewProperty(2.0),
 						"color": resource.NewProperty("one"),

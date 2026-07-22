@@ -18,6 +18,7 @@ __all__ = ['DeluxeArgs', 'Deluxe']
 class DeluxeArgs:
     def __init__(__self__, *,
                  array_of_enum: pulumi.Input[Optional[Sequence[pulumi.Input['StringEnum']]]] = None,
+                 array_of_map_of_enum: pulumi.Input[Optional[Sequence[pulumi.Input[Mapping[str, pulumi.Input['StringEnum']]]]]] = None,
                  holder: pulumi.Input[Optional['HolderArgs']] = None,
                  map_of_enum: pulumi.Input[Optional[Mapping[str, pulumi.Input['IntEnum']]]] = None,
                  number_enum: pulumi.Input[Optional['NumberEnum']] = None,
@@ -28,6 +29,8 @@ class DeluxeArgs:
         """
         if array_of_enum is not None:
             pulumi.set(__self__, "array_of_enum", array_of_enum)
+        if array_of_map_of_enum is not None:
+            pulumi.set(__self__, "array_of_map_of_enum", array_of_map_of_enum)
         if holder is not None:
             pulumi.set(__self__, "holder", holder)
         if map_of_enum is not None:
@@ -47,6 +50,15 @@ class DeluxeArgs:
     @array_of_enum.setter
     def array_of_enum(self, value: pulumi.Input[Optional[Sequence[pulumi.Input['StringEnum']]]]):
         pulumi.set(self, "array_of_enum", value)
+
+    @_builtins.property
+    @pulumi.getter(name="arrayOfMapOfEnum")
+    def array_of_map_of_enum(self) -> pulumi.Input[Optional[Sequence[pulumi.Input[Mapping[str, pulumi.Input['StringEnum']]]]]]:
+        return pulumi.get(self, "array_of_map_of_enum")
+
+    @array_of_map_of_enum.setter
+    def array_of_map_of_enum(self, value: pulumi.Input[Optional[Sequence[pulumi.Input[Mapping[str, pulumi.Input['StringEnum']]]]]]):
+        pulumi.set(self, "array_of_map_of_enum", value)
 
     @_builtins.property
     @pulumi.getter
@@ -101,6 +113,7 @@ class Deluxe(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  array_of_enum: pulumi.Input[Optional[Sequence[pulumi.Input['StringEnum']]]] = None,
+                 array_of_map_of_enum: pulumi.Input[Optional[Sequence[pulumi.Input[Mapping[str, pulumi.Input['StringEnum']]]]]] = None,
                  holder: pulumi.Input[Optional[pulumi.InputType['HolderArgs']]] = None,
                  map_of_enum: pulumi.Input[Optional[Mapping[str, pulumi.Input['IntEnum']]]] = None,
                  number_enum: pulumi.Input[Optional['NumberEnum']] = None,
@@ -138,6 +151,7 @@ class Deluxe(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  array_of_enum: pulumi.Input[Optional[Sequence[pulumi.Input['StringEnum']]]] = None,
+                 array_of_map_of_enum: pulumi.Input[Optional[Sequence[pulumi.Input[Mapping[str, pulumi.Input['StringEnum']]]]]] = None,
                  holder: pulumi.Input[Optional[pulumi.InputType['HolderArgs']]] = None,
                  map_of_enum: pulumi.Input[Optional[Mapping[str, pulumi.Input['IntEnum']]]] = None,
                  number_enum: pulumi.Input[Optional['NumberEnum']] = None,
@@ -153,6 +167,7 @@ class Deluxe(pulumi.CustomResource):
             __props__ = DeluxeArgs.__new__(DeluxeArgs)
 
             __props__.__dict__["array_of_enum"] = array_of_enum
+            __props__.__dict__["array_of_map_of_enum"] = array_of_map_of_enum
             __props__.__dict__["holder"] = holder
             __props__.__dict__["map_of_enum"] = map_of_enum
             __props__.__dict__["number_enum"] = number_enum
@@ -181,6 +196,7 @@ class Deluxe(pulumi.CustomResource):
         __props__ = DeluxeArgs.__new__(DeluxeArgs)
 
         __props__.__dict__["array_of_enum"] = None
+        __props__.__dict__["array_of_map_of_enum"] = None
         __props__.__dict__["holder"] = None
         __props__.__dict__["map_of_enum"] = None
         __props__.__dict__["number_enum"] = None
@@ -192,6 +208,11 @@ class Deluxe(pulumi.CustomResource):
     @pulumi.getter(name="arrayOfEnum")
     def array_of_enum(self) -> pulumi.Output[Optional[Sequence['StringEnum']]]:
         return pulumi.get(self, "array_of_enum")
+
+    @_builtins.property
+    @pulumi.getter(name="arrayOfMapOfEnum")
+    def array_of_map_of_enum(self) -> pulumi.Output[Optional[Sequence[Mapping[str, 'StringEnum']]]]:
+        return pulumi.get(self, "array_of_map_of_enum")
 
     @_builtins.property
     @pulumi.getter

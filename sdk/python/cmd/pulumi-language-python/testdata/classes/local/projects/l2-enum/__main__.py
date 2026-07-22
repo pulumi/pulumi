@@ -21,6 +21,10 @@ sink4 = enum.Deluxe("sink4",
         "small": enum.IntEnum.INT_ONE,
         "large": enum.IntEnum.INT_TWO,
     },
+    array_of_map_of_enum=[{
+        "first": enum.StringEnum.STRING_ONE,
+        "second": enum.StringEnum.STRING_TWO,
+    }],
     holder=enum.HolderArgs(
         size=enum.IntEnum.INT_TWO,
         color=enum.StringEnum.STRING_ONE,
