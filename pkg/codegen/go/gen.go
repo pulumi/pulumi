@@ -2511,7 +2511,7 @@ func (pkg *pkgContext) genResource(
 	assignment := ":="
 	packageRef := ""
 	packageArg := ""
-	if def.Parameterization != nil || def.ExtensionParameterization != nil {
+	if needsPackageRef(def, r.Token) {
 		assignment = "="
 		packageRef = "Package"
 		packageArg = "ref, "
@@ -2552,7 +2552,7 @@ func (pkg *pkgContext) genResource(
 		assignment := ":="
 		packageRef := ""
 		packageArg := ""
-		if def.Parameterization != nil || def.ExtensionParameterization != nil {
+		if needsPackageRef(def, r.Token) {
 			assignment = "="
 			packageRef = "Package"
 			packageArg = "ref, "
@@ -2733,7 +2733,7 @@ func (pkg *pkgContext) genResource(
 		}
 		packageRef := ""
 		packageArg := ""
-		if def.Parameterization != nil || def.ExtensionParameterization != nil {
+		if needsPackageRef(def, f.Token) {
 			packageRef = "Package"
 			packageArg = ", ref"
 			callOutput := outputsType
@@ -3144,7 +3144,7 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function, useGenericTy
 		assignment := ":="
 		packageRef := ""
 		packageArg := ""
-		if def.Parameterization != nil || def.ExtensionParameterization != nil {
+		if needsPackageRef(def, f.Token) {
 			assignment = "="
 			packageRef = "Package"
 			packageArg = "ref, "
@@ -3470,7 +3470,7 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 		fmt.Fprintf(w, "			args := v.(%s)\n", pkg.functionArgsTypeName(f))
 		fmt.Fprintf(w, "			options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
 
-		if def.Parameterization != nil || def.ExtensionParameterization != nil {
+		if needsPackageRef(def, f.Token) {
 			err = pkg.GenPkgGetPackageRefCall(w, resultTypeName+"{}")
 			if err != nil {
 				return err
@@ -3503,7 +3503,7 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 		fmt.Fprintf(w, "	return pulumi.ToOutput(0).ApplyT(func(int) (%s, error) {\n", resultTypeName)
 		fmt.Fprintf(w, "		options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
 
-		if def.Parameterization != nil || def.ExtensionParameterization != nil {
+		if needsPackageRef(def, f.Token) {
 			err = pkg.GenPkgGetPackageRefCall(w, resultTypeName+"{}")
 			if err != nil {
 				return err
@@ -5427,9 +5427,11 @@ func GeneratePackage(tool string,
 			if err != nil {
 				return nil, err
 			}
-			if def.Parameterization != nil || def.ExtensionParameterization != nil {
-				imports = append(imports, "encoding/base64")
+			if emitsPackageRef(def) {
 				importsAndAliases["github.com/pulumi/pulumi/sdk/v3/proto/go"] = "pulumirpc"
+				if def.Parameterization != nil || def.ExtensionParameterization != nil {
+					imports = append(imports, "encoding/base64")
+				}
 			}
 
 			pkg.genHeader(buffer, imports, importsAndAliases, true /* isUtil */)
@@ -5493,7 +5495,8 @@ func GeneratePackage(tool string,
 		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
 		pulumiVersion := "v3.30.0"
-		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
+		if emitsPackageRef(pkg) {
+			// Package references require a runtime that supports RegisterPackage.
 			pulumiVersion = "v3.228.0"
 		}
 		err = gomod.AddRequire(pulumiPackagePath, pulumiVersion)
@@ -5650,11 +5653,16 @@ func Pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 		versionPackageRef = fmt.Sprintf("semver.MustParse(%q)", p.Version.String())
 	}
 	// Parameterized schemas _always_ respect schema version.
-	if p.Parameterization != nil || p.ExtensionParameterization != nil {
-		if p.Version == nil {
+	if emitsPackageRef(p) {
+		parameterized := p.Parameterization != nil || p.ExtensionParameterization != nil
+		if p.Version == nil && parameterized {
 			return errors.New("package version is required")
 		}
-		versionPackageRef = fmt.Sprintf("semver.MustParse(%q)", p.Version.String())
+		var version string
+		if p.Version != nil {
+			version = p.Version.String()
+			versionPackageRef = fmt.Sprintf("semver.MustParse(%q)", version)
+		}
 
 		// The template emits a PkgGetPackageRef function that, on first call per
 		// pulumi.Context, registers the package and caches the returned ref. The
@@ -5666,26 +5674,23 @@ func Pkg%[1]sDefaultOpts(opts []pulumi.%[1]sOption) []pulumi.%[1]sOption {
 // programs each register with their own engine and receive distinct refs.
 func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
 	return ctx.GetOrRegisterPackageRef(%q, func() (*pulumirpc.RegisterPackageRequest, error) {
-		parameter, err := base64.StdEncoding.DecodeString(%q)
-		if err != nil {
-			return nil, err
-		}
-
+%s
 		return &pulumirpc.RegisterPackageRequest{
 			Name: %q,
 			Version: %q,
-			DownloadUrl: %q,
-			%s: &pulumirpc.Parameterization{
-				Name: %q,
-				Version: %q,
-				Value: parameter,
-			},
+			DownloadUrl: %q,%s
 		}, nil
 	})
 }
 `
 
-		var baseProvider schema.BaseProvider
+		// A package that is not parameterized registers under its own name and
+		// version: the reference identifies the package serving members whose
+		// tokens name a foreign package.
+		baseProvider := schema.BaseProvider{Name: p.Name}
+		if p.Version != nil {
+			baseProvider.Version = *p.Version
+		}
 		var parameter []byte
 		var protoField string
 		switch {
@@ -5698,14 +5703,26 @@ func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
 			parameter = p.ExtensionParameterization.Parameter
 			protoField = "Extension"
 		}
-		value := base64.StdEncoding.EncodeToString(parameter)
-		key := fmt.Sprintf("%s:%s", p.Name, p.Version.String())
+		decodeParameter, parameterField := "", ""
+		if protoField != "" {
+			decodeParameter = fmt.Sprintf(`		parameter, err := base64.StdEncoding.DecodeString(%q)
+		if err != nil {
+			return nil, err
+		}
+`, base64.StdEncoding.EncodeToString(parameter))
+			parameterField = fmt.Sprintf(`
+			%s: &pulumirpc.Parameterization{
+				Name: %q,
+				Version: %q,
+				Value: parameter,
+			},`, protoField, p.Name, version)
+		}
+		key := fmt.Sprintf("%s:%s", p.Name, version)
 		_, err = fmt.Fprintf(w, packageRefTemplate,
 			key,
-			value,
+			decodeParameter,
 			baseProvider.Name, baseProvider.Version.String(), p.PluginDownloadURL,
-			protoField,
-			p.Name, p.Version.String(),
+			parameterField,
 		)
 		if err != nil {
 			return err
@@ -5756,4 +5773,18 @@ func (pkg *pkgContext) GenPkgGetPackageRefCall(w io.Writer, errorResult string) 
 	}
 
 	return nil
+}
+
+// needsPackageRef reports whether a registration for the given token must
+// carry the package's reference: parameterized packages identify themselves
+// that way, and so do members whose token names a foreign package, since the
+// token alone does not name the package that serves them.
+func needsPackageRef(pkg *schema.Package, token string) bool {
+	return pkg.Parameterization != nil || pkg.ExtensionParameterization != nil || pkg.IsForeignToken(token)
+}
+
+// emitsPackageRef reports whether a package's SDK includes the helper that
+// registers it and returns its reference.
+func emitsPackageRef(pkg *schema.Package) bool {
+	return pkg.Parameterization != nil || pkg.ExtensionParameterization != nil || pkg.HasForeignTokens()
 }

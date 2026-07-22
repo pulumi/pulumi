@@ -13,6 +13,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 import (
@@ -161,11 +162,25 @@ func callPlainInner(
 	return value, nil
 }
 
+// PkgGetPackageRef returns the package reference for the current package.
+// The reference is cached per pulumi.Context so that concurrent inline
+// programs each register with their own engine and receive distinct refs.
+func PkgGetPackageRef(ctx *pulumi.Context) (string, error) {
+	return ctx.GetOrRegisterPackageRef("example:0.0.1", func() (*pulumirpc.RegisterPackageRequest, error) {
+
+		return &pulumirpc.RegisterPackageRequest{
+			Name:        "example",
+			Version:     "0.0.1",
+			DownloadUrl: "",
+		}, nil
+	})
+}
+
 // PkgResourceDefaultOpts provides package level defaults to pulumi.OptionResource.
 func PkgResourceDefaultOpts(opts []pulumi.ResourceOption) []pulumi.ResourceOption {
 	defaults := []pulumi.ResourceOption{}
 
-	version := SdkVersion
+	version := semver.MustParse("0.0.1")
 	if !version.Equals(semver.Version{}) {
 		defaults = append(defaults, pulumi.Version(version.String()))
 	}
@@ -176,7 +191,7 @@ func PkgResourceDefaultOpts(opts []pulumi.ResourceOption) []pulumi.ResourceOptio
 func PkgInvokeDefaultOpts(opts []pulumi.InvokeOption) []pulumi.InvokeOption {
 	defaults := []pulumi.InvokeOption{}
 
-	version := SdkVersion
+	version := semver.MustParse("0.0.1")
 	if !version.Equals(semver.Version{}) {
 		defaults = append(defaults, pulumi.Version(version.String()))
 	}

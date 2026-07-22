@@ -884,10 +884,10 @@ func (g *generator) collectTypeImports(program *pcl.Program, t schema.Type) {
 		return
 	}
 
-	pkg, _, name, _ := pcl.DecomposeToken(token, hcl.Range{})
+	_, _, name, _ := pcl.DecomposeToken(token, hcl.Range{})
 	mod := g.resolveModule(token)
 	vPath := g.packageVersionPath(packageRef)
-	g.addPulumiImport(pkg, vPath, mod, name)
+	g.addPulumiImport(packageRef.Name(), vPath, mod, name)
 }
 
 // collect Imports returns two sets of packages imported by the program, std lib packages and pulumi packages
@@ -1353,7 +1353,10 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions, schema *sche
 	if opts.Parent != nil {
 		appendOption("Parent", opts.Parent, model.DynamicType)
 	}
-	if opts.Provider != nil {
+	// A bare package block reference selects the package the token resolves
+	// against; the SDK routes such resources through the package reference, so
+	// there is no provider to pass.
+	if opts.Provider != nil && !pcl.ReferencesPackageBlock(opts.Provider) {
 		appendOption("Provider", opts.Provider, model.DynamicType)
 	}
 	if opts.Providers != nil {

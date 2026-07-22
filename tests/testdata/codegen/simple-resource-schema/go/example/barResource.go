@@ -25,8 +25,12 @@ func NewBarResource(ctx *pulumi.Context,
 	}
 
 	opts = internal.PkgResourceDefaultOpts(opts)
+	ref, err := internal.PkgGetPackageRef(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var resource BarResource
-	err := ctx.RegisterRemoteComponentResource("bar::BarResource", name, args, &resource, opts...)
+	err = ctx.RegisterPackageRemoteComponentResource("bar::BarResource", name, args, &resource, ref, opts...)
 	if err != nil {
 		return nil, err
 	}

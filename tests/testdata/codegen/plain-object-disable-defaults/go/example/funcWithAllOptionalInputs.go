@@ -14,8 +14,12 @@ import (
 // Check codegen of functions with all optional inputs.
 func FuncWithAllOptionalInputs(ctx *pulumi.Context, args *FuncWithAllOptionalInputsArgs, opts ...pulumi.InvokeOption) (*FuncWithAllOptionalInputsResult, error) {
 	opts = internal.PkgInvokeDefaultOpts(opts)
+	ref, err := internal.PkgGetPackageRef(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var rv FuncWithAllOptionalInputsResult
-	err := ctx.Invoke("mypkg::funcWithAllOptionalInputs", args, &rv, opts...)
+	err = ctx.InvokePackage("mypkg::funcWithAllOptionalInputs", args, &rv, ref, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -38,6 +42,11 @@ func FuncWithAllOptionalInputsOutput(ctx *pulumi.Context, args FuncWithAllOption
 		ApplyT(func(v interface{}) (FuncWithAllOptionalInputsResultOutput, error) {
 			args := v.(FuncWithAllOptionalInputsArgs)
 			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			ref, err := internal.PkgGetPackageRef(ctx)
+			if err != nil {
+				return FuncWithAllOptionalInputsResultOutput{}, err
+			}
+			options.PackageRef = ref
 			return ctx.InvokeOutput("mypkg::funcWithAllOptionalInputs", args, FuncWithAllOptionalInputsResultOutput{}, options).(FuncWithAllOptionalInputsResultOutput), nil
 		}).(FuncWithAllOptionalInputsResultOutput)
 }
