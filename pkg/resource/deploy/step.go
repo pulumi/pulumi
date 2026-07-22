@@ -1873,8 +1873,6 @@ func newImportDeploymentStep(deployment *Deployment, new *pkgresource.State, ran
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 	contract.Requiref(!new.External, "new", "must not be external")
 	contract.Requiref(!new.Custom || randomSeed != nil, "randomSeed", "must not be nil")
-	contract.Assertf(len(new.Inputs) == 0, "import resource cannot have existing inputs")
-
 	contract.Requiref(new.ViewOf == "", "new", "must not be a view")
 
 	return &ImportStep{
@@ -1902,6 +1900,26 @@ func (s *ImportStep) Original() *pkgresource.State { return s.original }
 func (s *ImportStep) New() *pkgresource.State      { return s.new }
 func (s *ImportStep) Res() *pkgresource.State      { return s.new }
 func (s *ImportStep) Logical() bool                { return !s.replacing }
+
+// mergeSuppliedProperties fills the gaps in properties read from the provider with properties supplied
+// by the import: a supplied value is used where the read one is missing or null, so values a provider's
+// importer cannot return (e.g. write-only attributes) survive, while the provider stays authoritative
+// for everything it does return. A value that was supplied as a secret stays secret even if the
+// provider returns it in plain text.
+func mergeSuppliedProperties(read, supplied resource.PropertyMap) resource.PropertyMap {
+	if len(supplied) == 0 {
+		return read
+	}
+	merged := read.Copy()
+	for k, v := range supplied {
+		if r, has := read[k]; !has || r.IsNull() {
+			merged[k] = v
+		} else if v.IsSecret() && !r.IsSecret() {
+			merged[k] = resource.MakeSecret(r)
+		}
+	}
+	return merged
+}
 
 func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) {
 	defer func() {
@@ -1940,12 +1958,36 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		}
 	}
 
-	// Only need to do anything here for custom resources, components just import as empty
+	suppliedInputs := s.new.Inputs
+	suppliedOutputs := s.new.Outputs
 	inputs := resource.PropertyMap{}
 	outputs := resource.PropertyMap{}
 	var prov plugin.Provider
 	rst := resource.StatusOK
-	if s.new.Custom {
+	if len(suppliedOutputs) > 0 {
+		// The import supplied the resource's full state (e.g. from a state converter): trust it rather
+		// than reading from the provider, so the import can run without access to the underlying cloud.
+		contract.Assertf(s.planned, "only planned imports may supply outputs")
+
+		if s.new.Custom {
+			var err error
+			prov, err = getProvider(s, s.provider)
+			if err != nil {
+				return resource.StatusOK, nil, err
+			}
+		}
+
+		s.new.Lock.Lock()
+		defer s.new.Lock.Unlock()
+
+		if suppliedInputs != nil {
+			inputs = suppliedInputs
+		}
+		outputs = suppliedOutputs
+		if s.new.Custom {
+			s.new.ID = s.new.ImportID
+		}
+	} else if s.new.Custom {
 		// Read the current state of the resource to import. If the provider does not hand us back any inputs for the
 		// resource, it probably needs to be updated. If the resource does not exist at all, fail the import.
 		var err error
@@ -2002,17 +2044,25 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		}
 		inputs = read.Inputs
 		outputs = read.Outputs
+		if s.planned {
+			inputs = mergeSuppliedProperties(read.Inputs, suppliedInputs)
+		}
 		s.new.RefreshBeforeUpdate = read.RefreshBeforeUpdate
 	} else {
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
+
+		// Local components have no state to read; keep any inputs the import supplied.
+		if s.planned && suppliedInputs != nil {
+			inputs = suppliedInputs
+		}
 	}
 
 	s.new.Inputs = inputs
 	s.new.Outputs = outputs
-	// Magic up an old state so the frontend can display a proper diff. This state is the output of the just-executed
-	// `Read` combined with the resource identity and metadata from the desired state. This ensures that the only
-	// differences between the old and new states are between the inputs and outputs.
+	// Magic up an old state so the frontend can display a proper diff. The old state takes the same inputs and
+	// outputs as the new state (assigned just above), so any diff shown comes from later adjustments to the new
+	// state's inputs.
 	s.old = pkgresource.NewState{
 		Type:                    s.new.Type,
 		URN:                     s.new.URN,

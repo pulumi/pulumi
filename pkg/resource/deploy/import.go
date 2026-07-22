@@ -90,6 +90,13 @@ type Import struct {
 	// are configured solely from these inputs.
 	ProviderInputs resource.PropertyMap
 
+	// Inputs holds input properties supplied for the resource, if any. When the provider's Read cannot
+	// return a property supplied here (e.g. a write-only attribute), the supplied value is used instead.
+	Inputs resource.PropertyMap
+	// Outputs holds the full output state supplied for the resource, if any. When set, the resource is
+	// imported from these values directly and the provider's Read is skipped entirely.
+	Outputs resource.PropertyMap
+
 	// True if this import should create an empty component resource. ID must not be set if this is used.
 	Component bool
 	// True if this is a remote component resource. Component must be true if this is true.
@@ -719,6 +726,11 @@ func (i *importer) importResources(ctx context.Context) error {
 			contract.Assertf(ok, "provider reference for URN %v not found", providerURN)
 		}
 
+		inputs := imp.Inputs
+		if inputs == nil {
+			inputs = resource.PropertyMap{}
+		}
+
 		// Create the new desired state. Note that the resource is protected. Provider might be "" at this point.
 		new := pkgresource.NewState{
 			Type:                    urn.Type(),
@@ -726,8 +738,8 @@ func (i *importer) importResources(ctx context.Context) error {
 			Custom:                  !imp.Component,
 			Delete:                  false,
 			ID:                      "",
-			Inputs:                  resource.PropertyMap{},
-			Outputs:                 nil,
+			Inputs:                  inputs,
+			Outputs:                 imp.Outputs,
 			Parent:                  parent,
 			Protect:                 imp.Protect,
 			Taint:                   false,
