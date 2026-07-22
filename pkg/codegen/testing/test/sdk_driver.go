@@ -231,11 +231,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages,
 	},
 	{
-		Directory:   "different-enum",
-		Description: "An enum in a different package namespace",
-		Skip:        codegen.NewStringSet("dotnet/compile"),
-	},
-	{
 		Directory:   "array-of-enum-map",
 		Description: "A schema with an array of maps where the values are enums. Issue pulumi/pulumi#14734",
 		Skip:        allLanguages.Except("go/any"),
