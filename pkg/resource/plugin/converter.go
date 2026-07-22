@@ -88,6 +88,7 @@ type ResourceExtension struct {
 type ConvertStateRequest struct {
 	MapperTarget string
 	Args         []string
+	LoaderTarget string
 }
 
 type ConvertStateResponse struct {

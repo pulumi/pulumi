@@ -616,6 +616,7 @@ func TestParseImportFileProviderInputs(t *testing.T) {
 	assert.Equal(t, resource.NewProperty("6.0.0"), imports[0].ProviderInputs["version"])
 }
 
+<<<<<<< HEAD
 func TestMakeImportFileFromResourceListInputsOutputs(t *testing.T) {
 	t.Parallel()
 
@@ -643,6 +644,8 @@ func TestMakeImportFileFromResourceListInputsOutputs(t *testing.T) {
 	assert.Equal(t, resource.NewProperty("some:arn"), imports[0].Outputs["arn"])
 }
 
+=======
+>>>>>>> origin/master
 func TestParseImportFileInputsOutputs(t *testing.T) {
 	t.Parallel()
 

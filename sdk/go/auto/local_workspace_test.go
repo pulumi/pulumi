@@ -1041,7 +1041,7 @@ func TestStackLifecycleInlineProgramDestroyWithRemove(t *testing.T) {
 func TestUpsertStackInlineSourceParallel(t *testing.T) {
 	t.Parallel()
 
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		// Verify that shared context doesn't affect result
 		ctx := t.Context()
 		t.Run(strconv.Itoa(i), func(t *testing.T) {

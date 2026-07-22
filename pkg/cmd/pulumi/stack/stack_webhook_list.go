@@ -296,10 +296,7 @@ func renderWebhookListTable(w io.Writer, webhooks []apitype.Webhook) error {
 	if hasEvents {
 		flexCols++
 	}
-	remaining := cols - fixedWidth
-	if remaining < 20*flexCols {
-		remaining = 20 * flexCols
-	}
+	remaining := max(cols-fixedWidth, 20*flexCols)
 	flexWidth := remaining / flexCols
 	colConfigs := []table.ColumnConfig{
 		{Name: "URL", WidthMax: flexWidth, WidthMaxEnforcer: text.WrapText},

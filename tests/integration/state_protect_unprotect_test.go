@@ -91,8 +91,8 @@ description: A test for protecting and unprotecting resources
 	for _, line := range lines {
 		if strings.Contains(line, "pulumi-nodejs:dynamic:Resource") {
 			// This is our dynamic resource - extract the URN
-			fields := strings.Fields(line)
-			for _, field := range fields {
+			fields := strings.FieldsSeq(line)
+			for field := range fields {
 				if strings.HasPrefix(field, "urn:pulumi:") {
 					urns = append(urns, field)
 					break
@@ -236,8 +236,8 @@ let eternal = new Resource("eternal", { state: 42 });
 	var urn string
 	for _, line := range lines {
 		if strings.Contains(line, "eternal") {
-			fields := strings.Fields(line)
-			for _, field := range fields {
+			fields := strings.FieldsSeq(line)
+			for field := range fields {
 				// Look for the URN format
 				if strings.HasPrefix(field, "urn:pulumi:") {
 					urn = field

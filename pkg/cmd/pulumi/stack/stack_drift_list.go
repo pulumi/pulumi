@@ -248,10 +248,7 @@ func (c *driftListCmd) renderTable(runs []apitype.DriftRun, total int) error {
 	// ID, DETECT, and REMEDIATE get max widths so they wrap if needed.
 	cols := cmdCmd.WriterWidth(c.w)
 	// CREATED(25) + STATUS(11) + DRIFT(5) + borders(~22) = 63 fixed
-	flexible := cols - 63
-	if flexible < 30 {
-		flexible = 30
-	}
+	flexible := max(cols-63, 30)
 	// Split flexible space: ~40% ID, ~30% DETECT, ~30% REMEDIATE
 	idWidth := flexible * 2 / 5
 	detWidth := flexible * 3 / 10

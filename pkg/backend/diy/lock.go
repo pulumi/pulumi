@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -163,7 +164,7 @@ func (b *diyBackend) Unlock(ctx context.Context, stackRef backend.StackReference
 }
 
 func lockDir() string {
-	return path.Join(workspace.BookkeepingDir, workspace.LockDir)
+	return path.Join(workspace.BookkeepingDir, pkgWorkspace.LockDir)
 }
 
 func stackLockDir(stack tokens.QName) string {

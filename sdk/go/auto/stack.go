@@ -101,6 +101,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -1378,9 +1379,7 @@ func (s *Stack) cliBaseOptions() base.BaseOptions {
 	if home := s.Workspace().PulumiHome(); home != "" {
 		env[pulumiHomeEnv] = home
 	}
-	for k, v := range s.Workspace().GetEnvVars() {
-		env[k] = v
-	}
+	maps.Copy(env, s.Workspace().GetEnvVars())
 	return base.BaseOptions{
 		Cwd:           s.Workspace().WorkDir(),
 		AdditionalEnv: env,

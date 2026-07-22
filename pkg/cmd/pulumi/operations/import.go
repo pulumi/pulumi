@@ -73,12 +73,12 @@ import (
 )
 
 func parseResourceSpec(spec string) (string, resource.URN, error) {
-	equals := strings.Index(spec, "=")
-	if equals == -1 {
+	before, after, ok := strings.Cut(spec, "=")
+	if !ok {
 		return "", "", errors.New("spec must be of the form name=URN")
 	}
 
-	name, urn := spec[:equals], resource.URN(spec[equals+1:])
+	name, urn := before, resource.URN(after)
 	if name == "" || urn == "" {
 		return "", "", errors.New("spec must be of the form name=URN")
 	}
@@ -964,7 +964,10 @@ func NewImportCmd() *cobra.Command {
 				}
 
 				mapperServer := convert.NewMapperServer(mapper)
-				grpcServer, err := plugin.NewServer(pCtx, convert.MapperRegistration(mapperServer))
+				loaderServer := schema.NewLoaderServer(schema.NewPluginLoader(pCtx))
+				grpcServer, err := plugin.NewServer(pCtx,
+					convert.MapperRegistration(mapperServer),
+					schema.LoaderRegistration(loaderServer))
 				if err != nil {
 					return err
 				}
@@ -972,6 +975,7 @@ func NewImportCmd() *cobra.Command {
 				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{
 					MapperTarget: grpcServer.Addr(),
 					Args:         args,
+					LoaderTarget: grpcServer.Addr(),
 				})
 				if err != nil {
 					rpcErr := rpcerror.Convert(err)
@@ -1172,7 +1176,7 @@ func NewImportCmd() *cobra.Command {
 			cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+			configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 				ctx,
 				stackName,
 				proj,

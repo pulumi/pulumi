@@ -188,7 +188,7 @@ func collectInsightsAccounts(
 		accounts []apitype.InsightsAccount
 		cursor   string
 	)
-	for page := 0; page < listPageLimit; page++ {
+	for range listPageLimit {
 		resp, err := client.ListInsightsAccounts(ctx, org, apitype.ListInsightsAccountsParams{
 			ContinuationToken: cursor,
 			Parent:            args.parent,

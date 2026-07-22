@@ -138,15 +138,16 @@ func (pcs ProviderCreateSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sCreate:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sCreate:", indent)
 	for r, action := range pcs {
 		switch action {
 		case ProviderCreateFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns a CreateF-compatible callback that implements this ProviderCreateSpec.
@@ -193,15 +194,16 @@ func (pds ProviderDeleteSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sDelete:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sDelete:", indent)
 	for r, action := range pds {
 		switch action {
 		case ProviderDeleteFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s\n", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s\n", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns a DeleteF-compatible callback that implements this ProviderDeleteSpec.
@@ -248,21 +250,22 @@ func (pds ProviderDiffSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sDiff:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sDiff:", indent)
 	for r, action := range pds {
 		switch action {
 		case ProviderDiffDeleteBeforeReplace:
-			rendered += fmt.Sprintf("\n%s  -+ %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  -+ %s", indent, Colored(r))
 		case ProviderDiffDeleteAfterReplace:
-			rendered += fmt.Sprintf("\n%s  +- %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  +- %s", indent, Colored(r))
 		case ProviderDiffChange:
-			rendered += fmt.Sprintf("\n%s  ~  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  ~  %s", indent, Colored(r))
 		case ProviderDiffFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns a DiffF-compatible callback that implements this ProviderDiffSpec.
@@ -315,17 +318,18 @@ func (prs ProviderReadSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sRead:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sRead:", indent)
 	for r, action := range prs {
 		switch action {
 		case ProviderReadDeleted:
-			rendered += fmt.Sprintf("\n%s  -  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  -  %s", indent, Colored(r))
 		case ProviderReadFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns a ReadF-compatible callback that implements this ProviderReadSpec.
@@ -370,15 +374,16 @@ func (pus ProviderUpdateSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sUpdate:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sUpdate:", indent)
 	for r, action := range pus {
 		switch action {
 		case ProviderUpdateFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns an UpdateF-compatible callback that implements this ProviderUpdateSpec.

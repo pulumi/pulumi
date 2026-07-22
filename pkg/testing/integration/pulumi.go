@@ -69,9 +69,9 @@ func GetStacks(e *testing.Environment) ([]string, *string) {
 		if summary == "" {
 			break
 		}
-		firstSpace := strings.Index(summary, " ")
-		if firstSpace != -1 {
-			stackName := strings.TrimSpace(summary[:firstSpace])
+		before, _, ok := strings.Cut(summary, " ")
+		if ok {
+			stackName := strings.TrimSpace(before)
 			if strings.HasSuffix(stackName, "*") {
 				currentStack = &stackName
 				stackName = strings.TrimSuffix(stackName, "*")

@@ -19,6 +19,7 @@ import (
 	cryptorand "crypto/rand"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/blang/semver"
@@ -33,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
@@ -275,7 +277,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 		IgnoreChanges:           nil,
 		HideDiff:                nil,
 		ReplaceOnChanges:        nil,
-		ReplacementTrigger:      resource.NewNullProperty(),
+		ReplacementTrigger:      property.Value{},
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
@@ -330,7 +332,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, err
 		}
 		req := providers.NewProviderRequest(
-			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
+			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization,
+		)
 		typ, name := sdkproviders.MakeProviderType(req.Package()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
@@ -462,7 +465,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			IgnoreChanges:           nil,
 			HideDiff:                nil,
 			ReplaceOnChanges:        nil,
-			ReplacementTrigger:      resource.NewNullProperty(),
+			ReplacementTrigger:      property.Value{},
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
@@ -484,7 +487,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	for urn := range explicitProvidersByURN {
 		explicitURNs = append(explicitURNs, urn)
 	}
-	sort.Slice(explicitURNs, func(a, b int) bool { return explicitURNs[a] < explicitURNs[b] })
+	slices.Sort(explicitURNs)
 
 	for _, providerURN := range explicitURNs {
 		imp := explicitProvidersByURN[providerURN]
@@ -561,7 +564,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			IgnoreChanges:           nil,
 			HideDiff:                nil,
 			ReplaceOnChanges:        nil,
-			ReplacementTrigger:      resource.NewNullProperty(),
+			ReplacementTrigger:      property.Value{},
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
@@ -710,7 +713,8 @@ func (i *importer) importResources(ctx context.Context) error {
 				return err
 			}
 			req := providers.NewProviderRequest(
-				pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
+				pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization,
+			)
 			typ, name := sdkproviders.MakeProviderType(req.Package()), req.DefaultName()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}
@@ -759,7 +763,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			IgnoreChanges:           nil,
 			ReplaceOnChanges:        nil,
 			HideDiff:                nil,
-			ReplacementTrigger:      resource.NewNullProperty(),
+			ReplacementTrigger:      property.Value{},
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,

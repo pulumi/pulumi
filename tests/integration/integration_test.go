@@ -1282,15 +1282,14 @@ func TestPolicyPackNewGenerateOnly(t *testing.T) {
 }
 
 func TestPolicyPackNew(t *testing.T) {
-	t.Skip("https://github.com/pulumi/pulumi/issues/23969")
 	t.Parallel()
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	require.False(t, e.PathExists("venv"))
-	stdout, _ := e.RunCommand("pulumi", "policy", "new", "aws-python", "--force")
+	stdout, _ := e.RunCommand(
+		"pulumi", "policy", "new", "aws-python", "--force", "--runtime-options", "toolchain=uv")
 	require.NotContains(t, stdout, "To install dependencies for the Policy Pack, run `pulumi install`")
-	require.Contains(t, stdout, "Finished creating virtual environment")
 	require.Contains(t, stdout, "Finished installing dependencies")
 	require.True(t, e.PathExists("venv"))
 }

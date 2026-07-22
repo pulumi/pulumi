@@ -24,8 +24,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// In the tests below we use temporary directories and then expect DetectProjectAndPath to return a path to
-// that directory. However DetectProjectAndPath will do symlink resolution, while t.TempDir() normally does
+// In the tests below we use temporary directories and then expect detectProjectAndPath to return a path to
+// that directory. However detectProjectAndPath will do symlink resolution, while t.TempDir() normally does
 // not. This can lead to asserts especially on macos where TmpDir will have returned /var/folders/XX, but
 // after sym link resolution that is /private/var/folders/XX.
 func mkTempDir(t *testing.T) string {
@@ -46,7 +46,7 @@ func TestDetectProjectAndPath(t *testing.T) {
 	err := os.WriteFile(yamlPath, []byte(yamlContents), 0o600)
 	require.NoError(t, err)
 
-	project, path, err := DetectProjectAndPath()
+	project, path, err := detectProjectAndPath()
 	require.NoError(t, err)
 	assert.Equal(t, yamlPath, path)
 	assert.Equal(t, tokens.PackageName("some_project"), project.Name)
@@ -154,7 +154,8 @@ func TestProjectStackPath(t *testing.T) {
 			err := os.WriteFile(
 				filepath.Join(tmpDir, "Pulumi.yaml"),
 				[]byte(tt.yamlContents),
-				0o600)
+				0o600,
+			)
 			require.NoError(t, err)
 
 			_, path, err := DetectProjectStackPath("my_stack")
@@ -184,7 +185,7 @@ func TestDetectProjectUnreadableParent(t *testing.T) {
 	t.Chdir(currentDir)
 	require.NoError(t, err)
 
-	_, _, err = DetectProjectAndPath()
+	_, _, err = detectProjectAndPath()
 	assert.ErrorIs(t, err, ErrProjectNotFound)
 }
 

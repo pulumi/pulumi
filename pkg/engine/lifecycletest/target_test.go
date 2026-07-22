@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -878,12 +879,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 }
 
 func contains(list []string, entry string) bool {
-	for _, e := range list {
-		if e == entry {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, entry)
 }
 
 func updateInvalidTarget(t *testing.T) {

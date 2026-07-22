@@ -370,7 +370,7 @@ func TestCrashTolerance(t *testing.T) {
 	data := buf.Bytes()
 	keyLen := int(data[5])<<8 | int(data[6])
 	pos := 4 + 1 + 2 + keyLen
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		chunkPayloadLen := int(binary.BigEndian.Uint32(data[pos : pos+4]))
 		pos += 4 + chunkPayloadLen
 	}

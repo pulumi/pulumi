@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -2092,7 +2094,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		IgnoreChanges:           s.new.IgnoreChanges,
 		HideDiff:                s.new.HideDiff,
 		ReplaceOnChanges:        s.new.ReplaceOnChanges,
-		ReplacementTrigger:      resource.NewNullProperty(),
+		ReplacementTrigger:      property.Value{},
 		RefreshBeforeUpdate:     s.new.RefreshBeforeUpdate,
 		ViewOf:                  s.new.ViewOf,
 		ResourceHooks:           nil,
@@ -2382,12 +2384,7 @@ func ConstrainedTo(op display.StepOp, constraint display.StepOp) bool {
 	case OpReplace, OpCreateReplacement, OpDeleteReplaced:
 		allowed = []display.StepOp{OpSame, OpUpdate, constraint}
 	}
-	for _, candidate := range allowed {
-		if candidate == op {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(allowed, op)
 }
 
 // getProvider fetches the provider for the given step.

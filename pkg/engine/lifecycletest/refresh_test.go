@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -731,13 +732,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 }
 
 func containsURN(urns []resource.URN, urn resource.URN) bool {
-	for _, val := range urns {
-		if val == urn {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(urns, urn)
 }
 
 // Tests basic refresh functionality.

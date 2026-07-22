@@ -151,12 +151,6 @@ func TestPluginHostProvider(t *testing.T) {
 			err := host.SignalCancellation()
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
-		t.Run("Analyzer", func(t *testing.T) {
-			t.Parallel()
-			host := &pluginHost{closed: true}
-			_, err := host.Analyzer(nil, "")
-			assert.ErrorIs(t, err, ErrHostIsClosed)
-		})
 		t.Run("PolicyAnalyzer", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}

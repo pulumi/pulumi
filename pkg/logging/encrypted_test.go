@@ -73,9 +73,7 @@ func TestUpgradeToEncryptedDoesNotDeadlock(t *testing.T) {
 	stop := make(chan struct{})
 	var wg sync.WaitGroup
 	for range 4 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for {
 				select {
 				case <-stop:
@@ -84,7 +82,7 @@ func TestUpgradeToEncryptedDoesNotDeadlock(t *testing.T) {
 					logging.Infof("concurrent log line")
 				}
 			}
-		}()
+		})
 	}
 
 	done := make(chan error, 1)
@@ -205,9 +203,7 @@ func TestRenameWhileWriting(t *testing.T) {
 	stop := make(chan struct{})
 	var wg sync.WaitGroup
 	for range 4 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for {
 				select {
 				case <-stop:
@@ -216,7 +212,7 @@ func TestRenameWhileWriting(t *testing.T) {
 					logging.Infof("concurrent log line")
 				}
 			}
-		}()
+		})
 	}
 
 	require.NoError(t, l.rename("gzip-stack", "gzip-update"))

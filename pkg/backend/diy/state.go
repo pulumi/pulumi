@@ -605,10 +605,7 @@ func (b *diyBackend) getHistory(
 			page = 1
 		}
 		start = (page - 1) * pageSize
-		end = start + pageSize - 1
-		if end > len(historyEntries)-1 {
-			end = len(historyEntries) - 1
-		}
+		end = min(start+pageSize-1, len(historyEntries)-1)
 	}
 
 	var updates []backend.UpdateInfo

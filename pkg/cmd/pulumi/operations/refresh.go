@@ -47,7 +47,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func NewRefreshCmd() *cobra.Command {
@@ -253,7 +252,7 @@ func NewRefreshCmd() *cobra.Command {
 			// where config may diverge between branches.
 			if runProgram && !skipConfigValidation {
 				// Running the program: validate the stack config (and apply project defaults).
-				configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 					ctx,
 					stackName,
 					proj,
@@ -267,7 +266,7 @@ func NewRefreshCmd() *cobra.Command {
 			} else {
 				// The program isn't run, or validation was explicitly skipped: still apply
 				// project config defaults onto the stack config, but skip validation.
-				if configErr := workspace.ApplyProjectConfig(
+				if configErr := pkgWorkspace.ApplyProjectConfig(
 					ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
 					return fmt.Errorf("applying stack config: %w", configErr)
 				}

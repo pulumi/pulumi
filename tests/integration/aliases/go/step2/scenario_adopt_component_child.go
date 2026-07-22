@@ -1,6 +1,5 @@
 // Copyright 2026, Pulumi Corporation.  All rights reserved.
 //go:build !all
-// +build !all
 
 package main
 

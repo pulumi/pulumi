@@ -15,14 +15,16 @@
 package encoding
 
 import (
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -63,7 +65,7 @@ func TestYAMLEdit(t *testing.T) {
 
 			docNode := YAMLSyntax{Node: &doc}
 			for _, edit := range edits.Edits {
-				pathStr := maps.Keys(edit)[0]
+				pathStr := slices.Collect(maps.Keys(edit))[0]
 
 				path, err := resource.ParsePropertyPath(pathStr)
 				require.NoError(t, err)

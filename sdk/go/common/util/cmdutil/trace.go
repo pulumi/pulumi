@@ -496,9 +496,9 @@ func rootSpanTags() []opentracing.Tag {
 		envVarName := strings.ToLower(pair[0])
 		envVarValue := pair[1]
 
-		if strings.HasPrefix(envVarName, envPrefix) {
+		if after, ok := strings.CutPrefix(envVarName, envPrefix); ok {
 			tags = append(tags, opentracing.Tag{
-				Key:   strings.TrimPrefix(envVarName, envPrefix),
+				Key:   after,
 				Value: envVarValue,
 			})
 		}

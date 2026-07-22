@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"maps"
 	"math/bits"
 	"net/http"
 	"net/url"
@@ -3414,9 +3415,7 @@ func (pc *Client) ListTemplates(
 			if continuationToken != nil {
 				// Clone so we don't mutate the captured map between iterations.
 				pageQuery = url.Values{}
-				for k, v := range query {
-					pageQuery[k] = v
-				}
+				maps.Copy(pageQuery, query)
 				pageQuery.Set("continuationToken", *continuationToken)
 			}
 			var resp apitype.ListTemplatesResponse

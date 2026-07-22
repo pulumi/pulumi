@@ -43,7 +43,9 @@ type ConvertStateRequest struct {
 	MapperTarget string `protobuf:"bytes,1,opt,name=mapper_target,json=mapperTarget,proto3" json:"mapper_target,omitempty"`
 	// the args passed to `pulumi import` for this conversion. Normally used to specifiy a state file to
 	// import from.
-	Args          []string `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
+	Args []string `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
+	// The target of a codegen.LoaderServer to use for loading schemas.
+	LoaderTarget  string `protobuf:"bytes,3,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -90,6 +92,13 @@ func (x *ConvertStateRequest) GetArgs() []string {
 		return x.Args
 	}
 	return nil
+}
+
+func (x *ConvertStateRequest) GetLoaderTarget() string {
+	if x != nil {
+		return x.LoaderTarget
+	}
+	return ""
 }
 
 // A ResourceImport specifies a resource to import.
@@ -764,10 +773,11 @@ var File_pulumi_converter_proto protoreflect.FileDescriptor
 
 const file_pulumi_converter_proto_rawDesc = "" +
 	"\n" +
-	"\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\"N\n" +
+	"\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\"s\n" +
 	"\x13ConvertStateRequest\x12#\n" +
 	"\rmapper_target\x18\x01 \x01(\tR\fmapperTarget\x12\x12\n" +
-	"\x04args\x18\x02 \x03(\tR\x04args\"\xb8\x04\n" +
+	"\x04args\x18\x02 \x03(\tR\x04args\x12#\n" +
+	"\rloader_target\x18\x03 \x01(\tR\floaderTarget\"\xb8\x04\n" +
 	"\x0eResourceImport\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x0e\n" +

@@ -11,13 +11,11 @@ replace (
 
 require (
 	github.com/BurntSushi/toml v1.6.0
-	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/aws/aws-sdk-go-v2 v1.41.11
 	github.com/aws/aws-sdk-go-v2/config v1.32.20
 	github.com/aws/aws-sdk-go-v2/service/sts v1.42.3
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/creack/pty v1.1.24
-	github.com/golang/protobuf v1.5.4
 	github.com/google/go-dap v0.12.0
 	github.com/grapl-security/pulumi-hcp/sdk v0.1.14
 	github.com/hexops/autogold v1.3.0
@@ -118,7 +116,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
 	github.com/charmbracelet/lipgloss v1.1.0 // indirect
-	github.com/charmbracelet/x/ansi v0.11.7 // indirect
+	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/charmbracelet/x/cellbuf v0.0.15 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/cheggaaa/pb v1.0.29 // indirect
@@ -281,7 +279,6 @@ require (
 	gocloud.dev v0.46.0 // indirect
 	gocloud.dev/secrets/hashivault v0.46.0 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
-	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/net v0.57.0
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect

@@ -43,6 +43,9 @@ func (c *testConverter) ConvertState(
 	if req.MapperTarget != "localhost:1234" {
 		return nil, fmt.Errorf("unexpected MapperTarget: %s", req.MapperTarget)
 	}
+	if req.LoaderTarget != "localhost:4321" {
+		return nil, fmt.Errorf("unexpected LoaderTarget: %s", req.LoaderTarget)
+	}
 
 	diags := hcl.Diagnostics{
 		{
@@ -154,6 +157,7 @@ func TestConverterServer_State(t *testing.T) {
 	resp, err := server.ConvertState(t.Context(), &pulumirpc.ConvertStateRequest{
 		Args:         []string{"arg1", "arg2"},
 		MapperTarget: "localhost:1234",
+		LoaderTarget: "localhost:4321",
 	})
 
 	require.NoError(t, err)

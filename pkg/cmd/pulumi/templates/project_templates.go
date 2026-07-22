@@ -34,6 +34,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
 const (
@@ -203,7 +205,7 @@ func listTemplates[T any](
 		if info.IsDir() {
 			name := info.Name()
 
-			if name == workspace.GitDir {
+			if name == pkgWorkspace.GitDir {
 				continue
 			}
 
@@ -624,13 +626,13 @@ func GetTemplateDir(templateKind TemplateKind) (string, error) {
 	switch templateKind {
 	case TemplateKindPolicyPack:
 		override = env.PolicyTemplatePath.Value()
-		classicDir = workspace.TemplatePolicyDir
+		classicDir = pkgWorkspace.TemplatePolicyDir
 	case TemplateKindPackage:
 		override = env.PackageTemplatePath.Value()
-		classicDir = workspace.TemplatePackageDir
+		classicDir = pkgWorkspace.TemplatePackageDir
 	case TemplateKindPulumiProject:
 		override = env.TemplatePath.Value()
-		classicDir = workspace.TemplateDir
+		classicDir = pkgWorkspace.TemplateDir
 	default:
 		contract.Failf("unhandled TemplateKind: %v", templateKind)
 	}
@@ -660,7 +662,7 @@ func walkFiles(sourceDir string, destDir string, projectName string,
 
 		if entry.IsDir() {
 			// Ignore the .git directory.
-			if name == workspace.GitDir {
+			if name == pkgWorkspace.GitDir {
 				continue
 			}
 
@@ -795,12 +797,9 @@ func writeAllBytes(filename string, bytes []byte, overwrite bool, mode os.FileMo
 func isBinary(bytes []byte) bool {
 	const firstFewBytes = 8000
 
-	length := len(bytes)
-	if firstFewBytes < length {
-		length = firstFewBytes
-	}
+	length := min(firstFewBytes, len(bytes))
 
-	for i := 0; i < length; i++ {
+	for i := range length {
 		if bytes[i] == 0 {
 			return true
 		}

@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestReplacementTrigger(t *testing.T) {
@@ -72,7 +73,8 @@ func TestReplacementTrigger(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
 			for _, e := range events {
 				if e.Type == ResourcePreEvent && e.Payload().(ResourcePreEventPayload).Metadata.URN.Name() == "resA" {
@@ -90,7 +92,8 @@ func TestReplacementTrigger(t *testing.T) {
 
 	value = resource.NewPropertyValue("second")
 
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
 			operations := []display.StepOp{}
 
@@ -152,7 +155,8 @@ func TestReplacementTriggerWithSecret(t *testing.T) {
 	// Making this value secret should not trigger a replace, as the underlying value is still the same.
 	value = resource.MakeSecret(value)
 
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
 			for _, e := range events {
 				if e.Type == ResourcePreEvent && e.Payload().(ResourcePreEventPayload).Metadata.URN.Name() == "resA" {
@@ -210,7 +214,8 @@ func TestReplacementTriggerWithDeepSecret(t *testing.T) {
 	// Making the inner value secret should not trigger a replace, as the underlying value is still the same.
 	value = resource.NewPropertyValue([]resource.PropertyValue{resource.MakeSecret(resource.NewPropertyValue("first"))})
 
-	snap, err = lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
 			for _, e := range events {
 				if e.Type == ResourcePreEvent && e.Payload().(ResourcePreEventPayload).Metadata.URN.Name() == "resA" {
@@ -450,7 +455,7 @@ func TestReplacementTriggerOutputWrappedPlainValue(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
 	// The snapshot stores the plain string.
-	assert.Equal(t, resource.NewPropertyValue("first"), snap.Resources[1].ReplacementTrigger)
+	assert.Equal(t, property.New("first"), snap.Resources[1].ReplacementTrigger)
 
 	// Second run: same inner value wrapped in a known output. This should NOT trigger a replacement because the
 	// underlying value is identical.
