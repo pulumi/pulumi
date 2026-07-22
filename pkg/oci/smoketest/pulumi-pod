@@ -40,12 +40,21 @@
 #   PULUMI_POD_MOUNT_DIR        host dir mounted at /workspace       (default: cwd) — mount a
 #                               repo root here when the program reads files from a parent dir
 #   PULUMI_POD_PROJECT_SUBPATH  Pulumi.yaml dir relative to the mount (default: the mount root)
-#   PULUMI_POD_PLUGIN_REGISTRY  registry the engine pulls provider images from (host[:port]);
-#                               unset -> a shared local pull-through proxy is started (below)
+#   PULUMI_POD_PUBLIC_REGISTRY   host the PUBLIC source resolves to — where an unpinned
+#                               (first-party) provider is pulled from  (default: the local
+#                               proxy's public port, localhost:5005)
+#   PULUMI_POD_PRIVATE_REGISTRY  host the PRIVATE source resolves to — where a local component
+#                               build is tagged and `package build`/`publish` send output
+#                               (default: the local proxy's private port, localhost:5006)
+#   PULUMI_POD_REGISTRY_ENDPOINTS  advanced: address layer (identity-host=address map,
+#                               comma-separated) redirecting a PULL without changing the ref —
+#                               for a registry the docker daemon can't dial directly (mirrors,
+#                               containerd). Unset for the localhost-port defaults above
 #   PULUMI_POD_PROXY_IMAGE      image the proxy runs from  (default: the engine image — the
 #                               proxy is that same pulumi-pod image, run with a different entrypoint)
-#   PULUMI_POD_PROXY            'auto' (default) starts the proxy when no registry is set; 'off' disables it
-#   PULUMI_POD_PROXY_PORT       host port the proxy publishes                        (default: 5005)
+#   PULUMI_POD_PROXY            'auto' (default) starts the proxy unless both registries are set; 'off' disables it
+#   PULUMI_POD_PROXY_PORT       host port for the PUBLIC (synthesis) proxy            (default: 5005)
+#   PULUMI_POD_PROXY_PRIVATE_PORT  host port for the PRIVATE (read-write) proxy       (default: 5006)
 # The whole host environment is forwarded into the engine container, minus a
 # denylist of host-context vars (PATH/HOME/TMPDIR/…, DOCKER_HOST, and the vars this
 # wrapper sets itself). So credentials (AWS_*, GOOGLE_*, …), PULUMI_BACKEND_URL,
@@ -79,6 +88,7 @@ POD_ID="$$-${RANDOM}"
 NET="pulumi-pod-$POD_ID"
 ENGINE_NAME="$NET-engine"
 POD_LABEL="com.pulumi.pod=$POD_ID"
+BUILD_VOL="pulumi-pod-build-$POD_ID"   # scratch for build OCI layouts; mounted below
 
 cleanup() {
   # The engine container is --rm; this reclaims the network and any provider/program
@@ -117,11 +127,12 @@ else
   fi
 fi
 
-# Provider images come from an OCI registry the engine pulls from
-# (PULUMI_POD_PLUGIN_REGISTRY threads through the container host's provider-image
-# resolution). Unless the caller points at their own registry, run a shared, long-lived
-# pull-through proxy that synthesizes any released provider image on demand from
-# get.pulumi.com — so no provider images need pre-publishing. The proxy is shared infra
+# Provider images come from an OCI registry the engine pulls from. Unless the caller
+# points at their own registries, run a shared, long-lived proxy: its public port
+# synthesizes any released provider image on demand from get.pulumi.com (no pre-publishing)
+# and its private port holds your own `package publish`es. The two registry knobs below name
+# those ports directly (localhost:<port>), which the docker daemon reaches as loopback — so
+# no address layer is needed here. The proxy is shared infra
 # (one per host, not per pod): started on first use and left running (stop it with
 # `docker rm -f pulumi-pod-registry-proxy`). It degrades gracefully — if it can't be
 # started, the run continues and the engine uses whatever provider images are already
@@ -131,7 +142,14 @@ PROXY_MODE="${PULUMI_POD_PROXY:-auto}"
 # defaults to the engine image; override PULUMI_POD_PROXY_IMAGE only to pin a different one.
 PROXY_IMAGE="${PULUMI_POD_PROXY_IMAGE:-$ENGINE_IMAGE}"
 PROXY_NAME="pulumi-pod-registry-proxy"
-PROXY_PORT="${PULUMI_POD_PROXY_PORT:-5005}"
+# Two sources on two ports (source ≈ registry host): the PUBLIC port synthesizes released
+# first-party pulumi/pulumi-provider-* on demand (read-only); the PRIVATE port is a plain
+# read-write registry — where `package publish` pushes your own packages. Keeping them
+# apart is what lets a program consume a first-party package AND a private one at once,
+# each from its own source. The private port keeps the historic default port so a pin
+# recorded against it stays valid.
+PUBLIC_PORT="${PULUMI_POD_PROXY_PORT:-5005}"
+PRIVATE_PORT="${PULUMI_POD_PROXY_PRIVATE_PORT:-$((PUBLIC_PORT + 1))}"
 
 ensure_registry_proxy() {
   # Reuse a running proxy only if it is running the image we would start now; otherwise
@@ -147,13 +165,15 @@ ensure_registry_proxy() {
     return 0
   fi
   docker rm -f "$PROXY_NAME" >/dev/null 2>&1 || true
-  echo "pulumi-pod: starting shared provider registry proxy ($PROXY_NAME) on localhost:$PROXY_PORT" >&2
+  echo "pulumi-pod: starting shared provider registry proxy ($PROXY_NAME): public synth on localhost:$PUBLIC_PORT, private on localhost:$PRIVATE_PORT" >&2
   docker run -d --name "$PROXY_NAME" --label "com.pulumi.pod-proxy=1" \
-    --entrypoint registry-proxy -p "$PROXY_PORT:5000" "$PROXY_IMAGE" >/dev/null 2>&1 || return 1
-  # Wait for the distribution API to answer (if curl is present; else give it a moment).
+    --entrypoint registry-proxy -e PROXY_PRIVATE_ADDR=:5001 \
+    -p "$PUBLIC_PORT:5000" -p "$PRIVATE_PORT:5001" "$PROXY_IMAGE" >/dev/null 2>&1 || return 1
+  # Wait for both distribution APIs to answer (if curl is present; else give it a moment).
   if command -v curl >/dev/null 2>&1; then
     for _ in $(seq 1 30); do
-      curl -sf "http://localhost:$PROXY_PORT/v2/" >/dev/null 2>&1 && return 0
+      curl -sf "http://localhost:$PUBLIC_PORT/v2/" >/dev/null 2>&1 &&
+        curl -sf "http://localhost:$PRIVATE_PORT/v2/" >/dev/null 2>&1 && return 0
       sleep 0.5
     done
     return 1
@@ -162,12 +182,26 @@ ensure_registry_proxy() {
   return 0
 }
 
-PLUGIN_REGISTRY="${PULUMI_POD_PLUGIN_REGISTRY:-}"
-if [ -z "$PLUGIN_REGISTRY" ] && [ "$PROXY_MODE" != "off" ]; then
+# The two registry sources, as routable hosts. The engine STAMPS these onto the refs it
+# qualifies: PUBLIC_REGISTRY is where an unpinned first-party provider resolves; PRIVATE_REGISTRY
+# is where a local component build is tagged and `package build`/publish send output. Neither ever
+# rewrites a pin — a pin names its own host and is used verbatim. They default to the local proxy's
+# loopback ports, which the docker daemon reaches directly (loopback is auto-insecure), so no
+# address layer is involved. Set either to point at your own registry instead.
+PUBLIC_REGISTRY="${PULUMI_POD_PUBLIC_REGISTRY:-}"
+PRIVATE_REGISTRY="${PULUMI_POD_PRIVATE_REGISTRY:-}"
+# The OPTIONAL address layer (the docker analog of containerd's hosts.toml): a stable identity
+# host -> where it is actually pulled from, for a registry the daemon can't dial directly (a
+# mirror, or CRI's gateway). Unused by the localhost default; forwarded verbatim when set.
+REGISTRY_ENDPOINTS="${PULUMI_POD_REGISTRY_ENDPOINTS:-}"
+# Stand up the shared local proxy and point any unset source at its loopback port — unless the
+# caller has named both registries, or disabled the proxy.
+if [ "$PROXY_MODE" != "off" ] && { [ -z "$PUBLIC_REGISTRY" ] || [ -z "$PRIVATE_REGISTRY" ]; }; then
   if ensure_registry_proxy; then
-    PLUGIN_REGISTRY="localhost:$PROXY_PORT"
+    : "${PUBLIC_REGISTRY:=localhost:$PUBLIC_PORT}"
+    : "${PRIVATE_REGISTRY:=localhost:$PRIVATE_PORT}"
   else
-    echo "pulumi-pod: provider registry proxy unavailable; the engine will use only locally-present provider images (set PULUMI_POD_PLUGIN_REGISTRY to use a registry directly)" >&2
+    echo "pulumi-pod: provider registry proxy unavailable; the engine will use only locally-present provider images (set PULUMI_POD_PUBLIC_REGISTRY/PULUMI_POD_PRIVATE_REGISTRY to reach registries directly)" >&2
   fi
 fi
 
@@ -192,7 +226,8 @@ fwd=()
 for name in $(compgen -e); do
   case "$name" in
     PATH | HOME | PWD | OLDPWD | TMPDIR | SHLVL | TERM | HOSTNAME | DOCKER_HOST | PYTHONPATH | NODE_PATH) continue ;;
-    PULUMI_HOME | PULUMI_POD_MODE | PULUMI_POD_NETWORK | PULUMI_POD_ADVERTISE_HOST | PULUMI_POD_ID | PULUMI_POD_PLUGIN_REGISTRY) continue ;;
+    PULUMI_HOME | PULUMI_POD_MODE | PULUMI_POD_NETWORK | PULUMI_POD_ADVERTISE_HOST | PULUMI_POD_ID) continue ;;
+    PULUMI_POD_PUBLIC_REGISTRY | PULUMI_POD_PRIVATE_REGISTRY | PULUMI_POD_REGISTRY_ENDPOINTS) continue ;;
   esac
   fwd+=(-e "$name=${!name}")
 done
@@ -201,9 +236,16 @@ done
 if [ -z "${PULUMI_BACKEND_URL:-}" ] && [ -z "${PULUMI_ACCESS_TOKEN:-}" ]; then
   fwd+=(-e "PULUMI_BACKEND_URL=file://$POD_HOME")
 fi
-# Point the engine at the resolved provider registry (the local proxy, or the caller's).
-if [ -n "$PLUGIN_REGISTRY" ]; then
-  fwd+=(-e "PULUMI_POD_PLUGIN_REGISTRY=$PLUGIN_REGISTRY")
+# Give the engine its two registry sources (public/private), and the optional address layer
+# when the caller set one. Empty values are omitted so the engine falls back to its own defaults.
+if [ -n "$PUBLIC_REGISTRY" ]; then
+  fwd+=(-e "PULUMI_POD_PUBLIC_REGISTRY=$PUBLIC_REGISTRY")
+fi
+if [ -n "$PRIVATE_REGISTRY" ]; then
+  fwd+=(-e "PULUMI_POD_PRIVATE_REGISTRY=$PRIVATE_REGISTRY")
+fi
+if [ -n "$REGISTRY_ENDPOINTS" ]; then
+  fwd+=(-e "PULUMI_POD_REGISTRY_ENDPOINTS=$REGISTRY_ENDPOINTS")
 fi
 
 # Run the command in the engine container (its ENTRYPOINT is `pulumi`). Capture the
@@ -220,6 +262,14 @@ tty_flag=()
 if [ -t 0 ] && [ -t 1 ]; then
   tty_flag=(-t)
 fi
+
+# A scratch volume for build outputs — the OCI image layouts that package builds emit. It is
+# mounted into the engine and inherited by builder containers via --volumes-from, so a build
+# with a WIDENED context (build.context: .., a monorepo) writes its layout HERE, outside the
+# source tree, rather than into a package-dir sibling that the widened context would then
+# sweep back into its own build. Labelled, so the cleanup trap reaps it with the rest of the pod.
+docker volume create --label "$POD_LABEL" "$BUILD_VOL" >/dev/null
+
 status=0
 docker run --rm -i ${tty_flag[@]+"${tty_flag[@]}"} \
   --privileged \
@@ -229,6 +279,8 @@ docker run --rm -i ${tty_flag[@]+"${tty_flag[@]}"} \
   --label "$POD_LABEL" \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v "$MOUNT_DIR:/workspace" \
+  -v "$BUILD_VOL:/pulumi-build" \
+  -e PULUMI_POD_BUILD_DIR=/pulumi-build \
   -w "$WORKDIR" \
   -e PULUMI_HOME="$POD_HOME" \
   -e PULUMI_POD_MODE=true \
