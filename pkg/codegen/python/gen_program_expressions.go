@@ -384,7 +384,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					moduleNameOverrides = pkgInfo.ModuleNameOverrides
 				}
 			}
-			pkg := strings.ReplaceAll(components[0], "-", "_")
+			pkgName := components[0]
+			if ref := enum.(*schema.EnumType).PackageReference; ref != nil {
+				pkgName = ref.Name()
+			}
+			pkg := strings.ReplaceAll(pkgName, "-", "_")
 			enumName := tokenToName(to.Token)
 			if m := tokenToModule(to.Token, nil, moduleNameOverrides); m != "" {
 				modParts := strings.Split(m, "/")
@@ -538,14 +542,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		optionsBag := ""
 		if len(expr.Args) == 3 {
 			var buf bytes.Buffer
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
+			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok &&
+				len(pcl.GeneratedInvokeOptions(invokeOptions)) > 0 {
+				items := pcl.GeneratedInvokeOptions(invokeOptions)
 				if isOut {
 					g.Fgen(&buf, ", opts=pulumi.InvokeOutputOptions(")
 				} else {
 					g.Fgen(&buf, ", opts=pulumi.InvokeOptions(")
 				}
-				for i, item := range invokeOptions.Items {
-					last := i == len(invokeOptions.Items)-1
+				for i, item := range items {
+					last := i == len(items)-1
 					key := PyName(pcl.LiteralValueString(item.Key))
 					g.Fgenf(&buf, "%s=%v", key, item.Value)
 					if !last {

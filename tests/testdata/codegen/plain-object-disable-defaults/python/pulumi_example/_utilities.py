@@ -324,3 +324,11 @@ def get_plugin_download_url():
 
 def get_version():
      return _version_str
+
+async def get_package() -> str:
+	return await pulumi.runtime.register_package(
+		base_provider_name="example",
+		base_provider_version="0.0.1",
+		base_provider_download_url=get_plugin_download_url() or "",
+	)
+	

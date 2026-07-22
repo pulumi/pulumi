@@ -555,25 +555,25 @@ def get_version():
 		return nil, err
 	}
 
-	if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
+	if emitsPackageRef(pkg) {
 		// If a parameterized package is being generated then we _need_ to use package references.
 		// Extension and replacement parameterization differ only in which RegisterPackageRequest
 		// kwarg the blob is attached to: `parameterization=` vs `extension=`.
-		var baseProvider schema.BaseProvider
-		var parameter []byte
-		requestKwarg := "parameterization"
-		if pkg.Parameterization != nil {
-			baseProvider = schema.BaseProvider{Name: pkg.Parameterization.BasePlugin.Name, Version: pkg.Parameterization.BasePlugin.Version}
-			parameter = pkg.Parameterization.Parameter
-		} else {
-			baseProvider = pkg.ExtensionParameterization.BaseProvider
-			parameter = pkg.ExtensionParameterization.Parameter
-			requestKwarg = "extension"
+		// A package that is not parameterized registers under its own name and
+		// version: the reference identifies the package serving members whose
+		// tokens name a foreign package.
+		baseProvider := schema.BaseProvider{Name: pkg.Name}
+		if pkg.Version != nil {
+			baseProvider.Version = *pkg.Version
 		}
-		param := base64.StdEncoding.EncodeToString(parameter)
-		extensionArg := ""
-		if requestKwarg == "extension" {
-			extensionArg = "\n\t\textension=True,"
+		var parameterArgs string
+		switch {
+		case pkg.Parameterization != nil:
+			baseProvider = schema.BaseProvider{Name: pkg.Parameterization.BasePlugin.Name, Version: pkg.Parameterization.BasePlugin.Version}
+			parameterArgs = parameterizationArgs(pkg, pkg.Parameterization.Parameter, false)
+		case pkg.ExtensionParameterization != nil:
+			baseProvider = pkg.ExtensionParameterization.BaseProvider
+			parameterArgs = parameterizationArgs(pkg, pkg.ExtensionParameterization.Parameter, true)
 		}
 
 		_, err = fmt.Fprintf(buffer, `
@@ -581,13 +581,10 @@ async def get_package() -> str:
 	return await pulumi.runtime.register_package(
 		base_provider_name=%q,
 		base_provider_version=%q,
-		base_provider_download_url=get_plugin_download_url() or "",
-		package_name=%q,
-		package_version=get_version(),
-		base64_parameter=%q,%s
+		base_provider_download_url=get_plugin_download_url() or "",%s
 	)
 	`,
-			baseProvider.Name, baseProvider.Version, pkg.Name, param, extensionArg)
+			baseProvider.Name, baseProvider.Version, parameterArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -1639,7 +1636,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
+	if needsPackageRef(pkg, res.Token) {
 		fmt.Fprintf(w, ",\n            package_ref=_utilities.get_package()")
 	}
 	fmt.Fprintf(w, ")\n\n")
@@ -1929,7 +1926,7 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) error {
 		// If the call is on a parameterized package, make sure we pass the parameter.
 		pkg, err := fun.PackageReference.Definition()
 		contract.AssertNoErrorf(err, "can not load package definition for %s: %s", pkg.Name, err)
-		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
+		if needsPackageRef(pkg, fun.Token) {
 			trailingArgs += ", package_ref=_utilities.get_package()"
 		}
 
@@ -2073,7 +2070,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		if err != nil {
 			return err
 		}
-		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
+		if needsPackageRef(pkg, fun.Token) {
 			trailingArgs += ", package_ref=_utilities.get_package()"
 		}
 
@@ -3791,3 +3788,28 @@ func calculateDeps(parameterized bool, requires map[string]string) ([][2]string,
 
 //go:embed utilities.py
 var utilitiesFile string
+
+// needsPackageRef reports whether a registration for the given token must
+// carry the package's reference: parameterized packages identify themselves
+// that way, and so do members whose token names a foreign package, since the
+// token alone does not name the package that serves them.
+func needsPackageRef(pkg *schema.Package, token string) bool {
+	return pkg.Parameterization != nil || pkg.ExtensionParameterization != nil || pkg.IsForeignToken(token)
+}
+
+// emitsPackageRef reports whether a package's SDK includes the helper that
+// registers it and returns its reference.
+func emitsPackageRef(pkg *schema.Package) bool {
+	return pkg.Parameterization != nil || pkg.ExtensionParameterization != nil || pkg.HasForeignTokens()
+}
+
+// parameterizationArgs renders the register_package kwargs that carry a
+// package's parameterization.
+func parameterizationArgs(pkg *schema.Package, parameter []byte, extension bool) string {
+	args := fmt.Sprintf("\n\t\tpackage_name=%q,\n\t\tpackage_version=get_version(),\n\t\tbase64_parameter=%q,",
+		pkg.Name, base64.StdEncoding.EncodeToString(parameter))
+	if extension {
+		args += "\n\t\textension=True,"
+	}
+	return args
+}
