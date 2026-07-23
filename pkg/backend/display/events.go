@@ -263,6 +263,19 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Error: p.Error,
 		}
 
+	case engine.StateMigrationEvent:
+		p, ok := e.Payload().(engine.StateMigrationEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.StateMigrationEvent = &apitype.StateMigrationEvent{
+			URN:        string(p.URN),
+			Migrated:   p.Migrated,
+			Added:      urnsToStrings(p.Added),
+			Removed:    urnsToStrings(p.Removed),
+			Successors: successorURNsToStrings(p.Successors),
+		}
+
 	default:
 		return apiEvent, fmt.Errorf("unknown event type %q", e.Type)
 	}
@@ -531,6 +544,16 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			Error: p.Error,
 		})
 
+	case apiEvent.StateMigrationEvent != nil:
+		p := apiEvent.StateMigrationEvent
+		event = engine.NewEvent(engine.StateMigrationEventPayload{
+			URN:        resource.URN(p.URN),
+			Migrated:   p.Migrated,
+			Added:      stringsToURNs(p.Added),
+			Removed:    stringsToURNs(p.Removed),
+			Successors: stringsToSuccessorURNs(p.Successors),
+		})
+
 	default:
 		return event, errors.New("unknown event type")
 	}
@@ -634,4 +657,48 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		InitErrors:     md.InitErrors,
 		HideDiffs:      md.HideDiffs,
 	}
+}
+
+func urnsToStrings(urns []resource.URN) []string {
+	if urns == nil {
+		return nil
+	}
+	strs := make([]string, len(urns))
+	for i, urn := range urns {
+		strs[i] = string(urn)
+	}
+	return strs
+}
+
+func stringsToURNs(strs []string) []resource.URN {
+	if strs == nil {
+		return nil
+	}
+	urns := make([]resource.URN, len(strs))
+	for i, s := range strs {
+		urns[i] = resource.URN(s)
+	}
+	return urns
+}
+
+func successorURNsToStrings(successors map[resource.URN]resource.URN) map[string]string {
+	if successors == nil {
+		return nil
+	}
+	result := make(map[string]string, len(successors))
+	for source, target := range successors {
+		result[string(source)] = string(target)
+	}
+	return result
+}
+
+func stringsToSuccessorURNs(successors map[string]string) map[resource.URN]resource.URN {
+	if successors == nil {
+		return nil
+	}
+	result := make(map[resource.URN]resource.URN, len(successors))
+	for source, target := range successors {
+		result[resource.URN(source)] = resource.URN(target)
+	}
+	return result
 }

@@ -65,6 +65,7 @@ type ResourceRow interface {
 	RecordDiagEvent(diagEvent engine.Event)
 	RecordPolicyViolationEvent(diagEvent engine.Event)
 	RecordPolicyRemediationEvent(diagEvent engine.Event)
+	RecordStateMigrationEvent(event engine.Event)
 }
 
 // Implementation of a Row, used for the header of the grid.
@@ -135,6 +136,7 @@ type resourceRowData struct {
 	diagInfo                  *DiagInfo
 	policyPayloads            []engine.PolicyViolationEventPayload
 	policyRemediationPayloads []engine.PolicyRemediationEventPayload
+	stateMigrationPayloads    []engine.StateMigrationEventPayload
 
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
@@ -250,6 +252,12 @@ func (data *resourceRowData) PolicyRemediationPayloads() []engine.PolicyRemediat
 func (data *resourceRowData) RecordPolicyRemediationEvent(event engine.Event) {
 	tPayload := event.Payload().(engine.PolicyRemediationEventPayload)
 	data.policyRemediationPayloads = append(data.policyRemediationPayloads, tPayload)
+}
+
+// RecordStateMigrationEvent records a state migration with the resourceRowData.
+func (data *resourceRowData) RecordStateMigrationEvent(event engine.Event) {
+	payload := event.Payload().(engine.StateMigrationEventPayload)
+	data.stateMigrationPayloads = append(data.stateMigrationPayloads, payload)
 }
 
 type column int
@@ -413,6 +421,10 @@ func (data *resourceRowData) getInfoColumn() string {
 		appendDiagMessage("[" + changes + "]")
 	}
 
+	for _, migration := range data.stateMigrationPayloads {
+		appendDiagMessage("[" + renderStateMigration(migration, data.display.opts) + "]")
+	}
+
 	diagInfo := data.diagInfo
 	if data.display.done.Load() {
 		// If we are done, show a summary of how many messages were printed.
@@ -562,4 +574,65 @@ func writePropertyKeys(b io.StringWriter, keys []string, op display.StepOp) {
 
 		writeString(b, colors.Reset)
 	}
+}
+
+// stateMigrationDescription produces a compact description of a state migration. Successor mappings are grouped
+// by destination so an N-to-1 migration reads naturally, e.g. "state migrated: left, right → unified".
+func stateMigrationDescription(payload engine.StateMigrationEventPayload, opts Options) string {
+	sourcesByTarget := make(map[resource.URN][]resource.URN)
+	mappedSources := make(map[resource.URN]bool, len(payload.Successors))
+	mappedTargets := make(map[resource.URN]bool, len(payload.Successors))
+	for source, target := range payload.Successors {
+		sourcesByTarget[target] = append(sourcesByTarget[target], source)
+		mappedSources[source] = true
+		mappedTargets[target] = true
+	}
+
+	targets := make([]resource.URN, 0, len(sourcesByTarget))
+	for target := range sourcesByTarget {
+		targets = append(targets, target)
+	}
+	sort.Slice(targets, func(i, j int) bool { return targets[i] < targets[j] })
+
+	details := make([]string, 0, len(targets)+2)
+	for _, target := range targets {
+		sources := sourcesByTarget[target]
+		sort.Slice(sources, func(i, j int) bool { return sources[i] < sources[j] })
+		sourceNames := make([]string, len(sources))
+		for i, source := range sources {
+			sourceNames[i] = resourceText(source, opts)
+		}
+		details = append(details,
+			fmt.Sprintf("%s → %s", strings.Join(sourceNames, ", "), resourceText(target, opts)))
+	}
+
+	added := 0
+	for _, urn := range payload.Added {
+		if !mappedTargets[urn] {
+			added++
+		}
+	}
+	if added > 0 {
+		details = append(details, fmt.Sprintf("+%d added", added))
+	}
+
+	removed := 0
+	for _, urn := range payload.Removed {
+		if !mappedSources[urn] {
+			removed++
+		}
+	}
+	if removed > 0 {
+		details = append(details, fmt.Sprintf("%d removed from state", removed))
+	}
+
+	if len(details) == 0 {
+		return "state migrated"
+	}
+	return "state migrated: " + strings.Join(details, "; ")
+}
+
+// renderStateMigration colorizes the compact description shown in a resource row's info column.
+func renderStateMigration(payload engine.StateMigrationEventPayload, opts Options) string {
+	return colors.SpecInfo + stateMigrationDescription(payload, opts) + colors.Reset
 }

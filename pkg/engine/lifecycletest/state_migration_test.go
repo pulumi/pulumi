@@ -274,6 +274,22 @@ func TestStateMigrationRenameChild(t *testing.T) {
 	snap, err = runUpdate(t, env.plan, snap,
 		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
 			assert.Equal(t, map[display.StepOp]int{deploy.OpSame: 3}, successOps(entries))
+			var migrationEvents []StateMigrationEventPayload
+			for _, e := range events {
+				if e.Type == StateMigrationEvent {
+					migrationEvents = append(migrationEvents, e.Payload().(StateMigrationEventPayload))
+				}
+			}
+			// The applied migration is reported through a dedicated engine event.
+			require.Len(t, migrationEvents, 1)
+			{
+				payload := migrationEvents[0]
+				assert.Equal(t, compURN, payload.URN)
+				assert.Equal(t, 2, payload.Migrated)
+				assert.Equal(t, []resource.URN{childBURN}, payload.Added)
+				assert.Equal(t, []resource.URN{childAURN}, payload.Removed)
+				assert.Equal(t, map[resource.URN]resource.URN{childAURN: childBURN}, payload.Successors)
+			}
 			return err
 		})
 	require.NoError(t, err)
@@ -963,6 +979,39 @@ func TestStateMigrationAliasedRootRename(t *testing.T) {
 	assert.NotContains(t, urns, childAURN)
 }
 
+// TestStateMigrationDisplay is a display test for state migrations: steps 1 and 2 apply successive renames and
+// display the explicit successor mapping for each.
+func TestStateMigrationDisplay(t *testing.T) {
+	t.Parallel()
+
+	env := newStateMigrationEnv(t)
+	env.plan.Options.SkipDisplayTests = false
+	project := env.plan.GetProject()
+
+	// Step 0: initial install of the component with childA.
+	snap, err := lt.TestOp(Update).RunStep(
+		project, env.plan.GetTarget(t, nil), env.plan.Options, false, env.plan.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Step 1: childA is renamed to childB by a migration; the resource keeps its identity.
+	env.childName = "childB"
+	env.migrations = func(t *testing.T, callbacks *deploytest.CallbackServer) []*pulumirpc.Callback {
+		return []*pulumirpc.Callback{renameMigration(t, callbacks, "childA", "childB")}
+	}
+	snap, err = lt.TestOp(Update).RunStep(
+		project, env.plan.GetTarget(t, snap), env.plan.Options, false, env.plan.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	// Step 2: childB is renamed again to childC.
+	env.childName = "childC"
+	env.migrations = func(t *testing.T, callbacks *deploytest.CallbackServer) []*pulumirpc.Callback {
+		return []*pulumirpc.Callback{renameMigration(t, callbacks, "childB", "childC")}
+	}
+	_, err = lt.TestOp(Update).RunStep(
+		project, env.plan.GetTarget(t, snap), env.plan.Options, false, env.plan.BackendClient, nil, "2")
+	require.NoError(t, err)
+}
+
 // TestStateMigrationEchoNoOp tests that a migration which returns its input unchanged (rather than nil) — the
 // common "check whether already migrated, otherwise return the input" idiom — is treated as a no-op, even when
 // the state contains secrets that serialize asymmetrically across the JSON round-trip.
@@ -995,6 +1044,10 @@ func TestStateMigrationEchoNoOp(t *testing.T) {
 	_, err = lt.TestOp(Update).Run(project, env.plan.GetTarget(t, snap), env.plan.Options, false, env.plan.BackendClient,
 		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
 			assert.Equal(t, map[display.StepOp]int{deploy.OpSame: 3}, successOps(entries))
+			for _, e := range events {
+				assert.NotEqual(t, StateMigrationEvent, e.Type,
+					"an echo migration must not emit a state-migration event")
+			}
 			return err
 		})
 	require.NoError(t, err)

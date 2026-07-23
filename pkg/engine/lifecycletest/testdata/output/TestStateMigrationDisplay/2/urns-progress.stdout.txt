@@ -1,0 +1,13 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::my:module:Comp::comp <{%bold%}><{%reset%}><{%reset%}> [<{%fg 5%}>state migrated: urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childB → urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childC<{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::my:module:Comp::comp <{%bold%}><{%reset%}><{%reset%}> [<{%fg 5%}>state migrated: urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childB → urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childC<{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childC <{%bold%}><{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:test::test::my:module:Comp::comp <{%reset%}><{%reset%}> [<{%fg 5%}>state migrated: urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childB → urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childC<{%reset%}>]
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

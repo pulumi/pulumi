@@ -1178,6 +1178,8 @@ func (acts *updateActions) OnStateMigration(plan *deploy.StateMigrationPlan) err
 	if err := manager.StateMigration(plan); err != nil {
 		return err
 	}
+	acts.Opts.Events.stateMigrationEvent(
+		plan.RootURN, plan.RemovedResources, plan.MigratedResources, plan.SuccessorURNs)
 	return nil
 }
 
@@ -1402,6 +1404,8 @@ func (acts *previewActions) OnRebuiltBaseState() error {
 }
 
 func (acts *previewActions) OnStateMigration(plan *deploy.StateMigrationPlan) error {
+	acts.Opts.Events.stateMigrationEvent(
+		plan.RootURN, plan.RemovedResources, plan.MigratedResources, plan.SuccessorURNs)
 	return nil
 }
 

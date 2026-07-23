@@ -1,0 +1,9 @@
+    comp: state migrated: urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childA → urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childB
+<{%reset%}>  urn:pulumi:test::test::my:module:Comp::comp: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    <{%reset%}>  urn:pulumi:test::test::my:module:Comp$pkgA:m:typA::childB: (same)
+<{%reset%}>        [id=3]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
