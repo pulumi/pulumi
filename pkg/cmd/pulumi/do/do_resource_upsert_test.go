@@ -307,47 +307,124 @@ size = 3
 	_ = stderr
 }
 
-// TestDoCmdResourceUpsertHiddenInStatelessMode verifies that `upsert` is hidden from help when the
-// user opts into stateless mode. The subcommand tree shouldn't advertise commands the user can't
-// actually run.
-func TestDoCmdResourceUpsertHiddenInStatelessMode(t *testing.T) {
+// TestDoCmdResourceUpsertStateless drives `upsert` in stateless mode: the given ID is read from
+// the provider, and the resource is either fully updated (existing) or created (missing).
+func TestDoCmdResourceUpsertStateless(t *testing.T) {
 	t.Parallel()
 
-	cmd, stdout, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(false)})
-	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "--help"})
-	require.NoError(t, cmd.Execute())
-	assert.NotContains(t, stdout.String(), "upsert")
-}
+	t.Run("fully updates an existing resource", func(t *testing.T) {
+		t.Parallel()
+		var calls []string
+		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(false),
+			MockProvider: plugin.MockProvider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					calls = append(calls, "read")
+					assert.Equal(t, resource.ID("res-1"), req.ID)
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID: "res-1",
+							Inputs: resource.PropertyMap{
+								"name":    resource.NewProperty("old"),
+								"size":    resource.NewProperty(1.0),
+								"enabled": resource.NewProperty(true),
+							},
+							Outputs: resource.PropertyMap{
+								"name":    resource.NewProperty("old"),
+								"size":    resource.NewProperty(1.0),
+								"enabled": resource.NewProperty(true),
+							},
+						},
+					}, nil
+				},
+				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					calls = append(calls, "check")
+					assert.Equal(t, "old", req.Olds["name"].StringValue())
+					assert.Equal(t, "new", req.News["name"].StringValue())
+					assert.Equal(t, 2.0, req.News["size"].NumberValue())
+					_, hasEnabled := req.News["enabled"]
+					assert.False(t, hasEnabled, "inputs should be fully replaced, not merged")
+					return plugin.CheckResponse{Properties: req.News}, nil
+				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+					calls = append(calls, "diff")
+					return plugin.DiffResponse{
+						Changes:     plugin.DiffSome,
+						ChangedKeys: []resource.PropertyKey{"name", "size", "enabled"},
+					}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					calls = append(calls, "update")
+					assert.Equal(t, "new", req.NewInputs["name"].StringValue())
+					assert.Equal(t, 2.0, req.NewInputs["size"].NumberValue())
+					_, hasEnabled := req.NewInputs["enabled"]
+					assert.False(t, hasEnabled, "inputs should be fully replaced, not merged")
+					return plugin.UpdateResponse{
+						Properties: resource.PropertyMap{
+							"name": resource.NewProperty("new"),
+							"size": resource.NewProperty(2.0),
+						},
+					}, nil
+				},
+			},
+		})
 
-// TestDoCmdResourceUpsertStatelessErrors verifies that running `upsert` with --stateless fails
-// with an error that names the incompatible flag rather than tripping over upsert's own flags
-// (which used to be reported as unknown because the subcommand wasn't registered at all).
-func TestDoCmdResourceUpsertStatelessErrors(t *testing.T) {
-	t.Parallel()
-
-	cmd, _, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(false)})
-	cmd.SetArgs([]string{
-		"--stateless", "azure:index:myResource", "upsert", "myres",
-		"--input-file", "inputs.yaml",
+		inputFile := writeHCLFile(t, "upsert.pcl", `
+name = "new"
+size = 2
+`)
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "upsert", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile, "--output", "json",
+		})
+		require.NoError(t, cmd.Execute())
+		assert.Equal(t, []string{"read", "check", "diff", "update"}, calls)
+		assert.JSONEq(t, `{"id":"res-1","name":"new","size":2}`, stdout.String())
 	})
-	err := cmd.Execute()
-	require.ErrorContains(t, err, "`upsert` is not supported in stateless mode")
-	require.ErrorContains(t, err, "--stateless")
-}
 
-// TestDoCmdResourceUpsertStatelessErrorBeatsUnknownFlag verifies that the stateless-mode error
-// takes priority over flag diagnostics: the whole invocation is invalid, so an unknown flag like
-// --timeout shouldn't be reported before the real problem.
-func TestDoCmdResourceUpsertStatelessErrorBeatsUnknownFlag(t *testing.T) {
-	t.Parallel()
+	t.Run("creates a missing resource", func(t *testing.T) {
+		t.Parallel()
+		var calls []string
+		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(false),
+			MockProvider: plugin.MockProvider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					calls = append(calls, "read")
+					assert.Equal(t, resource.ID("res-1"), req.ID)
+					return plugin.ReadResponse{}, nil
+				},
+				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					calls = append(calls, "check")
+					assert.Empty(t, req.Olds)
+					assert.Equal(t, "new", req.News["name"].StringValue())
+					return plugin.CheckResponse{Properties: req.News}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					calls = append(calls, "create")
+					assert.Equal(t, "new", req.Properties["name"].StringValue())
+					return plugin.CreateResponse{
+						ID: "res-2",
+						Properties: resource.PropertyMap{
+							"name": resource.NewProperty("new"),
+							"size": resource.NewProperty(2.0),
+						},
+					}, nil
+				},
+			},
+		})
 
-	cmd, _, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(false)})
-	cmd.SetArgs([]string{
-		"--stateless", "azure:index:myResource", "upsert", "myres",
-		"--input-file", "inputs.yaml", "--timeout", "10s",
+		inputFile := writeHCLFile(t, "upsert.pcl", `
+name = "new"
+size = 2
+`)
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "upsert", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile, "--output", "json",
+		})
+		require.NoError(t, cmd.Execute())
+		assert.Equal(t, []string{"read", "check", "create"}, calls)
+		assert.JSONEq(t, `{"id":"res-2","name":"new","size":2}`, stdout.String())
 	})
-	err := cmd.Execute()
-	require.ErrorContains(t, err, "`upsert` is not supported in stateless mode")
 }
 
 // TestDoCmdResourceStatefulCreateConstructsSnippet mirrors the upsert-constructs-snippet test but
