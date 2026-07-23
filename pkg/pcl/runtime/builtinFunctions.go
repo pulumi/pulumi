@@ -375,6 +375,11 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				Tok:               token,
 				Args:              obj,
 				AcceptsByteString: true,
+				AcceptsUnknowns:   true,
+				DependsOn:         make([]string, len(dependsOn)),
+			}
+			for i, urn := range dependsOn {
+				request.DependsOn[i] = string(urn)
 			}
 
 			if len(args) == 3 && !args[2].IsNull() {
@@ -431,6 +436,13 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 					fmt.Fprintf(&buf, "- %s\n", failure)
 				}
 				return cty.NilVal, errors.New(buf.String())
+			}
+
+			if resp.Unknown {
+				return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(resource.Output{
+					Known:        false,
+					Dependencies: dependsOn,
+				}))
 			}
 
 			resultPM, err := plugin.UnmarshalProperties(resp.GetReturn(), marshalOpts)

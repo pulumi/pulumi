@@ -11,6 +11,7 @@ from .component_custom_ref_input_output import *
 from .component_custom_ref_output import *
 from .component_foreign_child import *
 from .custom import *
+from .identity import *
 from .provider import *
 _utilities.register(
     resource_modules="""
