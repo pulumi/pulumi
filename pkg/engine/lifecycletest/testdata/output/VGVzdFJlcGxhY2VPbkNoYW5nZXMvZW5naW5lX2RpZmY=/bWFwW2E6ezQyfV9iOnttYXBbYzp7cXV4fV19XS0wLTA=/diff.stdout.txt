@@ -1,11 +1,11 @@
 <{%fg 10%}>++pkgA:m:typA: (create-replacement)
 <{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 3%}>  ~ a: <{%reset%}><{%fg 1%}>4<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>42<{%reset%}><{%fg 3%}> # forces replacement
+<{%reset%}><{%fg 3%}>  ~ a: <{%reset%}><{%fg 1%}>4<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>42<{%reset%}><{%fg 3%}>
 <{%reset%}><{%reset%}><{%fg 13%}>+-pkgA:m:typA: (replace)
 <{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
-<{%reset%}><{%fg 3%}>  ~ a: <{%reset%}><{%fg 1%}>4<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>42<{%reset%}><{%fg 3%}> # forces replacement
+<{%reset%}><{%fg 3%}>  ~ a: <{%reset%}><{%fg 1%}>4<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>42<{%reset%}><{%fg 3%}>
 <{%reset%}><{%reset%}><{%fg 9%}>--pkgA:m:typA: (delete-replaced)
 <{%fg 9%}>    [id=3]
 <{%reset%}><{%fg 9%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
