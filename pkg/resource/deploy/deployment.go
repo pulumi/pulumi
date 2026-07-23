@@ -121,6 +121,12 @@ type Options struct {
 	ShowSecrets bool
 	// Analyzers is the list of policy analyzers to run during this deployment.
 	Analyzers []plugin.Analyzer
+	// StateSerializer converts resource states to their checkpoint representation for state migration
+	// callbacks. It is injected by the engine because the serialization logic lives in pkg/resource/stack,
+	// which cannot be imported from this package.
+	StateSerializer ResourceSerializer
+	// StateDeserializer is the inverse of StateSerializer.
+	StateDeserializer ResourceDeserializer
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -249,6 +255,15 @@ type StepExecutorEvents interface {
 	OnResourceStepPre(step Step) (any, error)
 	OnResourceStepPost(ctx any, step Step, status resource.Status, err error) error
 	OnResourceOutputs(step Step) error
+}
+
+// StateMigrationEvents is implemented by event handlers that can persist and report state migrations.
+//
+// OnStateMigration is called just before a state migration splices migrated states into the deployment's base
+// snapshot. The plan contains the exact verified base resources that will be installed. The base snapshot has not
+// yet been mutated when this is called.
+type StateMigrationEvents interface {
+	OnStateMigration(plan *StateMigrationPlan) error
 }
 
 // PolicyEvents is an interface that can be used to hook policy events.

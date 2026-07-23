@@ -88,7 +88,12 @@ type stepGenerator struct {
 	sames     map[resource.URN]bool // set of URNs that were not changed in this deployment
 	refreshes map[resource.URN]bool // set of URNs that were refreshed in this deployment
 
-	refreshAliasLock sync.Mutex // lock to protect calls to deployment.depGraph.Alias
+	// stepExecLock pauses the step executor while the deployment's base state is rewritten by a state
+	// migration. Set by the deployment executor; may be nil in tests that drive the step generator directly.
+	stepExecLock sync.Locker
+	// refreshAliasLock protects dependency-graph alias updates performed by asynchronous refresh completion.
+	// It is removed once those updates are moved back onto the step-generator goroutine.
+	refreshAliasLock sync.Mutex
 
 	// A map of original state which will be what's seen by the snapshot system to their new refreshed state.
 	refreshStates map[*pkgresource.State]*pkgresource.State
@@ -747,6 +752,13 @@ func (sg *stepGenerator) generateResourceSteps(
 	ctx context.Context, event RegisterResourceEvent, urn resource.URN,
 ) ([]Step, bool, error) {
 	goal := event.Goal()
+
+	// If the registration carries state migrations, run them against the prior state of this resource and its
+	// descendants before any of that state is read for diffing.
+	if err := sg.applyStateMigrations(ctx, event, urn); err != nil {
+		return nil, false, err
+	}
+
 	old, invalid, alias := sg.getOldResource(urn, goal.Name, goal.Type, goal.Parent, goal.Aliases)
 
 	var aliasUrns []resource.URN

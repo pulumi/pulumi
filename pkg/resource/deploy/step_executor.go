@@ -146,10 +146,18 @@ func (se *stepExecutor) ExecuteSerial(chain chain) completionToken {
 	// If one is pending, we should exit early - we will shortly be tearing down the engine and exiting.
 
 	completion := make(chan bool)
+
+	// Reserve a reader before publishing the chain, then hand that reservation to the worker. This prevents a writer
+	// (notably a state migration) from overtaking a chain that has already been planned but has not started running.
+	// The worker releases the reservation after the entire chain, so a migration can only run between complete plans.
+	se.workerLock.RLock()
 	select {
 	case se.incomingChains <- incomingChain{Chain: chain, CompletionChan: completion}:
+		// RWMutexes are not goroutine-owned. The worker releases this reader after executing the chain.
+		return completionToken{channel: completion}
 	case <-se.ctx.Done():
 		close(completion)
+		se.workerLock.RUnlock()
 	}
 
 	return completionToken{channel: completion}
@@ -198,6 +206,10 @@ func (se *stepExecutor) ExecuteParallel(antichain antichain) completionToken {
 
 // ExecuteRegisterResourceOutputs services a RegisterResourceOutputsEvent synchronously on the calling goroutine.
 func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputsEvent) error {
+	// RegisterResourceOutputs mutates live state outside the normal worker goroutines. Participate in the same
+	// reader/writer barrier so a state migration cannot capture or commit across an outputs update.
+	se.workerLock.RLock()
+	defer se.workerLock.RUnlock()
 	return se.executeRegisterResourceOutputs(e, false /* errored */, false /* finalizingStackOutputs */)
 }
 
@@ -394,6 +406,8 @@ func (se *stepExecutor) WaitForCompletion() {
 // executeChain executes a chain, one step at a time. If any step in the chain fails to execute, or if the
 // context is canceled, the chain stops execution.
 func (se *stepExecutor) executeChain(workerID int, chain chain) {
+	defer se.workerLock.RUnlock()
+
 	for _, step := range chain {
 		select {
 		case <-se.ctx.Done():
@@ -402,12 +416,7 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 		default:
 		}
 
-		// Take the work lock before executing the step, this uses the "read" side of the lock because we're ok with as
-		// many workers as possible executing steps in parallel.
-		se.workerLock.RLock()
 		err := se.executeStep(workerID, step)
-		// Regardless of error we need to release the lock here.
-		se.workerLock.RUnlock()
 
 		if err != nil {
 			se.log(workerID, "step %v on %v failed, signalling cancellation", step.Op(), step.URN())

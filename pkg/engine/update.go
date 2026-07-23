@@ -1048,6 +1048,7 @@ func newUpdateSource(ctx context.Context,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
 		AttachDebugger:            opts.AttachDebugger,
+		SupportsStateMigrations:   opts.supportsStateMigrations,
 	}
 
 	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
@@ -1167,6 +1168,17 @@ func (acts *updateActions) OnSnapshotWrite(step *deploy.Snapshot) error {
 
 func (acts *updateActions) OnRebuiltBaseState() error {
 	return acts.Context.SnapshotManager.RebuiltBaseState()
+}
+
+func (acts *updateActions) OnStateMigration(plan *deploy.StateMigrationPlan) error {
+	manager, ok := acts.Context.SnapshotManager.(StateMigrationSnapshotManager)
+	if !ok || !manager.SupportsStateMigrations() {
+		return deploy.ErrStateMigrationsUnsupported
+	}
+	if err := manager.StateMigration(plan); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (acts *updateActions) OnResourceStepPre(step deploy.Step) (any, error) {
@@ -1386,6 +1398,10 @@ func (acts *previewActions) OnSnapshotWrite(base *deploy.Snapshot) error {
 }
 
 func (acts *previewActions) OnRebuiltBaseState() error {
+	return nil
+}
+
+func (acts *previewActions) OnStateMigration(plan *deploy.StateMigrationPlan) error {
 	return nil
 }
 
