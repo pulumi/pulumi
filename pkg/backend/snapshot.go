@@ -101,7 +101,10 @@ type SnapshotManager struct {
 	events chan<- engine.Event
 }
 
-var _ engine.SnapshotManager = (*SnapshotManager)(nil)
+var (
+	_ engine.SnapshotManager               = (*SnapshotManager)(nil)
+	_ engine.StateMigrationSnapshotManager = (*SnapshotManager)(nil)
+)
 
 type mutationRequest struct {
 	mutator func() bool
@@ -223,6 +226,38 @@ func (sm *SnapshotManager) RebuiltBaseState() error {
 	// Similar to Write() we don't need to do anything here, as the snapshot manager uses the
 	// same in-memory snapshot as the engine, that is already mutated.
 	return nil
+}
+
+func (*SnapshotManager) SupportsStateMigrations() bool {
+	return true
+}
+
+func (sm *SnapshotManager) StateMigration(plan *deploy.StateMigrationPlan) error {
+	if plan == nil {
+		return errors.New("state migration plan must not be nil")
+	}
+
+	var rewriteErr error
+	err := sm.mutate(func() bool {
+		// The deployment centrally rewrites its live news/reads, but that inventory can omit an earlier operation
+		// that remains authoritative for persistence after a later operation failed. Rewrite this manager's exact
+		// operation history as well; pointer identity and dones bookkeeping remain intact.
+		current := make([]*pkgresource.State, 0, len(sm.resources))
+		for _, state := range sm.resources {
+			if !sm.dones[state] {
+				current = append(current, state)
+			}
+		}
+		if err := plan.RewriteResourcesInPlace(current); err != nil {
+			rewriteErr = err
+			return false
+		}
+		return false
+	})
+	if err != nil {
+		return err
+	}
+	return rewriteErr
 }
 
 func (sm *SnapshotManager) SetSnippets(snippets []resource.Snippet) error {

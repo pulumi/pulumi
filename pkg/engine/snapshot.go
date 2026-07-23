@@ -47,6 +47,17 @@ type SnapshotManager interface {
 	RegisterResourceOutputs(step deploy.Step) error
 }
 
+// StateMigrationSnapshotManager is implemented by snapshot managers that can persist state migrations.
+//
+// StateMigration is called with the validated, fully rewritten migration plan just before the engine mutates
+// its base snapshot. An error aborts the migration before any state is changed.
+type StateMigrationSnapshotManager interface {
+	SnapshotManager
+
+	SupportsStateMigrations() bool
+	StateMigration(plan *deploy.StateMigrationPlan) error
+}
+
 // SnapshotMutation represents an outstanding mutation that is yet to be completed. When the engine completes
 // a mutation, it must call `End` in order to record the successful completion of the mutation.
 type SnapshotMutation interface {

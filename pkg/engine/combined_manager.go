@@ -22,7 +22,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-var _ = SnapshotManager((*CombinedManager)(nil))
+var (
+	_ SnapshotManager               = (*CombinedManager)(nil)
+	_ StateMigrationSnapshotManager = (*CombinedManager)(nil)
+)
 
 // CombinedManager combines multiple SnapshotManagers into one, it simply forwards on each call to every manager.
 type CombinedManager struct {
@@ -57,6 +60,52 @@ func (c *CombinedManager) RebuiltBaseState() error {
 	var errs []error
 	for i, m := range c.Managers {
 		if err := m.RebuiltBaseState(); err != nil {
+			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+				c.appendError(err)
+			} else {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (c *CombinedManager) SupportsStateMigrations() bool {
+	hasRequiredManager := false
+	for i, manager := range c.Managers {
+		if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+			continue
+		}
+
+		hasRequiredManager = true
+		stateMigrationManager, ok := manager.(StateMigrationSnapshotManager)
+		if !ok || !stateMigrationManager.SupportsStateMigrations() {
+			return false
+		}
+	}
+	return hasRequiredManager
+}
+
+func (c *CombinedManager) StateMigration(plan *deploy.StateMigrationPlan) error {
+	if !c.SupportsStateMigrations() {
+		return deploy.ErrStateMigrationsUnsupported
+	}
+
+	// As with the other CombinedManager mutations, forwarding is sequential rather than a distributed transaction.
+	// Production configurations use one authoritative manager; additional validation/shadow managers are best-effort.
+	var errs []error
+	for i, manager := range c.Managers {
+		stateMigrationManager, ok := manager.(StateMigrationSnapshotManager)
+		if !ok || !stateMigrationManager.SupportsStateMigrations() {
+			// An unsupported best-effort manager must not prevent an authoritative manager from safely
+			// persisting the migration.
+			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+				continue
+			}
+			errs = append(errs, deploy.ErrStateMigrationsUnsupported)
+			continue
+		}
+		if err := stateMigrationManager.StateMigration(plan); err != nil {
 			if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
 				c.appendError(err)
 			} else {

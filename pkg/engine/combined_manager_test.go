@@ -23,7 +23,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var _ = SnapshotManager(&MockSnapshotManager{})
+var (
+	_ SnapshotManager               = (*MockSnapshotManager)(nil)
+	_ StateMigrationSnapshotManager = (*MockStateMigrationSnapshotManager)(nil)
+)
 
 type MockSnapshotManager struct {
 	WriteF                   func(base *deploy.Snapshot) error
@@ -32,6 +35,12 @@ type MockSnapshotManager struct {
 	BeginMutationF           func(step deploy.Step) (SnapshotMutation, error)
 	RegisterResourceOutputsF func(step deploy.Step) error
 	CloseF                   func() error
+}
+
+type MockStateMigrationSnapshotManager struct {
+	*MockSnapshotManager
+	SupportsStateMigrationsF func() bool
+	StateMigrationF          func(plan *deploy.StateMigrationPlan) error
 }
 
 type MockSanpshotMutation struct {
@@ -48,6 +57,20 @@ func (m *MockSnapshotManager) Write(base *deploy.Snapshot) error {
 func (m *MockSnapshotManager) RebuiltBaseState() error {
 	if m.RebuiltBaseStateF != nil {
 		return m.RebuiltBaseStateF()
+	}
+	return nil
+}
+
+func (m *MockStateMigrationSnapshotManager) SupportsStateMigrations() bool {
+	if m.SupportsStateMigrationsF != nil {
+		return m.SupportsStateMigrationsF()
+	}
+	return true
+}
+
+func (m *MockStateMigrationSnapshotManager) StateMigration(plan *deploy.StateMigrationPlan) error {
+	if m.StateMigrationF != nil {
+		return m.StateMigrationF(plan)
 	}
 	return nil
 }
@@ -85,6 +108,79 @@ func (m *MockSanpshotMutation) End(step deploy.Step, success bool) error {
 		return m.EndF(step, success)
 	}
 	return nil
+}
+
+func TestCombinedManagerStateMigration(t *testing.T) {
+	t.Parallel()
+
+	plan := &deploy.StateMigrationPlan{}
+	calls := 0
+	manager := &MockStateMigrationSnapshotManager{
+		MockSnapshotManager: &MockSnapshotManager{},
+		StateMigrationF: func(got *deploy.StateMigrationPlan) error {
+			require.Same(t, plan, got)
+			calls++
+			return nil
+		},
+	}
+	combined := &CombinedManager{Managers: []SnapshotManager{manager, manager}}
+
+	require.True(t, combined.SupportsStateMigrations())
+	require.NoError(t, combined.StateMigration(plan))
+	require.Equal(t, 2, calls)
+}
+
+func TestCombinedManagerStateMigrationUnsupportedRequiredManager(t *testing.T) {
+	t.Parallel()
+
+	combined := &CombinedManager{Managers: []SnapshotManager{&MockSnapshotManager{}}}
+
+	require.False(t, combined.SupportsStateMigrations())
+	require.ErrorIs(t, combined.StateMigration(&deploy.StateMigrationPlan{}), deploy.ErrStateMigrationsUnsupported)
+}
+
+func TestCombinedManagerStateMigrationSkipsUnsupportedBestEffortManager(t *testing.T) {
+	t.Parallel()
+
+	called := false
+	supporting := &MockStateMigrationSnapshotManager{
+		MockSnapshotManager: &MockSnapshotManager{},
+		StateMigrationF: func(*deploy.StateMigrationPlan) error {
+			called = true
+			return nil
+		},
+	}
+	combined := &CombinedManager{
+		Managers:          []SnapshotManager{supporting, &MockSnapshotManager{}},
+		CollectErrorsOnly: []bool{false, true},
+	}
+
+	require.True(t, combined.SupportsStateMigrations())
+	require.NoError(t, combined.StateMigration(&deploy.StateMigrationPlan{}))
+	require.True(t, called)
+	require.Empty(t, combined.Errors())
+}
+
+func TestCombinedManagerStateMigrationCollectsBestEffortError(t *testing.T) {
+	t.Parallel()
+
+	expected := errors.New("shadow migration failed")
+	required := &MockStateMigrationSnapshotManager{MockSnapshotManager: &MockSnapshotManager{}}
+	shadow := &MockStateMigrationSnapshotManager{
+		MockSnapshotManager: &MockSnapshotManager{},
+		StateMigrationF: func(*deploy.StateMigrationPlan) error {
+			return expected
+		},
+	}
+	combined := &CombinedManager{
+		Managers:          []SnapshotManager{required, shadow},
+		CollectErrorsOnly: []bool{false, true},
+	}
+
+	require.True(t, combined.SupportsStateMigrations())
+	require.NoError(t, combined.StateMigration(&deploy.StateMigrationPlan{}))
+	require.Len(t, combined.Errors(), 1)
+	require.ErrorIs(t, combined.Errors()[0], expected)
 }
 
 func TestIgnoreSomeErrors(t *testing.T) {

@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -24,6 +25,9 @@ import (
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
+
+// ErrStateMigrationsUnsupported is returned when a deployment cannot safely persist state migrations.
+var ErrStateMigrationsUnsupported = errors.New("state migrations are not supported by this deployment")
 
 // StateMigrationPlan is the validated, fully prepared transaction produced by a state migration.
 //

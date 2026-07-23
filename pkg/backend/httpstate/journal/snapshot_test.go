@@ -29,6 +29,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -587,6 +588,19 @@ func TestDependingOnElidedEntries(t *testing.T) {
 
 	elidedOperation := int64(1)
 	err = journaler.AddJournalEntry(engine.JournalEntry{SequenceID: 3, OperationID: 3, DeleteNew: &elidedOperation})
+	require.ErrorContains(t, err, "dependent elided entry")
+
+	err = journaler.AddJournalEntry(engine.JournalEntry{
+		SequenceID:  4,
+		OperationID: 4,
+		NewStatePatches: []engine.JournalNewStatePatch{{
+			OperationID: elidedOperation,
+			State: &pkgresource.State{
+				Type: "pkg:index:Type",
+				URN:  "urn:pulumi:test::test::pkg:index:Type::resource",
+			},
+		}},
+	})
 	require.ErrorContains(t, err, "dependent elided entry")
 }
 
