@@ -105,6 +105,7 @@ const (
 	JournalEntryRebuiltBaseState      JournalEntryKind = 7
 	JournalEntryExtensionParameterize JournalEntryKind = 8
 	JournalEntrySnippets              JournalEntryKind = 9
+	JournalEntryStateMigration        JournalEntryKind = 10
 )
 
 func (k JournalEntryKind) String() string {
@@ -129,9 +130,21 @@ func (k JournalEntryKind) String() string {
 		return "ExtensionParameterize"
 	case JournalEntrySnippets:
 		return "Snippets"
+	case JournalEntryStateMigration:
+		return "StateMigration"
 	default:
 		return "Unknown"
 	}
+}
+
+type JournalBaseStatePatch struct {
+	Index int64
+	State *pkgresource.State
+}
+
+type JournalNewStatePatch struct {
+	OperationID int64
+	State       *pkgresource.State
 }
 
 type JournalEntry struct {
@@ -178,6 +191,18 @@ type JournalEntry struct {
 
 	// Snippets is the complete snippet list to persist when Kind is JournalEntrySnippets.
 	Snippets []resource.Snippet
+
+	// RemoveOlds holds the indices (in increasing order) of the resources in the base snapshot that a state
+	// migration removes. Only set for JournalEntryStateMigration entries.
+	RemoveOlds []int64
+	// MigratedStates holds the states a state migration splices into the base snapshot, in order. They take the
+	// position of the last removed resource. Only set for JournalEntryStateMigration entries.
+	MigratedStates []*pkgresource.State
+	// BaseStatePatches contains complete replacements for retained base resources whose references were rewritten.
+	// Indices refer to the base snapshot before RemoveOlds is applied.
+	BaseStatePatches []JournalBaseStatePatch
+	// NewStatePatches contains complete replacements for resources produced by operations earlier in this update.
+	NewStatePatches []JournalNewStatePatch
 }
 
 func hasNewResource(entry JournalEntry) bool {
