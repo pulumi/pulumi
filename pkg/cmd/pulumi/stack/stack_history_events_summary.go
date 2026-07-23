@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	pkgdisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // updateSummary is the document emitted by `pulumi stack history events
@@ -56,13 +57,6 @@ type diagnosticSummary struct {
 	Message  string `json:"message"`
 }
 
-func resourceName(urn string) string {
-	if i := strings.LastIndex(urn, "::"); i >= 0 {
-		return urn[i+2:]
-	}
-	return urn
-}
-
 func summaryResourceFor(m apitype.StepEventMetadata) summaryResource {
 	// Parent falls back to the pre-step state for deletes, where New is nil.
 	var parent string
@@ -72,13 +66,7 @@ func summaryResourceFor(m apitype.StepEventMetadata) summaryResource {
 	case m.Old != nil:
 		parent = m.Old.Parent
 	}
-	return summaryResource{ResourceJSON: display.ResourceJSON{
-		URN:    m.URN,
-		Type:   m.Type,
-		Name:   resourceName(m.URN),
-		Op:     m.Op,
-		Parent: parent,
-	}}
+	return summaryResource{ResourceJSON: display.NewResourceJSON(resource.URN(m.URN), m.Op, parent)}
 }
 
 // buildUpdateSummary reduces an engine event stream to an updateSummary,

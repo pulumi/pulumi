@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // SummaryJSON is a one-line JSON summary of a stack operation, intended for
@@ -96,12 +97,18 @@ func resourceJSONFromEvent(p engine.ResourcePreEventPayload, showSames bool) *Re
 		parent = string(p.Metadata.Old.Parent)
 	}
 
-	urn := p.Metadata.URN
-	return &ResourceJSON{
+	r := NewResourceJSON(p.Metadata.URN, apitype.OpType(p.Metadata.Op), parent)
+	return &r
+}
+
+// NewResourceJSON builds the per-resource summary entry from the fields
+// shared by the live display and `pulumi stack history events --summary`.
+func NewResourceJSON(urn resource.URN, op apitype.OpType, parent string) ResourceJSON {
+	return ResourceJSON{
 		URN:    string(urn),
 		Type:   string(urn.Type()),
 		Name:   urn.Name(),
-		Op:     apitype.OpType(p.Metadata.Op),
+		Op:     op,
 		Parent: parent,
 	}
 }
