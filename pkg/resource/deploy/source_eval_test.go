@@ -169,8 +169,9 @@ func (g *testRegEvent) Done(result *RegisterResult) {
 	g.result = result
 }
 
-func (g *testRegEvent) Extension() *apitype.Extension      { return g.extension }
-func (g *testRegEvent) ExtensionRef() apitype.ExtensionRef { return g.extensionRef }
+func (g *testRegEvent) Extension() *apitype.Extension             { return g.extension }
+func (g *testRegEvent) ExtensionRef() apitype.ExtensionRef        { return g.extensionRef }
+func (g *testRegEvent) StateMigrations() []StateMigrationFunction { return nil }
 
 func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 	return func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
@@ -2783,6 +2784,7 @@ func TestGetDeploymentInfo(t *testing.T) {
 			Parallel:                  17,
 			DisableOutputValues:       true,
 			DisableResourceReferences: false,
+			SupportsStateMigrations:   true,
 		},
 	}, &providerSourceMock{}, nil, nil, nil, nil, programComplete.Promise(), cfg, secretKeys,
 		opentracing.SpanFromContext(t.Context()))
@@ -2815,6 +2817,7 @@ func TestGetDeploymentInfo(t *testing.T) {
 	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES)
 	assert.NotContains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES)
 	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON)
+	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS)
 }
 
 func TestSourceEvalServeOptions(t *testing.T) {
@@ -3579,6 +3582,17 @@ func TestReadResource(t *testing.T) {
 
 func TestRegisterResource(t *testing.T) {
 	t.Parallel()
+	t.Run("rejects state migrations when unsupported", func(t *testing.T) {
+		t.Parallel()
+
+		rm := &resmon{}
+		_, err := rm.RegisterResource(t.Context(), &pulumirpc.RegisterResourceRequest{
+			StateMigrations: []*pulumirpc.Callback{{}},
+		})
+		require.Error(t, err)
+		assert.Equal(t, codes.FailedPrecondition, status.Code(err))
+		assert.ErrorContains(t, err, "state migrations are not supported by this deployment")
+	})
 	t.Run("gracefully handle cancellation", func(t *testing.T) {
 		t.Parallel()
 		t.Run("resource monitor shut down while sending resource registration", func(t *testing.T) {
