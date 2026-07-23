@@ -1,0 +1,7 @@
+component: cli
+kind: feat
+body: Add `--force-delete-protected` flag to `pulumi up`, `pulumi preview` and `pulumi
+    destroy` to allow deleting protected resources without unprotecting them in the
+    state first
+custom:
+    PR: ""

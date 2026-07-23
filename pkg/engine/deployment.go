@@ -291,6 +291,7 @@ func newDeployment(
 		DisableOutputValues:       opts.DisableOutputValues,
 		GeneratePlan:              opts.GeneratePlan,
 		ContinueOnError:           opts.ContinueOnError,
+		ForceDeleteProtected:      opts.ForceDeleteProtected,
 		Autonamer:                 opts.Autonamer,
 		ShowSecrets:               opts.ShowSecrets,
 		Analyzers:                 opts.LoadedAnalyzers,

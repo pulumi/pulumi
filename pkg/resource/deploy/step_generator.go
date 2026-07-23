@@ -1930,7 +1930,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			// If this resource is protected we can't replace it because that entails a delete
 			// Note that we do allow unprotecting and replacing to happen in a single update
 			// cycle, we don't look at old.Protect here.
-			if new.Protect && old.Protect {
+			if new.Protect && old.Protect && !sg.deployment.opts.ForceDeleteProtected {
 				message := fmt.Sprintf("unable to replace resource %q\n"+
 					"as it is currently marked for protection. To unprotect the resource, "+
 					"remove the `protect` flag from the resource in your Pulumi "+
@@ -2084,7 +2084,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 						steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, dependentResource, oldViews))
 					} else {
 						// Check if the resource is protected, if it is we can't do this replacement chain.
-						if dependentResource.Protect {
+						if dependentResource.Protect && !sg.deployment.opts.ForceDeleteProtected {
 							message := fmt.Sprintf("unable to replace resource %q as part of replacing %q "+
 								"as it is currently marked for protection. To unprotect the resource, "+
 								"remove the `protect` flag from the resource in your Pulumi "+

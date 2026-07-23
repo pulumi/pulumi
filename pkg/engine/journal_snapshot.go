@@ -679,6 +679,13 @@ type deleteSnapshotMutation struct {
 	operationID int64
 }
 
+// forceDeleteProtected returns true if the step's deployment is allowed to delete protected
+// resources (i.e. --force-delete-protected was set).
+func forceDeleteProtected(step deploy.Step) bool {
+	deployment := step.Deployment()
+	return deployment != nil && deployment.Opts() != nil && deployment.Opts().ForceDeleteProtected
+}
+
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	logging.V(9).Infof("SnapshotManager: deleteSnapshotMutation.End(..., %v)", successful)
@@ -691,7 +698,8 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 		contract.Assertf(
 			!step.Old().Protect ||
 				step.Op() == deploy.OpDiscardReplaced ||
-				step.Op() == deploy.OpDeleteReplaced,
+				step.Op() == deploy.OpDeleteReplaced ||
+				forceDeleteProtected(step),
 			"Old must be unprotected (got %v) or the operation must be a replace (got %q)",
 			step.Old().Protect, step.Op(),
 		)

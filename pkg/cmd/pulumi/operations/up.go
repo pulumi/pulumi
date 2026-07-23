@@ -127,6 +127,7 @@ func NewUpCmd() *cobra.Command {
 	var suppressOutputs bool
 	var suppressProgress bool
 	var continueOnError bool
+	var forceDeleteProtected bool
 	var suppressPermalink string
 	var yes bool
 	var secretsProvider string
@@ -262,6 +263,7 @@ func NewUpCmd() *cobra.Command {
 			Experimental:         env.Experimental.Value(),
 			Strict:               strict,
 			ContinueOnError:      continueOnError,
+			ForceDeleteProtected: forceDeleteProtected,
 			AttachDebugger:       attachDebugger,
 			Autonamer:            autonamer,
 			SkipPluginPreInstall: skipPluginPreInstall,
@@ -538,6 +540,7 @@ func NewUpCmd() *cobra.Command {
 
 			UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 			ContinueOnError:      continueOnError,
+			ForceDeleteProtected: forceDeleteProtected,
 
 			AttachDebugger:       attachDebugger,
 			SkipPluginPreInstall: skipPluginPreInstall,
@@ -921,6 +924,11 @@ func NewUpCmd() *cobra.Command {
 		&continueOnError, "continue-on-error", env.ContinueOnError.Value(),
 		"Continue updating resources even if an error is encountered "+
 			"(can also be set with PULUMI_CONTINUE_ON_ERROR environment variable)",
+	)
+	cmd.PersistentFlags().BoolVar(
+		&forceDeleteProtected, "force-delete-protected", false,
+		"Allow protected resources to be deleted, ignoring their protect option for this operation only. "+
+			"Use with caution: deleted resources cannot be recovered",
 	)
 	//nolint:lll // long description
 	cmd.PersistentFlags().StringArrayVar(
