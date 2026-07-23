@@ -25,6 +25,7 @@ from collections.abc import Awaitable
 import grpc
 
 from ._instrumentation import wrap_with_context
+from ._state_migration_context import _ensure_not_in_state_migration
 from google.protobuf import struct_pb2
 
 from semver import VersionInfo
@@ -159,6 +160,8 @@ def invoke_output(
     resolves when the invoke finishes.
     """
 
+    _ensure_not_in_state_migration("invoke")
+
     # Setup the future for the output data.
     resolve_data: asyncio.Future[_OutputData[Any]] = asyncio.Future()
 
@@ -227,6 +230,7 @@ def _invoke(
     package_ref: Optional[Awaitable[Optional[str]]],
     check_dependencies: Optional[bool] = False,
 ) -> Awaitable[InvokeResult]:
+    _ensure_not_in_state_migration("invoke")
     log.debug(f"Invoking function: tok={tok}")
     if opts is None:
         opts = InvokeOptions()
@@ -425,6 +429,7 @@ def call(
     call dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
     can be a bag of computed values (Ts or Awaitable[T]s).
     """
+    _ensure_not_in_state_migration("call")
     log.debug(f"Calling function: tok={tok}")
 
     if typ and not _types.is_output_type(typ):

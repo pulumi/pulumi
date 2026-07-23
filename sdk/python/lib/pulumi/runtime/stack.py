@@ -27,6 +27,7 @@ import grpc
 
 from . import settings
 from ._instrumentation import wrap_with_context
+from ._state_migration_context import _ensure_not_in_state_migration
 from .proto import resource_pb2
 from .. import log
 from ..resource import (
@@ -471,6 +472,8 @@ def register_stack_transformation(t: ResourceTransformation):
     """
     Add a transformation to all future resources constructed in this Pulumi stack.
     """
+    _ensure_not_in_state_migration("register stack transformation")
+
     root_resource = get_root_resource()
     if root_resource is None:
         raise Exception(
@@ -486,6 +489,8 @@ def register_resource_transform(t: ResourceTransform) -> None:
     """
     Add a transform to all future resources constructed in this Pulumi stack.
     """
+    _ensure_not_in_state_migration("register resource transform")
+
     if not monitor_supports_feature(resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS):
         raise Exception(
             "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
@@ -517,6 +522,8 @@ def register_invoke_transform(t: InvokeTransform) -> None:
     """
     Add a transforms to all future invokes called in this Pulumi stack.
     """
+
+    _ensure_not_in_state_migration("register invoke transform")
 
     if not monitor_supports_feature(
         resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS

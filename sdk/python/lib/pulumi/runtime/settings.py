@@ -35,6 +35,7 @@ from ..errors import RunError
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc, engine_pb2
 from ._callbacks import _CallbackServicer
 from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
+from ._state_migration_context import _ensure_not_in_state_migration
 from .rpc_manager import RPCManager
 
 if TYPE_CHECKING:
@@ -365,6 +366,8 @@ async def register_package(
     receive distinct refs. When extension is True, the package is registered as
     an extension parameterization rather than a replacement.
     """
+    _ensure_not_in_state_migration("register package")
+
     key = "\0".join(
         [
             base_provider_name,
