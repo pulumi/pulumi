@@ -267,7 +267,9 @@ class MockMonitor:
     def SupportsFeature(self, request):
         # Support for "outputValues" is deliberately disabled for the mock monitor so
         # instances of `Output` don't show up in `MockResourceArgs` inputs.
-        has_support = request.id != "outputValues"
+        # "invokeDependsOn" is disabled because the mock monitor implements no invoke
+        # dependency gate; disabling it keeps the client-side one.
+        has_support = request.id not in ("outputValues", "invokeDependsOn")
         return type("SupportsFeatureResponse", (object,), {"hasSupport": has_support})
 
     def RegisterPackage(self, request):

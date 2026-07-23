@@ -462,6 +462,10 @@ async def monitor_supports_error_hooks() -> bool:
     return await monitor_supports_feature("errorHooks")
 
 
+async def monitor_supports_invoke_depends_on() -> bool:
+    return await monitor_supports_feature("invokeDependsOn")
+
+
 def reset_options(
     project: Optional[str] = None,
     stack: Optional[str] = None,
