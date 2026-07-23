@@ -149,8 +149,7 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 	case v.IsComputed():
 		return property.New(property.Computed).WithSecret(
 			v.Input().Element.IsSecret() ||
-				(v.Input().Element.IsOutput() && v.Input().Element.OutputValue().Secret),
-		)
+				(v.Input().Element.IsOutput() && v.Input().Element.OutputValue().Secret))
 	case v.IsSecret():
 		return FromResourcePropertyValue(v.SecretValue().Element).WithSecret(true)
 	case v.IsOutput():
