@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/stretchr/testify/assert"
@@ -91,6 +92,46 @@ func TestSummaryEventResultRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	payload := roundTripped.Payload().(engine.SummaryEventPayload)
 	assert.Equal(t, original.Result, payload.Result)
+}
+
+func TestStateMigrationEventJSONRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	const serialized = `{
+		"sequence": 0,
+		"timestamp": 0,
+		"stateMigrationEvent": {
+			"urn": "urn:pulumi:test::test::example:index:Component::component",
+			"added": ["urn:pulumi:test::test::example:index:Component$example:index:Child::childB"],
+			"successors": {
+				"urn:pulumi:test::test::example:index:Component$example:index:Child::childA":
+					"urn:pulumi:test::test::example:index:Component$example:index:Child::childB"
+			}
+		}
+	}`
+
+	var apiEvent apitype.EngineEvent
+	require.NoError(t, json.Unmarshal([]byte(serialized), &apiEvent))
+
+	event, err := ConvertJSONEvent(apiEvent)
+	require.NoError(t, err)
+
+	componentURN := resource.URN("urn:pulumi:test::test::example:index:Component::component")
+	childAURN := resource.URN("urn:pulumi:test::test::example:index:Component$example:index:Child::childA")
+	childBURN := resource.URN("urn:pulumi:test::test::example:index:Component$example:index:Child::childB")
+	expected := engine.StateMigrationEventPayload{
+		URN:   componentURN,
+		Added: []resource.URN{childBURN},
+		Successors: map[resource.URN]resource.URN{
+			childAURN: childBURN,
+		},
+	}
+	payload := event.Payload().(engine.StateMigrationEventPayload)
+	assert.Equal(t, expected, payload)
+
+	roundTripped, err := ConvertEngineEvent(event, false /* showSecrets */)
+	require.NoError(t, err)
+	assert.Equal(t, apiEvent.StateMigrationEvent, roundTripped.StateMigrationEvent)
 }
 
 // TestConvertJSONEventExhaustive tests that all fields of the EngineEvent type are handled by ConvertJSONEvent.

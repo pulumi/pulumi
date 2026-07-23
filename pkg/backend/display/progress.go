@@ -211,6 +211,8 @@ func getEventUrnAndMetadata(event engine.Event) (resource.URN, *engine.StepEvent
 		return event.Payload().(engine.PolicyRemediationEventPayload).ResourceURN, nil
 	case engine.PolicyViolationEvent:
 		return event.Payload().(engine.PolicyViolationEventPayload).ResourceURN, nil
+	case engine.StateMigrationEvent:
+		return event.Payload().(engine.StateMigrationEventPayload).URN, nil
 	default:
 		return "", nil
 	}
@@ -705,6 +707,7 @@ func (display *ProgressDisplay) processEndSteps() {
 	display.renderer.done()
 
 	display.printResourceDiffs()
+	display.printStateMigrations()
 
 	// Render the policies section; this will print all policy packs that ran plus any specific
 	// policies that led to violations or remediations. This comes before diagnostics since policy
@@ -722,6 +725,27 @@ func (display *ProgressDisplay) processEndSteps() {
 	// In that case, we want to abruptly terminate the display so as not to confuse.
 	if !wroteMandatoryPolicyViolations {
 		display.printSummary()
+	}
+}
+
+// printStateMigrations prints complete migration mappings outside the progress table, whose info column may be
+// truncated to the terminal width.
+func (display *ProgressDisplay) printStateMigrations() {
+	wroteHeader := false
+	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
+	for _, row := range eventRows {
+		for _, payload := range row.StateMigrationPayloads() {
+			if !wroteHeader {
+				wroteHeader = true
+				display.println(colors.SpecHeadline + "State migrations:" + colors.Reset)
+			}
+			for _, line := range splitIntoDisplayableLines(renderDiffStateMigrationEvent(payload, display.opts)) {
+				display.println(line)
+			}
+		}
+	}
+	if wroteHeader {
+		display.println("")
 	}
 }
 
@@ -1398,6 +1422,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.PolicyRemediationEvent:
 		// record this remediation so we print it at the end.
 		row.RecordPolicyRemediationEvent(event)
+	case engine.StateMigrationEvent:
+		// record this migration so the row can show what it did.
+		row.RecordStateMigrationEvent(event)
 	default:
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
