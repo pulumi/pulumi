@@ -15,9 +15,11 @@
 package cli
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -25,6 +27,7 @@ import (
 
 	"github.com/ccojocar/zxcvbn-go"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax/encoding"
@@ -40,14 +43,17 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	var file string
 
 	cmd := &cobra.Command{
-		Use:   "set [<org-name>/][<project-name>/]<environment-name> <path> <value>",
+		Use:   "set [<org-name>/][<project-name>/]<environment-name> <path> [value]",
 		Args:  cobra.RangeArgs(1, 3),
 		Short: "Set a value within an environment.",
 		Long: "Set a value within an environment\n" +
 			"\n" +
 			"This command fetches the current definition for the named environment and modifies a\n" +
 			"value within it. The path to the value to set is a Pulumi property path. The value\n" +
-			"is interpreted as YAML.\n",
+			"is interpreted as YAML.\n" +
+			"\n" +
+			"When --secret is used and no value is provided, the CLI will interactively prompt\n" +
+			"for the value with masked input, keeping the secret out of shell history.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -64,7 +70,10 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 			}
 
 			switch {
-			case file == "" && len(args) < 2:
+			case file == "" && len(args) < 2 && !secret:
+				return errors.New("expected a path and a value")
+			// when --secret is passed without a path
+			case file == "" && len(args) < 1:
 				return errors.New("expected a path and a value")
 			case file != "" && len(args) < 1:
 				return errors.New("expected a path")
@@ -99,6 +108,12 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				}
 
 				input = string(content)
+			} else if len(args) < 2 && secret {
+				// When --secret is used without a value argument, prompt interactively.
+				input, err = readSecret(env.esc.stdin, env.esc.stderr)
+				if err != nil {
+					return err
+				}
 			} else {
 				input = args[1]
 			}
@@ -129,7 +144,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 			}
 			if secret {
 				if yamlValue.Kind == yaml.ScalarNode && yamlValue.Tag != "!!str" {
-					err = yaml.Unmarshal([]byte(strconv.Quote(args[1])), &yamlValue)
+					err = yaml.Unmarshal([]byte(strconv.Quote(input)), &yamlValue)
 					if err != nil {
 						return fmt.Errorf(
 							"internal error decoding value; try surrounding the argument in both single and double quotes (e.g. '\"foo\"') (%w)", //nolint:lll
@@ -234,6 +249,28 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	cmd.Flag("draft").NoOptDefVal = "new"
 
 	return cmd
+}
+
+// readSecret prompts the user for a secret value. If stdin is a terminal, it reads
+// without echoing the input. Otherwise, it reads a line from stdin.
+func readSecret(stdin io.Reader, stderr io.Writer) (string, error) {
+	if f, ok := stdin.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
+		fmt.Fprint(stderr, "Enter your secret value: ")
+		secret, err := term.ReadPassword(int(f.Fd()))
+		fmt.Fprintln(stderr)
+		if err != nil {
+			return "", fmt.Errorf("reading secret: %w", err)
+		}
+		return string(secret), nil
+	}
+
+	// Non-interactive: read a single line from stdin.
+	reader := bufio.NewReader(stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", fmt.Errorf("reading secret from stdin: %w", err)
+	}
+	return strings.TrimSuffix(line, "\n"), nil
 }
 
 // keyPattern is the regular expression a configuration key must match before we check (and error) if we think
