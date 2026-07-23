@@ -452,6 +452,7 @@ type ResourceOptions struct {
 	GrpcRequestHeaders        map[string]string
 
 	Transforms           []*pulumirpc.Callback
+	StateMigrations      []*pulumirpc.Callback
 	ResourceHookBindings ResourceHookBindings
 
 	SupportsResultReporting bool
@@ -611,6 +612,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		HideDiffs:                  hideDiffs,
 		ParentStackTraceHandle:     opts.ParentStackTraceHandle,
 		Transforms:                 opts.Transforms,
+		StateMigrations:            opts.StateMigrations,
 		SupportsResultReporting:    opts.SupportsResultReporting,
 		PackageRef:                 opts.PackageRef,
 		Hooks:                      resourceHooks,
