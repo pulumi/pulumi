@@ -645,8 +645,34 @@ func DecodeYAML(filename string, d *yaml.Decoder, tags TagDecoder) (syntax.Node,
 // encoding process.
 func EncodeYAML(e *yaml.Encoder, n syntax.Node) syntax.Diagnostics {
 	yamlNode, diags := MarshalYAML(n)
+	fixFlowStyles(yamlNode)
+
 	if err := e.Encode(yamlNode); err != nil {
 		diags.Extend(syntax.Error(nil, err.Error(), ""))
 	}
 	return diags
+}
+
+// fixFlowStyles converts flow-style mappings/sequences to block style when they contain comments,
+// which can cause ambiguous YAML that stricter parsers reject.
+func fixFlowStyles(node *yaml.Node) {
+	if node == nil {
+		return
+	}
+	if (node.Kind == yaml.MappingNode || node.Kind == yaml.SequenceNode) &&
+		node.Style&yaml.FlowStyle != 0 && hasChildWithComment(node) {
+		node.Style = 0
+	}
+	for _, child := range node.Content {
+		fixFlowStyles(child)
+	}
+}
+
+func hasChildWithComment(node *yaml.Node) bool {
+	for _, child := range node.Content {
+		if child.LineComment != "" || child.HeadComment != "" || child.FootComment != "" {
+			return true
+		}
+	}
+	return false
 }
