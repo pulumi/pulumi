@@ -28,11 +28,16 @@ import {
     containsUnknownValues,
 } from "./rpc";
 import { awaitStackRegistrations, excessiveDebugOutput, getMonitor, rpcKeepAlive, terminateRpcs } from "./settings";
+import { getStore } from "./state";
 
 import { CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
 import * as utils from "../utils";
 import { PushableAsyncIterable } from "./asyncIterableUtil";
-import { gatherExplicitDependencies, getAllTransitivelyReferencedResources } from "./dependsOn";
+import {
+    gatherExplicitDependencies,
+    getAllTransitivelyReferencedResourceURNs,
+    getAllTransitivelyReferencedResources,
+} from "./dependsOn";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as resourceproto from "../proto/resource_pb";
@@ -219,10 +224,8 @@ async function invokeAsync(
         // these should only receive plain arguments, but this is not strictly
         // enforced, and in practice people pass in outputs. This happens to
         // work because we serialize the arguments.
+        let invokeDependsOn: Set<string> | undefined;
         if (checkDependencies) {
-            // If we depend on any CustomResources, we need to ensure that their
-            // ID is known before proceeding. If it is not known, we will return
-            // an unknown result.
             const resourcesToWaitFor = new Set<Resource>(dependsOnDeps);
             // Add the dependencies from the inputs to the set of resources to wait for.
             for (const resourceDeps of deps.values()) {
@@ -230,20 +233,30 @@ async function invokeAsync(
                     resourcesToWaitFor.add(value);
                 }
             }
-            // The expanded set of dependencies, including children of components.
-            const expandedDeps = await getAllTransitivelyReferencedResources(resourcesToWaitFor, new Set());
-            // Ensure that all resource IDs are known before proceeding.
-            for (const dep of expandedDeps.values()) {
-                // DependencyResources inherit from CustomResource, but they don't set the id. Skip them.
-                if (CustomResource.isInstance(dep) && dep.id) {
-                    const known = await dep.id.isKnown;
-                    if (!known) {
-                        return {
-                            result: {},
-                            isKnown: false,
-                            containsSecrets: false,
-                            dependencies: [],
-                        };
+            if (getStore().supportsInvokeDependsOn) {
+                // The engine gates the invoke on the created-ness of its dependencies -- it can see the
+                // children of remote components, which we cannot -- so send it the expanded dependency URNs.
+                invokeDependsOn = await getAllTransitivelyReferencedResourceURNs(resourcesToWaitFor, new Set());
+            } else {
+                // Older engines cannot gate invokes: if we depend on any CustomResources, we need to ensure
+                // that their ID is known before proceeding. If it is not known, we will return an unknown
+                // result.
+                //
+                // The expanded set of dependencies, including children of components.
+                const expandedDeps = await getAllTransitivelyReferencedResources(resourcesToWaitFor, new Set());
+                // Ensure that all resource IDs are known before proceeding.
+                for (const dep of expandedDeps.values()) {
+                    // DependencyResources inherit from CustomResource, but they don't set the id. Skip them.
+                    if (CustomResource.isInstance(dep) && dep.id) {
+                        const known = await dep.id.isKnown;
+                        if (!known) {
+                            return {
+                                result: {},
+                                isKnown: false,
+                                containsSecrets: false,
+                                dependencies: [],
+                            };
+                        }
                     }
                 }
             }
@@ -260,7 +273,7 @@ async function invokeAsync(
         // keep track of the secretness of the inputs
         // if any of the inputs are secret, the invoke response should be marked as secret
         const [plainInputs, inputsContainSecrets] = unwrapSecretValues(serialized);
-        const req = await createInvokeRequest(tok, plainInputs, provider, opts, packageRef);
+        const req = await createInvokeRequest(tok, plainInputs, provider, opts, packageRef, invokeDependsOn);
 
         const resp: any = await debuggablePromise(
             new Promise((innerResolve, innerReject) =>
@@ -296,6 +309,17 @@ async function invokeAsync(
             }
         }
 
+        // The engine declines to service an invoke whose dependencies are pending creation: the result is
+        // wholly unknown.
+        if (resp.getUnknown?.()) {
+            return {
+                result: {},
+                isKnown: false,
+                containsSecrets: false,
+                dependencies: flatDependencies,
+            };
+        }
+
         // Finally propagate any other properties that were given to us as outputs.
         const deserialized = deserializeResponse(tok, resp);
         return {
@@ -315,6 +339,7 @@ async function createInvokeRequest(
     provider: string | undefined,
     opts: InvokeOptions,
     packageRef?: Promise<string | undefined>,
+    dependsOn?: Set<string>,
 ) {
     if (provider !== undefined && typeof provider !== "string") {
         throw new Error("Incorrect provider type.");
@@ -338,6 +363,10 @@ async function createInvokeRequest(
     req.setPlugindownloadurl(opts.pluginDownloadURL || "");
     req.setAcceptresources(!utils.disableResourceReferences);
     req.setPackageref(packageRefStr || "");
+    if (dependsOn !== undefined) {
+        req.setDependsonList(Array.from(dependsOn));
+        req.setAcceptsunknowns(true);
+    }
     return req;
 }
 
