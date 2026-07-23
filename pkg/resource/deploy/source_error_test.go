@@ -35,7 +35,7 @@ func TestErrorSource(t *testing.T) {
 		t.Parallel()
 		s := &errorSource{}
 		assert.Panics(t, func() {
-			_, err := s.Iterate(t.Context(), nil)
+			_, err := s.Iterate(t.Context(), nil, nil)
 			contract.Ignore(err)
 		})
 	})

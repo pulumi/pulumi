@@ -1048,6 +1048,10 @@ func (r *Registry) Invoke(context.Context, plugin.InvokeRequest) (plugin.InvokeR
 	return plugin.InvokeResponse{}, errors.New("the provider registry is not invokable")
 }
 
+func (r *Registry) InvokeWithPreview() bool {
+	return false
+}
+
 func (r *Registry) Call(context.Context, plugin.CallRequest) (plugin.CallResponse, error) {
 	// It is the responsibility of the eval source to ensure that we never attempt an call using the provider
 	// registry.

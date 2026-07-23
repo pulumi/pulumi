@@ -68,6 +68,10 @@ type ProviderHandshakeRequest struct {
 	// or up.
 	InvokeWithPreview bool
 
+	// If true the engine understands unknown values in Invoke results. Only when this is true may the provider return
+	// unknown property sentinels from Invoke; older engines reject them.
+	AcceptsInvokeUnknowns bool
+
 	// The target of a codegen.Mapper service the provider can use to retrieve mappings from other ecosystems to
 	// Pulumi. May be nil on older engines.
 	MapperTarget *string
@@ -98,6 +102,12 @@ type ProviderHandshakeResponse struct {
 	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
 	// user.
 	SupportsAutonamingConfiguration bool
+
+	// True if the provider has semantics for invokes during previews: it understands Preview on InvokeRequest, does
+	// not hard-fail when upstream state has not been materialized, and may return results containing unknowns (only
+	// when the request set AcceptsInvokeUnknowns). If true, the engine may call Invoke during a preview even when the
+	// invoke's declared dependencies are still pending creation.
+	InvokeWithPreview bool
 }
 
 // ParameterizeParameters can either be of concrete type ParameterizeArgs or ParameterizeValue, for when parameterizing
@@ -557,6 +567,11 @@ type Provider interface {
 
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(context.Context, InvokeRequest) (InvokeResponse, error)
+	// InvokeWithPreview reports whether the provider declared preview invoke semantics in its handshake: it
+	// understands Preview on InvokeRequest, does not hard-fail when upstream state has not been materialized, and
+	// may return results containing unknowns. When true, the engine may call Invoke during a preview even when the
+	// invoke's declared dependencies are still pending creation.
+	InvokeWithPreview() bool
 	// Call dynamically executes a method in the provider associated with a component resource.
 	Call(context.Context, CallRequest) (CallResponse, error)
 

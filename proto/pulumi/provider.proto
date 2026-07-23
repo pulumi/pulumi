@@ -291,6 +291,10 @@ message ProviderHandshakeRequest {
     // carrying the byte string signature and a base64 encoding of the string's bytes. If true, the provider may
     // return such values to the engine.
     bool accepts_byte_string = 11;
+
+    // True if and only if the engine understands unknown values in `Invoke` results. Only when this is true may the
+    // provider return unknown property sentinels from `Invoke`; older engines reject them.
+    bool accepts_invoke_unknowns = 12;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -322,6 +326,12 @@ message ProviderHandshakeResponse {
     // objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
     // caller may pass such values to the provider.
     bool accepts_byte_string = 6;
+
+    // True if the provider has semantics for invokes during previews: it understands `preview` on `InvokeRequest`,
+    // will not hard-fail when upstream state has not been materialized, and may return partial results containing
+    // unknown property sentinels (only when the handshake request set `accepts_invoke_unknowns`). If true, the engine
+    // may call `Invoke` during a preview even when the invoke's declared dependencies are still pending creation.
+    bool invoke_with_preview = 7;
 }
 
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
@@ -532,6 +542,11 @@ message InvokeRequest {
 message InvokeResponse {
     google.protobuf.Struct return = 1;  // the returned values, if invoke was successful.
     repeated CheckFailure failures = 2; // the failures if any arguments didn't pass verification.
+
+    // True if the result must be treated as wholly unknown. Reserved for the resource monitor, which sets it when it
+    // declines to service an invoke whose dependencies are pending creation; the monitor rejects provider responses
+    // that set it. Only sent to callers that set `acceptsUnknowns` on `ResourceInvokeRequest`.
+    bool unknown = 3;
 }
 
 message CallRequest {

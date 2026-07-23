@@ -35,6 +35,8 @@ type errorSource struct {
 func (src *errorSource) Close() error                { return nil }
 func (src *errorSource) Project() tokens.PackageName { return src.project }
 
-func (src *errorSource) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
+func (src *errorSource) Iterate(
+	ctx context.Context, providers ProviderSource, state StateSource,
+) (SourceIterator, error) {
 	panic("internal error: unexpected call to errorSource.Iterate")
 }

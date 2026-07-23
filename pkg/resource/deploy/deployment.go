@@ -764,6 +764,28 @@ func (d *Deployment) GetProvider(ref sdkproviders.Reference) (plugin.Provider, b
 	return d.providers.GetProvider(ref)
 }
 
+// LookupState returns the state this operation has produced for the given URN, whether registered or read.
+func (d *Deployment) LookupState(urn resource.URN) (*pkgresource.State, bool) {
+	if state, ok := d.news.Load(urn); ok {
+		return state, true
+	}
+	return d.reads.Load(urn)
+}
+
+// EachState calls f for each state this operation has produced, in no particular order, until f returns false.
+func (d *Deployment) EachState(f func(*pkgresource.State) bool) {
+	cont := true
+	d.news.Range(func(_ resource.URN, state *pkgresource.State) bool {
+		cont = f(state)
+		return cont
+	})
+	if cont {
+		d.reads.Range(func(_ resource.URN, state *pkgresource.State) bool {
+			return f(state)
+		})
+	}
+}
+
 // GetOldViews returns the old views for the given URN.
 func (d *Deployment) GetOldViews(urn resource.URN) []plugin.View {
 	return slice.Map(d.oldViews[urn], func(res *pkgresource.State) plugin.View {

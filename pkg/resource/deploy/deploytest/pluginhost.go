@@ -452,6 +452,7 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: true,
 				InvokeWithPreview:           true,
+				AcceptsInvokeUnknowns:       true,
 			})
 			if err != nil {
 				return nil, errors.Join(err, provider.Close())

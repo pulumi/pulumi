@@ -181,6 +181,7 @@ type MockProvider struct {
 	ListF               func(context.Context, ListRequest) (*ListStream, error)
 	ConstructF          func(context.Context, ConstructRequest) (ConstructResponse, error)
 	InvokeF             func(context.Context, InvokeRequest) (InvokeResponse, error)
+	InvokeWithPreviewF  func() bool
 	CallF               func(context.Context, CallRequest) (CallResponse, error)
 	GetPluginInfoF      func(context.Context) (PluginInfo, error)
 	SignalCancellationF func(context.Context) error
@@ -302,6 +303,13 @@ func (m *MockProvider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRes
 		return m.InvokeF(ctx, req)
 	}
 	return InvokeResponse{}, status.Error(codes.Unimplemented, "Invoke not implemented")
+}
+
+func (m *MockProvider) InvokeWithPreview() bool {
+	if m.InvokeWithPreviewF != nil {
+		return m.InvokeWithPreviewF()
+	}
+	return false
 }
 
 func (m *MockProvider) Call(ctx context.Context, req CallRequest) (CallResponse, error) {

@@ -60,6 +60,9 @@ const (
 	// The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
 	// string bytes signature and a base64 encoding of the string's bytes.
 	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING ResourceMonitorFeature = 13
+	// The monitor accepts `dependsOn` and `acceptsUnknowns` on `ResourceInvokeRequest` and gates the invoke on the
+	// created-ness of the dependencies, returning `unknown` on `InvokeResponse` when they are pending.
+	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON ResourceMonitorFeature = 14
 )
 
 // Enum value maps for ResourceMonitorFeature.
@@ -79,6 +82,7 @@ var (
 		11: "RESOURCE_MONITOR_FEATURE_ERROR_HOOKS",
 		12: "RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS",
 		13: "RESOURCE_MONITOR_FEATURE_BYTE_STRING",
+		14: "RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON",
 	}
 	ResourceMonitorFeature_value = map[string]int32{
 		"RESOURCE_MONITOR_FEATURE_SECRETS":                0,
@@ -95,6 +99,7 @@ var (
 		"RESOURCE_MONITOR_FEATURE_ERROR_HOOKS":            11,
 		"RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS": 12,
 		"RESOURCE_MONITOR_FEATURE_BYTE_STRING":            13,
+		"RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON":      14,
 	}
 )
 
@@ -1156,8 +1161,17 @@ type ResourceInvokeRequest struct {
 	// When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
 	// carrying the byte string signature and a base64 encoding of the string's bytes.
 	AcceptsByteString bool `protobuf:"varint,12,opt,name=accepts_byte_string,json=acceptsByteString,proto3" json:"accepts_byte_string,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The URNs of the resources this invoke depends on: the caller's explicit dependencies plus the resources its
+	// arguments were derived from, expanded as far as the caller can see. The monitor expands component URNs --
+	// including remote components, whose children the caller cannot see -- and does not service the invoke ahead of
+	// the expanded resources. Only set when the monitor advertises `INVOKE_DEPENDS_ON`.
+	DependsOn []string `protobuf:"bytes,13,rep,name=dependsOn,proto3" json:"dependsOn,omitempty"`
+	// True if the caller understands an unknown result: the `unknown` field on `InvokeResponse` and unknown property
+	// sentinels in `return`. When false, the monitor collapses any unknown-bearing result to an empty one. Only set
+	// when the monitor advertises `INVOKE_DEPENDS_ON`.
+	AcceptsUnknowns bool `protobuf:"varint,14,opt,name=acceptsUnknowns,proto3" json:"acceptsUnknowns,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ResourceInvokeRequest) Reset() {
@@ -1270,6 +1284,20 @@ func (x *ResourceInvokeRequest) GetPackageRef() string {
 func (x *ResourceInvokeRequest) GetAcceptsByteString() bool {
 	if x != nil {
 		return x.AcceptsByteString
+	}
+	return false
+}
+
+func (x *ResourceInvokeRequest) GetDependsOn() []string {
+	if x != nil {
+		return x.DependsOn
+	}
+	return nil
+}
+
+func (x *ResourceInvokeRequest) GetAcceptsUnknowns() bool {
+	if x != nil {
+		return x.AcceptsUnknowns
 	}
 	return false
 }
@@ -3237,7 +3265,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v28.pulumirpc.RegisterResourceResponse.PropertyDependenciesR\x05value:\x028\x01\"e\n" +
 	"\x1eRegisterResourceOutputsRequest\x12\x10\n" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x121\n" +
-	"\aoutputs\x18\x02 \x01(\v2\x17.google.protobuf.StructR\aoutputs\"\x8b\x05\n" +
+	"\aoutputs\x18\x02 \x01(\v2\x17.google.protobuf.StructR\aoutputs\"\xd3\x05\n" +
 	"\x15ResourceInvokeRequest\x12\x10\n" +
 	"\x03tok\x18\x01 \x01(\tR\x03tok\x12+\n" +
 	"\x04args\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04args\x12\x1a\n" +
@@ -3255,7 +3283,9 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\n" +
 	"packageRef\x18\t \x01(\tR\n" +
 	"packageRef\x12.\n" +
-	"\x13accepts_byte_string\x18\f \x01(\bR\x11acceptsByteString\x1aB\n" +
+	"\x13accepts_byte_string\x18\f \x01(\bR\x11acceptsByteString\x12\x1c\n" +
+	"\tdependsOn\x18\r \x03(\tR\tdependsOn\x12(\n" +
+	"\x0facceptsUnknowns\x18\x0e \x01(\bR\x0facceptsUnknowns\x1aB\n" +
 	"\x14PluginChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xec\a\n" +
@@ -3449,7 +3479,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\rignore_errors\x18\x04 \x01(\bR\fignoreErrors\"_\n" +
 	"\x18RegisterErrorHookRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12/\n" +
-	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback*\x8c\x05\n" +
+	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback*\xbc\x05\n" +
 	"\x16ResourceMonitorFeature\x12$\n" +
 	" RESOURCE_MONITOR_FEATURE_SECRETS\x10\x00\x120\n" +
 	",RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES\x10\x01\x12*\n" +
@@ -3465,7 +3495,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x12(\n" +
 	"$RESOURCE_MONITOR_FEATURE_ERROR_HOOKS\x10\v\x123\n" +
 	"/RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS\x10\f\x12(\n" +
-	"$RESOURCE_MONITOR_FEATURE_BYTE_STRING\x10\r*)\n" +
+	"$RESOURCE_MONITOR_FEATURE_BYTE_STRING\x10\r\x12.\n" +
+	"*RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON\x10\x0e*)\n" +
 	"\x06Result\x12\v\n" +
 	"\aSUCCESS\x10\x00\x12\b\n" +
 	"\x04FAIL\x10\x01\x12\b\n" +

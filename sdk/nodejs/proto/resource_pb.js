@@ -323,7 +323,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.ResourceInvokeRequest = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.ResourceInvokeRequest.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.ResourceInvokeRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -5544,6 +5544,13 @@ proto.pulumirpc.RegisterResourceOutputsRequest.prototype.hasOutputs = function()
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.ResourceInvokeRequest.repeatedFields_ = [13];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -5586,7 +5593,9 @@ sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition
 stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
 parentstacktracehandle: jspb.Message.getFieldWithDefault(msg, 11, ""),
 packageref: jspb.Message.getFieldWithDefault(msg, 9, ""),
-acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 12, false)
+acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
+dependsonList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
+acceptsunknowns: jspb.Message.getBooleanFieldWithDefault(msg, 14, false)
   };
 
   if (includeInstance) {
@@ -5675,6 +5684,14 @@ proto.pulumirpc.ResourceInvokeRequest.deserializeBinaryFromReader = function(msg
     case 12:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsByteString(value);
+      break;
+    case 13:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addDependson(value);
+      break;
+    case 14:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsunknowns(value);
       break;
     default:
       reader.skipField();
@@ -5786,6 +5803,20 @@ proto.pulumirpc.ResourceInvokeRequest.serializeBinaryToWriter = function(message
   if (f) {
     writer.writeBool(
       12,
+      f
+    );
+  }
+  f = message.getDependsonList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      13,
+      f
+    );
+  }
+  f = message.getAcceptsunknowns();
+  if (f) {
+    writer.writeBool(
+      14,
       f
     );
   }
@@ -6067,6 +6098,61 @@ proto.pulumirpc.ResourceInvokeRequest.prototype.getAcceptsByteString = function(
  */
 proto.pulumirpc.ResourceInvokeRequest.prototype.setAcceptsByteString = function(value) {
   return jspb.Message.setProto3BooleanField(this, 12, value);
+};
+
+
+/**
+ * repeated string dependsOn = 13;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.getDependsonList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 13));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.setDependsonList = function(value) {
+  return jspb.Message.setField(this, 13, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.addDependson = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 13, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.clearDependsonList = function() {
+  return this.setDependsonList([]);
+};
+
+
+/**
+ * optional bool acceptsUnknowns = 14;
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.getAcceptsunknowns = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 14, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.setAcceptsunknowns = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 14, value);
 };
 
 
@@ -12393,7 +12479,8 @@ proto.pulumirpc.ResourceMonitorFeature = {
   RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS: 10,
   RESOURCE_MONITOR_FEATURE_ERROR_HOOKS: 11,
   RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS: 12,
-  RESOURCE_MONITOR_FEATURE_BYTE_STRING: 13
+  RESOURCE_MONITOR_FEATURE_BYTE_STRING: 13,
+  RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON: 14
 };
 
 /**

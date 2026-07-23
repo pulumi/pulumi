@@ -51,6 +51,7 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     LOADER_TARGET_FIELD_NUMBER: builtins.int
     RESOLVER_TARGET_FIELD_NUMBER: builtins.int
     ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
+    ACCEPTS_INVOKE_UNKNOWNS_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
     """The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
     of the [](pulumirpc.Engine) service.
@@ -93,6 +94,10 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     carrying the byte string signature and a base64 encoding of the string's bytes. If true, the provider may
     return such values to the engine.
     """
+    accepts_invoke_unknowns: builtins.bool
+    """True if and only if the engine understands unknown values in `Invoke` results. Only when this is true may the
+    provider return unknown property sentinels from `Invoke`; older engines reject them.
+    """
     def __init__(
         self,
         *,
@@ -107,9 +112,10 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
         loader_target: builtins.str | None = ...,
         resolver_target: builtins.str | None = ...,
         accepts_byte_string: builtins.bool = ...,
+        accepts_invoke_unknowns: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_loader_target", b"_loader_target", "_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_resolver_target", b"_resolver_target", "_root_directory", b"_root_directory", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "resolver_target", b"resolver_target", "root_directory", b"root_directory"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_loader_target", b"_loader_target", "_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_resolver_target", b"_resolver_target", "_root_directory", b"_root_directory", "accepts_byte_string", b"accepts_byte_string", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "invoke_with_preview", b"invoke_with_preview", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "resolver_target", b"resolver_target", "root_directory", b"root_directory", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_loader_target", b"_loader_target", "_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_resolver_target", b"_resolver_target", "_root_directory", b"_root_directory", "accepts_byte_string", b"accepts_byte_string", "accepts_invoke_unknowns", b"accepts_invoke_unknowns", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "invoke_with_preview", b"invoke_with_preview", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "resolver_target", b"resolver_target", "root_directory", b"root_directory", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_loader_target", b"_loader_target"]) -> typing.Literal["loader_target"] | None: ...
     @typing.overload
@@ -134,6 +140,7 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     ACCEPT_OUTPUTS_FIELD_NUMBER: builtins.int
     SUPPORTS_AUTONAMING_CONFIGURATION_FIELD_NUMBER: builtins.int
     ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
+    INVOKE_WITH_PREVIEW_FIELD_NUMBER: builtins.int
     accept_secrets: builtins.bool
     """True if and only if the provider supports secrets. If true, the caller should pass secrets as strongly typed
     values to the provider. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
@@ -157,6 +164,12 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
     objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
     caller may pass such values to the provider.
     """
+    invoke_with_preview: builtins.bool
+    """True if the provider has semantics for invokes during previews: it understands `preview` on `InvokeRequest`,
+    will not hard-fail when upstream state has not been materialized, and may return partial results containing
+    unknown property sentinels (only when the handshake request set `accepts_invoke_unknowns`). If true, the engine
+    may call `Invoke` during a preview even when the invoke's declared dependencies are still pending creation.
+    """
     def __init__(
         self,
         *,
@@ -165,8 +178,9 @@ class ProviderHandshakeResponse(google.protobuf.message.Message):
         accept_outputs: builtins.bool = ...,
         supports_autonaming_configuration: builtins.bool = ...,
         accepts_byte_string: builtins.bool = ...,
+        invoke_with_preview: builtins.bool = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "accepts_byte_string", b"accepts_byte_string", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["accept_outputs", b"accept_outputs", "accept_resources", b"accept_resources", "accept_secrets", b"accept_secrets", "accepts_byte_string", b"accepts_byte_string", "invoke_with_preview", b"invoke_with_preview", "supports_autonaming_configuration", b"supports_autonaming_configuration"]) -> None: ...
 
 global___ProviderHandshakeResponse = ProviderHandshakeResponse
 
@@ -594,6 +608,12 @@ class InvokeResponse(google.protobuf.message.Message):
 
     RETURN_FIELD_NUMBER: builtins.int
     FAILURES_FIELD_NUMBER: builtins.int
+    UNKNOWN_FIELD_NUMBER: builtins.int
+    unknown: builtins.bool
+    """True if the result must be treated as wholly unknown. Reserved for the resource monitor, which sets it when it
+    declines to service an invoke whose dependencies are pending creation; the monitor rejects provider responses
+    that set it. Only sent to callers that set `acceptsUnknowns` on `ResourceInvokeRequest`.
+    """
     @property
     def failures(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CheckFailure]:
         """the failures if any arguments didn't pass verification."""
@@ -602,9 +622,10 @@ class InvokeResponse(google.protobuf.message.Message):
         self,
         *,
         failures: collections.abc.Iterable[global___CheckFailure] | None = ...,
+        unknown: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["return", b"return"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["failures", b"failures", "return", b"return"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["failures", b"failures", "return", b"return", "unknown", b"unknown"]) -> None: ...
 
 global___InvokeResponse = InvokeResponse
 

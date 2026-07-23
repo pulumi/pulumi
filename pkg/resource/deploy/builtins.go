@@ -353,6 +353,10 @@ func (p *builtinProvider) Invoke(ctx context.Context, req plugin.InvokeRequest) 
 	return plugin.InvokeResponse{Properties: outs}, nil
 }
 
+func (p *builtinProvider) InvokeWithPreview() bool {
+	return false
+}
+
 func (p *builtinProvider) Call(context.Context, plugin.CallRequest) (plugin.CallResponse, error) {
 	return plugin.CallResult{}, errors.New("the builtin provider does not implement call")
 }

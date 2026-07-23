@@ -192,7 +192,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	}
 
 	// Begin iterating the source.
-	src, err := ex.deployment.source.Iterate(callerCtx, ex.deployment)
+	src, err := ex.deployment.source.Iterate(callerCtx, ex.deployment, ex.deployment)
 	if err != nil {
 		return nil, err
 	}

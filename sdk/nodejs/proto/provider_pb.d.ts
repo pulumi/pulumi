@@ -48,6 +48,8 @@ export class ProviderHandshakeRequest extends jspb.Message {
     setResolverTarget(value: string): ProviderHandshakeRequest;
     getAcceptsByteString(): boolean;
     setAcceptsByteString(value: boolean): ProviderHandshakeRequest;
+    getAcceptsInvokeUnknowns(): boolean;
+    setAcceptsInvokeUnknowns(value: boolean): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
@@ -72,6 +74,7 @@ export namespace ProviderHandshakeRequest {
         loaderTarget?: string,
         resolverTarget?: string,
         acceptsByteString: boolean,
+        acceptsInvokeUnknowns: boolean,
     }
 }
 
@@ -86,6 +89,8 @@ export class ProviderHandshakeResponse extends jspb.Message {
     setSupportsAutonamingConfiguration(value: boolean): ProviderHandshakeResponse;
     getAcceptsByteString(): boolean;
     setAcceptsByteString(value: boolean): ProviderHandshakeResponse;
+    getInvokeWithPreview(): boolean;
+    setInvokeWithPreview(value: boolean): ProviderHandshakeResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeResponse.AsObject;
@@ -104,6 +109,7 @@ export namespace ProviderHandshakeResponse {
         acceptOutputs: boolean,
         supportsAutonamingConfiguration: boolean,
         acceptsByteString: boolean,
+        invokeWithPreview: boolean,
     }
 }
 
@@ -448,6 +454,8 @@ export class InvokeResponse extends jspb.Message {
     getFailuresList(): Array<CheckFailure>;
     setFailuresList(value: Array<CheckFailure>): InvokeResponse;
     addFailures(value?: CheckFailure, index?: number): CheckFailure;
+    getUnknown(): boolean;
+    setUnknown(value: boolean): InvokeResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InvokeResponse.AsObject;
@@ -463,6 +471,7 @@ export namespace InvokeResponse {
     export type AsObject = {
         pb_return?: google_protobuf_struct_pb.Struct.AsObject,
         failuresList: Array<CheckFailure.AsObject>,
+        unknown: boolean,
     }
 }
 
