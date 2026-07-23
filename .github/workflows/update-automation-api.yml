@@ -42,19 +42,14 @@ jobs:
           git config user.email github-actions@github.com
           git switch --create automation/update-automation-api
           git commit -m "Regenerate automation APIs from the CLI specification"
-          git push --force -u origin HEAD
+          git push --force origin HEAD
           if [ -z "$(gh pr list --head automation/update-automation-api --state open --json number --jq '.[].number')" ]; then
             gh pr create --draft \
               --label impact/no-changelog-required \
               --title "Regenerate automation APIs" \
               --body "The CLI specification no longer matches the generated automation APIs. This PR regenerates them from ${GITHUB_SHA}."
           fi
-
-  dispatch-dotnet:
-    name: Trigger pulumi-dotnet update
-    runs-on: ubuntu-latest
-    steps:
-      - name: Dispatch
+      - name: Trigger pulumi-dotnet update
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         run: |
