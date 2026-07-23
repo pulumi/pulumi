@@ -24,11 +24,13 @@ def test_backend() -> Iterator[None]:
     """Configure an isolated backend for every Automation API test.
 
     Use Pulumi Cloud when an access token is available and a temporary file backend otherwise. Because pytest-xdist runs
-    a separate session per worker, local tests also get separate backends. The fixture is automatic so every Pulumi
-    subprocess inherits the backend and Go workspace isolation consistently.
+    a separate session per worker, local tests also get separate backends.
+
+    This also turns off go workspaces, so the test fixtures use their own modules, without interference from the
+    repository's optional development go.work file.
+
+    The fixture is automatic so every Pulumi subprocess inherits the backend and Go workspace isolation consistently.
     """
-    # The standalone Go test programs must use their own modules, not the
-    # repository's optional development go.work file.
     old_go_work = os.environ.get("GOWORK")
     os.environ["GOWORK"] = "off"
 
