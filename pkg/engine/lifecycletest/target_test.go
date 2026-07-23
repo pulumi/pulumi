@@ -3273,6 +3273,10 @@ func TestTargetChangeAndSameProviderVersion(t *testing.T) {
 // Parents and aliases are of particular interest because they result in URN
 // changes.
 func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping large targeted-update matrix in short mode")
+	}
+
 	t.Parallel()
 
 	// Arrange.

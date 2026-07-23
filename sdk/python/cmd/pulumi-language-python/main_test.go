@@ -334,6 +334,10 @@ func pulumiWheel(t *testing.T) string {
 }
 
 func TestListPulumiPackageInfos(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping package-manager integration test in short mode")
+	}
+
 	t.Parallel()
 
 	for _, toolchainName := range []string{"pip", "poetry", "uv"} {

@@ -31,6 +31,10 @@ import (
 )
 
 func getAwsCaller(t *testing.T) (context.Context, aws.Config, *sts.GetCallerIdentityOutput) {
+	if testing.Short() {
+		t.Skip("skipping AWS integration test in short mode")
+	}
+
 	ctx := context.Background() //nolint:usetesting // ctx is used in t.Cleanup, which runs after t.Context is canceled
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {

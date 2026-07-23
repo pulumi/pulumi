@@ -1116,6 +1116,10 @@ func BenchmarkDiffStack(b *testing.B) {
 }
 
 func TestDiffStack(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping large checkpoint matrix in short mode")
+	}
+
 	t.Parallel()
 
 	testOrBenchmarkDiffStack(t, testDiffStack, dynamicCases)
@@ -1172,6 +1176,10 @@ func TestDiffStackRecorded(t *testing.T) {
 }
 
 func TestMarshalDeployment(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping large checkpoint matrix in short mode")
+	}
+
 	t.Parallel()
 
 	if runtime.GOOS == "windows" {

@@ -30,6 +30,10 @@ import (
 )
 
 func getAzureCaller(ctx context.Context, t *testing.T) *azidentity.DefaultAzureCredential {
+	if testing.Short() {
+		t.Skip("skipping Azure integration test in short mode")
+	}
+
 	credentials, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		t.Skipf("Skipping, could not load azure config: %s", err)

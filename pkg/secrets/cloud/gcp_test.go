@@ -59,6 +59,10 @@ func createGCPKey(ctx context.Context, t *testing.T) string {
 }
 
 func skipIfNoCredentials(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping GCP integration test in short mode")
+	}
+
 	// In CI we always set GOOGLE_APPLICATION_CREDENTIALS to a filename, but that file might be
 	// empty if we have no credentials.  Check for that here.
 	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
