@@ -1,0 +1,67 @@
+name: Update Automation APIs
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  regenerate:
+    name: Regenerate automation APIs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+      - uses: ./.github/actions/retry
+        with:
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
+      - name: Regenerate
+        run: make generate-automation-apis
+      - name: Create or update PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Automation APIs are up to date."
+            exit 0
+          fi
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git switch --create automation/update-automation-api
+          git commit -m "Regenerate automation APIs from the CLI specification"
+          git push --force -u origin HEAD
+          if [ -z "$(gh pr list --head automation/update-automation-api --state open --json number --jq '.[].number')" ]; then
+            gh pr create --draft \
+              --label impact/no-changelog-required \
+              --title "Regenerate automation APIs" \
+              --body "The CLI specification no longer matches the generated automation APIs. This PR regenerates them from ${GITHUB_SHA}."
+          fi
+
+  dispatch-dotnet:
+    name: Trigger pulumi-dotnet update
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        run: |
+          gh api repos/pulumi/pulumi-dotnet/dispatches \
+            -f event_type=update-automation-api \
+            -f "client_payload[sha]=${GITHUB_SHA}"
