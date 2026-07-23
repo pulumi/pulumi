@@ -351,6 +351,7 @@ type StepEventMetadata struct {
 	DetailedDiff map[string]plugin.PropertyDiff // the rich, structured diff
 	Logical      bool                           // true if this step represents a logical operation in the program.
 	Provider     string                         // the provider that performed this step.
+	Untargeted   bool                           // true if this same-step's resource was not included in the operation.
 }
 
 func (m *StepEventMetadata) LockState() {
@@ -527,6 +528,11 @@ func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool, show
 		detailedDiff = detailedDiffer.DetailedDiff()
 	}
 
+	var untargeted bool
+	if u, hasUntargeted := step.(interface{ IsUntargeted() bool }); hasUntargeted {
+		untargeted = u.IsUntargeted()
+	}
+
 	return StepEventMetadata{
 		Op:           op,
 		URN:          step.URN(),
@@ -539,6 +545,7 @@ func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool, show
 		Res:          makeStepEventStateMetadata(step.Res(), debug, showSecrets),
 		Logical:      step.Logical(),
 		Provider:     step.Provider(),
+		Untargeted:   untargeted,
 	}
 }
 
