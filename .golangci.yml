@@ -14,6 +14,7 @@ linters:
     - importas
     - lll
     - misspell
+    - modernize
     - nakedret
     - nolintlint
     - paralleltest
@@ -29,6 +30,16 @@ linters:
     - requiredfield
     - noosexit
   settings:
+    modernize:
+      disable:
+        # golangci-lint uses a newer x/tools modernize suite than Go 1.26's
+        # go fix. Disable analyzers that are not part of go fix to keep the
+        # two checks aligned.
+        - atomictypes
+        - slicesbackward
+        - unsafefuncs
+        # Some code reads omitempty tags at runtime, making this rewrite unsafe.
+        - omitzero
     custom:
       requiredfield:
         type: module
