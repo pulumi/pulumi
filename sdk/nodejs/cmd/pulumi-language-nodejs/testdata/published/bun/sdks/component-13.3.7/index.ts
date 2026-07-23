@@ -23,6 +23,11 @@ export type Custom = import("./custom").Custom;
 export const Custom: typeof import("./custom").Custom = null as any;
 utilities.lazyLoad(exports, ["Custom"], () => require("./custom"));
 
+export { IdentityArgs, IdentityResult, IdentityOutputArgs } from "./identity";
+export const identity: typeof import("./identity").identity = null as any;
+export const identityOutput: typeof import("./identity").identityOutput = null as any;
+utilities.lazyLoad(exports, ["identity","identityOutput"], () => require("./identity"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;

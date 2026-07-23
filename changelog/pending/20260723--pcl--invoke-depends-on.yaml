@@ -1,0 +1,7 @@
+component: pcl
+kind: fix
+body: Declare invoke dependencies to the engine so invokes that depend on pending
+  resources, including remote components, resolve as unknown during previews
+time: 2026-07-23T00:00:00+00:00
+custom:
+  PR: "24041"

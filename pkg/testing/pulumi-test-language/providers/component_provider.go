@@ -207,6 +207,26 @@ func (p *ComponentProvider) GetSchema(context.Context, plugin.GetSchemaRequest) 
 
 	pkg.Resources["component:index:ComponentCallable"] = callableResource
 
+	pkg.Functions["component:index:identity"] = schema.FunctionSpec{
+		Description: "Returns its input unchanged.",
+		Inputs: &schema.ObjectTypeSpec{
+			Type: "object",
+			Properties: map[string]schema.PropertySpec{
+				"input": primitiveType("string"),
+			},
+			Required: []string{"input"},
+		},
+		ReturnType: &schema.ReturnTypeSpec{
+			ObjectTypeSpec: &schema.ObjectTypeSpec{
+				Type: "object",
+				Properties: map[string]schema.PropertySpec{
+					"result": primitiveType("string"),
+				},
+				Required: []string{"result"},
+			},
+		},
+	}
+
 	jsonBytes, err := json.Marshal(pkg)
 	if err != nil {
 		return plugin.GetSchemaResponse{}, err
@@ -214,6 +234,23 @@ func (p *ComponentProvider) GetSchema(context.Context, plugin.GetSchemaRequest) 
 
 	res := plugin.GetSchemaResponse{Schema: jsonBytes}
 	return res, nil
+}
+
+func (p *ComponentProvider) Invoke(
+	_ context.Context, req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	if req.Tok != "component:index:identity" {
+		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
+	}
+	input, ok := req.Args["input"]
+	if !ok || !input.IsString() {
+		return plugin.InvokeResponse{}, errors.New("missing string argument 'input'")
+	}
+	return plugin.InvokeResponse{
+		Properties: resource.PropertyMap{
+			"result": input,
+		},
+	}, nil
 }
 
 func (p *ComponentProvider) GetMapping(

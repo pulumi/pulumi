@@ -418,6 +418,14 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				}
 			}
 
+			// Declare the invoke's dependencies so the engine can gate it on their created-ness; the engine
+			// expands component URNs, including remote components whose children are invisible here.
+			request.DependsOn = make([]string, len(dependsOn))
+			for i, urn := range dependsOn {
+				request.DependsOn[i] = string(urn)
+			}
+			request.AcceptsUnknowns = true
+
 			resp, err := ectx.invoke(context.TODO(), request)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("invoke engine: %w", err)
@@ -429,6 +437,15 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 					fmt.Fprintf(&buf, "- %s\n", failure)
 				}
 				return cty.NilVal, errors.New(buf.String())
+			}
+
+			// The engine declined to service the invoke because its dependencies are pending: the result is
+			// wholly unknown.
+			if resp.Unknown {
+				return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(resource.Output{
+					Known:        false,
+					Dependencies: dependsOn,
+				}))
 			}
 
 			resultPM, err := plugin.UnmarshalProperties(resp.GetReturn(), marshalOpts)
