@@ -1,5 +1,51 @@
 # Changelog
 
+## 3.254.0 (2026-07-23)
+
+### Features
+
+- [cli] Add `pulumi logs share` command for sharing logs with Pulumi [#22546](https://github.com/pulumi/pulumi/pull/22546)
+- [cli] Add `pulumi stack migrate` to migrate a stack from another backend to the currently logged-in backend, including re-encrypting config secrets and stack state under the target secrets provider [#22902](https://github.com/pulumi/pulumi/pull/22902)
+- [cli/config] Add an `--override-env` flag to `up`, `preview`, `destroy`, and `refresh` to substitute imported environments for a single run without editing the stack config [#23562](https://github.com/pulumi/pulumi/pull/23562)
+- [cli] Add `pulumi neo acp` to run Neo as an Agent Client Protocol agent over stdio for ACP-capable editors, with read-only and plan mode exposed as session config options [#23886](https://github.com/pulumi/pulumi/pull/23886)
+- [cli/neo] Retry transient `pulumi neo` stream and message-send failures, and add `pulumi neo resume` with chat history [#23835](https://github.com/pulumi/pulumi/pull/23835)
+- [cli/neo] Make Ctrl+C clear typed text and preserve Ctrl+A/Ctrl+E line navigation in `pulumi neo` [#23932](https://github.com/pulumi/pulumi/pull/23932)
+- [cli/do] Add `upsert` to do, allowing resources to be statefully created or updated in a stack [#23813](https://github.com/pulumi/pulumi/pull/23813)
+- [sdk/python] Add `pulumi.run` for natively awaited Python program entrypoints that can return stack outputs [#23945](https://github.com/pulumi/pulumi/pull/23945)
+- [cli/do] Allow expressions for number inputs [#23954](https://github.com/pulumi/pulumi/pull/23954)
+- [cli/do] Allow expressions for boolean inputs [#23967](https://github.com/pulumi/pulumi/pull/23967)
+- [cli/policy] Add `--runtime-options` to `pulumi policy new` [#23992](https://github.com/pulumi/pulumi/pull/23992)
+- [cli/do] Add support for stateful create [#23996](https://github.com/pulumi/pulumi/pull/23996)
+- [cli/do] Add support for stateful delete [#24000](https://github.com/pulumi/pulumi/pull/24000)
+
+### Bug Fixes
+
+- [sdkgen/go] Fix Go codegen for plain properties nested inside non-plain objects [#22524](https://github.com/pulumi/pulumi/pull/22524)
+- [cli/neo] Keep `pulumi neo` connected during quiet periods when the event stream only receives keep-alive heartbeats [#23935](https://github.com/pulumi/pulumi/pull/23935)
+- [engine] Validate snippets before persisting them [#23920](https://github.com/pulumi/pulumi/pull/23920)
+- [backend] Fix dangling ReplaceWith references in the journal replayer [#23927](https://github.com/pulumi/pulumi/pull/23927)
+- [cli/do] Fix the converter plugin not being called if just attributes needed converting [#23948](https://github.com/pulumi/pulumi/pull/23948)
+- [programgen/go] Generate compilable Go for programs that use discriminated union members as array/list elements [#23980](https://github.com/pulumi/pulumi/pull/23980)
+
+### Improvements
+
+- [cli] Align commands with the CLI naming guidelines, adding `ls`, `rm`, `delete`, `mv`, `update`, `modify`, `create` and `setup` aliases to list/remove/move/edit/new commands and making `state remove` and `package remove` the canonical names with `delete` kept as an alias [#23903](https://github.com/pulumi/pulumi/pull/23903)
+- [cli] Suggest closely-matching commands from the whole command tree when an unknown command is entered [#23848](https://github.com/pulumi/pulumi/pull/23848)
+- [cli] Print help but exit with a non-zero code when `pulumi` is run without a command, matching the behavior of other group commands [#23848](https://github.com/pulumi/pulumi/pull/23848)
+- [programgen] Support `onError` resource hooks in generated Go, NodeJS, and Python programs and in the PCL runtime, retrying the failed operation when the hook command exits successfully [#23839](https://github.com/pulumi/pulumi/pull/23839)
+- [protobuf] Add parent and properties fields to ResourceImport so state converters can express resource hierarchy and property filters [#23929](https://github.com/pulumi/pulumi/pull/23929)
+- [protobuf] Allow state converters to declare explicit providers as resources in ConvertState responses and attach imported resources to them via the new provider field [#23975](https://github.com/pulumi/pulumi/pull/23975)
+- [cli] Redact secrets in property values in logs [#23931](https://github.com/pulumi/pulumi/pull/23931)
+- [cli] Make `-v<n> --logflow` no longer produce separate log files for plugins [#23938](https://github.com/pulumi/pulumi/pull/23938)
+- [protobuf] Pass a schema loader target to state converters in ConvertStateRequest [#23944](https://github.com/pulumi/pulumi/pull/23944)
+- [cli/import] Allow explicit providers to be declared in the resources section of an import file and referenced by name [#23972](https://github.com/pulumi/pulumi/pull/23972)
+- [cli] Remove the template count from `pulumi new --help`, which required a slow template listing before help could display [#23973](https://github.com/pulumi/pulumi/pull/23973)
+- [cli/import] Support inputs and outputs on resources in import files, importing supplied state directly and skipping the provider read when outputs are given [#23984](https://github.com/pulumi/pulumi/pull/23984)
+
+### Miscellaneous
+
+- [sdk] Move RetrieveGitFolder to the gitutil package [#23955](https://github.com/pulumi/pulumi/pull/23955)
+- [sdk] Move template helpers from workspace to pkg/cmd/pulumi/templates [#23963](https://github.com/pulumi/pulumi/pull/23963)
 ## 3.253.0 (2026-07-14)
 
 ### Features

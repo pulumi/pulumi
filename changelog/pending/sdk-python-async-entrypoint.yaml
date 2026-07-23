@@ -1,4 +1,0 @@
-component: sdk/python
-kind: feat
-body: Add `pulumi.run` for natively awaited Python program entrypoints that can return stack outputs
-time: 2026-07-15T16:12:38+02:00

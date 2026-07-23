@@ -1,4 +1,0 @@
-component: sdk
-kind: chore
-body: Move template helpers from workspace to pkg/cmd/pulumi/templates
-time: 2026-07-16T09:11:26.115633+01:00

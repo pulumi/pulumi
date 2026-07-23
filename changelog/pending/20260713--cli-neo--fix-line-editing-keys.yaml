@@ -1,6 +1,0 @@
-component: cli/neo
-kind: feat
-body: Make Ctrl+C clear typed text and preserve Ctrl+A/Ctrl+E line navigation in `pulumi neo`
-time: 2026-07-13T00:00:00+00:00
-custom:
-  PR: "23932"

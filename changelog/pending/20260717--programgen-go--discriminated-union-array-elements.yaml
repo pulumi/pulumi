@@ -1,4 +1,0 @@
-component: programgen/go
-kind: fix
-body: Generate compilable Go for programs that use discriminated union members as array/list elements
-time: 2026-07-17T00:00:00Z

@@ -1,6 +1,0 @@
-kind: improvement
-body: Print help but exit with a non-zero code when `pulumi` is run without a command,
-  matching the behavior of other group commands
-component: cli
-custom:
-    PR: "23848"
