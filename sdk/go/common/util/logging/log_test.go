@@ -176,6 +176,7 @@ func TestLoggingDoesNotConflictWithGlog(t *testing.T) {
 
 	cmd := exec.Command("go", "run", "-mod=mod", ".")
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "GOWORK=off")
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(output))
 }
