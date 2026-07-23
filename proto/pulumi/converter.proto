@@ -162,6 +162,17 @@ message ConvertSnippetRequest {
 
     // any extra attributes to convert.
     map<string, string> attributes = 6;
+
+    message ResourceReference {
+        // The resource token for the referenced resource.
+        string token = 1;
+
+        // The package description to load for the referenced resource.
+        .codegen.GetSchemaRequest package = 2;
+    }
+
+    // any external resource references to convert.
+    map<string, ResourceReference> resources = 7;
 }
 
 message ConvertSnippetResponse {
@@ -176,4 +187,8 @@ message ConvertSnippetResponse {
 
     // any extra attributes to merge into the final pcl result.
     map<string, string> attributes = 4;
+
+    // any external resource names that were rewritten during conversion. The keys are identifiers
+    // in the source language and the values are identifiers in the generated PCL.
+    map<string, string> resource_names = 5;
 }
