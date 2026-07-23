@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -1117,22 +1118,22 @@ func unmarshalViews(views []*pulumirpc.View, opts MarshalOptions) ([]View, error
 
 // unmarshalView is a helper that unmarshals a single view from gRPC into a View struct.
 func unmarshalView(v *pulumirpc.View, opts MarshalOptions) (View, error) {
-	var err error
-
-	var inputs resource.PropertyMap
+	var inputs *property.Map
 	if v.Inputs != nil {
-		inputs, err = UnmarshalProperties(v.Inputs, opts)
+		minputs, err := UnmarshalProperties(v.Inputs, opts)
 		if err != nil {
 			return View{}, err
 		}
+		inputs = resource.FromResourcePropertyMapPtr(minputs)
 	}
 
-	var outputs resource.PropertyMap
+	var outputs *property.Map
 	if v.Outputs != nil {
-		outputs, err = UnmarshalProperties(v.Outputs, opts)
+		moutputs, err := UnmarshalProperties(v.Outputs, opts)
 		if err != nil {
 			return View{}, err
 		}
+		outputs = resource.FromResourcePropertyMapPtr(moutputs)
 	}
 
 	return View{

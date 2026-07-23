@@ -2628,7 +2628,7 @@ func marshalView(v View, opts MarshalOptions) (*pulumirpc.View, error) {
 
 	var inputs *structpb.Struct
 	if v.Inputs != nil {
-		inputs, err = MarshalProperties(v.Inputs, opts)
+		inputs, err = MarshalProperties(resource.ToResourcePropertyMap(*v.Inputs), opts)
 		if err != nil {
 			return nil, err
 		}
@@ -2636,7 +2636,7 @@ func marshalView(v View, opts MarshalOptions) (*pulumirpc.View, error) {
 
 	var outputs *structpb.Struct
 	if v.Outputs != nil {
-		outputs, err = MarshalProperties(v.Outputs, opts)
+		outputs, err = MarshalProperties(resource.ToResourcePropertyMap(*v.Outputs), opts)
 		if err != nil {
 			return nil, err
 		}

@@ -104,6 +104,17 @@ func FromResourcePropertyMap(v PropertyMap) property.Map {
 	return property.NewMap(rMap)
 }
 
+// Translate a [PropertyMap] into a [*property.Map].
+//
+// See FromResourcePropertyMap for details on the translation.
+func FromResourcePropertyMapPtr(v PropertyMap) *property.Map {
+	if v == nil {
+		return nil
+	}
+	m := FromResourcePropertyMap(v)
+	return &m
+}
+
 // Translate a [PropertyValue] into a [property.Value].
 //
 // This is a normalizing transition, such that the last expression will be true:
@@ -149,7 +160,8 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 	case v.IsComputed():
 		return property.New(property.Computed).WithSecret(
 			v.Input().Element.IsSecret() ||
-				(v.Input().Element.IsOutput() && v.Input().Element.OutputValue().Secret))
+				(v.Input().Element.IsOutput() && v.Input().Element.OutputValue().Secret),
+		)
 	case v.IsSecret():
 		return FromResourcePropertyValue(v.SecretValue().Element).WithSecret(true)
 	case v.IsOutput():
