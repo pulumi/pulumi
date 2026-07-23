@@ -1,0 +1,4 @@
+component: sdk
+kind: feat
+body: Expose state migration events through the Automation API
+time: 2026-07-23T11:05:30+02:00
