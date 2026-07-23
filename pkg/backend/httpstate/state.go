@@ -286,6 +286,20 @@ func isDebugDiagEvent(e engine.Event) bool {
 	return e.Type == engine.DiagEvent && (e.Payload().(engine.DiagEventPayload)).Severity == diag.Debug
 }
 
+// isUntargetedEvent reports if a resource that was not included in a target-constrained operation.
+// Such resources are untouched by the operation, so their same-step events carry no information
+// beyond the summary counts and need not be persisted.
+func isUntargetedEvent(e engine.Event) bool {
+	switch p := e.Payload().(type) {
+	case engine.ResourcePreEventPayload:
+		return p.Metadata.Untargeted
+	case engine.ResourceOutputsEventPayload:
+		return p.Metadata.Untargeted
+	default:
+		return false
+	}
+}
+
 type engineEventBatch struct {
 	sequenceStart int
 	events        []engine.Event
@@ -327,7 +341,7 @@ func (b *cloudBackend) persistEngineEvents(
 	// We need to filter the engine events here to exclude any internal and
 	// ephemeral events, since these by definition should not be persisted.
 	events = channel.FilterRead(events, func(e engine.Event) bool {
-		return !e.Internal() && !e.Ephemeral()
+		return !e.Internal() && !e.Ephemeral() && !isUntargetedEvent(e)
 	})
 
 	var eventBatch []engine.Event

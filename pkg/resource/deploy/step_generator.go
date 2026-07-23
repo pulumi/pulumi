@@ -1708,7 +1708,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 
 				new := old.Copy()
 				new.ID = ""
-				rootStep := NewSameStep(sg.deployment, event, old, new)
+				rootStep := NewUntargetedSameStep(sg.deployment, event, old, new)
 				steps = append(steps, rootStep)
 				return steps, nil
 			}
@@ -2383,7 +2383,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				if !sg.isOperatedOn(res.URN) {
 					new := res.Copy()
 					new.ID = ""
-					sameSteps = append(sameSteps, NewSameStep(sg.deployment, nil, res, new))
+					sameSteps = append(sameSteps, NewUntargetedSameStep(sg.deployment, nil, res, new))
 				}
 			}
 		}
