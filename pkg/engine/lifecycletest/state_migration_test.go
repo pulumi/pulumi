@@ -353,6 +353,20 @@ func TestStateMigrationRenameChild(t *testing.T) {
 	snap, err = runUpdate(t, env.plan, snap,
 		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
 			assert.Equal(t, map[display.StepOp]int{deploy.OpSame: 3}, successOps(entries))
+			var migrationEvents []StateMigrationEventPayload
+			for _, e := range events {
+				if e.Type == StateMigrationEvent {
+					migrationEvents = append(migrationEvents, e.Payload().(StateMigrationEventPayload))
+				}
+			}
+			// The applied migration is reported through a dedicated engine event.
+			require.Len(t, migrationEvents, 1)
+			{
+				payload := migrationEvents[0]
+				assert.Equal(t, compURN, payload.URN)
+				assert.Equal(t, []resource.URN{childBURN}, payload.Added)
+				assert.Equal(t, map[resource.URN]resource.URN{childAURN: childBURN}, payload.Successors)
+			}
 			return err
 		})
 	require.NoError(t, err)
@@ -939,6 +953,10 @@ func TestStateMigrationEchoNoOp(t *testing.T) {
 	_, err = lt.TestOp(Update).Run(project, env.plan.GetTarget(t, snap), env.plan.Options, false, env.plan.BackendClient,
 		func(project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error) error {
 			assert.Equal(t, map[display.StepOp]int{deploy.OpSame: 3}, successOps(entries))
+			for _, e := range events {
+				assert.NotEqual(t, StateMigrationEvent, e.Type,
+					"an echo migration must not emit a state-migration event")
+			}
 			return err
 		})
 	require.NoError(t, err)

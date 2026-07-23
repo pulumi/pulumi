@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/dustin/go-humanize/english"
@@ -61,10 +61,12 @@ type ResourceRow interface {
 	DiagInfo() *DiagInfo
 	PolicyPayloads() []engine.PolicyViolationEventPayload
 	PolicyRemediationPayloads() []engine.PolicyRemediationEventPayload
+	StateMigrationPayloads() []engine.StateMigrationEventPayload
 
 	RecordDiagEvent(diagEvent engine.Event)
 	RecordPolicyViolationEvent(diagEvent engine.Event)
 	RecordPolicyRemediationEvent(diagEvent engine.Event)
+	RecordStateMigrationEvent(event engine.Event)
 }
 
 // Implementation of a Row, used for the header of the grid.
@@ -135,6 +137,7 @@ type resourceRowData struct {
 	diagInfo                  *DiagInfo
 	policyPayloads            []engine.PolicyViolationEventPayload
 	policyRemediationPayloads []engine.PolicyRemediationEventPayload
+	stateMigrationPayloads    []engine.StateMigrationEventPayload
 
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
@@ -250,6 +253,17 @@ func (data *resourceRowData) PolicyRemediationPayloads() []engine.PolicyRemediat
 func (data *resourceRowData) RecordPolicyRemediationEvent(event engine.Event) {
 	tPayload := event.Payload().(engine.PolicyRemediationEventPayload)
 	data.policyRemediationPayloads = append(data.policyRemediationPayloads, tPayload)
+}
+
+// RecordStateMigrationEvent records a state migration with the resourceRowData.
+func (data *resourceRowData) RecordStateMigrationEvent(event engine.Event) {
+	payload := event.Payload().(engine.StateMigrationEventPayload)
+	data.stateMigrationPayloads = append(data.stateMigrationPayloads, payload)
+}
+
+// StateMigrationPayloads returns all state migrations associated with the resource row.
+func (data *resourceRowData) StateMigrationPayloads() []engine.StateMigrationEventPayload {
+	return data.stateMigrationPayloads
 }
 
 type column int
@@ -413,6 +427,10 @@ func (data *resourceRowData) getInfoColumn() string {
 		appendDiagMessage("[" + changes + "]")
 	}
 
+	if len(data.stateMigrationPayloads) > 0 {
+		appendDiagMessage("[" + renderStateMigration() + "]")
+	}
+
 	diagInfo := data.diagInfo
 	if data.display.done.Load() {
 		// If we are done, show a summary of how many messages were printed.
@@ -551,7 +569,7 @@ func writePropertyKeys(b io.StringWriter, keys []string, op display.StepOp) {
 	if len(keys) > 0 {
 		writeString(b, strings.Trim(deploy.Prefix(op, true /*done*/), " "))
 
-		sort.Strings(keys)
+		slices.Sort(keys)
 
 		for index, k := range keys {
 			if index != 0 {
@@ -562,4 +580,106 @@ func writePropertyKeys(b io.StringWriter, keys []string, op display.StepOp) {
 
 		writeString(b, colors.Reset)
 	}
+}
+
+type stateMigrationSuccessorGroup struct {
+	successor    resource.URN
+	predecessors []resource.URN
+}
+
+// stateMigrationResourceChanges groups predecessors by successor so N-to-1 mappings remain visible, and returns
+// added resources that do not already appear as a successor.
+func stateMigrationResourceChanges(
+	payload engine.StateMigrationEventPayload,
+) ([]stateMigrationSuccessorGroup, []resource.URN) {
+	sourcesByTarget := make(map[resource.URN][]resource.URN)
+	mappedTargets := make(map[resource.URN]bool, len(payload.Successors))
+	for source, target := range payload.Successors {
+		sourcesByTarget[target] = append(sourcesByTarget[target], source)
+		mappedTargets[target] = true
+	}
+
+	targets := make([]resource.URN, 0, len(sourcesByTarget))
+	for target := range sourcesByTarget {
+		targets = append(targets, target)
+	}
+	slices.Sort(targets)
+
+	groups := make([]stateMigrationSuccessorGroup, 0, len(targets))
+	for _, target := range targets {
+		sources := sourcesByTarget[target]
+		slices.Sort(sources)
+		groups = append(groups, stateMigrationSuccessorGroup{successor: target, predecessors: sources})
+	}
+
+	added := make([]resource.URN, 0, len(payload.Added))
+	for _, urn := range payload.Added {
+		if !mappedTargets[urn] {
+			added = append(added, urn)
+		}
+	}
+	slices.Sort(added)
+	return groups, added
+}
+
+type stateMigrationResourceFormatter struct {
+	showURNs           bool
+	ambiguousTypeNames map[string]bool
+}
+
+// newStateMigrationResourceFormatter chooses the shortest unambiguous labels for the resources in one migration.
+// A type and name normally suffice. If distinct URNs share that label, their qualified types preserve the parent-type
+// context that distinguishes them. --show-urns continues to show the complete identity.
+func newStateMigrationResourceFormatter(
+	payload engine.StateMigrationEventPayload, opts Options,
+) stateMigrationResourceFormatter {
+	formatter := stateMigrationResourceFormatter{showURNs: opts.ShowURNs}
+	if opts.ShowURNs {
+		return formatter
+	}
+
+	urns := make(map[resource.URN]struct{})
+	if payload.URN.IsValid() {
+		urns[payload.URN] = struct{}{}
+	}
+	for _, urn := range payload.Added {
+		urns[urn] = struct{}{}
+	}
+	for source, target := range payload.Successors {
+		urns[source] = struct{}{}
+		urns[target] = struct{}{}
+	}
+
+	typeNameCounts := make(map[string]int, len(urns))
+	for urn := range urns {
+		typeNameCounts[stateMigrationTypeName(urn)]++
+	}
+	formatter.ambiguousTypeNames = make(map[string]bool)
+	for label, count := range typeNameCounts {
+		if count > 1 {
+			formatter.ambiguousTypeNames[label] = true
+		}
+	}
+	return formatter
+}
+
+func (formatter stateMigrationResourceFormatter) text(urn resource.URN) string {
+	if formatter.showURNs {
+		return string(urn)
+	}
+	label := stateMigrationTypeName(urn)
+	if formatter.ambiguousTypeNames[label] {
+		return fmt.Sprintf("%s::%s", urn.QualifiedType(), urn.Name())
+	}
+	return label
+}
+
+func stateMigrationTypeName(urn resource.URN) string {
+	return fmt.Sprintf("%s::%s", urn.Type().DisplayName(), urn.Name())
+}
+
+// renderStateMigration returns the compact marker shown in a resource row. Detailed mappings are printed separately
+// after the progress table so terminal-width truncation cannot hide them.
+func renderStateMigration() string {
+	return colors.SpecInfo + "state migrated" + colors.Reset
 }

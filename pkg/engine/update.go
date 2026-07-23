@@ -1182,6 +1182,9 @@ func (acts *updateActions) OnStateMigration(transaction *deploy.StateMigrationTr
 	if err := manager.StateMigration(transaction); err != nil {
 		return err
 	}
+	acts.Opts.Events.stateMigrationEvent(
+		transaction.RootURN, transaction.PriorSubtree,
+		transaction.ResultSubtree, transaction.SuccessorURNs)
 	return nil
 }
 
@@ -1406,6 +1409,9 @@ func (acts *previewActions) OnRebuiltBaseState() error {
 }
 
 func (acts *previewActions) OnStateMigration(transaction *deploy.StateMigrationTransaction) error {
+	acts.Opts.Events.stateMigrationEvent(
+		transaction.RootURN, transaction.PriorSubtree,
+		transaction.ResultSubtree, transaction.SuccessorURNs)
 	return nil
 }
 

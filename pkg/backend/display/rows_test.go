@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
@@ -86,6 +87,132 @@ func TestResourceRowDataColorizedColumns(t *testing.T) {
 			require.Equal(t, tt.expected, name)
 		})
 	}
+}
+
+func TestRenderDiffStateMigrationEvent(t *testing.T) {
+	t.Parallel()
+
+	left := resource.URN("urn:pulumi:test::test::example:index:Component$example:index:Left$example:index:Part::shared")
+	right := resource.URN("urn:pulumi:test::test::example:index:Component$example:index:Right$example:index:Part::shared")
+	unified := resource.URN("urn:pulumi:test::test::example:index:Component$example:index:Unified::unified")
+	added := resource.URN("urn:pulumi:test::test::example:index:Component$example:index:Added::added")
+	root := resource.URN("urn:pulumi:test::test::example:index:Component::component")
+	payload := engine.StateMigrationEventPayload{
+		URN:   root,
+		Added: []resource.URN{added, unified},
+		Successors: map[resource.URN]resource.URN{
+			right: unified,
+			left:  unified,
+		},
+	}
+
+	require.Equal(t, "    example:index:Component::component: state migrated\n"+
+		"        example:index:Unified::unified is the successor of:\n"+
+		"            example:index:Component$example:index:Left$example:index:Part::shared\n"+
+		"            example:index:Component$example:index:Right$example:index:Part::shared\n"+
+		"        added resource: example:index:Added::added\n",
+		renderDiffStateMigrationEvent(payload, Options{}))
+	require.Equal(t, "    "+string(root)+": state migrated\n"+
+		"        "+string(unified)+" is the successor of:\n"+
+		"            "+string(left)+"\n"+
+		"            "+string(right)+"\n"+
+		"        added resource: "+string(added)+"\n",
+		renderDiffStateMigrationEvent(payload, Options{ShowURNs: true}))
+}
+
+func TestRenderDiffStateMigrationEventDisambiguatesSharedNames(t *testing.T) {
+	t.Parallel()
+
+	oldComponent := resource.URN("urn:pulumi:dev::test::awsx:ecr:Repository::repo")
+	oldRepository := resource.URN(
+		"urn:pulumi:dev::test::awsx:ecr:Repository$aws:ecr/repository:Repository::repo")
+	oldPolicy := resource.URN(
+		"urn:pulumi:dev::test::awsx:ecr:Repository$aws:ecr/lifecyclePolicy:LifecyclePolicy::repo")
+	newRepository := resource.URN("urn:pulumi:dev::test::aws:ecr/repository:Repository::repository")
+	newPolicy := resource.URN(
+		"urn:pulumi:dev::test::aws:ecr/repository:Repository$aws:ecr/lifecyclePolicy:LifecyclePolicy::lifecycle-policy")
+	payload := engine.StateMigrationEventPayload{
+		URN:   newRepository,
+		Added: []resource.URN{newRepository, newPolicy},
+		Successors: map[resource.URN]resource.URN{
+			oldComponent:  newRepository,
+			oldRepository: newRepository,
+			oldPolicy:     newPolicy,
+		},
+	}
+
+	require.Equal(t, "    aws:ecr:Repository::repository: state migrated\n"+
+		"        aws:ecr:LifecyclePolicy::lifecycle-policy is the successor of:\n"+
+		"            aws:ecr:LifecyclePolicy::repo\n"+
+		"        aws:ecr:Repository::repository is the successor of:\n"+
+		"            aws:ecr:Repository::repo\n"+
+		"            awsx:ecr:Repository::repo\n",
+		renderDiffStateMigrationEvent(payload, Options{}))
+}
+
+func TestStateMigrationProgressMarkerIsCompact(t *testing.T) {
+	t.Parallel()
+
+	row := &resourceRowData{
+		display:  &ProgressDisplay{},
+		diagInfo: &DiagInfo{},
+		step: engine.StepEventMetadata{
+			URN: "urn:pulumi:test::test::example:index:Component::component",
+			Op:  deploy.OpSame,
+		},
+		stateMigrationPayloads: []engine.StateMigrationEventPayload{{}},
+	}
+	require.Equal(t, "[state migrated]", colors.Never.Colorize(row.getInfoColumn()))
+}
+
+type recordingProgressRenderer struct {
+	lines []string
+}
+
+func (*recordingProgressRenderer) Close() error                               { return nil }
+func (*recordingProgressRenderer) initializeDisplay(*ProgressDisplay)         {}
+func (*recordingProgressRenderer) tick()                                      {}
+func (*recordingProgressRenderer) rowUpdated(Row)                             {}
+func (*recordingProgressRenderer) systemMessage(engine.StdoutEventPayload)    {}
+func (*recordingProgressRenderer) progress(engine.ProgressEventPayload, bool) {}
+func (*recordingProgressRenderer) done()                                      {}
+func (renderer *recordingProgressRenderer) println(line string) {
+	renderer.lines = append(renderer.lines, colors.Never.Colorize(line))
+}
+
+func TestProgressDisplayPrintsStateMigrationDetailsOutsideTable(t *testing.T) {
+	t.Parallel()
+
+	root := resource.URN("urn:pulumi:test::test::example:index:Component::component")
+	oldChild := resource.URN("urn:pulumi:test::test::example:index:Component$example:index:Child::old")
+	newChild := resource.URN("urn:pulumi:test::test::example:index:Component$example:index:Child::new")
+	payload := engine.StateMigrationEventPayload{
+		URN:   root,
+		Added: []resource.URN{newChild},
+		Successors: map[resource.URN]resource.URN{
+			oldChild: newChild,
+		},
+	}
+	renderer := &recordingProgressRenderer{}
+	display := &ProgressDisplay{
+		renderer: renderer,
+		eventUrnToResourceRow: map[resource.URN]ResourceRow{
+			root: &resourceRowData{
+				step:                   engine.StepEventMetadata{URN: root},
+				stateMigrationPayloads: []engine.StateMigrationEventPayload{payload},
+			},
+		},
+	}
+
+	display.printStateMigrations()
+
+	require.Equal(t, []string{
+		"State migrations:",
+		"    example:index:Component::component: state migrated",
+		"        example:index:Child::new is the successor of:",
+		"            example:index:Child::old",
+		"",
+	}, renderer.lines)
 }
 
 func TestResourceRowDataInterruptedStatus(t *testing.T) {

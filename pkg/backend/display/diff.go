@@ -152,11 +152,31 @@ func RenderDiffEvent(event engine.Event, resourcesErrored int,
 		return renderDiffPolicyRemediationEvent(event.Payload().(engine.PolicyRemediationEventPayload), "", true, opts)
 	case engine.PolicyViolationEvent:
 		return renderDiffPolicyViolationEvent(event.Payload().(engine.PolicyViolationEventPayload), "", "", opts)
+	case engine.StateMigrationEvent:
+		return renderDiffStateMigrationEvent(event.Payload().(engine.StateMigrationEventPayload), opts)
 
 	default:
 		contract.Failf("unknown event type '%s'", event.Type)
 		return ""
 	}
+}
+
+func renderDiffStateMigrationEvent(payload engine.StateMigrationEventPayload, opts Options) string {
+	resources := newStateMigrationResourceFormatter(payload, opts)
+	groups, added := stateMigrationResourceChanges(payload)
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "    %s: state migrated\n", resources.text(payload.URN))
+	for _, group := range groups {
+		fmt.Fprintf(&b, "        %s is the successor of:\n", resources.text(group.successor))
+		for _, predecessor := range group.predecessors {
+			fmt.Fprintf(&b, "            %s\n", resources.text(predecessor))
+		}
+	}
+	for _, urn := range added {
+		fmt.Fprintf(&b, "        added resource: %s\n", resources.text(urn))
+	}
+	return b.String()
 }
 
 func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
