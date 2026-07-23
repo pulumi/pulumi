@@ -29,6 +29,7 @@ jobs:
       - name: Regenerate
         run: make generate-automation-apis
       - name: Create or update PR
+        id: pr
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         run: |
@@ -43,12 +44,27 @@ jobs:
           git switch --create automation/update-automation-api
           git commit -m "Regenerate automation APIs from the CLI specification"
           git push --force origin HEAD
-          if [ -z "$(gh pr list --head automation/update-automation-api --state open --json number --jq '.[].number')" ]; then
-            gh pr create --draft \
-              --label impact/no-changelog-required \
-              --title "Regenerate automation APIs" \
-              --body "The CLI specification no longer matches the generated automation APIs. This PR regenerates them from ${GITHUB_SHA}."
+          # If a PR is already open for this branch, the force-push above refreshed it; reuse its URL.
+          existing=$(gh pr list --head automation/update-automation-api --state open --json url --jq '.[0].url')
+          if [ -n "$existing" ]; then
+            echo "PR already open: ${existing}; refreshed the branch."
+            echo "url=${existing}" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          pr_url=$(gh pr create --draft \
+            --label impact/no-changelog-required \
+            --title "Regenerate automation APIs" \
+            --body "The CLI specification no longer matches the generated automation APIs. This PR regenerates them from ${GITHUB_SHA}.")
+          echo "url=${pr_url}" >> "$GITHUB_OUTPUT"
+      - name: Notify Slack
+        if: steps.pr.outputs.url != ''
+        uses: slackapi/slack-github-action@v2
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.RELEASE_BOT_TOKEN }}
+          payload: |
+            channel: "#team-iac-core"
+            text: "The `pulumi` automation APIs have drifted from the CLI; a regeneration PR is ready for review: ${{ steps.pr.outputs.url }}"
       - name: Trigger pulumi-dotnet update
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
