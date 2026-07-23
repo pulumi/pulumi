@@ -27,6 +27,27 @@ func main() {
 		if err != nil {
 			return err
 		}
+		third, err := simpleinvoke.NewStringResource(ctx, "third", &simpleinvoke.StringResourceArgs{
+			Text: pulumi.String("third"),
+		})
+		if err != nil {
+			return err
+		}
+		// third.text is known during preview, but third does not exist yet. SDKs must
+		// infer the dependency on third from the invoke's arguments and skip the
+		// invoke while third's ID is unknown: getText fails if it is called before
+		// third has been created.
+		data := simpleinvoke.GetTextOutput(ctx, simpleinvoke.GetTextOutputArgs{
+			Text: third.Text,
+		}, nil)
+		_, err = simpleinvoke.NewStringResource(ctx, "fourth", &simpleinvoke.StringResourceArgs{
+			Text: data.ApplyT(func(data simpleinvoke.GetTextResult) (string, error) {
+				return data.Result, nil
+			}).(pulumi.StringOutput),
+		})
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 }
