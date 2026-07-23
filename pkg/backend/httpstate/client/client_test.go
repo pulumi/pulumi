@@ -97,6 +97,40 @@ func newMockClient(server *httptest.Server) *Client {
 	}
 }
 
+func TestStartUpdateRequestsLatestJournalVersion(t *testing.T) {
+	t.Setenv("PULUMI_DISABLE_JOURNALING", "false")
+
+	var request apitype.StartUpdateRequest
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, http.MethodPost, req.Method)
+		assert.Equal(t, "/api/stacks/organization/project/stack/update/update-id", req.URL.Path)
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&request))
+		require.NoError(t, json.NewEncoder(rw).Encode(apitype.StartUpdateResponse{
+			Version:        42,
+			Token:          "update-token",
+			JournalVersion: apitype.LatestJournalVersion,
+		}))
+	}))
+	t.Cleanup(server.Close)
+
+	client := newMockClient(server)
+	version, token, journalVersion, err := client.StartUpdate(t.Context(), UpdateIdentifier{
+		StackIdentifier: StackIdentifier{
+			Owner:   "organization",
+			Project: "project",
+			Stack:   tokens.MustParseStackName("stack"),
+		},
+		UpdateKind: apitype.UpdateUpdate,
+		UpdateID:   "update-id",
+	}, nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, apitype.LatestJournalVersion, request.JournalVersion)
+	assert.Equal(t, 42, version)
+	assert.Equal(t, "update-token", token)
+	assert.Equal(t, apitype.LatestJournalVersion, journalVersion)
+}
+
 func TestSignupAgent(t *testing.T) {
 	t.Parallel()
 
