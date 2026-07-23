@@ -2947,6 +2947,29 @@ func TestRunEngineActionPropagatesJournalManagerError(t *testing.T) {
 	}
 }
 
+func TestCloudPersistenceSupportsStateMigrations(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name               string
+		journalVersion     int64
+		journalingDisabled bool
+		expected           bool
+	}{
+		{name: "legacy snapshot", journalVersion: 0, expected: true},
+		{name: "journal v1", journalVersion: 1},
+		{name: "journal v2", journalVersion: 2, expected: true},
+		{name: "journal v1 disabled", journalVersion: 1, journalingDisabled: true, expected: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.expected,
+				cloudPersistenceSupportsStateMigrations(tt.journalVersion, tt.journalingDisabled))
+		})
+	}
+}
+
 type runEngineActionFixture struct {
 	backend  *cloudBackend
 	stackRef cloudBackendReference
