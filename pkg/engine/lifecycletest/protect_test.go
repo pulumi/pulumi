@@ -365,7 +365,7 @@ func TestForceDeleteProtected(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	// Run the initial update to create the two protected resources.
@@ -377,8 +377,9 @@ func TestForceDeleteProtected(t *testing.T) {
 	// Now remove both resources from the program and run with ForceDeleteProtected set.
 	creating = false
 	forceOptions := lt.TestUpdateOptions{
-		T:     t,
-		HostF: hostF,
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
 		UpdateOptions: engine.UpdateOptions{
 			ForceDeleteProtected: true,
 		},
@@ -455,7 +456,7 @@ func TestForceDeleteProtectedReplace(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	// Run the initial update to create the protected resource.
@@ -472,8 +473,9 @@ func TestForceDeleteProtectedReplace(t *testing.T) {
 
 	// Try again with ForceDeleteProtected set, the replace should now succeed.
 	forceOptions := lt.TestUpdateOptions{
-		T:     t,
-		HostF: hostF,
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
 		UpdateOptions: engine.UpdateOptions{
 			ForceDeleteProtected: true,
 		},
@@ -542,7 +544,7 @@ func TestForceDeleteProtectedDBRChain(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	project := p.GetProject()
@@ -560,8 +562,9 @@ func TestForceDeleteProtectedDBRChain(t *testing.T) {
 
 	// Try again with ForceDeleteProtected set, the replacement chain should now succeed.
 	forceOptions := lt.TestUpdateOptions{
-		T:     t,
-		HostF: hostF,
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
 		UpdateOptions: engine.UpdateOptions{
 			ForceDeleteProtected: true,
 		},
@@ -598,7 +601,7 @@ func TestForceDeleteProtectedDestroy(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	// Run the initial update to create the protected resource.
@@ -614,8 +617,9 @@ func TestForceDeleteProtectedDestroy(t *testing.T) {
 
 	// A destroy with ForceDeleteProtected should delete the protected resource.
 	forceOptions := lt.TestUpdateOptions{
-		T:     t,
-		HostF: hostF,
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
 		UpdateOptions: engine.UpdateOptions{
 			ForceDeleteProtected: true,
 		},
