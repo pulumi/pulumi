@@ -117,6 +117,7 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 func (pc *packageCommand) newStatefulResourceCreateCommand(res *schema.Resource) *cobra.Command {
 	var inputFile string
 	var inputFormat string
+	var resourcesFile string
 	var yes bool
 	cmd := &cobra.Command{
 		Use:   "create <name>",
@@ -129,17 +130,18 @@ func (pc *packageCommand) newStatefulResourceCreateCommand(res *schema.Resource)
 		RunE: func(cmd *cobra.Command, args []string) error {
 			contract.Assertf(!pc.stateless, "stateful create should not be registered in stateless mode")
 			return pc.runStatefulSnippetUpdate(cmd, statefulSnippetUpdate{
-				res:          res,
-				name:         args[0],
-				inputFile:    inputFile,
-				inputFormat:  inputFormat,
-				yes:          yes,
-				verb:         "created",
-				requireFresh: true,
+				res:           res,
+				name:          args[0],
+				inputFile:     inputFile,
+				inputFormat:   inputFormat,
+				resourcesFile: resourcesFile,
+				yes:           yes,
+				verb:          "created",
+				requireFresh:  true,
 			})
 		},
 	}
-	addStatefulSnippetUpdateFlags(cmd, &inputFile, &inputFormat, &yes, res.InputProperties)
+	addStatefulSnippetUpdateFlags(cmd, &inputFile, &inputFormat, &resourcesFile, &yes, res.InputProperties)
 	return cmd
 }
 

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -146,6 +147,99 @@ size = 2
 	assert.True(t, got.Yes)
 
 	assert.Contains(t, stdout.String(), got.Snippet.UUID)
+	_ = stderr
+}
+
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceUpsertConstructsSnippetWithReferences(t *testing.T) {
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{})
+
+	var got StatefulUpdateRequest
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		got = req
+		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	referencedURN := "urn:pulumi:dev::proj::azure:index:myResource::source"
+	inputFile := writeHCLFile(t, "upsert.pcl", `name = source.name`)
+	resourcesFile := writeHCLFile(t, "resources.json", `{"source":"`+referencedURN+`"}`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "upsert", "myres", "--yes",
+		"--input", "pcl", "--input-file", inputFile, "--resources", resourcesFile,
+	})
+	require.NoError(t, cmd.Execute())
+
+	assert.Equal(t, map[string]string{"source": referencedURN}, got.Snippet.References)
+	_ = stdout
+	_ = stderr
+}
+
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceUpsertConvertsReferences(t *testing.T) {
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{})
+
+	var got StatefulUpdateRequest
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		got = req
+		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+
+	referencedURN := "urn:pulumi:dev::proj::azure:index:myResource::source"
+	loadConverter := func(_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		assert.Equal(t, "yaml", name)
+		return &plugin.MockConverter{
+			ConvertSnippetF: func(_ context.Context, req *plugin.ConvertSnippetRequest) (
+				*plugin.ConvertSnippetResponse, error,
+			) {
+				assert.Equal(t, "upsert.yaml", filepath.Base(req.Filename))
+				assert.Equal(t, "name: ${source-name.name}\n", string(req.Source))
+				require.Len(t, req.Resources, 1)
+				ref := req.Resources["source-name"]
+				assert.Equal(t, "azure:index:myResource", ref.Token)
+				require.NotNil(t, ref.Package)
+				assert.Equal(t, "azure", ref.Package.Package)
+				return &plugin.ConvertSnippetResponse{
+					Filename: "upsert.pp",
+					Source:   []byte("name = sourceName.name\n"),
+					ResourceNames: map[string]string{
+						"source-name": "sourceName",
+					},
+				}, nil
+			},
+		}, nil
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, loadConverter, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "upsert.yaml", "name: ${source-name.name}\n")
+	resourcesFile := writeHCLFile(t, "resources.json", `{"source-name":"`+referencedURN+`"}`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "upsert", "myres", "--yes",
+		"--input", "yaml", "--input-file", inputFile, "--resources", resourcesFile,
+	})
+	require.NoError(t, cmd.Execute())
+
+	assert.Equal(t, "name = sourceName.name\n", got.Snippet.Code)
+	assert.Equal(t, map[string]string{"sourceName": referencedURN}, got.Snippet.References)
+	_ = stdout
 	_ = stderr
 }
 
@@ -357,6 +451,80 @@ func TestDoCmdResourceStatefulCreateConstructsSnippet(t *testing.T) {
 	require.NotEmpty(t, got.Snippet.UUID)
 	assert.Contains(t, stdout.String(), "created myres")
 	_ = stderr
+}
+
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceStatefulCreateConstructsSnippetWithReferences(t *testing.T) {
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{})
+
+	var got StatefulUpdateRequest
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		got = req
+		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	referencedURN := "urn:pulumi:dev::proj::azure:index:myResource::source"
+	inputFile := writeHCLFile(t, "create.pcl", `name = source.name`)
+	resourcesFile := writeHCLFile(t, "resources.json", `{"source":"`+referencedURN+`"}`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "create", "myres", "--yes",
+		"--input", "pcl", "--input-file", inputFile, "--resources", resourcesFile,
+	})
+	require.NoError(t, cmd.Execute())
+
+	assert.Equal(t, map[string]string{"source": referencedURN}, got.Snippet.References)
+	_ = stdout
+	_ = stderr
+}
+
+func TestReadResourceReferences(t *testing.T) {
+	t.Parallel()
+
+	referencedURN := "urn:pulumi:dev::proj::azure:index:myResource::source"
+	resourcesFile := writeHCLFile(t, "resources.json", `{"source":"`+referencedURN+`"}`)
+
+	refs, err := readResourceReferences(resourcesFile)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"source": referencedURN}, refs)
+}
+
+func TestReadResourceReferencesRejectsInvalidInput(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		contents string
+		wantErr  string
+	}{
+		{
+			name:     "invalid urn",
+			contents: `{"source":"not-a-urn"}`,
+			wantErr:  `invalid URN for "source"`,
+		},
+		{
+			name:     "not object",
+			contents: `[]`,
+			wantErr:  "parse resources file",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			resourcesFile := writeHCLFile(t, "resources.json", tt.contents)
+			_, err := readResourceReferences(resourcesFile)
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
 }
 
 // TestDoCmdResourceStatefulCreateRejectsExisting checks the invariant that distinguishes create
