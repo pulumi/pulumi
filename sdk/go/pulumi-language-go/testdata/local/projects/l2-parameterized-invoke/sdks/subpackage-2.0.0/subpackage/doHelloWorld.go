@@ -34,17 +34,15 @@ type DoHelloWorldResult struct {
 }
 
 func DoHelloWorldOutput(ctx *pulumi.Context, args DoHelloWorldOutputArgs, opts ...pulumi.InvokeOption) DoHelloWorldResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (DoHelloWorldResultOutput, error) {
-			args := v.(DoHelloWorldArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			ref, err := internal.PkgGetPackageRef(ctx)
-			if err != nil {
-				return DoHelloWorldResultOutput{}, err
-			}
-			options.PackageRef = ref
-			return ctx.InvokeOutput("subpackage:index:doHelloWorld", args, DoHelloWorldResultOutput{}, options).(DoHelloWorldResultOutput), nil
-		}).(DoHelloWorldResultOutput)
+	return pulumi.ToOutput(0).ApplyT(func(int) (DoHelloWorldResultOutput, error) {
+		options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+		ref, err := internal.PkgGetPackageRef(ctx)
+		if err != nil {
+			return DoHelloWorldResultOutput{}, err
+		}
+		options.PackageRef = ref
+		return ctx.InvokeOutput("subpackage:index:doHelloWorld", args, DoHelloWorldResultOutput{}, options).(DoHelloWorldResultOutput), nil
+	}).(DoHelloWorldResultOutput)
 }
 
 type DoHelloWorldOutputArgs struct {

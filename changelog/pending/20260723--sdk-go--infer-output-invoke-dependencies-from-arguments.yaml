@@ -1,0 +1,8 @@
+component: sdk/go
+kind: fix
+body: Output-form invokes now infer their resource dependencies from their arguments,
+    so they are skipped during preview while a dependent resource is pending creation
+    and their results carry those dependencies
+time: 2026-07-23T16:30:00Z
+custom:
+    PR: "24054"

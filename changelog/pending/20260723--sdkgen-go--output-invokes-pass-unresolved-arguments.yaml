@@ -1,0 +1,7 @@
+component: sdkgen/go
+kind: fix
+body: Generated output-form invokes pass their arguments to the core SDK without resolving
+    them first, so invoke dependencies can be inferred from arguments
+time: 2026-07-23T16:31:00Z
+custom:
+    PR: "24054"

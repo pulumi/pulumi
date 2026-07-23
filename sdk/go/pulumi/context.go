@@ -766,6 +766,32 @@ func (ctx *Context) Invoke(tok string, args any, result any, opts ...InvokeOptio
 func (ctx *Context) invokePackageRaw(
 	tok string, args any, packageRef string, options invokeOptions,
 ) (resource.PropertyMap, error) {
+	// Serialize arguments. Outputs will not be awaited: instead, an error will be returned if any Outputs are present.
+	if args == nil {
+		args = struct{}{}
+	}
+	resolvedArgs, _, err := marshalInputOptions(args, anyType, &marshalOptions{
+		ErrorOnOutput: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshaling arguments: %w", err)
+	}
+
+	resolvedArgsMap := resource.PropertyMap{}
+	if resolvedArgs.IsObject() {
+		resolvedArgsMap = resolvedArgs.ObjectValue()
+	}
+
+	return ctx.invokePackageRawResolved(tok, resolvedArgsMap, packageRef, options)
+}
+
+// invokePackageRawResolved is the RPC half of invokePackageRaw: it invokes the provider function
+// with arguments that have already been resolved to a plain property map. Secrets in the arguments
+// are sent as their raw values; callers that permit secret arguments must track secretness
+// themselves and mark their results accordingly.
+func (ctx *Context) invokePackageRawResolved(
+	tok string, resolvedArgsMap resource.PropertyMap, packageRef string, options invokeOptions,
+) (resource.PropertyMap, error) {
 	if tok == "" {
 		return nil, errors.New("invoke token must not be empty")
 	}
@@ -789,27 +815,11 @@ func (ctx *Context) invokePackageRaw(
 		providerRef = pr
 	}
 
-	// Serialize arguments. Outputs will not be awaited: instead, an error will be returned if any Outputs are present.
-	if args == nil {
-		args = struct{}{}
-	}
-	resolvedArgs, _, err := marshalInputOptions(args, anyType, &marshalOptions{
-		ErrorOnOutput: true,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("marshaling arguments: %w", err)
-	}
-
-	resolvedArgsMap := resource.PropertyMap{}
-	if resolvedArgs.IsObject() {
-		resolvedArgsMap = resolvedArgs.ObjectValue()
-	}
-
 	rpcArgs, err := plugin.MarshalProperties(
 		resolvedArgsMap,
 		plugin.MarshalOptions{
 			KeepUnknowns:   true,
-			KeepSecrets:    true,
+			KeepSecrets:    false,
 			KeepResources:  ctx.state.keepResources,
 			KeepByteString: ctx.state.keepByteString,
 		},
@@ -933,6 +943,10 @@ type InvokeOutputOptions struct {
 // InvokeOutput will invoke a provider's function, identified by its token tok. This function is
 // used by generated SDK code for Output form invokes.
 // `output` is used to determine the output type to return.
+//
+// Unlike Invoke, args may contain Inputs/Outputs. The invoke's resource dependencies are inferred
+// from the arguments (in addition to any explicit DependsOn options), and if any argument is
+// unknown the invoke is not performed and the result is unknown.
 func (ctx *Context) InvokeOutput(
 	tok string, args any, output Output, options InvokeOutputOptions,
 ) Output {
@@ -968,7 +982,31 @@ func (ctx *Context) InvokeOutput(
 			}
 		}
 
+		// Serialize the arguments, awaiting any outputs and recording the resources they depend
+		// on. These argument dependencies participate in the existence gate below just like
+		// explicit DependsOn dependencies, so an invoke does not run against a resource that has
+		// not been created yet (pulumi/pulumi#18298).
+		if args == nil {
+			args = struct{}{}
+		}
+		resolvedArgs, argDeps, err := marshalInputOptions(args, anyType, nil)
+		if err != nil {
+			internal.RejectOutput(output, fmt.Errorf("marshaling arguments: %w", err))
+			return
+		}
+		deps = append(deps, argDeps...)
+		if err := resourceDependencySet(argDeps).addDeps(ctx.ctx, depSet, nil); err != nil {
+			return
+		}
+		secret := resolvedArgs.ContainsSecrets()
+
 		dest := reflect.New(output.ElementType()).Elem()
+
+		// If any argument is unknown the invoke cannot run; its result is unknown.
+		if resolvedArgs.ContainsUnknowns() {
+			internal.ResolveOutput(output, dest.Interface(), false, secret, resourcesToInternal(deps))
+			return
+		}
 
 		// DependsOn for resources is an ordering constraint for register
 		// resource calls. If a resource R1 depends on a resource R2, the
@@ -991,25 +1029,30 @@ func (ctx *Context) InvokeOutput(
 					contract.Failf("Awaiting ID: %s", err)
 				}
 				if !known {
-					internal.ResolveOutput(output, dest.Interface(), known, false, resourcesToInternal(deps))
+					internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps))
 					return
 				}
 			}
 		}
 
-		outProps, err := ctx.invokePackageRaw(tok, args, options.PackageRef, *invokeOpts)
+		resolvedArgsMap := resource.PropertyMap{}
+		if resolvedArgs.IsObject() {
+			resolvedArgsMap = resolvedArgs.ObjectValue()
+		}
+
+		outProps, err := ctx.invokePackageRawResolved(tok, resolvedArgsMap, options.PackageRef, *invokeOpts)
 		if err != nil {
 			internal.RejectOutput(output, err)
 			return
 		}
 
 		known := !outProps.ContainsUnknowns()
-		secret, err := unmarshalOutput(ctx, resource.NewProperty(outProps), dest)
+		respSecret, err := unmarshalOutput(ctx, resource.NewProperty(outProps), dest)
 		if err != nil {
 			internal.RejectOutput(output, err)
 			return
 		}
-		internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps))
+		internal.ResolveOutput(output, dest.Interface(), known, secret || respSecret, resourcesToInternal(deps))
 	}()
 
 	return output

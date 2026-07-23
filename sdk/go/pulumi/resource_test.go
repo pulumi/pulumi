@@ -1661,6 +1661,178 @@ func TestInvokeDependsOnUnknownChild(t *testing.T) {
 	require.NoError(t, err)
 }
 
+type DoEchoOutputArgs struct {
+	Echo StringPtrInput `pulumi:"echo"`
+}
+
+func (DoEchoOutputArgs) ElementType() reflect.Type {
+	return reflect.TypeFor[DoEchoArgs]()
+}
+
+// An invoke's resource dependencies are inferred from its arguments and recorded on the result
+// output. (pulumi/pulumi#18298)
+func TestInvokeOutputArgsDependencies(t *testing.T) {
+	t.Parallel()
+
+	resolved := false
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			return resource.PropertyMap{
+				"echo": args.Args["echo"],
+			}, nil
+		},
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			time.Sleep(1 * time.Second)
+			resolved = true
+			return args.Name + "_id", nil, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		dep := newTestRes(t, ctx, "dep")
+		args := DoEchoOutputArgs{
+			Echo: dep.URN().ApplyT(func(urn URN) *string {
+				s := string(urn)
+				return &s
+			}).(StringPtrOutput),
+		}
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{})
+
+		v, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.True(t, known)
+		require.False(t, secret)
+		require.True(t, resolved, "expected the invoke to wait for its argument dependency")
+		require.NotEmpty(t, *v.(DoEchoResult).Echo)
+		require.Len(t, deps, 1)
+		require.Equal(t, dep.URN(), deps[0].(Resource).URN())
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+// During a preview, a resource's outputs can be known while the resource has not been created yet
+// (its ID is unknown). An invoke whose arguments depend on such a resource must not run.
+// (pulumi/pulumi#18298)
+func TestInvokeOutputArgsDependencyPendingCreate(t *testing.T) {
+	t.Parallel()
+
+	invoked := false
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			invoked = true
+			return resource.PropertyMap{
+				"echo": resource.NewProperty("hello"),
+			}, nil
+		},
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			// No ID: the resource is pending creation.
+			return "", nil, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		dep := newTestRes(t, ctx, "dep")
+		args := DoEchoOutputArgs{
+			// The argument's value is known, but it depends on dep, whose ID is unknown.
+			Echo: dep.URN().ApplyT(func(URN) *string {
+				s := "known value"
+				return &s
+			}).(StringPtrOutput),
+		}
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{})
+
+		_, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.False(t, known)
+		require.False(t, secret)
+		require.False(t, invoked, "expected the invoke to be skipped")
+		require.Len(t, deps, 1)
+		require.Equal(t, dep.URN(), deps[0].(Resource).URN())
+
+		return nil
+	}, WithMocks("project", "stack", monitor), func(info *RunInfo) {
+		info.DryRun = true
+	})
+	require.NoError(t, err)
+}
+
+// If any argument is unknown, the invoke is skipped and its result is unknown.
+func TestInvokeOutputArgsUnknown(t *testing.T) {
+	t.Parallel()
+
+	invoked := false
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			invoked = true
+			return resource.PropertyMap{
+				"echo": resource.NewProperty("hello"),
+			}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		dep := newUnknownRes()
+		args := DoEchoOutputArgs{
+			Echo: UnsafeUnknownOutput([]Resource{dep}).ApplyT(func(any) *string {
+				return nil
+			}).(StringPtrOutput),
+		}
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{})
+
+		_, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.False(t, known)
+		require.False(t, secret)
+		require.False(t, invoked, "expected the invoke to be skipped")
+		require.Len(t, deps, 1)
+		require.True(t, deps[0] == dep)
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+// Secret arguments are sent to the provider as their raw values and make the result secret.
+func TestInvokeOutputArgsSecret(t *testing.T) {
+	t.Parallel()
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			require.Equal(t, resource.NewProperty("shh"), args.Args["echo"])
+			return resource.PropertyMap{
+				"echo": args.Args["echo"],
+			}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		args := DoEchoOutputArgs{
+			Echo: ToSecret(String("shh")).(StringOutput).ApplyT(func(s string) *string {
+				return &s
+			}).(StringPtrOutput),
+		}
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{})
+
+		v, known, secret, _, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.True(t, known)
+		require.True(t, secret)
+		require.Equal(t, "shh", *v.(DoEchoResult).Echo)
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
 func TestInvokeDependsOnIgnored(t *testing.T) {
 	t.Parallel()
 

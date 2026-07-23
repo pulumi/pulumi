@@ -3431,11 +3431,13 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 		resultTypeName = pkg.outputType(returnType)
 	}
 
+	// The arguments passed to InvokeOutput. Arguments are passed with their inputs unresolved so
+	// that the SDK can infer the invoke's resource dependencies from them (pulumi/pulumi#18298).
 	var inputsVar string
 	if f.Inputs == nil {
 		inputsVar = "nil"
 	} else if codegen.IsProvideDefaultsFuncRequired(f.Inputs) && !pkg.disableObjectDefaults {
-		inputsVar = "args.Defaults()"
+		inputsVar = "outputArgs"
 	} else {
 		inputsVar = "args"
 	}
@@ -3462,36 +3464,51 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 			fmt.Fprintf(w, "func %[1]sOutput(ctx *pulumi.Context, args %[1]sOutputArgs, opts ...pulumi.InvokeOption) %[2]s {\n",
 				originalName, resultTypeName)
 		}
-		fmt.Fprint(w, "	return pulumi.ToOutputWithContext(ctx.Context(), args).\n")
-		fmt.Fprintf(w, "		ApplyT(func(v interface{}) (%s, error) {\n", resultTypeName)
-		fmt.Fprintf(w, "			args := v.(%s)\n", pkg.functionArgsTypeName(f))
-		fmt.Fprintf(w, "			options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
+		if inputsVar == "outputArgs" {
+			argsTypeName := pkg.functionArgsTypeName(f)
+			fmt.Fprint(w, "	outputArgs := pulumi.ToOutputWithContext(ctx.Context(), args).\n")
+			fmt.Fprintf(w, "		ApplyT(func(v interface{}) *%s {\n", argsTypeName)
+			fmt.Fprintf(w, "			args := v.(%s)\n", argsTypeName)
+			fmt.Fprint(w, "			return args.Defaults()\n")
+			fmt.Fprint(w, "		})\n")
+		}
+
+		genInvokeCall := func(indent, returnSuffix string) {
+			if objectReturnType != nil {
+				fmt.Fprintf(w, "%sreturn ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s)%s\n",
+					indent, f.Token, inputsVar, resultTypeName, resultTypeName, returnSuffix)
+			} else {
+				otyp := pkg.outputType(&schema.MapType{ElementType: returnType})
+				ityp := pkg.typeString(&schema.MapType{ElementType: returnType})
+				typ := pkg.typeString(returnType)
+
+				fmt.Fprintf(w, "%srv := ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s)\n", indent, f.Token, inputsVar, otyp, otyp)
+				fmt.Fprintf(w, "%sreturn rv.ApplyT(func(rv %s) %s {\n", indent, ityp, typ)
+				fmt.Fprintf(w, "%s	var result %s\n", indent, typ)
+				fmt.Fprintf(w, "%s	for _, v := range rv {\n", indent)
+				fmt.Fprintf(w, "%s		result = v\n", indent)
+				fmt.Fprintf(w, "%s	}\n", indent)
+				fmt.Fprintf(w, "%s	return result\n", indent)
+				fmt.Fprintf(w, "%s}).(%s)%s\n", indent, resultTypeName, returnSuffix)
+			}
+		}
 
 		if def.Parameterization != nil || def.ExtensionParameterization != nil {
+			// The package reference lookup can fail, so it runs inside an ApplyT whose callback
+			// can return an error.
+			fmt.Fprintf(w, "	return pulumi.ToOutput(0).ApplyT(func(int) (%s, error) {\n", resultTypeName)
+			fmt.Fprintf(w, "		options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
 			err = pkg.GenPkgGetPackageRefCall(w, resultTypeName+"{}")
 			if err != nil {
 				return err
 			}
-			fmt.Fprint(w, "			options.PackageRef = ref\n")
-		}
-		if objectReturnType != nil {
-			fmt.Fprintf(w, "			return ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s), nil\n",
-				f.Token, inputsVar, resultTypeName, resultTypeName)
+			fmt.Fprint(w, "		options.PackageRef = ref\n")
+			genInvokeCall("\t\t", ", nil")
+			fmt.Fprintf(w, "	}).(%s)\n", resultTypeName)
 		} else {
-			otyp := pkg.outputType(&schema.MapType{ElementType: returnType})
-			ityp := pkg.typeString(&schema.MapType{ElementType: returnType})
-			typ := pkg.typeString(returnType)
-
-			fmt.Fprintf(w, "			rv := ctx.InvokeOutput(\"%s\", %s, %s{}, options).(%s)\n", f.Token, inputsVar, otyp, otyp)
-			fmt.Fprintf(w, "			return rv.ApplyT(func(rv %s) %s {\n", ityp, typ)
-			fmt.Fprintf(w, "				var result %s\n", typ)
-			fmt.Fprintf(w, "				for _, v := range rv {\n")
-			fmt.Fprintf(w, "					result = v\n")
-			fmt.Fprintf(w, "				}\n")
-			fmt.Fprintf(w, "				return result\n")
-			fmt.Fprintf(w, "			}).(%s), nil\n", resultTypeName)
+			fmt.Fprintf(w, "	options := pulumi.InvokeOutputOptions{InvokeOptions: %s.PkgInvokeDefaultOpts(opts)}\n", pkg.internalModuleName)
+			genInvokeCall("\t", "")
 		}
-		fmt.Fprintf(w, "		}).(%s)\n", resultTypeName)
 		fmt.Fprint(w, "}\n")
 		fmt.Fprint(w, "\n")
 	} else {

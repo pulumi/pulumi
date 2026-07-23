@@ -34,17 +34,15 @@ type DoGoodbyeWorldResult struct {
 }
 
 func DoGoodbyeWorldOutput(ctx *pulumi.Context, args DoGoodbyeWorldOutputArgs, opts ...pulumi.InvokeOption) DoGoodbyeWorldResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (DoGoodbyeWorldResultOutput, error) {
-			args := v.(DoGoodbyeWorldArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			ref, err := internal.PkgGetPackageRef(ctx)
-			if err != nil {
-				return DoGoodbyeWorldResultOutput{}, err
-			}
-			options.PackageRef = ref
-			return ctx.InvokeOutput("byepackage:index:doGoodbyeWorld", args, DoGoodbyeWorldResultOutput{}, options).(DoGoodbyeWorldResultOutput), nil
-		}).(DoGoodbyeWorldResultOutput)
+	return pulumi.ToOutput(0).ApplyT(func(int) (DoGoodbyeWorldResultOutput, error) {
+		options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+		ref, err := internal.PkgGetPackageRef(ctx)
+		if err != nil {
+			return DoGoodbyeWorldResultOutput{}, err
+		}
+		options.PackageRef = ref
+		return ctx.InvokeOutput("byepackage:index:doGoodbyeWorld", args, DoGoodbyeWorldResultOutput{}, options).(DoGoodbyeWorldResultOutput), nil
+	}).(DoGoodbyeWorldResultOutput)
 }
 
 type DoGoodbyeWorldOutputArgs struct {
