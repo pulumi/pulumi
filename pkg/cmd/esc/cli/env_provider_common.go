@@ -15,6 +15,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -69,38 +70,46 @@ func ensureProviderEnv(ctx context.Context, env *envCommand, ref environmentRef,
 
 // mergeProviderIntoEnv merges providerNode into the YAML environment definition at
 // values.<path>, replacing any existing node at that path, and sets each of envVars under
-// values.environmentVariables (adding to, not replacing, any variables already there). The
-// result is the new YAML document bytes.
+// values.environmentVariables (adding to, not replacing, any variables already there). It
+// returns the new YAML document bytes and whether they differ from the definition.
+//
+// changed compares the merge result against the definition re-marshaled through the same
+// encoder, not against the raw input bytes, so that formatting normalization alone does not
+// count as a change: a merge that sets already-present values reports changed == false.
 func mergeProviderIntoEnv(
 	envYAML []byte, path resource.PropertyPath, providerNode *yaml.Node, envVars []envVar,
-) ([]byte, error) {
+) (newYAML []byte, changed bool, err error) {
 	if len(path) == 0 {
-		return nil, errors.New("path must contain at least one element")
+		return nil, false, errors.New("path must contain at least one element")
 	}
 
 	var docNode yaml.Node
 	if len(envYAML) > 0 {
 		if err := yaml.Unmarshal(envYAML, &docNode); err != nil {
-			return nil, fmt.Errorf("unmarshaling environment definition: %w", err)
+			return nil, false, fmt.Errorf("unmarshaling environment definition: %w", err)
 		}
 	}
 	if docNode.Kind != yaml.DocumentNode {
 		docNode = yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{}}}
 	}
 
+	baseline, err := yaml.Marshal(docNode.Content[0])
+	if err != nil {
+		return nil, false, fmt.Errorf("marshaling definition: %w", err)
+	}
+
 	valuesNode, ok := encoding.YAMLSyntax{Node: &docNode}.Get(resource.PropertyPath{"values"})
 	if !ok {
-		var err error
 		valuesNode, err = encoding.YAMLSyntax{Node: &docNode}.Set(nil, resource.PropertyPath{"values"}, yaml.Node{
 			Kind: yaml.MappingNode,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("creating values node: %w", err)
+			return nil, false, fmt.Errorf("creating values node: %w", err)
 		}
 	}
 
 	if _, err := (encoding.YAMLSyntax{Node: valuesNode}).Set(nil, path, *providerNode); err != nil {
-		return nil, fmt.Errorf("setting provider at %v: %w", path, err)
+		return nil, false, fmt.Errorf("setting provider at %v: %w", path, err)
 	}
 
 	// Set each variable at its own key so existing entries under environmentVariables survive.
@@ -109,15 +118,15 @@ func mergeProviderIntoEnv(
 			resource.PropertyPath{"environmentVariables", ev.name},
 			yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: ev.value})
 		if err != nil {
-			return nil, fmt.Errorf("setting environment variable %s: %w", ev.name, err)
+			return nil, false, fmt.Errorf("setting environment variable %s: %w", ev.name, err)
 		}
 	}
 
 	out, err := yaml.Marshal(docNode.Content[0])
 	if err != nil {
-		return nil, fmt.Errorf("marshaling definition: %w", err)
+		return nil, false, fmt.Errorf("marshaling definition: %w", err)
 	}
-	return out, nil
+	return out, !bytes.Equal(baseline, out), nil
 }
 
 // secretNode returns a yaml mapping node of the shape `fn::secret: <value>`.
@@ -175,9 +184,13 @@ func applyProviderUpdate(
 		}
 	}
 
-	newYAML, err := mergeProviderIntoEnv(def, path, providerNode, envVars)
+	newYAML, changed, err := mergeProviderIntoEnv(def, path, providerNode, envVars)
 	if err != nil {
 		return err
+	}
+	if !changed {
+		fmt.Fprintf(env.esc.stdout, "No changes to %s; already up to date.\n", ref.String())
+		return nil
 	}
 
 	diags, err := env.esc.updateEnvironment(ctx, ref, draft, newYAML, tag, "Provider updated.")
