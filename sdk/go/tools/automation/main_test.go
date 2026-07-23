@@ -128,6 +128,7 @@ func TestRuntimeCommands(t *testing.T) {
 
 	cmd := exec.Command("go", "test", "-tags=automation_runtime", "-v", "./...")
 	cmd.Dir = filepath.Join(dir, "tests", "runtime")
+	cmd.Env = append(os.Environ(), "GOWORK=off")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("runtime tests failed: %v\n%s", err, out)

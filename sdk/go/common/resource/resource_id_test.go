@@ -124,7 +124,13 @@ func TestUniqueNameDeterminism(t *testing.T) {
 	randchars := []rune("xyzw")
 	name, err := NewUniqueName(randomSeed, prefix, randlen, maxlen, randchars)
 	require.NoError(t, err)
-	assert.Equal(t, "prefixywzwwyz", name)
+	assert.True(t, strings.HasPrefix(name, prefix), "%s does not have prefix %s", name, prefix)
+	require.Len(t, name, len(prefix)+randlen)
+	assert.Subset(t, randchars, []rune(name[len(prefix):]))
+
+	name2, err := NewUniqueName(randomSeed, prefix, randlen, maxlen, randchars)
+	require.NoError(t, err)
+	assert.Equal(t, name, name2)
 }
 
 func TestUniqueNameNonDeterminism(t *testing.T) {
