@@ -194,6 +194,7 @@ func (c *converter) ConvertSnippet(
 		Package:      req.Package,
 		Token:        req.Token,
 		Attributes:   req.Attributes,
+		Resources:    convertSnippetResourceReferencesToRPC(req.Resources),
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -208,9 +209,26 @@ func (c *converter) ConvertSnippet(
 
 	logging.V(7).Infof("%s success", label)
 	return &ConvertSnippetResponse{
-		Diagnostics: diags,
-		Filename:    resp.Filename,
-		Source:      resp.Source,
-		Attributes:  resp.Attributes,
+		Diagnostics:   diags,
+		Filename:      resp.Filename,
+		Source:        resp.Source,
+		Attributes:    resp.Attributes,
+		ResourceNames: resp.ResourceNames,
 	}, nil
+}
+
+func convertSnippetResourceReferencesToRPC(
+	resources map[string]ConvertSnippetResourceReference,
+) map[string]*pulumirpc.ConvertSnippetRequest_ResourceReference {
+	if len(resources) == 0 {
+		return nil
+	}
+	result := make(map[string]*pulumirpc.ConvertSnippetRequest_ResourceReference, len(resources))
+	for name, res := range resources {
+		result[name] = &pulumirpc.ConvertSnippetRequest_ResourceReference{
+			Token:   res.Token,
+			Package: res.Package,
+		}
+	}
+	return result
 }
