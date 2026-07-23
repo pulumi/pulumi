@@ -1,4 +1,0 @@
-component: cli/do
-kind: feat
-body: Add `upsert` to do, allowing resources to be statefully created or updated in a stack
-time: 2026-07-13T21:24:58.669675+01:00

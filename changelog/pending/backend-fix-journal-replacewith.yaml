@@ -1,4 +1,0 @@
-component: backend
-kind: fix
-body: Fix dangling ReplaceWith references in the journal replayer
-time: 2026-07-14T15:09:07.610190+02:00

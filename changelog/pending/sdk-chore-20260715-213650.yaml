@@ -1,4 +1,0 @@
-component: sdk
-kind: chore
-body: Move RetrieveGitFolder to the gitutil package
-time: 2026-07-15T21:36:50.064272+01:00
