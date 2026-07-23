@@ -528,11 +528,6 @@ func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool, show
 		detailedDiff = detailedDiffer.DetailedDiff()
 	}
 
-	var untargeted bool
-	if u, hasUntargeted := step.(interface{ IsUntargeted() bool }); hasUntargeted {
-		untargeted = u.IsUntargeted()
-	}
-
 	return StepEventMetadata{
 		Op:           op,
 		URN:          step.URN(),
@@ -545,7 +540,7 @@ func makeStepEventMetadata(op display.StepOp, step deploy.Step, debug bool, show
 		Res:          makeStepEventStateMetadata(step.Res(), debug, showSecrets),
 		Logical:      step.Logical(),
 		Provider:     step.Provider(),
-		Untargeted:   untargeted,
+		Untargeted:   step.IsUntargeted(),
 	}
 }
 

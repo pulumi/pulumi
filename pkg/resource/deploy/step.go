@@ -73,6 +73,10 @@ type Step interface {
 	Res() *pkgresource.State
 	// true if this step represents a logical operation in the program.
 	Logical() bool
+	// IsUntargeted returns true if this step was generated solely because its resource was not
+	// included in a target-constrained operation rather than because a diff found the resource
+	// unchanged. Such steps leave their resource untouched, carrying its old state forward verbatim.
+	IsUntargeted() bool
 	// the deployment to which this step belongs.
 	Deployment() *Deployment
 
@@ -312,6 +316,7 @@ func (s *CreateStep) Keys() []resource.PropertyKey                 { return s.ke
 func (s *CreateStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
+func (s *CreateStep) IsUntargeted() bool                           { return false }
 
 func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	if err := s.Deployment().RunHooks(
@@ -593,6 +598,7 @@ func (s *DeleteStep) Old() *pkgresource.State { return s.old }
 func (s *DeleteStep) New() *pkgresource.State { return nil }
 func (s *DeleteStep) Res() *pkgresource.State { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
+func (s *DeleteStep) IsUntargeted() bool      { return false }
 
 func isDeletedWith(with resource.URN, otherDeletions map[resource.URN]bool) bool {
 	if with == "" {
@@ -871,6 +877,7 @@ func (s *RemovePendingReplaceStep) Old() *pkgresource.State { return s.old }
 func (s *RemovePendingReplaceStep) New() *pkgresource.State { return nil }
 func (s *RemovePendingReplaceStep) Res() *pkgresource.State { return s.old }
 func (s *RemovePendingReplaceStep) Logical() bool           { return false }
+func (s *RemovePendingReplaceStep) IsUntargeted() bool      { return false }
 
 func (s *RemovePendingReplaceStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	return resource.StatusOK, nil, nil
@@ -945,6 +952,7 @@ func (s *UpdateStep) Old() *pkgresource.State                      { return s.ol
 func (s *UpdateStep) New() *pkgresource.State                      { return s.new }
 func (s *UpdateStep) Res() *pkgresource.State                      { return s.new }
 func (s *UpdateStep) Logical() bool                                { return true }
+func (s *UpdateStep) IsUntargeted() bool                           { return false }
 func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
@@ -1191,6 +1199,7 @@ func (s *ReplaceStep) Keys() []resource.PropertyKey                 { return s.k
 func (s *ReplaceStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *ReplaceStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *ReplaceStep) Logical() bool                                { return true }
+func (s *ReplaceStep) IsUntargeted() bool                           { return false }
 
 func (s *ReplaceStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.
@@ -1293,6 +1302,7 @@ func (s *ReadStep) Old() *pkgresource.State { return s.old }
 func (s *ReadStep) New() *pkgresource.State { return s.new }
 func (s *ReadStep) Res() *pkgresource.State { return s.new }
 func (s *ReadStep) Logical() bool           { return !s.replacing }
+func (s *ReadStep) IsUntargeted() bool      { return false }
 
 func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	urn := s.new.URN
@@ -1487,6 +1497,7 @@ func (s *RefreshStep) New() *pkgresource.State {
 }
 func (s *RefreshStep) Res() *pkgresource.State                      { return s.old }
 func (s *RefreshStep) Logical() bool                                { return false }
+func (s *RefreshStep) IsUntargeted() bool                           { return false }
 func (s *RefreshStep) Diffs() []resource.PropertyKey                { return s.diff.ChangedKeys }
 func (s *RefreshStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.diff.DetailedDiff }
 
@@ -1806,6 +1817,7 @@ func (s *ExtensionParameterizeStep) Old() *pkgresource.State { return nil }
 func (s *ExtensionParameterizeStep) New() *pkgresource.State { return nil }
 func (s *ExtensionParameterizeStep) Res() *pkgresource.State { return nil }
 func (s *ExtensionParameterizeStep) Logical() bool           { return false }
+func (s *ExtensionParameterizeStep) IsUntargeted() bool      { return false }
 func (s *ExtensionParameterizeStep) Deployment() *Deployment { return s.deployment }
 func (s *ExtensionParameterizeStep) Fail()                   {}
 func (s *ExtensionParameterizeStep) Skip()                   {}
@@ -1916,6 +1928,7 @@ func (s *ImportStep) Original() *pkgresource.State { return s.original }
 func (s *ImportStep) New() *pkgresource.State      { return s.new }
 func (s *ImportStep) Res() *pkgresource.State      { return s.new }
 func (s *ImportStep) Logical() bool                { return !s.replacing }
+func (s *ImportStep) IsUntargeted() bool           { return false }
 
 // mergeSuppliedProperties fills the gaps in properties read from the provider with properties supplied
 // by the import: a supplied value is used where the read one is missing or null, so values a provider's
@@ -2462,6 +2475,7 @@ func (s *DiffStep) Old() *pkgresource.State { return s.old }
 func (s *DiffStep) New() *pkgresource.State { return s.new }
 func (s *DiffStep) Res() *pkgresource.State { return s.new }
 func (s *DiffStep) Logical() bool           { return true }
+func (s *DiffStep) IsUntargeted() bool      { return false }
 
 func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// DiffStep is a special step in that we're just using it as a way to get access to the parallel step
@@ -2579,6 +2593,8 @@ func (s *ViewStep) Logical() bool {
 	}
 	return true
 }
+
+func (s *ViewStep) IsUntargeted() bool { return false }
 
 func (s *ViewStep) ResultOp() display.StepOp {
 	return s.resultOp
