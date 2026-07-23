@@ -19,6 +19,7 @@ from collections.abc import Callable
 from collections.abc import Awaitable
 
 from .. import log
+from ._callback_context import _ensure_monitor_operations_allowed
 
 T = TypeVar("T")
 
@@ -63,6 +64,7 @@ class RPCManager:
         :param rpc_function: The function implementing the RPC
         :return: An awaitable function implementing the RPC
         """
+        _ensure_monitor_operations_allowed(name)
 
         async def rpc_wrapper(*args, **kwargs):
             log.debug(f"beginning rpc {name}")

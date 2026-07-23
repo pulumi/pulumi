@@ -24,6 +24,7 @@ from collections.abc import Awaitable
 
 import grpc
 
+from ._callback_context import _ensure_monitor_operations_allowed
 from ._instrumentation import wrap_with_context
 from google.protobuf import struct_pb2
 
@@ -157,6 +158,7 @@ def invoke_output(
     can be a bag of computed values (Ts or Awaitable[T]s), and the result is an Output[T] that
     resolves when the invoke finishes.
     """
+    _ensure_monitor_operations_allowed("invoke")
 
     # Setup the future for the output data.
     resolve_data: asyncio.Future[_OutputData[Any]] = asyncio.Future()
@@ -226,6 +228,7 @@ def _invoke(
     package_ref: Optional[Awaitable[Optional[str]]],
     check_dependencies: Optional[bool] = False,
 ) -> Awaitable[InvokeResult]:
+    _ensure_monitor_operations_allowed("invoke")
     log.debug(f"Invoking function: tok={tok}")
     if opts is None:
         opts = InvokeOptions()
@@ -410,6 +413,7 @@ def call(
     call dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
     can be a bag of computed values (Ts or Awaitable[T]s).
     """
+    _ensure_monitor_operations_allowed("call")
     log.debug(f"Calling function: tok={tok}")
 
     if typ and not _types.is_output_type(typ):

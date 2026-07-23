@@ -29,6 +29,7 @@ from collections.abc import Awaitable, Mapping, Sequence
 from . import _types
 from .resource_hooks import ResourceHookBinding
 from .runtime import known_types
+from .runtime._callback_context import _ensure_monitor_operations_allowed
 from .runtime.resource import (
     _pkg_from_type,
     get_resource,
@@ -341,6 +342,76 @@ this indicates that the resource will not be transformed.
 """
 
 
+class StateMigrationArgs:
+    """
+    StateMigrationArgs is the argument bag passed to a state migration callback. It carries the
+    prior state of the resource the migration is attached to, plus the prior state of all
+    resources transitively parented to it, in the checkpoint (state file) format.
+    """
+
+    urn: str
+    """
+    The URN of the resource the migration is attached to.
+    """
+
+    old_state: list[dict[str, Any]]
+    """
+    The prior state of the resource and its descendants: a list of resources in the checkpoint
+    format, the resource itself first.
+    """
+
+    def __init__(self, urn: str, old_state: list[dict[str, Any]]) -> None:
+        self.urn = urn
+        self.old_state = old_state
+
+
+class StateMigrationResult:
+    """
+    StateMigrationResult is the result that must be returned by a state migration callback when
+    it changes the state. Every resource present in the old state must either be returned in
+    `new_state` or have an entry in `successors`.
+    """
+
+    new_state: list[dict[str, Any]]
+    """
+    The migrated state: a list of resources in the checkpoint format that replaces the old state.
+    """
+
+    successors: Optional[dict[str, str]]
+    """
+    Maps each old URN removed from the state to the URN in `new_state` that succeeds it. Multiple
+    old URNs may map to the same successor. A resource cannot be removed without a successor.
+    """
+
+    def __init__(
+        self,
+        new_state: list[dict[str, Any]],
+        successors: Optional[dict[str, str]] = None,
+    ) -> None:
+        self.new_state = new_state
+        self.successors = successors
+
+
+StateMigration = Callable[
+    [StateMigrationArgs],
+    Optional[Union[Awaitable[Optional[StateMigrationResult]], StateMigrationResult]],
+]
+"""
+StateMigration is the callback signature for the `state_migrations` resource option. A state
+migration is passed the prior state of the resource it is attached to plus the prior state of
+all resources transitively parented to it, and can return a transformed state that the engine
+splices into its view of the prior state before any diffing. Returning None indicates that the
+state is already in the desired shape and should be left unchanged. Migrations are considered
+during normal updates when prior state exists and must be written to be idempotent. The callback
+receives plaintext values for secrets in the entire subtree and must not perform Pulumi runtime
+operations or await unresolved Outputs. Every resource omitted from the returned state must
+identify a returned successor so the engine can preserve references to it. Provider resource
+states must be returned unchanged.
+
+This is experimental.
+"""
+
+
 class ResourceOptions:
     """
     ResourceOptions is a bag of optional settings that control a resource's behavior.
@@ -432,6 +503,16 @@ class ResourceOptions:
     Optional list of transforms to apply to this resource during construction. The
     transforms are applied in order, and are applied prior to transform applied to
     parents walking from the resource up to the stack.
+
+    This is experimental.
+    """
+
+    state_migrations: Optional[list[StateMigration]]
+    """
+    Optional list of state migrations to apply to the prior state of this resource and all
+    resources transitively parented to it, before the engine diffs it. The migrations are
+    applied in order, each receiving the previous one's output. See `StateMigration` for the
+    callback contract and safety restrictions.
 
     This is experimental.
     """
@@ -535,6 +616,7 @@ class ResourceOptions:
         replace_with: Optional[list["Resource"]] = None,
         hide_diffs: Optional[list[str]] = None,
         env_var_mappings: Optional[Mapping[str, str]] = None,
+        state_migrations: Optional[list[StateMigration]] = None,
     ) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
@@ -582,6 +664,11 @@ class ResourceOptions:
         :param Optional[List[Resource]] replace_with: If set, this resource will also be replaced whenever any of the provided resources are replaced.
         :param Optional[ResourceHookBinding] hooks: Optional resource hooks to bind to this resource. The hooks will be
                 invoked during certain step of the lifecycle of the resource.
+        :param Optional[List[StateMigration]] state_migrations: If provided, a list of state migrations to apply to
+               the prior checkpoint state of this resource and its descendants before diffing in a normal update.
+               Callback state includes plaintext secret values. Migration callbacks must not perform Pulumi runtime
+               operations, must retain the prior root under its registered URN or prior alias, and must return provider
+               resource states unchanged. This API is experimental.
         """
 
         self.parent = parent
@@ -599,6 +686,7 @@ class ResourceOptions:
         self.import_ = import_
         self.transformations = transformations
         self.transforms = transforms
+        self.state_migrations = state_migrations
         self.hooks = hooks
         self.urn = urn
         self.replace_on_changes = replace_on_changes
@@ -744,6 +832,9 @@ class ResourceOptions:
             dest.transformations, source.transformations
         )
         dest.transforms = _merge_lists(dest.transforms, source.transforms)
+        dest.state_migrations = _merge_lists(
+            dest.state_migrations, source.state_migrations
+        )
         dest.hooks = ResourceHookBinding.merge(dest.hooks, source.hooks)
         dest.parent = dest.parent if source.parent is None else source.parent
         dest.protect = dest.protect if source.protect is None else source.protect
@@ -914,6 +1005,8 @@ class Resource:
             self._transformations = []
             self._childResources = set()
             return
+
+        _ensure_monitor_operations_allowed("resource construction")
 
         if props is None:
             props = {}

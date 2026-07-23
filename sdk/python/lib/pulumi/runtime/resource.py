@@ -27,6 +27,7 @@ from collections.abc import Awaitable, Mapping, Sequence
 
 import grpc
 
+from ._callback_context import _ensure_monitor_operations_allowed
 from ._instrumentation import wrap_with_context
 from google.protobuf import struct_pb2
 
@@ -40,6 +41,7 @@ from .rpc import _expand_dependencies, serialize_property
 from .settings import (
     _get_callbacks,
     _get_rpc_manager,
+    _sync_monitor_supports_state_migrations,
     _sync_monitor_supports_transforms,
     monitor_supports_error_hooks,
     monitor_supports_resource_hooks,
@@ -1058,6 +1060,20 @@ def register_resource(
                 for transform in opts.transforms:
                     callbacks.append(callback_server.register_transform(transform))
 
+            state_migration_callbacks: list[callback_pb2.Callback] = []
+            if opts.state_migrations:
+                if not _sync_monitor_supports_state_migrations():
+                    raise Exception(
+                        "The Pulumi CLI does not support state migrations. Please update the Pulumi CLI."
+                    )
+                callback_server = await _get_callbacks()
+                if callback_server is None:
+                    raise Exception("Callback server not initialized")
+                for migration in opts.state_migrations:
+                    state_migration_callbacks.append(
+                        callback_server.register_state_migration(migration)
+                    )
+
             property_dependencies = {}
             for key, deps in resolver.property_dependencies.items():
                 property_dependencies[key] = (
@@ -1151,6 +1167,7 @@ def register_resource(
                 sourcePosition=source_position,
                 stackTrace=stack_trace,
                 transforms=callbacks,
+                state_migrations=state_migration_callbacks,
                 supportsResultReporting=True,
                 packageRef=package_ref_str or "",
                 hooks=hooks,
@@ -1276,6 +1293,8 @@ def register_resource(
 def register_resource_outputs(
     res: "Resource", outputs: "Union[Inputs, Output[Inputs]]"
 ):
+    _ensure_monitor_operations_allowed("register resource outputs")
+
     async def do_register_resource_outputs():
         urn = await res.urn.future()
         # serialize_properties expects a collection (empty is fine) but not None, but this is called pretty
@@ -1436,6 +1455,8 @@ async def _prepare_resource_hooks(
 
 
 def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
+    _ensure_monitor_operations_allowed("register resource hook")
+
     async def do_register() -> None:
         callbacks = await _get_callbacks()
         if callbacks is None:
@@ -1459,6 +1480,8 @@ def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
 
 
 def register_error_hook(hook: "ErrorHook") -> asyncio.Future[None]:
+    _ensure_monitor_operations_allowed("register error hook")
+
     async def do_register() -> None:
         callbacks = await _get_callbacks()
         if callbacks is None:

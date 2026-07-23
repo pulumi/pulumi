@@ -26,6 +26,7 @@ import grpc
 
 
 from . import settings
+from ._callback_context import _ensure_monitor_operations_allowed
 from ._instrumentation import wrap_with_context
 from .. import log
 from ..resource import (
@@ -486,6 +487,8 @@ def register_resource_transform(t: ResourceTransform) -> None:
     """
     Add a transform to all future resources constructed in this Pulumi stack.
     """
+    _ensure_monitor_operations_allowed("register resource transform")
+
     if not _sync_monitor_supports_transforms():
         raise Exception(
             "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
@@ -517,6 +520,8 @@ def register_invoke_transform(t: InvokeTransform) -> None:
     """
     Add a transforms to all future invokes called in this Pulumi stack.
     """
+
+    _ensure_monitor_operations_allowed("register invoke transform")
 
     if not _sync_monitor_supports_invoke_transforms():
         raise Exception(

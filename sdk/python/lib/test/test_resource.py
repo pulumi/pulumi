@@ -14,6 +14,7 @@
 
 from typing import Optional, TypeVar, Awaitable, List, Any
 import asyncio
+import inspect
 import os
 import unittest
 import pytest
@@ -294,6 +295,23 @@ class MockResource(pulumi.CustomResource):
 
 
 class MergeResourceOptions(unittest.TestCase):
+    def test_state_migrations_preserve_positional_compatibility(self):
+        parameters = list(inspect.signature(ResourceOptions).parameters)
+        assert parameters[-1] == "state_migrations"
+
+    def test_state_migrations_merge_in_order(self):
+        def first(_):
+            return None
+
+        def second(_):
+            return None
+
+        merged = ResourceOptions.merge(
+            ResourceOptions(state_migrations=[first]),
+            ResourceOptions(state_migrations=[second]),
+        )
+        assert merged.state_migrations == [first, second]
+
     def test_parent(self):
         opts1 = ResourceOptions()
         assert opts1.protect is None

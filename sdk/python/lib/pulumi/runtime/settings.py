@@ -32,6 +32,7 @@ import grpc
 from .._utils import contextproperty
 from ..errors import RunError
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc, engine_pb2
+from ._callback_context import _ensure_monitor_operations_allowed
 from ._callbacks import _CallbackServicer
 from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from .rpc_manager import RPCManager
@@ -247,6 +248,7 @@ def get_monitor() -> Optional[Union[resource_pb2_grpc.ResourceMonitorStub, Any]]
     """
     Returns the current resource monitoring service client for RPC communications.
     """
+    _ensure_monitor_operations_allowed("access the resource monitor")
     return SETTINGS.monitor
 
 
@@ -325,6 +327,8 @@ def require_pulumi_version(rg: str) -> None:
 
 
 async def monitor_supports_feature(feature: str) -> bool:
+    _ensure_monitor_operations_allowed("query resource monitor features")
+
     if feature not in SETTINGS.feature_support:
         monitor = SETTINGS.monitor
         if not monitor:
@@ -392,6 +396,10 @@ def _sync_monitor_supports_parameterization() -> bool:
     return SETTINGS.feature_support.get("parameterization", False)
 
 
+def _sync_monitor_supports_state_migrations() -> bool:
+    return SETTINGS.feature_support.get("stateMigrations", False)
+
+
 async def register_package(
     base_provider_name: str,
     base_provider_version: str,
@@ -408,6 +416,8 @@ async def register_package(
     receive distinct refs. When extension is True, the package is registered as
     an extension parameterization rather than a replacement.
     """
+    _ensure_monitor_operations_allowed("register package")
+
     key = "\0".join(
         [
             base_provider_name,
@@ -523,4 +533,5 @@ async def _load_monitor_feature_support():
         monitor_supports_feature("parameterization"),
         monitor_supports_feature("resourceHooks"),
         monitor_supports_feature("errorHooks"),
+        monitor_supports_feature("stateMigrations"),
     )
