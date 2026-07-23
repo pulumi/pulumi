@@ -324,19 +324,22 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 	}
 
 	oldInputs, err := UnmarshalProperties(
-		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */))
+		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	oldOutputs, err := UnmarshalProperties(
-		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */))
+		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	newInputs, err := UnmarshalProperties(
-		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */))
+		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -504,19 +507,22 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 	}
 
 	oldInputs, err := UnmarshalProperties(
-		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */))
+		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	oldOutputs, err := UnmarshalProperties(
-		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */))
+		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	newInputs, err := UnmarshalProperties(
-		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */))
+		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -722,25 +728,29 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 	}
 
 	oldOutputs, err := UnmarshalProperties(
-		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */))
+		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	oldInputs, err := UnmarshalProperties(
-		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */))
+		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	newInputs, err := UnmarshalProperties(
-		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */))
+		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	oldViews, err := unmarshalViews(
-		req.GetOldViews(), p.unmarshalOptions("oldViews", false /* keepOutputValues */))
+		req.GetOldViews(), p.unmarshalOptions("oldViews", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -921,7 +931,8 @@ func (p *providerServer) Construct(ctx context.Context,
 	var replacementTrigger resource.PropertyValue
 	if trigger := req.GetReplacementTrigger(); trigger != nil {
 		rt, err := UnmarshalPropertyValue("replacementTrigger", trigger, p.unmarshalOptions(
-			"replacementTrigger", true /* keepOutputValues */))
+			"replacementTrigger", true, /* keepOutputValues */
+		))
 		if err != nil {
 			return nil, err
 		}
@@ -1118,22 +1129,22 @@ func unmarshalViews(views []*pulumirpc.View, opts MarshalOptions) ([]View, error
 
 // unmarshalView is a helper that unmarshals a single view from gRPC into a View struct.
 func unmarshalView(v *pulumirpc.View, opts MarshalOptions) (View, error) {
-	var inputs *property.Map
+	var inputs property.Map
 	if v.Inputs != nil {
 		minputs, err := UnmarshalProperties(v.Inputs, opts)
 		if err != nil {
 			return View{}, err
 		}
-		inputs = resource.FromResourcePropertyMapPtr(minputs)
+		inputs = resource.FromResourcePropertyMap(minputs)
 	}
 
-	var outputs *property.Map
+	var outputs property.Map
 	if v.Outputs != nil {
 		moutputs, err := UnmarshalProperties(v.Outputs, opts)
 		if err != nil {
 			return View{}, err
 		}
-		outputs = resource.FromResourcePropertyMapPtr(moutputs)
+		outputs = resource.FromResourcePropertyMap(moutputs)
 	}
 
 	return View{

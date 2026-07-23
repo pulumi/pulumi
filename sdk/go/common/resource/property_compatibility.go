@@ -104,17 +104,6 @@ func FromResourcePropertyMap(v PropertyMap) property.Map {
 	return property.NewMap(rMap)
 }
 
-// Translate a [PropertyMap] into a [*property.Map].
-//
-// See FromResourcePropertyMap for details on the translation.
-func FromResourcePropertyMapPtr(v PropertyMap) *property.Map {
-	if v == nil {
-		return nil
-	}
-	m := FromResourcePropertyMap(v)
-	return &m
-}
-
 // Translate a [PropertyValue] into a [property.Value].
 //
 // This is a normalizing transition, such that the last expression will be true:

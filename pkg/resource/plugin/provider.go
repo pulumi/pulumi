@@ -1011,8 +1011,8 @@ type View struct {
 	ParentName string
 
 	// The view resource's inputs.
-	Inputs *property.Map
+	Inputs property.Map
 
 	// The view resource's outputs.
-	Outputs *property.Map
+	Outputs property.Map
 }

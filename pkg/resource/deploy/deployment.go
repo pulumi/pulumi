@@ -770,8 +770,8 @@ func (d *Deployment) GetOldViews(urn resource.URN) []plugin.View {
 		view := plugin.View{
 			Type:    res.URN.Type(),
 			Name:    res.URN.Name(),
-			Inputs:  resource.FromResourcePropertyMapPtr(res.Inputs),
-			Outputs: resource.FromResourcePropertyMapPtr(res.Outputs),
+			Inputs:  resource.FromResourcePropertyMap(res.Inputs),
+			Outputs: resource.FromResourcePropertyMap(res.Outputs),
 		}
 		if res.Parent != "" && res.Parent != res.ViewOf {
 			view.ParentType = res.Parent.Type()

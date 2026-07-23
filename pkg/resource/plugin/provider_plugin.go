@@ -2624,22 +2624,14 @@ func marshalViews(views []View, opts MarshalOptions) ([]*pulumirpc.View, error) 
 
 // marshalView is a helper that marshals a view into the gRPC equivalent.
 func marshalView(v View, opts MarshalOptions) (*pulumirpc.View, error) {
-	var err error
-
-	var inputs *structpb.Struct
-	if v.Inputs != nil {
-		inputs, err = MarshalProperties(resource.ToResourcePropertyMap(*v.Inputs), opts)
-		if err != nil {
-			return nil, err
-		}
+	inputs, err := MarshalProperties(resource.ToResourcePropertyMap(v.Inputs), opts)
+	if err != nil {
+		return nil, err
 	}
 
-	var outputs *structpb.Struct
-	if v.Outputs != nil {
-		outputs, err = MarshalProperties(resource.ToResourcePropertyMap(*v.Outputs), opts)
-		if err != nil {
-			return nil, err
-		}
+	outputs, err := MarshalProperties(resource.ToResourcePropertyMap(v.Outputs), opts)
+	if err != nil {
+		return nil, err
 	}
 
 	return &pulumirpc.View{
