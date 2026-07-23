@@ -364,6 +364,11 @@ type Deployment struct {
 	// the resource hook registry for this deployment
 	resourceHooks *ResourceHooks
 
+	// stateMigrations contains the lightweight rewrite rule from every migration committed during this deployment.
+	// New state is normalized through these rules before it is diffed, executed, or persisted.
+	stateMigrationsM sync.RWMutex
+	stateMigrations  []*stateMigrationRewrite
+
 	// postStepErrors collects errors reported by phases that run after a step's primary cloud operation has succeeded
 	// (e.g. an after-hook callback). The step itself is still treated as successful and its state is committed to the
 	// snapshot, but the deployment as a whole will be cancelled.
