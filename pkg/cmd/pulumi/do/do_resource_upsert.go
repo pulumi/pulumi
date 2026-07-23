@@ -79,7 +79,7 @@ type RunStatefulUpdateFunc func(
 	ctx context.Context, flags *pflag.FlagSet, req StatefulUpdateRequest,
 ) (*StatefulUpdateResult, error)
 
-func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.Command {
+func (pc *packageCommand) newStatefulResourceUpsertCommand(res *schema.Resource) *cobra.Command {
 	var inputFile string
 	var inputFormat string
 	var yes bool

@@ -101,7 +101,7 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 		cmd.AddCommand(pc.newStatelessResourceUpsertCommand(res))
 	} else {
 		cmd.AddCommand(pc.newStatefulResourceCreateCommand(res))
-		cmd.AddCommand(pc.newResourceUpsertCommand(res))
+		cmd.AddCommand(pc.newStatefulResourceUpsertCommand(res))
 	}
 	cmd.AddCommand(pc.newResourceReadCommand(res))
 	cmd.AddCommand(pc.newResourcePatchCommand(res))
