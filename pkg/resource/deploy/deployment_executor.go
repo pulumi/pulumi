@@ -611,7 +611,11 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 	case ContinueResourceDiffEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceDiffEvent")
 		ex.asyncEventsExpected--
-		steps, err = ex.stepGen.ContinueStepsFromDiff(e)
+		var async bool
+		steps, async, err = ex.stepGen.ContinueStepsFromDiff(e)
+		if async {
+			ex.asyncEventsExpected++
+		}
 	case RegisterResourceEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received RegisterResourceEvent")
 		var async bool

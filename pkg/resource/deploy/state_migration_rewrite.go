@@ -60,6 +60,12 @@ func newStateMigrationRewrite(
 	}
 }
 
+func (rewrite *stateMigrationRewrite) rewriteResources(
+	states []*pkgresource.State,
+) ([]*pkgresource.State, error) {
+	return rewriteStateMigrationReferencesWithTargets(states, rewrite.targets, rewrite.successorURNs)
+}
+
 // RewriteResources rewrites references in states to the transaction's canonical successors. Snapshot managers use
 // this while preparing exact patches for states produced earlier in the update.
 func (plan *StateMigrationPlan) RewriteResources(states []*pkgresource.State) ([]*pkgresource.State, error) {
@@ -97,6 +103,89 @@ func applyStateMigrationReferenceRewrite(state, fixed *pkgresource.State) {
 	state.Inputs = fixed.Inputs
 	state.Outputs = fixed.Outputs
 	state.ReplacementTrigger = fixed.ReplacementTrigger
+}
+
+// rewriteStateMigrationResources normalizes states through every migration committed so far in this deployment.
+func (d *Deployment) rewriteStateMigrationResources(
+	states []*pkgresource.State,
+) ([]*pkgresource.State, error) {
+	d.stateMigrationsM.RLock()
+	defer d.stateMigrationsM.RUnlock()
+
+	rewritten := states
+	var err error
+	for _, rewrite := range d.stateMigrations {
+		rewritten, err = rewrite.rewriteResources(rewritten)
+		if err != nil {
+			return nil, fmt.Errorf("rewriting state for migration of %s: %w", rewrite.rootURN, err)
+		}
+	}
+	return rewritten, nil
+}
+
+func (d *Deployment) stateMigrationGeneration() uint64 {
+	d.stateMigrationsM.RLock()
+	defer d.stateMigrationsM.RUnlock()
+	return uint64(len(d.stateMigrations))
+}
+
+// rewriteStateMigrationURN resolves a structural URN through every migration committed so far. Callers use this
+// before the URN affects identity decisions such as validating a parent or deriving a child's qualified URN.
+func (d *Deployment) rewriteStateMigrationURN(urn resource.URN) (resource.URN, error) {
+	if urn == "" {
+		return "", nil
+	}
+
+	d.stateMigrationsM.RLock()
+	defer d.stateMigrationsM.RUnlock()
+
+	rewritten := urn
+	for _, migration := range d.stateMigrations {
+		var err error
+		rewritten, err = resolveStateMigrationSuccessor(rewritten, migration.successorURNs)
+		if err != nil {
+			return "", fmt.Errorf("rewriting %s for migration of %s: %w", urn, migration.rootURN, err)
+		}
+	}
+	return rewritten, nil
+}
+
+// rewriteStateMigrationState normalizes a live state in place while preserving its pointer and lock identity.
+func (d *Deployment) rewriteStateMigrationState(state *pkgresource.State) error {
+	if state == nil {
+		return nil
+	}
+	state.Lock.Lock()
+	defer state.Lock.Unlock()
+	return d.rewriteStateMigrationStateLocked(state)
+}
+
+// rewriteStateMigrationStateLocked is rewriteStateMigrationState for callers that already hold state.Lock.
+func (d *Deployment) rewriteStateMigrationStateLocked(state *pkgresource.State) error {
+	rewritten, err := d.rewriteStateMigrationResources([]*pkgresource.State{state})
+	if err != nil {
+		return err
+	}
+	if rewritten[0] == state {
+		return nil
+	}
+
+	applyStateMigrationReferenceRewrite(state, rewritten[0])
+	return nil
+}
+
+func (d *Deployment) rewriteStateMigrationStep(step Step) error {
+	if old := step.Old(); old != nil {
+		if err := d.rewriteStateMigrationState(old); err != nil {
+			return fmt.Errorf("normalizing old state for %s after state migration: %w", step.URN(), err)
+		}
+	}
+	if newState := step.New(); newState != nil && newState != step.Old() {
+		if err := d.rewriteStateMigrationState(newState); err != nil {
+			return fmt.Errorf("normalizing new state for %s after state migration: %w", step.URN(), err)
+		}
+	}
+	return nil
 }
 
 // rewriteStateMigrationReferences returns independent copies of states with every reference to a removed URN

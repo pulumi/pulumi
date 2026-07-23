@@ -83,6 +83,42 @@ func TestStateMigrationPlanRewriteResources(t *testing.T) {
 		"an unrelated provider replacement must not be reverted to its migration-time ID")
 }
 
+func TestDeploymentNormalizesStateAcrossMigrations(t *testing.T) {
+	t.Parallel()
+
+	const (
+		aURN = resource.URN("urn:pulumi:test::test::pkgA:m:Resource::a")
+		bURN = resource.URN("urn:pulumi:test::test::pkgB:m:Resource::b")
+		cURN = resource.URN("urn:pulumi:test::test::pkgC:m:Resource::c")
+	)
+	d := &Deployment{stateMigrations: []*stateMigrationRewrite{
+		newStateMigrationRewrite(aURN,
+			map[resource.URN]resource.URN{aURN: bURN},
+			[]*pkgresource.State{{URN: bURN, Custom: true, ID: "physical-id"}}),
+		newStateMigrationRewrite(bURN,
+			map[resource.URN]resource.URN{bURN: cURN},
+			[]*pkgresource.State{{URN: cURN, Custom: true, ID: "physical-id"}}),
+	}}
+	state := &pkgresource.State{
+		URN:     "urn:pulumi:test::test::consumer:m:Resource::consumer",
+		Protect: true,
+		Outputs: resource.PropertyMap{
+			"reference": resource.MakeSecret(resource.MakeCustomResourceReference(aURN, "physical-id", "1.2.3")),
+		},
+	}
+
+	require.NoError(t, d.rewriteStateMigrationState(state))
+	ref := state.Outputs["reference"].SecretValue().Element.ResourceReferenceValue()
+	assert.Equal(t, cURN, ref.URN)
+	assert.Equal(t, "physical-id", ref.ID.StringValue())
+	assert.Empty(t, ref.PackageVersion)
+	assert.True(t, state.Protect)
+
+	rewrittenURN, err := d.rewriteStateMigrationURN(aURN)
+	require.NoError(t, err)
+	assert.Equal(t, cURN, rewrittenURN)
+}
+
 func TestValidateStateMigrationContext(t *testing.T) {
 	t.Parallel()
 

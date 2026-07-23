@@ -304,6 +304,9 @@ func (rs *resourceStatusServer) publishViewSteps(info *tokenInfo, steps []Step) 
 
 	// Raise the OnResourceStepPre event and keep track of the payload context.
 	for _, step := range steps {
+		if err := rs.deployment.rewriteStateMigrationStep(step); err != nil {
+			return fmt.Errorf("normalizing view step after state migration: %w", err)
+		}
 		payload, err := events.OnResourceStepPre(step)
 		if err != nil {
 			logging.V(5).Infof("ResourceStatus: error publishing view steps: %v", err)

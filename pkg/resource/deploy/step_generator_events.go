@@ -29,6 +29,8 @@ type ContinueResourceDiffEvent interface {
 	Error() error
 	// The diff result from the provider.Diff call.
 	Diff() plugin.DiffResult
+	// The state migration generation against which the diff was computed.
+	StateMigrationGeneration() uint64
 
 	// The URN of the resource being continued.
 	URN() resource.URN
@@ -45,16 +47,17 @@ type ContinueResourceDiffEvent interface {
 }
 
 type continueDiffResourceEvent struct {
-	evt            RegisterResourceEvent
-	err            error
-	diff           plugin.DiffResult
-	triggerReplace bool
-	urn            resource.URN
-	old            *pkgresource.State
-	new            *pkgresource.State
-	provider       plugin.Provider
-	autonaming     *plugin.AutonamingOptions
-	randomSeed     []byte
+	evt                      RegisterResourceEvent
+	err                      error
+	diff                     plugin.DiffResult
+	triggerReplace           bool
+	urn                      resource.URN
+	old                      *pkgresource.State
+	new                      *pkgresource.State
+	provider                 plugin.Provider
+	autonaming               *plugin.AutonamingOptions
+	randomSeed               []byte
+	stateMigrationGeneration uint64
 }
 
 var _ ContinueResourceDiffEvent = (*continueDiffResourceEvent)(nil)
@@ -75,6 +78,10 @@ func (g *continueDiffResourceEvent) Error() error {
 
 func (g *continueDiffResourceEvent) Diff() plugin.DiffResult {
 	return g.diff
+}
+
+func (g *continueDiffResourceEvent) StateMigrationGeneration() uint64 {
+	return g.stateMigrationGeneration
 }
 
 func (g *continueDiffResourceEvent) ReplacementTrigger() bool {
@@ -107,6 +114,7 @@ type ContinueResourceRefreshEvent interface {
 	RegisterResourceEvent
 
 	URN() resource.URN
+	Original() *pkgresource.State
 	Old() *pkgresource.State
 	New() *pkgresource.State
 	Invalid() bool
@@ -115,11 +123,12 @@ type ContinueResourceRefreshEvent interface {
 
 type continueResourceRefreshEvent struct {
 	RegisterResourceEvent
-	urn     resource.URN       // the URN of the resource being processed.
-	old     *pkgresource.State // the old state of the resource being processed.
-	new     *pkgresource.State // the new state of the resource being processed.
-	invalid bool               // whether the resource is invalid.
-	err     error              // any error that occurred during refresh
+	urn      resource.URN       // the URN of the resource being processed.
+	original *pkgresource.State // the state before the refresh.
+	old      *pkgresource.State // the refreshed old state of the resource being processed.
+	new      *pkgresource.State // the new state of the resource being processed.
+	invalid  bool               // whether the resource is invalid.
+	err      error              // any error that occurred during refresh
 }
 
 var _ ContinueResourceRefreshEvent = (*continueResourceRefreshEvent)(nil)
@@ -128,6 +137,10 @@ func (g *continueResourceRefreshEvent) event() {}
 
 func (g *continueResourceRefreshEvent) URN() resource.URN {
 	return g.urn
+}
+
+func (g *continueResourceRefreshEvent) Original() *pkgresource.State {
+	return g.original
 }
 
 func (g *continueResourceRefreshEvent) Old() *pkgresource.State {
@@ -155,7 +168,6 @@ type ContinueResourceImportEvent interface {
 	URN() resource.URN
 	New() *pkgresource.State
 	Old() *pkgresource.State
-	Provider() plugin.Provider
 	Invalid() bool
 	Recreating() bool
 	RandomSeed() []byte
@@ -168,7 +180,6 @@ type continueResourceImportEvent struct {
 	urn        resource.URN // the URN of the resource being processed.
 	old        *pkgresource.State
 	new        *pkgresource.State
-	provider   plugin.Provider
 	invalid    bool
 	recreating bool
 	randomSeed []byte
@@ -195,10 +206,6 @@ func (g *continueResourceImportEvent) Old() *pkgresource.State {
 
 func (g *continueResourceImportEvent) New() *pkgresource.State {
 	return g.new
-}
-
-func (g *continueResourceImportEvent) Provider() plugin.Provider {
-	return g.provider
 }
 
 func (g *continueResourceImportEvent) Invalid() bool {

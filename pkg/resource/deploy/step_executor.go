@@ -21,6 +21,7 @@ import (
 	"maps"
 	"sync"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -271,6 +272,15 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 		maps.Copy(outs, e.Outputs())
 	}
 
+	// Only outputs are new at this boundary. Normalize them on an isolated state before checking the plan, so a
+	// plan violation cannot leave the live state partially updated.
+	outputState := &pkgresource.State{Outputs: outs}
+	rewritten, err := se.deployment.rewriteStateMigrationResources([]*pkgresource.State{outputState})
+	if err != nil {
+		return fmt.Errorf("normalizing outputs for %s after state migration: %w", urn, err)
+	}
+	outs = rewritten[0].Outputs
+
 	// If a plan is present check that these outputs match what we recorded before
 	if se.deployment.plan != nil {
 		resourcePlan, ok := se.deployment.plan.ResourcePlans[urn]
@@ -509,6 +519,12 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 	// the system.
 	if _, isDiff := step.(*DiffStep); isDiff {
 		return nil
+	}
+
+	// Apply may populate or replace state (for example ImportStep creates its old state here), and provider outputs
+	// can contain resource references. Normalize both sides again before they are observed or persisted.
+	if rewriteErr := se.deployment.rewriteStateMigrationStep(step); rewriteErr != nil {
+		return rewriteErr
 	}
 
 	if err == nil {
