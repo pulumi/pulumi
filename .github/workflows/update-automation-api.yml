@@ -13,10 +13,6 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
 
-defaults:
-  run:
-    shell: bash
-
 jobs:
   regenerate:
     name: Regenerate automation APIs
