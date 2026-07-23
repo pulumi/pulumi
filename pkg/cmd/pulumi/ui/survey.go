@@ -293,6 +293,53 @@ func ConfirmPrompt(prompt string, name string, opts display.Options) bool {
 	return strings.TrimSpace(line) == name
 }
 
+// YesNoPrompt prints prompt followed by "[y/n/ignore]" and reads a single line from opts.Stdin.
+// "y"/"yes" and "n"/"no" (case-insensitive) are answers and are reported via answered; anything
+// else reports answered as false.
+func YesNoPrompt(prompt string, required bool, opts display.Options) (yes, answered bool) {
+	out := opts.Stdout
+	if out == nil {
+		// Helper used by many commands without a *cobra.Command writer.
+		out = os.Stdout //nolint:forbidigo
+	}
+	in := opts.Stdin
+	if in == nil {
+		in = os.Stdin
+	}
+
+	ignore := ""
+	if !required {
+		ignore = "/ignore"
+	}
+
+	fmt.Fprint(out,
+		opts.Color.Colorize(
+			fmt.Sprintf("%s%s [y/n%v]%s ", colors.SpecPrompt, prompt, ignore, colors.Reset)))
+
+	reader := bufio.NewReader(in)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil && line == "" {
+			// EOF with no input: finish the prompt's line so subsequent output starts fresh.
+			fmt.Fprintln(out)
+			return false, false
+		}
+		switch strings.ToLower(strings.TrimSpace(line)) {
+		case "y", "yes":
+			return true, true
+		case "n", "no":
+			return false, true
+		default:
+			if !required {
+				return false, false
+			}
+			fmt.Fprint(out,
+				opts.Color.Colorize(
+					fmt.Sprintf("%vPlease enter y/yes or n/no.%v\n", colors.SpecError, colors.Reset)))
+		}
+	}
+}
+
 // ConfirmDeletion runs the standard confirmation flow shared by destructive
 // commands (delete/remove/cancel). It returns nil when the caller should
 // proceed, and a non-nil error to return directly from RunE otherwise.

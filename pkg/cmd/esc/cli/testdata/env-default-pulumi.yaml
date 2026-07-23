@@ -1,0 +1,33 @@
+run: |
+  esc env default
+  esc env open
+process:
+  fs:
+    proj/Pulumi.dev.yaml: |
+      environment:
+        imports:
+          - default/the-env
+    proj/Pulumi.yaml: |
+      name: my-project
+      runtime: yaml
+  cwd: proj
+  pulumiStack: test-user/my-project/dev
+environments:
+  test-user/default/the-env:
+    values:
+      foo: bar
+
+---
+> esc env default
+anonymous environment in organization test-user
+  imports:
+    - default/the-env
+  source: Pulumi stack test-user/my-project/dev (Pulumi.dev.yaml)
+> esc env open
+{
+  "foo": "bar"
+}
+
+---
+> esc env default
+> esc env open

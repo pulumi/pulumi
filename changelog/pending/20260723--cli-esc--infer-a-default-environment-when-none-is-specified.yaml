@@ -1,0 +1,4 @@
+component: cli/esc
+kind: feat
+body: Infer a default environment from a `.esc.yaml` in the working directory or from the selected Pulumi IaC stack when no environment is given on the command line. Run `esc env --help` for the `.esc.yaml` schema.
+time: 2026-07-23T00:00:00.000000+00:00

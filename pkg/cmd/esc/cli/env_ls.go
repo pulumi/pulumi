@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 func newEnvLsCmd(env *envCommand) *cobra.Command {
@@ -49,6 +50,22 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
+			}
+
+			desc, _, err := env.inferDefaultEnv()
+			if err != nil {
+				msg := fmt.Sprintf(
+					"%swarning: could not determine default environment: %v%s\n",
+					colors.SpecWarning, err, colors.Reset,
+				)
+				fmt.Fprint(env.esc.stderr, env.esc.colors.Colorize(msg))
+			}
+			ref, hasDefaultRef := desc.(environmentRef)
+
+			// listEnvironments empties Organization for envs in the calling user's namespace, so
+			// normalize the inferred ref the same way before comparing.
+			if hasDefaultRef && ref.orgName == env.esc.account.Username {
+				ref.orgName = ""
 			}
 
 			allEnvs, err := env.listEnvironments(ctx, orgFilter, projectFilter)
@@ -79,7 +96,13 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 			}
 
 			for _, e := range allEnvs {
-				fmt.Fprintln(env.esc.stdout, envIdentifier(e))
+				isDefault := hasDefaultRef &&
+					ref.orgName == e.Organization && ref.projectName == e.Project && ref.envName == e.Name
+				defaultSuffix := ""
+				if isDefault {
+					defaultSuffix = " (default)"
+				}
+				fmt.Fprintf(env.esc.stdout, "%v%v\n", envIdentifier(e), defaultSuffix)
 			}
 
 			return nil

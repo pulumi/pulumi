@@ -1,0 +1,23 @@
+run: echo n | esc env open
+error: exit status 1
+process:
+  fs:
+    proj/.esc.yaml: |
+      environment: test-user/default/the-env
+  cwd: proj
+  interactive: true
+environments:
+  test-user/default/the-env:
+    values:
+      foo: bar
+
+---
+> esc env open
+
+---
+> esc env open
+esc: found default environment configuration at .esc.yaml:
+
+    environment: test-user/default/the-env
+
+Accept this default environment configuration? [y/n/ignore] Error: no environment name specified

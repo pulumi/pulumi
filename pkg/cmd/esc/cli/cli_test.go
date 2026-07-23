@@ -48,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/schema"
@@ -113,6 +114,15 @@ func (tfs testFS) CreateTemp(dir, pattern string) (string, io.ReadWriteCloser, e
 	}
 }
 
+func (tfs testFS) MkdirAll(path string, perm os.FileMode) error {
+	return nil
+}
+
+func (tfs testFS) WriteFile(name string, data []byte, perm os.FileMode) error {
+	tfs.MapFS[name] = &fstest.MapFile{Data: data, Mode: perm}
+	return nil
+}
+
 func (tfs testFS) Remove(name string) error {
 	_, err := tfs.Stat(name)
 	if err != nil {
@@ -126,6 +136,7 @@ type testEnviron map[string]string
 
 func TestMain(m *testing.M) {
 	os.Unsetenv("PULUMI_API")
+	os.Unsetenv("PULUMI_STACK")
 	os.Exit(m.Run())
 }
 
@@ -148,6 +159,51 @@ func mockWorkspace(creds workspace.Credentials) pkgWorkspace.Context {
 	return &pkgWorkspace.MockContext{
 		GetStoredCredentialsF: func() (workspace.Credentials, error) {
 			return creds, nil
+		},
+	}
+}
+
+// mockPulumiWorkspace extends mockWorkspace with a Pulumi project served from the given
+// filesystem and a selected stack, used to drive default-environment inference in tests.
+func mockPulumiWorkspace(creds workspace.Credentials, fs testFS, stack string) pkgWorkspace.Context {
+	return &pkgWorkspace.MockContext{
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return creds, nil
+		},
+		ReadProjectF: func(dir string) (*workspace.Project, string, error) {
+			for {
+				path := filepath.Join(dir, "Pulumi.yaml")
+				if f, ok := fs.MapFS[path]; ok {
+					proj, err := workspace.LoadProjectBytes(f.Data, path, encoding.YAML)
+					if err != nil {
+						return nil, "", err
+					}
+					return proj, dir, nil
+				}
+				parent := filepath.Dir(dir)
+				if parent == dir {
+					return nil, "", workspace.ErrProjectNotFound
+				}
+				dir = parent
+			}
+		},
+		ReadProjectStackF: func(
+			sink diag.Sink, project *workspace.Project, root, stackName string,
+		) (*workspace.ProjectStack, string, error) {
+			path := filepath.Join(root, "Pulumi."+stackName+".yaml")
+			var data []byte
+			if f, ok := fs.MapFS[path]; ok {
+				data = f.Data
+			}
+			ps, err := workspace.LoadProjectStackBytes(sink, project, data, path, encoding.YAML)
+			return ps, path, err
+		},
+		NewF: func(dir string) (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: stack}
+				},
+			}, nil
 		},
 	}
 }
@@ -1590,9 +1646,13 @@ func (c *testPulumiClient) PatchEnvironmentSettings(
 }
 
 type testExec struct {
-	fs       testFS
-	environ  map[string]string
-	commands map[string]string
+	fs          testFS
+	environ     map[string]string
+	commands    map[string]string
+	cwd         string
+	home        string
+	interactive bool
+	pulumiStack string
 
 	parentPath string
 	login      *testLoginManager
@@ -1638,18 +1698,26 @@ func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 					return true
 				})
 
+				ws := mockWorkspace(c.creds)
+				if c.pulumiStack != "" {
+					ws = mockPulumiWorkspace(c.creds, c.fs, c.pulumiStack)
+				}
+
 				esc := New(&Options{
-					ParentPath: c.parentPath,
-					Stdin:      hc.Stdin,
-					Stdout:     hc.Stdout,
-					Stderr:     hc.Stderr,
-					Colors:     colors.Never,
-					Login:      c.login,
-					ws:         mockWorkspace(c.creds),
-					fs:         c.fs,
-					environ:    environ,
-					exec:       c,
-					pager:      testPager(0),
+					ParentPath:  c.parentPath,
+					Stdin:       hc.Stdin,
+					Stdout:      hc.Stdout,
+					Stderr:      hc.Stderr,
+					Colors:      colors.Never,
+					Login:       c.login,
+					ws:          ws,
+					fs:          c.fs,
+					environ:     environ,
+					exec:        c,
+					pager:       testPager(0),
+					cwd:         c.cwd,
+					pulumiHome:  valueOrDefault(c.home, "pulumi-home"),
+					interactive: c.interactive,
 					newClient: func(_, backendURL, accessToken string, insecure bool) client.Client {
 						return c.client
 					},
@@ -1731,9 +1799,13 @@ func (testPager) Run(pager string, stdout, stderr io.Writer, f func(context.Cont
 }
 
 type cliTestcaseProcess struct {
-	FS       map[string]string `yaml:"fs,omitempty"`
-	Environ  map[string]string `yaml:"environ,omitempty"`
-	Commands map[string]string `yaml:"commands,omitempty"`
+	FS          map[string]string `yaml:"fs,omitempty"`
+	Environ     map[string]string `yaml:"environ,omitempty"`
+	Commands    map[string]string `yaml:"commands,omitempty"`
+	Cwd         string            `yaml:"cwd,omitempty"`
+	Home        string            `yaml:"home,omitempty"`
+	Interactive bool              `yaml:"interactive,omitempty"`
+	PulumiStack string            `yaml:"pulumiStack,omitempty"`
 }
 
 type cliTestcaseRetract struct {
@@ -1927,6 +1999,10 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 
 		exec.environ = testcase.Process.Environ
 		exec.commands = testcase.Process.Commands
+		exec.cwd = testcase.Process.Cwd
+		exec.home = testcase.Process.Home
+		exec.interactive = testcase.Process.Interactive
+		exec.pulumiStack = testcase.Process.PulumiStack
 	}
 
 	environments := map[string]*testEnvironment{}

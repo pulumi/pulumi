@@ -35,7 +35,7 @@ func CurrentStack(ctx context.Context, ws pkgWorkspace.Context, b backend.Backen
 func CurrentStackAt(
 	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, dir string,
 ) (backend.Stack, error) {
-	stackName, err := getCurrentStackName(ws, dir)
+	stackName, err := CurrentStackName(ws, dir)
 	if err != nil {
 		return nil, err
 	} else if stackName == "" {
@@ -55,7 +55,11 @@ func CurrentStackAt(
 	return b.GetStack(ctx, ref)
 }
 
-func getCurrentStackName(ws pkgWorkspace.Context, dir string) (string, error) {
+// CurrentStackName returns the name of the currently-selected stack for the workspace rooted at
+// dir, or the empty string if no stack is selected. The PULUMI_STACK environment variable
+// overrides any stack name in the workspace settings. An empty dir means the process working
+// directory.
+func CurrentStackName(ws pkgWorkspace.Context, dir string) (string, error) {
 	// PULUMI_STACK environment variable overrides any stack name in the workspace settings
 	if stackName, ok := os.LookupEnv("PULUMI_STACK"); ok {
 		return stackName, nil

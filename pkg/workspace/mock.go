@@ -17,12 +17,15 @@ package workspace
 import (
 	"context"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type MockContext struct {
 	NewF                  func(dir string) (W, error)
 	ReadProjectF          func(dir string) (*workspace.Project, string, error)
+	ReadProjectStackF     func(sink diag.Sink, project *workspace.Project, root, stackName string) (*workspace.ProjectStack, string, error) //nolint:lll
 	GetStoredCredentialsF func() (workspace.Credentials, error)
 	LoadPluginProjectAtF  func(ctx context.Context, path string) (*workspace.PluginProject, string, error)
 	LoadBaseProjectFromF  func(ctx context.Context, path string) (workspace.BaseProject, string, error)
@@ -40,6 +43,15 @@ func (c *MockContext) ReadProject(dir string) (*workspace.Project, string, error
 		return c.ReadProjectF(dir)
 	}
 	return nil, "", workspace.ErrProjectNotFound
+}
+
+func (c *MockContext) ReadProjectStack(
+	sink diag.Sink, project *workspace.Project, root, stackName string,
+) (*workspace.ProjectStack, string, error) {
+	if c.ReadProjectStackF != nil {
+		return c.ReadProjectStackF(sink, project, root, stackName)
+	}
+	return &workspace.ProjectStack{Config: make(config.Map)}, "", nil
 }
 
 func (c *MockContext) GetStoredCredentials() (workspace.Credentials, error) {

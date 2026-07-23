@@ -46,21 +46,27 @@ type Options struct {
 
 	Login httpstate.LoginManager
 
-	fs      escFS
-	environ environ
-	exec    cmdExec
-	pager   pager
-	ws      pkgWorkspace.Context
+	fs          escFS
+	environ     environ
+	exec        cmdExec
+	pager       pager
+	ws          pkgWorkspace.Context
+	cwd         string
+	pulumiHome  string
+	interactive bool
 
 	newClient func(userAgent, backendURL, accessToken string, insecure bool) client.Client
 }
 
 type escCommand struct {
-	fs      escFS
-	environ environ
-	exec    cmdExec
-	pager   pager
-	ws      pkgWorkspace.Context
+	fs          escFS
+	environ     environ
+	exec        cmdExec
+	pager       pager
+	ws          pkgWorkspace.Context
+	cwd         string
+	pulumiHome  string
+	interactive bool
 
 	stdin  io.Reader
 	stdout io.Writer
@@ -81,19 +87,22 @@ func newESC(opts *Options) *escCommand {
 	fs := valueOrDefault(opts.fs, newFS())
 
 	esc := &escCommand{
-		fs:        fs,
-		environ:   valueOrDefault(opts.environ, newEnviron()),
-		exec:      valueOrDefault(opts.exec, newCmdExec()),
-		pager:     valueOrDefault(opts.pager, newPager()),
-		stdin:     valueOrDefault(opts.Stdin, io.Reader(os.Stdin)),
-		stdout:    valueOrDefault(opts.Stdout, io.Writer(os.Stdout)), //nolint:forbidigo,lll // default writer for the ESC CLI root command
-		stderr:    valueOrDefault(opts.Stderr, io.Writer(os.Stderr)), //nolint:forbidigo,lll // default writer for the ESC CLI root command
-		command:   valueOrDefault(opts.ParentPath, "esc"),
-		colors:    valueOrDefault(opts.Colors, cmdutil.GetGlobalColorization()),
-		login:     valueOrDefault(opts.Login, httpstate.NewLoginManager()),
-		ws:        valueOrDefault(opts.ws, pkgWorkspace.Instance),
-		userAgent: valueOrDefault(opts.UserAgent, fmt.Sprintf("esc-cli/1 (%s; %s)", version.Version, runtime.GOOS)),
-		newClient: opts.newClient,
+		fs:          fs,
+		environ:     valueOrDefault(opts.environ, newEnviron()),
+		exec:        valueOrDefault(opts.exec, newCmdExec()),
+		pager:       valueOrDefault(opts.pager, newPager()),
+		cwd:         opts.cwd,
+		pulumiHome:  opts.pulumiHome,
+		interactive: opts.interactive || cmdutil.InteractiveTerminal(),
+		stdin:       valueOrDefault(opts.Stdin, io.Reader(os.Stdin)),
+		stdout:      valueOrDefault(opts.Stdout, io.Writer(os.Stdout)), //nolint:forbidigo,lll // default writer for the ESC CLI root command
+		stderr:      valueOrDefault(opts.Stderr, io.Writer(os.Stderr)), //nolint:forbidigo,lll // default writer for the ESC CLI root command
+		command:     valueOrDefault(opts.ParentPath, "esc"),
+		colors:      valueOrDefault(opts.Colors, cmdutil.GetGlobalColorization()),
+		login:       valueOrDefault(opts.Login, httpstate.NewLoginManager()),
+		ws:          valueOrDefault(opts.ws, pkgWorkspace.Instance),
+		userAgent:   valueOrDefault(opts.UserAgent, fmt.Sprintf("esc-cli/1 (%s; %s)", version.Version, runtime.GOOS)),
+		newClient:   opts.newClient,
 	}
 	if esc.newClient == nil {
 		esc.newClient = client.New
@@ -164,6 +173,19 @@ func getCommand(parent *cobra.Command, name string) *cobra.Command {
 		}
 	}
 	return nil
+}
+
+// workingDir returns the working directory the CLI operates in: the configured cwd if any, and
+// the process working directory otherwise.
+func (esc *escCommand) workingDir() (string, error) {
+	if esc.cwd != "" {
+		return esc.cwd, nil
+	}
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("getting working directory: %w", err)
+	}
+	return dir, nil
 }
 
 func valueOrDefault[T comparable](v, def T) T {

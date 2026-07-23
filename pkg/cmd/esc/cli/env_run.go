@@ -131,7 +131,14 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 			"It is not strictly required that you pass `--`. The `--` indicates that any\n"+
 			"arguments that follow it should be treated as positional arguments instead of flags.\n"+
 			"It is only required if the arguments to the command you would like to run include\n"+
-			"flags of the form `--flag` or `-f`.\n", shell),
+			"flags of the form `--flag` or `-f`.\n"+
+			"\n"+
+			"If no environment is specified before `--`, the default environment is inferred from\n"+
+			"the working directory:\n"+
+			"\n"+
+			"    run -- mycommand\n"+
+			"\n"+
+			"See `esc env --help` for details.\n", shell),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -139,13 +146,25 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 
-			// If -- was used but there's no arguments, it means no environment was specified before the command
-			if cmd.ArgsLenAtDash() == 0 {
-				return errors.New("no environment specified")
+			// `--` separates the environment name (before) from the command (after). Without
+			// `--`, the first arg is the environment name and the rest is the command.
+			dashAt := cmd.ArgsLenAtDash()
+			hasDash := dashAt != -1
+			beforeDash := args
+			if hasDash {
+				beforeDash = args[:dashAt]
 			}
-			ref, args, err := envcmd.getExistingEnvRef(ctx, args)
+			desc, rest, err := envcmd.getExistingEnvDesc(ctx, beforeDash)
 			if err != nil {
 				return err
+			}
+			if hasDash {
+				args = args[dashAt:]
+			} else {
+				args = rest
+			}
+			if desc == nil {
+				return errors.New("no environment specified")
 			}
 
 			if len(args) == 0 {
@@ -157,7 +176,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 			}
 			args = args[1:]
 
-			env, diags, err := envcmd.openEnvironment(ctx, ref, duration, draft)
+			env, diags, err := envcmd.openEnvironmentDesc(ctx, desc, duration, draft)
 			if err != nil {
 				return err
 			}

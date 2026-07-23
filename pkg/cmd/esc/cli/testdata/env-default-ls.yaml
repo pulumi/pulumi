@@ -1,0 +1,22 @@
+run: |
+  esc env default --accept
+  esc env ls
+process:
+  fs:
+    proj/.esc.yaml: |
+      environment: test-user/default/env-2
+  cwd: proj
+environments:
+  test-user/default/env: true
+  test-user/default/env-2: true
+
+---
+> esc env default --accept
+Accepted default environment configuration at .esc.yaml
+> esc env ls
+default/env
+default/env-2 (default)
+
+---
+> esc env default --accept
+> esc env ls

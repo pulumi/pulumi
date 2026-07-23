@@ -1,0 +1,11 @@
+run: esc env open
+error: exit status 1
+process:
+  cwd: proj
+
+---
+> esc env open
+
+---
+> esc env open
+Error: no environment name specified

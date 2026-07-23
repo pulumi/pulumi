@@ -24,7 +24,9 @@ type escFS interface {
 	fs.FS
 
 	CreateTemp(dir, pattern string) (string, io.ReadWriteCloser, error)
+	MkdirAll(path string, perm os.FileMode) error
 	ReadFile(filename string) ([]byte, error)
+	WriteFile(name string, data []byte, perm os.FileMode) error
 	Remove(name string) error
 }
 
@@ -46,10 +48,18 @@ func (defaultFS) CreateTemp(dir, pattern string) (string, io.ReadWriteCloser, er
 	return f.Name(), f, nil
 }
 
+func (defaultFS) MkdirAll(path string, perm os.FileMode) error {
+	return os.MkdirAll(path, perm)
+}
+
 func (defaultFS) Remove(name string) error {
 	return os.Remove(name)
 }
 
 func (defaultFS) ReadFile(name string) ([]byte, error) {
 	return os.ReadFile(name)
+}
+
+func (defaultFS) WriteFile(name string, data []byte, perm os.FileMode) error {
+	return os.WriteFile(name, data, perm)
 }

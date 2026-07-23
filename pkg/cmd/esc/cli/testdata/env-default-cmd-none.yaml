@@ -1,0 +1,11 @@
+run: esc env default
+error: exit status 1
+process:
+  cwd: proj
+
+---
+> esc env default
+
+---
+> esc env default
+Error: no default environment

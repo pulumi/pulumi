@@ -16,8 +16,10 @@ package workspace
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -34,6 +36,15 @@ type Context interface {
 	// to its containing directory, which will be used as the root of the project's Pulumi program.
 	// If dir is empty or relative, it is resolved against the process working directory.
 	ReadProject(dir string) (*workspace.Project, string, error)
+
+	// ReadProjectStack reads the stack configuration for the named stack of the project rooted at
+	// root. The config file is expected next to the project file (or in the project's
+	// stackConfigDir) with the project file's extension, as in workspace.DetectProjectStackPath.
+	// A missing file resolves to an empty stack configuration, matching workspace.LoadProjectStack.
+	// The config file's path is returned alongside the configuration.
+	ReadProjectStack(
+		sink diag.Sink, project *workspace.Project, root, stackName string,
+	) (*workspace.ProjectStack, string, error)
 
 	// LoadPluginProjectAt reads a plugin project definition in the given directory. If no project is found,
 	// [workspace.ErrPluginNotFound] is returned.
@@ -74,6 +85,28 @@ func (*workspaceContext) ReadProject(dir string) (*workspace.Project, string, er
 	}
 
 	return proj, filepath.Dir(path), nil
+}
+
+func (*workspaceContext) ReadProjectStack(
+	sink diag.Sink, project *workspace.Project, root, stackName string,
+) (*workspace.ProjectStack, string, error) {
+	projPath, err := workspace.DetectProjectPathFrom(root)
+	if err != nil {
+		return nil, "", err
+	}
+
+	fileName := fmt.Sprintf("%s.%s%s", workspace.ProjectFile, stackName, filepath.Ext(projPath))
+	dir := filepath.Dir(projPath)
+	if project.StackConfigDir != "" {
+		dir = filepath.Join(dir, project.StackConfigDir)
+	}
+	path := filepath.Join(dir, fileName)
+
+	ps, err := workspace.LoadProjectStack(sink, project, path)
+	if err != nil {
+		return nil, "", err
+	}
+	return ps, path, nil
 }
 
 func (*workspaceContext) GetStoredCredentials() (workspace.Credentials, error) {

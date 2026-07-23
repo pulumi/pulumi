@@ -1,0 +1,51 @@
+run: |
+  esc env default --accept
+  esc env open foo
+  esc env get foo
+  esc env open default/other-env
+  esc env open other-env
+process:
+  fs:
+    proj/.esc.yaml: |
+      environment: test-user/default/the-env
+  cwd: proj
+environments:
+  test-user/default/other-env:
+    values:
+      baz: qux
+  test-user/default/the-env:
+    values:
+      foo: bar
+
+---
+> esc env default --accept
+Accepted default environment configuration at .esc.yaml
+> esc env open foo
+"bar"
+> esc env get foo
+# Value
+```json
+"bar"
+```
+# Definition
+```yaml
+bar
+
+```
+
+# Defined at
+- the-env:2:10
+
+> esc env open default/other-env
+{
+  "baz": "qux"
+}
+> esc env open other-env
+null
+
+---
+> esc env default --accept
+> esc env open foo
+> esc env get foo
+> esc env open default/other-env
+> esc env open other-env
