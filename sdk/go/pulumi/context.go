@@ -78,6 +78,7 @@ type contextState struct {
 	supportsParameterization bool         // true if package references and parameterized providers are supported by pulumi
 	supportsResourceHooks    bool         // true if resource hooks are supported by pulumi
 	supportsErrorHooks       bool         // true if error hooks are supported by pulumi
+	supportsInvokeDependsOn  bool         // true if the monitor gates invokes on their declared dependencies.
 	rpcs                     int          // the number of outstanding RPC requests.
 	rpcsDone                 *sync.Cond   // an event signaling completion of RPCs.
 	rpcsLock                 sync.Mutex   // a lock protecting the RPC count and event.
@@ -205,6 +206,11 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	supportsInvokeDependsOn, err := supportsFeature("invokeDependsOn")
+	if err != nil {
+		return nil, err
+	}
+
 	contextState := &contextState{
 		info:                     info,
 		exports:                  make(map[string]Input),
@@ -222,6 +228,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsParameterization: supportsParameterization,
 		supportsResourceHooks:    supportsResourceHooks,
 		supportsErrorHooks:       supportsErrorHooks,
+		supportsInvokeDependsOn:  supportsInvokeDependsOn,
 		registeredOutputs:        make(map[URN]bool),
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
@@ -745,25 +752,36 @@ func (ctx *Context) Invoke(tok string, args any, result any, opts ...InvokeOptio
 func (ctx *Context) invokePackageRaw(
 	tok string, args any, packageRef string, options invokeOptions,
 ) (resource.PropertyMap, error) {
+	props, _, err := ctx.invokePackageRawWithDeps(tok, args, packageRef, options, nil)
+	return props, err
+}
+
+// invokePackageRawWithDeps is invokePackageRaw with a dependency declaration: the URNs the invoke depends on, sent so
+// the monitor can gate the invoke on their created-ness. The returned bool reports whether the monitor declined to
+// service the invoke because dependencies are pending, making the result wholly unknown; it is only ever true when
+// dependsOn is non-nil.
+func (ctx *Context) invokePackageRawWithDeps(
+	tok string, args any, packageRef string, options invokeOptions, dependsOn []URN,
+) (resource.PropertyMap, bool, error) {
 	if tok == "" {
-		return nil, errors.New("invoke token must not be empty")
+		return nil, false, errors.New("invoke token must not be empty")
 	}
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	var err error
 	if err = ctx.beginRPC(); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	defer ctx.endRPC(err)
 
 	var providerRef string
 	providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if provider := providers[getPackage(tok)]; provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		providerRef = pr
 	}
@@ -776,7 +794,7 @@ func (ctx *Context) invokePackageRaw(
 		ErrorOnOutput: true,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("marshaling arguments: %w", err)
+		return nil, false, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	resolvedArgsMap := resource.PropertyMap{}
@@ -793,7 +811,12 @@ func (ctx *Context) invokePackageRaw(
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling arguments: %w", err)
+		return nil, false, fmt.Errorf("marshaling arguments: %w", err)
+	}
+
+	dependsOnURNs := make([]string, len(dependsOn))
+	for i, urn := range dependsOn {
+		dependsOnURNs[i] = string(urn)
 	}
 
 	// Now, invoke the RPC to the provider synchronously.
@@ -806,10 +829,12 @@ func (ctx *Context) invokePackageRaw(
 		PluginDownloadURL: options.PluginDownloadURL,
 		AcceptResources:   !disableResourceReferences,
 		PackageRef:        packageRef,
+		DependsOn:         dependsOnURNs,
+		AcceptsUnknowns:   dependsOn != nil,
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
-		return nil, err
+		return nil, false, err
 	}
 
 	// If there were any failures from the provider, return them.
@@ -820,7 +845,13 @@ func (ctx *Context) invokePackageRaw(
 			ferr = multierror.Append(ferr,
 				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
 		}
-		return nil, ferr
+		return nil, false, ferr
+	}
+
+	// The engine declines to service an invoke whose dependencies are pending creation: the result is wholly
+	// unknown.
+	if resp.Unknown {
+		return nil, true, nil
 	}
 
 	// Otherwise, simply unmarshal the output properties and return the result.
@@ -832,9 +863,9 @@ func (ctx *Context) invokePackageRaw(
 			KeepResources: true,
 		})
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return r, nil
+	return r, false, nil
 }
 
 func validInvokeResult(resultV reflect.Value) bool {
@@ -947,36 +978,55 @@ func (ctx *Context) InvokeOutput(
 
 		dest := reflect.New(output.ElementType()).Elem()
 
-		// DependsOn for resources is an ordering constraint for register
-		// resource calls. If a resource R1 depends on a resource R2, the
-		// register resource call for R2 will happen after R1. This is ensured
-		// by awaiting the URN for each resource dependency before calling
-		// register resource.
-		//
-		// For invokes, this causes a problem when running under preview. During
-		// preview, register resource immediately returns with the URN, however
-		// this does not tell us if the resource "exists".
-		//
-		// Instead of waiting for the dependency's URN, we wait for the ID. This
-		// tells us that wether a physical resource exists (if the state does
-		// not require a refresh), and we can avoid calling the invoke when it
-		// is unknown.
-		for _, d := range depSet {
-			if r, ok := d.(CustomResource); ok {
-				_, known, _, _, err := internal.AwaitOutput(ctx.Context(), r.ID())
-				if err != nil {
-					contract.Failf("Awaiting ID: %s", err)
-				}
-				if !known {
-					internal.ResolveOutput(output, dest.Interface(), known, false, resourcesToInternal(deps))
-					return
+		var invokeDependsOn []URN
+		if ctx.state.supportsInvokeDependsOn {
+			// The engine gates the invoke on the created-ness of its
+			// dependencies -- it can see the children of remote components,
+			// which we cannot -- so declare the expanded dependency URNs on the
+			// request. depSet's keys were resolved when the set was expanded.
+			invokeDependsOn = make([]URN, 0, len(depSet))
+			for urn := range depSet {
+				invokeDependsOn = append(invokeDependsOn, urn)
+			}
+		} else {
+			// Older engines cannot gate invokes; approximate the gate
+			// client-side.
+			//
+			// DependsOn for resources is an ordering constraint for register
+			// resource calls. If a resource R1 depends on a resource R2, the
+			// register resource call for R2 will happen after R1. This is ensured
+			// by awaiting the URN for each resource dependency before calling
+			// register resource.
+			//
+			// For invokes, this causes a problem when running under preview. During
+			// preview, register resource immediately returns with the URN, however
+			// this does not tell us if the resource "exists".
+			//
+			// Instead of waiting for the dependency's URN, we wait for the ID. This
+			// tells us that wether a physical resource exists (if the state does
+			// not require a refresh), and we can avoid calling the invoke when it
+			// is unknown.
+			for _, d := range depSet {
+				if r, ok := d.(CustomResource); ok {
+					_, known, _, _, err := internal.AwaitOutput(ctx.Context(), r.ID())
+					if err != nil {
+						contract.Failf("Awaiting ID: %s", err)
+					}
+					if !known {
+						internal.ResolveOutput(output, dest.Interface(), known, false, resourcesToInternal(deps))
+						return
+					}
 				}
 			}
 		}
 
-		outProps, err := ctx.invokePackageRaw(tok, args, options.PackageRef, *invokeOpts)
+		outProps, unknown, err := ctx.invokePackageRawWithDeps(tok, args, options.PackageRef, *invokeOpts, invokeDependsOn)
 		if err != nil {
 			internal.RejectOutput(output, err)
+			return
+		}
+		if unknown {
+			internal.ResolveOutput(output, dest.Interface(), false, false, resourcesToInternal(deps))
 			return
 		}
 

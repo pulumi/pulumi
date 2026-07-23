@@ -133,7 +133,9 @@ func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.Support
 
 	// Support for "outputValues" is deliberately disabled for the mock monitor so
 	// instances of `Output` don't show up in `MockResourceArgs` Inputs.
-	hasSupport := id != "outputValues"
+	// "invokeDependsOn" is disabled because the mock monitor implements no invoke
+	// dependency gate; disabling it keeps the client-side one.
+	hasSupport := id != "outputValues" && id != "invokeDependsOn"
 
 	return &pulumirpc.SupportsFeatureResponse{
 		HasSupport: hasSupport,
