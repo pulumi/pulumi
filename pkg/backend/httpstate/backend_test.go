@@ -2888,6 +2888,27 @@ func TestRunEngineActionPropagatesJournalManagerError(t *testing.T) {
 	}
 }
 
+func TestSupportedJournalVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		negotiated int64
+		expected   int64
+	}{
+		{name: "legacy snapshot", negotiated: 0, expected: 0},
+		{name: "journal v1", negotiated: 1, expected: 1},
+		{name: "journal v2", negotiated: 2, expected: 2},
+		{name: "future version", negotiated: apitype.LatestJournalVersion + 1, expected: apitype.LatestJournalVersion},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.expected, supportedJournalVersion(tt.negotiated))
+		})
+	}
+}
+
 type runEngineActionFixture struct {
 	backend  *cloudBackend
 	stackRef cloudBackendReference
