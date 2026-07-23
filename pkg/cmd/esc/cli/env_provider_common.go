@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax/encoding"
@@ -25,6 +26,25 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"gopkg.in/yaml.v3"
 )
+
+// envVar is one entry written to `values.environmentVariables`. A slice of these preserves the
+// order the variables are emitted in, matching the login-provider environments the Pulumi Cloud
+// console writes.
+type envVar struct {
+	name  string
+	value string
+}
+
+// propertyPathRef renders a property path as the dotted interpolation target the login-provider
+// environment variables reference, e.g. ["aws", "login"] becomes "aws.login" for use in
+// "${aws.login.accessKeyId}".
+func propertyPathRef(path resource.PropertyPath) string {
+	parts := make([]string, len(path))
+	for i, segment := range path {
+		parts[i] = fmt.Sprint(segment)
+	}
+	return strings.Join(parts, ".")
+}
 
 // ensureProviderEnv creates the target environment if --create was passed and
 // the environment does not already exist. It is a no-op when create is false
@@ -47,10 +67,13 @@ func ensureProviderEnv(ctx context.Context, env *envCommand, ref environmentRef,
 	return nil
 }
 
-// mergeProviderIntoEnv merges providerNode into the YAML environment definition
-// at values.<path>, replacing any existing node at that path. The result is the
-// new YAML document bytes.
-func mergeProviderIntoEnv(envYAML []byte, path resource.PropertyPath, providerNode *yaml.Node) ([]byte, error) {
+// mergeProviderIntoEnv merges providerNode into the YAML environment definition at
+// values.<path>, replacing any existing node at that path, and sets each of envVars under
+// values.environmentVariables (adding to, not replacing, any variables already there). The
+// result is the new YAML document bytes.
+func mergeProviderIntoEnv(
+	envYAML []byte, path resource.PropertyPath, providerNode *yaml.Node, envVars []envVar,
+) ([]byte, error) {
 	if len(path) == 0 {
 		return nil, errors.New("path must contain at least one element")
 	}
@@ -78,6 +101,16 @@ func mergeProviderIntoEnv(envYAML []byte, path resource.PropertyPath, providerNo
 
 	if _, err := (encoding.YAMLSyntax{Node: valuesNode}).Set(nil, path, *providerNode); err != nil {
 		return nil, fmt.Errorf("setting provider at %v: %w", path, err)
+	}
+
+	// Set each variable at its own key so existing entries under environmentVariables survive.
+	for _, ev := range envVars {
+		_, err := (encoding.YAMLSyntax{Node: valuesNode}).Set(nil,
+			resource.PropertyPath{"environmentVariables", ev.name},
+			yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: ev.value})
+		if err != nil {
+			return nil, fmt.Errorf("setting environment variable %s: %w", ev.name, err)
+		}
 	}
 
 	out, err := yaml.Marshal(docNode.Content[0])
@@ -120,6 +153,7 @@ func applyProviderUpdate(
 	draft string,
 	path resource.PropertyPath,
 	providerNode *yaml.Node,
+	envVars []envVar,
 ) error {
 	var def []byte
 	var tag string
@@ -141,7 +175,7 @@ func applyProviderUpdate(
 		}
 	}
 
-	newYAML, err := mergeProviderIntoEnv(def, path, providerNode)
+	newYAML, err := mergeProviderIntoEnv(def, path, providerNode, envVars)
 	if err != nil {
 		return err
 	}

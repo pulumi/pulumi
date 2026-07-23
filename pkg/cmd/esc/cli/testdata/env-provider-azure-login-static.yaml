@@ -1,11 +1,11 @@
 run: |
   esc env init default/test
-  esc env provider azure-login static default/test tid /subscriptions/sub cid shhhhhh && esc env get default/test --definition
+  esc env provider azure-login static default/test tid /subscriptions/sub cid shhhhhh --export-env-vars && esc env get default/test --definition
 
 ---
 > esc env init default/test
 Environment created: test-user/default/test
-> esc env provider azure-login static default/test tid /subscriptions/sub cid shhhhhh
+> esc env provider azure-login static default/test tid /subscriptions/sub cid shhhhhh --export-env-vars
 Provider updated. (revision 2)
 > esc env get default/test --definition
 values:
@@ -18,8 +18,13 @@ values:
         clientSecret:
           fn::secret:
             ciphertext: ZXNjeAAAAAHz6Ojo6OjoVtjhwQ==
+  environmentVariables:
+    ARM_CLIENT_ID: ${azure.login.clientId}
+    ARM_TENANT_ID: ${azure.login.tenantId}
+    ARM_CLIENT_SECRET: ${azure.login.clientSecret}
+    ARM_SUBSCRIPTION_ID: ${azure.login.subscriptionId}
 
 ---
 > esc env init default/test
-> esc env provider azure-login static default/test tid /subscriptions/sub cid shhhhhh
+> esc env provider azure-login static default/test tid /subscriptions/sub cid shhhhhh --export-env-vars
 > esc env get default/test --definition
