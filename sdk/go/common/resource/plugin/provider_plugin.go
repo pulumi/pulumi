@@ -183,7 +183,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		return nil, err
 	}
 	if attachPort != nil {
-		return NewProviderAttached(host, ctx, spec, *attachPort, disableProviderPreview)
+		return NewProviderAttached(host, ctx, spec, "127.0.0.1:"+strconv.Itoa(*attachPort), disableProviderPreview)
 	}
 
 	prefix := fmt.Sprintf("%v (resource)", pkg)
@@ -262,7 +262,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 // directly — without the PULUMI_DEBUG_PROVIDERS backchannel. NewProvider routes
 // its debug-attach case through here too, so both share one implementation.
 func NewProviderAttached(host Host, ctx *Context, spec workspace.PluginDescriptor,
-	port int, disableProviderPreview bool,
+	address string, disableProviderPreview bool,
 ) (Provider, error) {
 	pkg := tokens.Package(spec.Name)
 	prefix := fmt.Sprintf("%v (resource)", pkg)
@@ -291,7 +291,7 @@ func NewProviderAttached(host Host, ctx *Context, spec workspace.PluginDescripto
 		return handshake(ctx, bin, prefix, conn, req)
 	}
 
-	conn, handshakeRes, err := dialPlugin(ctx.Base(), port, pkg.String(), prefix,
+	conn, handshakeRes, err := dialPlugin(ctx.Base(), address, pkg.String(), prefix,
 		handshake, providerPluginDialOptions(ctx, pkg, ""))
 	if err != nil {
 		return nil, err

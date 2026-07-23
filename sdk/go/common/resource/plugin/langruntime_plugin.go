@@ -81,7 +81,7 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime, workingDirectory strin
 
 		conn, handshakeResponse, err := dialPlugin(
 			ctx.Base(),
-			port,
+			"127.0.0.1:"+strconv.Itoa(port),
 			"pulumi-language-"+runtime,
 			runtime+" (Language Plugin)",
 			handshake,

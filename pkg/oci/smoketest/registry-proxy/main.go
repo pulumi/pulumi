@@ -130,6 +130,14 @@ type proxy struct {
 	manifests         map[string]*synthesized // keyed by "<repo>:<tag>"
 	manifestsByDigest map[string]*synthesized // keyed by manifest digest
 	blobs             map[string][]byte       // keyed by blob digest ("sha256:...")
+
+	// When shimBin is non-nil, synthesized provider images embed the forwarder shim at
+	// /plugin/shim and boot through it, so the provider is reachable at a well-known port
+	// (shimPort) on all interfaces instead of an ephemeral loopback port — the address
+	// model that retires netns-sharing. Gated by PULUMI_POD_SHIM_BIN so shim-off synthesis
+	// is byte-for-byte the pre-shim behavior.
+	shimBin  []byte
+	shimPort string
 }
 
 type synthesized struct {
@@ -203,6 +211,20 @@ func main() {
 		backend = registry.New(registry.Logger(log.Default()))
 	}
 	p := newProxy(arch, backend)
+
+	// Forwarder shim (see wrapSpec / buildImage): when PULUMI_POD_SHIM_BIN names a shim
+	// binary (baked into the engine image), synthesized providers boot through it and are
+	// reachable at PULUMI_POD_SHIM_PORT. Unset = pre-shim synthesis, unchanged.
+	if shimPath := os.Getenv("PULUMI_POD_SHIM_BIN"); shimPath != "" {
+		b, err := os.ReadFile(shimPath)
+		if err != nil {
+			log.Fatalf("registry-proxy: PULUMI_POD_SHIM_BIN %q: %v", shimPath, err)
+		}
+		p.shimBin = b
+		p.shimPort = envOr("PULUMI_POD_SHIM_PORT", "7777")
+		log.Printf("registry-proxy: forwarder shim enabled (%d bytes) — synthesized providers reachable at :%s",
+			len(b), p.shimPort)
+	}
 
 	// The PRIVATE source (see the package doc): a bare read-write registry on a
 	// SEPARATE port, so `source ≈ registry host` is physically evident. It accepts
@@ -435,6 +457,13 @@ func (p *proxy) buildImage(provider, version string, spec wrapSpec) (v1.Image, e
 	if err := writeTarFile(tw, "plugin/provider", bin, 0o755); err != nil {
 		return nil, err
 	}
+	// When enabled, embed the forwarder shim beside the provider; the entrypoint below
+	// boots the provider through it (see PULUMI_POD_SHIM_BIN in main).
+	if p.shimBin != nil {
+		if err := writeTarFile(tw, "plugin/shim", p.shimBin, 0o755); err != nil {
+			return nil, err
+		}
+	}
 	// Bake the system CA bundle so providers that call cloud HTTPS APIs (cloudflare,
 	// aws, ...) can verify certificates. A scratch image has no trust store, so a
 	// stateless provider running from its own image fails TLS with "certificate signed
@@ -470,6 +499,10 @@ func (p *proxy) buildImage(provider, version string, spec wrapSpec) (v1.Image, e
 	cf.OS = "linux"
 	cf.Architecture = p.arch
 	cf.Config.Entrypoint = []string{"/plugin/provider"}
+	if p.shimBin != nil {
+		cf.Config.Entrypoint = []string{"/plugin/shim", "/plugin/provider"}
+		cf.Config.Env = append(cf.Config.Env, "PULUMI_POD_SHIM_PORT="+p.shimPort)
+	}
 	return mutate.ConfigFile(img, cf)
 }
 

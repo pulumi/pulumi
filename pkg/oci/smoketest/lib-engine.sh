@@ -32,6 +32,12 @@ build_engine_image() {
   ( cd "$PKG_DIR" && GOWORK=off GOOS=linux GOARCH="$GOARCH" CGO_ENABLED=0 \
       go build -o "$WORK/cli/pulumi-language-oci-linux" ./cmd/pulumi-language-oci )
 
+  # The forwarder shim, baked in so the registry proxy (same image) can embed it into
+  # synthesized provider images when PULUMI_POD_SHIM_BIN points here — see
+  # registry-proxy/main.go. Harmless when the proxy runs shim-off (the file just sits there).
+  ( cd "$PKG_DIR" && GOWORK=off GOOS=linux GOARCH="$GOARCH" CGO_ENABLED=0 \
+      go build -o "$WORK/cli/pulumi-pod-shim-linux" ./cmd/pulumi-pod-shim )
+
   # The proxy too, so this image matches the published one: ONE image serving both the
   # engine (default entrypoint) and the registry proxy (--entrypoint registry-proxy). The
   # wrapper runs the proxy from whatever PULUMI_POD_ENGINE_IMAGE names, so without this a

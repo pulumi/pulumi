@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -88,11 +89,14 @@ func (h *containerHost) providerFromImage(
 		return nil, nil, errStop(stop, fmt.Errorf("oci: discovering port for provider image %q: %w", ref, err))
 	}
 
-	fmt.Fprintf(os.Stderr, "oci: provider image %q running as container %s, attaching at 127.0.0.1:%d\n",
-		ref, c.Name, port)
+	// This one-shot provider-image container shares the engine netns (see cfg above), so it is
+	// reached over loopback regardless of address mode.
+	attachAddr := "127.0.0.1:" + strconv.Itoa(port)
+	fmt.Fprintf(os.Stderr, "oci: provider image %q running as container %s, attaching at %s\n",
+		ref, c.Name, attachAddr)
 
 	descriptor := workspace.PluginDescriptor{Name: providerNameFromRef(ref)}
-	p, err := plugin.NewProviderAttached(h, ctx, descriptor, port, ctx.DisableProviderPreview())
+	p, err := plugin.NewProviderAttached(h, ctx, descriptor, attachAddr, ctx.DisableProviderPreview())
 	if err != nil {
 		return nil, nil, errStop(stop, fmt.Errorf("oci: attaching to provider image %q: %w", ref, err))
 	}

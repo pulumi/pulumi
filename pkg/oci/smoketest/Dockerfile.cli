@@ -27,4 +27,5 @@ COPY pulumi-language-go-linux /usr/local/bin/pulumi-language-go
 COPY pulumi-language-nodejs-linux /usr/local/bin/pulumi-language-nodejs
 COPY pulumi-language-python-linux /usr/local/bin/pulumi-language-python
 COPY registry-proxy-linux /usr/local/bin/registry-proxy
+COPY pulumi-pod-shim-linux /usr/local/bin/pulumi-pod-shim
 ENTRYPOINT ["pulumi"]

@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -205,6 +206,52 @@ func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 	}
 	programImage := os.Getenv("PULUMI_POD_PROGRAM_IMAGE")
 	return NewContainerHost(base, NewPodManager(podID), engineHost, programImage, podID, PublicRegistry()), nil
+}
+
+// podAddressMode reports whether providers run as their own containers on the pod network and
+// are attached by container DNS address, rather than sharing the engine's netns and being
+// reached over 127.0.0.1. It pairs with the forwarder shim, which exposes each provider at a
+// well-known port on all interfaces; without the shim a provider binds loopback and is
+// unreachable by DNS, so this is off unless explicitly enabled. Gated during the netns→address
+// transition.
+func podAddressMode() bool { return os.Getenv("PULUMI_POD_ADDRESS_MODE") != "" }
+
+// podNetwork is the network providers join in address mode — the same one the engine and
+// program containers share — so they reach one another by container DNS name.
+func podNetwork() string { return os.Getenv("PULUMI_POD_NETWORK") }
+
+// rewriteHostPort replaces the host of a host:port address, keeping the port; a malformed
+// address is returned unchanged. Used to turn the engine's own ServerAddr into one a provider
+// in its own container can dial (the engine's advertised DNS name) — the inbound mirror of the
+// program's monitor-address rewrite.
+func rewriteHostPort(addr, newHost string) string {
+	_, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return addr
+	}
+	return net.JoinHostPort(newHost, port)
+}
+
+// providerNetwork is the container network a provider joins. In address mode each provider is
+// its own container on the pod network (reached by DNS); otherwise it shares the engine's netns
+// so a loopback-binding provider is reachable over 127.0.0.1.
+func (h *containerHost) providerNetwork() string {
+	if podAddressMode() {
+		return podNetwork()
+	}
+	return "container:" + h.engineHost
+}
+
+// ServerAddr returns the engine's gRPC address for plugins to dial back on. In address mode it
+// is rewritten to the engine's advertised DNS name, since a provider in its own container cannot
+// reach the engine over the loopback the base address names; in netns mode the base address is
+// reachable over the shared netns, unchanged.
+func (h *containerHost) ServerAddr() string {
+	addr := h.Host.ServerAddr()
+	if podAddressMode() {
+		addr = rewriteHostPort(addr, h.engineHost)
+	}
+	return addr
 }
 
 // programImageRef resolves the program image that run-from-program-image (`command`) and
@@ -498,9 +545,13 @@ func (h *containerHost) Provider(
 		return nil, fmt.Errorf("oci: discovering port for provider %s: %w", descriptor.Name, err)
 	}
 
-	fmt.Fprintf(os.Stderr, "oci: provider %s running as container %s, attaching at 127.0.0.1:%d\n",
-		descriptor.Name, c.Name, port)
-	prov, err := plugin.NewProviderAttached(h, ctx, descriptor, port, ctx.DisableProviderPreview())
+	attachAddr := "127.0.0.1:" + strconv.Itoa(port)
+	if podAddressMode() {
+		attachAddr = c.Address(port) // reach the provider's own container by DNS name
+	}
+	fmt.Fprintf(os.Stderr, "oci: provider %s running as container %s, attaching at %s\n",
+		descriptor.Name, c.Name, attachAddr)
+	prov, err := plugin.NewProviderAttached(h, ctx, descriptor, attachAddr, ctx.DisableProviderPreview())
 	if err != nil {
 		// The container is running but we could not attach; stop it now rather than leak it.
 		_ = h.pod.StopContainer(context.Background(), c)
@@ -526,7 +577,7 @@ func (h *containerHost) providerContainer(
 ) (ContainerConfig, error) {
 	cfg := ContainerConfig{
 		Name:    uniqueContainerName("provider-" + descriptor.Name),
-		Network: "container:" + h.engineHost,
+		Network: h.providerNetwork(),
 		// Run EVERY provider rooted in the shared workspace: working directory at
 		// WorkspaceMountPath and the shared workspace volume mounted there. Any provider
 		// can receive an Asset — or a file-path property like cloudflare's WorkerVersion

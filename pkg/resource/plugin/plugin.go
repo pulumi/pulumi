@@ -177,16 +177,16 @@ var errPluginNotFound = errors.New("plugin not found")
 
 func dialPlugin[T any](
 	ctx context.Context,
-	portNum int,
+	address string,
 	bin string,
 	prefix string,
 	handshake func(context.Context, string, string, *grpc.ClientConn) (*T, error),
 	dialOptions []grpc.DialOption,
 ) (*grpc.ClientConn, *T, error) {
-	port := strconv.Itoa(portNum)
-
-	// Now that we have the port, go ahead and create a gRPC client connection to it.
-	conn, err := grpc.NewClient("127.0.0.1:"+port, dialOptions...)
+	// Create a gRPC client connection to the plugin's address (host:port). A spawned local
+	// plugin is dialed at a 127.0.0.1 address; attaching to a containerized plugin dials the
+	// address it is reachable at — e.g. a container DNS name on the pod network.
+	conn, err := grpc.NewClient(address, dialOptions...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not dial plugin [%v] over RPC: %w", bin, err)
 	}
@@ -436,7 +436,7 @@ func newPlugin[T any](
 	go runtrace(plug.Stdout, outStreamID, stdoutDone)
 
 	dialCtx := trace.ContextWithSpan(ctx.Base(), otelSpan)
-	conn, handshakeRes, err := dialPlugin(dialCtx, port, bin, prefix, handshake, dialOptions)
+	conn, handshakeRes, err := dialPlugin(dialCtx, "127.0.0.1:"+strconv.Itoa(port), bin, prefix, handshake, dialOptions)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -1,0 +1,12 @@
+# Provider image with the forwarder shim embedded, for the address-model smoke test.
+# Same stock released binary as Dockerfile.provider, but booted THROUGH the shim so the
+# provider is reachable at a well-known port on all interfaces (PULUMI_POD_SHIM_PORT)
+# instead of an ephemeral loopback port. That lets the engine attach by the provider
+# container's DNS name on the pod network, rather than sharing the engine's netns and
+# dialing 127.0.0.1. The build context must contain provider-bin and pulumi-pod-shim.
+FROM alpine:3
+RUN apk add --no-cache ca-certificates
+COPY provider-bin /plugin/provider
+COPY pulumi-pod-shim /plugin/shim
+ENV PULUMI_POD_SHIM_PORT=7777
+ENTRYPOINT ["/plugin/shim", "/plugin/provider"]

@@ -213,7 +213,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		}
 
 		var conn *grpc.ClientConn
-		conn, handshakeRes, err = dialPlugin(ctx.Base(), port, pkg.String(), prefix,
+		conn, handshakeRes, err = dialPlugin(ctx.Base(), "127.0.0.1:"+strconv.Itoa(port), pkg.String(), prefix,
 			handshake, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
@@ -338,7 +338,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 // tail is inlined to match NewProvider above (this fork predates the sdk's
 // newProviderFromPlugin extraction).
 func NewProviderAttached(host Host, ctx *Context, spec workspace.PluginDescriptor,
-	port int, disableProviderPreview bool,
+	address string, disableProviderPreview bool,
 ) (Provider, error) {
 	pkg := tokens.Package(spec.Name)
 	prefix := fmt.Sprintf("%v (resource)", pkg)
@@ -367,7 +367,7 @@ func NewProviderAttached(host Host, ctx *Context, spec workspace.PluginDescripto
 		return handshake(ctx, bin, prefix, conn, req)
 	}
 
-	conn, handshakeRes, err := dialPlugin(ctx.Base(), port, pkg.String(), prefix,
+	conn, handshakeRes, err := dialPlugin(ctx.Base(), address, pkg.String(), prefix,
 		handshake, providerPluginDialOptions(ctx, pkg, ""))
 	if err != nil {
 		return nil, err
