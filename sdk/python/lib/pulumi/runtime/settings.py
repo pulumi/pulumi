@@ -463,6 +463,11 @@ async def monitor_supports_error_hooks() -> bool:
     return await monitor_supports_feature("errorHooks")
 
 
+async def monitor_supports_invoke_depends_on() -> bool:
+    # Advertised by GetDeploymentInfo only, so an engine that predates that RPC never has it.
+    return SETTINGS.feature_support.get(_INVOKE_DEPENDS_ON, False)
+
+
 def reset_options(
     project: Optional[str] = None,
     stack: Optional[str] = None,
@@ -527,6 +532,14 @@ _LEGACY_FEATURE_MAPPING = {
     "errorHooks": resource_pb2.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
 }
 
+# Features that have no legacy ID, keyed in feature_support by their own name.
+_INVOKE_DEPENDS_ON = "invokeDependsOn"
+
+_FEATURE_MAPPING = {
+    **_LEGACY_FEATURE_MAPPING,
+    _INVOKE_DEPENDS_ON: resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
+}
+
 
 async def _load_monitor_feature_support():
     if not SETTINGS.monitor:
@@ -539,7 +552,7 @@ async def _load_monitor_feature_support():
                 lambda: SETTINGS.monitor.GetDeploymentInfo(empty_pb2.Empty())
             ),
         )
-        for feature, value in _LEGACY_FEATURE_MAPPING.items():
+        for feature, value in _FEATURE_MAPPING.items():
             SETTINGS.feature_support[feature] = (
                 value in deployment_info.supportedFeatures
             )
