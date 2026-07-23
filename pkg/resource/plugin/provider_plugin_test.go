@@ -824,6 +824,18 @@ type stubClient struct {
 	ListF          func(context.Context, *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error)
 	ReadF          func(*pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error)
 	UpdateF        func(*pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error)
+	InvokeF        func(*pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error)
+}
+
+func (c *stubClient) Invoke(
+	ctx context.Context,
+	req *pulumirpc.InvokeRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.InvokeResponse, error) {
+	if f := c.InvokeF; f != nil {
+		return f(req)
+	}
+	return c.ResourceProviderClient.Invoke(ctx, req, opts...)
 }
 
 func (c *stubClient) DiffConfig(
@@ -1489,4 +1501,25 @@ func TestProvider_PartialFailure(t *testing.T) {
 		Status:              resource.StatusPartialFailure,
 		RefreshBeforeUpdate: true,
 	}, updateResp)
+}
+
+// The unknown field on InvokeResponse is reserved for the resource monitor; a provider that sets it is in error.
+func TestProviderInvokeRejectsReservedUnknown(t *testing.T) {
+	t.Parallel()
+
+	client := &stubClient{
+		ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{}, nil
+		},
+		InvokeF: func(req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+			return &pulumirpc.InvokeResponse{Unknown: true}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: ptr(tokens.Type("pulumi:providers:test"))})
+	require.NoError(t, err, "Configure failed")
+
+	_, err = p.Invoke(t.Context(), InvokeRequest{Tok: "test:index:fn"})
+	assert.ErrorContains(t, err, "illegally set the reserved unknown field")
 }

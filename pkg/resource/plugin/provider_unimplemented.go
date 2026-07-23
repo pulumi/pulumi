@@ -104,6 +104,10 @@ func (p *UnimplementedProvider) Invoke(context.Context, InvokeRequest) (InvokeRe
 	return InvokeResponse{}, status.Error(codes.Unimplemented, "Invoke is not yet implemented")
 }
 
+func (p *UnimplementedProvider) InvokeWithPreview() bool {
+	return false
+}
+
 func (p *UnimplementedProvider) Call(context.Context, CallRequest) (CallResponse, error) {
 	return CallResponse{}, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }

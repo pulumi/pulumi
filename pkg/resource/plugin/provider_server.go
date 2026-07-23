@@ -152,6 +152,7 @@ func (p *providerServer) Handshake(
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
+		AcceptsInvokeUnknowns:       req.AcceptsInvokeUnknowns,
 		MapperTarget:                req.MapperTarget,
 		LoaderTarget:                req.LoaderTarget,
 		ResolverTarget:              req.ResolverTarget,
@@ -168,6 +169,7 @@ func (p *providerServer) Handshake(
 		AcceptResources:                 res.AcceptResources,
 		AcceptOutputs:                   res.AcceptOutputs,
 		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
+		InvokeWithPreview:               res.InvokeWithPreview,
 	}, nil
 }
 

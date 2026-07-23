@@ -59,6 +59,10 @@ class _ResourceMonitorFeatureEnumTypeWrapper(google.protobuf.internal.enum_type_
     """The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
     string bytes signature and a base64 encoding of the string's bytes.
     """
+    RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON: _ResourceMonitorFeature.ValueType  # 14
+    """The monitor accepts `dependsOn` and `acceptsUnknowns` on `ResourceInvokeRequest` and gates the invoke on the
+    created-ness of the dependencies, returning `unknown` on `InvokeResponse` when they are pending.
+    """
 
 class ResourceMonitorFeature(_ResourceMonitorFeature, metaclass=_ResourceMonitorFeatureEnumTypeWrapper):
     """ResourceMonitorFeature is a strongly typed monitor capability identifier.
@@ -83,6 +87,10 @@ RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS: ResourceMonitorFeature.ValueTyp
 RESOURCE_MONITOR_FEATURE_BYTE_STRING: ResourceMonitorFeature.ValueType  # 13
 """The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
 string bytes signature and a base64 encoding of the string's bytes.
+"""
+RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON: ResourceMonitorFeature.ValueType  # 14
+"""The monitor accepts `dependsOn` and `acceptsUnknowns` on `ResourceInvokeRequest` and gates the invoke on the
+created-ness of the dependencies, returning `unknown` on `InvokeResponse` when they are pending.
 """
 global___ResourceMonitorFeature = ResourceMonitorFeature
 
@@ -886,6 +894,8 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     PARENTSTACKTRACEHANDLE_FIELD_NUMBER: builtins.int
     PACKAGEREF_FIELD_NUMBER: builtins.int
     ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
+    DEPENDSON_FIELD_NUMBER: builtins.int
+    ACCEPTSUNKNOWNS_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
     provider: builtins.str
@@ -904,6 +914,11 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     """When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
     carrying the byte string signature and a base64 encoding of the string's bytes.
     """
+    acceptsUnknowns: builtins.bool
+    """True if the caller understands an unknown result: the `unknown` field on `InvokeResponse` and unknown property
+    sentinels in `return`. When false, the monitor collapses any unknown-bearing result to an empty one. Only set
+    when the monitor advertises `INVOKE_DEPENDS_ON`.
+    """
     @property
     def args(self) -> google.protobuf.struct_pb2.Struct:
         """the arguments for the function invocation."""
@@ -920,6 +935,14 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     def stackTrace(self) -> pulumi.source_pb2.StackTrace:
         """the optional stack trace at the time of the request."""
 
+    @property
+    def dependsOn(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """The URNs of the resources this invoke depends on: the caller's explicit dependencies plus the resources its
+        arguments were derived from, expanded as far as the caller can see. The monitor expands component URNs --
+        including remote components, whose children the caller cannot see -- and does not service the invoke ahead of
+        the expanded resources. Only set when the monitor advertises `INVOKE_DEPENDS_ON`.
+        """
+
     def __init__(
         self,
         *,
@@ -935,9 +958,11 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
         parentStackTraceHandle: builtins.str = ...,
         packageRef: builtins.str = ...,
         accepts_byte_string: builtins.bool = ...,
+        dependsOn: collections.abc.Iterable[builtins.str] | None = ...,
+        acceptsUnknowns: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["args", b"args", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "accepts_byte_string", b"accepts_byte_string", "args", b"args", "packageRef", b"packageRef", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "acceptsUnknowns", b"acceptsUnknowns", "accepts_byte_string", b"accepts_byte_string", "args", b"args", "dependsOn", b"dependsOn", "packageRef", b"packageRef", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceInvokeRequest = ResourceInvokeRequest
 

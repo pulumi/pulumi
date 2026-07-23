@@ -117,6 +117,10 @@ type pluginProtocol struct {
 
 	// True if this plugin supports custom autonaming configuration.
 	supportsAutonamingConfiguration bool
+
+	// True if this plugin declared preview invoke semantics: it may be invoked during previews with pending
+	// dependencies and may return results containing unknowns.
+	invokeWithPreview bool
 }
 
 // pluginConfig holds the configuration of the provider
@@ -206,6 +210,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
+				AcceptsInvokeUnknowns:       true,
 				MapperTarget:                mapperAddr,
 				LoaderTarget:                loaderAddr,
 				ResolverTarget:              resolverAddr,
@@ -272,6 +277,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SupportsViews:               true,
 				SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 				InvokeWithPreview:           true,
+				AcceptsInvokeUnknowns:       true,
 				MapperTarget:                mapperAddr,
 				LoaderTarget:                loaderAddr,
 				ResolverTarget:              resolverAddr,
@@ -315,6 +321,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			supportsPreview:                 true,
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
+			invokeWithPreview:               handshakeRes.InvokeWithPreview,
 		}
 	}
 
@@ -372,6 +379,7 @@ func handshake(
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
+		AcceptsInvokeUnknowns:       req.AcceptsInvokeUnknowns,
 		MapperTarget:                req.MapperTarget,
 		LoaderTarget:                req.LoaderTarget,
 		ResolverTarget:              req.ResolverTarget,
@@ -392,6 +400,7 @@ func handshake(
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		InvokeWithPreview:               res.GetInvokeWithPreview(),
 	}, nil
 }
 
@@ -436,6 +445,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			SupportsViews:               true,
 			SupportsRefreshBeforeUpdate: supportsRefreshBeforeUpdate,
 			InvokeWithPreview:           true,
+			AcceptsInvokeUnknowns:       true,
 			MapperTarget:                mapperAddr,
 			LoaderTarget:                loaderAddr,
 			ResolverTarget:              resolverAddr,
@@ -470,6 +480,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			supportsPreview:                 true,
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
+			invokeWithPreview:               handshakeRes.InvokeWithPreview,
 		}
 	}
 
@@ -566,6 +577,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		SupportsViews:               req.SupportsViews,
 		SupportsRefreshBeforeUpdate: req.SupportsRefreshBeforeUpdate,
 		InvokeWithPreview:           req.InvokeWithPreview,
+		AcceptsInvokeUnknowns:       req.AcceptsInvokeUnknowns,
 		MapperTarget:                req.MapperTarget,
 		LoaderTarget:                req.LoaderTarget,
 		ResolverTarget:              req.ResolverTarget,
@@ -574,12 +586,29 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		return nil, err
 	}
 
+	// Persist the negotiated protocol so that capability queries against this provider reflect the handshake.
+	if p.protocol == nil {
+		p.protocol = &pluginProtocol{
+			acceptSecrets:                   res.GetAcceptSecrets(),
+			acceptResources:                 res.GetAcceptResources(),
+			supportsPreview:                 true,
+			acceptOutputs:                   res.GetAcceptOutputs(),
+			supportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+			invokeWithPreview:               res.GetInvokeWithPreview(),
+		}
+	}
+
 	return &ProviderHandshakeResponse{
 		AcceptSecrets:                   res.GetAcceptSecrets(),
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		InvokeWithPreview:               res.GetInvokeWithPreview(),
 	}, nil
+}
+
+func (p *provider) InvokeWithPreview() bool {
+	return p.protocol != nil && p.protocol.invokeWithPreview
 }
 
 func (p *provider) Parameterize(ctx context.Context, request ParameterizeRequest) (ParameterizeResponse, error) {
@@ -2212,10 +2241,19 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		return InvokeResponse{}, rpcError
 	}
 
-	// Unmarshal any return values.
+	// The unknown marker on InvokeResponse is reserved for the resource monitor, which sets it when it declines to
+	// service an invoke whose dependencies are pending; providers express unknown-ness through property sentinels.
+	if resp.GetUnknown() {
+		return InvokeResponse{}, fmt.Errorf(
+			"%s illegally set the reserved unknown field on its response; unknown results must be expressed as"+
+				" unknown property values", label)
+	}
+
+	// Unmarshal any return values. Providers that declared preview invoke semantics may return unknowns.
 	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{
 		Label:          label + ".returns",
-		RejectUnknowns: true,
+		RejectUnknowns: !protocol.invokeWithPreview,
+		KeepUnknowns:   protocol.invokeWithPreview,
 		KeepSecrets:    true,
 		KeepResources:  true,
 		PropagateNil:   true,

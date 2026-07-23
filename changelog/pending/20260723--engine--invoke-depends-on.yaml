@@ -1,0 +1,8 @@
+component: engine
+kind: fix
+body: Gate invokes on the created-ness of their declared dependencies, including the
+  children of remote components, resolving them as unknown during previews that
+  still have to create them
+time: 2026-07-23T00:00:00+00:00
+custom:
+  PR: "24040"

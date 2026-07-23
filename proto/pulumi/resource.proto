@@ -93,6 +93,9 @@ enum ResourceMonitorFeature {
     // The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
     // string bytes signature and a base64 encoding of the string's bytes.
     RESOURCE_MONITOR_FEATURE_BYTE_STRING = 13;
+    // The monitor accepts `dependsOn` and `acceptsUnknowns` on `ResourceInvokeRequest` and gates the invoke on the
+    // created-ness of the dependencies, returning `unknown` on `InvokeResponse` when they are pending.
+    RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON = 14;
 }
 
 // DeploymentInfo returns monitor execution state currently sent to programs
@@ -309,6 +312,17 @@ message ResourceInvokeRequest {
     // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
     // carrying the byte string signature and a base64 encoding of the string's bytes.
     bool accepts_byte_string = 12;
+
+    // The URNs of the resources this invoke depends on: the caller's explicit dependencies plus the resources its
+    // arguments were derived from, expanded as far as the caller can see. The monitor expands component URNs --
+    // including remote components, whose children the caller cannot see -- and does not service the invoke ahead of
+    // the expanded resources. Only set when the monitor advertises `INVOKE_DEPENDS_ON`.
+    repeated string dependsOn = 13;
+
+    // True if the caller understands an unknown result: the `unknown` field on `InvokeResponse` and unknown property
+    // sentinels in `return`. When false, the monitor collapses any unknown-bearing result to an empty one. Only set
+    // when the monitor advertises `INVOKE_DEPENDS_ON`.
+    bool acceptsUnknowns = 14;
 }
 
 message ResourceCallRequest {

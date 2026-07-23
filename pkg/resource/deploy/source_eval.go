@@ -202,7 +202,9 @@ func (src *evalSource) Stack() tokens.StackName {
 }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
-func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
+func (src *evalSource) Iterate(
+	ctx context.Context, providers ProviderSource, state StateSource,
+) (SourceIterator, error) {
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
 	// Decrypt the configuration.
@@ -224,6 +226,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	mon, err := newResourceMonitor(
 		src,
 		providers,
+		state,
 		regChan,
 		regOutChan,
 		regReadChan,
@@ -421,6 +424,7 @@ type resmon struct {
 	resGoalsLock           sync.Mutex                         // locks the resGoals map.
 	diagnostics            diag.Sink                          // logger for user-facing messages
 	providers              ProviderSource                     // the provider source itself.
+	state                  StateSource                        // the states produced so far by this operation; may be nil.
 	componentProviders     map[resource.URN]map[string]string // which providers component resources used
 	componentProvidersLock sync.Mutex                         // which locks the componentProviders map
 	defaultProviders       *defaultProviders                  // the default provider manager.
@@ -487,6 +491,7 @@ var _ SourceResourceMonitor = (*resmon)(nil)
 func newResourceMonitor(
 	src *evalSource,
 	provs ProviderSource,
+	state StateSource,
 	regChan chan *registerResourceEvent,
 	regOutChan chan *registerResourceOutputsEvent,
 	regReadChan chan *readResourceEvent,
@@ -515,6 +520,7 @@ func newResourceMonitor(
 	resmon := &resmon{
 		diagnostics:             src.plugctx.Diag,
 		providers:               provs,
+		state:                   state,
 		defaultProviders:        d,
 		workingDirectory:        src.runinfo.Pwd,
 		sourcePositions:         newSourcePositions(src.runinfo.ProjectRoot),
@@ -924,6 +930,8 @@ func (rm *resmon) supportsFeatureID(id string) bool {
 		return true
 	case "sendsOptionsToHooks":
 		return true
+	case "invokeDependsOn":
+		return true
 	}
 	return false
 }
@@ -968,6 +976,9 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	}
 	if rm.supportsFeatureID("sendsOptionsToHooks") {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS)
+	}
+	if rm.supportsFeatureID("invokeDependsOn") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON)
 	}
 	return features
 }
@@ -1066,6 +1077,23 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		return nil, fmt.Errorf("Invoke: %w", err)
 	}
 
+	// If the caller declared dependencies, the invoke must observe the resources it depends on: expand the
+	// dependency set -- components, including remote components whose children the caller cannot see, aggregate
+	// every descendant reachable through component ancestors -- and require that each custom resource in it has
+	// been created. A custom resource without an id is pending: either this preview plans to create it, or this
+	// operation skipped its creation (e.g. --target). Providers with preview invoke semantics are still called
+	// during previews and decide for themselves; otherwise the result is wholly unknown.
+	if len(req.GetDependsOn()) > 0 {
+		pending, err := rm.pendingInvokeDependencies(req.GetDependsOn())
+		if err != nil {
+			return nil, err
+		}
+		if pending && (!rm.opts.DryRun || !prov.InvokeWithPreview()) {
+			logging.V(5).Infof("ResourceMonitor.Invoke: tok=%v has pending dependencies, returning unknown", tok)
+			return unknownInvokeResponse(req.GetAcceptsUnknowns(), rm.workingDirectory)
+		}
+	}
+
 	// Do the invoke and then return the arguments.
 	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	resp, err := prov.Invoke(ctx, plugin.InvokeRequest{
@@ -1075,6 +1103,15 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 	})
 	if err != nil {
 		return nil, fmt.Errorf("invocation of %v returned an error: %w", tok, err)
+	}
+
+	// Providers with preview invoke semantics may return unknown-bearing results. A caller that doesn't
+	// understand unknowns gets the whole result collapsed to empty instead: a partial result would be read as
+	// complete. Scoped to such providers so that builtin invokes like pulumi:pulumi:getResource, whose unknowns
+	// callers have always received, are untouched.
+	if !req.GetAcceptsUnknowns() && prov.InvokeWithPreview() &&
+		invokeResultContainsUnknowns(resource.NewProperty(resp.Properties)) {
+		return unknownInvokeResponse(false, rm.workingDirectory)
 	}
 
 	// Respect `AcceptResources` unless `tok` is for the built-in `pulumi:pulumi:getResource` function,
@@ -1103,6 +1140,107 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		})
 	}
 	return &pulumirpc.InvokeResponse{Return: mret, Failures: chkfails}, nil
+}
+
+// pendingInvokeDependencies reports whether any custom resource in the expansion of the given dependency URNs has not
+// been created by this operation. The expansion mirrors the SDKs' client-side rule: a custom resource contributes only
+// itself, and a component aggregates every descendant reachable through component ancestors, stopping at the first
+// custom resource on each branch. URNs that don't resolve to a state produced by this operation are skipped: the
+// caller could not see them either.
+func (rm *resmon) pendingInvokeDependencies(dependsOn []string) (bool, error) {
+	roots := map[resource.URN]struct{}{}
+	for _, dep := range dependsOn {
+		urn, err := resource.ParseURN(dep)
+		if err != nil {
+			return false, fmt.Errorf("invalid dependsOn URN %q: %w", dep, err)
+		}
+		roots[urn] = struct{}{}
+	}
+	if rm.state == nil {
+		return false, nil
+	}
+
+	for urn := range roots {
+		if state, ok := rm.state.LookupState(urn); ok {
+			state.Lock.Lock()
+			pending := state.Custom && state.ID == ""
+			state.Lock.Unlock()
+			if pending {
+				return true, nil
+			}
+		} else {
+			logging.V(5).Infof("pendingInvokeDependencies: no state for %v, skipping", urn)
+		}
+	}
+
+	pending := false
+	rm.state.EachState(func(state *pkgresource.State) bool {
+		state.Lock.Lock()
+		custom, id, parent := state.Custom, state.ID, state.Parent
+		state.Lock.Unlock()
+		if !custom || id != "" {
+			return true
+		}
+		for current := parent; current != ""; {
+			ancestor, ok := rm.state.LookupState(current)
+			if !ok {
+				break
+			}
+			ancestor.Lock.Lock()
+			ancestorCustom, ancestorParent := ancestor.Custom, ancestor.Parent
+			ancestor.Lock.Unlock()
+			if ancestorCustom {
+				break
+			}
+			if _, isRoot := roots[current]; isRoot {
+				pending = true
+				return false
+			}
+			current = ancestorParent
+		}
+		return true
+	})
+	return pending, nil
+}
+
+// unknownInvokeResponse is the response for an invoke whose result is wholly unknown: the unknown marker for callers
+// that understand it, and the empty result for callers that don't.
+func unknownInvokeResponse(acceptsUnknowns bool, workingDirectory string) (*pulumirpc.InvokeResponse, error) {
+	if acceptsUnknowns {
+		return &pulumirpc.InvokeResponse{Unknown: true}, nil
+	}
+	empty, err := plugin.MarshalProperties(resource.PropertyMap{}, plugin.MarshalOptions{
+		WorkingDirectory: workingDirectory,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.InvokeResponse{Return: empty}, nil
+}
+
+// invokeResultContainsUnknowns reports whether the given value contains an unknown anywhere, including the id of a
+// resource reference, which resource.PropertyValue.ContainsUnknowns does not descend into.
+func invokeResultContainsUnknowns(value resource.PropertyValue) bool {
+	switch {
+	case value.IsComputed():
+		return true
+	case value.IsOutput():
+		output := value.OutputValue()
+		return !output.Known || invokeResultContainsUnknowns(output.Element)
+	case value.IsSecret():
+		return invokeResultContainsUnknowns(value.SecretValue().Element)
+	case value.IsResourceReference():
+		return invokeResultContainsUnknowns(value.ResourceReferenceValue().ID)
+	case value.IsArray():
+		return slices.ContainsFunc(value.ArrayValue(), invokeResultContainsUnknowns)
+	case value.IsObject():
+		for _, element := range value.ObjectValue() {
+			if invokeResultContainsUnknowns(element) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.

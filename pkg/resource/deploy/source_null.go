@@ -38,7 +38,9 @@ var NullSource Source = &nullSource{}
 func (src *nullSource) Close() error                { return nil }
 func (src *nullSource) Project() tokens.PackageName { return src.project }
 
-func (src *nullSource) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
+func (src *nullSource) Iterate(
+	ctx context.Context, providers ProviderSource, state StateSource,
+) (SourceIterator, error) {
 	contract.Ignore(ctx)
 	return &nullSourceIterator{}, nil
 }

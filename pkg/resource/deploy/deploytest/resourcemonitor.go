@@ -724,9 +724,47 @@ func (rm *ResourceMonitor) ReadResource(
 	return resource.URN(resp.Urn), outs, nil
 }
 
+// InvokeOptions groups the optional parts of an invoke request.
+type InvokeOptions struct {
+	// DependsOn is the set of dependency URNs to declare on the request.
+	DependsOn []resource.URN
+	// AcceptsUnknowns declares that the caller understands unknown results.
+	AcceptsUnknowns bool
+}
+
+// InvokeResult is the full result of an invoke, including the unknown marker that the plain Invoke wrapper discards.
+type InvokeResult struct {
+	Return   resource.PropertyMap
+	Failures []*pulumirpc.CheckFailure
+	Unknown  bool
+}
+
 func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.PropertyMap,
-	provider string, version string, packageRef string,
+	provider string, version string, packageRef string, options ...InvokeOptions,
 ) (resource.PropertyMap, []*pulumirpc.CheckFailure, error) {
+	result, err := rm.InvokeWithResult(tok, inputs, provider, version, packageRef, options...)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(result.Failures) != 0 {
+		return nil, result.Failures, nil
+	}
+	return result.Return, nil, nil
+}
+
+func (rm *ResourceMonitor) InvokeWithResult(tok tokens.ModuleMember, inputs resource.PropertyMap,
+	provider string, version string, packageRef string, options ...InvokeOptions,
+) (*InvokeResult, error) {
+	opts := InvokeOptions{}
+	for _, o := range options {
+		if o.DependsOn != nil {
+			opts.DependsOn = o.DependsOn
+		}
+		if o.AcceptsUnknowns {
+			opts.AcceptsUnknowns = true
+		}
+	}
+
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
 		KeepUnknowns:  true,
@@ -734,33 +772,39 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 		KeepSecrets:   true,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+
+	dependsOn := make([]string, len(opts.DependsOn))
+	for i, urn := range opts.DependsOn {
+		dependsOn[i] = string(urn)
 	}
 
 	// submit request
 	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
-		Tok:        string(tok),
-		Provider:   provider,
-		Args:       ins,
-		Version:    version,
-		PackageRef: packageRef,
+		Tok:             string(tok),
+		Provider:        provider,
+		Args:            ins,
+		Version:         version,
+		PackageRef:      packageRef,
+		DependsOn:       dependsOn,
+		AcceptsUnknowns: opts.AcceptsUnknowns,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	// handle failures
 	if len(resp.Failures) != 0 {
-		return nil, resp.Failures, nil
+		return &InvokeResult{Failures: resp.Failures}, nil
 	}
 
 	// unmarshal outputs
 	outs, err := rm.unmarshalProperties(resp.Return)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return outs, nil, nil
+	return &InvokeResult{Return: outs, Unknown: resp.Unknown}, nil
 }
 
 func (rm *ResourceMonitor) Call(

@@ -55,9 +55,12 @@ type Provider struct {
 	ReadF         func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error)
 	ConstructF    func(context.Context, plugin.ConstructRequest, *ResourceMonitor) (plugin.ConstructResponse, error)
 	InvokeF       func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error)
-	CallF         func(context.Context, plugin.CallRequest, *ResourceMonitor) (plugin.CallResponse, error)
-	GetMappingF   func(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error)
-	GetMappingsF  func(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error)
+	// InvokeWithPreviewV is the provider's preview invoke capability, reported by InvokeWithPreview. Providers
+	// wrapped with WithGrpc negotiate this through their handshake response instead.
+	InvokeWithPreviewV bool
+	CallF              func(context.Context, plugin.CallRequest, *ResourceMonitor) (plugin.CallResponse, error)
+	GetMappingF        func(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error)
+	GetMappingsF       func(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error)
 }
 
 func (prov *Provider) Handshake(
@@ -231,6 +234,10 @@ func (prov *Provider) Invoke(ctx context.Context, req plugin.InvokeRequest) (plu
 		}, nil
 	}
 	return prov.InvokeF(ctx, req)
+}
+
+func (prov *Provider) InvokeWithPreview() bool {
+	return prov.InvokeWithPreviewV
 }
 
 func (prov *Provider) Call(ctx context.Context, req plugin.CallRequest) (plugin.CallResponse, error) {

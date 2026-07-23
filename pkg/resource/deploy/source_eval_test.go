@@ -514,7 +514,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		nil,
 		nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	processed := 0
@@ -780,7 +780,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		nil,
 		nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	processed, defaults := 0, make(map[string]struct{})
@@ -924,7 +924,7 @@ func TestRegistrationObserverResolveOnRegisterResource(t *testing.T) {
 		nil,
 		observer,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	for {
@@ -997,7 +997,7 @@ func TestRegistrationObserverNotResolvedForUnsuccessfulRegisterResource(t *testi
 			iter, err := NewEvalSource(
 				ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
 				NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-			).Iterate(t.Context(), &testProviderSource{})
+			).Iterate(t.Context(), &testProviderSource{}, nil)
 			require.NoError(t, err)
 
 			for {
@@ -1085,7 +1085,7 @@ func TestRegistrationObserverNotResolvedForLocalComponentOnRegister(t *testing.T
 		nil,
 		observer,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	for {
@@ -1213,7 +1213,7 @@ func TestRegistrationObserverComponentResolvedAtRegisterResourceOutputs(t *testi
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	driveIter(t, iter, runInfo)
@@ -1274,7 +1274,7 @@ func TestRegistrationObserverRemoteComponentNotResolvedOnRegister(t *testing.T) 
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{defaultProvider: provider})
+	).Iterate(t.Context(), &testProviderSource{defaultProvider: provider}, nil)
 	require.NoError(t, err)
 
 	driveIter(t, iter, runInfo)
@@ -1337,7 +1337,7 @@ func TestRegistrationObserverCustomResourceAliasesArePublished(t *testing.T) {
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	// Drive the iter. A custom resource implicitly requests a default provider, so two
@@ -1427,7 +1427,7 @@ func TestRegistrationObserverComponentAliasesArePublishedAtROC(t *testing.T) {
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	driveIter(t, iter, runInfo)
@@ -1516,7 +1516,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), providerSource)
+	).Iterate(t.Context(), providerSource, nil)
 	require.NoError(t, err)
 
 	reads := 0
@@ -1634,7 +1634,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), providerSource)
+	).Iterate(t.Context(), providerSource, nil)
 	require.NoError(t, err)
 
 	reads, registers := 0, 0
@@ -1892,7 +1892,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 			iter, err := NewEvalSource(
 				ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 				NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-			).Iterate(t.Context(), providerSource)
+			).Iterate(t.Context(), providerSource, nil)
 			require.NoError(t, err)
 
 			for {
@@ -2200,7 +2200,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			}
 
 			ctx := t.Context()
-			iter, res := evalSource.Iterate(ctx, &testProviderSource{defaultProvider: provider})
+			iter, res := evalSource.Iterate(ctx, &testProviderSource{defaultProvider: provider}, nil)
 			require.Nil(t, res, "iterate eval source")
 
 			for ev, res := iter.Next(); ev != nil; ev, res = iter.Next() {
@@ -2713,7 +2713,7 @@ func TestEvalSource(t *testing.T) {
 					},
 				},
 			}
-			_, err := src.Iterate(t.Context(), &providerSourceMock{})
+			_, err := src.Iterate(t.Context(), &providerSourceMock{}, nil)
 			assert.ErrorContains(t, err, "failed to decrypt config")
 			assert.True(t, decrypterCalled)
 		})
@@ -2784,7 +2784,7 @@ func TestGetDeploymentInfo(t *testing.T) {
 			DisableOutputValues:       true,
 			DisableResourceReferences: false,
 		},
-	}, &providerSourceMock{}, nil, nil, nil, nil, programComplete.Promise(), cfg, secretKeys,
+	}, &providerSourceMock{}, nil, nil, nil, nil, nil, programComplete.Promise(), cfg, secretKeys,
 		opentracing.SpanFromContext(t.Context()))
 	require.NoError(t, err)
 
@@ -2814,6 +2814,11 @@ func TestGetDeploymentInfo(t *testing.T) {
 	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SECRETS)
 	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES)
 	assert.NotContains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES)
+	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON)
+
+	supported, err := client.SupportsFeature(t.Context(), &pulumirpc.SupportsFeatureRequest{Id: "invokeDependsOn"})
+	require.NoError(t, err)
+	assert.True(t, supported.GetHasSupport())
 }
 
 func TestSourceEvalServeOptions(t *testing.T) {
@@ -3007,7 +3012,7 @@ func TestInvoke(t *testing.T) {
 					return plugin.InvokeResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
+		}, nil, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -3071,7 +3076,7 @@ func TestInvoke(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
+		}, nil, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -3144,7 +3149,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
+		}, nil, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		abortChan := make(chan bool)
@@ -3245,7 +3250,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
+		}, nil, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		abortChan := make(chan bool)
@@ -3329,7 +3334,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
+		}, nil, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -3411,7 +3416,7 @@ func TestCall(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
+		}, nil, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
