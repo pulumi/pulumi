@@ -41,6 +41,7 @@ from .settings import (
     get_monitor,
     grpc_error_to_exception,
     handle_grpc_error,
+    monitor_supports_invoke_depends_on,
 )
 from .sync_await import _sync_await
 
@@ -273,6 +274,8 @@ def _invoke(
 
         # The direct dependencies of the invoke.
         depends_on_dependencies: set[Resource] = set()
+        # The dependency URNs to declare on the request, when the monitor supports gating invokes.
+        invoke_depends_on: Optional[list[str]] = None
         # Only check the resource dependencies for output form invokes. For
         # plain invokes, we do not want to check the dependencies. Technically,
         # these should only receive plain arguments, but this is not strictly
@@ -282,25 +285,32 @@ def _invoke(
             depends_on_dependencies = await _resolve_depends_on(
                 opts._depends_on_list() if isinstance(opts, InvokeOutputOptions) else []
             )
-            # If we depend on any CustomResources, we need to ensure that their
-            # ID is known before proceeding. If it is not known, we will return
-            # an unknown result.
             resources_to_wait_for: set[Resource] = set(depends_on_dependencies)
             # Add the dependencies from the inputs to the set of resources to wait for.
             for deps in property_dependencies.values():
                 resources_to_wait_for = resources_to_wait_for.union(deps)
             # The expanded set of dependencies, including children of components.
             expanded_deps = await rpc._expand_dependencies(resources_to_wait_for, None)
-            # Ensure that all resource IDs are known before proceeding.
-            for res in expanded_deps.values():
-                # DependencyResources inherit from CustomResource, but they don't
-                # set the id. Skip them.
-                if isinstance(res, CustomResource) and res.__dict__.get("id", None):
-                    if not await res.id.is_known():
-                        return (
-                            InvokeResult(None, is_secret=False, is_known=False),
-                            None,
-                        )
+            if await monitor_supports_invoke_depends_on():
+                # The engine gates the invoke on the created-ness of its
+                # dependencies -- it can see the children of remote components,
+                # which we cannot -- so declare the expanded dependency URNs on
+                # the request.
+                invoke_depends_on = list(expanded_deps.keys())
+            else:
+                # Older engines cannot gate invokes: if we depend on any
+                # CustomResources, we need to ensure that their ID is known
+                # before proceeding. If it is not known, we will return an
+                # unknown result.
+                for res in expanded_deps.values():
+                    # DependencyResources inherit from CustomResource, but they don't
+                    # set the id. Skip them.
+                    if isinstance(res, CustomResource) and res.__dict__.get("id", None):
+                        if not await res.id.is_known():
+                            return (
+                                InvokeResult(None, is_secret=False, is_known=False),
+                                None,
+                            )
 
         version = opts.version or "" if opts is not None else ""
         plugin_download_url = opts.plugin_download_url or "" if opts is not None else ""
@@ -317,6 +327,9 @@ def _invoke(
             pluginDownloadURL=plugin_download_url,
             packageRef=package_ref_str or "",
         )
+        if invoke_depends_on is not None:
+            req.dependsOn.extend(invoke_depends_on)
+            req.acceptsUnknowns = True
 
         def do_invoke():
             try:
@@ -343,6 +356,11 @@ def _invoke(
                     f"invoke of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})"
                 ),
             )
+
+        # The engine declines to service an invoke whose dependencies are
+        # pending creation: the result is wholly unknown.
+        if resp.unknown:
+            return (InvokeResult(None, is_secret=False, is_known=False), None)
 
         # Otherwise, return the output properties.
         ret_obj = getattr(resp, "return")
