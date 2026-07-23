@@ -96,10 +96,13 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - uses: ./.github/actions/retry
+        env:
+          MISE_NPM_SHELL_OUT: "true"
         with:
           action: jdx/mise-action@v2
           with: |
             experimental: true
+            cache_key_prefix: mise-npm-shell-out-v0
       - name: Check Protobufs
         run: make check_proto
 
