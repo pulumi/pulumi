@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -43,6 +44,7 @@ type newPolicyArgs struct {
 	force             bool
 	generateOnly      bool
 	offline           bool
+	runtimeOptions    []string
 	templateNameOrURL string
 	stdout            io.Writer
 }
@@ -82,16 +84,24 @@ func newPolicyNewCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		&args.dir, "dir", "",
-		"The location to place the generated Policy Pack; if not specified, the current directory is used")
+		"The location to place the generated Policy Pack; if not specified, the current directory is used",
+	)
 	cmd.PersistentFlags().BoolVarP(
 		&args.force, "force", "f", false,
-		"Forces content to be generated even if it would change existing files")
+		"Forces content to be generated even if it would change existing files",
+	)
 	cmd.PersistentFlags().BoolVarP(
 		&args.generateOnly, "generate-only", "g", false,
-		"Generate the Policy Pack only; do not install dependencies")
+		"Generate the Policy Pack only; do not install dependencies",
+	)
 	cmd.PersistentFlags().BoolVarP(
 		&args.offline, "offline", "o", false,
-		"Use locally cached templates without making any network requests")
+		"Use locally cached templates without making any network requests",
+	)
+	cmd.PersistentFlags().StringSliceVar(
+		&args.runtimeOptions, "runtime-options", []string{},
+		"Additional options for the language runtime (format: key1=value1,key2=value2)",
+	)
 
 	return cmd
 }
@@ -129,7 +139,9 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	}
 
 	// Retrieve the templates-policy repo.
-	repo, err := workspace.RetrieveTemplates(ctx, args.templateNameOrURL, args.offline, workspace.TemplateKindPolicyPack)
+	repo, err := cmdTemplates.RetrieveTemplates(
+		ctx, args.templateNameOrURL, args.offline, cmdTemplates.TemplateKindPolicyPack,
+	)
 	if err != nil {
 		return err
 	}
@@ -143,7 +155,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 		return err
 	}
 
-	var template workspace.PolicyPackTemplate
+	var template cmdTemplates.PolicyPackTemplate
 	if len(templates) == 0 {
 		return errors.New("no templates")
 	} else if len(templates) == 1 {
@@ -163,7 +175,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 
 	// Do a dry run, if we're not forcing files to be overwritten.
 	if !args.force {
-		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd, ""); err != nil {
+		if err = cmdTemplates.CopyTemplateFilesDryRun(template.Dir, cwd, ""); err != nil {
 			if os.IsNotExist(err) {
 				return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 			}
@@ -172,7 +184,7 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	}
 
 	// Actually copy the files.
-	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.force, "", ""); err != nil {
+	if err = cmdTemplates.CopyTemplateFiles(template.Dir, cwd, args.force, "", ""); err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 		}
@@ -184,6 +196,14 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	proj, projPath, root, err := ReadPolicyProject(cwd)
 	if err != nil {
 		return err
+	}
+
+	for _, opt := range args.runtimeOptions {
+		parts := strings.Split(strings.TrimSpace(opt), "=")
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid runtime option: %s", opt)
+		}
+		proj.Runtime.SetOption(parts[0], parts[1])
 	}
 
 	// Workaround for python, most of our templates don't specify a venv but we want to use one
@@ -207,7 +227,8 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 
 	fmt.Fprintln(args.stdout,
 		opts.Color.Colorize(
-			colors.BrightGreen+colors.Bold+"Your new Policy Pack is ready to go!"+colors.Reset)+
+			colors.BrightGreen+colors.Bold+"Your new Policy Pack is ready to go!"+colors.Reset,
+		)+
 			" "+cmdutil.EmojiOr("✨", ""))
 	fmt.Fprintln(args.stdout)
 
@@ -274,12 +295,12 @@ func printPolicyPackNextSteps(
 }
 
 // choosePolicyPackTemplate will prompt the user to choose amongst the available templates.
-func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
+func choosePolicyPackTemplate(templates []cmdTemplates.PolicyPackTemplate,
 	opts display.Options,
-) (workspace.PolicyPackTemplate, error) {
+) (cmdTemplates.PolicyPackTemplate, error) {
 	const chooseTemplateErr = "no template selected; please use `pulumi policy new` to choose one"
 	if !opts.IsInteractive {
-		return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
+		return cmdTemplates.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
@@ -295,7 +316,7 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 		Options:  options,
 		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
 	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
-		return workspace.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
+		return cmdTemplates.PolicyPackTemplate{}, errors.New(chooseTemplateErr)
 	}
 	return optionToTemplateMap[option], nil
 }
@@ -303,8 +324,8 @@ func choosePolicyPackTemplate(templates []workspace.PolicyPackTemplate,
 // policyTemplatesToOptionArrayAndMap returns an array of option strings and a map of option strings to policy
 // templates. Each option string is made up of the template name and description with some padding in between.
 func policyTemplatesToOptionArrayAndMap(
-	templates []workspace.PolicyPackTemplate,
-) ([]string, map[string]workspace.PolicyPackTemplate) {
+	templates []cmdTemplates.PolicyPackTemplate,
+) ([]string, map[string]cmdTemplates.PolicyPackTemplate) {
 	// Find the longest name length. Used to add padding between the name and description.
 	maxNameLength := 0
 	for _, template := range templates {
@@ -316,7 +337,7 @@ func policyTemplatesToOptionArrayAndMap(
 	// Build the array and map.
 	var options []string
 	var brokenOptions []string
-	nameToTemplateMap := make(map[string]workspace.PolicyPackTemplate)
+	nameToTemplateMap := make(map[string]cmdTemplates.PolicyPackTemplate)
 	for _, template := range templates {
 		// If template is broken, indicate it in the project description.
 		if template.Errored() {

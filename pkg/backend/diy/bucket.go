@@ -52,7 +52,7 @@ type wrappedBucket struct {
 func retryOp(op func() error) error {
 	var err error
 	backoff := 20 * time.Millisecond
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		err = op()
 		if err == nil {
 			return nil

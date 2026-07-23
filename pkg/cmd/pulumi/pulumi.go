@@ -75,6 +75,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/rattler"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
@@ -94,7 +95,6 @@ import (
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"go.opentelemetry.io/otel"
@@ -516,7 +516,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
 				cloud.NewAPICmd(),
 				insights.NewInsightsCmd(),
-				cmdDo.NewDoCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, nil, nil),
+				cmdDo.NewDoCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance,
+					nil, nil, nil, cmdDo.DefaultRunStatefulUpdate),
 			},
 		},
 		{
@@ -598,38 +599,11 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	// environment variable declarations.
 	declareFlagsAsEnvironmentVariables(cmd)
 
-	// Patch group commands so that invalid invocations exit non-zero.
-	rejectUnknownSubcommands(cmd)
+	// Patch commands so that invalid invocations exit non-zero with
+	// suggestions for closely-matching commands.
+	rattler.Install(cmd)
 
 	return cmd, cleanup
-}
-
-// rejectUnknownSubcommands walks the command tree and patches every group
-// command — one with subcommands but no run function — to fail with a non-zero
-// exit code when invoked with an unknown subcommand or with no subcommand at
-// all. Without this, cobra returns flag.ErrHelp for non-runnable commands
-// before ever validating args, which Execute turns into "print help, exit 0".
-func rejectUnknownSubcommands(c *cobra.Command) {
-	for _, child := range c.Commands() {
-		rejectUnknownSubcommands(child)
-	}
-	// The root command is excluded: its nil Args already rejects unknown
-	// commands, and a bare `pulumi` keeps printing help with a zero exit code.
-	if !c.HasParent() || !c.HasSubCommands() || c.Runnable() {
-		return
-	}
-	// A positional arg to a group command can only be an attempted subcommand,
-	// so cobra's standard `unknown command %q for %q` error beats whatever
-	// arg-count validator the command may have declared.
-	c.Args = cobra.NoArgs
-	c.RunE = func(c *cobra.Command, args []string) error {
-		// A bare group invocation shows help but still exits non-zero. A bail
-		// error sets the exit code without printing anything after the help.
-		if err := c.Help(); err != nil {
-			return err
-		}
-		return result.BailErrorf("%q requires a subcommand", c.CommandPath())
-	}
 }
 
 // haveNewerDevVersion checks whether we have a newer dev version available.
@@ -850,7 +824,7 @@ func getCLIVersionInfo(
 
 // cacheVersionInfo saves version information in a cache file to be looked up later.
 func cacheVersionInfo(info cachedVersionInfo) error {
-	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	updateCheckFile, err := pkgWorkspace.GetCachedVersionFilePath()
 	if err != nil {
 		return err
 	}
@@ -866,7 +840,7 @@ func cacheVersionInfo(info cachedVersionInfo) error {
 
 // readVersionInfo reads version information from the cache file.
 func readVersionInfo() (cachedVersionInfo, error) {
-	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	updateCheckFile, err := pkgWorkspace.GetCachedVersionFilePath()
 	if err != nil {
 		return cachedVersionInfo{}, err
 	}
@@ -892,7 +866,7 @@ func readVersionInfo() (cachedVersionInfo, error) {
 // If we can't read the cached versions file, we return true and a zero time,
 // indicating that we want to possibly prompt the user for an upgrade.
 func checkVersionPrompt(devVersion bool) (bool, int64) {
-	updateCheckFile, err := workspace.GetCachedVersionFilePath()
+	updateCheckFile, err := pkgWorkspace.GetCachedVersionFilePath()
 	if err != nil {
 		return true, 0
 	}

@@ -1133,7 +1133,7 @@ func listConfig(
 	var diags []apitype.EnvironmentDiagnostic
 	var err error
 	if openEnvironment {
-		env, diags, err = openStackEnv(ctx, stack, ps)
+		env, diags, err = openStackEnv(ctx, stack, ps, nil)
 	} else {
 		env, diags, err = checkStackEnv(ctx, stack, ps)
 	}
@@ -1172,7 +1172,7 @@ func listConfig(
 
 	// when listing configuration values
 	// also show values coming from the project and environment
-	err = workspace.ApplyProjectConfig(ctx, stackName, project, pulumiEnv, cfg, envCrypter, nil)
+	err = pkgWorkspace.ApplyProjectConfig(ctx, stackName, project, pulumiEnv, cfg, envCrypter, nil)
 	if err != nil {
 		return err
 	}
@@ -1321,7 +1321,7 @@ func getConfig(
 	var env *esc.Environment
 	var diags []apitype.EnvironmentDiagnostic
 	if openEnvironment {
-		env, diags, err = openStackEnv(ctx, stack, ps)
+		env, diags, err = openStackEnv(ctx, stack, ps, nil)
 	} else {
 		env, diags, err = checkStackEnv(ctx, stack, ps)
 	}
@@ -1358,7 +1358,7 @@ func getConfig(
 	}
 
 	// when asking for a configuration value, include values from the project and environment
-	err = workspace.ApplyProjectConfig(ctx, stackName, project, pulumiEnv, cfg, envCrypter, nil)
+	err = pkgWorkspace.ApplyProjectConfig(ctx, stackName, project, pulumiEnv, cfg, envCrypter, nil)
 	if err != nil {
 		return err
 	}

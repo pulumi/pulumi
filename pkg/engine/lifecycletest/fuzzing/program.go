@@ -409,7 +409,7 @@ func GeneratedProgramSpec(
 			newSS.AddProvider(initialProvider)
 		}
 
-		for i := 0; i < prependCount; i++ {
+		for i := range prependCount {
 			r := generatedNewResourceSpec(
 				newSS,
 				sso,
@@ -505,7 +505,7 @@ func GeneratedProgramSpec(
 			newSS.AddProvider(initialProvider)
 		}
 
-		for i := 0; i < appendCount; i++ {
+		for i := range appendCount {
 			r := generatedNewResourceSpec(
 				newSS,
 				sso,

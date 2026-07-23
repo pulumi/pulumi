@@ -97,6 +97,7 @@ func NewUpCmd() *cobra.Command {
 	var stackName string
 	var configArray []string
 	var configFile string
+	var envOverrides []string
 	var path bool
 	var client string
 
@@ -178,7 +179,7 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 
-		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -195,19 +196,21 @@ func NewUpCmd() *cobra.Command {
 		stackName := s.Ref().Name().String()
 		if skipConfigValidation {
 			// Still apply project config defaults onto the stack config, but skip validation.
-			if configErr := workspace.ApplyProjectConfig(
-				ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
+			if configErr := pkgWorkspace.ApplyProjectConfig(
+				ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter,
+			); configErr != nil {
 				return fmt.Errorf("applying stack config: %w", configErr)
 			}
 		} else {
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+			configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 				ctx,
 				stackName,
 				proj,
 				cfg.Environment,
 				cfg.Config,
 				encrypter,
-				decrypter)
+				decrypter,
+			)
 			if configErr != nil {
 				return fmt.Errorf("validating stack config: %w", configErr)
 			}
@@ -318,7 +321,7 @@ func NewUpCmd() *cobra.Command {
 		// Retrieve the template repo.
 		templateSource := cmdTemplates.New(ctx,
 			templateNameOrURL, cmdTemplates.ScopeAll,
-			workspace.TemplateKindPulumiProject, env.Global())
+			cmdTemplates.TemplateKindPulumiProject, env.Global())
 		defer contract.IgnoreClose(templateSource)
 
 		// List the templates from the repo.
@@ -327,7 +330,7 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 
-		var template workspace.Template
+		var template cmdTemplates.ProjectTemplate
 		if len(templates) == 0 {
 			return errors.New("no template found")
 		} else if len(templates) == 1 {
@@ -385,7 +388,8 @@ func NewUpCmd() *cobra.Command {
 		if name == "" {
 			defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(name, template.ProjectName, template.Name)
 			name, err = ui.PromptForValue(
-				yes, "project name", defaultValue, false, pkgWorkspace.ValidateProjectName, opts.Display)
+				yes, "project name", defaultValue, false, pkgWorkspace.ValidateProjectName, opts.Display,
+			)
 			if err != nil {
 				return err
 			}
@@ -394,16 +398,18 @@ func NewUpCmd() *cobra.Command {
 		// Prompt for the project description, if we don't already have one from an existing stack.
 		if description == "" {
 			defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
-				description, template.ProjectDescription, template.Description)
+				description, template.ProjectDescription, template.Description,
+			)
 			description, err = ui.PromptForValue(
-				yes, "project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts.Display)
+				yes, "project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts.Display,
+			)
 			if err != nil {
 				return err
 			}
 		}
 
 		// Copy the template files from the repo to the temporary "virtual workspace" directory.
-		if err = workspace.CopyTemplateFiles(template.Dir, temp, true, name, description); err != nil {
+		if err = cmdTemplates.CopyTemplateFiles(template.Dir, temp, true, name, description); err != nil {
 			return err
 		}
 
@@ -415,7 +421,7 @@ func NewUpCmd() *cobra.Command {
 		proj.Name = tokens.PackageName(name)
 		proj.Description = &description
 		proj.Template = nil
-		if err = workspace.SaveProject(proj); err != nil {
+		if err = pkgWorkspace.SaveProject(proj); err != nil {
 			return fmt.Errorf("saving project: %w", err)
 		}
 
@@ -455,13 +461,15 @@ func NewUpCmd() *cobra.Command {
 		pluginHost, err := pkghost.New(
 			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
 			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-			packageworkspace.NewResolverServer(reg))
+			packageworkspace.NewResolverServer(reg),
+		)
 		if err != nil {
 			return fmt.Errorf("building plugin host: %w", err)
 		}
 		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 		_, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+		)
 		if err != nil {
 			return fmt.Errorf("building project context: %w", err)
 		}
@@ -473,7 +481,7 @@ func NewUpCmd() *cobra.Command {
 			}
 		}
 
-		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, pctx.Diag, ssml, s, proj, configFile)
+		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, pctx.Diag, ssml, s, proj, configFile, envOverrides)
 		if err != nil {
 			return fmt.Errorf("getting stack configuration: %w", err)
 		}
@@ -490,19 +498,21 @@ func NewUpCmd() *cobra.Command {
 		stackName := s.Ref().String()
 		if skipConfigValidation {
 			// Still apply project config defaults onto the stack config, but skip validation.
-			if configErr := workspace.ApplyProjectConfig(
-				ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
+			if configErr := pkgWorkspace.ApplyProjectConfig(
+				ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter,
+			); configErr != nil {
 				return fmt.Errorf("applying stack config: %w", configErr)
 			}
 		} else {
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+			configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 				ctx,
 				stackName,
 				proj,
 				cfg.Environment,
 				cfg.Config,
 				encrypter,
-				decrypter)
+				decrypter,
+			)
 			if configErr != nil {
 				return fmt.Errorf("validating stack config: %w", configErr)
 			}
@@ -740,59 +750,75 @@ func NewUpCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
-		"Print detailed debugging output during resource operations")
+		"Print detailed debugging output during resource operations",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&expectNop, "expect-no-changes", false,
-		"Return an error if any changes occur during this update. This check happens after the update is applied")
+		"Return an error if any changes occur during this update. This check happens after the update is applied",
+	)
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
+		"The name of the stack to operate on. Defaults to the current stack",
+	)
 	cmd.PersistentFlags().StringVar(
 		&configFile, "config-file", "",
-		"Use the configuration values in the specified file rather than detecting the file name")
+		"Use the configuration values in the specified file rather than detecting the file name",
+	)
+	cmdConfig.OverrideEnvFlag(cmd, &envOverrides)
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
-		"Config to use during the update and save to the stack config file")
+		"Config to use during the update and save to the stack config file",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&path, "config-path", false,
-		"Config keys contain a path to a property in a map or list to set")
+		"Config keys contain a path to a property in a map or list to set",
+	)
 	cmd.PersistentFlags().StringVar(
 		&secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
 			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only "+
-			"used when creating a new stack from an existing template")
+			"used when creating a new stack from an existing template",
+	)
 
 	cmd.PersistentFlags().StringVar(
-		&client, "client", "", "The address of an existing language runtime host to connect to")
+		&client, "client", "", "The address of an existing language runtime host to connect to",
+	)
 	_ = cmd.PersistentFlags().MarkHidden("client")
 
 	cmd.PersistentFlags().StringVarP(
 		&message, "message", "m", "",
-		"Optional message to associate with the update operation")
+		"Optional message to associate with the update operation",
+	)
 
 	cmd.PersistentFlags().StringArrayVarP(
 		&targets, "target", "t", []string{},
 		"Specify a single resource URN to update. Other resources will not be updated."+
 			" Multiple resources can be specified using --target urn1 --target urn2."+
-			" Wildcards (*, **) are also supported")
+			" Wildcards (*, **) are also supported",
+	)
 	cmd.PersistentFlags().StringArrayVar(
 		&excludes, "exclude", []string{},
 		"Specify a resource URN to ignore. These resources will not be updated."+
 			" Multiple resources can be specified using --exclude urn1 --exclude urn2."+
-			" Wildcards (*, **) are also supported")
+			" Wildcards (*, **) are also supported",
+	)
 	cmd.PersistentFlags().StringArrayVar(
 		&replaces, "replace", []string{},
 		"Specify a single resource URN to replace. Multiple resources can be specified using --replace urn1 --replace urn2."+
-			" Wildcards (*, **) are also supported")
+			" Wildcards (*, **) are also supported",
+	)
 	cmd.PersistentFlags().StringArrayVar(
 		&targetReplaces, "target-replace", []string{},
 		"Specify a single resource URN to replace. Other resources will not be updated."+
-			" Shorthand for --target urn --replace urn.")
+			" Shorthand for --target urn --replace urn.",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&targetDependents, "target-dependents", false,
-		"Allows updating of dependent targets discovered but not specified in --target list")
+		"Allows updating of dependent targets discovered but not specified in --target list",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&excludeDependents, "exclude-dependents", false,
-		"Allows ignoring of dependent targets discovered but not specified in --exclude list")
+		"Allows ignoring of dependent targets discovered but not specified in --exclude list",
+	)
 
 	// Currently, we can't mix `--target` and `--exclude`.
 	cmd.MarkFlagsMutuallyExclusive("target", "exclude")
@@ -800,91 +826,115 @@ func NewUpCmd() *cobra.Command {
 	// Flags for engine.UpdateOptions.
 	cmd.PersistentFlags().StringSliceVar(
 		&policyPackPaths, "policy-pack", []string{},
-		"Run one or more policy packs as part of this update")
+		"Run one or more policy packs as part of this update",
+	)
 	cmd.PersistentFlags().StringSliceVar(
 		&policyPackConfigPaths, "policy-pack-config", []string{},
-		`Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag`)
+		`Path to JSON file containing the config for the policy pack of the corresponding "--policy-pack" flag`,
+	)
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
-		"Display operation as a rich diff showing the overall change")
+		"Display operation as a rich diff showing the overall change",
+	)
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
-		"Serialize the update diffs, operations, and overall output as JSON")
+		"Serialize the update diffs, operations, and overall output as JSON",
+	)
 	outputflag.Var(cmd.Flags(), &output)
 	// Hidden until --output is wired up across all operations (destroy, preview, refresh, ...).
 	contract.AssertNoErrorf(cmd.Flags().MarkHidden("output"), `Could not mark "output" as hidden`)
 	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
-		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
+		"Allow P resource operations to run in parallel at once (1 for no parallelism).",
+	)
 	cmd.PersistentFlags().StringVarP(
 		&refresh, "refresh", "r", "",
-		"Refresh the state of the stack's resources before this update")
+		"Refresh the state of the stack's resources before this update",
+	)
 	cmd.PersistentFlags().Lookup("refresh").NoOptDefVal = "true"
 	cmd.PersistentFlags().BoolVar(
 		&runProgram, "run-program", env.RunProgram.Value(),
 		"Run the program to determine up-to-date state for providers to refresh resources,"+
-			" this only applies if --refresh is set")
+			" this only applies if --refresh is set",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&skipConfigValidation, "skip-config-validation", false,
-		"Skip validation of stack config values against the project config schema")
+		"Skip validation of stack config values against the project config schema",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
-		"Show configuration keys and variables")
+		"Show configuration keys and variables",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&showPolicyRemediations, "show-policy-remediations", false,
-		"Show per-resource policy remediation details instead of a summary")
+		"Show per-resource policy remediation details instead of a summary",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
-		"Show detailed resource replacement creates and deletes instead of a single step")
+		"Show detailed resource replacement creates and deletes instead of a single step",
+	)
 
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
-		"Show resources that don't need be updated because they haven't changed, alongside those that do")
+		"Show resources that don't need be updated because they haven't changed, alongside those that do",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&showSecrets, "show-secrets", false,
-		"Show secret outputs in the CLI output")
+		"Show secret outputs in the CLI output",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&showReads, "show-reads", false,
-		"Show resources that are being read in, alongside those being managed directly in the stack")
+		"Show resources that are being read in, alongside those being managed directly in the stack",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&showURNs, "urns", false,
-		"Display full URNs instead of short resource names")
+		"Display full URNs instead of short resource names",
+	)
 
 	cmd.PersistentFlags().BoolVarP(
 		&skipPreview, "skip-preview", "f", false,
-		"Do not calculate a preview before performing the update")
+		"Do not calculate a preview before performing the update",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
-		"Suppress display of stack outputs (in case they contain sensitive values)")
+		"Suppress display of stack outputs (in case they contain sensitive values)",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&suppressProgress, "suppress-progress", false,
-		"Suppress display of periodic progress dots")
+		"Suppress display of periodic progress dots",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&showFullOutput, "show-full-output", false,
-		"Display full length of inputs & outputs")
+		"Display full length of inputs & outputs",
+	)
 	cmd.PersistentFlags().StringVar(
 		&suppressPermalink, "suppress-permalink", "",
-		"Suppress display of the state permalink")
+		"Suppress display of the state permalink",
+	)
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
-		"Automatically approve and perform the update after previewing it")
+		"Automatically approve and perform the update after previewing it",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&continueOnError, "continue-on-error", env.ContinueOnError.Value(),
 		"Continue updating resources even if an error is encountered "+
-			"(can also be set with PULUMI_CONTINUE_ON_ERROR environment variable)")
+			"(can also be set with PULUMI_CONTINUE_ON_ERROR environment variable)",
+	)
 	//nolint:lll // long description
 	cmd.PersistentFlags().StringArrayVar(
 		&attachDebugger, "attach-debugger", []string{},
-		"Enable the ability to attach a debugger to the program and source based plugins being executed. Can limit debug type to 'program', 'plugins', 'plugin:<name>' or 'all'.")
+		"Enable the ability to attach a debugger to the program and source based plugins being executed. Can limit debug type to 'program', 'plugins', 'plugin:<name>' or 'all'.",
+	)
 	cmd.Flag("attach-debugger").NoOptDefVal = "program"
 
 	cmd.PersistentFlags().StringVar(
 		&planFilePath, "plan", "",
 		"[EXPERIMENTAL] Path to a plan file to use for the update. The update will not "+
 			"perform operations that exceed its plan (e.g. replacements instead of updates, or updates instead"+
-			"of sames).")
+			"of sames).",
+	)
 	if !env.Experimental.Value() {
 		contract.AssertNoErrorf(cmd.PersistentFlags().MarkHidden("plan"), `Could not mark "plan" as hidden`)
 	}
@@ -892,32 +942,38 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&strict, "strict", false,
 		"[EXPERIMENTAL] Enable strict plan behavior: generate a plan during preview and constrain the update "+
-			"to that plan (opt-in). Cannot be used with --skip-preview.")
+			"to that plan (opt-in). Cannot be used with --skip-preview.",
+	)
 
 	cmd.PersistentFlags().BoolVar(
 		&skipPluginPreInstall, "skip-plugin-pre-install", false,
 		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine. "+
-			"When deploying from a template, also skips installing the project's runtime dependencies.")
+			"When deploying from a template, also skips installing the project's runtime dependencies.",
+	)
 
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,
 		"Enable Pulumi Neo's assistance for improved CLI experience and insights "+
-			"(can also be set with PULUMI_NEO environment variable)")
+			"(can also be set with PULUMI_NEO environment variable)",
+	)
 
 	cmd.PersistentFlags().BoolVar(
 		&neoTaskOnFailure, "neo-task-on-failure", false,
-		"Start a Neo task to help debug errors that occur during the operation")
+		"Start a Neo task to help debug errors that occur during the operation",
+	)
 	if !env.Experimental.Value() {
 		contract.AssertNoErrorf(
 			cmd.PersistentFlags().MarkHidden("neo-task-on-failure"),
-			`Could not mark "neo-task-on-failure" as hidden`)
+			`Could not mark "neo-task-on-failure" as hidden`,
+		)
 	}
 
 	// Keep --copilot flag for backwards compatibility, but hide it
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "copilot", false,
 		"[DEPRECATED] Use --neo instead. Enable Pulumi Neo's assistance for improved CLI experience and insights "+
-			"(can also be set with PULUMI_COPILOT environment variable)")
+			"(can also be set with PULUMI_COPILOT environment variable)",
+	)
 	_ = cmd.PersistentFlags().MarkDeprecated("copilot", "please use --neo instead")
 
 	// Currently, we can't mix `--target` and `--exclude`.
@@ -929,7 +985,8 @@ func NewUpCmd() *cobra.Command {
 	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(
 			&eventLogPath, "event-log", "",
-			"Log events to a file at this path")
+			"Log events to a file at this path",
+		)
 	}
 
 	// internal flags
@@ -954,7 +1011,8 @@ func validatePolicyPackConfig(policyPackPaths []string, policyPackConfigPaths []
 		}
 		if len(policyPackConfigPaths) != len(policyPackPaths) {
 			return errors.New(
-				`the number of "--policy-pack-config" flags must match the number of "--policy-pack" flags`)
+				`the number of "--policy-pack-config" flags must match the number of "--policy-pack" flags`,
+			)
 		}
 	}
 	return nil

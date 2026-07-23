@@ -16,6 +16,7 @@ package test
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"testing"
@@ -83,9 +84,7 @@ func checkNodeJS(t *testing.T, path string, dependencies codegen.StringSet, link
 			"typescript":  "^4.5.5",
 		},
 	}
-	for pkg, v := range pkgs {
-		pkgInfo.Dependencies[pkg] = v
-	}
+	maps.Copy(pkgInfo.Dependencies, pkgs)
 	pkgJSON, err := json.MarshalIndent(pkgInfo, "", "    ")
 	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(dir, "package.json"), pkgJSON, 0o600)

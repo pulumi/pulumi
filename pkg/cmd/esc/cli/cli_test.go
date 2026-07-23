@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
+	maps0 "maps"
 	"net/http"
 	"os"
 	"os/exec"
@@ -216,6 +217,10 @@ func (e *testEnvironments) LoadEnvironment(ctx context.Context, ref string) ([]b
 		return nil, nil, errors.New("not found")
 	}
 	return env.latest().yaml, rot128{}, nil
+}
+
+func (e *testEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
 }
 
 type testEnvironmentRetract struct {
@@ -828,6 +833,7 @@ func (c *testPulumiClient) OpenYAMLEnvironment(
 	orgName string,
 	yaml []byte,
 	duration time.Duration,
+	opts ...client.OpenYAMLOption,
 ) (string, []client.EnvironmentDiagnostic, error) {
 	return c.openEnvironment(ctx, orgName, "<yaml>", yaml)
 }
@@ -928,9 +934,7 @@ func (c *testPulumiClient) ListEnvironmentReferrers(
 	resp := &client.ListEnvironmentReferrersResponse{
 		Referrers: map[string][]client.EnvironmentReferrer{},
 	}
-	for k, v := range env.referrers {
-		resp.Referrers[k] = v
-	}
+	maps0.Copy(resp.Referrers, env.referrers)
 	return resp, nil
 }
 
@@ -1628,9 +1632,7 @@ func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 				hc := interp.HandlerCtx(ctx)
 
 				environ := testEnviron{}
-				for k, v := range c.environ {
-					environ[k] = v
-				}
+				maps0.Copy(environ, c.environ)
 				hc.Env.Each(func(name string, vr expand.Variable) bool {
 					environ[name] = vr.String()
 					return true

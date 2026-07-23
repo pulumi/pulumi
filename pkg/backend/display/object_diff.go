@@ -699,8 +699,8 @@ func (p *propertyPrinter) printPropertyValueRecurse(v resource.PropertyValue) {
 			massaged := a.Text
 
 			// pretty print the text, line by line, with proper breaks.
-			lines := strings.Split(massaged, "\n")
-			for _, line := range lines {
+			lines := strings.SplitSeq(massaged, "\n")
+			for line := range lines {
 				p.writeUnprefixedIndentedf("    %s\n", line)
 			}
 			p.writeUnprefixedIndentedf("}")

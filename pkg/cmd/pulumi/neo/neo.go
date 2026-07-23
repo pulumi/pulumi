@@ -282,6 +282,9 @@ func NewNeoCmd() *cobra.Command {
 		"Working directory for local tool execution (defaults to the current directory)")
 	cmd.AddCommand(resumeCmd)
 
+	// `pulumi neo acp` runs Neo as an Agent Client Protocol agent over stdio.
+	cmd.AddCommand(newNeoACPCmd())
+
 	return cmd
 }
 
@@ -348,6 +351,39 @@ type neoRuntime struct {
 	pu       *tools.Pulumi
 }
 
+// readNeoProject reads the project enclosing dir (the process working directory
+// when empty), tolerating absence — `pulumi neo` can run outside a project.
+func readNeoProject(ws pkgWorkspace.Context, dir string) (*workspace.Project, error) {
+	project, _, err := ws.ReadProject(dir)
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return nil, err
+	}
+	return project, nil
+}
+
+// neoUpgradeRequiredError carries the user-facing minimum-version message from
+// resolveNeoCloudBackend. It is a distinct type so the interactive path can
+// present the message bare (via FprintBailf) while other paths propagate it as
+// an ordinary error.
+type neoUpgradeRequiredError struct{ msg string }
+
+func (e neoUpgradeRequiredError) Error() string { return e.msg }
+
+// resolveNeoCloudBackend narrows be to the Pulumi Cloud backend and enforces
+// Neo's minimum CLI version, returning neoUpgradeRequiredError when an upgrade
+// is needed. Every Neo entrypoint gates through it so the backend requirement
+// and version policy live in one place.
+func resolveNeoCloudBackend(ctx context.Context, be backend.Backend) (httpstate.Backend, error) {
+	cloudBe, ok := be.(httpstate.Backend)
+	if !ok {
+		return nil, errors.New("`pulumi neo` requires the Pulumi Cloud backend")
+	}
+	if msg := neoUpgradeMessage(cloudBe.Capabilities(ctx), version.Version); msg != "" {
+		return nil, neoUpgradeRequiredError{msg: msg}
+	}
+	return cloudBe, nil
+}
+
 func prepareNeoRuntime(ctx context.Context, stderr io.Writer, cwdFlag string) (*neoRuntime, error) {
 	if cwdFlag == "" {
 		var err error
@@ -360,8 +396,8 @@ func prepareNeoRuntime(ctx context.Context, stderr io.Writer, cwdFlag string) (*
 	ws := pkgWorkspace.Instance
 	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
-	project, _, err := ws.ReadProject("")
-	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+	project, err := readNeoProject(ws, "")
+	if err != nil {
 		return nil, err
 	}
 
@@ -369,15 +405,16 @@ func prepareNeoRuntime(ctx context.Context, stderr io.Writer, cwdFlag string) (*
 	if err != nil {
 		return nil, err
 	}
-	cloudBe, ok := be.(httpstate.Backend)
-	if !ok {
-		return nil, errors.New("`pulumi neo` requires the Pulumi Cloud backend")
+	cloudBe, err := resolveNeoCloudBackend(ctx, be)
+	var upgradeErr neoUpgradeRequiredError
+	if errors.As(err, &upgradeErr) {
+		// Print the upgrade message bare (no "error:" prefix) and bail.
+		return nil, result.FprintBailf(stderr, "%s", upgradeErr.msg)
+	}
+	if err != nil {
+		return nil, err
 	}
 	pc := cloudBe.Client()
-
-	if msg := neoUpgradeMessage(cloudBe.Capabilities(ctx), version.Version); msg != "" {
-		return nil, result.FprintBailf(stderr, "%s", msg)
-	}
 
 	lt, err := buildLocalToolHandlers(cwdFlag, ws)
 	if err != nil {
@@ -408,7 +445,8 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 	}
 	opts.cwdFlag = rt.cwd
 
-	target, err := resolveTaskTarget(ctx, rt.ws, rt.cloudBe, rt.project, opts.stackName, opts.orgFlag)
+	target, err := resolveTaskTarget(ctx, rt.ws, rt.cloudBe, rt.project,
+		taskTargetOpts{stackName: opts.stackName, orgFlag: opts.orgFlag})
 	if err != nil {
 		return err
 	}
@@ -1102,9 +1140,20 @@ func (t taskTarget) stackName() string {
 	return t.ref.Name().String()
 }
 
-// resolveTaskTarget figures out the org, project, and stack to attach to the new Neo task. The
-// stack flag is optional — if it's empty we try the currently selected stack and fall back to a
-// project-only attachment if there isn't one.
+// taskTargetOpts are the optional inputs to resolveTaskTarget.
+type taskTargetOpts struct {
+	// stackName is the --stack flag; when empty the currently selected stack is
+	// tried, falling back to a project-only attachment if there isn't one.
+	stackName string
+	// orgFlag is the --org flag; when set it wins over any stack-derived owner.
+	orgFlag string
+	// dir roots the current-stack lookup; empty means the process working
+	// directory.
+	dir string
+}
+
+// resolveTaskTarget figures out the org, project, and stack to attach to the
+// new Neo task.
 //
 // Org resolution: --org wins if provided; otherwise we use the owner carried
 // by the stack reference (so a workspace-selected `otherorg/proj/dev` keeps
@@ -1116,7 +1165,7 @@ func resolveTaskTarget(
 	ws pkgWorkspace.Context,
 	be httpstate.Backend,
 	project *workspace.Project,
-	stackName, orgFlag string,
+	opts taskTargetOpts,
 ) (taskTarget, error) {
 	var t taskTarget
 	if project != nil {
@@ -1124,8 +1173,8 @@ func resolveTaskTarget(
 	}
 
 	var stackOwner string
-	if stackName != "" {
-		ref, err := be.ParseStackReference(stackName)
+	if opts.stackName != "" {
+		ref, err := be.ParseStackReference(opts.stackName)
 		if err != nil {
 			return taskTarget{}, err
 		}
@@ -1136,7 +1185,7 @@ func resolveTaskTarget(
 			}
 		}
 	} else {
-		s, err := state.CurrentStack(ctx, ws, be)
+		s, err := state.CurrentStackAt(ctx, ws, be, opts.dir)
 		if err == nil && s != nil {
 			t.ref = s.Ref()
 			if owned, ok := s.Ref().(stackRefWithOrg); ok {
@@ -1148,8 +1197,8 @@ func resolveTaskTarget(
 	}
 
 	switch {
-	case orgFlag != "":
-		t.org = orgFlag
+	case opts.orgFlag != "":
+		t.org = opts.orgFlag
 	case stackOwner != "":
 		t.org = stackOwner
 	default:

@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -336,10 +337,8 @@ func needsSaveProjectStackAfterSecretManger(
 func ValidateSecretsProvider(typ string) error {
 	kind := strings.SplitN(typ, ":", 2)[0]
 	supportedKinds := []string{"default", "passphrase", "awskms", "azurekeyvault", "gcpkms", "hashivault"}
-	for _, supportedKind := range supportedKinds {
-		if kind == supportedKind {
-			return nil
-		}
+	if slices.Contains(supportedKinds, kind) {
+		return nil
 	}
 	return fmt.Errorf("unknown secrets provider type '%s' (supported values: %s)",
 		kind,

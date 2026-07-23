@@ -15,6 +15,8 @@
 package migrate
 
 import (
+	"maps"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -28,14 +30,10 @@ func UpToResourceV2(v1 apitype.ResourceV1) apitype.ResourceV2 {
 	v2.ID = v1.ID
 	v2.Type = v1.Type
 	v2.Inputs = make(map[string]any)
-	for key, value := range v1.Inputs {
-		v2.Inputs[key] = value
-	}
+	maps.Copy(v2.Inputs, v1.Inputs)
 	// v1.Defaults was deprecated in v2.
 	v2.Outputs = make(map[string]any)
-	for key, value := range v1.Outputs {
-		v2.Outputs[key] = value
-	}
+	maps.Copy(v2.Outputs, v1.Outputs)
 	v2.Parent = v1.Parent
 	v2.Protect = v1.Protect
 	// v2.External is a new field that, when true, indicates that this resource's

@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math/big"
 	"strconv"
 	"strings"
@@ -695,15 +696,11 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 	propTypes := map[string]model.Type{}
 	switch t := argsDestType.(type) {
 	case *model.ObjectType:
-		for name, propType := range t.Properties {
-			propTypes[name] = propType
-		}
+		maps.Copy(propTypes, t.Properties)
 	case *model.UnionType:
 		for _, elemType := range t.ElementTypes {
 			if objType, ok := elemType.(*model.ObjectType); ok {
-				for name, propType := range objType.Properties {
-					propTypes[name] = propType
-				}
+				maps.Copy(propTypes, objType.Properties)
 				break
 			}
 		}
@@ -890,6 +887,18 @@ func (g *generator) genObjectConsExpression(
 	isInput bool,
 ) {
 	isInput = isInput || isInputty(destType)
+	// If the destination is a schema-typed object whose input shape exists
+	// (i.e. the SDK generates a paired ...Args type), we're populating that
+	// input shape. isInputty only detects a wrapping OutputType; for union
+	// members inside a resource input the model type is a bare ObjectType,
+	// so detect the InputShape directly to route to the ...Args form.
+	if !isInput {
+		if schemaType, ok := pcl.GetSchemaForType(destType); ok {
+			if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok && obj.InputShape != nil {
+				isInput = true
+			}
+		}
+	}
 
 	// Track plain object context for nested rendering. If we enter a
 	// non-plain (input) context, clear the flag so nested objects get &.
@@ -1397,6 +1406,15 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		// schema unions. Skip the schema path in that case and let the union
 		// handler below resolve element types individually.
 		if _, isSchemaUnion := schemaType.(*schema.UnionType); !isSchemaUnion {
+			// PCL binding attaches the plain-shape ObjectType even in input
+			// positions (e.g. members of a discriminated union used as a
+			// resource input). When we're rendering as input, swap in the
+			// paired InputShape so argsType returns the ...Args form.
+			if isInput {
+				if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok && obj.InputShape != nil {
+					schemaType = obj.InputShape
+				}
+			}
 			return (&pkgContext{
 				pkg:              (&schema.Package{Name: "main"}).Reference(),
 				externalPackages: g.externalCache,
@@ -1791,8 +1809,8 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		if isMap || isList {
 			typeAssertion = ".(" + deferredOutputCastTypeParameter(then.Signature.ReturnType) + ")"
 		} else {
-			if strings.HasPrefix(retType, "*") {
-				retType = Title(strings.TrimPrefix(retType, "*")) + "Ptr"
+			if after, ok := strings.CutPrefix(retType, "*"); ok {
+				retType = Title(after) + "Ptr"
 			}
 			typeAssertion = fmt.Sprintf(".(%sOutput)", retType)
 			if !strings.Contains(retType, ".") {

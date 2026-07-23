@@ -17,6 +17,7 @@ package newcmd
 import (
 	"context"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -46,7 +48,7 @@ func HandleConfig(
 	project *workspace.Project,
 	s backend.Stack,
 	templateNameOrURL string,
-	template workspace.Template,
+	template cmdTemplates.ProjectTemplate,
 	configArray []string,
 	yes bool,
 	path bool,
@@ -346,9 +348,7 @@ func SaveConfig(
 		return err
 	}
 
-	for k, v := range c {
-		ps.Config[k] = v
-	}
+	maps.Copy(ps.Config, c)
 
 	return cmdStack.SaveProjectStack(ctx, stack, ps, configFile)
 }

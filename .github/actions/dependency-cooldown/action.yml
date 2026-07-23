@@ -1,7 +1,8 @@
 name: Dependency cooldown
 description: >-
   Supply-chain hardening: restrict npm, pnpm, uv, pip, poetry and bun to package versions
-  older than a cooldown window (https://cooldowns.dev). Yarn classic is not covered.
+  older than a cooldown window (https://cooldowns.dev), except for trusted first-party Pulumi
+  packages. Yarn classic is not covered.
 inputs:
   days:
     description: Cooldown window in days. Versions published more recently than this are excluded.
@@ -19,19 +20,36 @@ runs:
         # Each manager takes the window in its own unit; all are relative to "now".
         pnpm_minutes=$(( COOLDOWN_DAYS * 1440 ))
         bun_seconds=$(( COOLDOWN_DAYS * 86400 ))
+        python_first_party_packages="pulumi,pulumi-policy,pulumi-aws,pulumi-azure,pulumi-azure-native,pulumi-gcp,pulumi-random,pulumi-command,pulumi-kubernetes,pulumi-cloudinit,pulumi-tls"
 
         echo "Dependency cooldown: excluding package versions published in the last ${COOLDOWN_DAYS} days"
 
         {
-          echo "UV_EXCLUDE_NEWER=P${COOLDOWN_DAYS}D"            # uv (ISO-8601 duration)
-          echo "npm_config_min_release_age=${COOLDOWN_DAYS}"    # npm (days)
-          echo "npm_config_minimum_release_age=${pnpm_minutes}" # pnpm (minutes)
-          echo "POETRY_SOLVER_MIN_RELEASE_AGE=${COOLDOWN_DAYS}" # poetry (days)
-          echo "PIP_UPLOADED_PRIOR_TO=P${COOLDOWN_DAYS}D"       # pip >= 26.1 (ISO-8601 duration; older pip ignores it)
+          echo "UV_EXCLUDE_NEWER=P${COOLDOWN_DAYS}D"                   # uv (ISO-8601 duration)
+          echo "npm_config_min_release_age=${COOLDOWN_DAYS}"           # npm (days)
+          echo 'npm_config_min_release_age_exclude=@pulumi/*'          # npm (trusted scope)
+          echo "PNPM_CONFIG_MINIMUM_RELEASE_AGE=${pnpm_minutes}"       # pnpm (minutes)
+          echo 'PNPM_CONFIG_MINIMUM_RELEASE_AGE_EXCLUDE=["@pulumi/*"]' # pnpm (trusted scope)
+          echo "POETRY_SOLVER_MIN_RELEASE_AGE=${COOLDOWN_DAYS}"        # poetry (days)
+          echo "POETRY_SOLVER_MIN_RELEASE_AGE_EXCLUDE=${python_first_party_packages}"
+          echo "PIP_UPLOADED_PRIOR_TO=P${COOLDOWN_DAYS}D"              # pip >= 26.1 (ISO-8601 duration; older pip ignores it)
         } >> "$GITHUB_ENV"
+
+        # uv supports per-package exceptions in its user-level configuration. PyPI does not have
+        # owned scopes, so keep this as an explicit list of trusted first-party packages.
+        if [[ "${RUNNER_OS}" == "Windows" ]]; then
+          uv_config_dir="$(cygpath --unix "${APPDATA}")/uv"
+        else
+          uv_config_dir="${XDG_CONFIG_HOME:-${HOME}/.config}/uv"
+        fi
+        mkdir -p "${uv_config_dir}"
+        cat > "${uv_config_dir}/uv.toml" <<EOF
+        exclude-newer-package = { pulumi = false, pulumi-policy = false, pulumi-aws = false, pulumi-azure = false, pulumi-azure-native = false, pulumi-gcp = false, pulumi-random = false, pulumi-command = false, pulumi-kubernetes = false, pulumi-cloudinit = false, pulumi-tls = false }
+        EOF
 
         # bun has no environment variable form, but reads a global config from $HOME.
         cat > "${HOME}/.bunfig.toml" <<EOF
         [install]
         minimumReleaseAge = ${bun_seconds}
+        minimumReleaseAgeExcludes = ["@pulumi/pulumi", "@pulumi/policy", "@pulumi/aws", "@pulumi/azure", "@pulumi/azure-native", "@pulumi/gcp", "@pulumi/random", "@pulumi/command", "@pulumi/kubernetes", "@pulumi/cloudinit", "@pulumi/tls"]
         EOF

@@ -36,7 +36,7 @@ func TestFilterRead(t *testing.T) {
 		return out, nil
 	})
 
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		ch <- i
 	}
 	close(ch)

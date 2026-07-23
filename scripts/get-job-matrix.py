@@ -111,15 +111,18 @@ class MakefileTest(TypedDict):
 
 MAKEFILE_INTEGRATION_TESTS: List[MakefileTest] = [
     {"name": "sdk/nodejs test_auto", "run": "cd sdk/nodejs && ../../scripts/retry make test_auto", "eta": 3},
-    {"name": "sdk/nodejs unit_tests", "run": "cd sdk/nodejs && ../../scripts/retry make unit_tests", "eta": 4},
+    {"name": "sdk/nodejs test_unit", "run": "cd sdk/nodejs && ../../scripts/retry make test_unit", "eta": 4},
     {"name": "sdk/nodejs test_integration", "run": "cd sdk/nodejs && ../../scripts/retry make test_integration", "eta": 3},
     {"name": "sdk/python test_auto", "run": "cd sdk/python && ../../scripts/retry make test_auto", "eta": 6},
-    {"name": "sdk/python test_fast", "run": "cd sdk/python && ../../scripts/retry make test_fast", "eta": 3},
+    {"name": "sdk/python test_unit", "run": "cd sdk/python && ../../scripts/retry make test_unit", "eta": 3},
 ]
 
 MAKEFILE_LOWEST_PYTHON_DEPS_TESTS: List[MakefileTest] = [
-    {"name": "sdk/python test_auto_lowest_deps", "run": "cd sdk/python && ../../scripts/retry make test_auto_lowest_deps", "eta": 6},
-    {"name": "sdk/python test_fast_lowest_deps", "run": "cd sdk/python && ../../scripts/retry make test_fast_lowest_deps", "eta": 3},
+    {
+        "name": "sdk/python test_all_lowest_deps",
+        "run": "cd sdk/python && ../../scripts/retry make test_all_lowest_deps",
+        "eta": 9,
+    },
 ]
 
 MAKEFILE_ACCEPTANCE_TESTS: List[MakefileTest] = [
@@ -127,7 +130,7 @@ MAKEFILE_ACCEPTANCE_TESTS: List[MakefileTest] = [
 ]
 
 MAKEFILE_UNIT_TESTS: List[MakefileTest] = [
-    {"name": "sdk/nodejs sxs_tests", "run": "cd sdk/nodejs && ../../scripts/retry make sxs_tests", "eta": 3},
+    {"name": "sdk/nodejs test_sxs", "run": "cd sdk/nodejs && ../../scripts/retry make test_sxs", "eta": 3},
 ]
 
 MAKEFILE_PERFORMANCE_TESTS: List[MakefileTest] = [

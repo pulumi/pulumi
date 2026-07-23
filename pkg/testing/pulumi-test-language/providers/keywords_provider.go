@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	"github.com/blang/semver"
 
@@ -136,12 +137,7 @@ func (p *KeywordsProvider) CheckConfig(
 }
 
 func (p *KeywordsProvider) isValidResourceType(t tokens.Type) bool {
-	for _, rt := range p.resourceTypes() {
-		if string(t) == rt {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(p.resourceTypes(), string(t))
 }
 
 func (p *KeywordsProvider) Check(

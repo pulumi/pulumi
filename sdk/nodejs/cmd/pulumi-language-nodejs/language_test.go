@@ -108,6 +108,10 @@ var expectedFailures = map[string]string{
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
 // forceTsc controls whether to pre-compile TypeScript before running.
 func testLanguage(t *testing.T, runtime string, forceTsc bool) {
+	if testing.Short() {
+		t.Skip("skipping language conformance tests in short mode")
+	}
+
 	// Set PATH to include the local dist directory so policy can run.
 	dist, err := filepath.Abs(filepath.Join("..", "..", "dist"))
 	require.NoError(t, err)

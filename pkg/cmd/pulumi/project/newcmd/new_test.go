@@ -753,6 +753,10 @@ func TestProjectExists(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestGenerateOnlyProjectCheck(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping template download test in short mode")
+	}
+
 	// Regression test for https://github.com/pulumi/pulumi/issues/13527, make sure various combinations of
 	// project name and stack work when generateOnly is set (thus skipping backend checks).
 
@@ -967,6 +971,10 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestPulumiPromptRuntimeOptions(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping template download test in short mode")
+	}
+
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
@@ -1155,6 +1163,10 @@ Available Templates:
 // TestPulumiNewWithoutPulumiAccessToken checks that we won't error if we run `pulumi new
 // --list-templates` without PULUMI_ACCESS_TOKEN set.
 func TestPulumiNewWithoutPulumiAccessToken(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping template registry integration test in short mode")
+	}
+
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 	tempdir := t.TempDir()
 	t.Setenv("PULUMI_HOME", tempdir)

@@ -284,9 +284,10 @@ func TestToolTitleAndLocations(t *testing.T) {
 
 	assert.Nil(t, toolLocations(toolArgs{}, cwd))
 	assert.Nil(t, toolLocations(parseToolArgs(json.RawMessage(`{"command":"ls"}`)), cwd), "no file target -> no location")
-	locs := toolLocations(parseToolArgs(json.RawMessage(`{"path":"/work/src"}`)), cwd)
+	abs := filepath.Join(filepath.Dir(cwd), "work", "src")
+	locs := toolLocations(fsArgs("path", abs), cwd)
 	require.Len(t, locs, 1)
-	assert.Equal(t, "/work/src", locs[0].Path, "absolute paths pass through unchanged")
+	assert.Equal(t, abs, locs[0].Path, "absolute paths pass through unchanged")
 
 	// Relative arguments are absolutized against cwd: ACP locations must be
 	// absolute or the editor can't resolve the file.

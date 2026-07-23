@@ -233,7 +233,11 @@ func (a *Agent) prompt(ctx context.Context, req *jsonrpc2.Request) (any, error) 
 	if err != nil {
 		return nil, err
 	}
-	return a.delegate.Prompt(ctx, params)
+	res, err := a.delegate.Prompt(ctx, params)
+	if err != nil {
+		return nil, mapDelegateErr(err)
+	}
+	return res, nil
 }
 
 func (a *Agent) setConfigOption(ctx context.Context, req *jsonrpc2.Request) (any, error) {
@@ -241,7 +245,11 @@ func (a *Agent) setConfigOption(ctx context.Context, req *jsonrpc2.Request) (any
 	if err != nil {
 		return nil, err
 	}
-	return a.delegate.SetConfigOption(ctx, params)
+	res, err := a.delegate.SetConfigOption(ctx, params)
+	if err != nil {
+		return nil, mapDelegateErr(err)
+	}
+	return res, nil
 }
 
 // cancel handles the session/cancel notification. As a notification it has no

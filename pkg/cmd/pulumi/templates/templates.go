@@ -15,7 +15,7 @@
 // Package templates adds an abstraction for project templates that may be local or
 // remote.
 //
-// All templates are convertible into [workspace.Template].
+// All templates are convertible into [ProjectTemplate].
 package templates
 
 import (
@@ -30,7 +30,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Source provides access to a set of project templates, any set of which may be present on
@@ -126,8 +125,8 @@ type Template interface {
 	DisplayName() string
 	Description() string
 	Error() error
-	// Download the template and return an instantiable [workspace.Template] for this template.
-	Download(ctx context.Context) (workspace.Template, error)
+	// Download the template and return an instantiable [ProjectTemplate] for this template.
+	Download(ctx context.Context) (ProjectTemplate, error)
 }
 
 // SearchScope dictates where [New] will search for templates.
@@ -143,23 +142,23 @@ var (
 // Create a new [Template] [Source] associated with a given [SearchScope].
 func New(
 	ctx context.Context, templateNamePathOrURL string, scope SearchScope,
-	templateKind workspace.TemplateKind, e env.Env,
+	templateKind TemplateKind, e env.Env,
 ) *Source {
 	return newImpl(
 		ctx, templateNamePathOrURL, scope,
 		templateKind,
-		workspace.RetrieveTemplates,
+		RetrieveTemplates,
 		e,
 	)
 }
 
 // The impl for [New].
 //
-// having a separate impl function allows mocking out getWorkspaceTemplates.
+// having a separate impl function allows mocking out getProjectTemplates.
 func newImpl(
 	ctx context.Context, templateNamePathOrURL string, scope SearchScope,
-	templateKind workspace.TemplateKind,
-	getWorkspaceTemplates getWorkspaceTemplateFunc,
+	templateKind TemplateKind,
+	getProjectTemplates getProjectTemplateFunc,
 	e env.Env,
 ) *Source {
 	var source Source
@@ -167,26 +166,22 @@ func newImpl(
 	source.cancel = cancel
 
 	if scope == ScopeAll || scope == ScopeLocal {
-		source.wg.Add(1)
-		go func() {
-			source.getWorkspaceTemplates(ctx, templateNamePathOrURL, scope, templateKind, &source.wg, getWorkspaceTemplates)
-			source.wg.Done()
-		}()
+		source.wg.Go(func() {
+			source.getProjectTemplates(ctx, templateNamePathOrURL, scope, templateKind, getProjectTemplates)
+		})
 	}
 
-	if scope == ScopeAll && templateKind == workspace.TemplateKindPulumiProject && isTemplateName(templateNamePathOrURL) {
-		source.wg.Add(1)
-		go func() {
+	if scope == ScopeAll && templateKind == TemplateKindPulumiProject && isTemplateName(templateNamePathOrURL) {
+		source.wg.Go(func() {
 			source.getCloudTemplates(ctx, templateNamePathOrURL, &source.wg, e)
-			source.wg.Done()
-		}()
+		})
 	}
 
 	return &source
 }
 
 func isTemplateName(templateNamePathOrURL string) bool {
-	return !workspace.IsGitRepoTemplateURL(templateNamePathOrURL) &&
+	return !IsGitRepoTemplateURL(templateNamePathOrURL) &&
 		!isTemplatePath(templateNamePathOrURL)
 }
 

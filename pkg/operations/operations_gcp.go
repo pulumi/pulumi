@@ -152,6 +152,6 @@ func getLogEntryMessage(e *loggingpb.LogEntry) (string, error) {
 		}
 		return string(byts), nil
 	default:
-		return "", fmt.Errorf("can't decode entry of type %s", reflect.TypeOf(e))
+		return "", fmt.Errorf("can't decode entry of type %s", reflect.TypeFor[*loggingpb.LogEntry]())
 	}
 }

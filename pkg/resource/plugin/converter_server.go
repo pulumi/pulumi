@@ -38,6 +38,7 @@ func (c *converterServer) ConvertState(ctx context.Context,
 	resp, err := c.converter.ConvertState(ctx, &ConvertStateRequest{
 		MapperTarget: req.MapperTarget,
 		Args:         req.Args,
+		LoaderTarget: req.LoaderTarget,
 	})
 	if err != nil {
 		return nil, err
@@ -56,6 +57,7 @@ func (c *converterServer) ConvertState(ctx context.Context,
 			IsComponent:       resource.IsComponent,
 			Parent:            resource.Parent,
 			Properties:        resource.Properties,
+			Provider:          resource.Provider,
 		}
 		if p := resource.Parameterization; p != nil {
 			resources[i].Parameterization = &pulumirpc.ResourceParameterization{

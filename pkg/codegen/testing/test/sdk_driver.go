@@ -16,6 +16,7 @@ package test
 
 import (
 	"flag"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -122,10 +123,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "resource-args-python",
 		Description: "Resource args with same named resource and type",
-	},
-	{
-		Directory:   "simple-enum-schema",
-		Description: "Simple schema with enum types",
 	},
 	{
 		Directory:   "simple-plain-schema-with-root-package",
@@ -513,7 +510,7 @@ type SDKCodegenOptions struct {
 // directory that contains that information:
 //
 //	testdata/
-//	    my-simple-schema/   # i.e. `simple-enum-schema`
+//	    my-simple-schema/   # i.e. `simple-resource-schema`
 //	        schema.(json|yaml)
 //	        go/
 //	        python/
@@ -618,12 +615,8 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			// test-specific checks, with test-specific
 			// having precedence.
 			allChecks := make(map[string]CodegenCheck)
-			for k, v := range opts.Checks {
-				allChecks[k] = v
-			}
-			for k, v := range tt.Checks {
-				allChecks[k] = v
-			}
+			maps.Copy(allChecks, opts.Checks)
+			maps.Copy(allChecks, tt.Checks)
 
 			// Sort the checks in alphabetical order.
 			var checkOrder []string

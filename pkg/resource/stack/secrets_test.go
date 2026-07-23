@@ -74,11 +74,11 @@ func (t *testSecretsManager) DecryptValue(
 	ctx context.Context, ciphertext string,
 ) (string, error) {
 	t.decryptCalls++
-	i := strings.Index(ciphertext, ":")
-	if i == -1 {
+	_, after, ok := strings.Cut(ciphertext, ":")
+	if !ok {
 		return "", errors.New("invalid ciphertext format")
 	}
-	return ciphertext[i+1:], nil
+	return after, nil
 }
 
 func (t *testSecretsManager) BatchDecrypt(
@@ -90,11 +90,11 @@ func (t *testSecretsManager) BatchDecrypt(
 	}
 	decrypted := make([]string, len(ciphertexts))
 	for i, ciphertext := range ciphertexts {
-		j := strings.Index(ciphertext, ":")
-		if j == -1 {
+		_, after, ok := strings.Cut(ciphertext, ":")
+		if !ok {
 			return nil, errors.New("invalid ciphertext format")
 		}
-		decrypted[i] = ciphertext[j+1:]
+		decrypted[i] = after
 	}
 	return decrypted, nil
 }

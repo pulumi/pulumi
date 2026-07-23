@@ -33,8 +33,11 @@ class ConvertStateRequest(google.protobuf.message.Message):
 
     MAPPER_TARGET_FIELD_NUMBER: builtins.int
     ARGS_FIELD_NUMBER: builtins.int
+    LOADER_TARGET_FIELD_NUMBER: builtins.int
     mapper_target: builtins.str
     """the gRPC target of the mapper service."""
+    loader_target: builtins.str
+    """The target of a codegen.LoaderServer to use for loading schemas."""
     @property
     def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """the args passed to `pulumi import` for this conversion. Normally used to specifiy a state file to
@@ -46,8 +49,9 @@ class ConvertStateRequest(google.protobuf.message.Message):
         *,
         mapper_target: builtins.str = ...,
         args: collections.abc.Iterable[builtins.str] | None = ...,
+        loader_target: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["args", b"args", "mapper_target", b"mapper_target"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["args", b"args", "loader_target", b"loader_target", "mapper_target", b"mapper_target"]) -> None: ...
 
 global___ConvertStateRequest = ConvertStateRequest
 
@@ -69,6 +73,7 @@ class ResourceImport(google.protobuf.message.Message):
     EXTENSION_FIELD_NUMBER: builtins.int
     PARENT_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
+    PROVIDER_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type token for the resource."""
     name: builtins.str
@@ -88,6 +93,11 @@ class ResourceImport(google.protobuf.message.Message):
     parent: builtins.str
     """the name of the resource's parent, if any. Must reference the name of another resource in the same
     response; resources without a parent are parented to the stack root.
+    """
+    provider: builtins.str
+    """the name of the resource's explicit provider, if any. Must reference the name of a provider
+    declared as another resource (of type "pulumi:providers:<package>") in the same response;
+    resources without a provider are served by an appropriate default provider.
     """
     @property
     def parameterization(self) -> global___ResourceParameterization:
@@ -123,9 +133,10 @@ class ResourceImport(google.protobuf.message.Message):
         extension: global___ResourceExtension | None = ...,
         parent: builtins.str = ...,
         properties: collections.abc.Iterable[builtins.str] | None = ...,
+        provider: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["extension", b"extension", "parameterization", b"parameterization"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["extension", b"extension", "id", b"id", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "parameterization", b"parameterization", "parent", b"parent", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["extension", b"extension", "id", b"id", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "parameterization", b"parameterization", "parent", b"parent", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "type", b"type", "version", b"version"]) -> None: ...
 
 global___ResourceImport = ResourceImport
 

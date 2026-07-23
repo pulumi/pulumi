@@ -340,10 +340,7 @@ func renderHistoryEventsTable(
 	cols := cmdCmd.WriterWidth(w)
 	// Borders and separators take ~3 chars per column plus 1 outer border each side.
 	borderWidth := 3*3 + 1
-	detailsWidth := cols - borderWidth - historyEventsFixedColsWidth
-	if detailsWidth < 20 {
-		detailsWidth = 20
-	}
+	detailsWidth := max(cols-borderWidth-historyEventsFixedColsWidth, 20)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Name: "DETAILS", WidthMax: detailsWidth, WidthMaxEnforcer: text.WrapText},
 	})

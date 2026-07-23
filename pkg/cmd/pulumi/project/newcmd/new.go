@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -195,7 +196,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		scope = cmdTemplates.ScopeLocal
 	}
 	templateSource := cmdTemplates.New(ctx,
-		args.templateNameOrURL, scope, workspace.TemplateKindPulumiProject, env.Global())
+		args.templateNameOrURL, scope, cmdTemplates.TemplateKindPulumiProject, env.Global())
 	defer contract.IgnoreClose(templateSource)
 
 	// List the templates from the repo.
@@ -217,7 +218,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
-	var template workspace.Template
+	var template cmdTemplates.ProjectTemplate
 	if cmdTemplate == nil {
 		// Template might be nil if we're running in non-interactive mode and didn't pass a template to choose. In
 		// that case we'll write a minimal Pulumi.yaml.
@@ -231,7 +232,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			return fmt.Errorf("writing minimal Pulumi.yaml: %w", err)
 		}
 
-		template = workspace.Template{
+		template = cmdTemplates.ProjectTemplate{
 			Dir:         temp,
 			ProjectName: "${PROJECT}",
 		}
@@ -248,7 +249,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Do a dry run, if we're not forcing files to be overwritten.
 	if !args.force {
-		if err = workspace.CopyTemplateFilesDryRun(template.Dir, cwd, args.name); err != nil {
+		if err = cmdTemplates.CopyTemplateFilesDryRun(template.Dir, cwd, args.name); err != nil {
 			if os.IsNotExist(err) {
 				return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 			}
@@ -296,10 +297,12 @@ func runNew(ctx context.Context, args newArgs) error {
 		fmt.Fprintln(args.stdout,
 			opts.Color.Colorize(
 				colors.Highlight("Enter a value or leave blank to accept the (default), and press <ENTER>.",
-					"<ENTER>", colors.BrightCyan+colors.Bold)))
+					"<ENTER>", colors.BrightCyan+colors.Bold),
+			))
 		fmt.Fprintln(args.stdout,
 			opts.Color.Colorize(
-				colors.Highlight("Press ^C at any time to quit.", "^C", colors.BrightCyan+colors.Bold)))
+				colors.Highlight("Press ^C at any time to quit.", "^C", colors.BrightCyan+colors.Bold),
+			))
 		fmt.Fprintln(args.stdout)
 	}
 
@@ -307,7 +310,8 @@ func runNew(ctx context.Context, args newArgs) error {
 	if args.name == "" {
 		defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
 		err := validateProjectName(
-			ctx, b, orgName, defaultValue, args.generateOnly, opts.WithIsInteractive(false))
+			ctx, b, orgName, defaultValue, args.generateOnly, opts.WithIsInteractive(false),
+		)
 		if err != nil {
 			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
 			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
@@ -328,16 +332,18 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Prompt for the project description, if it wasn't already specified.
 	if args.description == "" {
 		defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
-			args.description, template.ProjectDescription, template.Description)
+			args.description, template.ProjectDescription, template.Description,
+		)
 		args.description, err = args.prompt(
-			args.yes, "Project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts)
+			args.yes, "Project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts,
+		)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Actually copy the files.
-	if err = workspace.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
+	if err = cmdTemplates.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 		}
@@ -377,7 +383,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		proj.Runtime.SetOption(parts[0], parts[1])
 	}
 
-	if err = workspace.SaveProject(proj); err != nil {
+	if err = pkgWorkspace.SaveProject(proj); err != nil {
 		return fmt.Errorf("saving project: %w", err)
 	}
 	if b != nil {
@@ -404,11 +410,13 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
 	hostReg := cmdCmd.NewDefaultRegistry(
-		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
+		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global(),
+	)
 	pluginHost, err := pkghost.New(
 		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
 		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-		packageworkspace.NewResolverServer(hostReg))
+		packageworkspace.NewResolverServer(hostReg),
+	)
 	if err != nil {
 		return err
 	}
@@ -450,7 +458,7 @@ func runNew(ctx context.Context, args newArgs) error {
 				for k, v := range options {
 					proj.Runtime.SetOption(k, v)
 				}
-				if err = workspace.SaveProject(proj); err != nil {
+				if err = pkgWorkspace.SaveProject(proj); err != nil {
 					return fmt.Errorf("saving project: %w", err)
 				}
 				// update programInfo to have the new options
@@ -495,7 +503,8 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Install dependencies, but only if we have a runtime to install with.
 	if !args.generateOnly && proj.Runtime.Name() != "" {
 		registry := cmdCmd.NewDefaultRegistry(
-			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
+			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global(),
+		)
 		if _, err := InstallPackagesFromProject(ctx, proj, root,
 			registry, -1, false, args.stderr, args.stderr, env.Global()); err != nil {
 			return err
@@ -507,7 +516,8 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	fmt.Fprintln(args.stdout,
 		opts.Color.Colorize(
-			colors.BrightGreen+colors.Bold+"Your new project is ready to go!"+colors.Reset)+
+			colors.BrightGreen+colors.Bold+"Your new project is ready to go!"+colors.Reset,
+		)+
 			" "+cmdutil.EmojiOr("✨", ""))
 	fmt.Fprintln(args.stdout)
 
@@ -547,7 +557,7 @@ func NewNewCmd() *cobra.Command {
 			scope = cmdTemplates.ScopeLocal
 		}
 		// Attempt to retrieve available templates.
-		s := cmdTemplates.New(ctx, "", scope, workspace.TemplateKindPulumiProject, env.Global())
+		s := cmdTemplates.New(ctx, "", scope, cmdTemplates.TemplateKindPulumiProject, env.Global())
 		t, err := s.Templates()
 		return t, s, err
 	}
@@ -638,62 +648,54 @@ func NewNewCmd() *cobra.Command {
 		Required:  0,
 	})
 
-	// Add additional help that includes a list of available templates.
-	defaultHelp := cmd.HelpFunc()
-	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
-		// Show default help.
-		defaultHelp(cmd, args)
-
-		templates, closer, err := getTemplates(cmd.Context())
-		contract.IgnoreClose(closer)
-		if err != nil {
-			slog.Warn("could not list templates", "err", err)
-			return
-		}
-
-		// If we have any templates, show them.
-		if len(templates) > 0 {
-			fmt.Fprintln(cmd.OutOrStdout())
-			fmt.Fprintf(cmd.OutOrStdout(), "There are %d available templates.\n", len(templates))
-		}
-	})
-
 	cmd.PersistentFlags().StringArrayVarP(
 		&args.configArray, "config", "c", []string{},
-		"Config to save")
+		"Config to save",
+	)
 	cmd.PersistentFlags().BoolVar(
 		&args.configPath, "config-path", false,
-		"Config keys contain a path to a property in a map or list to set")
+		"Config keys contain a path to a property in a map or list to set",
+	)
 	cmd.PersistentFlags().StringVarP(
 		&args.description, "description", "d", "",
-		"The project description; if not specified, a prompt will request it")
+		"The project description; if not specified, a prompt will request it",
+	)
 	cmd.PersistentFlags().StringVar(
 		&args.dir, "dir", "",
-		"The location to place the generated project; if not specified, the current directory is used")
+		"The location to place the generated project; if not specified, the current directory is used",
+	)
 	cmd.PersistentFlags().BoolVarP(
 		&args.force, "force", "f", false,
-		"Forces content to be generated even if it would change existing files")
+		"Forces content to be generated even if it would change existing files",
+	)
 	cmd.PersistentFlags().BoolVarP(
 		&args.generateOnly, "generate-only", "g", false,
-		"Generate the project only; do not create a stack, save config, or install dependencies")
+		"Generate the project only; do not create a stack, save config, or install dependencies",
+	)
 	cmd.PersistentFlags().StringVarP(
 		&args.name, "name", "n", "",
-		"The project name; if not specified, a prompt will request it")
+		"The project name; if not specified, a prompt will request it",
+	)
 	cmd.PersistentFlags().BoolVarP(
 		&args.offline, "offline", "o", false,
-		"Use locally cached templates without making any network requests")
+		"Use locally cached templates without making any network requests",
+	)
 	cmd.PersistentFlags().StringVarP(
 		&args.stack, "stack", "s", "",
-		"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it")
+		"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it",
+	)
 	cmd.PersistentFlags().BoolVarP(
 		&args.yes, "yes", "y", false,
-		"Skip prompts and proceed with default values")
+		"Skip prompts and proceed with default values",
+	)
 	cmd.PersistentFlags().StringVar(
 		&args.secretsProvider, "secrets-provider", "default", "The type of the provider that should be used to encrypt and "+
-			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)")
+			"decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)",
+	)
 	cmd.PersistentFlags().BoolVarP(
 		&args.listTemplates, "list-templates", "l", false,
-		"List locally installed templates and exit")
+		"List locally installed templates and exit",
+	)
 	cmd.PersistentFlags().StringVar(
 		&args.aiPrompt, "ai", "", "Prompt to use for Pulumi AI",
 	)
@@ -742,7 +744,8 @@ func validateProjectName(ctx context.Context, b backend.Backend,
 		}
 	}
 	return validateProjectNameInternal(
-		ctx, b, orgName, projectName, generateOnly, opts, handleExistingProjectName)
+		ctx, b, orgName, projectName, generateOnly, opts, handleExistingProjectName,
+	)
 }
 
 func validateProjectNameInternal(ctx context.Context, b backend.Backend,
@@ -774,9 +777,7 @@ func promptRuntimeOptions(ctx *plugin.Context, language plugin.LanguageRuntime, 
 	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc,
 ) (map[string]any, error) {
 	options := make(map[string]any, len(info.Options()))
-	for k, v := range info.Options() {
-		options[k] = v
-	}
+	maps.Copy(options, info.Options())
 
 	// Keep querying for prompts until there are no more.
 	for {
@@ -875,7 +876,8 @@ func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args ne
 
 	if args.aiPrompt == "" && !opts.IsInteractive {
 		return "", errors.New(
-			"the --ai <prompt> flag is required when running in non-interactive mode with the --language flag")
+			"the --ai <prompt> flag is required when running in non-interactive mode with the --language flag",
+		)
 	}
 
 	checkedBackend, ok := b.(httpstate.Backend)
@@ -885,7 +887,8 @@ func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args ne
 				"--language is used to generate a template with Pulumi AI. " +
 					"Please log in to Pulumi Cloud to use Pulumi AI.\n" +
 					"Use --template to create a project from a template, " +
-					"or no flags to choose one interactively.")
+					"or no flags to choose one interactively.",
+			)
 		}
 		return "", errors.New("please log in to Pulumi Cloud to use Pulumi AI")
 	}

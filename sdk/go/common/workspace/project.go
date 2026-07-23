@@ -1392,8 +1392,6 @@ func (proj *Project) AddConfigStackTags(tags map[string]string) {
 		logging.Warningf("overwriting non-object `%s` project config", "pulumi:tags")
 		tagMap = map[string]string{}
 	}
-	for k, v := range tags {
-		tagMap[k] = v
-	}
+	maps.Copy(tagMap, tags)
 	proj.Config["pulumi:tags"] = configTags
 }

@@ -1417,7 +1417,8 @@ pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstan
 sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
 stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
 parentstacktracehandle: jspb.Message.getFieldWithDefault(msg, 18, ""),
-packageref: jspb.Message.getFieldWithDefault(msg, 16, "")
+packageref: jspb.Message.getFieldWithDefault(msg, 16, ""),
+acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 19, false)
   };
 
   if (includeInstance) {
@@ -1526,6 +1527,10 @@ proto.pulumirpc.ReadResourceRequest.deserializeBinaryFromReader = function(msg, 
     case 16:
       var value = /** @type {string} */ (reader.readString());
       msg.setPackageref(value);
+      break;
+    case 19:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsByteString(value);
       break;
     default:
       reader.skipField();
@@ -1672,6 +1677,13 @@ proto.pulumirpc.ReadResourceRequest.serializeBinaryToWriter = function(message, 
   if (f.length > 0) {
     writer.writeString(
       16,
+      f
+    );
+  }
+  f = message.getAcceptsByteString();
+  if (f) {
+    writer.writeBool(
+      19,
       f
     );
   }
@@ -2084,6 +2096,24 @@ proto.pulumirpc.ReadResourceRequest.prototype.setPackageref = function(value) {
 };
 
 
+/**
+ * optional bool accepts_byte_string = 19;
+ * @return {boolean}
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.getAcceptsByteString = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 19, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ReadResourceRequest} returns this
+ */
+proto.pulumirpc.ReadResourceRequest.prototype.setAcceptsByteString = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 19, value);
+};
+
+
 
 
 
@@ -2346,7 +2376,8 @@ packageref: jspb.Message.getFieldWithDefault(msg, 33, ""),
 hooks: (f = msg.getHooks()) && proto.pulumirpc.RegisterResourceRequest.ResourceHooksBinding.toObject(includeInstance, f),
 hidediffsList: (f = jspb.Message.getRepeatedField(msg, 37)) == null ? undefined : f,
 envvarmappingsMap: (f = msg.getEnvvarmappingsMap()) ? f.toObject(includeInstance, undefined) : [],
-snippetid: jspb.Message.getFieldWithDefault(msg, 40, "")
+snippetid: jspb.Message.getFieldWithDefault(msg, 40, ""),
+acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 42, false)
   };
 
   if (includeInstance) {
@@ -2562,6 +2593,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 40:
       var value = /** @type {string} */ (reader.readString());
       msg.setSnippetid(value);
+      break;
+    case 42:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsByteString(value);
       break;
     default:
       reader.skipField();
@@ -2872,6 +2907,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeString(
       40,
+      f
+    );
+  }
+  f = message.getAcceptsByteString();
+  if (f) {
+    writer.writeBool(
+      42,
       f
     );
   }
@@ -4785,6 +4827,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.setSnippetid = function(value)
 };
 
 
+/**
+ * optional bool accepts_byte_string = 42;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getAcceptsByteString = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 42, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setAcceptsByteString = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 42, value);
+};
+
+
 
 /**
  * List of repeated fields within this message type.
@@ -5525,7 +5585,8 @@ pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstan
 sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
 stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
 parentstacktracehandle: jspb.Message.getFieldWithDefault(msg, 11, ""),
-packageref: jspb.Message.getFieldWithDefault(msg, 9, "")
+packageref: jspb.Message.getFieldWithDefault(msg, 9, ""),
+acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 12, false)
   };
 
   if (includeInstance) {
@@ -5610,6 +5671,10 @@ proto.pulumirpc.ResourceInvokeRequest.deserializeBinaryFromReader = function(msg
     case 9:
       var value = /** @type {string} */ (reader.readString());
       msg.setPackageref(value);
+      break;
+    case 12:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsByteString(value);
       break;
     default:
       reader.skipField();
@@ -5714,6 +5779,13 @@ proto.pulumirpc.ResourceInvokeRequest.serializeBinaryToWriter = function(message
   if (f.length > 0) {
     writer.writeString(
       9,
+      f
+    );
+  }
+  f = message.getAcceptsByteString();
+  if (f) {
+    writer.writeBool(
+      12,
       f
     );
   }
@@ -5980,6 +6052,24 @@ proto.pulumirpc.ResourceInvokeRequest.prototype.setPackageref = function(value) 
 };
 
 
+/**
+ * optional bool accepts_byte_string = 12;
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.getAcceptsByteString = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 12, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
+ */
+proto.pulumirpc.ResourceInvokeRequest.prototype.setAcceptsByteString = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 12, value);
+};
+
+
 
 
 
@@ -6022,7 +6112,8 @@ pluginchecksumsMap: (f = msg.getPluginchecksumsMap()) ? f.toObject(includeInstan
 sourceposition: (f = msg.getSourceposition()) && pulumi_source_pb.SourcePosition.toObject(includeInstance, f),
 stacktrace: (f = msg.getStacktrace()) && pulumi_source_pb.StackTrace.toObject(includeInstance, f),
 parentstacktracehandle: jspb.Message.getFieldWithDefault(msg, 19, ""),
-packageref: jspb.Message.getFieldWithDefault(msg, 17, "")
+packageref: jspb.Message.getFieldWithDefault(msg, 17, ""),
+acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 20, false)
   };
 
   if (includeInstance) {
@@ -6109,6 +6200,10 @@ proto.pulumirpc.ResourceCallRequest.deserializeBinaryFromReader = function(msg, 
     case 17:
       var value = /** @type {string} */ (reader.readString());
       msg.setPackageref(value);
+      break;
+    case 20:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsByteString(value);
       break;
     default:
       reader.skipField();
@@ -6210,6 +6305,13 @@ proto.pulumirpc.ResourceCallRequest.serializeBinaryToWriter = function(message, 
   if (f.length > 0) {
     writer.writeString(
       17,
+      f
+    );
+  }
+  f = message.getAcceptsByteString();
+  if (f) {
+    writer.writeBool(
+      20,
       f
     );
   }
@@ -6634,6 +6736,24 @@ proto.pulumirpc.ResourceCallRequest.prototype.getPackageref = function() {
  */
 proto.pulumirpc.ResourceCallRequest.prototype.setPackageref = function(value) {
   return jspb.Message.setProto3StringField(this, 17, value);
+};
+
+
+/**
+ * optional bool accepts_byte_string = 20;
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceCallRequest.prototype.getAcceptsByteString = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 20, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ResourceCallRequest} returns this
+ */
+proto.pulumirpc.ResourceCallRequest.prototype.setAcceptsByteString = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 20, value);
 };
 
 
@@ -12272,7 +12392,8 @@ proto.pulumirpc.ResourceMonitorFeature = {
   RESOURCE_MONITOR_FEATURE_PARAMETERIZATION: 9,
   RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS: 10,
   RESOURCE_MONITOR_FEATURE_ERROR_HOOKS: 11,
-  RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS: 12
+  RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS: 12,
+  RESOURCE_MONITOR_FEATURE_BYTE_STRING: 13
 };
 
 /**

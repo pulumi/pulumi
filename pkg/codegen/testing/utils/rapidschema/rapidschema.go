@@ -24,6 +24,7 @@ package rapidschema
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/blang/semver"
@@ -162,7 +163,7 @@ func drawPackageSpec(t *rapid.T) schema.PackageSpec {
 
 	nResources := rapid.IntRange(0, 4).Draw(t, "nResources")
 	resourceTokens := make([]string, nResources)
-	for i := 0; i < nResources; i++ {
+	for i := range nResources {
 		module := drawModule(t, ctx, fmt.Sprintf("res%d:module", i))
 		resourceTokens[i] = fmt.Sprintf("%s:%s:Res%d", tokenNamespace, module, i)
 	}
@@ -328,7 +329,7 @@ func drawEnumBody(t *rapid.T, base, label string) schema.ComplexTypeSpec {
 	).Draw(t, label+":names")
 
 	specs := make([]schema.EnumValueSpec, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		specs[i] = schema.EnumValueSpec{Name: names[i], Value: values[i]}
 	}
 	return schema.ComplexTypeSpec{
@@ -454,12 +455,7 @@ func isDirectObjectRef(spec schema.TypeSpec, ctx *pkgCtx) bool {
 		return false
 	}
 	tok := spec.Ref[len(prefix):]
-	for _, ot := range ctx.objectTokens {
-		if ot == tok {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ctx.objectTokens, tok)
 }
 
 func drawPropertySpec(t *rapid.T, ctx *pkgCtx, label string, depth int) schema.PropertySpec {
@@ -551,7 +547,7 @@ func drawEnumToken(
 func drawUnionTypeSpec(t *rapid.T, ctx *pkgCtx, label string, depth int) schema.TypeSpec {
 	n := rapid.IntRange(2, 4).Draw(t, label+":unionLen")
 	members := make([]schema.TypeSpec, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		members[i] = drawTypeSpec(t, ctx, fmt.Sprintf("%s:m%d", label, i), depth-1)
 	}
 	spec := schema.TypeSpec{OneOf: members}
@@ -567,7 +563,7 @@ func drawUnionTypeSpec(t *rapid.T, ctx *pkgCtx, label string, depth int) schema.
 		if rapid.Bool().Draw(t, label+":haveMapping") && len(ctx.objectTokens) > 0 {
 			mapping := make(map[string]string)
 			count := rapid.IntRange(1, len(ctx.objectTokens)).Draw(t, label+":mappingLen")
-			for i := 0; i < count; i++ {
+			for i := range count {
 				mapping[fmt.Sprintf("v%d", i)] = "#/types/" + ctx.objectTokens[i]
 			}
 			disc.Mapping = mapping

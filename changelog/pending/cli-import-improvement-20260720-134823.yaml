@@ -1,0 +1,6 @@
+component: cli/import
+kind: improvement
+body: Support inputs and outputs on resources in import files, importing supplied state directly and skipping the provider read when outputs are given
+time: 2026-07-20T13:48:23.110153+01:00
+custom:
+    PR: "23984"

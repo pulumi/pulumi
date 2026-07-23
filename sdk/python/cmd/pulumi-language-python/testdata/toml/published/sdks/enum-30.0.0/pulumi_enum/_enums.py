@@ -8,7 +8,9 @@ from enum import Enum
 
 __all__ = [
     'IntEnum',
+    'NumberEnum',
     'StringEnum',
+    'WordyEnum',
 ]
 
 
@@ -18,7 +20,21 @@ class IntEnum(_builtins.int, Enum):
     INT_TWO = 2
 
 
+@pulumi.type_token("enum:index:NumberEnum")
+class NumberEnum(_builtins.float, Enum):
+    ZERO_POINT_ONE = 0.1
+    ONE = 1
+
+
 @pulumi.type_token("enum:index:StringEnum")
 class StringEnum(_builtins.str, Enum):
     STRING_ONE = "one"
     STRING_TWO = "two"
+
+
+@pulumi.type_token("enum:index:WordyEnum")
+class WordyEnum(_builtins.str, Enum):
+    A_VALUE_WITH_SPACES_ = "A Value With Spaces."
+    IT_S_GOT_APOSTROPHES = "It's got apostrophes"
+    WORDY_ENUM_UNDERSCOR_E_PREFIX = "_UNDERSCORE_PREFIX"
+    NAMED = "plain"

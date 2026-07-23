@@ -115,6 +115,16 @@ func (pv PropertyValue) LogValue() slog.Value {
 	return slog.StringValue(pv.String())
 }
 
+// RedactedLogValue replaces secret values with "[secret]" for plaintext log output. The encrypted
+// log sink and OTLP export receive the original values.
+func (pv PropertyValue) RedactedLogValue() slog.Value {
+	b, err := json.Marshal(redactSecretsInJSON(pv.Value.AsInterface()))
+	if err != nil {
+		return slog.StringValue("<error marshaling property value>")
+	}
+	return slog.StringValue(string(b))
+}
+
 type propertyValueExportHandler struct {
 	inner slog.Handler
 }
