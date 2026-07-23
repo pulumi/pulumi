@@ -1,0 +1,4 @@
+component: sdk/python
+kind: feat
+body: Add experimental component state migration callbacks to ResourceOptions
+time: 2026-07-23T11:05:30+02:00
