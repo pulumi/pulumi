@@ -287,4 +287,6 @@ export async function setMocks(
     store.supportsParameterization = true;
     store.supportsResourceHooks = true;
     store.supportsErrorHooks = true;
+    // The mock monitor does not implement the engine's invoke dependency gate, so keep the client-side one.
+    store.supportsInvokeDependsOn = false;
 }

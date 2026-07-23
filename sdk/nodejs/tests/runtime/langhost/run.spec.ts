@@ -1971,7 +1971,8 @@ describe("rpc", () => {
                     // SupportsFeature callback
                     (call: any, callback: any) => {
                         const resp = new resproto.SupportsFeatureResponse();
-                        resp.setHassupport(true);
+                        // The test monitor implements no invoke dependency gate, so keep the client-side one.
+                        resp.setHassupport(call.request.getId() !== "invokeDependsOn");
                         callback(undefined, resp);
                     },
                 );
