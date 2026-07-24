@@ -22,9 +22,18 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/adder"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/stretchr/testify/require"
 )
+
+// testEnvironment needs no login manager: these tests load schemas from a file
+// path, so the lazy registry — the only thing that would resolve a backend —
+// is never queried.
+func testEnvironment() adder.Environment {
+	return adder.Environment{WS: &pkgWorkspace.MockContext{}}
+}
 
 func generateSchema(t *testing.T) []byte {
 	spec := &schema.PackageSpec{
@@ -182,7 +191,8 @@ func TestPackageInfo(t *testing.T) {
 	err := os.WriteFile(schemaPath, schema, 0o600)
 	require.NoError(t, err)
 
-	cmd := newPackageInfoCmd()
+	cmd := newPackageInfoCmd(testEnvironment())
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{schemaPath})
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -213,7 +223,8 @@ func TestModuleInfo(t *testing.T) {
 	err := os.WriteFile(schemaPath, schema, 0o600)
 	require.NoError(t, err)
 
-	cmd := newPackageInfoCmd()
+	cmd := newPackageInfoCmd(testEnvironment())
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--module", "index", schemaPath})
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -243,7 +254,8 @@ func TestResourceInfo(t *testing.T) {
 
 	err := os.WriteFile(schemaPath, schema, 0o600)
 	require.NoError(t, err)
-	cmd := newPackageInfoCmd()
+	cmd := newPackageInfoCmd(testEnvironment())
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--module", "index", "--resource", "Test", schemaPath})
 	var output bytes.Buffer
 	cmd.SetOut(&output)
@@ -296,7 +308,8 @@ func TestFunctionInfo(t *testing.T) {
 	err := os.WriteFile(schemaPath, schema, 0o600)
 	require.NoError(t, err)
 
-	cmd := newPackageInfoCmd()
+	cmd := newPackageInfoCmd(testEnvironment())
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--module", "funs", "--function", "TestFunction", schemaPath})
 	var output bytes.Buffer
 	cmd.SetOut(&output)

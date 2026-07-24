@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/adder"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/agentauth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -381,6 +382,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
 			ctx = httpstate.ContextWithAgentCredentialUse(ctx)
+			ctx = adder.WithBag(ctx)
 			cmd.SetContext(ctx)
 
 			cmdutil.InitPprofServer(ctx)
@@ -475,6 +477,12 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	cmd.PersistentFlags().StringVar(
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
+	nCtx := adder.Environment{
+		WS:  pkgWorkspace.Instance,
+		Env: env.Global(),
+		LM:  cmdBackend.DefaultLoginManager,
+	}
+
 	setCommandGroups(cmd, []commandGroup{
 		// Common commands:
 		{
@@ -496,7 +504,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				operations.NewUpCmd(),
 				operations.NewDestroyCmd(),
 				operations.NewPreviewCmd(),
-				cancel.NewCancelCmd(pkgWorkspace.Instance),
+				cancel.NewCancelCmd(nCtx),
 			},
 		},
 		{
@@ -510,7 +518,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Commands: []*cobra.Command{
 				auth.NewLoginCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, env.Global()),
 				auth.NewLogoutCmd(pkgWorkspace.Instance),
-				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
+				whoami.NewWhoAmICmd(nCtx),
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
@@ -531,7 +539,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Commands: []*cobra.Command{
 				plugin.NewPluginCmd(),
 				schema.NewSchemaCmd(),
-				packagecmd.NewPackageCmd(),
+				packagecmd.NewPackageCmd(nCtx),
 			},
 		},
 		{

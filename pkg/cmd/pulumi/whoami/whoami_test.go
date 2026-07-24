@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/adder"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -47,7 +48,8 @@ func TestWhoAmICmd_default(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	cmd := NewWhoAmICmd(ws, lm)
+	cmd := NewWhoAmICmd(adder.Environment{WS: ws, LM: lm})
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetOut(&buff)
 	err := cmd.Execute()
 	require.NoError(t, err)
@@ -76,7 +78,8 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	cmd := NewWhoAmICmd(ws, lm)
+	cmd := NewWhoAmICmd(adder.Environment{WS: ws, LM: lm})
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--verbose"})
 	cmd.SetOut(&buff)
 	err := cmd.Execute()
@@ -110,7 +113,8 @@ func TestWhoAmICmd_json(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	cmd := NewWhoAmICmd(ws, lm)
+	cmd := NewWhoAmICmd(adder.Environment{WS: ws, LM: lm})
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--json"})
 	cmd.SetOut(&buff)
 	err := cmd.Execute()
@@ -147,7 +151,8 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	cmd := NewWhoAmICmd(ws, lm)
+	cmd := NewWhoAmICmd(adder.Environment{WS: ws, LM: lm})
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--verbose"})
 	cmd.SetOut(&buff)
 	err := cmd.Execute()
@@ -185,7 +190,8 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	cmd := NewWhoAmICmd(ws, lm)
+	cmd := NewWhoAmICmd(adder.Environment{WS: ws, LM: lm})
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--json"})
 	cmd.SetOut(&buff)
 	err := cmd.Execute()
@@ -222,7 +228,8 @@ func TestWhoAmICmd_verbose_unknownToken(t *testing.T) {
 	}
 
 	var buff bytes.Buffer
-	cmd := NewWhoAmICmd(ws, lm)
+	cmd := NewWhoAmICmd(adder.Environment{WS: ws, LM: lm})
+	cmd.SetContext(adder.WithBag(t.Context()))
 	cmd.SetArgs([]string{"--verbose"})
 	cmd.SetOut(&buff)
 	err := cmd.Execute()

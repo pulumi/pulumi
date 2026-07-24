@@ -24,8 +24,7 @@ import (
 	"slices"
 	"strings"
 
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/adder"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
@@ -36,14 +35,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
-func newPackageInfoCmd() *cobra.Command {
+func newPackageInfoCmd(nCtx adder.Environment) *cobra.Command {
 	var module string
 	var resource string
 	var function string
@@ -61,12 +59,11 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			if err != nil {
 				return err
 			}
+			reg := nCtx.Registry(cmd)
 			sink := cmdutil.Diag()
-			registry := cmdCmd.NewDefaultRegistry(
-				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
 				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-				packageworkspace.NewResolverServer(registry))
+				packageworkspace.NewResolverServer(reg))
 			if err != nil {
 				return err
 			}
@@ -88,8 +85,8 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			color := cmdutil.GetGlobalColorization()
 
 			loadPartial := func() (*schema.PartialPackage, error) {
-				return packages.PartialPackageFromSchemaSource(cmd.Context(), pkgWorkspace.Instance, pctx, args[0],
-					parameters, registry, env.Global(), 0 /* unbounded concurrency */)
+				return packages.PartialPackageFromSchemaSource(cmd.Context(), nCtx.WS, pctx, args[0],
+					parameters, reg, nCtx.Env, 0 /* unbounded concurrency */)
 			}
 
 			if function != "" {
@@ -106,8 +103,8 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 				return showResourceInfo(pp, module, resource, stdout, color)
 			}
 
-			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, args[0], parameters,
-				registry, env.Global(), 0 /* unbounded concurrency */)
+			spec, _, err := packages.SchemaFromSchemaSource(nCtx.WS, pctx, args[0], parameters,
+				reg, nCtx.Env, 0 /* unbounded concurrency */)
 			if err != nil {
 				return err
 			}

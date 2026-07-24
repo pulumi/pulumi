@@ -15,25 +15,20 @@
 package whoami
 
 import (
-	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/adder"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
-func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
+func NewWhoAmICmd(ctx adder.Environment) *cobra.Command {
 	var verbose bool
 
 	output := outputflag.OutputFlag[whoAmIRenderFunc]{
@@ -65,25 +60,9 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 			"the command will return the name of the organization with which the token is associated.",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
 			stdout := cmd.OutOrStdout()
 
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
-
-			cwd, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("getting current working directory: %w", err)
-			}
-
-			// Try to read the current project
-			project, _, err := ws.ReadProject(cwd)
-			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-				return err
-			}
-
-			b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, opts)
+			b, err := ctx.Backend(cmd)
 			if err != nil {
 				return err
 			}
