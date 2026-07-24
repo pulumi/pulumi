@@ -800,6 +800,62 @@ func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testi
 	assert.Equal(t, 0, signupCalls)
 }
 
+// A stored user (default) account whose token the service rejects must not be silently replaced by a
+// new anonymous agent account. This mirrors the agent-account guard above: a rejected identity
+// surfaces a login-required error rather than triggering auto-signup.
+//
+//nolint:paralleltest // mutates env vars, default credentials, and shared temporary agent credentials
+func TestCurrentRejectedUserAccountDoesNotSignupAgent(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	t.Setenv("CODEX_SANDBOX", "1") // agent mode
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/user":
+			rw.WriteHeader(http.StatusUnauthorized)
+		case "/api/agents/signup":
+			signupCalls++
+			rw.WriteHeader(http.StatusInternalServerError)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	// A revoked personal access token: no expiry recorded, no refresh token. validateStoredAccount
+	// reports it invalid only because the service 401s /api/user — a genuine rejection, not a local
+	// expiry.
+	require.NoError(t, workspace.StoreAccount(server.URL, workspace.Account{
+		AccessToken: "revoked-user-token",
+	}, true))
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.ErrorIs(t, err, ErrUnauthorized)
+	require.ErrorIs(t, err, backenderr.LoginRequiredError{})
+	assert.ErrorContains(t, err, "pulumi login")
+	assert.Nil(t, account)
+	assert.Equal(t, 0, signupCalls, "a rejected user identity must not trigger agent auto-signup")
+
+	agentAccount, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Empty(t, agentAccount.AccessToken, "no agent account may be created to mask the rejected user")
+}
+
 //nolint:paralleltest // mutates shared temporary agent credentials
 func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
