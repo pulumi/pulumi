@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
@@ -868,4 +870,27 @@ func TestImportCmd_OutputAndJSONMutuallyExclusive(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "none of the others can be",
 		"expected cobra's mutually-exclusive error, got: %v", err)
+}
+
+// TestImportCmd_TerraformConverterRejectedInHclProject verifies that
+// `pulumi import --from terraform` is rejected in a Pulumi HCL project. The
+// Terraform converter writes statically bridged providers into state, but
+// pulumi-hcl runs resources through the dynamic Terraform bridge, so the next
+// preview would show a delete and create for every resource.
+//
+//nolint:paralleltest // changes process working directory
+func TestImportCmd_TerraformConverterRejectedInHclProject(t *testing.T) {
+	dir := t.TempDir()
+	err := os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte("name: test\nruntime: hcl\n"), 0o600)
+	require.NoError(t, err)
+	t.Chdir(dir)
+
+	cmd := NewImportCmd()
+	cmd.SetArgs([]string{"--from", "terraform", "--yes"})
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+
+	err = cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Pulumi HCL project")
 }
