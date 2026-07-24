@@ -568,6 +568,10 @@ func coerceTypeConversion(src any, dst reflect.Type) (any, error) {
 			dst.Set(src)
 			return nil
 		}
+		if src.Kind() == dst.Kind() && src.Type().ConvertibleTo(dst.Type()) {
+			dst.Set(src.Convert(dst.Type()))
+			return nil
+		}
 		//nolint:exhaustive // We only handle a few types here.
 		switch dst.Type().Kind() {
 		case reflect.Map:
