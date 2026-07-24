@@ -3431,8 +3431,6 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function,
 		resultTypeName = pkg.outputType(returnType)
 	}
 
-	// The arguments passed to InvokeOutput. Arguments are passed with their inputs unresolved so
-	// that the SDK can infer the invoke's resource dependencies from them (pulumi/pulumi#18298).
 	var inputsVar string
 	if f.Inputs == nil {
 		inputsVar = "nil"
