@@ -49,7 +49,7 @@ func (b *binder) bindReadResourceTypes(ctx context.Context, node *ReadResource) 
 	}
 
 	res, resolvedToken, diagnostics := b.resolveSchemaResourceForBind(
-		ctx, token, tokenRange, false, false, makeResourceDynamic)
+		ctx, token, tokenRange, false, false, makeResourceDynamic, b.providerRedirectSchema(ctx, node.syntax))
 	if diagnostics.HasErrors() || res == nil {
 		return diagnostics
 	}

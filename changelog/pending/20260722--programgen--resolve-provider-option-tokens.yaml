@@ -1,0 +1,7 @@
+component: programgen
+kind: fix
+body: Resolve a PCL resource or invoke that passes the provider option against that
+    provider's package, so members whose token names a package declared in
+    allowedPackageNames can be used and are served by the package that defines them
+custom:
+    PR: "23999"

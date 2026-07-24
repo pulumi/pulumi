@@ -403,18 +403,22 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 
 				provider := options.GetAttr("provider")
 				if !provider.IsNull() && provider.IsKnown() {
-					if !provider.Type().IsObjectType() {
-						return cty.NilVal, errors.New("invoke options provider must be a resource object")
+					// A package block reference routes the invoke through the
+					// package reference rather than an explicit provider.
+					if !provider.Type().Equals(packageBlockType) {
+						if !provider.Type().IsObjectType() {
+							return cty.NilVal, errors.New("invoke options provider must be a resource object")
+						}
+						urnAttr := provider.GetAttr("urn")
+						if urnAttr.IsNull() || !urnAttr.IsKnown() || urnAttr.Type() != cty.String {
+							return cty.NilVal, errors.New("invoke options provider must be a resource object with known urn property")
+						}
+						idAttr := provider.GetAttr("id")
+						if idAttr.IsNull() || !idAttr.IsKnown() || idAttr.Type() != cty.String {
+							return cty.NilVal, errors.New("invoke options provider must be a resource object with known id property")
+						}
+						request.Provider = fmt.Sprintf("%s::%s", urnAttr.AsString(), idAttr.AsString())
 					}
-					urnAttr := provider.GetAttr("urn")
-					if urnAttr.IsNull() || !urnAttr.IsKnown() || urnAttr.Type() != cty.String {
-						return cty.NilVal, errors.New("invoke options provider must be a resource object with known urn property")
-					}
-					idAttr := provider.GetAttr("id")
-					if idAttr.IsNull() || !idAttr.IsKnown() || idAttr.Type() != cty.String {
-						return cty.NilVal, errors.New("invoke options provider must be a resource object with known id property")
-					}
-					request.Provider = fmt.Sprintf("%s::%s", urnAttr.AsString(), idAttr.AsString())
 				}
 			}
 

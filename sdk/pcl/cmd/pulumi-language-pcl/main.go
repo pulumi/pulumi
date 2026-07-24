@@ -411,6 +411,12 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 			if !ok || block.Type != "resource" || len(block.Labels) < 2 {
 				continue
 			}
+			if _, redirected := pcl.SyntacticProviderOption(block); redirected {
+				// The resource's token resolves against the passed provider's
+				// package, which is declared by its own resource block or
+				// package block.
+				continue
+			}
 			pkg, err := pclruntime.PackageNameFromToken(block.Labels[1])
 			if err != nil {
 				return nil, err
@@ -427,6 +433,12 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 			}
 			token, ok := invokeToken(call)
 			if !ok {
+				return nil
+			}
+			if pcl.SyntacticInvokeProviderOption(call) {
+				// The invoke's token resolves against the passed provider's
+				// package, which is declared by its own resource block or
+				// package block.
 				return nil
 			}
 			pkg, err := pclruntime.PackageNameFromToken(token)

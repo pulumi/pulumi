@@ -33,7 +33,12 @@ the binding process would encompass the following tasks:
     giving the name of the output being exported.
 
 * Resolving the `random` package (as referenced by the `random:index:RandomString`
-  type in the `r` resource node) and loading its schema.
+  type in the `r` resource node) and loading its schema. When the resource
+  passes the `provider` option -- either an explicit provider resource or a
+  bare reference to a `package` block -- the token is instead resolved against
+  the schema of the passed provider's package, which allows instantiating
+  resources whose tokens name a foreign package declared via that schema's
+  `allowedPackageNames` (see [token resolution](pcl-token-resolution)).
 
 * Using the resolved schema to construct an object type comprising the
   `RandomString` resource's input properties and using a scope containing this

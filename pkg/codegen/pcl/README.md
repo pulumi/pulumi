@@ -54,6 +54,46 @@ resource "r" "pkg:index:Resource" {
 }
 ```
 
+(pcl-token-resolution)=
+#### Type token resolution and the `provider` option
+
+A resource's type token normally names the package whose schema defines it:
+binding `pkg:index:Resource` loads the schema for `pkg` and looks the token up
+there.
+
+A schema may however declare resources, functions, and types whose tokens name
+a *different* package, provided that package is listed in the schema's
+`allowedPackageNames`. To instantiate such a resource, the program must say
+which package's schema defines the token by passing the `provider` resource
+option: when `provider` is set, the resource's token is resolved against the
+schema of the passed provider's package rather than the package named by the
+token. `provider` accepts either an explicit provider resource or a bare
+reference to a [`package` block](pcl-package):
+
+```hcl
+package {
+    baseProviderName    = "extra"
+    baseProviderVersion = "1.0.0"
+}
+
+resource "explicit" "pulumi:providers:extra" {}
+
+// Resolved against extra's schema via the explicit provider resource.
+resource "r1" "other:index:Resource" {
+    options { provider = explicit }
+}
+
+// Resolved against extra's schema via the package block, referenced by the
+// package's name; the resource is served by the default provider for the
+// extra package.
+resource "r2" "other:index:Resource" {
+    options { provider = extra }
+}
+```
+
+The same rule applies to provider function calls, via the `provider` [invoke
+option](pcl-invoke).
+
 (pcl-component)=
 ### Components
 
@@ -118,6 +158,32 @@ config "key" "string" {
   default     = ""
 }
 ```
+
+(pcl-package)=
+### Packages
+
+*Package blocks* declare a package used by the program together with the
+information required to load its schema: the plugin that provides it
+(`baseProviderName`, `baseProviderVersion`, and optionally
+`baseProviderDownloadUrl`) and, for parameterized packages, a
+`parameterization` block carrying the sub-package's name, version, and
+base64-encoded parameter value. See
+[`ReadPackageDescriptors`](gh-file:pulumi#pkg/codegen/pcl/binder.go) for the
+full format.
+
+```hcl
+package {
+    baseProviderName    = "extra"
+    baseProviderVersion = "1.0.0"
+}
+```
+
+Most programs do not need package blocks -- referencing a token such as
+`pkg:index:Resource` loads the `pkg` schema implicitly. They are required when
+the schema cannot be located from a token alone: parameterized packages, and
+resources whose tokens name a foreign package (see [token
+resolution](pcl-token-resolution)), where a bare reference to the package
+block may also be passed as the `provider` option.
 
 ### Pulumi
 

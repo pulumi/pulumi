@@ -339,23 +339,31 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 	var pkgOpts packageOpts
 	packageNames := codegen.StringSet{}
 
+	// A resource or invoke that passes the provider option resolves its token
+	// against that provider's package, so the package its token names is not
+	// referenced. The provider option's referent — a package block or a provider
+	// resource — contributes the package instead.
 	switch r := n.(type) {
 	case *Resource:
-		token, tokenRange := r.GetToken()
-		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
-		if packageName == "pulumi" && mod == "providers" {
-			packageNames.Add(name)
-		} else {
-			packageNames.Add(packageName)
+		if _, redirected := SyntacticProviderOption(r.syntax); !redirected {
+			token, tokenRange := r.GetToken()
+			packageName, mod, name, _ := DecomposeToken(token, tokenRange)
+			if packageName == "pulumi" && mod == "providers" {
+				packageNames.Add(name)
+			} else {
+				packageNames.Add(packageName)
+			}
 		}
 		pkgOpts = b.getPkgOpts(r)
 	case *ReadResource:
-		token, tokenRange := r.GetToken()
-		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
-		if packageName == "pulumi" && mod == "providers" {
-			packageNames.Add(name)
-		} else {
-			packageNames.Add(packageName)
+		if _, redirected := SyntacticProviderOption(r.syntax); !redirected {
+			token, tokenRange := r.GetToken()
+			packageName, mod, name, _ := DecomposeToken(token, tokenRange)
+			if packageName == "pulumi" && mod == "providers" {
+				packageNames.Add(name)
+			} else {
+				packageNames.Add(packageName)
+			}
 		}
 		pkgOpts = b.getReadPkgOpts(r)
 	}
@@ -367,6 +375,9 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 		}
 		token, tokenRange, ok := getInvokeToken(call)
 		if !ok {
+			return nil
+		}
+		if SyntacticInvokeProviderOption(call) {
 			return nil
 		}
 		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
