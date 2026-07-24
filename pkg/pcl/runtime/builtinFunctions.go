@@ -542,10 +542,14 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, errors.New("call self must have an id property of type string")
 			}
 
-			urn := urnVal.AsString()
+			// The ID is unknown when self is a resource still being created during a preview.
+			idPV := resource.MakeComputed(resource.NewProperty(""))
+			if id.IsKnown() {
+				idPV = resource.NewProperty(id.AsString())
+			}
 			argsPM["__self__"] = resource.NewProperty(resource.ResourceReference{
-				URN: resource.URN(urn),
-				ID:  resource.NewProperty(id.AsString()),
+				URN: resource.URN(urnVal.AsString()),
+				ID:  idPV,
 			})
 
 			marshalOpts := plugin.MarshalOptions{
