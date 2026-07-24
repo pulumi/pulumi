@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/python
+  description: Fix Python Automation API validation error when loading yaml or java projects
