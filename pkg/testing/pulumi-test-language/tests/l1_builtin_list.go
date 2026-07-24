@@ -73,9 +73,8 @@ func init() {
 					cfg[config.MustMakeKey("l1-builtin-list", "singleOrNoneList")] = config.NewObjectValue(`["a","b"]`)
 					return cfg
 				}(),
-				Assert: func(l *L, res AssertArgs) {
-					require.Error(l, res.Err)
-				},
+				AssertPreview: func(l *L, res AssertPreviewArgs) { require.Error(l, res.Err) },
+				Assert:        func(l *L, res AssertArgs) { require.Error(l, res.Err) },
 			},
 			{
 				// Run 3: singleOrNone with an empty list returns null.
