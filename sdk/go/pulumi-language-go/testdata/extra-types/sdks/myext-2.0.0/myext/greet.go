@@ -18,7 +18,7 @@ func Greet(ctx *pulumi.Context, args *GreetArgs, opts ...pulumi.InvokeOption) (*
 		return nil, err
 	}
 	var rv GreetResult
-	err = ctx.InvokePackage("myext:index:greet", args, &rv, ref, opts...)
+	err = ctx.InvokePackage("extbase:index:greet", args, &rv, ref, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -34,17 +34,11 @@ type GreetResult struct {
 }
 
 func GreetOutput(ctx *pulumi.Context, args GreetOutputArgs, opts ...pulumi.InvokeOption) GreetResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (GreetResultOutput, error) {
-			args := v.(GreetArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			ref, err := internal.PkgGetPackageRef(ctx)
-			if err != nil {
-				return GreetResultOutput{}, err
-			}
-			options.PackageRef = ref
-			return ctx.InvokeOutput("myext:index:greet", args, GreetResultOutput{}, options).(GreetResultOutput), nil
-		}).(GreetResultOutput)
+	options := pulumi.InvokeOutputOptions{
+		InvokeOptions: internal.PkgInvokeDefaultOpts(opts),
+		PackageRefF:   internal.PkgGetPackageRef,
+	}
+	return ctx.InvokeOutput("extbase:index:greet", args, GreetResultOutput{}, options).(GreetResultOutput)
 }
 
 type GreetOutputArgs struct {
