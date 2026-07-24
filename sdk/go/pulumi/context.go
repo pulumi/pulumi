@@ -760,21 +760,96 @@ func (ctx *Context) Invoke(tok string, args any, result any, opts ...InvokeOptio
 	return ctx.InvokePackage(tok, args, result, "" /* packageRef */, opts...)
 }
 
-// InvokePackage will invoke a provider's function, identified by its token tok. This function call is synchronous.
+// invokePackageRaw synchronously invokes the provider function tok with args marshaled per
+// marshalOpts, returning the response properties, the invoke's direct dependencies (the
+// resources its arguments depend on plus the DependsOn options), whether the result is known,
+// and whether an argument was secret. Secret arguments are sent to the provider as raw values.
 //
-// args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
+// If checkDependencies is set, the invoke is skipped with known=false while any argument
+// or any dependency's ID is unknown. Plain invokes pass false: their arguments cannot
+// contain outputs, and their resource-reference arguments are not existence-gated.
 func (ctx *Context) invokePackageRaw(
-	tok string, args any, packageRef string, options invokeOptions,
-) (resource.PropertyMap, error) {
-	// Serialize arguments. Outputs will not be awaited: instead, an error will be returned if any Outputs are present.
+	tok string, args any, marshalOpts *marshalOptions, checkDependencies bool, packageRef string,
+	options invokeOptions,
+) (outProps resource.PropertyMap, deps []Resource, known, secret bool, err error) {
+	if tok == "" {
+		return nil, nil, false, false, errors.New("invoke token must not be empty")
+	}
+
 	if args == nil {
 		args = struct{}{}
 	}
-	resolvedArgs, _, err := marshalInputOptions(args, anyType, &marshalOptions{
-		ErrorOnOutput: true,
-	})
+	resolvedArgs, deps, err := marshalInputOptions(args, anyType, marshalOpts)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling arguments: %w", err)
+		return nil, nil, false, false, fmt.Errorf("marshaling arguments: %w", err)
+	}
+	secret = resolvedArgs.ContainsSecrets()
+
+	if checkDependencies {
+		// The expanded set of dependencies, including children of components.
+		depSet := map[URN]Resource{}
+		if err := resourceDependencySet(deps).addDeps(ctx.ctx, depSet, nil); err != nil {
+			return nil, nil, false, false, err
+		}
+		for _, d := range options.DependsOn {
+			if err := d.addDeps(ctx.ctx, depSet, nil); err != nil {
+				return nil, nil, false, false, err
+			}
+			switch d := d.(type) {
+			case resourceDependencySet:
+				deps = append(deps, d...)
+			case *resourceArrayInputDependencySet:
+				out := d.input.ToResourceArrayOutput()
+				value, k, _, _, err := internal.AwaitOutput(ctx.Context(), out)
+				if err != nil {
+					return nil, nil, false, false, err
+				}
+				if !k {
+					// We don't know what the dependencies are, so the result is unknown.
+					return nil, deps, false, secret, nil
+				}
+				resources, ok := value.([]Resource)
+				if !ok {
+					return nil, nil, false, false, fmt.Errorf(
+						"expected DependsOnInputs to resolve to []Resource, got %T", value)
+				}
+				deps = append(deps, resources...)
+			default:
+				// Unreachable.
+				// We control all implementations of dependencySet.
+				contract.Failf("Unknown dependencySet %T", d)
+			}
+		}
+
+		if resolvedArgs.ContainsUnknowns() {
+			return nil, deps, false, secret, nil
+		}
+
+		// DependsOn for resources is an ordering constraint for register
+		// resource calls. If a resource R1 depends on a resource R2, the
+		// register resource call for R2 will happen after R1. This is ensured
+		// by awaiting the URN for each resource dependency before calling
+		// register resource.
+		//
+		// For invokes, this causes a problem when running under preview. During
+		// preview, register resource immediately returns with the URN, however
+		// this does not tell us if the resource "exists".
+		//
+		// Instead of waiting for the dependency's URN, we wait for the ID. This
+		// tells us that wether a physical resource exists (if the state does
+		// not require a refresh), and we can avoid calling the invoke when it
+		// is unknown.
+		for _, d := range depSet {
+			if r, ok := d.(CustomResource); ok {
+				_, k, _, _, err := internal.AwaitOutput(ctx.Context(), r.ID())
+				if err != nil {
+					contract.Failf("Awaiting ID: %s", err)
+				}
+				if !k {
+					return nil, deps, false, secret, nil
+				}
+			}
+		}
 	}
 
 	resolvedArgsMap := resource.PropertyMap{}
@@ -782,35 +857,21 @@ func (ctx *Context) invokePackageRaw(
 		resolvedArgsMap = resolvedArgs.ObjectValue()
 	}
 
-	return ctx.invokePackageRawResolved(tok, resolvedArgsMap, packageRef, options)
-}
-
-// invokePackageRawResolved is the RPC half of invokePackageRaw: it invokes the provider function
-// with arguments that have already been resolved to a plain property map. Secrets in the arguments
-// are sent as their raw values; callers that permit secret arguments must track secretness
-// themselves and mark their results accordingly.
-func (ctx *Context) invokePackageRawResolved(
-	tok string, resolvedArgsMap resource.PropertyMap, packageRef string, options invokeOptions,
-) (resource.PropertyMap, error) {
-	if tok == "" {
-		return nil, errors.New("invoke token must not be empty")
-	}
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
-	var err error
 	if err = ctx.beginRPC(); err != nil {
-		return nil, err
+		return nil, nil, false, false, err
 	}
 	defer ctx.endRPC(err)
 
 	var providerRef string
 	providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, false, false, err
 	}
 	if provider := providers[getPackage(tok)]; provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
-			return nil, err
+			return nil, nil, false, false, err
 		}
 		providerRef = pr
 	}
@@ -825,7 +886,7 @@ func (ctx *Context) invokePackageRawResolved(
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling arguments: %w", err)
+		return nil, nil, false, false, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	// Now, invoke the RPC to the provider synchronously.
@@ -842,7 +903,7 @@ func (ctx *Context) invokePackageRawResolved(
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
-		return nil, err
+		return nil, nil, false, false, err
 	}
 
 	// If there were any failures from the provider, return them.
@@ -853,11 +914,11 @@ func (ctx *Context) invokePackageRawResolved(
 			ferr = multierror.Append(ferr,
 				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
 		}
-		return nil, ferr
+		return nil, nil, false, false, ferr
 	}
 
 	// Otherwise, simply unmarshal the output properties and return the result.
-	r, err := plugin.UnmarshalProperties(
+	outProps, err = plugin.UnmarshalProperties(
 		resp.Return,
 		plugin.MarshalOptions{
 			KeepUnknowns:  true,
@@ -865,9 +926,9 @@ func (ctx *Context) invokePackageRawResolved(
 			KeepResources: true,
 		})
 	if err != nil {
-		return nil, err
+		return nil, nil, false, false, err
 	}
-	return r, nil
+	return outProps, deps, true, secret, nil
 }
 
 func validInvokeResult(resultV reflect.Value) bool {
@@ -889,12 +950,10 @@ func (ctx *Context) InvokePackage(
 	}
 
 	invokeOpts := mergeInvokeOptions(opts...)
-	if len(invokeOpts.DependsOn) > 0 {
-		// Ignore the DependsOn option for direct invokes.
-		invokeOpts.DependsOn = nil
-	}
+	invokeOpts.DependsOn = nil // Ignore the DependsOn option for direct invokes.
 
-	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, *invokeOpts)
+	outProps, _, _, _, err := ctx.invokePackageRaw(tok, args, &marshalOptions{ErrorOnOutput: true},
+		false /* checkDependencies */, packageRef, *invokeOpts)
 	if err != nil {
 		return err
 	}
@@ -909,7 +968,7 @@ func (ctx *Context) InvokePackage(
 }
 
 // InvokePackageRaw is similar to InvokePackage except that it doesn't error out if the result has secrets.
-// Insread, it returns a boolean indicating if the result has secrets.
+// Instead, it returns a boolean indicating if the result has secrets.
 func (ctx *Context) InvokePackageRaw(
 	tok string, args any, result any, packageRef string, opts ...InvokeOption,
 ) (isSecret bool, err error) {
@@ -919,7 +978,8 @@ func (ctx *Context) InvokePackageRaw(
 	}
 
 	options := mergeInvokeOptions(opts...)
-	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, *options)
+	outProps, _, _, _, err := ctx.invokePackageRaw(tok, args, &marshalOptions{ErrorOnOutput: true},
+		false /* checkDependencies */, packageRef, *options)
 	if err != nil {
 		return false, err
 	}
@@ -967,100 +1027,21 @@ func (ctx *Context) InvokeOutput(
 			packageRef = ref
 		}
 
-		// Collect dependencies from the DependsOn/DependsOnInput options.
 		invokeOpts := mergeInvokeOptions(options.InvokeOptions...)
-		deps := []Resource{}         // The direct dependencies of the invoke.
-		depSet := map[URN]Resource{} // The expanded set of dependencies, including children.
-		for _, d := range invokeOpts.DependsOn {
-			if err := d.addDeps(ctx.ctx, depSet, nil); err != nil {
-				return
-			}
-			switch d := d.(type) {
-			case resourceDependencySet:
-				deps = append(deps, d...)
-			case *resourceArrayInputDependencySet:
-				out := d.input.ToResourceArrayOutput()
-				value, known, _, _, err := internal.AwaitOutput(ctx.Context(), out)
-				if err != nil || !known {
-					return
-				}
-				resources, ok := value.([]Resource)
-				if !ok {
-					return
-				}
-				deps = append(deps, resources...)
-			default:
-				// Unreachable.
-				// We control all implementations of dependencySet.
-				contract.Failf("Unknown dependencySet %T", d)
-			}
-		}
-
-		// Serialize the arguments, awaiting any outputs and recording the resources they depend
-		// on. These argument dependencies participate in the existence gate below just like
-		// explicit DependsOn dependencies, so an invoke does not run against a resource that has
-		// not been created yet (pulumi/pulumi#18298).
-		if args == nil {
-			args = struct{}{}
-		}
-		resolvedArgs, argDeps, err := marshalInputOptions(args, anyType, nil)
-		if err != nil {
-			internal.RejectOutput(output, fmt.Errorf("marshaling arguments: %w", err))
-			return
-		}
-		deps = append(deps, argDeps...)
-		if err := resourceDependencySet(argDeps).addDeps(ctx.ctx, depSet, nil); err != nil {
-			return
-		}
-		secret := resolvedArgs.ContainsSecrets()
-
-		dest := reflect.New(output.ElementType()).Elem()
-
-		// If any argument is unknown the invoke cannot run; its result is unknown.
-		if resolvedArgs.ContainsUnknowns() {
-			internal.ResolveOutput(output, dest.Interface(), false, secret, resourcesToInternal(deps))
-			return
-		}
-
-		// DependsOn for resources is an ordering constraint for register
-		// resource calls. If a resource R1 depends on a resource R2, the
-		// register resource call for R2 will happen after R1. This is ensured
-		// by awaiting the URN for each resource dependency before calling
-		// register resource.
-		//
-		// For invokes, this causes a problem when running under preview. During
-		// preview, register resource immediately returns with the URN, however
-		// this does not tell us if the resource "exists".
-		//
-		// Instead of waiting for the dependency's URN, we wait for the ID. This
-		// tells us that wether a physical resource exists (if the state does
-		// not require a refresh), and we can avoid calling the invoke when it
-		// is unknown.
-		for _, d := range depSet {
-			if r, ok := d.(CustomResource); ok {
-				_, known, _, _, err := internal.AwaitOutput(ctx.Context(), r.ID())
-				if err != nil {
-					contract.Failf("Awaiting ID: %s", err)
-				}
-				if !known {
-					internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps))
-					return
-				}
-			}
-		}
-
-		resolvedArgsMap := resource.PropertyMap{}
-		if resolvedArgs.IsObject() {
-			resolvedArgsMap = resolvedArgs.ObjectValue()
-		}
-
-		outProps, err := ctx.invokePackageRawResolved(tok, resolvedArgsMap, packageRef, *invokeOpts)
+		outProps, deps, known, secret, err := ctx.invokePackageRaw(tok, args, nil, /* marshalOpts */
+			true /* checkDependencies */, packageRef, *invokeOpts)
 		if err != nil {
 			internal.RejectOutput(output, err)
 			return
 		}
 
-		known := !outProps.ContainsUnknowns()
+		dest := reflect.New(output.ElementType()).Elem()
+		if !known {
+			internal.ResolveOutput(output, dest.Interface(), false, secret, resourcesToInternal(deps))
+			return
+		}
+
+		known = !outProps.ContainsUnknowns()
 		respSecret, err := unmarshalOutput(ctx, resource.NewProperty(outProps), dest)
 		if err != nil {
 			internal.RejectOutput(output, err)
