@@ -1,0 +1,8 @@
+component: sdkgen/go
+kind: fix
+body: Generated output-form invokes pass their arguments to the core SDK without resolving
+    them first, so invoke dependencies can be inferred from arguments; generated SDKs
+    now require pulumi SDK v3.255.0 or later
+time: 2026-07-24T12:30:00Z
+custom:
+    PR: ""

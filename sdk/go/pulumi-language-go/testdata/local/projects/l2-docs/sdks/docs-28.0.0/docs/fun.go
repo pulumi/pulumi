@@ -33,12 +33,8 @@ type FunResult struct {
 }
 
 func FunOutput(ctx *pulumi.Context, args FunOutputArgs, opts ...pulumi.InvokeOption) FunResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (FunResultOutput, error) {
-			args := v.(FunArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			return ctx.InvokeOutput("docs:index:fun", args, FunResultOutput{}, options).(FunResultOutput), nil
-		}).(FunResultOutput)
+	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+	return ctx.InvokeOutput("docs:index:fun", args, FunResultOutput{}, options).(FunResultOutput)
 }
 
 type FunOutputArgs struct {
