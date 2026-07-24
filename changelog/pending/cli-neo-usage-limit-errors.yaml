@@ -1,0 +1,6 @@
+component: cli/neo
+kind: feat
+body: Render a clear, actionable message when a Neo usage limit is reached, pointing the user at their org admin to raise the org-level or per-member limit
+time: 2026-06-30T00:00:00.000000+00:00
+custom:
+    PR: "23752"
