@@ -39,6 +39,11 @@ type providerServer struct {
 	provider                       Provider
 	acceptSecrets, sendSecrets     bool
 	acceptResources, sendResources bool
+
+	// True if the caller accepts strings containing bytes that are not valid UTF-8. Unlike the other
+	// capabilities this defaults to false: it is only enabled when the caller advertises it via Handshake or
+	// Configure, since older engines cannot decode the encoding.
+	sendByteString bool
 }
 
 func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
@@ -63,11 +68,12 @@ func (p *providerServer) unmarshalOptions(label string, keepOutputValues bool) M
 
 func (p *providerServer) marshalOptions(label string) MarshalOptions {
 	return MarshalOptions{
-		Label:         label,
-		KeepUnknowns:  true,
-		KeepSecrets:   p.sendSecrets,
-		KeepResources: p.sendResources,
-		PropagateNil:  true,
+		Label:          label,
+		KeepUnknowns:   true,
+		KeepSecrets:    p.sendSecrets,
+		KeepResources:  p.sendResources,
+		KeepByteString: p.sendByteString,
+		PropagateNil:   true,
 	}
 }
 
@@ -155,6 +161,7 @@ func (p *providerServer) Handshake(
 		MapperTarget:                req.MapperTarget,
 		LoaderTarget:                req.LoaderTarget,
 		ResolverTarget:              req.ResolverTarget,
+		AcceptsByteString:           req.AcceptsByteString,
 	})
 	if err != nil {
 		return nil, err
@@ -162,12 +169,16 @@ func (p *providerServer) Handshake(
 
 	p.acceptSecrets = res.AcceptSecrets
 	p.acceptResources = res.AcceptResources
+	p.sendByteString = req.AcceptsByteString
 
 	return &pulumirpc.ProviderHandshakeResponse{
 		AcceptSecrets:                   res.AcceptSecrets,
 		AcceptResources:                 res.AcceptResources,
 		AcceptOutputs:                   res.AcceptOutputs,
 		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
+		// providerServer unmarshals byte string into plain Go strings before handing them to the wrapped
+		// provider, so it can shim support regardless of the provider's own answer.
+		AcceptsByteString: true,
 	}, nil
 }
 
