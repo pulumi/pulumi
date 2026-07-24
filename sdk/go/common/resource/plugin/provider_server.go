@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"google.golang.org/grpc"
@@ -48,6 +49,15 @@ func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
 		acceptSecrets: true, sendSecrets: true,
 		acceptResources: true, sendResources: true,
 	}
+}
+
+func marshalProviderError(err error) error {
+	var alreadyExistsErr *AlreadyExistsError
+	if errors.As(err, &alreadyExistsErr) {
+		return rpcerror.New(codes.AlreadyExists, alreadyExistsErr.baseMessage())
+	}
+
+	return err
 }
 
 func (p *providerServer) unmarshalOptions(label string, keepOutputValues bool) MarshalOptions {
@@ -570,7 +580,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		ResourceStatusToken:   req.GetResourceStatusToken(),
 	})
 	if err != nil {
-		return nil, err
+		return nil, marshalProviderError(err)
 	}
 
 	rpcState, err := MarshalProperties(resp.Properties, p.marshalOptions("newState"))
@@ -630,7 +640,7 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		OldViews:              oldViews,
 	})
 	if err != nil {
-		return nil, err
+		return nil, marshalProviderError(err)
 	}
 
 	rpcState, err := MarshalProperties(resp.Outputs, p.marshalOptions("newState"))
@@ -760,7 +770,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		OldViews:              oldViews,
 	})
 	if err != nil {
-		return nil, err
+		return nil, marshalProviderError(err)
 	}
 
 	rpcState, err := MarshalProperties(resp.Properties, p.marshalOptions("newState"))
