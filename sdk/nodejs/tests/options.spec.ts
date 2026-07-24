@@ -16,6 +16,8 @@
 
 import * as assert from "assert";
 import { ComponentResourceOptions, ErrorHookFunction, ProviderResource, merge, mergeOptions } from "../resource";
+import { iterable } from "..";
+import { CodePathOptions } from "../runtime";
 
 describe("options", () => {
     describe("merge", () => {
@@ -186,6 +188,40 @@ describe("options", () => {
                     provider: azureProvider,
                 });
                 assert.deepStrictEqual(result, { provider: azureProvider });
+            });
+        });
+
+        describe("sendComponentInputs", () => {
+            it("keeps value from opts1 if not provided in opts2", () => {
+                const result = mergeOptions(
+                    <ComponentResourceOptions>{ sendComponentInputs: true },
+                    <ComponentResourceOptions>{},
+                )
+                assert.strictEqual((<ComponentResourceOptions>result).sendComponentInputs, true);  
+            });
+
+            it("keeps value from opts2 if not provided in opts1", () => {
+                const result = mergeOptions(
+                    <ComponentResourceOptions>{},
+                    <ComponentResourceOptions>{ sendComponentInputs: true },
+                )
+                assert.strictEqual((<ComponentResourceOptions>result).sendComponentInputs, true);  
+            });
+
+            it("overwrites value from opts1 if given value in opts2", () => {
+                const result = mergeOptions(
+                    <ComponentResourceOptions>{ sendComponentInputs: true },
+                    <ComponentResourceOptions>{ sendComponentInputs: false },
+                )
+                assert.strictEqual((<ComponentResourceOptions>result).sendComponentInputs, false);  
+            });
+            
+            it("defaults to undefined when not set in either", () => {
+                const result = mergeOptions(
+                    <ComponentResourceOptions>{},
+                    <ComponentResourceOptions>{},
+                )
+                assert.strictEqual((<ComponentResourceOptions>result).sendComponentInputs, undefined);  
             });
         });
 
