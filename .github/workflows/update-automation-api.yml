@@ -65,10 +65,3 @@ jobs:
           payload: |
             channel: "#team-iac-core"
             text: "The `pulumi` automation APIs have drifted from the CLI; a regeneration PR is ready for review: ${{ steps.pr.outputs.url }}"
-      - name: Trigger pulumi-dotnet update
-        env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-        run: |
-          gh api repos/pulumi/pulumi-dotnet/dispatches \
-            -f event_type=update-automation-api \
-            -f "client_payload[sha]=${GITHUB_SHA}"
