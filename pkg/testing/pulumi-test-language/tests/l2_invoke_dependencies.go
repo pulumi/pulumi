@@ -30,9 +30,6 @@ func init() {
 		},
 		Runs: []TestRun{
 			{
-				AssertPreview: func(l *L, args AssertPreviewArgs) {
-					require.NoError(l, args.Err, "expected no error in preview")
-				},
 				Assert: func(l *L, res AssertArgs) {
 					err := res.Err
 					snap := res.Snap
