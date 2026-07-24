@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go
+  description: Preserve explicit null entries in Go SDK input maps
