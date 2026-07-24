@@ -17,12 +17,12 @@ package do
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"runtime"
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/gofrs/uuid"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -114,7 +114,7 @@ func TestDoCmdResourceUpsertConstructsSnippet(t *testing.T) {
 	) (*StatefulUpdateResult, error) {
 		called = true
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
@@ -144,17 +144,19 @@ size = 2
 	require.NotNil(t, got.Stack, "runStatefulUpdate should receive the loaded stack")
 	assert.False(t, got.DryRun)
 	assert.True(t, got.Yes)
+	assert.False(t, got.RequireFresh, "upsert accepts existing snippets")
 
-	assert.Contains(t, stdout.String(), got.Snippet.UUID)
+	assert.Contains(t, stdout.String(), "upserted myres")
 	_ = stderr
 }
 
-// TestDoCmdResourceUpsertReusesExistingSnippet asserts that upsert against a stack whose snapshot
-// already has a snippet with the same (Name, Type) reuses that snippet's UUID (so the engine
-// replaces the snippet in place rather than adding a duplicate).
+// TestDoCmdResourceUpsertProposesFreshUUID asserts that upsert does not load the stack snapshot to
+// resolve the snippet's UUID: even when the snapshot already has a snippet with the same
+// (Name, Type), the CLI proposes a fresh UUID and leaves identity resolution (adopting the
+// existing snippet's UUID) to the engine, which has the snapshot in hand anyway.
 //
 //nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
-func TestDoCmdResourceUpsertReusesExistingSnippet(t *testing.T) {
+func TestDoCmdResourceUpsertProposesFreshUUID(t *testing.T) {
 	existing := resource.Snippet{
 		UUID: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
 		Name: "myres", Type: "azure:index:myResource",
@@ -167,7 +169,7 @@ func TestDoCmdResourceUpsertReusesExistingSnippet(t *testing.T) {
 	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
 	) (*StatefulUpdateResult, error) {
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		return &testProvider{spec: doResourceSpec(false)}, nil
@@ -184,7 +186,8 @@ func TestDoCmdResourceUpsertReusesExistingSnippet(t *testing.T) {
 	})
 	require.NoError(t, cmd.Execute())
 
-	assert.Equal(t, existing.UUID, got.Snippet.UUID, "existing snippet UUID should be reused")
+	require.NotEmpty(t, got.Snippet.UUID)
+	assert.NotEqual(t, existing.UUID, got.Snippet.UUID, "the CLI should propose a fresh UUID")
 	assert.Equal(t, `name = "new"`, got.Snippet.Code, "code should be replaced with the new file contents")
 	_ = stdout
 	_ = stderr
@@ -259,16 +262,20 @@ func TestDoCmdResourceUpsertEndToEnd(t *testing.T) {
 	var finalSnap *deploy.Snapshot
 	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
 	) (*StatefulUpdateResult, error) {
-		snap := baseSnap
-		snap.Snippets = []resource.Snippet{req.Snippet}
+		p.Options.Snippets = []engine.SnippetUpdate{{
+			Snippet:      req.Snippet,
+			Delete:       req.Delete,
+			RequireFresh: req.RequireFresh,
+		}}
+		p.Options.TargetSnippets = []string{req.Snippet.UUID}
 		var err error
 		finalSnap, err = lt.TestOp(engine.Update).RunStep(
-			p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1",
+			p.GetProject(), p.GetTarget(t, baseSnap), p.Options, false, p.BackendClient, nil, "1",
 		)
 		if err != nil {
 			return nil, err
 		}
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{}, nil
 	}
 
 	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{})
@@ -441,7 +448,7 @@ func TestDoCmdResourceStatefulCreateConstructsSnippet(t *testing.T) {
 	) (*StatefulUpdateResult, error) {
 		called = true
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		return &testProvider{spec: doResourceSpec(false)}, nil
@@ -463,13 +470,14 @@ func TestDoCmdResourceStatefulCreateConstructsSnippet(t *testing.T) {
 	assert.Equal(t, "azure:index:myResource", got.Snippet.Type)
 	assert.Contains(t, got.Snippet.Code, `name = "example"`)
 	require.NotEmpty(t, got.Snippet.UUID)
+	assert.True(t, got.RequireFresh, "create should require a fresh snippet")
 	assert.Contains(t, stdout.String(), "created myres")
 	_ = stderr
 }
 
 // TestDoCmdResourceStatefulCreateRejectsExisting checks the invariant that distinguishes create
-// from upsert: if a snippet with the same (Name, Type) already lives in the snapshot, create
-// refuses rather than replacing it in place.
+// from upsert: the engine reports ErrSnippetExists for a RequireFresh update matching an existing
+// snippet, and the CLI translates that into an error naming the stack and suggesting `upsert`.
 //
 //nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
 func TestDoCmdResourceStatefulCreateRejectsExisting(t *testing.T) {
@@ -481,10 +489,10 @@ func TestDoCmdResourceStatefulCreateRejectsExisting(t *testing.T) {
 	}
 	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{Snippets: []resource.Snippet{existing}})
 
-	stub := func(_ context.Context, _ *pflag.FlagSet, _ StatefulUpdateRequest,
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
 	) (*StatefulUpdateResult, error) {
-		require.Fail(t, "runStatefulUpdate should not be called when the snippet already exists")
-		return nil, nil
+		require.True(t, req.RequireFresh, "create should require a fresh snippet")
+		return nil, fmt.Errorf("snippet %q (%s) %w", req.Snippet.Name, req.Snippet.Type, engine.ErrSnippetExists)
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		return &testProvider{spec: doResourceSpec(false)}, nil
@@ -500,15 +508,15 @@ func TestDoCmdResourceStatefulCreateRejectsExisting(t *testing.T) {
 		"--input", "pcl", "--input-file", inputFile,
 	})
 	err := cmd.Execute()
-	require.ErrorContains(t, err, "already exists")
+	require.ErrorContains(t, err, "already exists in stack myorg/proj/dev")
 	require.ErrorContains(t, err, "upsert")
 	_ = stdout
 	_ = stderr
 }
 
-// TestDoCmdResourceStatefulDeleteConstructsSnippetDelete checks that stateful `delete` resolves
-// the existing snippet by (Name, Type), targets that snippet UUID, and marks the request as a
-// snippet deletion.
+// TestDoCmdResourceStatefulDeleteConstructsSnippetDelete checks that stateful `delete` proposes a
+// fresh UUID for the engine to resolve by (Name, Type), targets that snippet, and marks the
+// request as a snippet deletion.
 //
 //nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
 func TestDoCmdResourceStatefulDeleteConstructsSnippetDelete(t *testing.T) {
@@ -526,7 +534,7 @@ func TestDoCmdResourceStatefulDeleteConstructsSnippetDelete(t *testing.T) {
 	) (*StatefulUpdateResult, error) {
 		called = true
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		return &testProvider{spec: doResourceSpec(false)}, nil
@@ -541,25 +549,26 @@ func TestDoCmdResourceStatefulDeleteConstructsSnippetDelete(t *testing.T) {
 
 	require.True(t, called, "runStatefulUpdate should have been invoked")
 	assert.True(t, got.Delete)
-	assert.Equal(t, existing.UUID, got.Snippet.UUID)
+	require.NotEmpty(t, got.Snippet.UUID)
+	assert.NotEqual(t, existing.UUID, got.Snippet.UUID, "the CLI should propose a fresh UUID")
 	assert.Equal(t, "myres", got.Snippet.Name)
 	assert.Equal(t, "azure:index:myResource", got.Snippet.Type)
 	assert.Contains(t, stdout.String(), "deleted myres")
-	assert.Contains(t, stdout.String(), existing.UUID)
 	_ = stderr
 }
 
-// TestDoCmdResourceStatefulDeleteRejectsMissing checks that delete refuses to run a backend update
-// when the named snippet does not exist in the stack snapshot.
+// TestDoCmdResourceStatefulDeleteRejectsMissing checks that the engine's ErrSnippetNotFound for a
+// delete naming a snippet absent from the snapshot is translated into an error naming the
+// resource and stack.
 //
 //nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
 func TestDoCmdResourceStatefulDeleteRejectsMissing(t *testing.T) {
 	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{})
 
-	stub := func(_ context.Context, _ *pflag.FlagSet, _ StatefulUpdateRequest,
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
 	) (*StatefulUpdateResult, error) {
-		require.Fail(t, "runStatefulUpdate should not be called when the snippet is missing")
-		return nil, nil
+		require.True(t, req.Delete)
+		return nil, fmt.Errorf("snippet %q (%s) %w", req.Snippet.Name, req.Snippet.Type, engine.ErrSnippetNotFound)
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		return &testProvider{spec: doResourceSpec(false)}, nil
@@ -571,7 +580,7 @@ func TestDoCmdResourceStatefulDeleteRejectsMissing(t *testing.T) {
 
 	cmd.SetArgs([]string{"azure:index:myResource", "delete", "myres", "--yes"})
 	err := cmd.Execute()
-	require.ErrorContains(t, err, "does not exist")
+	require.ErrorContains(t, err, "does not exist in stack myorg/proj/dev")
 	require.ErrorContains(t, err, "myres")
 	_ = stdout
 	_ = stderr
@@ -601,7 +610,7 @@ func TestDoCmdResourceUpsertMergesInputFlags(t *testing.T) {
 	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
 	) (*StatefulUpdateResult, error) {
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		return &testProvider{spec: doResourceSpec(false)}, nil
@@ -635,7 +644,7 @@ func TestDoCmdResourceUpsertAllowsInputFlagsWithoutFile(t *testing.T) {
 	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
 	) (*StatefulUpdateResult, error) {
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		return &testProvider{spec: doResourceSpec(false)}, nil
@@ -720,7 +729,7 @@ func TestDefaultRunStatefulUpdateDryRunUsesPreview(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.True(t, previewCalled, "dry-run upsert should call PreviewStack")
-	require.Equal(t, "3fa85f64-5717-4562-b3fc-2c963f66afa6", result.SnippetUUID)
+	require.NotNil(t, result)
 }
 
 //nolint:paralleltest // Uses t.Chdir
@@ -784,11 +793,11 @@ func TestDefaultRunStatefulUpdateYesAutoApprovesUpdate(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.True(t, updateCalled, "non-dry-run upsert should call UpdateStack")
-	require.Equal(t, "3fa85f64-5717-4562-b3fc-2c963f66afa6", result.SnippetUUID)
+	require.NotNil(t, result)
 }
 
 //nolint:paralleltest // Uses t.Chdir
-func TestDefaultRunStatefulUpdateDeletePassesNilSnippet(t *testing.T) {
+func TestDefaultRunStatefulUpdateDeletePassesDeleteUpdate(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.WriteFile(root+"/Pulumi.yaml", []byte("name: proj\nruntime: yaml\n"), 0o600))
 	t.Chdir(root)
@@ -805,8 +814,9 @@ func TestDefaultRunStatefulUpdateDeletePassesNilSnippet(t *testing.T) {
 			require.Len(t, op.Opts.Engine.TargetSnippets, 1)
 			assert.Equal(t, "3fa85f64-5717-4562-b3fc-2c963f66afa6", op.Opts.Engine.TargetSnippets[0])
 			require.Len(t, op.Opts.Engine.Snippets, 1)
-			snippetID := uuid.Must(uuid.FromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"))
-			assert.Nil(t, op.Opts.Engine.Snippets[snippetID])
+			assert.True(t, op.Opts.Engine.Snippets[0].Delete)
+			assert.Equal(t, "myres", op.Opts.Engine.Snippets[0].Snippet.Name)
+			assert.Equal(t, "azure:index:myResource", op.Opts.Engine.Snippets[0].Snippet.Type)
 			return nil, nil
 		},
 	}
@@ -843,5 +853,5 @@ func TestDefaultRunStatefulUpdateDeletePassesNilSnippet(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.True(t, updateCalled, "stateful delete should call UpdateStack")
-	require.Equal(t, "3fa85f64-5717-4562-b3fc-2c963f66afa6", result.SnippetUUID)
+	require.NotNil(t, result)
 }

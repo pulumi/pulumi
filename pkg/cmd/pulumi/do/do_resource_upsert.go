@@ -32,7 +32,6 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -46,35 +45,34 @@ import (
 // converts this into a backend.UpdateOperation targeting only the named snippet, so existing state
 // in the stack is untouched.
 //
-// The stack is opened and its snapshot inspected by the CLI layer (so it can resolve the snippet's
-// UUID against any existing snippet of the same Name+Type); the resolved Stack is passed through
-// here so the hook doesn't repeat the load.
+// The stack is opened by the CLI layer and passed through here so the hook doesn't repeat the
+// load; Snippet.UUID carries a freshly minted proposal that the engine resolves against any
+// existing snippet of the same Name+Type.
 type StatefulUpdateRequest struct {
-	Snippet     resource.Snippet
-	Stack       backend.Stack
-	DryRun      bool
-	Yes         bool
-	ShowSecrets bool
-	Delete      bool
-	Proj        *workspace.Project
-	Root        string
-	Sink        diag.Sink
+	Snippet      resource.Snippet
+	Stack        backend.Stack
+	DryRun       bool
+	Yes          bool
+	ShowSecrets  bool
+	Delete       bool
+	RequireFresh bool
+	Proj         *workspace.Project
+	Root         string
+	Sink         diag.Sink
 }
 
 // StatefulUpdateResult carries whatever the caller wants to render after the update. For the first
-// cut we only echo the snippet identity — the resource's post-update outputs will be plumbed
-// through once we're reading them out of the returned snapshot.
-type StatefulUpdateResult struct {
-	SnippetUUID string
-}
+// cut it is empty — the resource's post-update outputs will be plumbed through once we're reading
+// them out of the returned snapshot.
+type StatefulUpdateResult struct{}
 
 // RunStatefulUpdateFunc is the injection point for driving the backend update/preview operation.
 // NewDoCmd assigns the default implementation (real backend + engine); tests substitute a capturing
 // stub so the CLI-level construction of the snippet and target can be exercised without a live
 // backend.
 //
-// The stack is passed in via req rather than looked up here — the CLI layer needs the snapshot
-// first (to resolve the snippet UUID) so it holds the stack open and hands it through.
+// The stack is passed in via req rather than looked up here — the CLI layer holds the stack open
+// and hands it through.
 type RunStatefulUpdateFunc func(
 	ctx context.Context, flags *pflag.FlagSet, req StatefulUpdateRequest,
 ) (*StatefulUpdateResult, error)
@@ -170,8 +168,8 @@ func (pc *packageCommand) newStatelessResourceUpsertCommand(res *schema.Resource
 }
 
 // statefulSnippetUpdate carries the pieces of a stateful snippet-add operation (create / upsert)
-// that vary between commands. Everything else — parsing the input file, loading the stack,
-// resolving the snippet UUID, and dispatching to runStatefulUpdate — is shared.
+// that vary between commands. Everything else — parsing the input file, loading the stack, and
+// dispatching to runStatefulUpdate — is shared.
 type statefulSnippetUpdate struct {
 	res         *schema.Resource
 	name        string
@@ -185,7 +183,7 @@ type statefulSnippetUpdate struct {
 }
 
 // runStatefulSnippetUpdate is the shared body of `create` (with requireFresh=true) and `upsert`
-// (with requireFresh=false). Both take the same inputs, differ only in the pre-run policy check
+// (with requireFresh=false). Both take the same inputs, differ only in the policy check
 // against any existing snippet with the same (Name, Type).
 func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args statefulSnippetUpdate) error {
 	contract.Assertf(pc.runStatefulUpdate != nil, "stateful snippet update is not wired up in this build")
@@ -211,9 +209,6 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 		return fmt.Errorf("read input file: %w", err)
 	}
 
-	// Open the stack up front so we can look at the existing snapshot before deciding whether
-	// this operation is legal (create requires a fresh snippet, upsert accepts either). The
-	// stack is threaded through to runStatefulUpdate so it doesn't re-load.
 	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
 	stack, err := cmdStack.RequireStack(
 		ctx, pc.diagFwd, pc.ws, pc.lm,
@@ -223,24 +218,13 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	if err != nil {
 		return fmt.Errorf("load stack: %w", err)
 	}
-	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
-	if err != nil {
-		return fmt.Errorf("load stack snapshot: %w", err)
-	}
 
-	// Snippet identity in the snapshot is (Name, Type) — reuse the existing UUID so the engine's
-	// applySnippetUpdates path replaces the snippet in place rather than adding a duplicate that
-	// would then race to register the same URN.
-	snippetUUID, existed, err := resolveSnippetUUID(snap, args.name, args.res.Token)
+	proposed, err := uuid.NewV4()
 	if err != nil {
-		return err
-	}
-	if args.requireFresh && existed {
-		return fmt.Errorf("resource %s %q already exists in stack %s; use `upsert` to replace it",
-			args.res.Token, args.name, stack.Ref())
+		return fmt.Errorf("generate snippet uuid: %w", err)
 	}
 	snippet := resource.Snippet{
-		UUID:       snippetUUID,
+		UUID:       proposed.String(),
 		Name:       args.name,
 		Type:       args.res.Token,
 		Code:       string(code),
@@ -248,20 +232,25 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	}
 
 	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
-		Snippet:     snippet,
-		Stack:       stack,
-		DryRun:      pc.dryrun,
-		Yes:         args.yes,
-		ShowSecrets: pc.showSecrets,
-		Proj:        pc.proj,
-		Root:        pc.root,
-		Sink:        pc.diagFwd,
+		Snippet:      snippet,
+		Stack:        stack,
+		DryRun:       pc.dryrun,
+		Yes:          args.yes,
+		ShowSecrets:  pc.showSecrets,
+		RequireFresh: args.requireFresh,
+		Proj:         pc.proj,
+		Root:         pc.root,
+		Sink:         pc.diagFwd,
 	})
 	if err != nil {
+		if errors.Is(err, engine.ErrSnippetExists) {
+			return fmt.Errorf("resource %s %q already exists in stack %s; use `upsert` to replace it",
+				args.res.Token, args.name, stack.Ref())
+		}
 		return err
 	}
 	if result != nil && !pc.dryrun {
-		fmt.Fprintf(cmd.OutOrStdout(), "%s %s (snippet %s)\n", args.verb, args.name, result.SnippetUUID)
+		fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", args.verb, args.name)
 	}
 	return nil
 }
@@ -288,22 +277,15 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 	if err != nil {
 		return fmt.Errorf("load stack: %w", err)
 	}
-	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
-	if err != nil {
-		return fmt.Errorf("load stack snapshot: %w", err)
-	}
 
-	snippetUUID, exists, err := resolveSnippetUUID(snap, name, res.Token)
+	proposed, err := uuid.NewV4()
 	if err != nil {
-		return err
-	}
-	if !exists {
-		return fmt.Errorf("resource %s %q does not exist in stack %s", res.Token, name, stack.Ref())
+		return fmt.Errorf("generate snippet uuid: %w", err)
 	}
 
 	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
 		Snippet: resource.Snippet{
-			UUID: snippetUUID,
+			UUID: proposed.String(),
 			Name: name,
 			Type: res.Token,
 		},
@@ -317,10 +299,13 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 		Sink:        pc.diagFwd,
 	})
 	if err != nil {
+		if errors.Is(err, engine.ErrSnippetNotFound) {
+			return fmt.Errorf("resource %s %q does not exist in stack %s", res.Token, name, stack.Ref())
+		}
 		return err
 	}
 	if result != nil && !pc.dryrun {
-		fmt.Fprintf(cmd.OutOrStdout(), "deleted %s (snippet %s)\n", name, result.SnippetUUID)
+		fmt.Fprintf(cmd.OutOrStdout(), "deleted %s\n", name)
 	}
 	return nil
 }
@@ -337,31 +322,8 @@ func addStatefulSnippetUpdateFlags(
 	addInputFlags(cmd, "input", inputs)
 }
 
-// resolveSnippetUUID looks up an existing snippet in snap matching (name, resourceToken) and
-// returns its UUID for reuse (with existed=true); otherwise it mints a fresh UUIDv4 (existed=false).
-// Callers use existed to enforce operation-specific invariants: stateful `create` errors when a
-// snippet already exists, `upsert` doesn't care, and stateful `delete` errors when it doesn't.
-//
-// Snippet identity within a snapshot is (Name, Type): a second snippet with the same pair would
-// register the same resource URN and race with the first, so any resolver that reuses an existing
-// entry is preserving that invariant.
-func resolveSnippetUUID(snap *deploy.Snapshot, name, resourceToken string) (string, bool, error) {
-	if snap != nil {
-		for _, existing := range snap.Snippets {
-			if existing.Name == name && existing.Type == resourceToken {
-				return existing.UUID, true, nil
-			}
-		}
-	}
-	fresh, err := uuid.NewV4()
-	if err != nil {
-		return "", false, fmt.Errorf("generate snippet uuid: %w", err)
-	}
-	return fresh.String(), false, nil
-}
-
 // DefaultRunStatefulUpdate is the production implementation of the runStatefulUpdate hook. The
-// caller (typically the upsert command) has already loaded the stack and picked the snippet's
+// caller (typically the upsert command) has already loaded the stack and proposed the snippet's
 // UUID; this function loads config + secrets and calls the backend preview/update entrypoint with
 // an UpdateOperation whose engine options carry the snippet and target it.
 func DefaultRunStatefulUpdate(
@@ -375,7 +337,7 @@ func DefaultRunStatefulUpdate(
 		ShowSecrets: req.ShowSecrets,
 	}
 
-	ssml := cmdStack.SecretsManagerLoader{FallbackToState: true}
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, req.Sink, ssml, req.Stack, req.Proj, "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("get stack configuration: %w", err)
@@ -387,18 +349,13 @@ func DefaultRunStatefulUpdate(
 	}
 	cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
-	snippetUUIDVal, err := uuid.FromString(req.Snippet.UUID)
-	if err != nil {
-		return nil, fmt.Errorf("snippet uuid: %w", err)
-	}
-	var snippet *resource.Snippet
-	if !req.Delete {
-		snippet = &req.Snippet
-	}
-
 	engineOpts := engine.UpdateOptions{
-		Snippets:       map[uuid.UUID]*resource.Snippet{snippetUUIDVal: snippet},
-		TargetSnippets: []string{snippetUUIDVal.String()},
+		Snippets: []engine.SnippetUpdate{{
+			Snippet:      req.Snippet,
+			Delete:       req.Delete,
+			RequireFresh: req.RequireFresh,
+		}},
+		TargetSnippets: []string{req.Snippet.UUID},
 		ShowSecrets:    req.ShowSecrets,
 	}
 
@@ -422,7 +379,7 @@ func DefaultRunStatefulUpdate(
 		return nil, err
 	}
 
-	return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	return &StatefulUpdateResult{}, nil
 }
 
 // packageDescriptorFromProto lifts the codegen-RPC schema request into the resource-layer

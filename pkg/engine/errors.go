@@ -49,3 +49,8 @@ func AsDecryptError(err error) (*DecryptError, bool) {
 	ok := errors.As(err, &de)
 	return de, ok
 }
+
+var (
+	ErrSnippetExists   = errors.New("already exists in snapshot")
+	ErrSnippetNotFound = errors.New("does not exist in snapshot")
+)
