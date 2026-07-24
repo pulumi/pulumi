@@ -14,6 +14,7 @@
 
 import json
 import os
+import shutil
 import tempfile
 import unittest
 from typing import List, Optional
@@ -138,11 +139,21 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(project_settings=project_settings)
         stack_1_name = get_test_org() + "/" + f"first_{get_test_suffix()}"
         stack_2_name = get_test_org() + "/" + f"second_{get_test_suffix()}"
+        listed_stack_1_name = (
+            stack_1_name
+            if os.getenv("PULUMI_ACCESS_TOKEN")
+            else stack_1_name.rsplit("/", 1)[-1]
+        )
+        listed_stack_2_name = (
+            stack_2_name
+            if os.getenv("PULUMI_ACCESS_TOKEN")
+            else stack_2_name.rsplit("/", 1)[-1]
+        )
 
         # Create a stack
         ws.create_stack(stack_1_name)
         stacks = ws.list_stacks()
-        stack_1 = get_stack(stacks, stack_1_name)
+        stack_1 = get_stack(stacks, listed_stack_1_name)
 
         # Check the stack exists
         self.assertIsNotNone(stack_1)
@@ -152,8 +163,8 @@ class TestLocalWorkspace(unittest.TestCase):
         # Create another stack
         ws.create_stack(stack_2_name)
         stacks = ws.list_stacks()
-        stack_1 = get_stack(stacks, stack_1_name)
-        stack_2 = get_stack(stacks, stack_2_name)
+        stack_1 = get_stack(stacks, listed_stack_1_name)
+        stack_2 = get_stack(stacks, listed_stack_2_name)
 
         # Check the second stack exists
         self.assertIsNotNone(stack_2)
@@ -164,7 +175,7 @@ class TestLocalWorkspace(unittest.TestCase):
         # Select the first stack again
         ws.select_stack(stack_1_name)
         stacks = ws.list_stacks()
-        stack_1 = get_stack(stacks, stack_1_name)
+        stack_1 = get_stack(stacks, listed_stack_1_name)
 
         # Check the first stack is now current
         self.assertTrue(stack_1.current)
@@ -173,14 +184,14 @@ class TestLocalWorkspace(unittest.TestCase):
         current_stack = ws.stack()
 
         # Check that the name matches stack 1
-        self.assertEqual(current_stack.name, stack_1_name)
+        self.assertEqual(current_stack.name, listed_stack_1_name)
 
         # Remove both stacks
         ws.remove_stack(stack_1_name)
         ws.remove_stack(stack_2_name)
         stacks = ws.list_stacks()
-        stack_1 = get_stack(stacks, stack_1_name)
-        stack_2 = get_stack(stacks, stack_2_name)
+        stack_1 = get_stack(stacks, listed_stack_1_name)
+        stack_2 = get_stack(stacks, listed_stack_2_name)
 
         # Check that they were both removed
         self.assertIsNone(stack_1)
@@ -192,6 +203,10 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertIsNotNone(result.user)
         self.assertIsNotNone(result.url)
 
+    @pytest.mark.skipif(
+        "PULUMI_ACCESS_TOKEN" not in os.environ,
+        reason="the local backend does not support organizations",
+    )
     def test_org_get_set_default_integration(self):
         ws = LocalWorkspace()
 
@@ -561,14 +576,16 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertEqual(all_config[f"{project_name}:numberKey"].value, "42")
             self.assertFalse(all_config[f"{project_name}:numberKey"].secret)
 
-    # This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
-    # config from the file. This means we can't remove the stack at the end of the test.
+    # This test requires a Pulumi.dev.yaml file because it reads nested config
+    # from the file. Work on a copy because Pulumi may update the stack config.
     # We should also not include secrets in this config, because the secret encryption is only valid within
     # the context of a stack and org, and running this test in different orgs will fail if there are secrets.
     def test_nested_config(self):
         project_name = "nested_config"
         stack_name = fully_qualified_stack_name(get_test_org(), project_name, "dev")
-        project_dir = get_test_path("data", project_name)
+        source_project_dir = get_test_path("data", project_name)
+        project_dir = tempfile.mkdtemp()
+        shutil.copytree(source_project_dir, project_dir, dirs_exist_ok=True)
         stack = create_or_select_stack(stack_name, work_dir=project_dir)
 
         all_config = stack.get_all_config()

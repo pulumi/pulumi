@@ -30,14 +30,21 @@ class Resource1(pulumi.Resource):
         return "bar"
 
 
+def new_resource() -> Resource1:
+    # Calling __new__ directly bypasses __init__. These tests exercise property
+    # decorators, not resource registration.
+    return Resource1.__new__(Resource1)
+
+
 class DeprecatedTests(unittest.TestCase):
     def test_deprecated_can_be_called(self):
         # Arrange.
-        r = Resource1("test", "test", True)
+        r = new_resource()
         expected = "bar"
 
         # Act.
-        actual = r.bar
+        with self.assertWarnsRegex(UserWarning, "bar is deprecated; use foo instead"):
+            actual = r.bar
 
         # Assert.
         self.assertEqual(expected, actual)
@@ -48,7 +55,8 @@ class DeprecatedTests(unittest.TestCase):
         expected = "bar"
 
         # Act.
-        actual = prop.fget(Resource1("test", "test", True))
+        with self.assertWarnsRegex(UserWarning, "bar is deprecated; use foo instead"):
+            actual = prop.fget(new_resource())
 
         # Assert.
         self.assertEqual(expected, actual)
@@ -70,7 +78,7 @@ class DeprecatedTests(unittest.TestCase):
         expected = "bar"
 
         # Act.
-        actual = f(Resource1("test", "test", True))
+        actual = f(new_resource())
 
         # Assert.
         self.assertEqual(expected, actual)
@@ -81,14 +89,14 @@ class DeprecatedTests(unittest.TestCase):
         prop = Resource1.__dict__["bar"]
 
         # Act.
-        prop.fget(Resource1("test", "test", True))
+        prop.fget(new_resource())
 
         # Assert.
         warnings_warn.assert_called_once()
 
     def test_non_deprecated_can_be_called(self):
         # Arrange.
-        r = Resource1("test", "test", True)
+        r = new_resource()
         expected = "foo"
 
         # Act.
@@ -103,7 +111,7 @@ class DeprecatedTests(unittest.TestCase):
         expected = "foo"
 
         # Act.
-        actual = prop.fget(Resource1("test", "test", True))
+        actual = prop.fget(new_resource())
 
         # Assert.
         self.assertEqual(expected, actual)

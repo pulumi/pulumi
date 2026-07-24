@@ -73,7 +73,6 @@ async def my_mocks():
 
 
 @pulumi.runtime.test
-@pytest.mark.asyncio
 async def test_component_registers_outputs(my_mocks):
     MockResource(name="res")
 
