@@ -1,0 +1,6 @@
+component: cli
+kind: fix
+body: Scope current stack selection to the active backend so switching backends no longer surfaces stale stack errors
+time: 2026-07-20T00:00:00+00:00
+custom:
+  PR: "23974"

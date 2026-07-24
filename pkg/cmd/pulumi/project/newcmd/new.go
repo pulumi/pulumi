@@ -497,7 +497,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Ensure the stack is selected.
 	if !args.generateOnly && s != nil {
-		contract.IgnoreError(state.SetCurrentStack(ws, s.Ref().FullyQualifiedName().String()))
+		contract.IgnoreError(state.SetCurrentStack(ws, b.URL(), s.Ref().FullyQualifiedName().String()))
 	}
 
 	// Install dependencies, but only if we have a runtime to install with.
