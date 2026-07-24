@@ -105,7 +105,7 @@ async def _wait_for_shutdown() -> None:
         monitor = get_monitor()
         if monitor is None:
             return
-        await asyncio.get_event_loop().run_in_executor(
+        await asyncio.get_running_loop().run_in_executor(
             None,
             wrap_with_context(
                 lambda: monitor.SignalAndWaitForShutdown(empty_pb2.Empty())
