@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -323,6 +324,310 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 
 	require.Equal(t, "resA", snap.Resources[1].URN.Name())
 	require.Equal(t, "resB", snap.Resources[2].URN.Name())
+}
+
+// TestForceDeleteProtected tests that a preview and up can delete protected resources when
+// ForceDeleteProtected is set (i.e. the --force-delete-protected flag), and that the flag does not
+// modify the protect option of resources that remain in the state.
+// See https://github.com/pulumi/pulumi/issues/9987.
+func TestForceDeleteProtected(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{ID: "id", Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
+	}
+
+	creating := true
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource(resource.RootStackType, "test", false)
+		require.NoError(t, err)
+
+		if creating {
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Protect: ptr(true),
+			})
+			require.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Protect: ptr(true),
+			})
+			require.NoError(t, err)
+		}
+
+		return err
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	// Run the initial update to create the two protected resources.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
+
+	// Now remove both resources from the program and run with ForceDeleteProtected set.
+	creating = false
+	forceOptions := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: engine.UpdateOptions{
+			ForceDeleteProtected: true,
+		},
+	}
+
+	// Check that no protect errors are raised for either a preview or an update.
+	validate := func(
+		project workspace.Project, target deploy.Target, entries engine.JournalEntries,
+		events []engine.Event, err error,
+	) error {
+		for _, e := range events {
+			if e.Type == DiagEvent {
+				payload := e.Payload().(engine.DiagEventPayload)
+				assert.NotContains(t, payload.Message, "cannot be deleted")
+			}
+		}
+
+		return err
+	}
+
+	// Run a preview that will delete both resA and resB.
+	_, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), forceOptions, true, p.BackendClient, validate, "1")
+	require.NoError(t, err)
+
+	// Run an update that will delete both resA and resB.
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), forceOptions, false, p.BackendClient, validate, "2")
+	require.NoError(t, err)
+	for _, res := range snap.Resources {
+		assert.NotEqual(t, tokens.Type("pkgA:m:typA"), res.Type)
+	}
+}
+
+// TestForceDeleteProtectedReplace tests that a protected resource can be replaced when
+// ForceDeleteProtected is set (i.e. the --force-delete-protected flag), and that the resource
+// remains protected in the state afterwards.
+// See https://github.com/pulumi/pulumi/issues/9987.
+func TestForceDeleteProtectedReplace(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+						return plugin.DiffResult{
+							ReplaceKeys: []resource.PropertyKey{"A"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	inputsA := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:  inputsA,
+			Protect: ptr(true),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	// Run the initial update to create the protected resource.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+
+	// Change the input to trigger a replace, this should error because of the protect flag.
+	inputsA["A"] = resource.NewProperty("bar")
+	_, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "as it is currently marked for protection")
+
+	// Try again with ForceDeleteProtected set, the replace should now succeed.
+	forceOptions := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: engine.UpdateOptions{
+			ForceDeleteProtected: true,
+		},
+	}
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), forceOptions, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+	assert.Equal(t, "resA", snap.Resources[1].URN.Name())
+	// The resource should still be protected in the state, the flag must not unprotect it.
+	assert.True(t, snap.Resources[1].Protect)
+}
+
+// TestForceDeleteProtectedDBRChain tests that a protected resource that is part of a
+// delete-before-replace chain can be replaced when ForceDeleteProtected is set
+// (i.e. the --force-delete-protected flag).
+// See https://github.com/pulumi/pulumi/issues/9987.
+func TestForceDeleteProtectedDBRChain(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+						return plugin.DiffResult{
+							ReplaceKeys:         []resource.PropertyKey{"A"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	const resType = "pkgA:index:typ"
+
+	inputsA := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+	inputsB := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		respA, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
+			Inputs: inputsA,
+		})
+		require.NoError(t, err)
+
+		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {respA.URN}}
+		_, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
+			Inputs:       inputsB,
+			Dependencies: []resource.URN{respA.URN},
+			PropertyDeps: inputDepsB,
+			Protect:      ptr(true),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+
+	// First update just creates the two resources.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
+
+	// Update A to trigger a delete-before-replace chain that includes the protected resource B.
+	// This should error because of the protect flag on B.
+	inputsA["A"] = resource.NewProperty("bar")
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "as it is currently marked for protection")
+
+	// Try again with ForceDeleteProtected set, the replacement chain should now succeed.
+	forceOptions := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: engine.UpdateOptions{
+			ForceDeleteProtected: true,
+		},
+	}
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), forceOptions, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
+}
+
+// TestForceDeleteProtectedDestroy tests that a destroy can delete protected resources when
+// ForceDeleteProtected is set (i.e. the --force-delete-protected flag).
+// See https://github.com/pulumi/pulumi/issues/9987.
+func TestForceDeleteProtectedDestroy(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{ID: "id", Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Protect: ptr(true),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	// Run the initial update to create the protected resource.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+
+	// A destroy without ForceDeleteProtected should error.
+	_, err = lt.TestOp(Destroy).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "cannot be deleted")
+
+	// A destroy with ForceDeleteProtected should delete the protected resource.
+	forceOptions := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: engine.UpdateOptions{
+			ForceDeleteProtected: true,
+		},
+	}
+	snap, err = lt.TestOp(Destroy).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), forceOptions, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 0)
 }
 
 func ptr[T any](v T) *T {

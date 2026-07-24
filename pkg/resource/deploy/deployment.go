@@ -115,6 +115,9 @@ type Options struct {
 	GeneratePlan bool
 	// true if we should continue with the deployment even if a resource operation fails.
 	ContinueOnError bool
+	// true if the deployment is allowed to delete protected resources, ignoring their protect option
+	// for this operation only.
+	ForceDeleteProtected bool
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
 	Autonamer autonaming.Autonamer
 	// true if the engine should display secrets in diagnostic messages.
@@ -683,6 +686,7 @@ func (d *Deployment) Diag() diag.Sink                           { return d.ctx.D
 func (d *Deployment) Prev() *Snapshot                           { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*pkgresource.State { return d.olds }
 func (d *Deployment) Source() Source                            { return d.source }
+func (d *Deployment) Opts() *Options                            { return d.opts }
 
 // SameProvider configures a provider from state without changes.
 // If fromCheck is true, the provider was loaded during Check/Diff and we can reuse it.
