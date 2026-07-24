@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/nodejs
+  description: Allows us to specify relative paths instead of absolute for tsconfig.json path resolution
