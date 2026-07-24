@@ -447,3 +447,54 @@ func TestExtractTGZSymlinkEscape(t *testing.T) {
 		assert.Equal(t, "sub/../target.txt", target)
 	})
 }
+
+func TestTGZFiles(t *testing.T) {
+	t.Parallel()
+
+	src := t.TempDir()
+	manifest := filepath.Join(src, "PulumiPolicy.yaml")
+	require.NoError(t, os.WriteFile(manifest, []byte("runtime: executable\n"), 0o600))
+	binary := filepath.Join(src, "policy")
+	require.NoError(t, os.WriteFile(binary, []byte("binary"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(src, "ignored.txt"), []byte("x"), 0o600))
+
+	tgz, err := TGZFiles([]File{
+		{Path: "PulumiPolicy.yaml", Source: manifest, Mode: 0o644},
+		{Path: filepath.Join("bin", "policy"), Source: binary, Mode: 0o755},
+	}, "package")
+	require.NoError(t, err)
+
+	gz, err := gzip.NewReader(bytes.NewReader(tgz))
+	require.NoError(t, err)
+	reader := tar.NewReader(gz)
+
+	modes := map[string]int64{}
+	contents := map[string]string{}
+	for {
+		header, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		modes[header.Name] = header.Mode
+		body, err := io.ReadAll(reader)
+		require.NoError(t, err)
+		contents[header.Name] = string(body)
+	}
+
+	// The archive holds exactly the named files, with the modes the caller asked for rather than
+	// the 0o600 the sources happen to carry on disk.
+	assert.Equal(t, map[string]int64{
+		"package/PulumiPolicy.yaml": 0o644,
+		"package/bin/policy":        0o755,
+	}, modes)
+	assert.Equal(t, "runtime: executable\n", contents["package/PulumiPolicy.yaml"])
+	assert.Equal(t, "binary", contents["package/bin/policy"])
+}
+
+func TestTGZFilesRejectsNonRegularFile(t *testing.T) {
+	t.Parallel()
+
+	_, err := TGZFiles([]File{{Path: "dir", Source: t.TempDir(), Mode: 0o644}}, "")
+	assert.ErrorContains(t, err, "is not a regular file")
+}

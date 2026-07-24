@@ -62,12 +62,31 @@ type CreatePolicyPackRequest struct {
 	// Metadata contains optional data about the environment performing the publish operation,
 	// e.g. the current source code control commit information.
 	Metadata map[string]string `json:"metadata,omitempty"`
+
+	// Platforms lists the platforms ("linux-amd64", ...) for which this pack
+	// provides per-platform artifacts. Empty for single-artifact packs, which
+	// remain the common case.
+	Platforms []string `json:"platforms,omitempty"`
 }
 
 // CreatePolicyPackResponse is the response from creating a Policy Pack. It returns
 // a URI to upload the Policy Pack zip file to.
 type CreatePolicyPackResponse struct {
 	Version   int    `json:"version"`
+	UploadURI string `json:"uploadURI"`
+	// RequiredHeaders represents headers that the CLI must set in order
+	// for the upload to succeed.
+	RequiredHeaders map[string]string `json:"requiredHeaders,omitempty"`
+
+	// PlatformUploadURIs maps platform to a presigned upload for that platform's
+	// artifact, and is set when the request declared Platforms. Exactly one of
+	// UploadURI or PlatformUploadURIs is populated.
+	PlatformUploadURIs map[string]PolicyPackUpload `json:"platformUploadURIs,omitempty"`
+}
+
+// PolicyPackUpload describes the presigned upload destination for one
+// platform's policy pack artifact.
+type PolicyPackUpload struct {
 	UploadURI string `json:"uploadURI"`
 	// RequiredHeaders represents headers that the CLI must set in order
 	// for the upload to succeed.
@@ -91,6 +110,11 @@ type RequiredPolicy struct {
 
 	// Where the Policy Pack can be downloaded from.
 	PackLocation string `json:"packLocation,omitempty"`
+
+	// PackLocations maps platform ("linux-amd64", ...) to a download URL for that
+	// platform's artifact, and is set only for packs published with per-platform
+	// artifacts. Exactly one of PackLocation or PackLocations is populated.
+	PackLocations map[string]string `json:"packLocations,omitempty"`
 
 	// The configuration that is to be passed to the Policy Pack. This is map a of policies
 	// mapped to their configuration. Each individual configuration must comply with the

@@ -15,7 +15,6 @@
 package client
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -118,7 +117,7 @@ func TestPublishPolicyPack_AllAnalyzerInfoFieldsAreSent(t *testing.T) {
 	client := newMockClient(server)
 
 	// Create a mock archive
-	archive := bytes.NewReader([]byte("mock-archive-data"))
+	archive := PolicyPackArtifacts{Single: []byte("mock-archive-data")}
 
 	// Empty metadata.
 	var metadata map[string]string
@@ -219,7 +218,7 @@ func TestPublishPolicyPack_EmptyOptionalFields(t *testing.T) {
 	defer server.Close()
 
 	client := newMockClient(server)
-	archive := bytes.NewReader([]byte("mock-archive-data"))
+	archive := PolicyPackArtifacts{Single: []byte("mock-archive-data")}
 
 	// Empty metadata.
 	var metadata map[string]string
@@ -284,7 +283,7 @@ func TestPublishPolicyPack_RuntimeIsForwarded(t *testing.T) {
 
 	client := newMockClient(server)
 	_, err := client.PublishPolicyPack(t.Context(), "test-org", "opa",
-		analyzerInfo, bytes.NewReader([]byte("data")), nil)
+		analyzerInfo, PolicyPackArtifacts{Single: []byte("data")}, nil)
 	require.NoError(t, err)
 
 	assert.Equal(t, "opa", capturedRuntime)
@@ -339,7 +338,7 @@ func TestPublishPolicyPack_LegacyVersionHandling(t *testing.T) {
 	defer server.Close()
 
 	client := newMockClient(server)
-	archive := bytes.NewReader([]byte("mock-archive-data"))
+	archive := PolicyPackArtifacts{Single: []byte("mock-archive-data")}
 
 	// Empty metadata.
 	var metadata map[string]string
@@ -436,7 +435,7 @@ func TestPublishPolicyPack_PolicyConfigSchemaConversion(t *testing.T) {
 	defer server.Close()
 
 	client := newMockClient(server)
-	archive := bytes.NewReader([]byte("mock-archive-data"))
+	archive := PolicyPackArtifacts{Single: []byte("mock-archive-data")}
 
 	// Empty metadata.
 	var metadata map[string]string
@@ -518,7 +517,7 @@ func TestPublishPolicyPack_NilConfigSchema(t *testing.T) {
 	defer server.Close()
 
 	client := newMockClient(server)
-	archive := bytes.NewReader([]byte("mock-archive-data"))
+	archive := PolicyPackArtifacts{Single: []byte("mock-archive-data")}
 
 	// Empty metadata.
 	var metadata map[string]string
@@ -582,7 +581,7 @@ func TestPublishPolicyPack_NilComplianceFramework(t *testing.T) {
 	defer server.Close()
 
 	client := newMockClient(server)
-	archive := bytes.NewReader([]byte("mock-archive-data"))
+	archive := PolicyPackArtifacts{Single: []byte("mock-archive-data")}
 
 	// Empty metadata.
 	var metadata map[string]string
