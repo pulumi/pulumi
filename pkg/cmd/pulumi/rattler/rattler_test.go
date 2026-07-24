@@ -123,6 +123,13 @@ func TestSuggestCommands(t *testing.T) {
 		assert.Empty(t, got)
 	})
 
+	t.Run("transposition typo", func(t *testing.T) {
+		t.Parallel()
+		got := suggestCommands(find("org", "member"), []string{"lsit"})
+		require.NotEmpty(t, got)
+		assert.Equal(t, "pulumi org member list", got[0])
+	})
+
 	t.Run("hidden commands are not suggested", func(t *testing.T) {
 		t.Parallel()
 		got := suggestCommands(newSuggestionsTestTree(), []string{"secret-cmd"})
@@ -243,6 +250,67 @@ func TestHasSyntheticRun(t *testing.T) {
 	assert.False(t, HasSyntheticRun(find("import")), "runnable leaf")
 	assert.False(t, HasSyntheticRun(find("stack", "export")), "nested runnable leaf")
 	assert.False(t, HasSyntheticRun(nil), "nil command")
+}
+
+func TestEditDistance(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		a, b string
+		want int
+	}{
+		{"list", "list", 0},
+		{"ab", "ba", 1},       // the minimal adjacent transposition
+		{"lsit", "list", 1},   // adjacent transposition
+		{"stakc", "stack", 1}, // adjacent transposition
+		{"lisst", "list", 1},  // insertion
+		{"lit", "list", 1},    // deletion
+		{"lost", "list", 1},   // substitution
+		{"LIST", "list", 0},   // case-insensitive
+		{"", "list", 4},
+		{"abcd", "dbca", 2}, // non-adjacent swap: two substitutions, no discount
+		{"abc", "cab", 2},   // rotation is not a transposition
+		{"up", "rm", 2},
+	}
+	for _, c := range cases {
+		assert.Equal(t, c.want, editDistance(c.a, c.b), "editDistance(%q, %q)", c.a, c.b)
+		assert.Equal(t, c.want, editDistance(c.b, c.a), "editDistance(%q, %q)", c.b, c.a)
+	}
+}
+
+// closeEnough is where edit distance turns into a yes/no on suggesting a
+// command, so these cases double as a catalog of which typos we catch:
+// one edit for words under six runes, two for longer ones, with adjacent
+// swaps counting as a single edit.
+func TestCloseEnough(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		a, b string
+		want bool
+	}{
+		// Adjacent transpositions are one edit, so they fit even the
+		// short-word threshold.
+		{"lsit", "list", true},
+		{"stakc", "stack", true},
+		{"confgi", "config", true},
+		{"detsroy", "destroy", true},
+		// Single-rune slips.
+		{"previw", "preview", true},
+		{"lost", "list", true},
+		// Two edits are tolerated only in words of six runes or more...
+		{"import", "export", true}, // ranking still prefers exact matches
+		{"abcdef", "fbcdea", true}, // ...which admits non-adjacent swaps,
+		{"abcd", "dbca", false},    // but not in shorter words.
+		{"stack", "state", false},
+		{"up", "rm", false},
+		{"new", "ls", false},
+		{"xyzzyq", "list", false},
+	}
+	for _, c := range cases {
+		assert.Equal(t, c.want, closeEnough(c.a, c.b), "closeEnough(%q, %q)", c.a, c.b)
+		assert.Equal(t, c.want, closeEnough(c.b, c.a), "closeEnough(%q, %q)", c.b, c.a)
+	}
 }
 
 func TestNormalize(t *testing.T) {
