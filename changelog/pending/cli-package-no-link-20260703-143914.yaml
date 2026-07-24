@@ -1,0 +1,4 @@
+component: cli/package
+kind: feat
+body: Add a `--no-link` flag to `pulumi install` to generate package SDKs without modifying the language manifest
+time: 2026-07-03T14:39:14.000000+02:00

@@ -50,7 +50,7 @@ import (
 
 func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var reinstall bool
-	var noPlugins, noDependencies bool
+	var noPlugins, noDependencies, noLink bool
 	var useLanguageVersionTools bool
 	var parallel int
 
@@ -112,7 +112,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					reg := cmdCmd.NewDefaultRegistry(
 						ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
 					if _, err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
-						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global()); err != nil {
+						useLanguageVersionTools, noLink, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global()); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}
 
@@ -160,7 +160,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			registry := cmdCmd.NewDefaultRegistry(
 				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, pctx.Diag, env.Global())
 			continuation, err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, root,
-				registry, parallel, useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(),
+				registry, parallel, useLanguageVersionTools, noLink, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(),
 			)
 			if err != nil {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
@@ -215,6 +215,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					packageinstallation.Options{
 						Concurrency: parallel,
 						PriorState:  continuation,
+						SkipLink:    noLink,
 						Options: packageresolution.Options{
 							ResolveVersionWithLocalWorkspace:           true,
 							ResolveWithRegistry:                        !env.DisableRegistryResolve.Value(),
@@ -240,6 +241,9 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 		"no-plugins", false, "Skip installing plugins")
 	cmd.PersistentFlags().BoolVar(&noDependencies,
 		"no-dependencies", false, "Skip installing dependencies")
+	cmd.PersistentFlags().BoolVar(&noLink,
+		"no-link", false, "Generate SDKs for packages but do not link them into the language "+
+			"manifest (package.json, requirements.txt, pyproject.toml)")
 	cmd.PersistentFlags().BoolVar(&useLanguageVersionTools,
 		"use-language-version-tools", false, "Use language version tools to set up and install the language runtime")
 

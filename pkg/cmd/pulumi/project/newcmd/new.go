@@ -506,7 +506,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global(),
 		)
 		if _, err := InstallPackagesFromProject(ctx, proj, root,
-			registry, -1, false, args.stderr, args.stderr, env.Global()); err != nil {
+			registry, -1, false, false, args.stderr, args.stderr, env.Global()); err != nil {
 			return err
 		}
 		if err := InstallDependencies(pluginCtx, &proj.Runtime, entryPoint); err != nil {
