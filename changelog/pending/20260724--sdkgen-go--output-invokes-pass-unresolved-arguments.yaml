@@ -5,4 +5,4 @@ body: Generated output-form invokes pass their arguments to the core SDK without
     now require pulumi SDK v3.255.0 or later
 time: 2026-07-24T12:30:00Z
 custom:
-    PR: ""
+    PR: "24060"
