@@ -49,7 +49,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -70,6 +72,7 @@ type contextState struct {
 
 	keepResources            bool         // true if resources should be marshaled as strongly-typed references.
 	keepOutputValues         bool         // true if outputs should be marshaled as strongly-type output values.
+	keepByteString           bool         // true if strings containing non-UTF8 bytes may be sent to the monitor.
 	supportsDeletedWith      bool         // true if deletedWith supported by pulumi
 	supportsReplaceWith      bool         // true if replaceWith supported by pulumi
 	supportsAliasSpecs       bool         // true if full alias specification is supported by pulumi
@@ -205,6 +208,21 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		return nil, err
 	}
 
+	// Newer monitor capabilities are advertised via GetDeploymentInfo rather than SupportsFeature. Older
+	// monitors don't implement it, which is treated as supporting no such capabilities.
+	keepByteString := false
+	if monitor != nil {
+		info, err := monitor.GetDeploymentInfo(ctx, &emptypb.Empty{})
+		if err != nil {
+			if status.Code(err) != codes.Unimplemented {
+				return nil, fmt.Errorf("checking monitor features: %w", err)
+			}
+		} else {
+			keepByteString = slices.Contains(info.GetSupportedFeatures(),
+				pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING)
+		}
+	}
+
 	contextState := &contextState{
 		info:                     info,
 		exports:                  make(map[string]Input),
@@ -214,6 +232,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		engine:                   engine,
 		keepResources:            keepResources,
 		keepOutputValues:         keepOutputValues,
+		keepByteString:           keepByteString,
 		supportsDeletedWith:      supportsDeletedWith,
 		supportsReplaceWith:      supportsReplaceWith,
 		supportsAliasSpecs:       supportsAliasSpecs,
@@ -491,9 +510,10 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			rpcRes.Properties, err = plugin.MarshalProperties(
 				properties,
 				plugin.MarshalOptions{
-					KeepUnknowns:  true,
-					KeepSecrets:   true,
-					KeepResources: ctx.state.keepResources,
+					KeepUnknowns:   true,
+					KeepSecrets:    true,
+					KeepResources:  ctx.state.keepResources,
+					KeepByteString: ctx.state.keepByteString,
 				},
 			)
 			if err != nil {
@@ -684,9 +704,10 @@ func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callb
 			rpcRes.Args, err = plugin.MarshalProperties(
 				args,
 				plugin.MarshalOptions{
-					KeepUnknowns:  true,
-					KeepSecrets:   true,
-					KeepResources: ctx.state.keepResources,
+					KeepUnknowns:   true,
+					KeepSecrets:    true,
+					KeepResources:  ctx.state.keepResources,
+					KeepByteString: ctx.state.keepByteString,
 				},
 			)
 			if err != nil {
@@ -787,9 +808,10 @@ func (ctx *Context) invokePackageRaw(
 	rpcArgs, err := plugin.MarshalProperties(
 		resolvedArgsMap,
 		plugin.MarshalOptions{
-			KeepUnknowns:  true,
-			KeepSecrets:   true,
-			KeepResources: ctx.state.keepResources,
+			KeepUnknowns:   true,
+			KeepSecrets:    true,
+			KeepResources:  ctx.state.keepResources,
+			KeepByteString: ctx.state.keepByteString,
 		},
 	)
 	if err != nil {
@@ -805,6 +827,7 @@ func (ctx *Context) invokePackageRaw(
 		Version:           options.Version,
 		PluginDownloadURL: options.PluginDownloadURL,
 		AcceptResources:   !disableResourceReferences,
+		AcceptsByteString: true,
 		PackageRef:        packageRef,
 	})
 	if err != nil {
@@ -1089,6 +1112,7 @@ func (ctx *Context) CallPackage(
 				KeepUnknowns:     true,
 				KeepSecrets:      true,
 				KeepResources:    ctx.state.keepResources,
+				KeepByteString:   ctx.state.keepByteString,
 				KeepOutputValues: ctx.state.keepOutputValues,
 			})
 		if err != nil {
@@ -1121,6 +1145,7 @@ func (ctx *Context) CallPackage(
 			Version:           version,
 			PluginDownloadURL: pluginURL,
 			PackageRef:        packageRef,
+			AcceptsByteString: true,
 		}, nil
 	}
 
@@ -1432,6 +1457,7 @@ func (ctx *Context) readPackageResource(
 			Id:                      string(idToRead),
 			AcceptSecrets:           true,
 			AcceptResources:         !disableResourceReferences,
+			AcceptsByteString:       true,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
@@ -1460,9 +1486,10 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 	rpcArgs, err := plugin.MarshalProperties(
 		resolvedArgsMap,
 		plugin.MarshalOptions{
-			KeepUnknowns:  true,
-			KeepSecrets:   true,
-			KeepResources: ctx.state.keepResources,
+			KeepUnknowns:   true,
+			KeepSecrets:    true,
+			KeepResources:  ctx.state.keepResources,
+			KeepByteString: ctx.state.keepByteString,
 		},
 	)
 	if err != nil {
@@ -1472,9 +1499,10 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 	tok := "pulumi:pulumi:getResource"
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
 	resp, err := ctx.state.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
-		Tok:             "pulumi:pulumi:getResource",
-		Args:            rpcArgs,
-		AcceptResources: !disableResourceReferences,
+		Tok:               "pulumi:pulumi:getResource",
+		Args:              rpcArgs,
+		AcceptResources:   !disableResourceReferences,
+		AcceptsByteString: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("invoke(%s, ...): error: %w", tok, err)
@@ -1869,6 +1897,7 @@ func (ctx *Context) registerResource(
 				Aliases:                    aliases,
 				AcceptSecrets:              true,
 				AcceptResources:            !disableResourceReferences,
+				AcceptsByteString:          true,
 				AdditionalSecretOutputs:    inputs.additionalSecretOutputs,
 				Version:                    inputs.version,
 				PluginDownloadURL:          inputs.pluginDownloadURL,
@@ -2600,9 +2629,10 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
 		plugin.MarshalOptions{
-			KeepUnknowns:  true,
-			KeepSecrets:   true,
-			KeepResources: ctx.state.keepResources,
+			KeepUnknowns:   true,
+			KeepSecrets:    true,
+			KeepResources:  ctx.state.keepResources,
+			KeepByteString: ctx.state.keepByteString,
 			// To initially scope the use of this new feature, we only keep output values when
 			// remote is true (for multi-lang components).
 			KeepOutputValues: remote && ctx.state.keepOutputValues,
@@ -2649,6 +2679,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 					KeepUnknowns:     true,
 					KeepSecrets:      true,
 					KeepResources:    ctx.state.keepResources,
+					KeepByteString:   ctx.state.keepByteString,
 					KeepOutputValues: remote && ctx.state.keepOutputValues,
 				},
 			)
@@ -2913,9 +2944,10 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 		outsMarshalled, err := plugin.MarshalProperties(
 			outsResolved.ObjectValue(),
 			plugin.MarshalOptions{
-				KeepUnknowns:  true,
-				KeepSecrets:   true,
-				KeepResources: ctx.state.keepResources,
+				KeepUnknowns:   true,
+				KeepSecrets:    true,
+				KeepResources:  ctx.state.keepResources,
+				KeepByteString: ctx.state.keepByteString,
 			})
 		if err != nil {
 			return
