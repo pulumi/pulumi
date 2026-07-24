@@ -49,6 +49,7 @@ func newEnvProviderAWSLoginStaticCmd(env *envCommand) *cobra.Command {
 	var pathStr string
 	var draft string
 	var create bool
+	var exportEnvVars bool
 
 	cmd := &cobra.Command{
 		Use:   "static [<org>/][<project>/]<environment-name> <access-key-id> <secret-access-key>",
@@ -88,16 +89,23 @@ func newEnvProviderAWSLoginStaticCmd(env *envCommand) *cobra.Command {
 
 			node := buildAWSLoginStaticNode(accessKeyID, secretAccessKey, sessionToken)
 
+			var envVars []envVar
+			if exportEnvVars {
+				envVars = awsLoginEnvVars(propertyPathRef(path))
+			}
+
 			if err := ensureProviderEnv(ctx, env, ref, create); err != nil {
 				return err
 			}
-			return applyProviderUpdate(ctx, env, ref, draft, path, node)
+			return applyProviderUpdate(ctx, env, ref, draft, path, node, envVars)
 		},
 	}
 
 	cmd.Flags().StringVar(&sessionToken, "session-token", "", "optional AWS session token")
 	cmd.Flags().
 		StringVar(&pathStr, "path", "aws.login", "property path under `values` where the provider block is written")
+	cmd.Flags().BoolVar(&exportEnvVars, "export-env-vars", false,
+		"also set the AWS SDK environment variables (AWS_ACCESS_KEY_ID, etc.) referencing the login outputs")
 	cmd.Flags().BoolVar(&create, "create", false,
 		"create the environment if it does not already exist")
 	cmd.Flags().StringVar(&draft, "draft", "",
@@ -105,6 +113,17 @@ func newEnvProviderAWSLoginStaticCmd(env *envCommand) *cobra.Command {
 	cmd.Flag("draft").NoOptDefVal = "new"
 
 	return cmd
+}
+
+// awsLoginEnvVars returns the standard AWS SDK environment variables that reference the aws-login
+// provider's outputs at pathRef (e.g. "aws.login"), matching the environments the Pulumi Cloud
+// console writes so `esc run` picks up credentials without extra wiring.
+func awsLoginEnvVars(pathRef string) []envVar {
+	return []envVar{
+		{"AWS_ACCESS_KEY_ID", "${" + pathRef + ".accessKeyId}"},
+		{"AWS_SECRET_ACCESS_KEY", "${" + pathRef + ".secretAccessKey}"},
+		{"AWS_SESSION_TOKEN", "${" + pathRef + ".sessionToken}"},
+	}
 }
 
 // buildAWSLoginStaticNode returns a yaml.Node representing
@@ -151,6 +170,7 @@ func newEnvProviderAWSLoginOIDCCmd(env *envCommand) *cobra.Command {
 	var pathStr string
 	var draft string
 	var create bool
+	var exportEnvVars bool
 
 	cmd := &cobra.Command{
 		Use:   "oidc [<org>/][<project>/]<environment-name> <role-arn> <session-name>",
@@ -191,10 +211,15 @@ func newEnvProviderAWSLoginOIDCCmd(env *envCommand) *cobra.Command {
 
 			node := buildAWSLoginOIDCNode(roleArn, sessionName, duration, policyArns, subjectAttributes)
 
+			var envVars []envVar
+			if exportEnvVars {
+				envVars = awsLoginEnvVars(propertyPathRef(path))
+			}
+
 			if err := ensureProviderEnv(ctx, env, ref, create); err != nil {
 				return err
 			}
-			return applyProviderUpdate(ctx, env, ref, draft, path, node)
+			return applyProviderUpdate(ctx, env, ref, draft, path, node, envVars)
 		},
 	}
 
@@ -205,6 +230,8 @@ func newEnvProviderAWSLoginOIDCCmd(env *envCommand) *cobra.Command {
 		"OIDC subject attribute to include in the session token (repeatable)")
 	cmd.Flags().
 		StringVar(&pathStr, "path", "aws.login", "property path under `values` where the provider block is written")
+	cmd.Flags().BoolVar(&exportEnvVars, "export-env-vars", false,
+		"also set the AWS SDK environment variables (AWS_ACCESS_KEY_ID, etc.) referencing the login outputs")
 	cmd.Flags().BoolVar(&create, "create", false,
 		"create the environment if it does not already exist")
 	cmd.Flags().StringVar(&draft, "draft", "",

@@ -51,6 +51,7 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 	var pathStr string
 	var draft string
 	var create bool
+	var exportEnvVars bool
 
 	cmd := &cobra.Command{
 		Use:   "static [<org>/][<project>/]<environment-name> <project-number> <access-token>",
@@ -97,10 +98,15 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 
 			node := buildGCPLoginStaticNode(project, accessToken, serviceAccount, tokenLifetime)
 
+			var envVars []envVar
+			if exportEnvVars {
+				envVars = gcpLoginEnvVars(propertyPathRef(path))
+			}
+
 			if err := ensureProviderEnv(ctx, env, ref, create); err != nil {
 				return err
 			}
-			return applyProviderUpdate(ctx, env, ref, draft, path, node)
+			return applyProviderUpdate(ctx, env, ref, draft, path, node, envVars)
 		},
 	}
 
@@ -109,6 +115,8 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 		StringVar(&tokenLifetime, "token-lifetime", "", "optional lifetime for impersonated credentials, e.g. 1h30m")
 	cmd.Flags().
 		StringVar(&pathStr, "path", "gcp.login", "property path under `values` where the provider block is written")
+	cmd.Flags().BoolVar(&exportEnvVars, "export-env-vars", false,
+		"also set the Google SDK environment variables (GOOGLE_PROJECT, etc.) referencing the login outputs")
 	cmd.Flags().BoolVar(&create, "create", false,
 		"create the environment if it does not already exist")
 	cmd.Flags().StringVar(&draft, "draft", "",
@@ -171,6 +179,7 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 	var pathStr string
 	var draft string
 	var create bool
+	var exportEnvVars bool
 
 	cmd := &cobra.Command{
 		Use:   "oidc [<org>/][<project>/]<environment-name> <project-number>",
@@ -226,10 +235,15 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 				subjectAttributes,
 			)
 
+			var envVars []envVar
+			if exportEnvVars {
+				envVars = gcpLoginEnvVars(propertyPathRef(path))
+			}
+
 			if err := ensureProviderEnv(ctx, env, ref, create); err != nil {
 				return err
 			}
-			return applyProviderUpdate(ctx, env, ref, draft, path, node)
+			return applyProviderUpdate(ctx, env, ref, draft, path, node, envVars)
 		},
 	}
 
@@ -243,6 +257,8 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 		"OIDC subject attribute to include in the federated token (repeatable)")
 	cmd.Flags().
 		StringVar(&pathStr, "path", "gcp.login", "property path under `values` where the provider block is written")
+	cmd.Flags().BoolVar(&exportEnvVars, "export-env-vars", false,
+		"also set the Google SDK environment variables (GOOGLE_PROJECT, etc.) referencing the login outputs")
 	cmd.Flags().BoolVar(&create, "create", false,
 		"create the environment if it does not already exist")
 	cmd.Flags().StringVar(&draft, "draft", "",
@@ -254,6 +270,17 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 	_ = cmd.MarkFlagRequired("service-account")
 
 	return cmd
+}
+
+// gcpLoginEnvVars returns the Google SDK environment variables that reference the gcp-login
+// provider's outputs at pathRef (e.g. "gcp.login"), matching the environments the Pulumi Cloud
+// console writes so `esc run` picks up credentials without extra wiring.
+func gcpLoginEnvVars(pathRef string) []envVar {
+	return []envVar{
+		{"GOOGLE_PROJECT", "${" + pathRef + ".project}"},
+		{"GOOGLE_OAUTH_ACCESS_TOKEN", "${" + pathRef + ".accessToken}"},
+		{"CLOUDSDK_AUTH_ACCESS_TOKEN", "${" + pathRef + ".accessToken}"},
+	}
 }
 
 // buildGCPLoginOIDCNode returns a yaml.Node representing
