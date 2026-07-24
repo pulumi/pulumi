@@ -99,6 +99,10 @@ type PulumiSink struct {
 	// wrapped engine error string. counts is the typed ResourceChanges map
 	// from the engine.
 	OnEnd func(toolName, err string, counts display.ResourceChanges, elapsed string)
+	// OnPermalink reports the operation's identifiers when the cloud backend
+	// computes the permalink at operation start; it never fires for non-cloud
+	// backends. Mirrors backend.UpdateOptions.OnPermalink.
+	OnPermalink func(url string, updateID string, version int, preview bool)
 }
 
 // NewPulumi creates a Pulumi handler sandboxed under cwd. The workspace is captured
@@ -163,6 +167,7 @@ func (e envVal) Value() string {
 
 // pulumiResult matches pulumi-service's PulumiOperationResult so tool consumers on the
 // agent side don't care whether the call ran locally or in a Deployment.
+// DeploymentID is reserved for Deployments-API runs; empty for in-process runs.
 type pulumiResult struct {
 	DeploymentID  string `json:"deployment_id"`
 	ConsoleURL    string `json:"console_url"`
@@ -173,6 +178,10 @@ type pulumiResult struct {
 	StackName     string `json:"stack_name"`
 	UpdateSummary string `json:"update_summary,omitempty"`
 	EventsFile    string `json:"events_file,omitempty"`
+	// UpdateID identifies the operation; set when running against the cloud backend.
+	UpdateID string `json:"update_id,omitempty"`
+	// Version is the stack's update version; only meaningful for non-preview updates.
+	Version int `json:"version,omitempty"`
 }
 
 // Invoke dispatches a single pulumi method call.
@@ -289,6 +298,11 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		return failedResult(a, "", fmt.Errorf("gathering metadata: %w", err))
 	}
 
+	// Populated by opts.OnPermalink when the cloud backend computes the permalink.
+	// The callback runs synchronously on this goroutine, so no locking is needed.
+	var consoleURL, updateID string
+	var version int
+
 	opts := backend.UpdateOptions{
 		AutoApprove: true, // Upstream approval already gates pulumi_up before dispatch.
 		Engine: engine.UpdateOptions{
@@ -306,6 +320,12 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 			Type:             backendDisplay.DisplayProgress,
 			Stdout:           io.Discard,
 			Stderr:           io.Discard,
+		},
+		OnPermalink: func(url string, id string, v int, preview bool) {
+			consoleURL, updateID, version = url, id, v
+			if p.Sink != nil && p.Sink.OnPermalink != nil {
+				p.Sink.OnPermalink(url, id, v, preview)
+			}
 		},
 	}
 
@@ -371,7 +391,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	close(eventsCh)
 	<-drainDone
 
-	res := newPulumiResult(proj, s.Ref(), eventsPath)
+	res := newPulumiResult(proj, s.Ref(), eventsPath, consoleURL, updateID, version)
 
 	switch {
 	case runErr != nil && errors.Is(ctx.Err(), context.Canceled):
@@ -651,11 +671,20 @@ func silenceStd() func() {
 // would cause the agent to construct entities with malformed names whenever
 // the LLM passes an FQSN — a phrasing the CLI itself encourages via some of
 // its own error messages.
-func newPulumiResult(proj *workspace.Project, stackRef backend.StackReference, eventsPath string) pulumiResult {
+//
+// consoleURL, updateID, and version come from OnPermalink and are zero for
+// non-cloud backends. DeploymentID stays empty (Deployments-API runs only).
+func newPulumiResult(
+	proj *workspace.Project, stackRef backend.StackReference,
+	eventsPath, consoleURL, updateID string, version int,
+) pulumiResult {
 	return pulumiResult{
 		ProjectName: proj.Name.String(),
 		StackName:   stackRef.Name().String(),
 		EventsFile:  eventsPath,
+		ConsoleURL:  consoleURL,
+		UpdateID:    updateID,
+		Version:     version,
 	}
 }
 
