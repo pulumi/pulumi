@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/blang/semver"
@@ -45,8 +46,11 @@ func (p *ByteSourceProvider) Close() error {
 // Handshake is implemented so the wrapping provider server can negotiate the byte string
 // capability with the engine; the capability is only negotiated at handshake time.
 func (p *ByteSourceProvider) Handshake(
-	context.Context, plugin.ProviderHandshakeRequest,
+	_ context.Context, req plugin.ProviderHandshakeRequest,
 ) (*plugin.ProviderHandshakeResponse, error) {
+	if !req.AcceptsByteString {
+		return nil, errors.New("bytesource requires an engine that accepts byte strings")
+	}
 	return &plugin.ProviderHandshakeResponse{}, nil
 }
 
