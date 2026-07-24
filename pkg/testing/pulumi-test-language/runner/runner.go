@@ -1681,7 +1681,7 @@ func runLanguageTests(
 			assertPreview = func(
 				l *tests.L, args tests.AssertPreviewArgs,
 			) {
-				require.NoErrorf(l, err, "expected no error in preview")
+				require.NoErrorf(l, args.Err, "expected no error in preview")
 			}
 		}
 
