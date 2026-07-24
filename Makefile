@@ -90,6 +90,7 @@ test-nodejs-automation-api:: generate-cli-spec
 .PHONY: generate-python-automation-api
 generate-python-automation-api:: generate-cli-spec
 	cd sdk/python/tools/automation && pip install -q -r requirements.txt && python main.py ../../../../tools/automation/specification.json boilerplate/standard.py ../../lib/pulumi/automation/interface
+	cd sdk/python && uv run --frozen -m ruff format lib/pulumi/automation/interface
 
 .PHONY: test-python-automation-api
 test-python-automation-api::
@@ -106,6 +107,9 @@ generate-go-automation-api:: generate-cli-spec
 .PHONY: test-go-automation-api
 test-go-automation-api::
 	cd sdk && go test ./go/tools/automation/...
+
+.PHONY: generate-automation-apis
+generate-automation-apis:: generate-nodejs-automation-api generate-python-automation-api generate-go-automation-api
 
 # For the `pulumi` CLI, building grpc with grpcnotrace has no effect since there other imports that end up disabling
 # dead code elimation due to the usage of certain reflection methods.

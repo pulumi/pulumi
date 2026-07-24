@@ -40,3 +40,15 @@ jobs:
       queue-merge: true
       run-dispatch-commands: true
     secrets: inherit
+
+  update-dotnet-automation-api:
+    name: update-dotnet-automation-api
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger pulumi-dotnet automation API update
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        run: |
+          gh api repos/pulumi/pulumi-dotnet/dispatches \
+            -f event_type=update-automation-api \
+            -f "client_payload[ref]=${{ github.event.release.tag_name }}"

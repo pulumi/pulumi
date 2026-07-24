@@ -1,0 +1,67 @@
+name: Update Automation APIs
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  regenerate:
+    name: Regenerate automation APIs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+      - uses: ./.github/actions/retry
+        with:
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
+      - name: Regenerate
+        run: make generate-automation-apis
+      - name: Create or update PR
+        id: pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Automation APIs are up to date."
+            exit 0
+          fi
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git switch --create automation/update-automation-api
+          git commit -m "Regenerate automation APIs from the CLI specification"
+          git push --force origin HEAD
+          # If a PR is already open for this branch, the force-push above refreshed it; reuse its URL.
+          existing=$(gh pr list --head automation/update-automation-api --state open --json url --jq '.[0].url')
+          if [ -n "$existing" ]; then
+            echo "PR already open: ${existing}; refreshed the branch."
+            echo "url=${existing}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pr_url=$(gh pr create --draft \
+            --label impact/no-changelog-required \
+            --title "Regenerate automation APIs" \
+            --body "The CLI specification no longer matches the generated automation APIs. This PR regenerates them from ${GITHUB_SHA}.")
+          echo "url=${pr_url}" >> "$GITHUB_OUTPUT"
+      - name: Notify Slack
+        if: steps.pr.outputs.url != ''
+        uses: slackapi/slack-github-action@v2
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.RELEASE_BOT_TOKEN }}
+          payload: |
+            channel: "#team-iac-core"
+            text: "The `pulumi` automation APIs have drifted from the CLI; a regeneration PR is ready for review: ${{ steps.pr.outputs.url }}"
