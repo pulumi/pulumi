@@ -262,6 +262,9 @@ export class ConvertSnippetRequest extends jspb.Message {
     getAttributesMap(): jspb.Map<string, string>;
     clearAttributesMap(): void;
 
+    getResourcesMap(): jspb.Map<string, ConvertSnippetRequest.ResourceReference>;
+    clearResourcesMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConvertSnippetRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ConvertSnippetRequest): ConvertSnippetRequest.AsObject;
@@ -281,7 +284,37 @@ export namespace ConvertSnippetRequest {
         token: string,
 
         attributesMap: Array<[string, string]>,
+
+        resourcesMap: Array<[string, ConvertSnippetRequest.ResourceReference.AsObject]>,
     }
+
+
+    export class ResourceReference extends jspb.Message {
+        getToken(): string;
+        setToken(value: string): ResourceReference;
+
+        hasPackage(): boolean;
+        clearPackage(): void;
+        getPackage(): pulumi_codegen_loader_pb.GetSchemaRequest | undefined;
+        setPackage(value?: pulumi_codegen_loader_pb.GetSchemaRequest): ResourceReference;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): ResourceReference.AsObject;
+        static toObject(includeInstance: boolean, msg: ResourceReference): ResourceReference.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: ResourceReference, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): ResourceReference;
+        static deserializeBinaryFromReader(message: ResourceReference, reader: jspb.BinaryReader): ResourceReference;
+    }
+
+    export namespace ResourceReference {
+        export type AsObject = {
+            token: string,
+            pb_package?: pulumi_codegen_loader_pb.GetSchemaRequest.AsObject,
+        }
+    }
+
 }
 
 export class ConvertSnippetResponse extends jspb.Message { 
@@ -298,6 +331,9 @@ export class ConvertSnippetResponse extends jspb.Message {
 
     getAttributesMap(): jspb.Map<string, string>;
     clearAttributesMap(): void;
+
+    getResourceNamesMap(): jspb.Map<string, string>;
+    clearResourceNamesMap(): void;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConvertSnippetResponse.AsObject;
@@ -316,5 +352,7 @@ export namespace ConvertSnippetResponse {
         source: Uint8Array | string,
 
         attributesMap: Array<[string, string]>,
+
+        resourceNamesMap: Array<[string, string]>,
     }
 }

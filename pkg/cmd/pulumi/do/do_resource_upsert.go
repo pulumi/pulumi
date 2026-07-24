@@ -16,8 +16,10 @@ package do
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
@@ -33,7 +35,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -81,6 +85,7 @@ type RunStatefulUpdateFunc func(
 func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.Command {
 	var inputFile string
 	var inputFormat string
+	var resourcesFile string
 	var yes bool
 	cmd := &cobra.Command{
 		Use:   "upsert <name>",
@@ -93,17 +98,18 @@ func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.
 		RunE: func(cmd *cobra.Command, args []string) error {
 			contract.Assertf(!pc.stateless, "upsert should not be registered in stateless mode")
 			return pc.runStatefulSnippetUpdate(cmd, statefulSnippetUpdate{
-				res:          res,
-				name:         args[0],
-				inputFile:    inputFile,
-				inputFormat:  inputFormat,
-				yes:          yes,
-				verb:         "upserted",
-				requireFresh: false,
+				res:           res,
+				name:          args[0],
+				inputFile:     inputFile,
+				inputFormat:   inputFormat,
+				resourcesFile: resourcesFile,
+				yes:           yes,
+				verb:          "upserted",
+				requireFresh:  false,
 			})
 		},
 	}
-	addStatefulSnippetUpdateFlags(cmd, &inputFile, &inputFormat, &yes, res.InputProperties)
+	addStatefulSnippetUpdateFlags(cmd, &inputFile, &inputFormat, &resourcesFile, &yes, res.InputProperties)
 	return cmd
 }
 
@@ -111,12 +117,13 @@ func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.
 // that vary between commands. Everything else — parsing the input file, loading the stack,
 // resolving the snippet UUID, and dispatching to runStatefulUpdate — is shared.
 type statefulSnippetUpdate struct {
-	res         *schema.Resource
-	name        string
-	inputFile   string
-	inputFormat string
-	yes         bool
-	verb        string // completion-message verb, e.g. "created" or "upserted"
+	res           *schema.Resource
+	name          string
+	inputFile     string
+	inputFormat   string
+	resourcesFile string
+	yes           bool
+	verb          string // completion-message verb, e.g. "created" or "upserted"
 	// requireFresh errors when a snippet with the same (Name, Type) already exists in the stack —
 	// the invariant `create` enforces to distinguish itself from `upsert`.
 	requireFresh bool
@@ -136,17 +143,25 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	}
 
 	ctx := cmd.Context()
+	resources, err := readResourceReferences(args.resourcesFile)
+	if err != nil {
+		return err
+	}
 
 	// Merge --input-* flags into the file's PCL AST so the persisted snippet body matches what
 	// the user typed on the command line. If no file was provided, the flags become the snippet
 	// body by themselves.
 	inputFlags := collectInputFlags(cmd, "input", args.res.InputProperties)
-	code, _, err := parseFile(
+	code, _, resourceNames, err := parseFile(
 		ctx, args.inputFile, "input", args.inputFormat, args.res.Token,
-		pc.converter, pc.loaderTarget, pc.packageDescriptor, inputFlags,
+		pc.converter, pc.loaderTarget, pc.packageDescriptor, inputFlags, resourceReferenceInfos(resources),
 	)
 	if err != nil {
 		return fmt.Errorf("read input file: %w", err)
+	}
+	references, err := applyResourceNameRemaps(resources, resourceNames)
+	if err != nil {
+		return err
 	}
 
 	// Open the stack up front so we can look at the existing snapshot before deciding whether
@@ -183,6 +198,7 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 		Type:       args.res.Token,
 		Code:       string(code),
 		Descriptor: packageDescriptorFromProto(pc.packageDescriptor),
+		References: references,
 	}
 
 	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
@@ -265,14 +281,98 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 
 // addStatefulSnippetUpdateFlags installs the flag set shared by stateful `create` and `upsert`.
 func addStatefulSnippetUpdateFlags(
-	cmd *cobra.Command, inputFile, inputFormat *string, yes *bool, inputs []*schema.Property,
+	cmd *cobra.Command, inputFile, inputFormat, resourcesFile *string, yes *bool, inputs []*schema.Property,
 ) {
 	cmd.Flags().StringVar(inputFile, "input-file", "", "Path to a file containing resource inputs")
 	cmd.Flags().StringVar(inputFormat, "input", "yaml",
 		"Format of the resource inputs file (any language name supported by an installed converter)")
+	cmd.Flags().StringVar(resourcesFile, "resources", "",
+		"Path to a JSON file mapping identifiers to resource URNs that input expressions may reference")
 	cmd.Flags().BoolVar(yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
 	addInputFlags(cmd, "input", inputs)
+}
+
+func readResourceReferences(path string) (map[string]string, error) {
+	if path == "" {
+		return nil, nil
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("open resources file: %w", err)
+	}
+	defer contract.IgnoreClose(f)
+
+	var refs map[string]string
+	if err := json.NewDecoder(f).Decode(&refs); err != nil {
+		return nil, fmt.Errorf("parse resources file: %w", err)
+	}
+	for name, rawURN := range refs {
+		if name == "" {
+			return nil, errors.New("resources file contains an empty resource name")
+		}
+		urn, err := resource.ParseURN(rawURN)
+		if err != nil {
+			return nil, fmt.Errorf("resources file contains invalid URN for %q: %w", name, err)
+		}
+		refs[name] = string(urn)
+	}
+	return refs, nil
+}
+
+func resourceReferenceInfos(resources map[string]string) map[string]plugin.ConvertSnippetResourceReference {
+	if len(resources) == 0 {
+		return nil
+	}
+
+	refs := make(map[string]plugin.ConvertSnippetResourceReference, len(resources))
+	for name, rawURN := range resources {
+		urn := resource.URN(rawURN)
+		typ := urn.Type()
+		pkg := typ.Package()
+		if sdkproviders.IsProviderType(typ) {
+			pkg = sdkproviders.GetProviderPackage(typ)
+		}
+		refs[name] = plugin.ConvertSnippetResourceReference{
+			Token: string(typ),
+			Package: &codegenrpc.GetSchemaRequest{
+				Package: string(pkg),
+			},
+		}
+	}
+	return refs
+}
+
+func applyResourceNameRemaps(resources, resourceNames map[string]string) (map[string]string, error) {
+	if len(resources) == 0 {
+		return nil, nil
+	}
+
+	refs := make(map[string]string, len(resources))
+	for oldName, urn := range resources {
+		newName := oldName
+		if renamed, ok := resourceNames[oldName]; ok {
+			if renamed == "" {
+				return nil, fmt.Errorf("converter returned an empty resource name for %q", oldName)
+			}
+			newName = renamed
+		}
+		if _, exists := refs[newName]; exists {
+			return nil, fmt.Errorf("converter mapped multiple resources to %q", newName)
+		}
+		refs[newName] = urn
+	}
+
+	for oldName, newName := range resourceNames {
+		if _, ok := resources[oldName]; !ok {
+			return nil, fmt.Errorf("converter returned a resource name mapping for unknown resource %q", oldName)
+		}
+		if newName == "" {
+			return nil, fmt.Errorf("converter returned an empty resource name for %q", oldName)
+		}
+	}
+
+	return refs, nil
 }
 
 // resolveSnippetUUID looks up an existing snippet in snap matching (name, resourceToken) and
