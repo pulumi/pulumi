@@ -607,10 +607,15 @@ func generateAndLinkSdksForPackages(
 			pkgWorkspace.Instance,
 			pctx,
 			pkg.Name,
-			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},
+			&plugin.ParameterizeValue{
+				Name:    pkg.Parameterization.Name,
+				Version: pkg.Parameterization.Version,
+				Value:   pkg.Parameterization.Value,
+			},
 			registry,
 			env.Global(),
-			0, /* unbounded concurrency */
+			0,     /* unbounded concurrency */
+			false, /* asExtension */
 		)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)

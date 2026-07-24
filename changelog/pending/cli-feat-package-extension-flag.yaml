@@ -1,0 +1,6 @@
+component: cli
+kind: feat
+body: Add an `--extension` flag to package commands for extension-parameterized packages, reinstalled from `Pulumi.yaml` on `pulumi install`
+time: 2026-06-16T00:00:00+00:00
+custom:
+  PR: ""

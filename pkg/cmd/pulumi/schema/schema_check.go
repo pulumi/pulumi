@@ -48,6 +48,8 @@ type checkArgs struct {
 
 func newSchemaCheckCommand() *cobra.Command {
 	schemaCheckArgs := checkArgs{}
+	var parameterArgs []string
+	var asExtension bool
 
 	cmd := &cobra.Command{
 		Use:   "check",
@@ -84,7 +86,7 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 			}
 			defer contract.IgnoreClose(pctx)
 
-			spec, err := schemaFromSourceOrStdin(cmd, pctx, reg, source, args[1:])
+			spec, err := schemaFromSourceOrStdin(cmd, pctx, reg, source, parameterArgs, asExtension)
 			if err != nil {
 				return err
 			}
@@ -117,6 +119,7 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 
 	cmd.PersistentFlags().BoolVar(&schemaCheckArgs.allowDanglingReferences, "allow-dangling-references", false,
 		"Whether references to nonexistent types should be considered errors")
+	packages.AddExtensionFlag(cmd, &parameterArgs, &asExtension)
 
 	return cmd
 }
@@ -125,7 +128,7 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 // the schema is read as JSON from stdin. Otherwise it delegates to SchemaFromSchemaSource
 // which supports files, plugin names, and plugin paths.
 func schemaFromSourceOrStdin(
-	cmd *cobra.Command, pctx *plugin.Context, reg registry.Registry, source string, extraArgs []string,
+	cmd *cobra.Command, pctx *plugin.Context, reg registry.Registry, source string, extraArgs []string, asExtension bool,
 ) (*schema.PackageSpec, error) {
 	if source == "-" {
 		return schemaFromStdin(cmd)
@@ -133,7 +136,7 @@ func schemaFromSourceOrStdin(
 
 	parameters := &plugin.ParameterizeArgs{Args: extraArgs}
 	spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
-		reg, env.Global(), 0 /* unbounded concurrency */)
+		reg, env.Global(), 0 /* unbounded concurrency */, asExtension)
 	if err != nil {
 		return nil, err
 	}
