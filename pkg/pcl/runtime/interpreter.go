@@ -1970,7 +1970,13 @@ func (i *Interpreter) registerResourceWith(
 		return cty.NilVal, err
 	}
 
-	outputs["id"] = resource.NewProperty(resp.GetId())
+	// During previews a created resource has no ID yet; represent it as unknown
+	// rather than a known empty string so it can't be observed as a real value.
+	if id := resp.GetId(); id == "" && i.info.DryRun {
+		outputs["id"] = resource.MakeComputed(resource.NewProperty(""))
+	} else {
+		outputs["id"] = resource.NewProperty(id)
+	}
 	outputs["urn"] = resource.NewProperty(resp.GetUrn())
 	outputs["__name"] = resource.NewProperty(request.Name)
 	outputs["__type"] = resource.NewProperty(request.Type)
