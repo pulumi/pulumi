@@ -314,6 +314,29 @@ type EnvironmentsBackend interface {
 		duration time.Duration,
 		environmentOverrides map[string]string,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+
+	// GetEnvironment reads a named environment at the given version (empty for latest). If decrypt is
+	// true, fn::secret ciphertext in the definition is decrypted in place. etag enables read-modify-write
+	// against the same revision; revision is returned for later pin/restore use.
+	GetEnvironment(
+		ctx context.Context,
+		org string,
+		projectName string,
+		envName string,
+		version string,
+		decrypt bool,
+	) (yaml []byte, etag string, revision int, err error)
+
+	// UpdateEnvironmentWithProject replaces a named environment's definition YAML. A non-empty etag is
+	// checked against the current revision and the update fails with a conflict if they differ.
+	UpdateEnvironmentWithProject(
+		ctx context.Context,
+		org string,
+		projectName string,
+		envName string,
+		yaml []byte,
+		etag string,
+	) (apitype.EnvironmentDiagnostics, error)
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the
@@ -464,6 +487,9 @@ var (
 	// which do not support the teams feature.
 	ErrTeamsNotSupported  = errors.New("teams are not supported")
 	ErrConfigNotSupported = errors.New("remote config is not supported")
+	// ErrConfigConflict is returned by UpdateEnvironmentWithProject when the environment was modified
+	// since the etag was read.
+	ErrConfigConflict = errors.New("remote config was modified concurrently")
 )
 
 // CreateStackOptions provides options for stack creation.
