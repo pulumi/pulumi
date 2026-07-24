@@ -1,4 +1,4 @@
 component: engine
 kind: improvement
-body: policy packs can now point to executable binaries, not just script folders
+body: Allow policy packs to point to executable binaries, not just script folders
 time: 2026-07-23T21:42:38.123963+01:00
