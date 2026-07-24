@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -72,6 +73,20 @@ func (c *converterServer) ConvertState(ctx context.Context,
 				Version: e.Version,
 				Value:   e.Value,
 			}
+		}
+		if resource.Inputs != nil {
+			inputs, err := MarshalProperties(resource.Inputs, MarshalOptions{KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("marshaling inputs for resource %q: %w", resource.Name, err)
+			}
+			resources[i].Inputs = inputs
+		}
+		if resource.Outputs != nil {
+			outputs, err := MarshalProperties(resource.Outputs, MarshalOptions{KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("marshaling outputs for resource %q: %w", resource.Name, err)
+			}
+			resources[i].Outputs = outputs
 		}
 	}
 

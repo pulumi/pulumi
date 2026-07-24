@@ -24,6 +24,7 @@ import (
 	codegen "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -135,7 +136,16 @@ type ResourceImport struct {
 	// the name of the resource's explicit provider, if any. Must reference the name of a provider
 	// declared as another resource (of type "pulumi:providers:<package>") in the same response;
 	// resources without a provider are served by an appropriate default provider.
-	Provider      string `protobuf:"bytes,13,opt,name=provider,proto3" json:"provider,omitempty"`
+	Provider string `protobuf:"bytes,13,opt,name=provider,proto3" json:"provider,omitempty"`
+	// input properties supplied for the resource, if any. Values the provider's Read cannot return
+	// (e.g. write-only attributes) are taken from here instead. For a provider declared in the
+	// response, inputs is its configuration. Secret values are marked with Pulumi's standard secret
+	// signature.
+	Inputs *structpb.Struct `protobuf:"bytes,14,opt,name=inputs,proto3" json:"inputs,omitempty"`
+	// the resource's full output state, if any. When set, the resource is imported from these values
+	// directly and the provider's Read is skipped entirely. Secret values are marked with Pulumi's
+	// standard secret signature.
+	Outputs       *structpb.Struct `protobuf:"bytes,15,opt,name=outputs,proto3" json:"outputs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -259,6 +269,20 @@ func (x *ResourceImport) GetProvider() string {
 		return x.Provider
 	}
 	return ""
+}
+
+func (x *ResourceImport) GetInputs() *structpb.Struct {
+	if x != nil {
+		return x.Inputs
+	}
+	return nil
+}
+
+func (x *ResourceImport) GetOutputs() *structpb.Struct {
+	if x != nil {
+		return x.Outputs
+	}
+	return nil
 }
 
 // A ResourceParameterization describes the base plugin that a resource's parameterized provider is built
@@ -749,11 +773,11 @@ var File_pulumi_converter_proto protoreflect.FileDescriptor
 
 const file_pulumi_converter_proto_rawDesc = "" +
 	"\n" +
-	"\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\"s\n" +
+	"\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\"s\n" +
 	"\x13ConvertStateRequest\x12#\n" +
 	"\rmapper_target\x18\x01 \x01(\tR\fmapperTarget\x12\x12\n" +
 	"\x04args\x18\x02 \x03(\tR\x04args\x12#\n" +
-	"\rloader_target\x18\x03 \x01(\tR\floaderTarget\"\xd4\x03\n" +
+	"\rloader_target\x18\x03 \x01(\tR\floaderTarget\"\xb8\x04\n" +
 	"\x0eResourceImport\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x0e\n" +
@@ -770,7 +794,9 @@ const file_pulumi_converter_proto_rawDesc = "" +
 	"\n" +
 	"properties\x18\f \x03(\tR\n" +
 	"properties\x12\x1a\n" +
-	"\bprovider\x18\r \x01(\tR\bprovider\"x\n" +
+	"\bprovider\x18\r \x01(\tR\bprovider\x12/\n" +
+	"\x06inputs\x18\x0e \x01(\v2\x17.google.protobuf.StructR\x06inputs\x121\n" +
+	"\aoutputs\x18\x0f \x01(\v2\x17.google.protobuf.StructR\aoutputs\"x\n" +
 	"\x18ResourceParameterization\x12\x1f\n" +
 	"\vplugin_name\x18\x01 \x01(\tR\n" +
 	"pluginName\x12%\n" +
@@ -844,30 +870,33 @@ var file_pulumi_converter_proto_goTypes = []any{
 	(*ConvertSnippetResponse)(nil),   // 8: pulumirpc.ConvertSnippetResponse
 	nil,                              // 9: pulumirpc.ConvertSnippetRequest.AttributesEntry
 	nil,                              // 10: pulumirpc.ConvertSnippetResponse.AttributesEntry
-	(*codegen.Diagnostic)(nil),       // 11: pulumirpc.codegen.Diagnostic
-	(*codegen.GetSchemaRequest)(nil), // 12: codegen.GetSchemaRequest
+	(*structpb.Struct)(nil),          // 11: google.protobuf.Struct
+	(*codegen.Diagnostic)(nil),       // 12: pulumirpc.codegen.Diagnostic
+	(*codegen.GetSchemaRequest)(nil), // 13: codegen.GetSchemaRequest
 }
 var file_pulumi_converter_proto_depIdxs = []int32{
 	2,  // 0: pulumirpc.ResourceImport.parameterization:type_name -> pulumirpc.ResourceParameterization
 	3,  // 1: pulumirpc.ResourceImport.extension:type_name -> pulumirpc.ResourceExtension
-	1,  // 2: pulumirpc.ConvertStateResponse.resources:type_name -> pulumirpc.ResourceImport
-	11, // 3: pulumirpc.ConvertStateResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	11, // 4: pulumirpc.ConvertProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	12, // 5: pulumirpc.ConvertSnippetRequest.package:type_name -> codegen.GetSchemaRequest
-	9,  // 6: pulumirpc.ConvertSnippetRequest.attributes:type_name -> pulumirpc.ConvertSnippetRequest.AttributesEntry
-	11, // 7: pulumirpc.ConvertSnippetResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	10, // 8: pulumirpc.ConvertSnippetResponse.attributes:type_name -> pulumirpc.ConvertSnippetResponse.AttributesEntry
-	0,  // 9: pulumirpc.Converter.ConvertState:input_type -> pulumirpc.ConvertStateRequest
-	5,  // 10: pulumirpc.Converter.ConvertProgram:input_type -> pulumirpc.ConvertProgramRequest
-	7,  // 11: pulumirpc.Converter.ConvertSnippet:input_type -> pulumirpc.ConvertSnippetRequest
-	4,  // 12: pulumirpc.Converter.ConvertState:output_type -> pulumirpc.ConvertStateResponse
-	6,  // 13: pulumirpc.Converter.ConvertProgram:output_type -> pulumirpc.ConvertProgramResponse
-	8,  // 14: pulumirpc.Converter.ConvertSnippet:output_type -> pulumirpc.ConvertSnippetResponse
-	12, // [12:15] is the sub-list for method output_type
-	9,  // [9:12] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	11, // 2: pulumirpc.ResourceImport.inputs:type_name -> google.protobuf.Struct
+	11, // 3: pulumirpc.ResourceImport.outputs:type_name -> google.protobuf.Struct
+	1,  // 4: pulumirpc.ConvertStateResponse.resources:type_name -> pulumirpc.ResourceImport
+	12, // 5: pulumirpc.ConvertStateResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	12, // 6: pulumirpc.ConvertProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	13, // 7: pulumirpc.ConvertSnippetRequest.package:type_name -> codegen.GetSchemaRequest
+	9,  // 8: pulumirpc.ConvertSnippetRequest.attributes:type_name -> pulumirpc.ConvertSnippetRequest.AttributesEntry
+	12, // 9: pulumirpc.ConvertSnippetResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	10, // 10: pulumirpc.ConvertSnippetResponse.attributes:type_name -> pulumirpc.ConvertSnippetResponse.AttributesEntry
+	0,  // 11: pulumirpc.Converter.ConvertState:input_type -> pulumirpc.ConvertStateRequest
+	5,  // 12: pulumirpc.Converter.ConvertProgram:input_type -> pulumirpc.ConvertProgramRequest
+	7,  // 13: pulumirpc.Converter.ConvertSnippet:input_type -> pulumirpc.ConvertSnippetRequest
+	4,  // 14: pulumirpc.Converter.ConvertState:output_type -> pulumirpc.ConvertStateResponse
+	6,  // 15: pulumirpc.Converter.ConvertProgram:output_type -> pulumirpc.ConvertProgramResponse
+	8,  // 16: pulumirpc.Converter.ConvertSnippet:output_type -> pulumirpc.ConvertSnippetResponse
+	14, // [14:17] is the sub-list for method output_type
+	11, // [11:14] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_converter_proto_init() }

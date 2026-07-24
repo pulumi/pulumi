@@ -5,6 +5,7 @@
 /* eslint-disable */
 
 import * as jspb from "google-protobuf";
+import * as google_protobuf_struct_pb from "google-protobuf/google/protobuf/struct_pb";
 import * as pulumi_codegen_hcl_pb from "./codegen/hcl_pb";
 import * as pulumi_codegen_loader_pb from "./codegen/loader_pb";
 
@@ -72,6 +73,16 @@ export class ResourceImport extends jspb.Message {
     getProvider(): string;
     setProvider(value: string): ResourceImport;
 
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): ResourceImport;
+
+    hasOutputs(): boolean;
+    clearOutputs(): void;
+    getOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOutputs(value?: google_protobuf_struct_pb.Struct): ResourceImport;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceImport.AsObject;
     static toObject(includeInstance: boolean, msg: ResourceImport): ResourceImport.AsObject;
@@ -97,6 +108,8 @@ export namespace ResourceImport {
         parent: string,
         propertiesList: Array<string>,
         provider: string,
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        outputs?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }
 

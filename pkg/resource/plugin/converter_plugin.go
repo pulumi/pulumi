@@ -154,6 +154,20 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 				Value:   e.Value,
 			}
 		}
+		if resource.Inputs != nil {
+			inputs, err := UnmarshalProperties(resource.Inputs, MarshalOptions{Label: label, KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling inputs for resource %q: %w", resource.Name, err)
+			}
+			resources[i].Inputs = inputs
+		}
+		if resource.Outputs != nil {
+			outputs, err := UnmarshalProperties(resource.Outputs, MarshalOptions{Label: label, KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling outputs for resource %q: %w", resource.Name, err)
+			}
+			resources[i].Outputs = outputs
+		}
 	}
 
 	// Translate the rpc diagnostics into hcl.Diagnostics.

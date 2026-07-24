@@ -21,6 +21,7 @@ import collections.abc
 import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.message
+import google.protobuf.struct_pb2
 import pulumi.codegen.hcl_pb2
 import pulumi.codegen.loader_pb2
 import typing
@@ -74,6 +75,8 @@ class ResourceImport(google.protobuf.message.Message):
     PARENT_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     PROVIDER_FIELD_NUMBER: builtins.int
+    INPUTS_FIELD_NUMBER: builtins.int
+    OUTPUTS_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type token for the resource."""
     name: builtins.str
@@ -118,6 +121,21 @@ class ResourceImport(google.protobuf.message.Message):
         required properties.
         """
 
+    @property
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """input properties supplied for the resource, if any. Values the provider's Read cannot return
+        (e.g. write-only attributes) are taken from here instead. For a provider declared in the
+        response, inputs is its configuration. Secret values are marked with Pulumi's standard secret
+        signature.
+        """
+
+    @property
+    def outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """the resource's full output state, if any. When set, the resource is imported from these values
+        directly and the provider's Read is skipped entirely. Secret values are marked with Pulumi's
+        standard secret signature.
+        """
+
     def __init__(
         self,
         *,
@@ -134,9 +152,11 @@ class ResourceImport(google.protobuf.message.Message):
         parent: builtins.str = ...,
         properties: collections.abc.Iterable[builtins.str] | None = ...,
         provider: builtins.str = ...,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        outputs: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["extension", b"extension", "parameterization", b"parameterization"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["extension", b"extension", "id", b"id", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "parameterization", b"parameterization", "parent", b"parent", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "type", b"type", "version", b"version"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["extension", b"extension", "inputs", b"inputs", "outputs", b"outputs", "parameterization", b"parameterization"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["extension", b"extension", "id", b"id", "inputs", b"inputs", "is_component", b"is_component", "is_remote", b"is_remote", "logical_name", b"logical_name", "name", b"name", "outputs", b"outputs", "parameterization", b"parameterization", "parent", b"parent", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "type", b"type", "version", b"version"]) -> None: ...
 
 global___ResourceImport = ResourceImport
 

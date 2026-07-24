@@ -14,6 +14,7 @@
 
 syntax = "proto3";
 
+import "google/protobuf/struct.proto";
 import "pulumi/codegen/hcl.proto";
 import "pulumi/codegen/loader.proto";
 
@@ -88,6 +89,17 @@ message ResourceImport {
     // declared as another resource (of type "pulumi:providers:<package>") in the same response;
     // resources without a provider are served by an appropriate default provider.
     string provider = 13;
+
+    // input properties supplied for the resource, if any. Values the provider's Read cannot return
+    // (e.g. write-only attributes) are taken from here instead. For a provider declared in the
+    // response, inputs is its configuration. Secret values are marked with Pulumi's standard secret
+    // signature.
+    google.protobuf.Struct inputs = 14;
+
+    // the resource's full output state, if any. When set, the resource is imported from these values
+    // directly and the provider's Read is skipped entirely. Secret values are marked with Pulumi's
+    // standard secret signature.
+    google.protobuf.Struct outputs = 15;
 }
 
 // A ResourceParameterization describes the base plugin that a resource's parameterized provider is built
