@@ -31,8 +31,12 @@ type ArgFunctionResult struct {
 }
 
 func ArgFunctionOutput(ctx *pulumi.Context, args ArgFunctionOutputArgs, opts ...pulumi.InvokeOption) ArgFunctionResultOutput {
-	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-	return ctx.InvokeOutput("example::argFunction", args, ArgFunctionResultOutput{}, options).(ArgFunctionResultOutput)
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
+		ApplyT(func(v interface{}) (ArgFunctionResultOutput, error) {
+			args := v.(ArgFunctionArgs)
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("example::argFunction", args, ArgFunctionResultOutput{}, options).(ArgFunctionResultOutput), nil
+		}).(ArgFunctionResultOutput)
 }
 
 type ArgFunctionOutputArgs struct {

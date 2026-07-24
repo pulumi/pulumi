@@ -30,15 +30,19 @@ type InvokeSecretArgs struct {
 }
 
 func InvokeSecretOutput(ctx *pulumi.Context, args InvokeSecretOutputArgs, opts ...pulumi.InvokeOption) pulumi.Float64Output {
-	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-	rv := ctx.InvokeOutput("scalar-returns:index:invokeSecret", args, pulumi.Float64MapOutput{}, options).(pulumi.Float64MapOutput)
-	return rv.ApplyT(func(rv map[string]float64) float64 {
-		var result float64
-		for _, v := range rv {
-			result = v
-		}
-		return result
-	}).(pulumi.Float64Output)
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
+		ApplyT(func(v interface{}) (pulumi.Float64Output, error) {
+			args := v.(InvokeSecretArgs)
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			rv := ctx.InvokeOutput("scalar-returns:index:invokeSecret", args, pulumi.Float64MapOutput{}, options).(pulumi.Float64MapOutput)
+			return rv.ApplyT(func(rv map[string]float64) float64 {
+				var result float64
+				for _, v := range rv {
+					result = v
+				}
+				return result
+			}).(pulumi.Float64Output), nil
+		}).(pulumi.Float64Output)
 }
 
 type InvokeSecretOutputArgs struct {

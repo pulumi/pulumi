@@ -31,8 +31,12 @@ type Some_dataResult struct {
 }
 
 func Some_dataOutput(ctx *pulumi.Context, args Some_dataOutputArgs, opts ...pulumi.InvokeOption) Some_dataResultOutput {
-	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-	return ctx.InvokeOutput("snake_names:cool_module:some_data", args, Some_dataResultOutput{}, options).(Some_dataResultOutput)
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
+		ApplyT(func(v interface{}) (Some_dataResultOutput, error) {
+			args := v.(Some_dataArgs)
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("snake_names:cool_module:some_data", args, Some_dataResultOutput{}, options).(Some_dataResultOutput), nil
+		}).(Some_dataResultOutput)
 }
 
 type Some_dataOutputArgs struct {

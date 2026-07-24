@@ -34,8 +34,12 @@ type FuncWithAllOptionalInputsResult struct {
 }
 
 func FuncWithAllOptionalInputsOutput(ctx *pulumi.Context, args FuncWithAllOptionalInputsOutputArgs, opts ...pulumi.InvokeOption) FuncWithAllOptionalInputsResultOutput {
-	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-	return ctx.InvokeOutput("configstation::funcWithAllOptionalInputs", args, FuncWithAllOptionalInputsResultOutput{}, options).(FuncWithAllOptionalInputsResultOutput)
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
+		ApplyT(func(v interface{}) (FuncWithAllOptionalInputsResultOutput, error) {
+			args := v.(FuncWithAllOptionalInputsArgs)
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("configstation::funcWithAllOptionalInputs", args, FuncWithAllOptionalInputsResultOutput{}, options).(FuncWithAllOptionalInputsResultOutput), nil
+		}).(FuncWithAllOptionalInputsResultOutput)
 }
 
 type FuncWithAllOptionalInputsOutputArgs struct {

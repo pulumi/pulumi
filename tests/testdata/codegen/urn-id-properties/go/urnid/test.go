@@ -33,8 +33,12 @@ type TestResult struct {
 }
 
 func TestOutput(ctx *pulumi.Context, args TestOutputArgs, opts ...pulumi.InvokeOption) TestResultOutput {
-	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-	return ctx.InvokeOutput("urnid:index:Test", args, TestResultOutput{}, options).(TestResultOutput)
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
+		ApplyT(func(v interface{}) (TestResultOutput, error) {
+			args := v.(TestArgs)
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("urnid:index:Test", args, TestResultOutput{}, options).(TestResultOutput), nil
+		}).(TestResultOutput)
 }
 
 type TestOutputArgs struct {

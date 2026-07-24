@@ -30,15 +30,19 @@ type InvokeArrayArgs struct {
 }
 
 func InvokeArrayOutput(ctx *pulumi.Context, args InvokeArrayOutputArgs, opts ...pulumi.InvokeOption) pulumi.BoolArrayOutput {
-	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-	rv := ctx.InvokeOutput("scalar-returns:index:invokeArray", args, pulumi.BoolArrayMapOutput{}, options).(pulumi.BoolArrayMapOutput)
-	return rv.ApplyT(func(rv map[string][]bool) []bool {
-		var result []bool
-		for _, v := range rv {
-			result = v
-		}
-		return result
-	}).(pulumi.BoolArrayOutput)
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
+		ApplyT(func(v interface{}) (pulumi.BoolArrayOutput, error) {
+			args := v.(InvokeArrayArgs)
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			rv := ctx.InvokeOutput("scalar-returns:index:invokeArray", args, pulumi.BoolArrayMapOutput{}, options).(pulumi.BoolArrayMapOutput)
+			return rv.ApplyT(func(rv map[string][]bool) []bool {
+				var result []bool
+				for _, v := range rv {
+					result = v
+				}
+				return result
+			}).(pulumi.BoolArrayOutput), nil
+		}).(pulumi.BoolArrayOutput)
 }
 
 type InvokeArrayOutputArgs struct {

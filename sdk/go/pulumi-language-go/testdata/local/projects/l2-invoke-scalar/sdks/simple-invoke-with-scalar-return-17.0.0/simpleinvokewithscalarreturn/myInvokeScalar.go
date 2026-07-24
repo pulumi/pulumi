@@ -30,15 +30,19 @@ type MyInvokeScalarArgs struct {
 }
 
 func MyInvokeScalarOutput(ctx *pulumi.Context, args MyInvokeScalarOutputArgs, opts ...pulumi.InvokeOption) pulumi.BoolOutput {
-	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-	rv := ctx.InvokeOutput("simple-invoke-with-scalar-return:index:myInvokeScalar", args, pulumi.BoolMapOutput{}, options).(pulumi.BoolMapOutput)
-	return rv.ApplyT(func(rv map[string]bool) bool {
-		var result bool
-		for _, v := range rv {
-			result = v
-		}
-		return result
-	}).(pulumi.BoolOutput)
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
+		ApplyT(func(v interface{}) (pulumi.BoolOutput, error) {
+			args := v.(MyInvokeScalarArgs)
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			rv := ctx.InvokeOutput("simple-invoke-with-scalar-return:index:myInvokeScalar", args, pulumi.BoolMapOutput{}, options).(pulumi.BoolMapOutput)
+			return rv.ApplyT(func(rv map[string]bool) bool {
+				var result bool
+				for _, v := range rv {
+					result = v
+				}
+				return result
+			}).(pulumi.BoolOutput), nil
+		}).(pulumi.BoolOutput)
 }
 
 type MyInvokeScalarOutputArgs struct {

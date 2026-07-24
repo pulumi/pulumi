@@ -41,8 +41,12 @@ type ListConfigurationsResult struct {
 }
 
 func ListConfigurationsOutput(ctx *pulumi.Context, args ListConfigurationsOutputArgs, opts ...pulumi.InvokeOption) ListConfigurationsResultOutput {
-	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-	return ctx.InvokeOutput("myedgeorder::listConfigurations", args, ListConfigurationsResultOutput{}, options).(ListConfigurationsResultOutput)
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
+		ApplyT(func(v interface{}) (ListConfigurationsResultOutput, error) {
+			args := v.(ListConfigurationsArgs)
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("myedgeorder::listConfigurations", args, ListConfigurationsResultOutput{}, options).(ListConfigurationsResultOutput), nil
+		}).(ListConfigurationsResultOutput)
 }
 
 type ListConfigurationsOutputArgs struct {

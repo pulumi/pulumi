@@ -58,8 +58,12 @@ type GetAmiIdsResult struct {
 }
 
 func GetAmiIdsOutput(ctx *pulumi.Context, args GetAmiIdsOutputArgs, opts ...pulumi.InvokeOption) GetAmiIdsResultOutput {
-	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-	return ctx.InvokeOutput("mypkg::getAmiIds", args, GetAmiIdsResultOutput{}, options).(GetAmiIdsResultOutput)
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
+		ApplyT(func(v interface{}) (GetAmiIdsResultOutput, error) {
+			args := v.(GetAmiIdsArgs)
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("mypkg::getAmiIds", args, GetAmiIdsResultOutput{}, options).(GetAmiIdsResultOutput), nil
+		}).(GetAmiIdsResultOutput)
 }
 
 // A collection of arguments for invoking getAmiIds.

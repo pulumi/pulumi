@@ -43,8 +43,12 @@ type ListProductFamiliesResult struct {
 }
 
 func ListProductFamiliesOutput(ctx *pulumi.Context, args ListProductFamiliesOutputArgs, opts ...pulumi.InvokeOption) ListProductFamiliesResultOutput {
-	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-	return ctx.InvokeOutput("myedgeorder::listProductFamilies", args, ListProductFamiliesResultOutput{}, options).(ListProductFamiliesResultOutput)
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
+		ApplyT(func(v interface{}) (ListProductFamiliesResultOutput, error) {
+			args := v.(ListProductFamiliesArgs)
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("myedgeorder::listProductFamilies", args, ListProductFamiliesResultOutput{}, options).(ListProductFamiliesResultOutput), nil
+		}).(ListProductFamiliesResultOutput)
 }
 
 type ListProductFamiliesOutputArgs struct {

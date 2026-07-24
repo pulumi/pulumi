@@ -220,8 +220,12 @@ type ToSecretResult struct {
 }
 
 func ToSecretOutput(ctx *pulumi.Context, args ToSecretOutputArgs, opts ...pulumi.InvokeOption) ToSecretResultOutput {
-	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-	return ctx.InvokeOutput("config-grpc:index:toSecret", args, ToSecretResultOutput{}, options).(ToSecretResultOutput)
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
+		ApplyT(func(v interface{}) (ToSecretResultOutput, error) {
+			args := v.(ToSecretArgs)
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("config-grpc:index:toSecret", args, ToSecretResultOutput{}, options).(ToSecretResultOutput), nil
+		}).(ToSecretResultOutput)
 }
 
 type ToSecretOutputArgs struct {

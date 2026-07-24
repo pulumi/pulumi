@@ -32,8 +32,12 @@ type GetAssetsResult struct {
 }
 
 func GetAssetsOutput(ctx *pulumi.Context, args GetAssetsOutputArgs, opts ...pulumi.InvokeOption) GetAssetsResultOutput {
-	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-	return ctx.InvokeOutput("example::GetAssets", args, GetAssetsResultOutput{}, options).(GetAssetsResultOutput)
+	return pulumi.ToOutputWithContext(ctx.Context(), args).
+		ApplyT(func(v interface{}) (GetAssetsResultOutput, error) {
+			args := v.(GetAssetsArgs)
+			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+			return ctx.InvokeOutput("example::GetAssets", args, GetAssetsResultOutput{}, options).(GetAssetsResultOutput), nil
+		}).(GetAssetsResultOutput)
 }
 
 type GetAssetsOutputArgs struct {
