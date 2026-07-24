@@ -1,0 +1,143 @@
+run: esc open default/test --format detailed
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+      environmentVariables:
+        FOO: ${foo}
+      files:
+        FILE: hello
+
+---
+> esc open default/test --format detailed
+{
+  "value": {
+    "environmentVariables": {
+      "value": {
+        "FILE": {
+          "value": "temp/esc-temp-0",
+          "trace": {
+            "def": {
+              "environment": "test",
+              "begin": {
+                "line": 6,
+                "column": 15,
+                "byte": 92
+              },
+              "end": {
+                "line": 6,
+                "column": 20,
+                "byte": 97
+              }
+            }
+          }
+        },
+        "FOO": {
+          "value": "bar",
+          "trace": {
+            "def": {
+              "environment": "test",
+              "begin": {
+                "line": 4,
+                "column": 14,
+                "byte": 60
+              },
+              "end": {
+                "line": 4,
+                "column": 20,
+                "byte": 66
+              }
+            }
+          }
+        }
+      },
+      "trace": {
+        "def": {
+          "environment": "test",
+          "begin": {
+            "line": 4,
+            "column": 9,
+            "byte": 55
+          },
+          "end": {
+            "line": 4,
+            "column": 20,
+            "byte": 66
+          }
+        }
+      }
+    },
+    "files": {
+      "value": {
+        "FILE": {
+          "value": "hello",
+          "trace": {
+            "def": {
+              "environment": "test",
+              "begin": {
+                "line": 6,
+                "column": 15,
+                "byte": 92
+              },
+              "end": {
+                "line": 6,
+                "column": 20,
+                "byte": 97
+              }
+            }
+          }
+        }
+      },
+      "trace": {
+        "def": {
+          "environment": "test",
+          "begin": {
+            "line": 6,
+            "column": 9,
+            "byte": 86
+          },
+          "end": {
+            "line": 6,
+            "column": 20,
+            "byte": 97
+          }
+        }
+      }
+    },
+    "foo": {
+      "value": "bar",
+      "trace": {
+        "def": {
+          "environment": "test",
+          "begin": {
+            "line": 2,
+            "column": 10,
+            "byte": 17
+          },
+          "end": {
+            "line": 2,
+            "column": 13,
+            "byte": 20
+          }
+        }
+      }
+    }
+  },
+  "trace": {
+    "def": {
+      "begin": {
+        "line": 0,
+        "column": 0,
+        "byte": 0
+      },
+      "end": {
+        "line": 0,
+        "column": 0,
+        "byte": 0
+      }
+    }
+  }
+}
+
+---
+> esc open default/test --format detailed
