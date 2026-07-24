@@ -1477,13 +1477,24 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 					key, diags := item.Key.Evaluate(&hcl.EvalContext{})
 					contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
 
+					// The alias Name/Type fields are StringInput and NoParent is BoolInput. A plain
+					// value must be lifted with the constructor; an already-eventual value satisfies
+					// the Input interface directly and must not be wrapped (pulumi.String(output)
+					// does not compile).
+					aliasField := func(field, ctor string, value model.Expression) {
+						if exprIsInputty(value) {
+							g.Fgenf(valBuffer, "%s: %v, ", field, value)
+						} else {
+							g.Fgenf(valBuffer, "%s: %s(%v), ", field, ctor, value)
+						}
+					}
 					switch key.AsString() {
 					case "name":
-						g.Fgenf(valBuffer, "Name: pulumi.String(%v), ", item.Value)
+						aliasField("Name", "pulumi.String", item.Value)
 					case "type":
-						g.Fgenf(valBuffer, "Type: pulumi.String(%v), ", item.Value)
+						aliasField("Type", "pulumi.String", item.Value)
 					case "noParent":
-						g.Fgenf(valBuffer, "NoParent: pulumi.Bool(%v), ", item.Value)
+						aliasField("NoParent", "pulumi.Bool", item.Value)
 					case "parent":
 						g.Fgenf(valBuffer, "Parent: %v, ", item.Value)
 					}

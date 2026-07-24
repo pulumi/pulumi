@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type exprTestCase struct {
@@ -409,6 +410,136 @@ func TestIntrinsicConvertScopeTraversalToInputScalarNoDoubleWrap(t *testing.T) {
 
 	g.Fgenf(&index, "%v", expr)
 	assert.Equal(t, "pulumi.String(bucketName)", index.String())
+}
+
+// inputScalarType returns the union(T, Output<T>) annotated with schema.InputType that resource
+// argument Input<T> binds as -- the shape whose argumentTypeName is a value constructor.
+func inputScalarType() model.Type {
+	return model.NewUnionTypeAnnotated(
+		[]model.Type{model.StringType, model.NewOutputType(model.StringType)},
+		&schema.InputType{ElementType: schema.StringType},
+	)
+}
+
+// Regression test for pulumi/pulumi#22256. When the operand of a convert-to-input is
+// already an Output (e.g. a traversal that reaches a nested field of a resource output,
+// which lowers to an apply), it must not be wrapped in a value constructor like
+// pulumi.String(...): an Output already satisfies the corresponding Input interface, and
+// pulumi.String(someOutput) does not compile.
+func TestIntrinsicConvertOutputToInputScalarNotWrapped(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
+	var index bytes.Buffer
+
+	// An output-typed operand reaching a nested optional field, e.g. `res.value`
+	// where value is Output<Option<string>>. This is the shape produced when a
+	// program traverses a resource output object to a nested optional scalar; it
+	// makes originalTo.AssignableFrom(fromType) false (optional vs non-optional
+	// element), which is what previously drove the erroneous pulumi.String(...) wrap.
+	from := &model.RelativeTraversalExpression{
+		Source: &model.ScopeTraversalExpression{
+			RootName:  "res",
+			Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "res"}},
+			Parts:     []model.Traversable{&pcl.Resource{}},
+		},
+		Traversal: hcl.Traversal{hcl.TraverseAttr{Name: "value"}},
+		Parts:     []model.Traversable{&model.OutputType{ElementType: model.NewOptionalType(model.StringType)}},
+	}
+
+	// Resource argument Input<T> binds as union(T, Output<T>) annotated with
+	// schema.InputType.
+	inputType := model.NewUnionTypeAnnotated(
+		[]model.Type{model.StringType, model.NewOutputType(model.StringType)},
+		&schema.InputType{ElementType: schema.StringType},
+	)
+
+	expr := pcl.NewConvertCall(from, inputType)
+
+	g.Fgenf(&index, "%v", expr)
+	assert.Equal(t, "res.Value", index.String())
+}
+
+// genInputValue (used for resource method-call args, where the binder does not insert __convert)
+// wraps in pulumi.String(...) with no check for an already-Output operand.
+func TestGenInputValueDoesNotWrapOutput(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
+	var buf bytes.Buffer
+
+	// An already-Output operand, e.g. a resource output passed as a method-call arg.
+	value := model.VariableReference(&model.Variable{
+		Name:         "someOutput",
+		VariableType: model.NewOutputType(model.StringType),
+	})
+
+	g.genInputValue(&buf, value, inputScalarType())
+	assert.Equal(t, "someOutput", buf.String())
+}
+
+// genScopeTraversalExpression clears its isInput wrap only when expr.Type() is a bare
+// *model.OutputType. An eventual that is not bare -- union(T, Output<T>), Option<Output<T>>,
+// map(Output<T>), etc. -- slips past the guard and gets wrapped.
+func TestGenScopeTraversalDoesNotWrapNonBareOutput(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
+
+	traversal := func(varType model.Type) string {
+		var buf bytes.Buffer
+		expr := &model.ScopeTraversalExpression{
+			RootName:  "someOutput",
+			Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "someOutput"}},
+			Parts:     []model.Traversable{&model.Variable{Name: "someOutput", VariableType: varType}},
+		}
+		g.genScopeTraversalExpression(&buf, expr, inputScalarType())
+		return buf.String()
+	}
+
+	// Control: a bare Output is correctly left unwrapped by the existing guard.
+	assert.Equal(t, "someOutput", traversal(model.NewOutputType(model.StringType)),
+		"bare Output should not be wrapped")
+
+	// The gap: an eventual that is not a bare *model.OutputType must also not be wrapped.
+	assert.Equal(t, "someOutput",
+		traversal(model.NewUnionType(model.StringType, model.NewOutputType(model.StringType))),
+		"union(T, Output<T>) should not be wrapped")
+}
+
+// The alias name/type/noParent fields (genResourceOptions, gen_program.go:~1452) are wrapped in
+// pulumi.String(...)/pulumi.Bool(...) with no output guard, so an alias field computed from a
+// resource output produces uncompilable Go.
+func TestAliasFieldDoesNotWrapOutput(t *testing.T) {
+	t.Parallel()
+
+	for _, field := range []string{"name", "type"} {
+		t.Run(field, func(t *testing.T) {
+			t.Parallel()
+
+			src := `
+resource "sg" "infra:index:SecurityGroup" {
+}
+resource "sg2" "infra:index:SecurityGroup" {
+    options {
+        aliases = [{ ` + field + ` = sg.vpcId }]
+    }
+}
+`
+			program, diags, err := parseAndBindProgram(t, src, "alias-"+field+".pp")
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), "%v", diags)
+
+			files, gdiags, err := GenerateProgram(program)
+			require.NoError(t, err)
+			require.False(t, gdiags.HasErrors(), "%v", gdiags)
+
+			// sg.VpcId is an Output; wrapping it in pulumi.String(...) does not compile.
+			code := string(files["main.go"])
+			assert.NotContains(t, code, "pulumi.String(sg.VpcId)",
+				"alias %s must not wrap an Output in pulumi.String; got:\n%s", field, code)
+		})
+	}
 }
 
 func TestTupleConsExpression(t *testing.T) {

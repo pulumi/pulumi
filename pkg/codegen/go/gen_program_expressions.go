@@ -422,6 +422,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					// interface type strips those methods and breaks use in
 					// pulumi.AssetOrArchiveArray, etc.
 					g.Fgenf(w, "%.v", from)
+				} else if isFromOutput {
+					// The operand is already an Output/eventual (e.g. an apply that
+					// reaches a nested field of a resource output). Outputs satisfy the
+					// corresponding Input interface directly, and a value constructor
+					// like pulumi.String(...) cannot wrap an Output--doing so produces
+					// uncompilable Go. Emit the operand as-is.
+					g.Fgenf(w, "%.v", from)
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
 				}
@@ -766,7 +773,9 @@ func methodSchemaHasArgs(res *schema.Resource, methodName string) bool {
 // call args where the binder doesn't individually wrap each field value with __convert.
 func (g *generator) genInputValue(w io.Writer, value model.Expression, destType model.Type) {
 	typeName := g.argumentTypeName(destType, true)
-	if typeName != "" && strings.HasPrefix(typeName, "pulumi.") {
+	// An already-eventual value satisfies the corresponding Input interface directly; wrapping it
+	// in a value constructor like pulumi.String(...) would not compile.
+	if typeName != "" && strings.HasPrefix(typeName, "pulumi.") && !exprIsInputty(value) {
 		g.Fgenf(w, "%s(%.v)", typeName, value)
 	} else {
 		g.Fgenf(w, "%.v", value)
@@ -1167,9 +1176,12 @@ func (g *generator) genScopeTraversalExpression(
 	}
 
 	// TODO if it's an array type, we need a lowering step to turn []string -> pulumi.StringArray
-	// If the expression type is already an OutputType, it already satisfies the corresponding
-	// Input interface in Go (e.g. BoolOutput implements BoolInput), so no wrapping is needed.
-	if _, exprIsOutput := expr.Type().(*model.OutputType); exprIsOutput {
+	// If the expression is already an eventual, it satisfies the corresponding Input interface in
+	// Go (e.g. BoolOutput implements BoolInput), so no wrapping is needed. This covers a bare
+	// Output as well as the union(T, Output<T>) / Option<Output<T>> shapes that a nested optional
+	// output field produces; it deliberately does not treat a collection-of-outputs as inputty,
+	// since e.g. []StringOutput does not implement StringArrayInput and still needs the helper.
+	if isInputty(expr.Type()) {
 		isInput = false
 	}
 	if isInput {
@@ -1899,6 +1911,22 @@ func isInputty(destType model.Type) bool {
 		return true
 	}
 	return false
+}
+
+// exprIsInputty reports whether the Go generated for expr will already be an Input/eventual.
+// It looks through IntrinsicConvert wrappers, whose declared type is the (plain) destination
+// type even when the underlying operand is an Output -- so a naive isInputty(expr.Type()) on a
+// converted value would miss the eventual and wrap it in a value constructor that does not
+// compile.
+func exprIsInputty(expr model.Expression) bool {
+	for {
+		call, ok := expr.(*model.FunctionCallExpression)
+		if !ok || call.Name != pcl.IntrinsicConvert || len(call.Args) == 0 {
+			break
+		}
+		expr = call.Args[0]
+	}
+	return isInputty(expr.Type())
 }
 
 func (g *generator) literalKey(x model.Expression) (string, bool) {
