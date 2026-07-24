@@ -39,18 +39,18 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    'mypy==1.20.0',
-    'pyright==1.1.404',
-    'pytest~=9.0.3',
-    'pytest-timeout>=2.3.1',
-    'pytest-xdist>=3.8.0',
-    "pytest-cov>=7.0.0",
+    'mypy==2.3.0',
+    'pyright==1.1.411',
+    'pytest>=9.1,<10',
+    'pytest-timeout>=2.3.1,<3',
+    'pytest-xdist>=3.8.0,<4',
+    "pytest-cov>=7.0.0,<8",
     'types-pyyaml>=6.0.12.20241230',
-    'types-protobuf>=5.29.1.20241207',
-    'pytest-asyncio~=1.3.0',
-    'coverage~=7.13.1',
+    'types-protobuf>=5.29.1.20241207,<7',
+    'pytest-asyncio>=1.4.0,<2',
+    'coverage>=7.15.0,<8',
     'wheel>=0.45.1',
-    'ruff==0.13.2',
+    'ruff==0.15.22',
     "build>=1.2.2.post1",
     "twine>=6.0.1",
     "types-grpcio>=1.0.0.20250703",
@@ -72,6 +72,8 @@ packages = ["lib/pulumi"]
 core-metadata-version = "2.3"
 
 [tool.uv]
+# Keep local dependency resolution aligned with CI's dependency cooldown.
+exclude-newer = "P3D"
 # This ensures that the version for pulumi in uv.lock is updated when the
 # version from _version changes.
 upgrade-package = ["pulumi"]
