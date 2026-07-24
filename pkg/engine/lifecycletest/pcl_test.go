@@ -1667,13 +1667,14 @@ func TestPclSnippetAddUpdateDeleteViaOption(t *testing.T) {
 	}
 
 	snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
-	p.Options.Snippets = map[uuid.UUID]*resource.Snippet{
-		snippetID: {
+	p.Options.Snippets = []SnippetUpdate{{
+		Snippet: resource.Snippet{
+			UUID: snippetID.String(),
 			Name: "test-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code:       `propA = true`,
 		},
-	}
+	}}
 	snap, err := lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "add")
 	require.NoError(t, err)
@@ -1684,24 +1685,30 @@ func TestPclSnippetAddUpdateDeleteViaOption(t *testing.T) {
 	require.Empty(t, updated)
 	require.Empty(t, deleted)
 
-	p.Options.Snippets = map[uuid.UUID]*resource.Snippet{
-		snippetID: {
+	otherID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+	p.Options.Snippets = []SnippetUpdate{{
+		Snippet: resource.Snippet{
+			UUID: otherID.String(),
 			Name: "test-resource", Type: "pkgA:index:res",
 			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 			Code:       `propA = false`,
 		},
-	}
+	}}
 	snap, err = lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "update")
 	require.NoError(t, err)
 	require.Len(t, snap.Snippets, 1)
-	require.Equal(t, snippetID.String(), snap.Snippets[0].UUID)
+	require.Equal(t, snippetID.String(), snap.Snippets[0].UUID,
+		"upsert of an existing (Name, Type) should keep the original UUID")
 	require.Equal(t, `propA = false`, snap.Snippets[0].Code)
 	require.Len(t, created, 1, "snippet update should not recreate the resource")
 	require.Len(t, updated, 1, "snippet update should update the resource")
 	require.Empty(t, deleted)
 
-	p.Options.Snippets = map[uuid.UUID]*resource.Snippet{snippetID: nil}
+	p.Options.Snippets = []SnippetUpdate{{
+		Snippet: resource.Snippet{Name: "test-resource", Type: "pkgA:index:res"},
+		Delete:  true,
+	}}
 	snap, err = lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "delete")
 	require.NoError(t, err)
@@ -1729,36 +1736,171 @@ func TestPclSnippetOptionValidation(t *testing.T) {
 		}
 	}
 
-	t.Run("mismatched UUID", func(t *testing.T) {
+	t.Run("missing UUID", func(t *testing.T) {
 		t.Parallel()
 
 		p := newPlan(t)
-		snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
-		otherID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
-		p.Options.Snippets = map[uuid.UUID]*resource.Snippet{
-			snippetID: {
-				UUID: otherID.String(),
+		p.Options.Snippets = []SnippetUpdate{{
+			Snippet: resource.Snippet{
 				Name: "test-resource", Type: "pkgA:index:res",
 				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 				Code:       `propA = true`,
 			},
-		}
+		}}
 
 		_, err := lt.TestOp(Update).RunStep(
-			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "mismatched")
-		require.ErrorContains(t, err, fmt.Sprintf("snippet %q has mismatched uuid %q", snippetID, otherID))
+			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "missing-uuid")
+		require.ErrorContains(t, err, `snippet "test-resource" (pkgA:index:res) has invalid uuid ""`)
 	})
 
 	t.Run("delete missing", func(t *testing.T) {
 		t.Parallel()
 
 		p := newPlan(t)
-		snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
-		p.Options.Snippets = map[uuid.UUID]*resource.Snippet{snippetID: nil}
+		p.Options.Snippets = []SnippetUpdate{{
+			Snippet: resource.Snippet{Name: "test-resource", Type: "pkgA:index:res"},
+			Delete:  true,
+		}}
 
 		_, err := lt.TestOp(Update).RunStep(
 			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "delete-missing")
-		require.ErrorContains(t, err, fmt.Sprintf("cannot delete snippet %q: no such snippet in snapshot", snippetID))
+		require.ErrorContains(t, err, `snippet "test-resource" (pkgA:index:res) does not exist in snapshot`)
+		require.ErrorIs(t, err, ErrSnippetNotFound)
+	})
+
+	t.Run("require fresh rejects existing", func(t *testing.T) {
+		t.Parallel()
+
+		p := newPlan(t)
+		snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		p.Options.Snippets = []SnippetUpdate{{
+			Snippet: resource.Snippet{
+				UUID: snippetID.String(),
+				Name: "test-resource", Type: "pkgA:index:res",
+				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+				Code:       `propA = true`,
+			},
+		}}
+		snap, err := lt.TestOp(Update).RunStep(
+			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "fresh-add")
+		require.NoError(t, err)
+
+		otherID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		p.Options.Snippets = []SnippetUpdate{{
+			Snippet: resource.Snippet{
+				UUID: otherID.String(),
+				Name: "test-resource", Type: "pkgA:index:res",
+				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+				Code:       `propA = false`,
+			},
+			RequireFresh: true,
+		}}
+		_, err = lt.TestOp(Update).RunStep(
+			p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "fresh-conflict")
+		require.ErrorContains(t, err, `snippet "test-resource" (pkgA:index:res) already exists in snapshot`)
+		require.ErrorIs(t, err, ErrSnippetExists)
+	})
+
+	t.Run("proposal colliding with another snippet's uuid", func(t *testing.T) {
+		t.Parallel()
+
+		p := newPlan(t)
+		firstID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		secondID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		p.Options.Snippets = []SnippetUpdate{
+			{
+				Snippet: resource.Snippet{
+					UUID: firstID.String(),
+					Name: "first", Type: "pkgA:index:res",
+					Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+					Code:       `propA = true`,
+				},
+			},
+			{
+				Snippet: resource.Snippet{
+					UUID: secondID.String(),
+					Name: "second", Type: "pkgA:index:res",
+					Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+					Code:       `propA = true`,
+				},
+			},
+		}
+		snap, err := lt.TestOp(Update).RunStep(
+			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "add-two")
+		require.NoError(t, err)
+		require.Len(t, snap.Snippets, 2)
+
+		p.Options.Snippets = []SnippetUpdate{{
+			Snippet: resource.Snippet{
+				UUID: firstID.String(),
+				Name: "second", Type: "pkgA:index:res",
+				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+				Code:       `propA = false`,
+			},
+		}}
+		_, err = lt.TestOp(Update).RunStep(
+			p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "hijack")
+		require.ErrorContains(t, err,
+			fmt.Sprintf(`snippet "second" (pkgA:index:res) reuses uuid %q of another snippet`, firstID))
+	})
+
+	t.Run("delete frees uuid for reuse in the same batch", func(t *testing.T) {
+		t.Parallel()
+
+		p := newPlan(t)
+		snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		p.Options.Snippets = []SnippetUpdate{{
+			Snippet: resource.Snippet{
+				UUID: snippetID.String(),
+				Name: "test-resource", Type: "pkgA:index:res",
+				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+				Code:       `propA = true`,
+			},
+		}}
+		snap, err := lt.TestOp(Update).RunStep(
+			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "seed")
+		require.NoError(t, err)
+
+		p.Options.Snippets = []SnippetUpdate{
+			{
+				Snippet: resource.Snippet{Name: "test-resource", Type: "pkgA:index:res"},
+				Delete:  true,
+			},
+			{
+				Snippet: resource.Snippet{
+					UUID: snippetID.String(),
+					Name: "replacement", Type: "pkgA:index:res",
+					Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+					Code:       `propA = true`,
+				},
+			},
+		}
+		snap, err = lt.TestOp(Update).RunStep(
+			p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "delete-and-reuse")
+		require.NoError(t, err)
+		require.Len(t, snap.Snippets, 1)
+		require.Equal(t, "replacement", snap.Snippets[0].Name)
+		require.Equal(t, snippetID.String(), snap.Snippets[0].UUID)
+	})
+
+	t.Run("non-canonical uuid is normalized", func(t *testing.T) {
+		t.Parallel()
+
+		p := newPlan(t)
+		snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
+		p.Options.Snippets = []SnippetUpdate{{
+			Snippet: resource.Snippet{
+				UUID: "{" + snippetID.String() + "}",
+				Name: "test-resource", Type: "pkgA:index:res",
+				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+				Code:       `propA = true`,
+			},
+		}}
+		snap, err := lt.TestOp(Update).RunStep(
+			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "braced")
+		require.NoError(t, err)
+		require.Len(t, snap.Snippets, 1)
+		require.Equal(t, snippetID.String(), snap.Snippets[0].UUID)
 	})
 
 	t.Run("invalid snippet is not persisted", func(t *testing.T) {
@@ -1766,13 +1908,14 @@ func TestPclSnippetOptionValidation(t *testing.T) {
 
 		p := newPlan(t)
 		snippetID := uuid.Must(uuid.FromString(newPclSnippetUUID(t)))
-		p.Options.Snippets = map[uuid.UUID]*resource.Snippet{
-			snippetID: {
+		p.Options.Snippets = []SnippetUpdate{{
+			Snippet: resource.Snippet{
+				UUID: snippetID.String(),
 				Name: "test-resource", Type: "pkgA:index:res",
 				Descriptor: resource.PackageDescriptor{Name: "pkgA"},
 				Code:       ``,
 			},
-		}
+		}}
 
 		snap, err := lt.TestOp(Update).RunStep(
 			p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "invalid")

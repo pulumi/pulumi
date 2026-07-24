@@ -22,6 +22,7 @@ import (
 	"io"
 	"maps"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -436,15 +437,29 @@ type UpdateOptions struct {
 	// the provider registry when they are actually requested.
 	SkipPluginPreInstall bool
 
-	// Snippets updates the PCL snippets stored in the stack snapshot as part of this deployment. Keys are snippet
-	// UUIDs. A new UUID adds a snippet, an existing UUID replaces that snippet when the value is non-nil, and an
-	// existing UUID with a nil value deletes that snippet.
-	Snippets map[uuid.UUID]*resource.Snippet
+	// Snippets updates the PCL snippets stored in the stack snapshot as part of this deployment.
+	// Snippets are identified by (Name, Type): an update matching an existing snippet replaces (or,
+	// with Delete set, removes) that snippet in place, adopting its UUID; otherwise the update adds
+	// a new snippet under the UUID proposed in Snippet.UUID. TargetSnippets entries naming a
+	// proposed UUID are rewritten to the adopted UUID during resolution.
+	Snippets []SnippetUpdate
 }
 
-func applySnippetUpdates(base []resource.Snippet, updates map[uuid.UUID]*resource.Snippet) ([]resource.Snippet, error) {
+type SnippetUpdate struct {
+	Snippet      resource.Snippet
+	Delete       bool
+	RequireFresh bool
+}
+
+func snippetUUIDReuseError(name, typ string, id uuid.UUID) error {
+	return fmt.Errorf("snippet %q (%s) reuses uuid %q of another snippet", name, typ, id)
+}
+
+func applySnippetUpdates(
+	base []resource.Snippet, updates []SnippetUpdate,
+) ([]resource.Snippet, map[string]string, error) {
 	if len(updates) == 0 {
-		return base, nil
+		return base, nil, nil
 	}
 
 	byUUID := make(map[uuid.UUID]int, len(base))
@@ -452,57 +467,86 @@ func applySnippetUpdates(base []resource.Snippet, updates map[uuid.UUID]*resourc
 	for i, snippet := range base {
 		id, err := uuid.FromString(snippet.UUID)
 		if err != nil {
-			return nil, fmt.Errorf("snippet at index %d has invalid uuid %q", i, snippet.UUID)
+			return nil, nil, fmt.Errorf("snippet at index %d has invalid uuid %q", i, snippet.UUID)
 		}
 		if other, ok := byUUID[id]; ok {
-			return nil, fmt.Errorf("duplicate snippet uuid %q at indexes %d and %d", snippet.UUID, other, i)
+			return nil, nil, fmt.Errorf("duplicate snippet uuid %q at indexes %d and %d", snippet.UUID, other, i)
 		}
 		byUUID[id] = len(result)
 		result = append(result, snippet)
 	}
 
-	keys := make([]uuid.UUID, 0, len(updates))
-	for id := range updates {
-		if id == uuid.Nil {
-			return nil, errors.New("snippet update contains nil uuid")
-		}
-		keys = append(keys, id)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i].String() < keys[j].String()
-	})
-
-	for _, id := range keys {
-		snippet := updates[id]
-		existing, exists := byUUID[id]
-		if snippet == nil {
-			if !exists {
-				return nil, fmt.Errorf("cannot delete snippet %q: no such snippet in snapshot", id)
-			}
-			result = append(result[:existing], result[existing+1:]...)
-			delete(byUUID, id)
-			for i := existing; i < len(result); i++ {
-				parsed, err := uuid.FromString(result[i].UUID)
-				contract.AssertNoErrorf(err, "validated snippet UUID changed")
-				byUUID[parsed] = i
-			}
-			continue
+	resolved := make(map[string]string, len(updates))
+	proposedSeen := make(map[uuid.UUID]bool, len(updates))
+	for i, update := range updates {
+		name, typ := update.Snippet.Name, update.Snippet.Type
+		if name == "" || typ == "" {
+			return nil, nil, fmt.Errorf("snippet update at index %d is missing a name or type", i)
 		}
 
-		updated := *snippet
-		if updated.UUID != "" && updated.UUID != id.String() {
-			return nil, fmt.Errorf("snippet %q has mismatched uuid %q", id, updated.UUID)
+		proposal := uuid.Nil
+		if update.Snippet.UUID != "" {
+			id, err := uuid.FromString(update.Snippet.UUID)
+			if err != nil || id == uuid.Nil {
+				return nil, nil, fmt.Errorf("snippet %q (%s) has invalid uuid %q", name, typ, update.Snippet.UUID)
+			}
+			if proposedSeen[id] {
+				return nil, nil, fmt.Errorf("snippet %q (%s) reuses proposed uuid %q of another update", name, typ, id)
+			}
+			proposedSeen[id] = true
+			proposal = id
 		}
-		updated.UUID = id.String()
-		if exists {
+
+		existing := slices.IndexFunc(result, func(s resource.Snippet) bool {
+			return s.Name == name && s.Type == typ
+		})
+
+		switch {
+		case update.Delete:
+			if existing < 0 {
+				return nil, nil, fmt.Errorf("snippet %q (%s) %w", name, typ, ErrSnippetNotFound)
+			}
+			victim := result[existing]
+			if proposal != uuid.Nil {
+				if _, used := byUUID[proposal]; used && proposal.String() != victim.UUID {
+					return nil, nil, snippetUUIDReuseError(name, typ, proposal)
+				}
+				resolved[update.Snippet.UUID] = victim.UUID
+			}
+			victimID, err := uuid.FromString(victim.UUID)
+			contract.AssertNoErrorf(err, "validated snippet uuid %q", victim.UUID)
+			delete(byUUID, victimID)
+			result = slices.Delete(result, existing, existing+1)
+		case existing >= 0:
+			if update.RequireFresh {
+				return nil, nil, fmt.Errorf("snippet %q (%s) %w", name, typ, ErrSnippetExists)
+			}
+			adopted := result[existing].UUID
+			if proposal != uuid.Nil {
+				if _, used := byUUID[proposal]; used && proposal.String() != adopted {
+					return nil, nil, snippetUUIDReuseError(name, typ, proposal)
+				}
+				resolved[update.Snippet.UUID] = adopted
+			}
+			updated := update.Snippet
+			updated.UUID = adopted
 			result[existing] = updated
-		} else {
-			byUUID[id] = len(result)
+		default:
+			if proposal == uuid.Nil {
+				return nil, nil, fmt.Errorf("snippet %q (%s) has invalid uuid %q", name, typ, update.Snippet.UUID)
+			}
+			if _, used := byUUID[proposal]; used {
+				return nil, nil, snippetUUIDReuseError(name, typ, proposal)
+			}
+			updated := update.Snippet
+			updated.UUID = proposal.String()
+			resolved[update.Snippet.UUID] = updated.UUID
+			byUUID[proposal] = len(result)
 			result = append(result, updated)
 		}
 	}
 
-	return result, nil
+	return result, resolved, nil
 }
 
 func targetWithSnippets(target *deploy.Target, snippets []resource.Snippet) *deploy.Target {
@@ -544,12 +588,21 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	if u.Target != nil && u.Target.Snapshot != nil {
 		baseSnippets = u.Target.Snapshot.Snippets
 	}
-	effectiveSnippets, err := applySnippetUpdates(baseSnippets, opts.Snippets)
+	effectiveSnippets, resolvedSnippets, err := applySnippetUpdates(baseSnippets, opts.Snippets)
 	if err != nil {
 		return nil, nil, err
 	}
 	if len(opts.Snippets) > 0 {
 		u.Target = targetWithSnippets(u.Target, effectiveSnippets)
+		if len(opts.TargetSnippets) > 0 {
+			targets := slices.Clone(opts.TargetSnippets)
+			for i, t := range targets {
+				if final, ok := resolvedSnippets[t]; ok {
+					targets[i] = final
+				}
+			}
+			opts.TargetSnippets = targets
+		}
 	}
 
 	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "update", ctx.ParentSpan)
