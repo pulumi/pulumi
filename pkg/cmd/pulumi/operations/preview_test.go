@@ -613,3 +613,65 @@ func TestBuildImportFile_regress_15068(t *testing.T) {
 	_, err := importFilePromise.Result(t.Context())
 	assert.ErrorContains(t, err, "could not parse provider reference")
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/24056
+// Tests that when multiple existing component resources share the same name,
+// generated import resources still reference the correct distinct parents.
+func TestBuildImportFile_regress_24056(t *testing.T) {
+	t.Parallel()
+
+	events := make(chan engine.Event)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
+
+	// Pretend the root stack already exists.
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeRootStackMetadata(deploy.OpSame),
+	})
+
+	// Two existing components with the same logical name.
+	parentA := makeStateMetadata(t, "bug", "example:components:ComponentResourceA", false, stateOptions{})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpSame, parentA),
+	})
+
+	parentB := makeStateMetadata(t, "bug", "example:components:ComponentResourceB", false, stateOptions{})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpSame, parentB),
+	})
+
+	// Each created resource has one of the existing components as its parent.
+	childA := makeStateMetadata(t, "child-a", "example:components:ChildA", false, stateOptions{Parent: parentA.URN})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, childA),
+	})
+
+	childB := makeStateMetadata(t, "child-b", "example:components:ChildB", false, stateOptions{Parent: parentB.URN})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, childB),
+	})
+
+	close(events)
+
+	importFile, err := importFilePromise.Result(t.Context())
+	require.NoError(t, err)
+	require.Len(t, importFile.Resources, 2)
+
+	parentsByType := map[tokens.Type]string{}
+	for _, spec := range importFile.Resources {
+		parentsByType[spec.Type] = spec.Parent
+	}
+
+	parentAliasA, ok := parentsByType[childA.Type]
+	require.True(t, ok)
+	require.NotEmpty(t, parentAliasA)
+	parentAliasB, ok := parentsByType[childB.Type]
+	require.True(t, ok)
+	require.NotEmpty(t, parentAliasB)
+
+	// The two distinct parents must not collapse to the same alias.
+	assert.NotEqual(t, parentAliasA, parentAliasB)
+
+	// And each alias must resolve to the correct parent URN in the name table.
+	assert.Equal(t, parentA.URN, importFile.NameTable[parentAliasA])
+	assert.Equal(t, parentB.URN, importFile.NameTable[parentAliasB])
+}
