@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Preserve logical names in preview import files for resources with the same name but different types
+time: 2026-07-13T00:00:00+00:00
