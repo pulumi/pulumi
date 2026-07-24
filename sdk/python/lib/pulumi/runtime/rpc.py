@@ -1008,7 +1008,7 @@ def deserialize_resource(
     else:
         resource_module = get_resource_module(pkg_name, mod_name, version)
         if resource_module is not None:
-            return cast("Resource", resource_module.construct(urn_name, typ, urn))
+            return resource_module.construct(urn_name, typ, urn)
 
     # If we've made it here, deserialize the reference as either a URN or an ID (if present).
     if "id" in ref_struct:

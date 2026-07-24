@@ -137,6 +137,7 @@ quote-style = "double"
 [tool.mypy]
 # The minimum Python version we support
 python_version = "3.10"
+warn_redundant_casts = true
 
 [[tool.mypy.overrides]]
 module = [

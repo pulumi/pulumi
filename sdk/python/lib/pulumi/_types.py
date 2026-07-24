@@ -450,7 +450,7 @@ def _py_properties(cls: type) -> tuple[tuple[str, str, builtins.property], ...]:
     for base in reversed(cls.__mro__):
         for python_name, v in base.__dict__.items():
             if isinstance(v, builtins.property):
-                prop = cast(builtins.property, v)
+                prop = v
                 pulumi_name = getattr(prop.fget, _PULUMI_NAME, MISSING)
                 if pulumi_name is not MISSING:
                     result.append((python_name, cast(str, pulumi_name), prop))
