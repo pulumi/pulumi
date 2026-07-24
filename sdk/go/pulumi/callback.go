@@ -71,10 +71,8 @@ func (s *callbackServer) RegisterCallback(function callbackFunction) (*pulumirpc
 	defer s.functionsLock.Unlock()
 	s.functions[uuidString] = function
 	return &pulumirpc.Callback{
-		Token:  uuidString,
-		Target: "127.0.0.1:" + strconv.Itoa(s.handle.Port),
-		// The Go SDK decodes strings containing non-UTF8 bytes losslessly, so the engine may send them to
-		// callbacks hosted here.
+		Token:             uuidString,
+		Target:            "127.0.0.1:" + strconv.Itoa(s.handle.Port),
 		AcceptsByteString: true,
 	}, nil
 }
