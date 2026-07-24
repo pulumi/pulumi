@@ -46,12 +46,13 @@ type FuncWithDefaultValueResult struct {
 }
 
 func FuncWithDefaultValueOutput(ctx *pulumi.Context, args FuncWithDefaultValueOutputArgs, opts ...pulumi.InvokeOption) FuncWithDefaultValueResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (FuncWithDefaultValueResultOutput, error) {
+	outputArgs := pulumi.ToOutputWithContext(ctx.Context(), args).
+		ApplyT(func(v interface{}) *FuncWithDefaultValueArgs {
 			args := v.(FuncWithDefaultValueArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			return ctx.InvokeOutput("mypkg::funcWithDefaultValue", args.Defaults(), FuncWithDefaultValueResultOutput{}, options).(FuncWithDefaultValueResultOutput), nil
-		}).(FuncWithDefaultValueResultOutput)
+			return args.Defaults()
+		})
+	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+	return ctx.InvokeOutput("mypkg::funcWithDefaultValue", outputArgs, FuncWithDefaultValueResultOutput{}, options).(FuncWithDefaultValueResultOutput)
 }
 
 type FuncWithDefaultValueOutputArgs struct {
