@@ -63,6 +63,8 @@ type Options struct {
 
 	SuppressStackRow bool // true to hide the synthetic stack row when no stack is involved.
 
+	ShowDiff bool // true to print the full diff after the preview and the update, and omit the "details" prompt choice.
+
 	// Neo options
 	ShowLinkToNeo       bool // true to display a 'explainFailure' link to Neo.
 	ShowNeoFeatures     bool // true to display Neo features like summaries and explanations.
