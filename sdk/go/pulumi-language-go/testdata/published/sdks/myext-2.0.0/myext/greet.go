@@ -34,15 +34,11 @@ type GreetResult struct {
 }
 
 func GreetOutput(ctx *pulumi.Context, args GreetOutputArgs, opts ...pulumi.InvokeOption) GreetResultOutput {
-	return pulumi.ToOutput(0).ApplyT(func(int) (GreetResultOutput, error) {
-		options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-		ref, err := internal.PkgGetPackageRef(ctx)
-		if err != nil {
-			return GreetResultOutput{}, err
-		}
-		options.PackageRef = ref
-		return ctx.InvokeOutput("extbase:index:greet", args, GreetResultOutput{}, options).(GreetResultOutput), nil
-	}).(GreetResultOutput)
+	options := pulumi.InvokeOutputOptions{
+		InvokeOptions: internal.PkgInvokeDefaultOpts(opts),
+		PackageRefF:   internal.PkgGetPackageRef,
+	}
+	return ctx.InvokeOutput("extbase:index:greet", args, GreetResultOutput{}, options).(GreetResultOutput)
 }
 
 type GreetOutputArgs struct {

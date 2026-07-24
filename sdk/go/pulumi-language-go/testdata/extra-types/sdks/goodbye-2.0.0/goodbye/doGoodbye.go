@@ -34,15 +34,11 @@ type DoGoodbyeResult struct {
 }
 
 func DoGoodbyeOutput(ctx *pulumi.Context, args DoGoodbyeOutputArgs, opts ...pulumi.InvokeOption) DoGoodbyeResultOutput {
-	return pulumi.ToOutput(0).ApplyT(func(int) (DoGoodbyeResultOutput, error) {
-		options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-		ref, err := internal.PkgGetPackageRef(ctx)
-		if err != nil {
-			return DoGoodbyeResultOutput{}, err
-		}
-		options.PackageRef = ref
-		return ctx.InvokeOutput("goodbye:index:doGoodbye", args, DoGoodbyeResultOutput{}, options).(DoGoodbyeResultOutput), nil
-	}).(DoGoodbyeResultOutput)
+	options := pulumi.InvokeOutputOptions{
+		InvokeOptions: internal.PkgInvokeDefaultOpts(opts),
+		PackageRefF:   internal.PkgGetPackageRef,
+	}
+	return ctx.InvokeOutput("goodbye:index:doGoodbye", args, DoGoodbyeResultOutput{}, options).(DoGoodbyeResultOutput)
 }
 
 type DoGoodbyeOutputArgs struct {

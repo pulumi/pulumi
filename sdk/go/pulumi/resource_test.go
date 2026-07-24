@@ -17,6 +17,7 @@ package pulumi
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"maps"
@@ -1827,6 +1828,45 @@ func TestInvokeOutputArgsSecret(t *testing.T) {
 		require.True(t, known)
 		require.True(t, secret)
 		require.Equal(t, "shh", *v.(DoEchoResult).Echo)
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+// PackageRefF resolves the package reference on the invoke's goroutine; its error rejects the
+// result output.
+func TestInvokeOutputPackageRefF(t *testing.T) {
+	t.Parallel()
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			return resource.PropertyMap{
+				"echo": resource.NewProperty("hello"),
+			}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		o := ctx.InvokeOutput("pkg:index:doEcho", DoEchoArgs{}, DoEchoResultOutput{}, InvokeOutputOptions{
+			PackageRefF: func(*Context) (string, error) {
+				return "some-package-ref", nil
+			},
+		})
+
+		v, known, _, _, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.True(t, known)
+		require.Equal(t, "hello", *v.(DoEchoResult).Echo)
+
+		o = ctx.InvokeOutput("pkg:index:doEcho", DoEchoArgs{}, DoEchoResultOutput{}, InvokeOutputOptions{
+			PackageRefF: func(*Context) (string, error) {
+				return "", errors.New("package ref failure")
+			},
+		})
+
+		_, _, _, _, err = internal.AwaitOutput(ctx.Context(), o)
+		require.ErrorContains(t, err, "package ref failure")
 
 		return nil
 	}, WithMocks("project", "stack", monitor))

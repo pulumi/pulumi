@@ -935,6 +935,10 @@ func (ctx *Context) InvokePackageRaw(
 type InvokeOutputOptions struct {
 	// The package reference for parameterized providers.
 	PackageRef string
+	// PackageRefF lazily resolves the package reference for parameterized providers.
+	//
+	// When set, it takes precedence over PackageRef.
+	PackageRefF func(*Context) (string, error)
 	// The options provided by the user for the invoke call, such as `Provider`,
 	// `Version, `DependsOn`, etc.
 	InvokeOptions []InvokeOption
@@ -953,6 +957,16 @@ func (ctx *Context) InvokeOutput(
 	output = ctx.newOutput(reflect.TypeOf(output))
 
 	go func() {
+		packageRef := options.PackageRef
+		if options.PackageRefF != nil {
+			ref, err := options.PackageRefF(ctx)
+			if err != nil {
+				internal.RejectOutput(output, err)
+				return
+			}
+			packageRef = ref
+		}
+
 		// Collect dependencies from the DependsOn/DependsOnInput options.
 		invokeOpts := mergeInvokeOptions(options.InvokeOptions...)
 		deps := []Resource{}         // The direct dependencies of the invoke.
@@ -1040,7 +1054,7 @@ func (ctx *Context) InvokeOutput(
 			resolvedArgsMap = resolvedArgs.ObjectValue()
 		}
 
-		outProps, err := ctx.invokePackageRawResolved(tok, resolvedArgsMap, options.PackageRef, *invokeOpts)
+		outProps, err := ctx.invokePackageRawResolved(tok, resolvedArgsMap, packageRef, *invokeOpts)
 		if err != nil {
 			internal.RejectOutput(output, err)
 			return

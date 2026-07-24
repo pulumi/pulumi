@@ -34,15 +34,11 @@ type DoHelloWorldResult struct {
 }
 
 func DoHelloWorldOutput(ctx *pulumi.Context, args DoHelloWorldOutputArgs, opts ...pulumi.InvokeOption) DoHelloWorldResultOutput {
-	return pulumi.ToOutput(0).ApplyT(func(int) (DoHelloWorldResultOutput, error) {
-		options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-		ref, err := internal.PkgGetPackageRef(ctx)
-		if err != nil {
-			return DoHelloWorldResultOutput{}, err
-		}
-		options.PackageRef = ref
-		return ctx.InvokeOutput("hipackage:index:doHelloWorld", args, DoHelloWorldResultOutput{}, options).(DoHelloWorldResultOutput), nil
-	}).(DoHelloWorldResultOutput)
+	options := pulumi.InvokeOutputOptions{
+		InvokeOptions: internal.PkgInvokeDefaultOpts(opts),
+		PackageRefF:   internal.PkgGetPackageRef,
+	}
+	return ctx.InvokeOutput("hipackage:index:doHelloWorld", args, DoHelloWorldResultOutput{}, options).(DoHelloWorldResultOutput)
 }
 
 type DoHelloWorldOutputArgs struct {
