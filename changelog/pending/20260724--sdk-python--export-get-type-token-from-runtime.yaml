@@ -1,0 +1,5 @@
+component: sdk/python
+kind: fix
+body: Export `get_type_token` from `pulumi.runtime` so subclassing a generated
+  component in a Python program resolves the type token at runtime
+time: 2026-07-24T09:00:00-07:00

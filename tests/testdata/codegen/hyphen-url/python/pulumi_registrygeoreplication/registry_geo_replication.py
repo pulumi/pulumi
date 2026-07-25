@@ -81,7 +81,24 @@ class RegistryGeoReplication(pulumi.ComponentResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  resource_group: pulumi.Input[Optional['pulumi_using_dashes.Dash']] = None,
-                 __props__=None):
+                 __props__=None,
+                 __chain__=None):
+        if __chain__ is not None:
+            super(RegistryGeoReplication, __self__).__init__(__chain__["type"], resource_name, __chain__["props"], opts, remote=__chain__["mode"] == "generated")
+            return
+        if type(__self__) is not RegistryGeoReplication:
+            opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
+            __props__ = RegistryGeoReplicationArgs.__new__(RegistryGeoReplicationArgs)
+
+            if resource_group is None and not opts.urn:
+                raise TypeError("Missing required property 'resource_group'")
+            __props__.__dict__["resource_group"] = resource_group
+            __props__.__dict__["acr_login_server_out"] = None
+            __props__.__dict__["registry"] = None
+            __props__.__dict__["replication"] = None
+            super(RegistryGeoReplication, __self__).__init__(pulumi.runtime.get_type_token(type(__self__)), resource_name, __props__, opts, remote=False)
+            pulumi.runtime.construct_base_resource(__self__, "registrygeoreplication:index:RegistryGeoReplication", {"resourceGroup": resource_group}, pulumi.runtime.BaseConstructInfo(version=_utilities.get_version()), ["acr_login_server_out", "registry", "replication"])
+            return
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
             raise TypeError('Expected resource options to be a ResourceOptions instance')

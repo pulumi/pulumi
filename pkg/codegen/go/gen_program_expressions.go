@@ -744,7 +744,9 @@ func methodSchemaHasArgs(res *schema.Resource, methodName string) bool {
 	if res == nil {
 		return true
 	}
-	for _, m := range res.Methods {
+	// AllMethods includes methods inherited from base components; using res.Methods (own only) would miss an
+	// inherited method and fall through to the conservative "has args" default, emitting a spurious argument.
+	for _, m := range res.AllMethods() {
 		if m.Name != methodName {
 			continue
 		}

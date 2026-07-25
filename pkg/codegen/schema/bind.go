@@ -207,6 +207,11 @@ func bindSpec(ctx context.Context, spec PackageSpec, languages map[string]Langua
 		return nil, diags, err
 	}
 
+	// Component inheritance is resolved per-resource inside bindResourceDef (so every bind path is uniform); finish.
+	// Resources has just bound every resource, so the binder now knows whether any resource relied on materialization.
+	// A schema that relied on it (a sparse spec) must declare the "inheritance" feature.
+	diags = diags.Extend(validateRequiredFeatures(spec.RequiredFeatures, types.sawSparseInheritance))
+
 	_, fspan := schemaTracer.Start(ctx, "schema.bindFunctions")
 	functions, functionDiags, err := types.finishFunctions(sortedKeys(spec.Functions), options)
 	fspan.End()
@@ -374,6 +379,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		tokens:       map[string]*TokenType{},
 		inputs:       map[Type]*InputType{},
 		optionals:    map[Type]*OptionalType{},
+
+		extendsInProgress: map[string]int{},
 
 		bindToReference: bindTo,
 	}
@@ -557,6 +564,15 @@ type types struct {
 	tokens    map[string]*TokenType
 	inputs    map[Type]*InputType
 	optionals map[Type]*OptionalType
+
+	// extendsInProgress tracks the same-package resources whose `extends` chains are currently being resolved, mapping
+	// each token to its position in extendsPath. It detects extends cycles: encountering a base token already in
+	// progress closes a loop. See resolveResourceExtends.
+	extendsInProgress map[string]int
+	extendsPath       []string
+	// sawSparseInheritance records whether any resource relied on inheritance materialization (a sparse spec). The
+	// requiredFeatures gate in bindSpec consumes it.
+	sawSparseInheritance bool
 
 	// A pointer to the package reference that `types` is a part of if it exists.
 	bindToReference PackageReference
@@ -2191,6 +2207,13 @@ func (t *types) bindResourceDef(
 		var rDiags hcl.Diagnostics
 		rDiags, err = t.bindResourceDetails(path, token, spec, res, options)
 		diags = append(diags, rDiags...)
+
+		// Resolve component inheritance inline, so that every bind path — full BindSpec, lazy PartialPackage.Get, and
+		// PartialPackage.Definition — sees a flattened resource with its base wired. bindResourceDetails already
+		// reported extends on a non-component; here we only resolve for components.
+		if err == nil && spec.Extends != nil && res.IsComponent {
+			diags = diags.Extend(t.resolveResourceExtends(path, token, spec, res, options))
+		}
 	}
 	if err != nil {
 		return nil, diags, err
@@ -2253,6 +2276,16 @@ func (t *types) bindResourceDetails(
 		}
 	}
 
+	// Extending and abstractness are meaningful only for components; a provider or custom resource may not use either.
+	// The extends chain is resolved after these own members are bound (see bindResourceDef -> resolveResourceExtends);
+	// the extender-is-a-component check is local and reported here so the resolver can assume it.
+	if spec.Abstract && !spec.IsComponent {
+		diags = diags.Append(errorf(path+"/abstract", "only components may be declared abstract"))
+	}
+	if spec.Extends != nil && !spec.IsComponent {
+		diags = diags.Append(errorf(path+"/extends", "only components may extend another component"))
+	}
+
 	var stateInputs *ObjectType
 	if spec.StateInputs != nil {
 		for name := range spec.StateInputs.Properties {
@@ -2299,6 +2332,7 @@ func (t *types) bindResourceDetails(
 		Language:                  makeLanguageMap(spec.Language),
 		IsComponent:               spec.IsComponent,
 		Methods:                   methods,
+		Abstract:                  spec.Abstract,
 		IsOverlay:                 spec.IsOverlay,
 		OverlaySupportedLanguages: spec.OverlaySupportedLanguages,
 	}

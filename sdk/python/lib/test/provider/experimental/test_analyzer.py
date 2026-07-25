@@ -108,6 +108,97 @@ def test_analyze_component_no_args():
         )
 
 
+def test_analyze_component_extends_local():
+    class BaseArgs(TypedDict):
+        base_input: str
+
+    class DerivedArgs(BaseArgs):
+        derived_input: int
+
+    class Base(pulumi.ComponentResource):
+        base_output: pulumi.Output[str]
+
+        def __init__(self, args: BaseArgs): ...
+
+    class Derived(Base):
+        derived_output: pulumi.Output[int]
+
+        def __init__(self, args: DerivedArgs): ...
+
+    analyzer = Analyzer("provider")
+    base = analyzer.analyze_component(Base)
+    derived = analyzer.analyze_component(Derived)
+
+    # Base is a root component: no extends, own members only.
+    assert base.extends is None
+    assert set(base.outputs) == {"baseOutput"}
+
+    # Derived flattens the base's members and carries a local extends ref back to the base.
+    assert derived.extends == "#/resources/provider:index:Base"
+    assert set(derived.inputs) == {"baseInput", "derivedInput"}
+    assert set(derived.outputs) == {"baseOutput", "derivedOutput"}
+
+
+def test_analyze_component_extends_generated():
+    # A component extending a generated component from an installed package: the MRO walk stops at the generated
+    # base, so only the component's own members are emitted (sparse), with an external extends ref + dependency. The
+    # get-schema normalizer later flattens it; here we assert the sparse analyzer output.
+    analyzer = Analyzer("provider")
+    result = analyzer.analyze(
+        components=load_components(Path("testdata", "extends-generated"))
+    )
+    assert result["component_definitions"] == {
+        "MyService": ComponentDefinition(
+            name="MyService",
+            module="extends_generated",
+            inputs={"replicas": PropertyDefinition(type=PropertyType.INTEGER)},
+            inputs_mapping={"replicas": "replicas"},
+            outputs={"endpoint": PropertyDefinition(type=PropertyType.STRING)},
+            outputs_mapping={"endpoint": "endpoint"},
+            extends="/basecomp/v1.0.0/schema.json#/resources/basecomp:index:Service",
+        )
+    }
+    assert result["dependencies"] == {Dependency(name="basecomp", version="1.0.0")}
+
+
+def test_analyze_component_abstract_isabstract():
+    from abc import ABC, abstractmethod
+
+    class MyArgs(TypedDict):
+        input: str
+
+    class MyComponent(pulumi.ComponentResource, ABC):
+        out_result: pulumi.Output[str]
+
+        def __init__(self, args: MyArgs): ...
+
+        @abstractmethod
+        def do_thing(self) -> None: ...
+
+    analyzer = Analyzer("provider")
+    component = analyzer.analyze_component(MyComponent)
+    assert component.abstract is True
+
+
+def test_analyze_component_abstract_dunder():
+    class MyArgs(TypedDict):
+        input: str
+
+    class MyComponent(pulumi.ComponentResource):
+        __pulumi_abstract__ = True
+        out_result: pulumi.Output[str]
+
+        def __init__(self, args: MyArgs): ...
+
+    # A concrete subclass must not inherit the abstract flag: the dunder is checked on the class's own __dict__.
+    class Concrete(MyComponent):
+        def __init__(self, args: MyArgs): ...
+
+    analyzer = Analyzer("provider")
+    assert analyzer.analyze_component(MyComponent).abstract is True
+    assert analyzer.analyze_component(Concrete).abstract is False
+
+
 def test_analyze_component_empty():
     class Empty(pulumi.ComponentResource):
         def __init__(self, args: dict[str, Any]): ...

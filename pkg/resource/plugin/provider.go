@@ -98,6 +98,10 @@ type ProviderHandshakeResponse struct {
 	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
 	// user.
 	SupportsAutonamingConfiguration bool
+
+	// True if and only if the provider supports ConstructBase for its component types, allowing them to be used
+	// as base classes by components in other packages.
+	SupportsConstructBase bool
 }
 
 // ParameterizeParameters can either be of concrete type ParameterizeArgs or ParameterizeValue, for when parameterizing
@@ -451,6 +455,40 @@ type ConstructRequest struct {
 
 type ConstructResponse = ConstructResult
 
+// ErrConstructBaseNotSupported is returned by ConstructBase when the provider does not support serving as a base
+// class for components in other packages (for example, because it was built with an SDK that predates component
+// inheritance).
+var ErrConstructBaseNotSupported = errors.New("provider does not support base-class construction")
+
+// ConstructBaseRequest captures the inputs for a call to ConstructBase, which constructs the portion of an
+// existing component resource that corresponds to one of its base component types.
+type ConstructBaseRequest struct {
+	Info ConstructInfo
+	// The base component type to construct. Owned by the provider serving the request.
+	Type tokens.Type
+	// The name of the resource being constructed (that of the resource identified by URN).
+	Name string
+	// The URN of the already-registered resource to adopt. The implementation must not register a new resource;
+	// nested resources it creates must be parented to this URN.
+	URN resource.URN
+	// The most-derived type of the resource identified by URN, for diagnostics.
+	MostDerivedType tokens.Type
+	// The inputs to the base component's constructor.
+	Inputs resource.PropertyMap
+	// A map from input property name to the resources that property depends on.
+	InputDependencies map[resource.PropertyKey][]resource.URN
+	// A map from package name to provider reference for resolving the providers of nested resources.
+	Providers map[string]string
+}
+
+// ConstructBaseResponse is the response from a call to ConstructBase.
+type ConstructBaseResponse struct {
+	// The base component's output properties.
+	Outputs resource.PropertyMap
+	// The resources that each output property depends on.
+	OutputDependencies map[resource.PropertyKey][]resource.URN
+}
+
 type InvokeRequest struct {
 	Tok     tokens.ModuleMember
 	Args    resource.PropertyMap
@@ -554,6 +592,13 @@ type Provider interface {
 
 	// Construct creates a new component resource.
 	Construct(context.Context, ConstructRequest) (ConstructResponse, error)
+
+	// ConstructBase constructs the portion of an existing component resource that corresponds to one of its base
+	// component types, as part of a cross-package component inheritance chain. Unlike Construct, no new resource
+	// is registered: the implementation adopts the already-registered URN, parents any nested resources to it,
+	// and returns the base type's output properties. Providers that do not support acting as a base class return
+	// ErrConstructBaseNotSupported.
+	ConstructBase(context.Context, ConstructBaseRequest) (ConstructBaseResponse, error)
 
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(context.Context, InvokeRequest) (InvokeResponse, error)

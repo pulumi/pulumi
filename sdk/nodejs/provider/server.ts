@@ -27,6 +27,7 @@ import * as settings from "../runtime/settings";
 import * as localState from "../runtime/state";
 import { parseArgs } from "./internals";
 
+import * as jspb from "google-protobuf";
 import * as anyproto from "google-protobuf/google/protobuf/any_pb";
 import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
@@ -37,7 +38,14 @@ import * as provrpc from "../proto/provider_grpc_pb";
 import * as provproto from "../proto/provider_pb";
 import * as statusproto from "../proto/status_pb";
 
-class Server implements grpc.UntypedServiceImplementation {
+/**
+ * The gRPC service implementation backing a component provider host. Each
+ * `construct`/`constructBase`/`call` runs inside its own async-local store so
+ * that concurrent and reentrant requests do not share runtime state.
+ *
+ * @internal exported for testing
+ */
+export class Server implements grpc.UntypedServiceImplementation {
     engineAddr: string | undefined;
     readonly provider: Provider;
     readonly uncaughtErrors: Set<Error>;
@@ -499,6 +507,85 @@ class Server implements grpc.UntypedServiceImplementation {
         });
     }
 
+    public async constructBase(call: any, callback: any): Promise<void> {
+        // Setup a new async state store for this run, isolating it from any other
+        // in-flight construct/constructBase requests (reentrant base chains).
+        return localState.withLocalStorage(async () => {
+            const callbackId = Symbol("id");
+            this._callbacks.set(callbackId, callback);
+            try {
+                const req: provproto.ConstructBaseRequest = call.request;
+                const type = req.getType();
+                const name = req.getName();
+
+                if (!this.provider.construct) {
+                    callback(new Error(`unknown resource type ${type}`), undefined);
+                    return;
+                }
+
+                await configureRuntimeForConstructBase(req, this.engineAddr);
+
+                const inputs = await deserializeInputs(req.getInputs()!, req.getInputDependenciesMap());
+
+                const providers: Record<string, resource.ProviderResource> = {};
+                const rpcProviders = req.getProvidersMap();
+                if (rpcProviders) {
+                    for (const [pkg, ref] of rpcProviders.entries()) {
+                        providers[pkg] = createProviderResource(ref);
+                    }
+                }
+
+                // Base construction carries no resource options by design — they
+                // belong to the single most-derived registration. Attach the URN
+                // the engine already registered via the internal marker; the
+                // provider-author `construct` surface is unchanged, and attachment
+                // happens when the component's ctor chain hits the attach branch.
+                const opts: resource.ComponentResourceOptions = { providers };
+                resource.setAttachBaseResource(opts, {
+                    urn: req.getUrn(),
+                    mostDerivedType: req.getMostDerivedType(),
+                });
+
+                const result = await this.provider.construct(name, type, inputs, opts);
+
+                const resp = new provproto.ConstructBaseResponse();
+
+                const [state, stateDependencies] = await rpc.serializeResourceProperties(
+                    `constructBase(${type}, ${name})`,
+                    result.state,
+                );
+                const stateDependenciesMap = resp.getStateDependenciesMap();
+                for (const [key, resources] of stateDependencies) {
+                    const deps = new provproto.ConstructBaseResponse.PropertyDependencies();
+                    deps.setUrnsList(await Promise.all(Array.from(resources).map((r) => r.urn.promise())));
+                    stateDependenciesMap.set(key, deps);
+                }
+                resp.setState(structproto.Struct.fromJavaScript(state));
+
+                // Wait for RPC operations to complete.
+                await settings.waitForRPCs();
+
+                callback(undefined, resp);
+            } catch (e) {
+                if (InputPropertiesError.isInstance(e)) {
+                    const error = this.buildInvalidPropertiesError(e.message, e.errors);
+                    callback(error, undefined);
+                    return;
+                } else if (InputPropertyError.isInstance(e)) {
+                    const error = this.buildInvalidPropertiesError("", [
+                        { propertyPath: e.propertyPath, reason: e.reason },
+                    ]);
+                    callback(error, undefined);
+                    return;
+                }
+                callback(e, undefined);
+            } finally {
+                // remove the gRPC callback context from the map of in-flight callbacks
+                this._callbacks.delete(callbackId);
+            }
+        });
+    }
+
     public async call(call: any, callback: any): Promise<void> {
         // Setup a new async state store for this run
         return localState.withLocalStorage(async () => {
@@ -601,34 +688,66 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 }
 
-async function configureRuntime(req: any, engineAddr: string | undefined) {
+async function applyRuntimeOptions(
+    engineAddr: string | undefined,
+    project: string,
+    stack: string,
+    parallel: number,
+    monitorEndpoint: string,
+    dryRun: boolean,
+    organization: string,
+    configMap: jspb.Map<string, string> | undefined,
+    configSecretKeys: string[],
+) {
     // NOTE: these are globals! We should ensure that all settings are identical between calls, and eventually
     // refactor so we can avoid the global state.
     if (engineAddr === undefined) {
         throw new Error("fatal: Missing <engine> address");
     }
 
-    settings.resetOptions(
-        req.getProject(),
-        req.getStack(),
-        req.getParallel(),
-        engineAddr,
-        req.getMonitorendpoint(),
-        req.getDryrun(),
-        req.getOrganization(),
-    );
+    settings.resetOptions(project, stack, parallel, engineAddr, monitorEndpoint, dryRun, organization);
 
     // resetOptions doesn't reset the saved features
     await settings.awaitFeatureSupport();
 
     const pulumiConfig: { [key: string]: string } = {};
-    const rpcConfig = req.getConfigMap();
-    if (rpcConfig) {
-        for (const [k, v] of rpcConfig.entries()) {
+    if (configMap) {
+        for (const [k, v] of configMap.entries()) {
             pulumiConfig[k] = v;
         }
     }
-    config.setAllConfig(pulumiConfig, req.getConfigsecretkeysList());
+    config.setAllConfig(pulumiConfig, configSecretKeys);
+}
+
+async function configureRuntime(req: any, engineAddr: string | undefined) {
+    await applyRuntimeOptions(
+        engineAddr,
+        req.getProject(),
+        req.getStack(),
+        req.getParallel(),
+        req.getMonitorendpoint(),
+        req.getDryrun(),
+        req.getOrganization(),
+        req.getConfigMap(),
+        req.getConfigsecretkeysList(),
+    );
+}
+
+// ConstructBaseRequest uses different generated getter casing than
+// ConstructRequest/CallRequest (e.g. getMonitorEndpoint vs getMonitorendpoint),
+// so it configures the runtime through the shared core with its own accessors.
+async function configureRuntimeForConstructBase(req: provproto.ConstructBaseRequest, engineAddr: string | undefined) {
+    await applyRuntimeOptions(
+        engineAddr,
+        req.getProject(),
+        req.getStack(),
+        req.getParallel(),
+        req.getMonitorEndpoint(),
+        req.getDryRun(),
+        req.getOrganization(),
+        req.getConfigMap(),
+        req.getConfigSecretKeysList(),
+    );
 }
 
 /**

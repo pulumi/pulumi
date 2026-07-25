@@ -208,6 +208,7 @@ export function resetOptions(
     store.supportsTransforms = false;
     store.supportsInvokeTransforms = false;
     store.supportsParameterization = false;
+    store.supportsConstructBase = undefined;
     store.callbacks = undefined;
     store.packageRefs = new Map<string, Promise<string>>();
 }
@@ -340,6 +341,60 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsResourceHooks = resourceHooks;
         store.supportsErrorHooks = errorHooks;
     }
+}
+
+/**
+ * Probes the resource monitor via `GetDeploymentInfo` for whether it supports
+ * constructing base resources (component inheritance). Base construction is
+ * negotiated through the `supportedFeatures` list rather than `SupportsFeature`
+ * because that string list is frozen. Engines that predate `GetDeploymentInfo`
+ * return `UNIMPLEMENTED`, which we treat as unsupported.
+ *
+ * @internal
+ */
+async function monitorSupportsConstructBase(monitorClient: resrpc.IResourceMonitorClient): Promise<boolean> {
+    return new Promise<boolean>((resolve, reject) => {
+        monitorClient.getDeploymentInfo(
+            new emptyproto.Empty(),
+            (err: grpc.ServiceError | null, resp: resproto.DeploymentInfo | undefined) => {
+                if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                    return resolve(false);
+                }
+                if (err) {
+                    return reject(err);
+                }
+                if (resp === undefined) {
+                    return reject(new Error("No response from resource monitor"));
+                }
+                return resolve(
+                    resp
+                        .getSupportedfeaturesList()
+                        .includes(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE),
+                );
+            },
+        );
+    });
+}
+
+/**
+ * Returns whether the resource monitor supports constructing base resources
+ * (component inheritance). The result is cached on the store so the probe runs
+ * at most once per deployment.
+ *
+ * @internal
+ */
+export async function supportsConstructBase(): Promise<boolean> {
+    const store = getStore();
+    if (store.supportsConstructBase !== undefined) {
+        return store.supportsConstructBase;
+    }
+    const monitorRef = getMonitor();
+    if (monitorRef === undefined) {
+        return false;
+    }
+    const supported = await monitorSupportsConstructBase(monitorRef);
+    store.supportsConstructBase = supported;
+    return supported;
 }
 
 /**

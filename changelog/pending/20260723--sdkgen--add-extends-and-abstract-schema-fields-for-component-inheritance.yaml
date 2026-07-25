@@ -1,0 +1,6 @@
+component: sdkgen
+kind: feat
+body: Add `extends` and `abstract` for components and a top-level `requiredFeatures`
+  field to the Pulumi Package schema, letting a component declare a base component
+  that the binder flattens into the derived resource
+time: 2026-07-23T13:00:00-07:00

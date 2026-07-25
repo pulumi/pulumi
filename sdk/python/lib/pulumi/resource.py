@@ -18,6 +18,7 @@ import asyncio
 import copy
 import warnings
 from typing import (
+    NamedTuple,
     Optional,
     Any,
     Union,
@@ -31,6 +32,7 @@ from .resource_hooks import ResourceHookBinding
 from .runtime import known_types
 from .runtime.resource import (
     _pkg_from_type,
+    attach_resource,
     get_resource,
     register_resource,
     register_resource_outputs,
@@ -341,6 +343,24 @@ this indicates that the resource will not be transformed.
 """
 
 
+class _ConstructBaseOptions(NamedTuple):
+    """Internal marker threaded on :class:`ResourceOptions` by the provider
+    server to drive base-class construction. When present, the constructed
+    component adopts ``urn`` instead of registering a new resource (see
+    :func:`pulumi.runtime.resource.attach_resource`).
+
+    This is deliberately not part of the public ResourceOptions surface: it is
+    set only by the SDK's ``ConstructBase`` servicer and consumed only by
+    :meth:`Resource.__init__`.
+    """
+
+    urn: str
+    """The URN of the already-registered resource to adopt."""
+
+    most_derived_type: str
+    """The most-derived type of the adopted resource, for diagnostics."""
+
+
 class ResourceOptions:
     """
     ResourceOptions is a bag of optional settings that control a resource's behavior.
@@ -610,6 +630,9 @@ class ResourceOptions:
         self.hide_diffs = hide_diffs
         self.env_var_mappings = env_var_mappings
 
+        # Internal-only; set by the ConstructBase servicer, never by users.
+        self._construct_base: Optional[_ConstructBaseOptions] = None
+
         # Proactively check that `depends_on` values are of type
         # `Resource`. We cannot complete the check in the general case
         # and can only do it on promptly available arguments.
@@ -781,6 +804,11 @@ class ResourceOptions:
             dest.env_var_mappings
             if source.env_var_mappings is None
             else source.env_var_mappings
+        )
+        dest._construct_base = (
+            dest._construct_base
+            if source._construct_base is None
+            else source._construct_base
         )
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
@@ -1020,7 +1048,15 @@ class Resource:
         self._providers = opts.providers
         self._version = opts.version
         self._plugin_download_url = opts.plugin_download_url
-        if opts.urn is not None:
+
+        # A component being constructed as the base class of an already-registered
+        # resource adopts that resource's URN rather than registering its own.
+        construct_base = opts._construct_base
+        self._adopted = construct_base is not None
+
+        if construct_base is not None:
+            attach_resource(self, t, props, custom, construct_base.urn, typ)
+        elif opts.urn is not None:
             # This is a resource that already exists. Read its state from the engine.
             get_resource(self, props, custom, opts.urn, typ)
         elif opts.id is not None:
@@ -1262,6 +1298,10 @@ class ComponentResource(Resource):
 
         :param dict output: A dictionary of outputs to associate with this resource.
         """
+        # A base class adopted an already-registered resource; the single
+        # most-derived registration owns its outputs, so this is a no-op.
+        if getattr(self, "_adopted", False):
+            return
         register_resource_outputs(self, outputs)
 
 

@@ -88,6 +88,13 @@ class ComponentProvider(Provider):
         component_name = resource_type.split(":")[-1]
         constructor = self._components[component_name]
         component_def = self._component_defs[component_name]
+        # Abstract components exist only to be extended; a direct construct must be rejected. Base construction goes
+        # through a separate path and is intentionally not gated here. This is the provider-side source of truth for
+        # abstract enforcement, holding even for old consumer SDKs that ignore the schema flag.
+        if component_def.abstract:
+            raise Exception(
+                f"type '{resource_type}' is abstract and cannot be instantiated directly"
+            )
         mapped_args = self.map_inputs(inputs, component_def)
         # Wrap the call to the component constuctor in a try except block to
         # catch any exceptions, so that we can re-raise a ComponentInitError.

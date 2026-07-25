@@ -18,7 +18,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"slices"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -35,6 +37,68 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
+
+// featureInheritance mirrors the (unexported) requiredFeatures marker in pkg/codegen/schema that a sparse,
+// non-flattened schema declares so that consumers which do not understand component inheritance reject it rather than
+// silently dropping inherited members.
+const featureInheritance = "inheritance"
+
+// schemaUsesInheritance reports whether a package spec relies on component inheritance and therefore needs to be
+// normalized to its flattened canonical form before publication: either some resource carries an `extends` reference,
+// or the package declares the inheritance requiredFeatures marker.
+func schemaUsesInheritance(spec *schema.PackageSpec) bool {
+	if slices.Contains(spec.RequiredFeatures, featureInheritance) {
+		return true
+	}
+	for _, res := range spec.Resources {
+		if res.Extends != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// writeExtractedSchema emits the schema for `pulumi package get-schema`. Schemas that use component inheritance may
+// arrive in the sparse form analyzers emit (inherited members omitted, marked with requiredFeatures: ["inheritance"]),
+// but published schemas must be in the canonical flattened form. For those we bind — which materializes inherited
+// members — and re-marshal the bound package, whose output carries the flattened member set and drops the transient
+// requiredFeatures marker. Every other schema is printed byte-for-byte as received and bound only afterward to surface
+// diagnostics, so its output (and the emit-then-warn ordering) is preserved exactly.
+func writeExtractedSchema(out io.Writer, spec *schema.PackageSpec, loader schema.Loader) error {
+	normalize := schemaUsesInheritance(spec)
+	if normalize {
+		bound, err := packages.BindSpec(*spec, loader)
+		if err != nil {
+			return fmt.Errorf("failed to bind schema: %w", err)
+		}
+		spec, err = bound.MarshalSpec()
+		if err != nil {
+			return err
+		}
+	}
+
+	bytes, err := json.MarshalIndent(spec, "", "  ")
+	if err != nil {
+		return err
+	}
+	bytes = append(bytes, '\n')
+	n, err := out.Write(bytes)
+	if err != nil {
+		return err
+	}
+	if len(bytes) != n {
+		return fmt.Errorf("only wrote %d/%d bytes of the schema", len(bytes), n)
+	}
+
+	if !normalize {
+		// Also try to bind the schema to warn about any diagnostics:
+		if _, err := packages.BindSpec(*spec, loader); err != nil {
+			return fmt.Errorf("failed to bind schema: %w", err)
+		}
+	}
+
+	return nil
+}
 
 func newExtractSchemaCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -77,26 +141,8 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			if err != nil {
 				return err
 			}
-			bytes, err := json.MarshalIndent(spec, "", "  ")
-			if err != nil {
-				return err
-			}
-			bytes = append(bytes, '\n')
-			n, err := cmd.OutOrStdout().Write(bytes)
-			if err != nil {
-				return err
-			}
-			if len(bytes) != n {
-				return fmt.Errorf("only wrote %d/%d bytes of the schema", len(bytes), n)
-			}
 
-			// Also try to bind the schema to warn about any diagnostics:
-			_, err = packages.BindSpec(*spec, schema.NewPluginLoader(pctx))
-			if err != nil {
-				return fmt.Errorf("failed to bind schema: %w", err)
-			}
-
-			return nil
+			return writeExtractedSchema(cmd.OutOrStdout(), spec, schema.NewPluginLoader(pctx))
 		},
 	}
 

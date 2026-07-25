@@ -78,4 +78,64 @@ describe("Schema", function () {
         assert.strictEqual(schema.namespace, "my-namespace");
         assert.strictEqual(schema.name, "test-provider");
     });
+
+    it("emits a local extends ref and no requiredFeatures for a locally flattened subclass", function () {
+        const components: Record<string, ComponentDefinition> = {
+            Base: {
+                name: "Base",
+                inputs: { baseInput: { type: "string" } },
+                outputs: { baseOutput: { type: "string" } },
+            },
+            Derived: {
+                name: "Derived",
+                inputs: { baseInput: { type: "string" }, derivedInput: { type: "number" } },
+                outputs: { baseOutput: { type: "string" }, derivedOutput: { type: "number" } },
+                extends: { $ref: "#/resources/test-provider:index:Base" },
+            },
+        };
+
+        const schema = generateSchema("test-provider", "1.0.0", "desc", components, {}, []);
+
+        assert.deepStrictEqual(schema.resources["test-provider:index:Derived"].extends, {
+            $ref: "#/resources/test-provider:index:Base",
+        });
+        // A locally flattened schema carries the full member set, so it must not require the inheritance feature.
+        assert.strictEqual(schema.requiredFeatures, undefined);
+    });
+
+    it("emits an external extends ref and requiredFeatures for a sparse subclass", function () {
+        const components: Record<string, ComponentDefinition> = {
+            MyService: {
+                name: "MyService",
+                inputs: { replicas: { type: "number" } },
+                outputs: { endpoint: { type: "string" } },
+                extends: { $ref: "/basecomponent/v1.0.0/schema.json#/resources/basecomponent:index:Service" },
+            },
+        };
+
+        const schema = generateSchema("test-provider", "1.0.0", "desc", components, {}, [
+            { name: "basecomponent", version: "1.0.0" },
+        ]);
+
+        assert.deepStrictEqual(schema.resources["test-provider:index:MyService"].extends, {
+            $ref: "/basecomponent/v1.0.0/schema.json#/resources/basecomponent:index:Service",
+        });
+        // A sparse schema relies on the binder to materialize inherited members, so it must declare the feature.
+        assert.deepStrictEqual(schema.requiredFeatures, ["inheritance"]);
+    });
+
+    it("emits abstract on an abstract component", function () {
+        const components: Record<string, ComponentDefinition> = {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {},
+                outputs: { outResult: { type: "string" } },
+                abstract: true,
+            },
+        };
+
+        const schema = generateSchema("test-provider", "1.0.0", "desc", components, {}, []);
+
+        assert.strictEqual(schema.resources["test-provider:index:MyComponent"].abstract, true);
+    });
 });

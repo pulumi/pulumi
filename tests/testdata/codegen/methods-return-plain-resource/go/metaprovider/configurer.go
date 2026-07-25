@@ -32,6 +32,13 @@ func NewConfigurer(ctx *pulumi.Context,
 	return &resource, nil
 }
 
+// ConstructConfigurerBase constructs Configurer as a base of a user-authored derived component. Embed Configurer in
+// your component and call this after ctx.RegisterComponentResource to run the base construction
+// through the engine and resolve the base outputs onto the embedded struct.
+func ConstructConfigurerBase(ctx *pulumi.Context, self pulumi.ComponentResource, args *ConfigurerArgs) error {
+	return ctx.ConstructBase(self, "metaprovider:index:Configurer", args, "", internal.PkgResourceDefaultOpts(nil)...)
+}
+
 type configurerArgs struct {
 	TlsProxy *string `pulumi:"tlsProxy"`
 }

@@ -135,6 +135,160 @@ type modContext struct {
 	inputTypes string
 }
 
+// participatesInInheritance reports whether a resource needs the inheritance-aware constructor. Every component gets
+// it: subclassability must not depend on whether the base's own package happens to contain a deriver. The constructor
+// is byte-identical in behavior when the component is not subclassed (the extra branches are inert), so this is a pure
+// capability addition.
+func (mod *modContext) participatesInInheritance(r *schema.Resource) bool {
+	return r.IsComponent
+}
+
+// pyOutputNamesLiteral renders a property list as a Python string-list literal of the property attribute names.
+func pyOutputNamesLiteral(props []*schema.Property) string {
+	names := make([]string, len(props))
+	for i, p := range props {
+		names[i] = fmt.Sprintf("%q", PyName(p.Name))
+	}
+	return "[" + strings.Join(names, ", ") + "]"
+}
+
+// pyWireInputsDict renders a property list as a Python dict literal mapping each property's wire (schema) name to its
+// generated __init__ parameter. construct_base_resource keys inputs by wire name.
+func pyWireInputsDict(props []*schema.Property) string {
+	if len(props) == 0 {
+		return "{}"
+	}
+	parts := make([]string, len(props))
+	for i, p := range props {
+		parts[i] = fmt.Sprintf("%q: %s", p.Name, InitParamName(p.Name))
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+// pyBaseConstructInfo renders the BaseConstructInfo argument to construct_base_resource for a base living in the given
+// package descriptor. A nil descriptor denotes this package itself (the user-subclass case), sourced from _utilities.
+func pyBaseConstructInfo(desc *schema.PackageDescriptor) string {
+	if desc == nil {
+		return "pulumi.runtime.BaseConstructInfo(version=_utilities.get_version())"
+	}
+	version := ""
+	if desc.Version != nil {
+		version = desc.Version.String()
+	}
+	info := fmt.Sprintf("pulumi.runtime.BaseConstructInfo(version=%q", version)
+	if desc.DownloadURL != "" {
+		info += fmt.Sprintf(", plugin_download_url=%q", desc.DownloadURL)
+	}
+	return info + ")"
+}
+
+// emitPyConstructBaseCall writes the runtime call that constructs a base of the already-registered most-derived
+// instance (__self__), resolving the base's declared outputs onto it. The helper seeds those output cells
+// synchronously, so the constructor may read them immediately.
+func emitPyConstructBaseCall(w io.Writer, baseToken, inputsDict, info, outputsLiteral, indent string) {
+	fmt.Fprintf(w, "%spulumi.runtime.construct_base_resource(__self__, %q, %s, %s, %s)\n",
+		indent, baseToken, inputsDict, info, outputsLiteral)
+}
+
+// emitPyResourceProps emits the `__props__` allocation, the input-property assignments (with defaults, required
+// checks, const values, provider JSON projection and secret wrapping) and the None-seeding of the pure output
+// properties. It is shared by the classic constructor and the inheritance-aware constructors; indent is the leading
+// whitespace for each emitted statement. It returns the resource's secret output property names.
+func (mod *modContext) emitPyResourceProps(w io.Writer, res *schema.Resource, argsName, indent string) ([]string, error) {
+	fmt.Fprintf(w, "%s__props__ = %[2]s.__new__(%[2]s)\n\n", indent, argsName)
+
+	ins := codegen.NewStringSet()
+	for _, prop := range res.InputProperties {
+		pname := InitParamName(prop.Name)
+		var arg any
+		var err error
+
+		if prop.DefaultValue != nil {
+			dv, err := getDefaultValue(prop.DefaultValue, codegen.UnwrapType(prop.Type))
+			if err != nil {
+				return nil, err
+			}
+			fmt.Fprintf(w, "%sif %s is None:\n", indent, pname)
+			fmt.Fprintf(w, "%s    %s = %s\n", indent, pname, dv)
+		}
+
+		if prop.IsRequired() {
+			fmt.Fprintf(w, "%sif %s is None and not opts.urn:\n", indent, pname)
+			fmt.Fprintf(w, "%s    raise TypeError(\"Missing required property '%s'\")\n", indent, pname)
+		}
+
+		arg = pname
+		if prop.ConstValue != nil {
+			arg, err = getConstValue(prop.ConstValue)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// A provider projects all non-string properties as JSON strings.
+		handledSecret := false
+		if res.IsProvider && !isStringType(prop.Type) {
+			if prop.Secret {
+				arg = fmt.Sprintf("pulumi.Output.secret(%s).apply(pulumi.runtime.to_json) if %s is not None else None", arg, arg)
+				handledSecret = true
+			} else {
+				arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(pulumi.runtime.to_json) if %s is not None else None", arg, arg)
+			}
+		}
+		pyname := PyName(prop.Name)
+		if prop.Secret && !handledSecret {
+			fmt.Fprintf(w, "%s__props__.__dict__[%[2]q] = None if %[3]s is None else pulumi.Output.secret(%[3]s)\n", indent, pyname, arg)
+		} else {
+			fmt.Fprintf(w, "%s__props__.__dict__[%q] = %s\n", indent, pyname, arg)
+		}
+
+		ins.Add(prop.Name)
+	}
+
+	var secretProps []string
+	for _, prop := range res.Properties {
+		if !ins.Has(prop.Name) {
+			fmt.Fprintf(w, "%s__props__.__dict__[%q] = None\n", indent, PyName(prop.Name))
+		}
+		if prop.Secret {
+			secretProps = append(secretProps, prop.Name)
+		}
+	}
+	return secretProps, nil
+}
+
+// emitPyOptionMerges emits the alias/secret/replaceOnChanges option merging shared by the classic and
+// inheritance-aware constructors; indent is the leading whitespace for each emitted statement.
+func (mod *modContext) emitPyOptionMerges(w io.Writer, res *schema.Resource, secretProps []string, indent string) {
+	if len(res.Aliases) > 0 {
+		fmt.Fprintf(w, "%salias_opts = pulumi.ResourceOptions(aliases=[", indent)
+		for i, alias := range res.Aliases {
+			fmt.Fprintf(w, "pulumi.Alias(type_=\"%v\")", alias.Type)
+			if i != len(res.Aliases)-1 {
+				fmt.Fprintf(w, ", ")
+			}
+		}
+		fmt.Fprintf(w, "])\n")
+		fmt.Fprintf(w, "%sopts = pulumi.ResourceOptions.merge(opts, alias_opts)\n", indent)
+	}
+
+	if len(secretProps) > 0 {
+		fmt.Fprintf(w, `%ssecret_opts = pulumi.ResourceOptions(additional_secret_outputs=["%s"])`, indent, strings.Join(secretProps, `", "`))
+		fmt.Fprintf(w, "\n%sopts = pulumi.ResourceOptions.merge(opts, secret_opts)\n", indent)
+	}
+
+	replaceOnChangesProps, errList := res.ReplaceOnChanges()
+	for _, err := range errList {
+		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
+	}
+	if len(replaceOnChangesProps) > 0 {
+		replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps,
+			func(x string) string { return x })
+		fmt.Fprintf(w, `%sreplace_on_changes = pulumi.ResourceOptions(replace_on_changes=["%s"])`, indent, strings.Join(replaceOnChangesStrings, `", "`))
+		fmt.Fprintf(w, "\n%sopts = pulumi.ResourceOptions.merge(opts, replace_on_changes)\n", indent)
+	}
+}
+
 func (mod *modContext) isTopLevel() bool {
 	return mod.parent == nil
 }
@@ -1366,6 +1520,10 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			}}, imports, false /*input*/, res)
 		}
 	}
+	if res.BaseResource != nil {
+		// A derived component subclasses its base, so its module must be imported.
+		imports.addResource(mod, &schema.ResourceType{Token: res.BaseResource.Token, Resource: res.BaseResource})
+	}
 
 	mod.genHeader(w, true /*needsSDK*/, imports)
 
@@ -1399,7 +1557,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	// Export only the symbols we want exported.
 	fmt.Fprintf(w, "__all__ = ['%s', '%s']\n\n", resourceArgsName, name)
 
-	// Produce an args class.
+	// Produce an args class. A derived component's args class is a flattened standalone class over the full inherited
+	// input surface (res.InputProperties is already flattened), not a subclass of the base args class — consistent
+	// with the Go projection, functionally complete, and avoiding args-class inheritance plumbing.
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
 	err := mod.genType(w, resourceArgsName, argsComment, res.InputProperties, true, false)
 	if err != nil {
@@ -1424,6 +1584,10 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	switch {
 	case res.IsProvider:
 		baseType = "pulumi.ProviderResource"
+	case res.BaseResource != nil:
+		// A derived component subclasses its base class, inheriting its property getters and methods. Abstract bases
+		// are enforced by a constructor guard rather than a language-level keyword.
+		baseType = mod.resourceType(&schema.ResourceType{Token: res.BaseResource.Token, Resource: res.BaseResource})
 	case res.IsComponent:
 		baseType = "pulumi.ComponentResource"
 	default:
@@ -1451,8 +1615,14 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	// Emit __init__ overloads and implementation...
 
-	// Helper for generating an init method with inputs as function arguments.
-	emitInitMethodSignature := func(methodName string) {
+	// A component that participates in inheritance threads an internal chain-state argument through the private
+	// _internal_init implementations (the public @overload signatures stay clean) so the whole hierarchy registers
+	// exactly once, with the most-derived type token.
+	participates := mod.participatesInInheritance(res)
+
+	// Helper for generating an init method with inputs as function arguments. The private chain-state argument only
+	// appears on the internal implementation, never on the public overloads.
+	emitInitMethodSignature := func(methodName string, withChain bool) {
 		fmt.Fprintf(w, "    def %s(__self__,\n", methodName)
 		fmt.Fprintf(w, "                 resource_name: str,\n")
 		fmt.Fprintf(w, "                 opts: Optional[pulumi.ResourceOptions] = None")
@@ -1463,12 +1633,19 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			fmt.Fprintf(w, ",\n                 %s: %s = None", InitParamName(prop.Name), ty)
 		}
 
-		fmt.Fprintf(w, ",\n                 __props__=None):\n")
+		fmt.Fprintf(w, ",\n                 __props__=None")
+		if withChain {
+			// Trailing underscores keep this out of Python's name-mangling (like __props__/__self__):
+			// a derived class forwards it as a keyword to its base's _internal_init across the class
+			// boundary, which a single-underscore-prefixed __chain would mangle per-class and break.
+			fmt.Fprintf(w, ",\n                 __chain__=None")
+		}
+		fmt.Fprintf(w, "):\n")
 	}
 
 	// Emit an __init__ overload that accepts the resource's inputs as function arguments.
 	fmt.Fprintf(w, "    @overload\n")
-	emitInitMethodSignature("__init__")
+	emitInitMethodSignature("__init__", false)
 	if err := mod.genInitDocstring(w, res, resourceArgsName, false /*argsOverload*/); err != nil {
 		return "", err
 	}
@@ -1500,150 +1677,137 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "\n")
 
 	// Emit the _internal_init helper method which provides the bulk of the __init__ implementation.
-	emitInitMethodSignature("_internal_init")
+	emitInitMethodSignature("_internal_init", participates)
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, res.DeprecationMessage)
 	}
-	fmt.Fprintf(w, "        opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)\n")
-	fmt.Fprintf(w, "        if not isinstance(opts, pulumi.ResourceOptions):\n")
-	fmt.Fprintf(w, "            raise TypeError('Expected resource options to be a ResourceOptions instance')\n")
-	if res.IsComponent {
-		fmt.Fprintf(w, "        if opts.id is not None:\n")
-		fmt.Fprintf(w, "            raise ValueError('ComponentResource classes do not support opts.id')\n")
-		fmt.Fprintf(w, "        else:\n")
-	} else {
-		fmt.Fprintf(w, "        if opts.id is None:\n")
-	}
-	fmt.Fprintf(w, "            if __props__ is not None:\n")
-	fmt.Fprintf(w, "                raise TypeError(")
-	fmt.Fprintf(w, "'__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')\n")
 
-	// We use an instance of the `<Resource>Args` class for `__props__` to opt-in to the type/name metadata based
-	// translation behavior. The instance is created using `__new__` to avoid any validation in the `__init__` method,
-	// values are set directly on its `__dict__`, including any additional output properties.
-	fmt.Fprintf(w, "            __props__ = %[1]s.__new__(%[1]s)\n\n", resourceArgsName)
-	fmt.Fprintf(w, "")
-
-	ins := codegen.NewStringSet()
-	for _, prop := range res.InputProperties {
-		pname := InitParamName(prop.Name)
-		var arg any
-		var err error
-
-		// Fill in computed defaults for arguments.
-		if prop.DefaultValue != nil {
-			dv, err := getDefaultValue(prop.DefaultValue, codegen.UnwrapType(prop.Type))
-			if err != nil {
-				return "", err
-			}
-			fmt.Fprintf(w, "            if %s is None:\n", pname)
-			fmt.Fprintf(w, "                %s = %s\n", pname, dv)
-		}
-
-		// Check that required arguments are present.
-		if prop.IsRequired() {
-			fmt.Fprintf(w, "            if %s is None and not opts.urn:\n", pname)
-			fmt.Fprintf(w, "                raise TypeError(\"Missing required property '%s'\")\n", pname)
-		}
-
-		// And add it to the dictionary.
-		arg = pname
-
-		if prop.ConstValue != nil {
-			arg, err = getConstValue(prop.ConstValue)
-			if err != nil {
-				return "", err
-			}
-		}
-
-		// If this resource is a provider then, regardless of the schema of the underlying provider
-		// type, we must project all properties as strings. For all properties that are not strings,
-		// we'll marshal them to JSON and use the JSON string as a string input.
-		handledSecret := false
-		if res.IsProvider && !isStringType(prop.Type) {
-			if prop.Secret {
-				arg = fmt.Sprintf("pulumi.Output.secret(%s).apply(pulumi.runtime.to_json) if %s is not None else None", arg, arg)
-				handledSecret = true
-			} else {
-				arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(pulumi.runtime.to_json) if %s is not None else None", arg, arg)
-			}
-		}
-		name := PyName(prop.Name)
-		if prop.Secret && !handledSecret {
-			fmt.Fprintf(w, "            __props__.__dict__[%[1]q] = None if %[2]s is None else pulumi.Output.secret(%[2]s)\n", name, arg)
-		} else {
-			fmt.Fprintf(w, "            __props__.__dict__[%q] = %s\n", name, arg)
-		}
-
-		ins.Add(prop.Name)
-	}
-
-	var secretProps []string
-	for _, prop := range res.Properties {
-		// Default any pure output properties to None.  This ensures they are available as properties, even if
-		// they don't ever get assigned a real value, and get documentation if available.
-		if !ins.Has(prop.Name) {
-			fmt.Fprintf(w, "            __props__.__dict__[%q] = None\n", PyName(prop.Name))
-		}
-
-		if prop.Secret {
-			secretProps = append(secretProps, prop.Name)
-		}
-	}
-
-	if len(res.Aliases) > 0 {
-		fmt.Fprintf(w, `        alias_opts = pulumi.ResourceOptions(aliases=[`)
-
-		for i, alias := range res.Aliases {
-			fmt.Fprintf(w, "pulumi.Alias(type_=\"%v\")", alias.Type)
-			if i != len(res.Aliases)-1 {
-				fmt.Fprintf(w, ", ")
-			}
-		}
-
-		fmt.Fprintf(w, "])\n")
-		fmt.Fprintf(w, "        opts = pulumi.ResourceOptions.merge(opts, alias_opts)\n")
-	}
-
-	if len(secretProps) > 0 {
-		fmt.Fprintf(w, `        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["%s"])`, strings.Join(secretProps, `", "`))
-		fmt.Fprintf(w, "\n        opts = pulumi.ResourceOptions.merge(opts, secret_opts)\n")
-	}
-
-	replaceOnChangesProps, errList := res.ReplaceOnChanges()
-	for _, err := range errList {
-		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
-	}
-	if len(replaceOnChangesProps) > 0 {
-		replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps,
-			func(x string) string { return x })
-		fmt.Fprintf(w, `        replace_on_changes = pulumi.ResourceOptions(replace_on_changes=["%s"])`, strings.Join(replaceOnChangesStrings, `", "`))
-		fmt.Fprintf(w, "\n        opts = pulumi.ResourceOptions.merge(opts, replace_on_changes)\n")
-	}
-
-	// Finally, chain to the base constructor, which will actually register the resource.
-	tok := res.Token
-	if res.IsProvider {
-		tok = mod.pkg.Name()
-	}
-	fmt.Fprintf(w, "        super(%s, __self__).__init__(\n", name)
-	fmt.Fprintf(w, "            '%s',\n", tok)
-	fmt.Fprintf(w, "            resource_name,\n")
-	fmt.Fprintf(w, "            __props__,\n")
-	if res.IsComponent {
-		fmt.Fprintf(w, "            opts,\n")
-		fmt.Fprintf(w, "            remote=True")
-	} else {
-		fmt.Fprintf(w, "            opts")
-	}
 	pkg, err := res.PackageReference.Definition()
 	if err != nil {
 		return "", err
 	}
-	if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
-		fmt.Fprintf(w, ",\n            package_ref=_utilities.get_package()")
+	parameterized := pkg.Parameterization != nil || pkg.ExtensionParameterization != nil
+
+	// emitRegister writes the option merging plus the local single registration that actually registers the resource,
+	// used by a root base's direct instantiation and by every non-inheriting resource.
+	emitRegister := func(indent string, secretProps []string) {
+		mod.emitPyOptionMerges(w, res, secretProps, indent)
+		tok := res.Token
+		if res.IsProvider {
+			tok = mod.pkg.Name()
+		}
+		fmt.Fprintf(w, "%ssuper(%s, __self__).__init__(\n", indent, name)
+		fmt.Fprintf(w, "%s    '%s',\n", indent, tok)
+		fmt.Fprintf(w, "%s    resource_name,\n", indent)
+		fmt.Fprintf(w, "%s    __props__,\n", indent)
+		if res.IsComponent {
+			fmt.Fprintf(w, "%s    opts,\n", indent)
+			fmt.Fprintf(w, "%s    remote=True", indent)
+		} else {
+			fmt.Fprintf(w, "%s    opts", indent)
+		}
+		if parameterized {
+			fmt.Fprintf(w, ",\n%s    package_ref=_utilities.get_package()", indent)
+		}
+		fmt.Fprintf(w, ")\n\n")
 	}
-	fmt.Fprintf(w, ")\n\n")
+
+	// emitClassicInit writes the classic constructor body: option defaulting, the opts.id guard, the input/output
+	// __props__ population and the local registration. It backs both non-inheriting resources and a concrete base's
+	// direct instantiation.
+	emitClassicInit := func() error {
+		fmt.Fprintf(w, "        opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)\n")
+		fmt.Fprintf(w, "        if not isinstance(opts, pulumi.ResourceOptions):\n")
+		fmt.Fprintf(w, "            raise TypeError('Expected resource options to be a ResourceOptions instance')\n")
+		if res.IsComponent {
+			fmt.Fprintf(w, "        if opts.id is not None:\n")
+			fmt.Fprintf(w, "            raise ValueError('ComponentResource classes do not support opts.id')\n")
+			fmt.Fprintf(w, "        else:\n")
+		} else {
+			fmt.Fprintf(w, "        if opts.id is None:\n")
+		}
+		fmt.Fprintf(w, "            if __props__ is not None:\n")
+		fmt.Fprintf(w, "                raise TypeError(")
+		fmt.Fprintf(w, "'__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')\n")
+		secretProps, err := mod.emitPyResourceProps(w, res, resourceArgsName, "            ")
+		if err != nil {
+			return err
+		}
+		emitRegister("        ", secretProps)
+		return nil
+	}
+
+	switch {
+	case res.BaseResource != nil:
+		// A derived component builds the full flattened inputs itself and threads a chain-state argument up to its
+		// base so the hierarchy registers exactly once, at the root, with this derived token. When it forwards a chain
+		// from a more-derived subclass (__chain__ set) it adds nothing; when it is the entry point (__chain__ None) it
+		// also routes user-authored subclasses through the engine base-construct hook. Cross-package extends is
+		// identical on the consumer side (imports, hierarchy and the user-subclass branch aside): the derived
+		// package's provider owns the base-construction chain server-side.
+		fmt.Fprintf(w, "        if __chain__ is None:\n")
+		fmt.Fprintf(w, "            opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)\n")
+		fmt.Fprintf(w, "            if not isinstance(opts, pulumi.ResourceOptions):\n")
+		fmt.Fprintf(w, "                raise TypeError('Expected resource options to be a ResourceOptions instance')\n")
+		fmt.Fprintf(w, "            if opts.id is not None:\n")
+		fmt.Fprintf(w, "                raise ValueError('ComponentResource classes do not support opts.id')\n")
+		secretProps, err := mod.emitPyResourceProps(w, res, resourceArgsName, "            ")
+		if err != nil {
+			return "", err
+		}
+		mod.emitPyOptionMerges(w, res, secretProps, "            ")
+		// A user-authored subclass registers under its own most-derived token, then constructs this generated
+		// component through the engine, resolving its outputs onto the instance.
+		fmt.Fprintf(w, "            if type(__self__) is not %s:\n", name)
+		fmt.Fprintf(w, "                super(%s, __self__)._internal_init(resource_name, opts, "+
+			"__chain__={\"mode\": \"user_subclass\", \"type\": pulumi.runtime.get_type_token(type(__self__)), \"props\": __props__})\n", name)
+		emitPyConstructBaseCall(w, res.Token, pyWireInputsDict(res.InputProperties), pyBaseConstructInfo(nil),
+			pyOutputNamesLiteral(res.Properties), "                ")
+		fmt.Fprintf(w, "                return\n")
+		fmt.Fprintf(w, "            __chain__ = {\"mode\": \"generated\", \"type\": %q, \"props\": __props__}\n", res.Token)
+		fmt.Fprintf(w, "        super(%s, __self__)._internal_init(resource_name, opts, __chain__=__chain__)\n\n", name)
+
+	case participates:
+		// A base component performs the single most-derived registration on behalf of the whole hierarchy: a
+		// generated subclass supplies the chain state and it registers once with the derived token; a user-authored
+		// subclass is routed through the engine base-construct hook. An abstract base cannot be instantiated directly.
+		// A generated subclass supplies the chain state (registering remotely under the derived token); a user-authored
+		// subclass registers locally (its ad-hoc token has no provider to construct it).
+		fmt.Fprintf(w, "        if __chain__ is not None:\n")
+		fmt.Fprintf(w, "            super(%s, __self__).__init__(__chain__[\"type\"], resource_name, __chain__[\"props\"], opts, remote=__chain__[\"mode\"] == \"generated\"", name)
+		if parameterized {
+			fmt.Fprintf(w, ", package_ref=_utilities.get_package()")
+		}
+		fmt.Fprintf(w, ")\n")
+		fmt.Fprintf(w, "            return\n")
+		// A user-authored subclass registers locally under its own most-derived token, then constructs this base
+		// component through the engine, resolving its outputs onto the instance.
+		fmt.Fprintf(w, "        if type(__self__) is not %s:\n", name)
+		fmt.Fprintf(w, "            opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)\n")
+		subSecretProps, err := mod.emitPyResourceProps(w, res, resourceArgsName, "            ")
+		if err != nil {
+			return "", err
+		}
+		mod.emitPyOptionMerges(w, res, subSecretProps, "            ")
+		fmt.Fprintf(w, "            super(%s, __self__).__init__(pulumi.runtime.get_type_token(type(__self__)), resource_name, __props__, opts, remote=False", name)
+		if parameterized {
+			fmt.Fprintf(w, ", package_ref=_utilities.get_package()")
+		}
+		fmt.Fprintf(w, ")\n")
+		emitPyConstructBaseCall(w, res.Token, pyWireInputsDict(res.InputProperties), pyBaseConstructInfo(nil),
+			pyOutputNamesLiteral(res.Properties), "            ")
+		fmt.Fprintf(w, "            return\n")
+		if res.Abstract {
+			fmt.Fprintf(w, "        raise TypeError(\"%s is abstract and cannot be instantiated directly\")\n\n", name)
+		} else if err := emitClassicInit(); err != nil {
+			return "", err
+		}
+
+	default:
+		if err := emitClassicInit(); err != nil {
+			return "", err
+		}
+	}
 
 	if !res.IsProvider && !res.IsComponent {
 		fmt.Fprintf(w, "    @staticmethod\n")
@@ -1689,8 +1853,13 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "        return %s(resource_name, opts=opts, __props__=__props__)\n\n", name)
 	}
 
-	// Write out Python property getters for each of the resource's properties.
-	if err := mod.genProperties(w, res.Properties, false /*setters*/, "", func(prop *schema.Property) string {
+	// Write out Python property getters. A derived component emits getters only for its own outputs; the inherited
+	// getters come from the base class.
+	outputProperties := res.Properties
+	if res.BaseResource != nil {
+		outputProperties = res.OwnProperties()
+	}
+	if err := mod.genProperties(w, outputProperties, false /*setters*/, "", func(prop *schema.Property) string {
 		ty := mod.typeString(prop.Type, typeStringOpts{})
 		return fmt.Sprintf("pulumi.Output[%s]", ty)
 	}); err != nil {

@@ -544,6 +544,7 @@ func NewPreviewCmd() *cobra.Command {
 					DisableProviderPreview:    env.DisableProviderPreview.Value(),
 					DisableResourceReferences: env.DisableResourceReferences.Value(),
 					DisableOutputValues:       env.DisableOutputValues.Value(),
+					DisableConstructBase:      env.DisableConstructBase.Value(),
 					Targets:                   deploy.NewUrnTargets(targetURNs),
 					TargetDependents:          targetDependents,
 					Excludes:                  deploy.NewUrnTargets(excludeURNs),

@@ -1,0 +1,6 @@
+component: sdkgen
+kind: feat
+body: Project component inheritance into the Node.js, Python and Go SDKs, generating
+  derived component classes that extend their base, own-only members, abstract
+  base guards, and a single most-derived registration for the whole hierarchy
+time: 2026-07-23T15:30:00-07:00

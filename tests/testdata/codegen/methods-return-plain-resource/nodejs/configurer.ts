@@ -8,7 +8,7 @@ import * as pulumiTls from "@pulumi/tls";
 
 export class Configurer extends pulumi.ComponentResource {
     /** @internal */
-    public static readonly __pulumiType = 'metaprovider:index:Configurer';
+    public static readonly __pulumiType: string = 'metaprovider:index:Configurer';
 
     /**
      * Returns true if the given object is an instance of Configurer.  This is designed to work even
@@ -29,9 +29,20 @@ export class Configurer extends pulumi.ComponentResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: ConfigurerArgs, opts?: pulumi.ComponentResourceOptions) {
+    constructor(name: string, args?: ConfigurerArgs, opts?: pulumi.ComponentResourceOptions, __chain?: any /* internal */) {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
+        if (__chain !== undefined) {
+            super(__chain.type, name, __chain.inputs, opts, __chain.mode === "generated" /*remote*/);
+            return;
+        }
+        if (new.target !== Configurer) {
+            resourceInputs["tlsProxy"] = args?.tlsProxy;
+            opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+            super((new.target as any).__pulumiType, name, resourceInputs, opts, false /*local*/);
+            void pulumi.runtime.constructBaseResource(this, "metaprovider:index:Configurer", args ?? {}, { version: utilities.getVersion() }, []);
+            return;
+        }
         if (!opts.id) {
             resourceInputs["tlsProxy"] = args?.tlsProxy;
         } else {

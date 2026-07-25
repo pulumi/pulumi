@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"google.golang.org/grpc"
@@ -168,6 +169,7 @@ func (p *providerServer) Handshake(
 		AcceptResources:                 res.AcceptResources,
 		AcceptOutputs:                   res.AcceptOutputs,
 		SupportsAutonamingConfiguration: res.SupportsAutonamingConfiguration,
+		SupportsConstructBase:           res.SupportsConstructBase,
 	}, nil
 }
 
@@ -420,6 +422,9 @@ func (p *providerServer) Configure(ctx context.Context,
 		// in Handshake (though Handshake implies SupportsPreview, so we don't shim that there).
 		SupportsPreview: true,
 		AcceptOutputs:   true,
+		// The server serves ConstructBase by delegation; a wrapped provider that does not support it fails the
+		// call with Unimplemented, which callers normalize to the standard negotiation error.
+		SupportsConstructBase: true,
 	}, nil
 }
 
@@ -973,6 +978,92 @@ func (p *providerServer) Construct(ctx context.Context,
 
 	return &pulumirpc.ConstructResponse{
 		Urn:               string(resp.URN),
+		State:             outputs,
+		StateDependencies: outputDependencies,
+	}, nil
+}
+
+func (p *providerServer) ConstructBase(ctx context.Context,
+	req *pulumirpc.ConstructBaseRequest,
+) (*pulumirpc.ConstructBaseResponse, error) {
+	inputs, err := UnmarshalProperties(req.GetInputs(), p.unmarshalOptions("inputs", true /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := map[config.Key]string{}
+	for k, v := range req.GetConfig() {
+		configKey, err := config.ParseKey(k)
+		if err != nil {
+			return nil, err
+		}
+		cfg[configKey] = v
+	}
+
+	cfgSecretKeys := []config.Key{}
+	for _, k := range req.GetConfigSecretKeys() {
+		key, err := config.ParseKey(k)
+		if err != nil {
+			return nil, err
+		}
+		cfgSecretKeys = append(cfgSecretKeys, key)
+	}
+
+	info := ConstructInfo{
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Organization:     req.GetOrganization(),
+		Config:           cfg,
+		ConfigSecretKeys: cfgSecretKeys,
+		DryRun:           req.GetDryRun(),
+		Parallel:         req.GetParallel(),
+		MonitorAddress:   req.GetMonitorEndpoint(),
+		StackTraceHandle: req.GetStackTraceHandle(),
+	}
+
+	inputDependencies := map[resource.PropertyKey][]resource.URN{}
+	for name, deps := range req.GetInputDependencies() {
+		urns := make([]resource.URN, len(deps.Urns))
+		for i, urn := range deps.Urns {
+			urns[i] = resource.URN(urn)
+		}
+		inputDependencies[resource.PropertyKey(name)] = urns
+	}
+
+	resp, err := p.provider.ConstructBase(ctx, ConstructBaseRequest{
+		Info:              info,
+		Type:              tokens.Type(req.GetType()),
+		Name:              req.GetName(),
+		URN:               resource.URN(req.GetUrn()),
+		MostDerivedType:   tokens.Type(req.GetMostDerivedType()),
+		Inputs:            inputs,
+		InputDependencies: inputDependencies,
+		Providers:         req.GetProviders(),
+	})
+	if err != nil {
+		if errors.Is(err, ErrConstructBaseNotSupported) {
+			return nil, status.Error(codes.Unimplemented, err.Error())
+		}
+		return nil, rpcerror.WrapDetailedError(err)
+	}
+
+	opts := p.marshalOptions("outputs")
+	opts.KeepOutputValues = true
+	outputs, err := MarshalProperties(resp.Outputs, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	outputDependencies := map[string]*pulumirpc.ConstructBaseResponse_PropertyDependencies{}
+	for name, deps := range resp.OutputDependencies {
+		urns := make([]string, len(deps))
+		for i, urn := range deps {
+			urns[i] = string(urn)
+		}
+		outputDependencies[string(name)] = &pulumirpc.ConstructBaseResponse_PropertyDependencies{Urns: urns}
+	}
+
+	return &pulumirpc.ConstructBaseResponse{
 		State:             outputs,
 		StateDependencies: outputDependencies,
 	}, nil

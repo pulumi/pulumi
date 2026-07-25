@@ -824,6 +824,13 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 	return &emptypb.Empty{}, nil
 }
 
+func (p *providerServer) ConstructBase(ctx context.Context,
+	req *pulumirpc.ConstructBaseRequest,
+) (*pulumirpc.ConstructBaseResponse, error) {
+	// The SDK-side Provider abstraction does not support base-class construction.
+	return nil, status.Error(codes.Unimplemented, "ConstructBase is not implemented")
+}
+
 func (p *providerServer) Construct(ctx context.Context,
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {

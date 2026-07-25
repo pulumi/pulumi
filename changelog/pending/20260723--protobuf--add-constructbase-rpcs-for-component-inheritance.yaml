@@ -1,0 +1,6 @@
+component: protobuf
+kind: feat
+body: Add `ResourceMonitor.ConstructBaseResource` and `ResourceProvider.ConstructBase`
+  RPCs, with feature negotiation via `RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE` and
+  `supports_construct_base`, to support cross-package component inheritance
+time: 2026-07-23T12:30:00-07:00

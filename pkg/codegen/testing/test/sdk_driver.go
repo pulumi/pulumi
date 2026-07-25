@@ -443,6 +443,34 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Testing Go parameterized SDK with a provider method with liftSingleValueMethodReturns",
 		Skip:        allLanguages.Except("go/any"),
 	},
+	{
+		Directory:   "inheritance-simple",
+		Description: "Component inheritance: a base component, a derived component, an inherited method and an override",
+		// dotnet/docs/java don't implement inheritance. nodejs same-package emission type-checks; python/go compile
+		// checks stay gated pending their own conformance sweeps (see #14's environment).
+		Skip:             codegen.NewStringSet("dotnet/any", "docs/any", "java/any"),
+		SkipCompileCheck: codegen.NewStringSet(TestPython, TestGo),
+	},
+	{
+		Directory:        "inheritance-multilevel",
+		Description:      "Component inheritance: a three-level hierarchy in a single package",
+		Skip:             codegen.NewStringSet("dotnet/any", "docs/any", "java/any"),
+		SkipCompileCheck: codegen.NewStringSet(TestPython, TestGo),
+	},
+	{
+		Directory:        "abstract-component",
+		Description:      "Component inheritance: an abstract base component and a concrete derived component",
+		Skip:             codegen.NewStringSet("dotnet/any", "docs/any", "java/any"),
+		SkipCompileCheck: codegen.NewStringSet(TestPython, TestGo),
+	},
+	{
+		Directory:   "inheritance-cross-package",
+		Description: "Component inheritance: a derived component extending a base in another package",
+		// dotnet/docs/java don't implement inheritance. Consumer-side codegen (nodejs/python/go) emits only the single
+		// registration; the derived package's provider owns the base-construction chain server-side.
+		Skip:             codegen.NewStringSet("dotnet/any", "docs/any", "java/any"),
+		SkipCompileCheck: codegen.NewStringSet(TestNodeJS, TestPython, TestGo),
+	},
 }
 
 var genSDKOnly bool

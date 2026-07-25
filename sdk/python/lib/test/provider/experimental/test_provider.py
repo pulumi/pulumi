@@ -261,3 +261,27 @@ def test_invalid_enum_value():
     except InputPropertyError as e:
         assert e.reason == "Invalid value 7 of type <class 'int'> for enum 'MyEnumStr'"
         assert e.property_path == "enu"
+
+
+def test_construct_rejects_abstract_component():
+    class Args(TypedDict):
+        message: Input[str]
+
+    class MyComponent(ComponentResource):
+        __pulumi_abstract__ = True
+
+        def __init__(self, name: str, args: Args, opts: ResourceOptions):
+            super().__init__("my-provider:index:MyComponent", name, {}, opts)
+            self.register_outputs({})
+
+    provider = ComponentProvider([MyComponent], "my-provider")
+    try:
+        provider.construct(
+            "myInstance", "my-provider:index:MyComponent", {"message": "world"}, None
+        )
+        assert False, "expected an error"
+    except Exception as e:
+        assert (
+            str(e)
+            == "type 'my-provider:index:MyComponent' is abstract and cannot be instantiated directly"
+        )

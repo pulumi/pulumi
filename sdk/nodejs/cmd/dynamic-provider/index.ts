@@ -380,6 +380,16 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
         );
     }
 
+    constructBase(call: any, callback: any): void {
+        callback(
+            {
+                code: grpc.status.UNIMPLEMENTED,
+                details: "ConstructBase is not implemented by the dynamic provider",
+            },
+            undefined,
+        );
+    }
+
     parameterize(call: any, callback: any): void {
         callback(
             {

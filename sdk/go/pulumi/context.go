@@ -49,7 +49,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -84,6 +86,19 @@ type contextState struct {
 	rpcError                 error        // the first error (if any) encountered during an RPC.
 	registeredOutputsLock    sync.Mutex   // a lock protecting the registeredOutputs map
 	registeredOutputs        map[URN]bool // tracks which resources have had outputs registered
+
+	// baseConstructURN, when non-empty, is the URN that the first component registration on this
+	// context must adopt as the base-class portion of an already-registered resource rather than
+	// registering a new one. It is set when the context hosts a ConstructBase call and is consumed
+	// exactly once (see takeBaseConstructURN).
+	baseConstructURN     string
+	baseConstructURNLock sync.Mutex
+
+	// constructBaseProbe memoizes whether the resource monitor supports ConstructBaseResource, probed
+	// lazily on first use via GetDeploymentInfo.
+	constructBaseProbe     sync.Once
+	constructBaseSupported bool
+	constructBaseProbeErr  error
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
 
@@ -223,6 +238,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsResourceHooks:    supportsResourceHooks,
 		supportsErrorHooks:       supportsErrorHooks,
 		registeredOutputs:        make(map[URN]bool),
+		baseConstructURN:         info.baseConstructURN,
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
 	context := &Context{
@@ -1715,8 +1731,25 @@ func (ctx *Context) registerResource(
 	}
 
 	_, custom := resource.(CustomResource)
+
+	// If this context is hosting a base-class construction, the first component registration adopts the
+	// already-registered resource's URN instead of registering a new one: it makes no RegisterResource RPC
+	// and no getResource fetch (the resource's state is not yet finalized mid-deployment), and its outputs
+	// are resolved later by constructBaseResource. Its children still parent to the adopted URN normally.
+	var adoptURN string
+	if !custom {
+		if urn, ok := ctx.takeBaseConstructURN(); ok {
+			adoptURN = urn
+			// Suppress RegisterResourceOutputs for the adopted resource: the most-derived registration
+			// owns finalizing outputs, exactly as rehydration borrows this flag.
+			ctx.state.registeredOutputsLock.Lock()
+			ctx.state.registeredOutputs[URN(adoptURN)] = true
+			ctx.state.registeredOutputsLock.Unlock()
+		}
+	}
+
 	isRemoteComponentOrRehydratedComponent := !custom && (remote || options.URN != "")
-	if isRemoteComponentOrRehydratedComponent {
+	if isRemoteComponentOrRehydratedComponent || adoptURN != "" {
 		resource.setKeepDependency()
 	}
 
@@ -1834,7 +1867,11 @@ func (ctx *Context) registerResource(
 		}
 
 		var resp *pulumirpc.RegisterResourceResponse
-		if options.URN != "" {
+		if adoptURN != "" {
+			// Base-class construction: adopt the already-registered URN. Skip both the RegisterResource RPC
+			// and the getResource fetch; the resource's outputs are resolved by constructBaseResource.
+			urn = adoptURN
+		} else if options.URN != "" {
 			resp, err = ctx.getResource(options.URN)
 			if err != nil {
 				logging.V(9).Infof("getResource(%s, %s): error: %v", t, name, err)
@@ -1976,6 +2013,232 @@ func (ctx *Context) RegisterPackageRemoteComponentResource(
 	t, name string, props Input, resource ComponentResource, packageRef string, opts ...ResourceOption,
 ) error {
 	return ctx.registerResource(t, name, props, resource, true /*remote*/, packageRef, opts...)
+}
+
+// ConstructBase constructs the base-class portion of an already-registered component resource, dispatching to
+// the provider that owns baseType, and resolves the base's declared outputs onto self. It is the runtime
+// primitive behind component inheritance across package boundaries, intended to be called from generated
+// Construct<Name>Base helpers (and, directly, by authors of ad-hoc component subclasses).
+//
+// self must already have been registered via RegisterComponentResource so that its URN is available to adopt;
+// inputs are the arguments the deriving component forwards to its base. The base package is identified by
+// packageRef (from RegisterPackage) and/or the Version, PluginDownloadURL, and Provider/Providers resource
+// options. Base construction requires a Pulumi CLI that supports it; against an older engine ConstructBase
+// fails with a clear error rather than silently constructing a detached resource.
+func (ctx *Context) ConstructBase(
+	self ComponentResource, baseType string, inputs Input, packageRef string, opts ...ResourceOption,
+) error {
+	return ctx.constructBaseResource(self, baseType, inputs, packageRef, opts...)
+}
+
+// takeBaseConstructURN consumes this context's base-construct adopt URN, returning it exactly once. Every
+// subsequent call (and any call on a context not hosting a ConstructBase) returns ("", false).
+func (ctx *Context) takeBaseConstructURN() (string, bool) {
+	ctx.state.baseConstructURNLock.Lock()
+	defer ctx.state.baseConstructURNLock.Unlock()
+	if ctx.state.baseConstructURN == "" {
+		return "", false
+	}
+	urn := ctx.state.baseConstructURN
+	ctx.state.baseConstructURN = ""
+	return urn, true
+}
+
+// supportsConstructBase reports whether the resource monitor implements ConstructBaseResource, probing it
+// once via GetDeploymentInfo. Engines predating base construction (or GetDeploymentInfo itself) are reported
+// as unsupported so callers can emit a clear negotiation error.
+func (ctx *Context) supportsConstructBase() (bool, error) {
+	ctx.state.constructBaseProbe.Do(func() {
+		if ctx.state.monitor == nil {
+			return
+		}
+		info, err := ctx.state.monitor.GetDeploymentInfo(ctx.ctx, &emptypb.Empty{})
+		if err != nil {
+			if status.Code(err) == codes.Unimplemented {
+				return
+			}
+			ctx.state.constructBaseProbeErr = fmt.Errorf("probing base construction support: %w", err)
+			return
+		}
+		if slices.Contains(info.GetSupportedFeatures(),
+			pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE) {
+			ctx.state.constructBaseSupported = true
+		}
+	})
+	return ctx.state.constructBaseSupported, ctx.state.constructBaseProbeErr
+}
+
+func newConstructBaseUnsupportedError(derivedType, baseType string) error {
+	return fmt.Errorf("component '%s' extends '%s' from another package, which requires a newer version of the "+
+		"Pulumi CLI (base construction is not supported by this engine)", derivedType, baseType)
+}
+
+// constructBaseResource is the implementation of ConstructBase: it feature-gates, marshals the base inputs
+// (always with rich output values, since both peers of the RPC are inheritance-aware), issues the
+// ConstructBaseResource monitor call for self's URN, and resolves the returned outputs onto self.
+func (ctx *Context) constructBaseResource(
+	self ComponentResource, baseType string, inputs Input, packageRef string, opts ...ResourceOption,
+) error {
+	if self == nil {
+		return errors.New("self must not be nil")
+	}
+	if baseType == "" {
+		return errors.New("base type argument cannot be empty")
+	}
+
+	supported, err := ctx.supportsConstructBase()
+	if err != nil {
+		return err
+	}
+	if !supported {
+		return newConstructBaseUnsupportedError(self.PulumiResourceType(), baseType)
+	}
+
+	options := merge(opts...)
+
+	// Await the URN of the resource whose base portion we are constructing. Its registration necessarily
+	// precedes this call in the constructor chain, so the URN is available.
+	urn, _, _, err := self.URN().awaitURN(ctx.ctx)
+	if err != nil {
+		return err
+	}
+	if urn == "" {
+		return fmt.Errorf("constructing base %s: resource has no URN", baseType)
+	}
+
+	// Resolve any explicit provider references for the base package.
+	var providerRef string
+	if options.Provider != nil {
+		if providerRef, err = ctx.resolveProviderReference(options.Provider); err != nil {
+			return err
+		}
+	}
+	var providerRefs map[string]string
+	if len(options.Providers) > 0 {
+		providerRefs = make(map[string]string, len(options.Providers))
+		for name, p := range options.Providers {
+			ref, err := ctx.resolveProviderReference(p)
+			if err != nil {
+				return err
+			}
+			providerRefs[name] = ref
+		}
+	}
+
+	resolvedProps, propertyDeps, _, err := marshalInputsOptions(inputs, &marshalOptions{
+		ExcludeResourceRefsFromDeps: ctx.state.keepResources,
+	})
+	if err != nil {
+		return fmt.Errorf("marshaling base %s inputs: %w", baseType, err)
+	}
+	rpcProps, err := plugin.MarshalProperties(resolvedProps, plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    ctx.state.keepResources,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return fmt.Errorf("marshaling base %s inputs: %w", baseType, err)
+	}
+	rpcInputDeps := make(map[string]*pulumirpc.ConstructBaseResourceRequest_PropertyDependencies, len(propertyDeps))
+	for k, deps := range propertyDeps {
+		urns := make([]string, len(deps))
+		for i, d := range deps {
+			urns[i] = string(d)
+		}
+		sort.Strings(urns)
+		rpcInputDeps[k] = &pulumirpc.ConstructBaseResourceRequest_PropertyDependencies{Urns: urns}
+	}
+
+	resp, err := ctx.state.monitor.ConstructBaseResource(ctx.ctx, &pulumirpc.ConstructBaseResourceRequest{
+		Urn:               string(urn),
+		BaseType:          baseType,
+		Inputs:            rpcProps,
+		InputDependencies: rpcInputDeps,
+		Provider:          providerRef,
+		Providers:         providerRefs,
+		Version:           options.Version,
+		PluginDownloadUrl: options.PluginDownloadURL,
+		PackageRef:        packageRef,
+	})
+	if err != nil {
+		// An Unimplemented here means the engine advertised support but the RPC is absent (version skew);
+		// map it to the same clear negotiation error.
+		if status.Code(err) == codes.Unimplemented {
+			return newConstructBaseUnsupportedError(self.PulumiResourceType(), baseType)
+		}
+		return fmt.Errorf("constructing base %s of %s: %w", baseType, urn, err)
+	}
+
+	return ctx.resolveBaseOutputs(self, resp.GetState(), resp.GetStateDependencies())
+}
+
+// resolveBaseOutputs resolves the outputs returned by a ConstructBaseResource call onto self's matching
+// pulumi-tagged fields (including those declared on embedded base proxies). It resolves exactly the keys the
+// base returned, replacing the placeholder outputs that makeResourceState seeded, and leaves keys owned by
+// other levels or the deriving body untouched.
+func (ctx *Context) resolveBaseOutputs(
+	self ComponentResource,
+	state *structpb.Struct,
+	stateDeps map[string]*pulumirpc.ConstructBaseResourceResponse_PropertyDependencies,
+) error {
+	outprops, err := plugin.UnmarshalProperties(state, plugin.MarshalOptions{
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return err
+	}
+
+	deps := make(map[string][]Resource, len(stateDeps))
+	for k, pd := range stateDeps {
+		var resources []Resource
+		for _, u := range pd.GetUrns() {
+			resources = append(resources, ctx.newDependencyResource(URN(u)))
+		}
+		deps[k] = resources
+	}
+
+	rv := reflect.ValueOf(self)
+	if rv.Kind() != reflect.Pointer || rv.Elem().Kind() != reflect.Struct {
+		return errors.New("self must be a pointer to a struct")
+	}
+	fields := map[string]reflect.Value{}
+	eachResourceField(rv.Elem(), func(field reflect.StructField, fieldV reflect.Value) {
+		if !fieldV.CanSet() || !field.Type.Implements(outputType) {
+			return
+		}
+		tag, has := field.Tag.Lookup("pulumi")
+		if !has || tag == "" {
+			return
+		}
+		fields[tag] = fieldV
+	})
+
+	keepUnknowns := ctx.DryRun()
+	for tag, fieldV := range fields {
+		v, ok := outprops[resource.PropertyKey(tag)]
+		if !ok {
+			continue
+		}
+
+		output := ctx.newOutput(fieldV.Type(), self)
+		known := true
+		if v.IsNull() || v.IsComputed() || v.IsOutput() {
+			known = !keepUnknowns
+		}
+		dest := reflect.New(output.ElementType()).Elem()
+		secret, err := unmarshalOutput(ctx, v, dest)
+		if err != nil {
+			internal.RejectOutput(output, err)
+		} else {
+			internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps[tag]))
+		}
+		fieldV.Set(reflect.ValueOf(output))
+	}
+
+	return nil
 }
 
 func (ctx *Context) RegisterPackage(
@@ -2174,6 +2437,71 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 
 var mapOutputType = reflect.TypeFor[MapOutput]()
 
+// structEmbedsResourceState reports whether the struct type t transitively embeds one of the canonical
+// resource state types (ResourceState, CustomResourceState, or ProviderResourceState) through a chain of
+// anonymous fields. This is how a generated base component proxy is recognized: it embeds the base's
+// proxy, which ultimately embeds ResourceState.
+func structEmbedsResourceState(t reflect.Type) bool {
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		if !f.Anonymous {
+			continue
+		}
+		ft := f.Type
+		if ft.Kind() == reflect.Pointer {
+			ft = ft.Elem()
+		}
+		if ft == resourceStateType || ft == customResourceStateType || ft == providerResourceStateType {
+			return true
+		}
+		if ft.Kind() == reflect.Struct && structEmbedsResourceState(ft) {
+			return true
+		}
+	}
+	return false
+}
+
+// isBaseResourceEmbed reports whether an anonymous embedded field of type t is a base component proxy that
+// eachResourceField should recurse into. The three canonical state types are deliberately excluded: they
+// are handled directly by callers (they carry the resource's identity, not just outputs), so recursing
+// into them would double-visit their fields.
+func isBaseResourceEmbed(t reflect.Type) bool {
+	if t == resourceStateType || t == customResourceStateType || t == providerResourceStateType {
+		return false
+	}
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	return t.Kind() == reflect.Struct && structEmbedsResourceState(t)
+}
+
+// eachResourceField invokes fn for each field of the resource struct value res, recursing into anonymous
+// embedded base component proxies (structs that transitively embed ResourceState) so that outputs declared
+// on an embedded base participate in registration and resolution. The canonical state embeds are passed to
+// fn as ordinary fields rather than recursed into. res must be an addressable struct value.
+func eachResourceField(res reflect.Value, fn func(field reflect.StructField, fieldV reflect.Value)) {
+	t := res.Type()
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		fieldV := res.Field(i)
+		if field.Anonymous && isBaseResourceEmbed(field.Type) {
+			embed := fieldV
+			if embed.Kind() == reflect.Pointer {
+				if embed.IsNil() {
+					if !embed.CanSet() {
+						continue
+					}
+					embed.Set(reflect.New(embed.Type().Elem()))
+				}
+				embed = embed.Elem()
+			}
+			eachResourceField(embed, fn)
+			continue
+		}
+		fn(field, fieldV)
+	}
+}
+
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
 func (ctx *Context) makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
@@ -2187,7 +2515,7 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return &resourceState{}
 	}
-	res, typ = res.Elem(), typ.Elem()
+	res = res.Elem()
 
 	var rs *ResourceState
 	var crs *CustomResourceState
@@ -2207,15 +2535,14 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 	// Find the particular Resource implementation and the settable, `pulumi`-tagged fields in the input type. The
 	// former is used for any URN or ID fields; the latter are used to determine the expected outputs of the resource
 	// after its RegisterResource call completes. For each of those fields, create an appropriately-typed Output and
-	// map the Output to its property name so we can resolve it later.
+	// map the Output to its property name so we can resolve it later. eachResourceField recurses into anonymous
+	// embedded base component proxies (e.g. generated inheritance base classes) so their outputs participate too.
 	state := &resourceState{outputs: map[string]Output{}}
-	for i := 0; i < typ.NumField(); i++ {
-		fieldV := res.Field(i)
+	eachResourceField(res, func(field reflect.StructField, fieldV reflect.Value) {
 		if !fieldV.CanSet() {
-			continue
+			return
 		}
 
-		field := typ.Field(i)
 		switch {
 		case field.Anonymous && field.Type == resourceStateType:
 			rs = fieldV.Addr().Interface().(*ResourceState)
@@ -2224,9 +2551,9 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		case field.Anonymous && field.Type == providerResourceStateType:
 			prs = fieldV.Addr().Interface().(*ProviderResourceState)
 		case field.Type.Implements(outputType):
-			tag, has := typ.Field(i).Tag.Lookup("pulumi")
+			tag, has := field.Tag.Lookup("pulumi")
 			if !has {
-				continue
+				return
 			}
 
 			output := ctx.newOutput(field.Type, resourceV)
@@ -2239,7 +2566,7 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 
 			state.outputs[tag] = output
 		}
-	}
+	})
 
 	// Create provider- and custom resource-specific state/resolvers.
 	if prs != nil {

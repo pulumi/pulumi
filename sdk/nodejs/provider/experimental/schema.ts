@@ -65,6 +65,8 @@ export interface Resource extends ObjectType {
     isComponent?: boolean;
     inputProperties?: { [key: string]: Property };
     requiredInputs?: string[];
+    extends?: { $ref: string };
+    abstract?: boolean;
 }
 
 export interface PackageDescriptor {
@@ -85,6 +87,7 @@ export interface PackageSpec {
     types: { [key: string]: ComplexType };
     language?: { [key: string]: any };
     dependencies?: PackageDescriptor[];
+    requiredFeatures?: string[];
 }
 
 export function generateSchema(
@@ -124,7 +127,7 @@ export function generateSchema(
     };
 
     for (const [name, component] of Object.entries(components)) {
-        result.resources[`${providerName}:index:${name}`] = {
+        const resource: Resource = {
             type: "object",
             isComponent: true,
             inputProperties: component.inputs,
@@ -133,6 +136,22 @@ export function generateSchema(
             required: required(component.outputs),
             description: component.description,
         };
+        if (component.extends) {
+            resource.extends = component.extends;
+        }
+        if (component.abstract) {
+            resource.abstract = true;
+        }
+        result.resources[`${providerName}:index:${name}`] = resource;
+    }
+
+    // A component that omits inherited members from an external base (an extends ref that is not a local
+    // "#/resources/..." ref) relies on the binder to materialize them, so consumers must understand inheritance.
+    // Declare the feature so old tooling rejects the schema rather than silently dropping those members. Locally
+    // flattened extends refs already carry the full member set and need no marker.
+    const sparse = Object.values(components).some((c) => c.extends !== undefined && !c.extends.$ref.startsWith("#/"));
+    if (sparse) {
+        result.requiredFeatures = ["inheritance"];
     }
 
     for (const [name, type] of Object.entries(typeDefinitions)) {

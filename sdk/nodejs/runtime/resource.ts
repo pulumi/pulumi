@@ -23,6 +23,7 @@ import {
     ComponentResourceOptions,
     createUrn,
     CustomResourceOptions,
+    DependencyResource,
     ErrorHook,
     ErrorHookFunction,
     expandProviders,
@@ -65,6 +66,7 @@ import {
     isLegacyApplyEnabled,
     rpcKeepAlive,
     serialize,
+    supportsConstructBase,
     terminateRpcs,
 } from "./settings";
 
@@ -826,6 +828,170 @@ export function registerResource(
                 throw err;
             }),
         label,
+    );
+}
+
+/**
+ * Constructs the portion of an already-registered derived component that
+ * corresponds to one of its base component types, dispatching (via the resource
+ * monitor) to the provider that owns `baseType`. The base's declared outputs
+ * (`outputKeys`) resolve onto `res`.
+ *
+ * This is the SDK side of component inheritance: a generated base stub calls it
+ * after the derived component has registered. The resource identified by
+ * `res.urn` must already exist; base construction adopts that URN rather than
+ * creating a new resource (see the attach path in resource.ts).
+ */
+export function constructBaseResource(
+    res: Resource,
+    baseType: string,
+    inputs: Inputs,
+    packageInfo: { version?: string; pluginDownloadURL?: string; packageRef?: Promise<string | undefined> },
+    outputKeys: string[],
+): Promise<void> {
+    const label = `constructBaseResource:${baseType}`;
+    log.debug(`Constructing base resource: baseType=${baseType}, derivedType=${res.__pulumiType}`);
+
+    // Seed unresolved Output cells for the base's declared outputs synchronously — before any await — so a generated
+    // constructor that calls this can read the base's Output fields immediately (mirroring registerResource and the
+    // Python helper). The engine skips returned keys that have no seeded resolver (see resolveProperties in rpc.ts),
+    // so this explicit list is the source of truth for what resolves; keys already present as resolved own-properties
+    // are left untouched. The RPC and resolution then happen asynchronously; the returned promise settles when the
+    // base construction completes, but constructor-context callers may ignore it (rpcKeepAlive keeps the process
+    // alive until it settles).
+    const resolvers = seedBaseResourceOutputs(res, label, outputKeys);
+    const done = rpcKeepAlive();
+
+    return debuggablePromise(
+        (async () => {
+            try {
+                // Fail fast if the engine can't serve base construction — otherwise we would resolve nothing and
+                // hang. Both peers of the RPC are new by construction, so support is all-or-nothing.
+                if (!(await supportsConstructBase())) {
+                    throw new Error(constructBaseUnsupportedError(res.__pulumiType, baseType));
+                }
+
+                const urn = await res.urn.promise();
+
+                let packageRefStr: string | undefined;
+                if (packageInfo.packageRef !== undefined) {
+                    packageRefStr = await packageInfo.packageRef;
+                }
+
+                // Base construction always crosses a package boundary between two new peers, so inputs keep their
+                // rich output values, mirroring the remote component registration path.
+                const [serializedInputs, propertyToDependencies] = await serializeResourceProperties(label, inputs, {
+                    keepOutputValues: true,
+                    excludeResourceReferencesFromDependencies: true,
+                });
+
+                const req = new resproto.ConstructBaseResourceRequest();
+                req.setUrn(urn);
+                req.setBaseType(baseType);
+                req.setInputs(gstruct.Struct.fromJavaScript(serializedInputs));
+                if (packageRefStr) {
+                    req.setPackageRef(packageRefStr);
+                } else {
+                    req.setVersion(packageInfo.version || "");
+                    req.setPluginDownloadUrl(packageInfo.pluginDownloadURL || "");
+                }
+
+                const inputDependencies = req.getInputDependenciesMap();
+                const exclude = new Set<Resource>([res]);
+                for (const [key, dependencies] of propertyToDependencies) {
+                    const urns = await getAllTransitivelyReferencedResourceURNs(dependencies, exclude);
+                    const inputDeps = new resproto.ConstructBaseResourceRequest.PropertyDependencies();
+                    inputDeps.setUrnsList(Array.from(urns));
+                    inputDependencies.set(key, inputDeps);
+                }
+
+                const monitor = getMonitor();
+                if (monitor === undefined) {
+                    throw new Error("Cannot construct a base resource without a resource monitor");
+                }
+
+                const resp = await debuggablePromise(
+                    new Promise<resproto.ConstructBaseResourceResponse>((resolve, reject) => {
+                        monitor.constructBaseResource(
+                            req,
+                            (
+                                err: grpc.ServiceError | null,
+                                innerResponse: resproto.ConstructBaseResourceResponse | undefined,
+                            ) => {
+                                log.debug(
+                                    `ConstructBaseResource RPC finished: ${label}; err: ${err}, resp: ${innerResponse}`,
+                                );
+                                if (err) {
+                                    if (err.code === grpc.status.UNIMPLEMENTED) {
+                                        // Belt and braces: an engine that slipped past the feature gate
+                                        // still surfaces the same clear upgrade error rather than hanging.
+                                        reject(new Error(constructBaseUnsupportedError(res.__pulumiType, baseType)));
+                                    } else {
+                                        if (
+                                            err.code === grpc.status.UNAVAILABLE ||
+                                            err.code === grpc.status.CANCELLED
+                                        ) {
+                                            terminateRpcs();
+                                            err.message = "Resource monitor is terminating";
+                                        }
+                                        reject(err);
+                                    }
+                                } else {
+                                    resolve(innerResponse!);
+                                }
+                            },
+                        );
+                    }),
+                    label,
+                );
+
+                const stateStruct = resp.getState();
+                const allProps = stateStruct ? deserializeProperties(stateStruct) : {};
+
+                const deps: Record<string, Resource[]> = {};
+                for (const [key, propertyDeps] of resp.getStateDependenciesMap().entries()) {
+                    deps[key] = propertyDeps.getUrnsList().map((depUrn) => new DependencyResource(depUrn));
+                }
+
+                resolveProperties(res, resolvers, baseType, res.__name ?? baseType, allProps, deps);
+            } catch (err) {
+                // Reject the seeded resolvers so anything awaiting the base outputs fails rather than hanging, then
+                // propagate to fail the enclosing construction.
+                resolveProperties(res, resolvers, baseType, res.__name ?? baseType, {}, {}, err as Error);
+                throw err;
+            } finally {
+                done();
+            }
+        })(),
+        label,
+    );
+}
+
+/**
+ * Seeds unresolved Output cells on `res` for each of `outputKeys` and returns
+ * their resolvers, skipping keys that are already own-properties so a derived
+ * class's own outputs are not clobbered.
+ */
+function seedBaseResourceOutputs(res: Resource, label: string, outputKeys: string[]): OutputResolvers {
+    const props: Inputs = {};
+    for (const key of outputKeys) {
+        if (key === "id" || key === "urn" || res.hasOwnProperty(key)) {
+            continue;
+        }
+        props[key] = undefined;
+    }
+    return transferProperties(res, label, props);
+}
+
+/**
+ * The error surfaced when the engine does not support base construction. The
+ * substring "requires a newer version of the Pulumi CLI" is contractual and
+ * asserted by tests.
+ */
+function constructBaseUnsupportedError(derivedType: string, baseType: string): string {
+    return (
+        `component '${derivedType}' extends '${baseType}' from another package, which requires a ` +
+        `newer version of the Pulumi CLI (base construction is not supported by this engine)`
     );
 }
 

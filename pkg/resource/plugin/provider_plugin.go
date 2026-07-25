@@ -117,6 +117,9 @@ type pluginProtocol struct {
 
 	// True if this plugin supports custom autonaming configuration.
 	supportsAutonamingConfiguration bool
+
+	// True if this plugin supports ConstructBase for its component types.
+	supportsConstructBase bool
 }
 
 // pluginConfig holds the configuration of the provider
@@ -315,6 +318,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			supportsPreview:                 true,
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
+			supportsConstructBase:           handshakeRes.SupportsConstructBase,
 		}
 	}
 
@@ -392,6 +396,7 @@ func handshake(
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		SupportsConstructBase:           res.GetSupportsConstructBase(),
 	}, nil
 }
 
@@ -470,6 +475,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			supportsPreview:                 true,
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
+			supportsConstructBase:           handshakeRes.SupportsConstructBase,
 		}
 	}
 
@@ -579,6 +585,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		SupportsConstructBase:           res.GetSupportsConstructBase(),
 	}, nil
 }
 
@@ -1123,6 +1130,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 				supportsPreview:                 resp.GetSupportsPreview(),
 				acceptOutputs:                   resp.GetAcceptOutputs(),
 				supportsAutonamingConfiguration: resp.GetSupportsAutonamingConfiguration(),
+				supportsConstructBase:           resp.GetSupportsConstructBase(),
 			}
 		}
 
@@ -2167,6 +2175,120 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	logging.V(7).Infof("%s success: #outputs=%d", label, len(outputs))
 	return ConstructResponse{
 		URN:                resource.URN(resp.GetUrn()),
+		Outputs:            outputs,
+		OutputDependencies: outputDependencies,
+	}, nil
+}
+
+func (p *provider) ConstructBase(ctx context.Context, req ConstructBaseRequest) (ConstructBaseResponse, error) {
+	contract.Assertf(req.Type != "", "ConstructBase requires a type")
+	contract.Assertf(req.Name != "", "ConstructBase requires a name")
+	contract.Assertf(req.URN != "", "ConstructBase requires a URN")
+	contract.Assertf(req.Inputs != nil, "ConstructBase requires input properties")
+
+	label := fmt.Sprintf("%s.ConstructBase(%s, %s)", p.label(), req.Type, req.URN)
+	logging.V(7).Infof("%s executing (#inputs=%v)", label, len(req.Inputs))
+
+	client := p.clientRaw
+	protocol, pcfg, err := p.getPluginConfig(ctx)
+	if err != nil {
+		return ConstructBaseResponse{}, err
+	}
+
+	// If the provider's configuration is not fully known (during a preview), there is nothing to construct
+	// against: the resource is already registered, and the base's outputs are simply unknown.
+	if !pcfg.known {
+		return ConstructBaseResponse{}, nil
+	}
+
+	if !protocol.supportsConstructBase {
+		return ConstructBaseResponse{}, ErrConstructBaseNotSupported
+	}
+
+	// Both peers of ConstructBase are inheritance-aware by construction, so inputs always keep secrets,
+	// resources, and output values.
+	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
+		Label:            label + ".inputs",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+		PropagateNil:     true,
+	})
+	if err != nil {
+		return ConstructBaseResponse{}, err
+	}
+
+	inputDependencies := map[string]*pulumirpc.ConstructBaseRequest_PropertyDependencies{}
+	for name, dependencies := range req.InputDependencies {
+		urns := make([]string, len(dependencies))
+		for i, urn := range dependencies {
+			urns[i] = string(urn)
+		}
+		inputDependencies[string(name)] = &pulumirpc.ConstructBaseRequest_PropertyDependencies{Urns: urns}
+	}
+
+	config := map[string]string{}
+	for k, v := range req.Info.Config {
+		config[k.String()] = v
+	}
+	configSecretKeys := []string{}
+	for _, k := range req.Info.ConfigSecretKeys {
+		configSecretKeys = append(configSecretKeys, k.String())
+	}
+
+	resp, err := client.ConstructBase(p.requestContext(), &pulumirpc.ConstructBaseRequest{
+		Project:           req.Info.Project,
+		Stack:             req.Info.Stack,
+		Organization:      req.Info.Organization,
+		Config:            config,
+		ConfigSecretKeys:  configSecretKeys,
+		DryRun:            req.Info.DryRun,
+		Parallel:          req.Info.Parallel,
+		MonitorEndpoint:   req.Info.MonitorAddress,
+		Type:              string(req.Type),
+		Name:              req.Name,
+		Urn:               string(req.URN),
+		MostDerivedType:   string(req.MostDerivedType),
+		Inputs:            minputs,
+		InputDependencies: inputDependencies,
+		Providers:         req.Providers,
+		StackTraceHandle:  req.Info.StackTraceHandle,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
+		// An Unimplemented response means the gate above was bypassed (e.g. an attached debug provider);
+		// normalize it to the standard negotiation error so callers report it uniformly.
+		if rpcError.Code() == codes.Unimplemented {
+			return ConstructBaseResponse{}, ErrConstructBaseNotSupported
+		}
+		return ConstructBaseResponse{}, err
+	}
+
+	outputs, err := UnmarshalProperties(resp.GetState(), MarshalOptions{
+		Label:            label + ".outputs",
+		KeepUnknowns:     req.Info.DryRun,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+		PropagateNil:     true,
+	})
+	if err != nil {
+		return ConstructBaseResponse{}, err
+	}
+
+	outputDependencies := map[resource.PropertyKey][]resource.URN{}
+	for k, rpcDeps := range resp.GetStateDependencies() {
+		urns := make([]resource.URN, len(rpcDeps.Urns))
+		for i, d := range rpcDeps.Urns {
+			urns[i] = resource.URN(d)
+		}
+		outputDependencies[resource.PropertyKey(k)] = urns
+	}
+
+	logging.V(7).Infof("%s success: #outputs=%d", label, len(outputs))
+	return ConstructBaseResponse{
 		Outputs:            outputs,
 		OutputDependencies: outputDependencies,
 	}, nil

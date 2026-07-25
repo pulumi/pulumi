@@ -1,0 +1,137 @@
+{
+  "version": "0.1.0",
+  "name": "delivery",
+  "description": "Delivery as Code gates, modeled as a subclassable component hierarchy.",
+  "types": {
+    "delivery:index:Wake": {
+      "type": "object",
+      "description": "The structured resume contract of an unmet gate: how it comes back to be re-checked.",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "The wake mechanism: 'time', 'metric', 'approval', 'http', or 'manual'."
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Kind-specific resume parameters (a URL, a metric query, a policy ref, ...)."
+        }
+      },
+      "required": ["kind"]
+    }
+  },
+  "resources": {
+    "delivery:index:Gate": {
+      "description": "The abstract base gate. It awaits a boolean -- a build verdict, another gate's status, a plain expression -- suspending the rollout while the boolean is false and opening when it holds. Subclasses supply the boolean and the wake; the base owns the suspend/resume/status plumbing. Cannot be instantiated directly.",
+      "isComponent": true,
+      "abstract": true,
+      "inputProperties": {
+        "until": {
+          "type": "boolean",
+          "description": "The boolean to await; the gate opens once it is true."
+        },
+        "wake": {
+          "$ref": "#/types/delivery:index:Wake",
+          "description": "How this gate resumes while `until` is false."
+        }
+      },
+      "requiredInputs": ["until"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "'open' once the awaited boolean held, else 'pending'."
+        },
+        "resumeWhen": {
+          "$ref": "#/types/delivery:index:Wake",
+          "description": "The structured wake describing how this gate resumes."
+        }
+      },
+      "required": ["status", "resumeWhen"],
+      "methods": {
+        "explain": "delivery:index:Gate/explain"
+      }
+    },
+    "delivery:index:ApprovalGate": {
+      "description": "A gate that opens when the named approvers sign off. Inherits all of Gate's suspend/resume/status machinery.",
+      "isComponent": true,
+      "extends": { "$ref": "#/resources/delivery:index:Gate" },
+      "inputProperties": {
+        "until": { "type": "boolean" },
+        "wake": { "$ref": "#/types/delivery:index:Wake" },
+        "approvers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "The identities whose sign-off opens the gate."
+        },
+        "instructions": {
+          "type": "string",
+          "description": "What the approver should check before signing off."
+        }
+      },
+      "requiredInputs": ["until", "approvers"],
+      "properties": {
+        "status": { "type": "string" },
+        "resumeWhen": { "$ref": "#/types/delivery:index:Wake" },
+        "approvers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "instructions": { "type": "string" }
+      },
+      "required": ["status", "resumeWhen", "approvers"]
+    },
+    "delivery:index:MetricGate": {
+      "description": "A gate that opens when a metric query stays under a threshold. Inherits all of Gate's suspend/resume/status machinery.",
+      "isComponent": true,
+      "extends": { "$ref": "#/resources/delivery:index:Gate" },
+      "inputProperties": {
+        "until": { "type": "boolean" },
+        "wake": { "$ref": "#/types/delivery:index:Wake" },
+        "query": {
+          "type": "string",
+          "description": "The metric query to evaluate (e.g. a Datadog or Prometheus expression)."
+        },
+        "threshold": {
+          "type": "number",
+          "description": "The gate opens while the query result stays at or below this value."
+        }
+      },
+      "requiredInputs": ["until", "query", "threshold"],
+      "properties": {
+        "status": { "type": "string" },
+        "resumeWhen": { "$ref": "#/types/delivery:index:Wake" },
+        "query": { "type": "string" },
+        "threshold": { "type": "number" }
+      },
+      "required": ["status", "resumeWhen", "query", "threshold"]
+    }
+  },
+  "functions": {
+    "delivery:index:Gate/explain": {
+      "description": "Returns a human-readable line describing why the gate is holding, for the operator watching a rollout. Inherited by every gate subclass.",
+      "inputs": {
+        "properties": {
+          "__self__": { "$ref": "#/resources/delivery:index:Gate" }
+        },
+        "required": ["__self__"]
+      },
+      "outputs": {
+        "properties": {
+          "reason": { "type": "string" }
+        },
+        "required": ["reason"]
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "example.com/delivery/sdk/go/delivery",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": { "@pulumi/pulumi": "^3.0.0" },
+      "devDependencies": { "typescript": "^4.6.0" }
+    },
+    "python": {}
+  }
+}

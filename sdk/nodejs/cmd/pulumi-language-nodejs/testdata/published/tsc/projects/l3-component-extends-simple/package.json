@@ -1,0 +1,11 @@
+{
+	"name": "l3-component-extends-simple",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/inherit": "ROOT/artifacts/pulumi-inherit-1.0.0.tgz"
+	}
+}

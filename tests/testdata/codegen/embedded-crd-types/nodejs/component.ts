@@ -10,7 +10,7 @@ import * as pulumiTls from "@pulumi/tls";
 
 export class Component extends pulumi.ComponentResource {
     /** @internal */
-    public static readonly __pulumiType = 'foo:index:Component';
+    public static readonly __pulumiType: string = 'foo:index:Component';
 
     /**
      * Returns true if the given object is an instance of Component.  This is designed to work even
@@ -33,9 +33,21 @@ export class Component extends pulumi.ComponentResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: ComponentArgs, opts?: pulumi.ComponentResourceOptions) {
+    constructor(name: string, args?: ComponentArgs, opts?: pulumi.ComponentResourceOptions, __chain?: any /* internal */) {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
+        if (__chain !== undefined) {
+            super(__chain.type, name, __chain.inputs, opts, __chain.mode === "generated" /*remote*/);
+            return;
+        }
+        if (new.target !== Component) {
+            resourceInputs["eniConfig"] = args?.eniConfig;
+            resourceInputs["pod"] = args?.pod;
+            opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+            super((new.target as any).__pulumiType, name, resourceInputs, opts, false /*local*/);
+            void pulumi.runtime.constructBaseResource(this, "foo:index:Component", args ?? {}, { version: utilities.getVersion() }, ["eniConfig", "pod"]);
+            return;
+        }
         if (!opts.id) {
             resourceInputs["eniConfig"] = args?.eniConfig;
             resourceInputs["pod"] = args?.pod;

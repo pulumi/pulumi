@@ -181,6 +181,11 @@ type RunInfo struct {
 
 	// If non-nil, wraps the resource monitor client used by Context.
 	wrapResourceMonitorClient func(pulumirpc.ResourceMonitorClient) pulumirpc.ResourceMonitorClient
+
+	// baseConstructURN, when non-empty, puts the context in base-construct (attach) mode: the first
+	// component registration adopts this URN instead of registering a new resource. Set by the
+	// provider host when serving a ConstructBase call.
+	baseConstructURN string
 }
 
 // getEnvInfo reads various program information from the process environment.

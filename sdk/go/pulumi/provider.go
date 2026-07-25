@@ -32,6 +32,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type constructFunc func(ctx *Context, typ, name string, inputs map[string]any,
@@ -59,34 +60,13 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	}
 
 	// Deserialize the inputs and apply appropriate dependencies.
-	inputDependencies := req.GetInputDependencies()
-	deserializedInputs, err := plugin.UnmarshalProperties(
-		req.GetInputs(),
-		plugin.MarshalOptions{
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepUnknowns:     req.GetDryRun(),
-			KeepOutputValues: true,
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshaling inputs: %w", err)
+	inputDeps := make(map[string][]string, len(req.GetInputDependencies()))
+	for k, deps := range req.GetInputDependencies() {
+		inputDeps[k] = deps.GetUrns()
 	}
-	inputs := make(map[string]any, len(deserializedInputs))
-	for key, value := range deserializedInputs {
-		k := string(key)
-		var deps map[URN]struct{}
-		if inputDeps, ok := inputDependencies[k]; ok {
-			deps = map[URN]struct{}{}
-			for _, depURN := range inputDeps.GetUrns() {
-				deps[URN(depURN)] = struct{}{}
-			}
-		}
-
-		inputs[k] = &constructInput{
-			value: value,
-			deps:  deps,
-		}
+	inputs, err := deserializeConstructInputs(req.GetInputs(), inputDeps, req.GetDryRun())
+	if err != nil {
+		return nil, err
 	}
 
 	// Rebuild the resource options.
@@ -216,48 +196,160 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		return nil, err
 	}
 
-	// Serialize all state properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
-	// Note that the state properties may or may not be attached to the context's waitgroup, so it's important to
-	// await them before closing the context.
-	resolvedProps, propertyDeps, _, err := marshalInputs(state)
+	rpcProps, propertyDeps, err := marshalConstructState(pulumiCtx, state, req.GetDryRun())
 	if err != nil {
-		return nil, fmt.Errorf("marshaling properties: %w", err)
-	}
-
-	// Wait for async work to finish.
-	if err = pulumiCtx.wait(); err != nil {
 		return nil, err
 	}
 
-	// Marshal all properties for the RPC call.
-	keepUnknowns := req.GetDryRun()
-	rpcProps, err := plugin.MarshalProperties(
-		resolvedProps,
-		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.state.keepResources})
-	if err != nil {
-		return nil, fmt.Errorf("marshaling properties: %w", err)
+	rpcPropertyDeps := make(map[string]*pulumirpc.ConstructResponse_PropertyDependencies, len(propertyDeps))
+	for k, urns := range propertyDeps {
+		rpcPropertyDeps[k] = &pulumirpc.ConstructResponse_PropertyDependencies{Urns: urns}
 	}
 
-	// Convert the property dependencies map for RPC and remove duplicates.
-	rpcPropertyDeps := make(map[string]*pulumirpc.ConstructResponse_PropertyDependencies)
-	for k, deps := range propertyDeps {
-		slices.Sort(deps)
+	return &pulumirpc.ConstructResponse{
+		Urn:               string(rpcURN),
+		State:             rpcProps,
+		StateDependencies: rpcPropertyDeps,
+	}, nil
+}
 
-		urns := slice.Prealloc[string](len(deps))
-		for i, d := range deps {
+// deserializeConstructInputs unmarshals a Construct/ConstructBase inputs Struct into the map[string]any of
+// *constructInput values consumed by the SDK's construct machinery, attaching each input's dependencies.
+func deserializeConstructInputs(
+	inputs *structpb.Struct, inputDeps map[string][]string, dryRun bool,
+) (map[string]any, error) {
+	deserialized, err := plugin.UnmarshalProperties(
+		inputs,
+		plugin.MarshalOptions{
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepUnknowns:     dryRun,
+			KeepOutputValues: true,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshaling inputs: %w", err)
+	}
+	result := make(map[string]any, len(deserialized))
+	for key, value := range deserialized {
+		k := string(key)
+		var deps map[URN]struct{}
+		if urns, ok := inputDeps[k]; ok {
+			deps = make(map[URN]struct{}, len(urns))
+			for _, depURN := range urns {
+				deps[URN(depURN)] = struct{}{}
+			}
+		}
+		result[k] = &constructInput{value: value, deps: deps}
+	}
+	return result, nil
+}
+
+// marshalConstructState awaits and marshals a Construct/ConstructBase result into an RPC Struct plus its
+// per-property dependency URNs (sorted and de-duplicated). It drains the context's async work first, since
+// state properties may be produced by resources registered during construction.
+func marshalConstructState(
+	pulumiCtx *Context, state Input, dryRun bool,
+) (*structpb.Struct, map[string][]string, error) {
+	// Serialize all state properties, first by awaiting them, and then marshaling them to the requisite gRPC
+	// values. The state properties may or may not be attached to the context's waitgroup, so it's important to
+	// await them before closing the context.
+	resolvedProps, propertyDeps, _, err := marshalInputs(state)
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshaling properties: %w", err)
+	}
+
+	if err := pulumiCtx.wait(); err != nil {
+		return nil, nil, err
+	}
+
+	rpcProps, err := plugin.MarshalProperties(
+		resolvedProps,
+		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: dryRun, KeepResources: pulumiCtx.state.keepResources})
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshaling properties: %w", err)
+	}
+
+	deps := make(map[string][]string, len(propertyDeps))
+	for k, ds := range propertyDeps {
+		slices.Sort(ds)
+
+		urns := slice.Prealloc[string](len(ds))
+		for i, d := range ds {
 			if i > 0 && urns[i-1] == string(d) {
 				continue
 			}
 			urns = append(urns, string(d))
 		}
+		deps[k] = urns
+	}
+	return rpcProps, deps, nil
+}
 
-		rpcPropertyDeps[k] = &pulumirpc.ConstructResponse_PropertyDependencies{
-			Urns: urns,
-		}
+// constructBase adapts the gRPC ConstructBaseRequest/ConstructBaseResponse to/from the Pulumi Go SDK
+// programming model. It mirrors construct but puts the context into base-construct (attach) mode: the base
+// implementation adopts req.Urn instead of registering a new resource, and only the base's declared outputs
+// are returned (the resource is already registered, so there is no URN to report). The provider-author
+// surface is unchanged — the same construct function serves Construct and ConstructBase.
+func constructBase(ctx context.Context, req *pulumirpc.ConstructBaseRequest, engineConn *grpc.ClientConn,
+	constructF constructFunc,
+) (*pulumirpc.ConstructBaseResponse, error) {
+	runInfo := RunInfo{
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Config:           req.GetConfig(),
+		ConfigSecretKeys: req.GetConfigSecretKeys(),
+		Parallel:         req.GetParallel(),
+		DryRun:           req.GetDryRun(),
+		MonitorAddr:      req.GetMonitorEndpoint(),
+		engineConn:       engineConn,
+		Organization:     req.GetOrganization(),
+		baseConstructURN: req.GetUrn(),
+	}
+	pulumiCtx, err := NewContext(ctx, runInfo)
+	if err != nil {
+		return nil, fmt.Errorf("constructing run context: %w", err)
 	}
 
-	return &pulumirpc.ConstructResponse{
-		Urn:               string(rpcURN),
+	inputDeps := make(map[string][]string, len(req.GetInputDependencies()))
+	for k, deps := range req.GetInputDependencies() {
+		inputDeps[k] = deps.GetUrns()
+	}
+	inputs, err := deserializeConstructInputs(req.GetInputs(), inputDeps, req.GetDryRun())
+	if err != nil {
+		return nil, err
+	}
+
+	// Base construction carries no resource options — parents, protection, and timeouts are owned by the
+	// most-derived registration. Only the providers used to resolve nested resources thread through.
+	providers := make(map[string]ProviderResource, len(req.GetProviders()))
+	for pkg, ref := range req.GetProviders() {
+		resource, err := createProviderResource(pulumiCtx, ref)
+		if err != nil {
+			return nil, err
+		}
+		providers[pkg] = resource
+	}
+	opts := resourceOption(func(ro *resourceOptions) {
+		ro.Providers = providers
+	})
+
+	_, state, err := constructF(pulumiCtx, req.GetType(), req.GetName(), inputs, opts)
+	if err != nil {
+		return nil, rpcerror.WrapDetailedError(err)
+	}
+
+	rpcProps, propertyDeps, err := marshalConstructState(pulumiCtx, state, req.GetDryRun())
+	if err != nil {
+		return nil, err
+	}
+
+	rpcPropertyDeps := make(map[string]*pulumirpc.ConstructBaseResponse_PropertyDependencies, len(propertyDeps))
+	for k, urns := range propertyDeps {
+		rpcPropertyDeps[k] = &pulumirpc.ConstructBaseResponse_PropertyDependencies{Urns: urns}
+	}
+
+	return &pulumirpc.ConstructBaseResponse{
 		State:             rpcProps,
 		StateDependencies: rpcPropertyDeps,
 	}, nil
@@ -792,18 +884,18 @@ func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
 	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return nil, nil, errors.New("resource must be a pointer to a struct")
 	}
-	resourceV, typ = resourceV.Elem(), typ.Elem()
+	resourceV = resourceV.Elem()
 
+	// Collect the component's pulumi-tagged fields, recursing into anonymous embedded base component proxies
+	// so that inherited outputs are included in the returned state (their flattened view is this level's).
 	state := make(Map)
-	for i := 0; i < typ.NumField(); i++ {
-		fieldV := resourceV.Field(i)
+	eachResourceField(resourceV, func(field reflect.StructField, fieldV reflect.Value) {
 		if !fieldV.CanInterface() {
-			continue
+			return
 		}
-		field := typ.Field(i)
 		tag, has := field.Tag.Lookup("pulumi")
 		if !has {
-			continue
+			return
 		}
 		val := fieldV.Interface()
 		if v, ok := val.(Input); ok {
@@ -811,7 +903,7 @@ func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
 		} else {
 			state[tag] = ToOutput(val)
 		}
-	}
+	})
 
 	return resource.URN(), state, nil
 }
@@ -845,34 +937,13 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 	}
 
 	// Deserialize the inputs and apply appropriate dependencies.
-	argDependencies := req.GetArgDependencies()
-	deserializedArgs, err := plugin.UnmarshalProperties(
-		req.GetArgs(),
-		plugin.MarshalOptions{
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepUnknowns:     req.GetDryRun(),
-			KeepOutputValues: true,
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshaling inputs: %w", err)
+	argDeps := make(map[string][]string, len(req.GetArgDependencies()))
+	for k, deps := range req.GetArgDependencies() {
+		argDeps[k] = deps.GetUrns()
 	}
-	args := make(map[string]any, len(deserializedArgs))
-	for key, value := range deserializedArgs {
-		k := string(key)
-		var deps map[URN]struct{}
-		if inputDeps, ok := argDependencies[k]; ok {
-			deps = map[URN]struct{}{}
-			for _, depURN := range inputDeps.GetUrns() {
-				deps[URN(depURN)] = struct{}{}
-			}
-		}
-
-		args[k] = &constructInput{
-			value: value,
-			deps:  deps,
-		}
+	args, err := deserializeConstructInputs(req.GetArgs(), argDeps, req.GetDryRun())
+	if err != nil {
+		return nil, err
 	}
 
 	result, failures, err := callF(pulumiCtx, req.GetTok(), args)
@@ -881,44 +952,14 @@ func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.Clie
 		return nil, err
 	}
 
-	// Serialize all result properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
-	// Note that the state properties may or may not be attached to the context's waitgroup, so it's important to
-	// await them before closing the context.
-	resolvedProps, propertyDeps, _, err := marshalInputs(result)
+	rpcProps, propertyDeps, err := marshalConstructState(pulumiCtx, result, req.GetDryRun())
 	if err != nil {
-		return nil, fmt.Errorf("marshaling properties: %w", err)
-	}
-
-	// Wait for async work to finish.
-	if err = pulumiCtx.wait(); err != nil {
 		return nil, err
 	}
 
-	// Marshal all properties for the RPC call.
-	keepUnknowns := req.GetDryRun()
-	rpcProps, err := plugin.MarshalProperties(
-		resolvedProps,
-		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.state.keepResources})
-	if err != nil {
-		return nil, fmt.Errorf("marshaling properties: %w", err)
-	}
-
-	// Convert the property dependencies map for RPC and remove duplicates.
-	rpcPropertyDeps := make(map[string]*pulumirpc.CallResponse_ReturnDependencies)
-	for k, deps := range propertyDeps {
-		slices.Sort(deps)
-
-		urns := slice.Prealloc[string](len(deps))
-		for i, d := range deps {
-			if i > 0 && urns[i-1] == string(d) {
-				continue
-			}
-			urns = append(urns, string(d))
-		}
-
-		rpcPropertyDeps[k] = &pulumirpc.CallResponse_ReturnDependencies{
-			Urns: urns,
-		}
+	rpcPropertyDeps := make(map[string]*pulumirpc.CallResponse_ReturnDependencies, len(propertyDeps))
+	for k, urns := range propertyDeps {
+		rpcPropertyDeps[k] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
 	var rpcFailures []*pulumirpc.CheckFailure

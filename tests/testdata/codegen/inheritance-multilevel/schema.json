@@ -1,0 +1,132 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "resources": {
+    "example:index:Resource": {
+      "description": "The root component of a three-level hierarchy.",
+      "isComponent": true,
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": ["name", "id"],
+      "methods": {
+        "describe": "example:index:Resource/describe"
+      }
+    },
+    "example:index:Service": {
+      "description": "A middle component that extends Resource.",
+      "isComponent": true,
+      "extends": {
+        "$ref": "#/resources/example:index:Resource"
+      },
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        }
+      },
+      "requiredInputs": ["name", "port"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": ["name", "id", "port", "url"]
+    },
+    "example:index:WebService": {
+      "description": "A leaf component that extends Service.",
+      "isComponent": true,
+      "extends": {
+        "$ref": "#/resources/example:index:Service"
+      },
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "replicas": {
+          "type": "integer"
+        }
+      },
+      "requiredInputs": ["name", "port"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        },
+        "replicas": {
+          "type": "integer"
+        }
+      },
+      "required": ["name", "id", "port", "url", "replicas"]
+    }
+  },
+  "functions": {
+    "example:index:Resource/describe": {
+      "description": "Describes the resource.",
+      "inputs": {
+        "properties": {
+          "__self__": {
+            "$ref": "#/resources/example:index:Resource"
+          }
+        },
+        "required": ["__self__"]
+      },
+      "outputs": {
+        "properties": {
+          "info": {
+            "type": "string"
+          }
+        },
+        "required": ["info"]
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/inheritance-multilevel/go/example",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^4.6.0"
+      }
+    },
+    "python": {}
+  }
+}

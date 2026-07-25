@@ -210,6 +210,14 @@ type pkgContext struct {
 	disableObjectDefaults bool
 }
 
+// participatesInInheritance reports whether a resource needs the inheritance-aware projection (base-struct embedding,
+// own-only members, base-construct helper, no constructor for an abstract base). Every component gets the
+// base-construct helper: subclassability must not depend on whether the base's own package happens to contain a
+// deriver.
+func (pkg *pkgContext) participatesInInheritance(r *schema.Resource) bool {
+	return r.IsComponent
+}
+
 func (pkg *pkgContext) detailsForType(t schema.Type) *typeDetails {
 	if obj, ok := t.(*schema.ObjectType); ok && obj.IsInputShape() {
 		t = obj.PlainShape
@@ -2288,6 +2296,9 @@ func (pkg *pkgContext) genResource(
 	switch {
 	case r.IsProvider:
 		fmt.Fprintf(w, "\tpulumi.ProviderResourceState\n\n")
+	case r.BaseResource != nil:
+		// A derived component embeds its base struct, inheriting its ResourceState, output fields and methods.
+		fmt.Fprintf(w, "\t%s\n\n", pkg.resolveResourceType(&schema.ResourceType{Token: r.BaseResource.Token, Resource: r.BaseResource}))
 	case r.IsComponent:
 		fmt.Fprintf(w, "\tpulumi.ResourceState\n\n")
 	default:
@@ -2297,7 +2308,12 @@ func (pkg *pkgContext) genResource(
 	var secretProps []*schema.Property
 	var secretInputProps []*schema.Property
 
-	for _, p := range r.Properties {
+	// A derived component declares only its own output fields; the inherited fields come from the embedded base struct.
+	outputProperties := r.Properties
+	if r.BaseResource != nil {
+		outputProperties = r.OwnProperties()
+	}
+	for _, p := range outputProperties {
 		if _, err := pkg.printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, resRef, true); err != nil {
 			return err
 		}
@@ -2307,94 +2323,156 @@ func (pkg *pkgContext) genResource(
 		}
 
 		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", pkg.fieldName(r, p), outputType, p.Name)
-
+	}
+	// The registration marks the full flattened set of secret outputs, including inherited ones.
+	for _, p := range r.Properties {
 		if p.Secret {
 			secretProps = append(secretProps, p)
 		}
 	}
 	fmt.Fprintf(w, "}\n\n")
 
-	// Create a constructor function that registers a new instance of this resource.
-	fmt.Fprintf(w, "// New%s registers a new resource with the given unique name, arguments, and options.\n", name)
-	fmt.Fprintf(w, "func New%s(ctx *pulumi.Context,\n", name)
-	fmt.Fprintf(w, "\tname string, args *%[1]sArgs, opts ...pulumi.ResourceOption) (*%[1]s, error) {\n", name)
+	// An abstract component cannot be instantiated directly, so it emits no constructor; it is only embedded and
+	// constructed as a base of a concrete derived component.
+	if !r.Abstract {
+		// Create a constructor function that registers a new instance of this resource.
+		fmt.Fprintf(w, "// New%s registers a new resource with the given unique name, arguments, and options.\n", name)
+		fmt.Fprintf(w, "func New%s(ctx *pulumi.Context,\n", name)
+		fmt.Fprintf(w, "\tname string, args *%[1]sArgs, opts ...pulumi.ResourceOption) (*%[1]s, error) {\n", name)
 
-	// Ensure required arguments are present.
-	hasRequired := false
-	for _, p := range r.InputProperties {
-		if p.IsRequired() {
-			hasRequired = true
-		}
-	}
-
-	// Various validation checks
-	fmt.Fprintf(w, "\tif args == nil {\n")
-	if !hasRequired {
-		fmt.Fprintf(w, "\t\targs = &%sArgs{}\n", name)
-	} else {
-		fmt.Fprintln(w, "\t\treturn nil, errors.New(\"missing one or more required arguments\")")
-	}
-	fmt.Fprintf(w, "\t}\n\n")
-
-	// Produce the inputs.
-
-	// Check all required inputs are present
-	for _, p := range r.InputProperties {
-		if p.IsRequired() && isNilType(p.Type) && p.DefaultValue == nil {
-			fmt.Fprintf(w, "\tif args.%s == nil {\n", pkg.fieldName(r, p))
-			fmt.Fprintf(w, "\t\treturn nil, errors.New(\"invalid value for required argument '%s'\")\n", pkg.fieldName(r, p))
-			fmt.Fprintf(w, "\t}\n")
-		}
-
-		if p.Secret {
-			secretInputProps = append(secretInputProps, p)
-		}
-	}
-
-	assign := func(w io.Writer, p *schema.Property, value string) {
-		pkg.assignProperty(w, p, "args", value, isNilType(p.Type), useGenericVariant)
-	}
-
-	for _, p := range r.InputProperties {
-		if p.ConstValue != nil {
-			v, err := pkg.getConstValue(p.ConstValue)
-			if err != nil {
-				return err
-			}
-			assign(w, p, v)
-		} else if p.DefaultValue != nil {
-			if isNilType(p.Type) {
-				fmt.Fprintf(w, "\tif args.%s == nil {\n", pkg.fieldName(r, p))
-			} else {
-				fmt.Fprintf(w, "\tif %s.IsZero(args.%s) {\n", pkg.internalModuleName, pkg.fieldName(r, p))
-			}
-
-			err := pkg.setDefaultValue(w, p.DefaultValue, codegen.UnwrapType(p.Type), func(w io.Writer, dv string) error {
-				assign(w, p, dv)
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(w, "\t}\n")
-		} else if name := pkg.provideDefaultsFuncName(p.Type); name != "" && !pkg.disableObjectDefaults {
-			optionalDeref := ""
+		// Ensure required arguments are present.
+		hasRequired := false
+		for _, p := range r.InputProperties {
 			if p.IsRequired() {
-				optionalDeref = "*"
+				hasRequired = true
+			}
+		}
+
+		// Various validation checks
+		fmt.Fprintf(w, "\tif args == nil {\n")
+		if !hasRequired {
+			fmt.Fprintf(w, "\t\targs = &%sArgs{}\n", name)
+		} else {
+			fmt.Fprintln(w, "\t\treturn nil, errors.New(\"missing one or more required arguments\")")
+		}
+		fmt.Fprintf(w, "\t}\n\n")
+
+		// Produce the inputs.
+
+		// Check all required inputs are present
+		for _, p := range r.InputProperties {
+			if p.IsRequired() && isNilType(p.Type) && p.DefaultValue == nil {
+				fmt.Fprintf(w, "\tif args.%s == nil {\n", pkg.fieldName(r, p))
+				fmt.Fprintf(w, "\t\treturn nil, errors.New(\"invalid value for required argument '%s'\")\n", pkg.fieldName(r, p))
+				fmt.Fprintf(w, "\t}\n")
 			}
 
-			toOutputMethod := pkg.toOutputMethod(p.Type)
-			outputType := pkg.outputType(p.Type)
-			resolvedType := pkg.typeString(codegen.ResolvedType(p.Type))
-			originalValue := fmt.Sprintf("args.%s.%s()", pkg.fieldName(r, p), toOutputMethod)
-			valueWithDefaults := fmt.Sprintf("%[1]v.ApplyT(func (v %[2]s) %[2]s { return %[3]sv.%[4]s() }).(%[5]s)",
-				originalValue, resolvedType, optionalDeref, name, outputType)
-			if p.Plain {
-				valueWithDefaults = fmt.Sprintf("args.%v.Defaults()", pkg.fieldName(r, p))
+			if p.Secret {
+				secretInputProps = append(secretInputProps, p)
 			}
+		}
 
-			if useGenericVariant {
-				fmt.Fprintf(w, "if args.%s != nil {\n", pkg.fieldName(r, p))
+		assign := func(w io.Writer, p *schema.Property, value string) {
+			pkg.assignProperty(w, p, "args", value, isNilType(p.Type), useGenericVariant)
+		}
+
+		for _, p := range r.InputProperties {
+			if p.ConstValue != nil {
+				v, err := pkg.getConstValue(p.ConstValue)
+				if err != nil {
+					return err
+				}
+				assign(w, p, v)
+			} else if p.DefaultValue != nil {
+				if isNilType(p.Type) {
+					fmt.Fprintf(w, "\tif args.%s == nil {\n", pkg.fieldName(r, p))
+				} else {
+					fmt.Fprintf(w, "\tif %s.IsZero(args.%s) {\n", pkg.internalModuleName, pkg.fieldName(r, p))
+				}
+
+				err := pkg.setDefaultValue(w, p.DefaultValue, codegen.UnwrapType(p.Type), func(w io.Writer, dv string) error {
+					assign(w, p, dv)
+					return nil
+				})
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(w, "\t}\n")
+			} else if name := pkg.provideDefaultsFuncName(p.Type); name != "" && !pkg.disableObjectDefaults {
+				optionalDeref := ""
+				if p.IsRequired() {
+					optionalDeref = "*"
+				}
+
+				toOutputMethod := pkg.toOutputMethod(p.Type)
+				outputType := pkg.outputType(p.Type)
+				resolvedType := pkg.typeString(codegen.ResolvedType(p.Type))
+				originalValue := fmt.Sprintf("args.%s.%s()", pkg.fieldName(r, p), toOutputMethod)
+				valueWithDefaults := fmt.Sprintf("%[1]v.ApplyT(func (v %[2]s) %[2]s { return %[3]sv.%[4]s() }).(%[5]s)",
+					originalValue, resolvedType, optionalDeref, name, outputType)
+				if p.Plain {
+					valueWithDefaults = fmt.Sprintf("args.%v.Defaults()", pkg.fieldName(r, p))
+				}
+
+				if useGenericVariant {
+					fmt.Fprintf(w, "if args.%s != nil {\n", pkg.fieldName(r, p))
+					t := p.Type
+					optionalPointer := ""
+					if isOptionalType(reduceInputType(t)) && !isArrayType(codegen.UnwrapType(t)) && !isMapType(codegen.UnwrapType(t)) {
+						optionalPointer = "*"
+					}
+
+					inputType := pkg.genericInputTypeImpl(t)
+					if strings.HasPrefix(inputType, "*") {
+						optionalPointer = ""
+					}
+
+					fmt.Fprintf(w, "args.%s = pulumix.Apply(args.%s, func(o %s%s) %s%s { return o.Defaults() })\n",
+						pkg.fieldName(r, p),
+						pkg.fieldName(r, p),
+						optionalPointer,
+						inputType,
+						optionalPointer,
+						inputType)
+
+					fmt.Fprintf(w, "}\n")
+				} else {
+					if !p.IsRequired() {
+						fmt.Fprintf(w, "if args.%s != nil {\n", pkg.fieldName(r, p))
+						fmt.Fprintf(w, "args.%[1]s = %s\n", pkg.fieldName(r, p), valueWithDefaults)
+						fmt.Fprint(w, "}\n")
+					} else {
+						fmt.Fprintf(w, "args.%[1]s = %s\n", pkg.fieldName(r, p), valueWithDefaults)
+					}
+				}
+			}
+		}
+
+		// Set any defined aliases.
+		if len(r.Aliases) > 0 {
+			fmt.Fprintf(w, "\taliases := pulumi.Aliases([]pulumi.Alias{\n")
+			for _, alias := range r.Aliases {
+				s := "\t\t{\n"
+				s += fmt.Sprintf("\t\t\tType: pulumi.String(%q),\n", alias.Type)
+				s += "\t\t},\n"
+				fmt.Fprint(w, s)
+			}
+			fmt.Fprintf(w, "\t})\n")
+			fmt.Fprintf(w, "\topts = append(opts, aliases)\n")
+		}
+
+		// Setup secrets
+		for _, p := range secretInputProps {
+			fmt.Fprintf(w, "\tif args.%s != nil {\n", pkg.fieldName(r, p))
+
+			if !useGenericVariant {
+				fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n",
+					pkg.fieldName(r, p),
+					pkg.typeString(p.Type))
+			} else {
+				fmt.Fprintf(w, "\t\tuntypedSecretValue := pulumi.ToSecret(args.%s.ToOutput(ctx.Context()).Untyped())\n",
+					pkg.fieldName(r, p))
+
 				t := p.Type
 				optionalPointer := ""
 				if isOptionalType(reduceInputType(t)) && !isArrayType(codegen.UnwrapType(t)) && !isMapType(codegen.UnwrapType(t)) {
@@ -2405,133 +2483,92 @@ func (pkg *pkgContext) genResource(
 				if strings.HasPrefix(inputType, "*") {
 					optionalPointer = ""
 				}
-
-				fmt.Fprintf(w, "args.%s = pulumix.Apply(args.%s, func(o %s%s) %s%s { return o.Defaults() })\n",
+				fmt.Fprintf(w, "\t\targs.%s = pulumix.MustConvertTyped[%s%s](untypedSecretValue)\n",
 					pkg.fieldName(r, p),
-					pkg.fieldName(r, p),
-					optionalPointer,
-					inputType,
 					optionalPointer,
 					inputType)
-
-				fmt.Fprintf(w, "}\n")
-			} else {
-				if !p.IsRequired() {
-					fmt.Fprintf(w, "if args.%s != nil {\n", pkg.fieldName(r, p))
-					fmt.Fprintf(w, "args.%[1]s = %s\n", pkg.fieldName(r, p), valueWithDefaults)
-					fmt.Fprint(w, "}\n")
-				} else {
-					fmt.Fprintf(w, "args.%[1]s = %s\n", pkg.fieldName(r, p), valueWithDefaults)
-				}
-			}
-		}
-	}
-
-	// Set any defined aliases.
-	if len(r.Aliases) > 0 {
-		fmt.Fprintf(w, "\taliases := pulumi.Aliases([]pulumi.Alias{\n")
-		for _, alias := range r.Aliases {
-			s := "\t\t{\n"
-			s += fmt.Sprintf("\t\t\tType: pulumi.String(%q),\n", alias.Type)
-			s += "\t\t},\n"
-			fmt.Fprint(w, s)
-		}
-		fmt.Fprintf(w, "\t})\n")
-		fmt.Fprintf(w, "\topts = append(opts, aliases)\n")
-	}
-
-	// Setup secrets
-	for _, p := range secretInputProps {
-		fmt.Fprintf(w, "\tif args.%s != nil {\n", pkg.fieldName(r, p))
-
-		if !useGenericVariant {
-			fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n",
-				pkg.fieldName(r, p),
-				pkg.typeString(p.Type))
-		} else {
-			fmt.Fprintf(w, "\t\tuntypedSecretValue := pulumi.ToSecret(args.%s.ToOutput(ctx.Context()).Untyped())\n",
-				pkg.fieldName(r, p))
-
-			t := p.Type
-			optionalPointer := ""
-			if isOptionalType(reduceInputType(t)) && !isArrayType(codegen.UnwrapType(t)) && !isMapType(codegen.UnwrapType(t)) {
-				optionalPointer = "*"
 			}
 
-			inputType := pkg.genericInputTypeImpl(t)
-			if strings.HasPrefix(inputType, "*") {
-				optionalPointer = ""
+			fmt.Fprintf(w, "\t}\n")
+		}
+		if len(secretProps) > 0 {
+			fmt.Fprintf(w, "\tsecrets := pulumi.AdditionalSecretOutputs([]string{\n")
+			for _, sp := range secretProps {
+				fmt.Fprintf(w, "\t\t\t%q,\n", sp.Name)
 			}
-			fmt.Fprintf(w, "\t\targs.%s = pulumix.MustConvertTyped[%s%s](untypedSecretValue)\n",
-				pkg.fieldName(r, p),
-				optionalPointer,
-				inputType)
+			fmt.Fprintf(w, "\t})\n")
+			fmt.Fprintf(w, "\topts = append(opts, secrets)\n")
 		}
 
-		fmt.Fprintf(w, "\t}\n")
-	}
-	if len(secretProps) > 0 {
-		fmt.Fprintf(w, "\tsecrets := pulumi.AdditionalSecretOutputs([]string{\n")
-		for _, sp := range secretProps {
-			fmt.Fprintf(w, "\t\t\t%q,\n", sp.Name)
+		// Setup replaceOnChange
+		replaceOnChangesProps, errList := r.ReplaceOnChanges()
+		for _, err := range errList {
+			cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
 		}
-		fmt.Fprintf(w, "\t})\n")
-		fmt.Fprintf(w, "\topts = append(opts, secrets)\n")
-	}
-
-	// Setup replaceOnChange
-	replaceOnChangesProps, errList := r.ReplaceOnChanges()
-	for _, err := range errList {
-		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
-	}
-	replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps,
-		func(x string) string { return x })
-	if len(replaceOnChangesProps) > 0 {
-		fmt.Fprint(w, "\treplaceOnChanges := pulumi.ReplaceOnChanges([]string{\n")
-		for _, p := range replaceOnChangesStrings {
-			fmt.Fprintf(w, "\t\t%q,\n", p)
+		replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps,
+			func(x string) string { return x })
+		if len(replaceOnChangesProps) > 0 {
+			fmt.Fprint(w, "\treplaceOnChanges := pulumi.ReplaceOnChanges([]string{\n")
+			for _, p := range replaceOnChangesStrings {
+				fmt.Fprintf(w, "\t\t%q,\n", p)
+			}
+			fmt.Fprint(w, "\t})\n")
+			fmt.Fprint(w, "\topts = append(opts, replaceOnChanges)\n")
 		}
-		fmt.Fprint(w, "\t})\n")
-		fmt.Fprint(w, "\topts = append(opts, replaceOnChanges)\n")
-	}
 
-	err := pkg.GenPkgDefaultsOptsCall(w, false /*invoke*/)
-	if err != nil {
-		return err
-	}
-
-	// If this is a parameterized resource we need the package ref.
-	def, err := pkg.pkg.Definition()
-	if err != nil {
-		return err
-	}
-	assignment := ":="
-	packageRef := ""
-	packageArg := ""
-	if def.Parameterization != nil || def.ExtensionParameterization != nil {
-		assignment = "="
-		packageRef = "Package"
-		packageArg = "ref, "
-		err = pkg.GenPkgGetPackageRefCall(w, "nil")
+		err := pkg.GenPkgDefaultsOptsCall(w, false /*invoke*/)
 		if err != nil {
 			return err
 		}
+
+		// If this is a parameterized resource we need the package ref.
+		def, err := pkg.pkg.Definition()
+		if err != nil {
+			return err
+		}
+		assignment := ":="
+		packageRef := ""
+		packageArg := ""
+		if def.Parameterization != nil || def.ExtensionParameterization != nil {
+			assignment = "="
+			packageRef = "Package"
+			packageArg = "ref, "
+			err = pkg.GenPkgGetPackageRefCall(w, "nil")
+			if err != nil {
+				return err
+			}
+		}
+
+		// Finally make the call to registration.
+		fmt.Fprintf(w, "\tvar resource %s\n", name)
+		component := ""
+		if r.IsComponent {
+			component = "RemoteComponent"
+		}
+
+		fmt.Fprintf(w, "\terr %s ctx.Register%s%sResource(\"%s\", name, args, &resource, %sopts...)\n",
+			assignment, packageRef, component, r.Token, packageArg)
+		fmt.Fprintf(w, "\tif err != nil {\n")
+		fmt.Fprintf(w, "\t\treturn nil, err\n")
+		fmt.Fprintf(w, "\t}\n")
+		fmt.Fprintf(w, "\treturn &resource, nil\n")
+		fmt.Fprintf(w, "}\n\n")
 	}
 
-	// Finally make the call to registration.
-	fmt.Fprintf(w, "\tvar resource %s\n", name)
-	component := ""
-	if r.IsComponent {
-		component = "RemoteComponent"
+	// A component that participates in inheritance exports a base-construct helper. A Go author writing a derived
+	// component embeds this struct and, after RegisterComponentResource, calls the helper to construct this component
+	// as a base through the engine and resolve its outputs onto the embedded struct.
+	if pkg.participatesInInheritance(r) {
+		fmt.Fprintf(w, "// Construct%[1]sBase constructs %[1]s as a base of a user-authored derived component. Embed %[1]s in\n", name)
+		fmt.Fprintf(w, "// your component and call this after ctx.RegisterComponentResource to run the base construction\n")
+		fmt.Fprintf(w, "// through the engine and resolve the base outputs onto the embedded struct.\n")
+		fmt.Fprintf(w, "func Construct%[1]sBase(ctx *pulumi.Context, self pulumi.ComponentResource, args *%[1]sArgs) error {\n", name)
+		// The base's version and pluginDownloadURL ride on ResourceOptions; packageRef stays "" for a same-package,
+		// non-parameterized base. Cross-package/parameterized packageRef threading lands with the cross-package work.
+		fmt.Fprintf(w, "\treturn ctx.ConstructBase(self, %q, args, \"\", %s.PkgResourceDefaultOpts(nil)...)\n",
+			r.Token, pkg.internalModuleName)
+		fmt.Fprintf(w, "}\n\n")
 	}
-
-	fmt.Fprintf(w, "\terr %s ctx.Register%s%sResource(\"%s\", name, args, &resource, %sopts...)\n",
-		assignment, packageRef, component, r.Token, packageArg)
-	fmt.Fprintf(w, "\tif err != nil {\n")
-	fmt.Fprintf(w, "\t\treturn nil, err\n")
-	fmt.Fprintf(w, "\t}\n")
-	fmt.Fprintf(w, "\treturn &resource, nil\n")
-	fmt.Fprintf(w, "}\n\n")
 
 	// Emit a factory function that reads existing instances of this resource.
 	if !r.IsProvider && !r.IsComponent {
@@ -4185,13 +4222,22 @@ func (pkg *pkgContext) getImports(member any, importsAndAliases map[string]strin
 	case *schema.ResourceType:
 		pkg.getTypeImports(member, true, importsAndAliases, seen)
 	case *schema.Resource:
+		// A derived component embeds its base struct, so it needs the base's package imported (mirroring the embed
+		// emitted in genResource).
+		if member.BaseResource != nil {
+			pkg.getTypeImports(
+				&schema.ResourceType{Token: member.BaseResource.Token, Resource: member.BaseResource},
+				false, importsAndAliases, seen)
+		}
 		for _, p := range member.Properties {
 			pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
 		}
 		for _, p := range member.InputProperties {
 			pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
 
-			if p.IsRequired() {
+			// The required-argument checks that use `errors` live in New<Name>, which an abstract component omits, so
+			// only import `errors` when that constructor is emitted.
+			if p.IsRequired() && !member.Abstract {
 				importsAndAliases["errors"] = ""
 			}
 		}

@@ -409,10 +409,14 @@ func GenerateProject(
 		return err
 	}
 
+	// Track the packages we've listed so one that is both directly referenced and
+	// a transitive dependency isn't emitted twice.
+	addedPackages := map[string]bool{}
 	for _, p := range packages {
 		if p.Name == "pulumi" {
 			continue
 		}
+		addedPackages[p.Name] = true
 		if path, ok := localDependencies[p.Name]; ok {
 			requirementsTxtLines = append(requirementsTxtLines, path)
 		} else {
@@ -430,6 +434,24 @@ func GenerateProject(
 				requirementsTxtLines = append(requirementsTxtLines, fmt.Sprintf("%s==%s", packageName, p.Version.String()))
 			} else {
 				requirementsTxtLines = append(requirementsTxtLines, packageName)
+			}
+		}
+	}
+
+	// A generated SDK may depend on another generated SDK that the program never
+	// references directly -- for example a component that `extends` a base
+	// component in another package. pip resolves *published* transitive
+	// dependencies from the installed SDK's own metadata, but it cannot find a
+	// local-only SDK by name, so the base SDK's local artifact must be listed
+	// here explicitly or the install fails.
+	for _, p := range packages {
+		for _, dep := range p.Dependencies {
+			if dep.Name == "pulumi" || addedPackages[dep.Name] {
+				continue
+			}
+			if path, ok := localDependencies[dep.Name]; ok {
+				addedPackages[dep.Name] = true
+				requirementsTxtLines = append(requirementsTxtLines, path)
 			}
 		}
 	}

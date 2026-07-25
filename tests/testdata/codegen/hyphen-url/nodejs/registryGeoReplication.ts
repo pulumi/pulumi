@@ -8,7 +8,7 @@ import * as pulumiUsingDashes from "@pulumi/using-dashes";
 
 export class RegistryGeoReplication extends pulumi.ComponentResource {
     /** @internal */
-    public static readonly __pulumiType = 'registrygeoreplication:index:RegistryGeoReplication';
+    public static readonly __pulumiType: string = 'registrygeoreplication:index:RegistryGeoReplication';
 
     /**
      * Returns true if the given object is an instance of RegistryGeoReplication.  This is designed to work even
@@ -41,9 +41,26 @@ export class RegistryGeoReplication extends pulumi.ComponentResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args: RegistryGeoReplicationArgs, opts?: pulumi.ComponentResourceOptions) {
+    constructor(name: string, args: RegistryGeoReplicationArgs, opts?: pulumi.ComponentResourceOptions, __chain?: any /* internal */) {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
+        if (__chain !== undefined) {
+            super(__chain.type, name, __chain.inputs, opts, __chain.mode === "generated" /*remote*/);
+            return;
+        }
+        if (new.target !== RegistryGeoReplication) {
+            if (args?.resourceGroup === undefined && !opts.urn) {
+                throw new Error("Missing required property 'resourceGroup'");
+            }
+            resourceInputs["resourceGroup"] = args?.resourceGroup;
+            resourceInputs["acrLoginServerOut"] = undefined /*out*/;
+            resourceInputs["registry"] = undefined /*out*/;
+            resourceInputs["replication"] = undefined /*out*/;
+            opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+            super((new.target as any).__pulumiType, name, resourceInputs, opts, false /*local*/);
+            void pulumi.runtime.constructBaseResource(this, "registrygeoreplication:index:RegistryGeoReplication", args ?? {}, { version: utilities.getVersion() }, ["acrLoginServerOut", "registry", "replication"]);
+            return;
+        }
         if (!opts.id) {
             if (args?.resourceGroup === undefined && !opts.urn) {
                 throw new Error("Missing required property 'resourceGroup'");

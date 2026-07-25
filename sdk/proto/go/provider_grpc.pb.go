@@ -50,6 +50,7 @@ const (
 	ResourceProvider_Update_FullMethodName        = "/pulumirpc.ResourceProvider/Update"
 	ResourceProvider_Delete_FullMethodName        = "/pulumirpc.ResourceProvider/Delete"
 	ResourceProvider_Construct_FullMethodName     = "/pulumirpc.ResourceProvider/Construct"
+	ResourceProvider_ConstructBase_FullMethodName = "/pulumirpc.ResourceProvider/ConstructBase"
 	ResourceProvider_Cancel_FullMethodName        = "/pulumirpc.ResourceProvider/Cancel"
 	ResourceProvider_GetPluginInfo_FullMethodName = "/pulumirpc.ResourceProvider/GetPluginInfo"
 	ResourceProvider_Attach_FullMethodName        = "/pulumirpc.ResourceProvider/Attach"
@@ -221,6 +222,14 @@ type ResourceProviderClient interface {
 	//   - A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
 	//     propagate to resources it registers against the supplied resource monitor.
 	Construct(ctx context.Context, in *ConstructRequest, opts ...grpc.CallOption) (*ConstructResponse, error)
+	// `ConstructBase` constructs the portion of an existing [component resource](component-resources) that
+	// corresponds to `type`, which this provider owns, as part of a cross-package component inheritance chain.
+	// Unlike [](pulumirpc.ResourceProvider.Construct), no new resource is registered: the implementation adopts
+	// `urn` (whose type is the most-derived type of the chain), parents any nested resources it registers to it,
+	// and returns the type's output properties. Providers advertise support via the `supports_construct_base`
+	// field of [](pulumirpc.ProviderHandshakeResponse) and [](pulumirpc.ConfigureResponse); older providers
+	// return UNIMPLEMENTED.
+	ConstructBase(ctx context.Context, in *ConstructBaseRequest, opts ...grpc.CallOption) (*ConstructBaseResponse, error)
 	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
 	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
 	// creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
@@ -432,6 +441,16 @@ func (c *resourceProviderClient) Construct(ctx context.Context, in *ConstructReq
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ConstructResponse)
 	err := c.cc.Invoke(ctx, ResourceProvider_Construct_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resourceProviderClient) ConstructBase(ctx context.Context, in *ConstructBaseRequest, opts ...grpc.CallOption) (*ConstructBaseResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConstructBaseResponse)
+	err := c.cc.Invoke(ctx, ResourceProvider_ConstructBase_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -652,6 +671,14 @@ type ResourceProviderServer interface {
 	//   - A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
 	//     propagate to resources it registers against the supplied resource monitor.
 	Construct(context.Context, *ConstructRequest) (*ConstructResponse, error)
+	// `ConstructBase` constructs the portion of an existing [component resource](component-resources) that
+	// corresponds to `type`, which this provider owns, as part of a cross-package component inheritance chain.
+	// Unlike [](pulumirpc.ResourceProvider.Construct), no new resource is registered: the implementation adopts
+	// `urn` (whose type is the most-derived type of the chain), parents any nested resources it registers to it,
+	// and returns the type's output properties. Providers advertise support via the `supports_construct_base`
+	// field of [](pulumirpc.ProviderHandshakeResponse) and [](pulumirpc.ConfigureResponse); older providers
+	// return UNIMPLEMENTED.
+	ConstructBase(context.Context, *ConstructBaseRequest) (*ConstructBaseResponse, error)
 	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
 	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
 	// creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
@@ -747,6 +774,9 @@ func (UnimplementedResourceProviderServer) Delete(context.Context, *DeleteReques
 }
 func (UnimplementedResourceProviderServer) Construct(context.Context, *ConstructRequest) (*ConstructResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Construct not implemented")
+}
+func (UnimplementedResourceProviderServer) ConstructBase(context.Context, *ConstructBaseRequest) (*ConstructBaseResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConstructBase not implemented")
 }
 func (UnimplementedResourceProviderServer) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
@@ -1065,6 +1095,24 @@ func _ResourceProvider_Construct_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceProvider_ConstructBase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConstructBaseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceProviderServer).ConstructBase(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResourceProvider_ConstructBase_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceProviderServer).ConstructBase(ctx, req.(*ConstructBaseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ResourceProvider_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -1221,6 +1269,10 @@ var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Construct",
 			Handler:    _ResourceProvider_Construct_Handler,
+		},
+		{
+			MethodName: "ConstructBase",
+			Handler:    _ResourceProvider_ConstructBase_Handler,
 		},
 		{
 			MethodName: "Cancel",

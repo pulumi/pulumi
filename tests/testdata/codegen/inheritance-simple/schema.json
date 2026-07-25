@@ -1,0 +1,124 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "resources": {
+    "example:index:Service": {
+      "description": "A base component that exposes a network service.",
+      "isComponent": true,
+      "inputProperties": {
+        "port": {
+          "type": "integer"
+        }
+      },
+      "requiredInputs": ["port"],
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        }
+      },
+      "required": ["url", "port"],
+      "methods": {
+        "getStatus": "example:index:Service/getStatus",
+        "scale": "example:index:Service/scale"
+      }
+    },
+    "example:index:WebService": {
+      "description": "A web service that extends the base Service component.",
+      "isComponent": true,
+      "extends": {
+        "$ref": "#/resources/example:index:Service"
+      },
+      "inputProperties": {
+        "port": {
+          "type": "integer"
+        },
+        "replicas": {
+          "type": "integer"
+        }
+      },
+      "requiredInputs": ["port"],
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "instanceCount": {
+          "type": "integer"
+        }
+      },
+      "required": ["url", "port", "instanceCount"],
+      "methods": {
+        "scale": "example:index:WebService/scale"
+      }
+    }
+  },
+  "functions": {
+    "example:index:Service/getStatus": {
+      "description": "Returns the current status of the service.",
+      "inputs": {
+        "properties": {
+          "__self__": {
+            "$ref": "#/resources/example:index:Service"
+          }
+        },
+        "required": ["__self__"]
+      },
+      "outputs": {
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": ["status"]
+      }
+    },
+    "example:index:Service/scale": {
+      "description": "Scales the service to the requested number of replicas.",
+      "inputs": {
+        "properties": {
+          "__self__": {
+            "$ref": "#/resources/example:index:Service"
+          },
+          "replicas": {
+            "type": "integer"
+          }
+        },
+        "required": ["__self__", "replicas"]
+      }
+    },
+    "example:index:WebService/scale": {
+      "description": "Scales the web service, overriding the base implementation.",
+      "inputs": {
+        "properties": {
+          "__self__": {
+            "$ref": "#/resources/example:index:WebService"
+          },
+          "replicas": {
+            "type": "integer"
+          }
+        },
+        "required": ["__self__", "replicas"]
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/inheritance-simple/go/example",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^4.6.0"
+      }
+    },
+    "python": {}
+  }
+}

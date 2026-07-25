@@ -34,6 +34,13 @@ func linkedConstruct(ctx context.Context, req *pulumirpc.ConstructRequest, engin
 	return construct(ctx, req, engineConn, constructF)
 }
 
+//go:linkname linkedConstructBase github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedConstructBase
+func linkedConstructBase(ctx context.Context, req *pulumirpc.ConstructBaseRequest, engineConn *grpc.ClientConn,
+	constructF constructFunc,
+) (*pulumirpc.ConstructBaseResponse, error) {
+	return constructBase(ctx, req, engineConn, constructF)
+}
+
 //go:linkname linkedConstructInputsMap github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedConstructInputsMap
 func linkedConstructInputsMap(ctx *Context, inputs map[string]any) (Map, error) {
 	return constructInputsMap(ctx, inputs)

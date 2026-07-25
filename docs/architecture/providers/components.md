@@ -84,3 +84,12 @@ construct --> |Child Resources: RegisterResource| engine
 [](pulumirpc.ResourceProvider.Create)/[](pulumirpc.ResourceProvider.Read)/...
 methods.
 :::
+
+Components may also *extend* other components, including components from other
+packages implemented in other languages. In that case construction involves a
+chain of providers: the derived component's provider registers the resource
+once under the most-derived type and asks the engine, via
+[](pulumirpc.ResourceMonitor.ConstructBaseResource), to run each base level's
+implementation in its own provider through
+[](pulumirpc.ResourceProvider.ConstructBase). See [component
+inheritance](component-inheritance) for the full specification.

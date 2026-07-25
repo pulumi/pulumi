@@ -1,0 +1,6 @@
+component: sdkgen
+kind: fix
+body: Resolve component inheritance on every schema bind path, so a component loaded
+  lazily through the plugin loader has its base wired and inherited methods available
+  — fixing `pulumi convert` of programs that call an inherited method
+time: 2026-07-23T14:30:00-07:00

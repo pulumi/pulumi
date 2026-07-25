@@ -84,6 +84,18 @@ class ResourceMonitorStub:
         google.protobuf.empty_pb2.Empty,
     ]
 
+    ConstructBaseResource: grpc.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.ConstructBaseResourceRequest,
+        pulumi.resource_pb2.ConstructBaseResourceResponse,
+    ]
+    """Constructs the portion of an already-registered component resource that corresponds to one of its base
+    component types, dispatching to the provider that owns `base_type`. The resource identified by `urn` must
+    already be registered; its type is the most-derived type of the inheritance chain. SDKs call this while
+    executing a derived component's constructor chain. Monitors advertise support via
+    `RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE` in [](pulumirpc.DeploymentInfo)'s `supportedFeatures`; older
+    monitors return UNIMPLEMENTED.
+    """
+
     RegisterStackTransform: grpc.UnaryUnaryMultiCallable[
         pulumi.callback_pb2.Callback,
         google.protobuf.empty_pb2.Empty,
@@ -180,6 +192,18 @@ class ResourceMonitorAsyncStub:
         pulumi.resource_pb2.RegisterResourceOutputsRequest,
         google.protobuf.empty_pb2.Empty,
     ]
+
+    ConstructBaseResource: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.resource_pb2.ConstructBaseResourceRequest,
+        pulumi.resource_pb2.ConstructBaseResourceResponse,
+    ]
+    """Constructs the portion of an already-registered component resource that corresponds to one of its base
+    component types, dispatching to the provider that owns `base_type`. The resource identified by `urn` must
+    already be registered; its type is the most-derived type of the inheritance chain. SDKs call this while
+    executing a derived component's constructor chain. Monitors advertise support via
+    `RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE` in [](pulumirpc.DeploymentInfo)'s `supportedFeatures`; older
+    monitors return UNIMPLEMENTED.
+    """
 
     RegisterStackTransform: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.callback_pb2.Callback,
@@ -291,6 +315,20 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         request: pulumi.resource_pb2.RegisterResourceOutputsRequest,
         context: _ServicerContext,
     ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]: ...
+
+    
+    def ConstructBaseResource(
+        self,
+        request: pulumi.resource_pb2.ConstructBaseResourceRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.resource_pb2.ConstructBaseResourceResponse, collections.abc.Awaitable[pulumi.resource_pb2.ConstructBaseResourceResponse]]:
+        """Constructs the portion of an already-registered component resource that corresponds to one of its base
+        component types, dispatching to the provider that owns `base_type`. The resource identified by `urn` must
+        already be registered; its type is the most-derived type of the inheritance chain. SDKs call this while
+        executing a derived component's constructor chain. Monitors advertise support via
+        `RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE` in [](pulumirpc.DeploymentInfo)'s `supportedFeatures`; older
+        monitors return UNIMPLEMENTED.
+        """
 
     
     def RegisterStackTransform(

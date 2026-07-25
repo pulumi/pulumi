@@ -17,7 +17,7 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 
 """
 
-from typing import Optional, Any, cast, Union
+from typing import NoReturn, Optional, Any, cast, Union
 import types
 import argparse
 import asyncio
@@ -34,6 +34,7 @@ from pulumi.resource import (
     Resource,
     DependencyResource,
     DependencyProviderResource,
+    _ConstructBaseOptions,
     _parse_resource_reference,
 )
 from pulumi.runtime import known_types, proto, rpc
@@ -85,7 +86,6 @@ class ProviderServicer(ResourceProviderServicer):
     engine_address: str
     provider: Provider
     args: list[str]
-    lock: asyncio.Lock
 
     def create_grpc_invalid_properties_status(
         self, message: str, errors: Optional[list[InputPropertyErrorDetails]]
@@ -121,37 +121,42 @@ class ProviderServicer(ResourceProviderServicer):
     async def Construct(
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
-        # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
-        # avoid modifying globals, we can remove the locking.
-        await self.lock.acquire()
+        # Requests are served concurrently and may reenter this server while an
+        # earlier request is still in flight (e.g. a base or nested component
+        # chain that routes back through this process). Per-request runtime
+        # state lives in ContextVars, so no serialization is needed -- and any
+        # would deadlock such chains.
         try:
             return await self._construct(request, context)
         except Exception as e:  # noqa
-            if isinstance(e, RunError):
-                raise
-            if isinstance(e, InputPropertiesError):
-                status = self.create_grpc_invalid_properties_status(e.message, e.errors)
-                await context.abort_with_status(status)
-                # We already aborted at this point
-                raise
-            elif isinstance(e, InputPropertyError):
-                status = self.create_grpc_invalid_properties_status(
-                    "", [{"property_path": e.property_path, "reason": e.reason}]
-                )
-                await context.abort_with_status(status)
-                # We already aborted at this point
-                raise
-            else:
-                if isinstance(e, ComponentInitError):
-                    stack = traceback.extract_tb(e.inner.__traceback__)[:]
-                    # Drop the internal frame for `self._construct`.
-                    stack = stack[1:]
-                else:
-                    stack = traceback.extract_tb(e.__traceback__)[:]
-                pretty_stack = "".join(traceback.format_list(stack))
-                raise Exception(f"{str(e)}:\n{pretty_stack}")
-        finally:
-            self.lock.release()
+            await self._handle_construct_error(e, context)
+
+    async def _handle_construct_error(self, e: Exception, context) -> NoReturn:
+        """Translate an error raised while constructing (or base-constructing) a
+        component into the wire representation. Input-property validation
+        failures abort the RPC with a structured gRPC status; anything else is
+        re-raised with a pretty-printed user stack trace."""
+        if isinstance(e, RunError):
+            raise e
+        if isinstance(e, InputPropertiesError):
+            status = self.create_grpc_invalid_properties_status(e.message, e.errors)
+            await context.abort_with_status(status)
+            # We already aborted at this point
+            raise e
+        if isinstance(e, InputPropertyError):
+            status = self.create_grpc_invalid_properties_status(
+                "", [{"property_path": e.property_path, "reason": e.reason}]
+            )
+            await context.abort_with_status(status)
+            # We already aborted at this point
+            raise e
+        if isinstance(e, ComponentInitError):
+            # Drop the internal frame for `self._construct`/`self._construct_base`.
+            stack = traceback.extract_tb(e.inner.__traceback__)[1:]
+        else:
+            stack = traceback.extract_tb(e.__traceback__)[:]
+        pretty_stack = "".join(traceback.format_list(stack))
+        raise Exception(f"{str(e)}:\n{pretty_stack}")
 
     async def _construct(
         self, request: proto.ConstructRequest, context
@@ -326,32 +331,132 @@ class ProviderServicer(ResourceProviderServicer):
             hooks=resource_hooks,
         )
 
+    @staticmethod
+    async def _serialize_state(
+        state: Any,
+    ) -> tuple[struct_pb2.Struct, dict[str, list[str]]]:
+        """Serialize a component's output state, returning the encoded struct
+        alongside the (known) dependency URNs discovered per property. Shared by
+        the Construct and ConstructBase responses, which differ only in their
+        (message-specific) PropertyDependencies wrappers."""
+        # Note: property_deps is populated by rpc.serialize_properties.
+        property_deps: dict[str, list[pulumi.resource.Resource]] = {}
+        serialized = await rpc.serialize_properties(
+            inputs={k: v for k, v in state.items() if k not in ["id", "urn"]},
+            property_deps=property_deps,
+        )
+
+        deps: dict[str, list[str]] = {}
+        for k, resources in property_deps.items():
+            urns = await asyncio.gather(*(r.urn.future() for r in resources))
+            # filter out any unknowns
+            deps[k] = [u for u in urns if u is not None]
+
+        return serialized, deps
+
     async def _construct_response(
         self, result: ConstructResult
     ) -> proto.ConstructResponse:
         urn = await pulumi.Output.from_input(result.urn).future()
         assert urn is not None
 
-        # Note: property_deps is populated by rpc.serialize_properties.
-        property_deps: dict[str, list[pulumi.resource.Resource]] = {}
-        state = await rpc.serialize_properties(
-            inputs={k: v for k, v in result.state.items() if k not in ["id", "urn"]},
-            property_deps=property_deps,
+        state, deps = await self._serialize_state(result.state)
+        return proto.ConstructResponse(
+            urn=urn,
+            state=state,
+            stateDependencies={
+                k: proto.ConstructResponse.PropertyDependencies(urns=urns)
+                for k, urns in deps.items()
+            },
         )
 
-        deps: dict[str, proto.ConstructResponse.PropertyDependencies] = {}
-        for k, resources in property_deps.items():
-            urns = await asyncio.gather(*(r.urn.future() for r in resources))
-            # filter out any unknowns
-            knownUrns = [u for u in urns if u is not None]
-            deps[k] = proto.ConstructResponse.PropertyDependencies(urns=knownUrns)
+    async def ConstructBase(
+        self, request: proto.ConstructBaseRequest, context
+    ) -> proto.ConstructBaseResponse:
+        # Like Construct, served concurrently and reentrantly; the difference is
+        # purely that the constructed component adopts an existing URN instead of
+        # registering. The provider-author `construct` surface is unchanged --
+        # attachment is threaded through the resource options.
+        try:
+            return await self._construct_base(request, context)
+        except Exception as e:  # noqa
+            await self._handle_construct_error(e, context)
 
-        return proto.ConstructResponse(urn=urn, state=state, stateDependencies=deps)
+    async def _construct_base(
+        self, request: proto.ConstructBaseRequest, context
+    ) -> proto.ConstructBaseResponse:
+        assert isinstance(request, proto.ConstructBaseRequest), (
+            f"request is not ConstructBaseRequest but is {type(request)} instead"
+        )
+
+        organization = request.organization if request.organization else "organization"
+        pulumi.runtime.settings.reset_options(
+            organization=organization,
+            project=_empty_as_none(request.project),
+            stack=_empty_as_none(request.stack),
+            parallel=_zero_as_none(request.parallel),
+            engine_address=self.engine_address,
+            monitor_address=_empty_as_none(request.monitor_endpoint),
+            preview=request.dry_run,
+        )
+        await pulumi.runtime.settings._load_monitor_feature_support()
+
+        pulumi.runtime.config.set_all_config(
+            dict(request.config), list(request.config_secret_keys)
+        )
+        inputs = await self._construct_inputs(
+            request.inputs, request.input_dependencies
+        )
+
+        result = self.provider.construct(
+            name=request.name,
+            resource_type=request.type,
+            inputs=inputs,
+            options=self._construct_base_options(request),
+        )
+
+        response = await self._construct_base_response(result)
+
+        # Wait for outstanding RPCs (e.g. nested constructs or deeper base
+        # constructs) before returning, mirroring Construct.
+        await wait_for_rpcs(await_all_outstanding_tasks=False)
+
+        return response
+
+    @staticmethod
+    def _construct_base_options(
+        request: proto.ConstructBaseRequest,
+    ) -> pulumi.ResourceOptions:
+        # ConstructBase carries no resource options: parents, protection and
+        # timeouts belong to the single most-derived registration, and nested
+        # resources inherit them through the ordinary parent mechanisms. Only the
+        # provider map and the internal attach marker are threaded through.
+        opts = pulumi.ResourceOptions(
+            providers={
+                pkg: _create_provider_resource(ref)
+                for pkg, ref in request.providers.items()
+            },
+        )
+        opts._construct_base = _ConstructBaseOptions(
+            urn=request.urn,
+            most_derived_type=request.most_derived_type,
+        )
+        return opts
+
+    async def _construct_base_response(
+        self, result: ConstructResult
+    ) -> proto.ConstructBaseResponse:
+        state, deps = await self._serialize_state(result.state)
+        return proto.ConstructBaseResponse(
+            state=state,
+            state_dependencies={
+                k: proto.ConstructBaseResponse.PropertyDependencies(urns=urns)
+                for k, urns in deps.items()
+            },
+        )
 
     async def Call(self, request: proto.CallRequest, context):
-        # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
-        # avoid modifying globals, we can remove the locking.
-        await self.lock.acquire()
+        # Served concurrently; see the note on Construct above.
         try:
             return await self._call(request, context)
         except InputPropertiesError as e:
@@ -366,8 +471,6 @@ class ProviderServicer(ResourceProviderServicer):
             await context.abort_with_status(status)
             # We already aborted at this point
             raise
-        finally:
-            self.lock.release()
 
     async def _call(self, request: proto.CallRequest, context):
         assert isinstance(request, proto.CallRequest), (
@@ -510,7 +613,6 @@ class ProviderServicer(ResourceProviderServicer):
         self.provider = provider
         self.args = args
         self.engine_address = engine_address
-        self.lock = asyncio.Lock()
 
 
 def main(provider: Provider, args: list[str]) -> None:  # args not in use?

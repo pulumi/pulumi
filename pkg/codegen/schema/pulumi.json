@@ -199,6 +199,13 @@
             "items": {
                 "type": "string"
             }
+        },
+        "requiredFeatures": {
+            "description": "A list of schema features that a consumer must support in order to correctly interpret this package. A consumer that does not recognize a listed feature must reject the package rather than silently misinterpret it.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         }
     },
     "additionalProperties": false,
@@ -631,6 +638,22 @@
                 },
                 "isOverlay": {
                     "description": "Indicates that the implementation of the resource should not be generated from the schema, and is instead provided out-of-band by the package author",
+                    "type": "boolean"
+                },
+                "extends": {
+                    "description": "A reference to the base component that this component extends. Only valid for components (isComponent must be true). The referenced resource must itself be a component.",
+                    "type": "object",
+                    "properties": {
+                        "$ref": {
+                            "description": "The URI of the referenced base component. A component from this document is referenced as \"#/resources/pulumi:type:token\", and a component from another document is referenced as \"path#/resources/pulumi:type:token\".",
+                            "type": "string"
+                        }
+                    },
+                    "required": ["$ref"],
+                    "additionalProperties": false
+                },
+                "abstract": {
+                    "description": "Indicates that the component is abstract and cannot be instantiated directly, only extended. Only valid for components (isComponent must be true).",
                     "type": "boolean"
                 }
             }

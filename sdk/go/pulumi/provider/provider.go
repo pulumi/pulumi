@@ -45,6 +45,25 @@ func Construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	})
 }
 
+// ConstructBase adapts the gRPC ConstructBaseRequest/ConstructBaseResponse to/from the Pulumi Go SDK
+// programming model. It serves the base-class portion of an already-registered component resource using the
+// same construct callback as Construct: the callback registers its component (which adopts the existing URN
+// in base mode) and returns it, and ConstructBase returns the base's declared outputs.
+func ConstructBase(ctx context.Context, req *pulumirpc.ConstructBaseRequest, engineConn *grpc.ClientConn,
+	construct ConstructFunc,
+) (*pulumirpc.ConstructBaseResponse, error) {
+	return linkedConstructBase(ctx, req, engineConn, func(pulumiCtx *pulumi.Context, typ, name string,
+		inputs map[string]any, options pulumi.ResourceOption,
+	) (pulumi.URNInput, pulumi.Input, error) {
+		ci := ConstructInputs{ctx: pulumiCtx, inputs: inputs}
+		result, err := construct(pulumiCtx, typ, name, ci, options)
+		if err != nil {
+			return nil, nil, err
+		}
+		return result.URN, result.State, nil
+	})
+}
+
 // ConstructInputs represents the inputs associated with a call to Construct.
 type ConstructInputs struct {
 	ctx    *pulumi.Context
@@ -169,6 +188,10 @@ type constructFunc func(ctx *pulumi.Context, typ, name string, inputs map[string
 // linkedConstruct is made available here from ../provider_linked.go via go:linkname.
 func linkedConstruct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn *grpc.ClientConn,
 	constructF constructFunc) (*pulumirpc.ConstructResponse, error)
+
+// linkedConstructBase is made available here from ../provider_linked.go via go:linkname.
+func linkedConstructBase(ctx context.Context, req *pulumirpc.ConstructBaseRequest, engineConn *grpc.ClientConn,
+	constructF constructFunc) (*pulumirpc.ConstructBaseResponse, error)
 
 // linkedConstructInputsMap is made available here from ../provider_linked.go via go:linkname.
 func linkedConstructInputsMap(ctx *pulumi.Context, inputs map[string]any) (pulumi.Map, error)

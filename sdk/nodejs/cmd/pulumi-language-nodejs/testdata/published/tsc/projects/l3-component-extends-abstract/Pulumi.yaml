@@ -1,0 +1,5 @@
+name: l3-component-extends-abstract
+runtime:
+  name: nodejs
+  options:
+    typescript: false

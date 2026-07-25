@@ -1,0 +1,5 @@
+name: l2-component-extends-methods
+runtime:
+  name: nodejs
+  options:
+    typescript: false

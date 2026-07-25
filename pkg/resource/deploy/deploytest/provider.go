@@ -54,10 +54,15 @@ type Provider struct {
 	ListF         func(context.Context, plugin.ListRequest) (*plugin.ListStream, error)
 	ReadF         func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error)
 	ConstructF    func(context.Context, plugin.ConstructRequest, *ResourceMonitor) (plugin.ConstructResponse, error)
-	InvokeF       func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error)
-	CallF         func(context.Context, plugin.CallRequest, *ResourceMonitor) (plugin.CallResponse, error)
-	GetMappingF   func(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error)
-	GetMappingsF  func(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error)
+	// ConstructBaseF serves base-class construction requests. When nil, the provider behaves like one that does
+	// not support acting as a base class (returning plugin.ErrConstructBaseNotSupported).
+	ConstructBaseF func(
+		context.Context, plugin.ConstructBaseRequest, *ResourceMonitor,
+	) (plugin.ConstructBaseResponse, error)
+	InvokeF      func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error)
+	CallF        func(context.Context, plugin.CallRequest, *ResourceMonitor) (plugin.CallResponse, error)
+	GetMappingF  func(context.Context, plugin.GetMappingRequest) (plugin.GetMappingResponse, error)
+	GetMappingsF func(context.Context, plugin.GetMappingsRequest) (plugin.GetMappingsResponse, error)
 }
 
 func (prov *Provider) Handshake(
@@ -222,6 +227,23 @@ func (prov *Provider) Construct(ctx context.Context, req plugin.ConstructRequest
 		return plugin.ConstructResult{}, err
 	}
 	return prov.ConstructF(ctx, req, monitor)
+}
+
+func (prov *Provider) ConstructBase(
+	ctx context.Context, req plugin.ConstructBaseRequest,
+) (plugin.ConstructBaseResponse, error) {
+	if prov.ConstructBaseF == nil {
+		return plugin.ConstructBaseResponse{}, plugin.ErrConstructBaseNotSupported
+	}
+	dialMonitorImpl := dialMonitor
+	if prov.DialMonitorF != nil {
+		dialMonitorImpl = prov.DialMonitorF
+	}
+	monitor, err := dialMonitorImpl(ctx, req.Info.MonitorAddress)
+	if err != nil {
+		return plugin.ConstructBaseResponse{}, err
+	}
+	return prov.ConstructBaseF(ctx, req, monitor)
 }
 
 func (prov *Provider) Invoke(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {

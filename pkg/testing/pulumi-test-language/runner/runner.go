@@ -915,6 +915,38 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
+	// A referenced package may itself depend on further packages that the program never references directly -- for
+	// example a component that `extends` a base component published in another package. Those transitive dependencies
+	// are absent from PackageReferences, but their SDKs must still be generated (the derived SDK is compiled against
+	// the base SDK), so walk the dependency graph and pull in every referenced package's Dependencies. The loop reads
+	// the slice as it grows, so it closes over transitive dependencies as well.
+	for i := 0; i < len(packages); i++ {
+		for _, dep := range packages[i].Dependencies {
+			if dep.Name == "pulumi" {
+				continue
+			}
+			present := false
+			for _, existing := range packages {
+				if existing.Name == dep.Name {
+					present = true
+					break
+				}
+			}
+			if present {
+				continue
+			}
+			depRef, err := schema.LoadPackageReferenceV2(ctx, loader, &dep)
+			if err != nil {
+				return nil, fmt.Errorf("load dependency package %s: %w", dep.Name, err)
+			}
+			depDef, err := depRef.Definition()
+			if err != nil {
+				return nil, fmt.Errorf("get dependency package definition %s: %w", dep.Name, err)
+			}
+			packages = append(packages, depDef)
+		}
+	}
+
 	// We always override the core "pulumi" package to point to the local core SDK we built as part of test
 	// setup.
 	sdks := map[string]string{}
@@ -1414,6 +1446,17 @@ func runLanguageTests(
 		// plugins inline, the runner checks GetRequiredPackages directly here. Tests opt out of the check with
 		// SkipEnsurePluginsValidation when the program intentionally diverges (e.g. version-pinning tests).
 		if !test.SkipEnsurePluginsValidation {
+			// Capture the program's transitive package graph before `packages` is
+			// reassigned below. A language may surface a transitive dependency -- e.g.
+			// the base package of a cross-package `extends` -- as a required package
+			// (Python and Node install the base SDK) or resolve it at construct time
+			// (Go flattens the derived SDK); both are legitimate, so such a package
+			// must not be flagged as an unexpected extra.
+			knownPackageNames := map[string]struct{}{}
+			for _, pkg := range packages {
+				knownPackageNames[pkg.Name] = struct{}{}
+			}
+
 			packages, _, err := languageClient.GetRequiredPackages(ctx, programInfo)
 			if err != nil {
 				return makeTestResponse(fmt.Sprintf("get required packages: %v", err)), nil
@@ -1543,6 +1586,11 @@ func runLanguageTests(
 				}
 
 				if !found {
+					// A package that isn't directly referenced is still legitimate if it
+					// is part of the program's transitive package graph (see above).
+					if _, known := knownPackageNames[actual.Name]; known {
+						continue
+					}
 					return makeTestResponse(fmt.Sprintf("unexpected extra package %v", actual)), nil
 				}
 			}

@@ -451,6 +451,14 @@ func (mod *modContext) printComment(w io.Writer, comment, deprecationMessage, in
 func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 	properties []*schema.Property, input, readonly bool, level int,
 ) error {
+	return mod.genPlainTypeExtends(w, name, "", comment, properties, input, readonly, level)
+}
+
+// genPlainTypeExtends emits an interface like genPlainType, optionally extending a base interface. A derived
+// component's args interface extends its base args interface and re-emits only its own properties.
+func (mod *modContext) genPlainTypeExtends(w io.Writer, name, extends, comment string,
+	properties []*schema.Property, input, readonly bool, level int,
+) error {
 	indent := strings.Repeat("    ", level)
 
 	ref := schema.DocRef{}
@@ -458,7 +466,11 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 		return err
 	}
 
-	fmt.Fprintf(w, "%sexport interface %s {\n", indent, name)
+	extendsClause := ""
+	if extends != "" {
+		extendsClause = " extends " + extends
+	}
+	fmt.Fprintf(w, "%sexport interface %s%s {\n", indent, name, extendsClause)
 	for _, p := range properties {
 		if err := mod.printComment(w, p.Comment, p.DeprecationMessage, indent+"    ", ref); err != nil {
 			return err
@@ -641,6 +653,124 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 	return val, nil
 }
 
+// participatesInInheritance reports whether a resource needs the inheritance-aware constructor. Every component gets
+// it: subclassability must not depend on whether the base's own package happens to contain a deriver. The constructor
+// is byte-identical in behavior when the component is not subclassed (the extra branches are inert), so this is a pure
+// capability addition.
+func (mod *modContext) participatesInInheritance(r *schema.Resource) bool {
+	return r.IsComponent
+}
+
+// emitComponentResourceOptions writes the resource-option defaulting plus alias/secret/replaceOnChanges merging that
+// precedes a component's super() call. If the caller didn't request a specific version (or pluginDownloadURL), the
+// utilities library supplies a default. It is shared by the classic constructor and the inheritance-aware
+// constructors; indent is the leading whitespace for each emitted statement.
+func (mod *modContext) emitComponentResourceOptions(w io.Writer, r *schema.Resource, indent string) {
+	fmt.Fprintf(w, "%sopts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);\n", indent)
+	if len(r.Aliases) > 0 {
+		fmt.Fprintf(w, "%sconst aliasOpts = { aliases: [", indent)
+		for i, alias := range r.Aliases {
+			fmt.Fprintf(w, "{ type: \"%v\" }", alias.Type)
+			if i != len(r.Aliases)-1 {
+				fmt.Fprintf(w, ", ")
+			}
+		}
+		fmt.Fprintf(w, "] };\n")
+		fmt.Fprintf(w, "%sopts = pulumi.mergeOptions(opts, aliasOpts);\n", indent)
+	}
+	var secretProps []string
+	for _, prop := range r.Properties {
+		if prop.Secret {
+			secretProps = append(secretProps, prop.Name)
+		}
+	}
+	if len(secretProps) > 0 {
+		fmt.Fprintf(w, `%sconst secretOpts = { additionalSecretOutputs: ["%s"] };`, indent, strings.Join(secretProps, `", "`))
+		fmt.Fprintf(w, "\n%sopts = pulumi.mergeOptions(opts, secretOpts);\n", indent)
+	}
+	replaceOnChanges, errList := r.ReplaceOnChanges()
+	for _, err := range errList {
+		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
+	}
+	replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChanges,
+		func(x string) string { return x })
+	if len(replaceOnChanges) > 0 {
+		fmt.Fprintf(w, `%sconst replaceOnChanges = { replaceOnChanges: ["%s"] };`, indent, strings.Join(replaceOnChangesStrings, `", "`))
+		fmt.Fprintf(w, "\n%sopts = pulumi.mergeOptions(opts, replaceOnChanges);\n", indent)
+	}
+}
+
+// outputNamesLiteral renders a property list as a TypeScript string-array literal of the property names.
+func outputNamesLiteral(props []*schema.Property) string {
+	names := make([]string, len(props))
+	for i, p := range props {
+		names[i] = fmt.Sprintf("%q", p.Name)
+	}
+	return "[" + strings.Join(names, ", ") + "]"
+}
+
+// constructBasePackageInfo renders the packageInfo argument to pulumi.runtime.constructBaseResource for a base that
+// lives in the given package descriptor. version/pluginDownloadURL are literals from the descriptor; a parameterized
+// package additionally threads its package reference (which supersedes the version fields when it resolves). A nil
+// descriptor denotes this package itself (the user-subclass case), sourced from the generated utilities module.
+func constructBasePackageInfo(desc *schema.PackageDescriptor, thisParameterized bool) string {
+	if desc == nil {
+		if thisParameterized {
+			return "{ version: utilities.getVersion(), packageRef: utilities.getPackage() }"
+		}
+		return "{ version: utilities.getVersion() }"
+	}
+	version := ""
+	if desc.Version != nil {
+		version = desc.Version.String()
+	}
+	info := fmt.Sprintf("{ version: %q", version)
+	if desc.DownloadURL != "" {
+		info += fmt.Sprintf(", pluginDownloadURL: %q", desc.DownloadURL)
+	}
+	return info + " }"
+}
+
+// emitConstructBaseCall writes the fire-and-forget runtime call that constructs a base of the already-registered
+// most-derived instance (`this`), resolving the base's declared outputs onto it. constructBaseResource seeds those
+// output cells synchronously, so a caller may read them immediately; the returned promise (discarded via `void`) keeps
+// the process alive until the base construction completes.
+func emitConstructBaseCall(w io.Writer, baseToken, argsExpr, packageInfo, outputsLiteral, indent string) {
+	fmt.Fprintf(w, "%svoid pulumi.runtime.constructBaseResource(this, %q, %s, %s, %s);\n",
+		indent, baseToken, argsExpr, packageInfo, outputsLiteral)
+}
+
+// emitUserSubclassBaseConstruct writes the body of the user-authored-subclass branch of a component constructor: it
+// registers `this` under the subclass's own most-derived type token, then constructs this generated class (with its
+// bases) through the engine, resolving its full flattened outputs onto the instance. `superCall` is the registration
+// super() statement, which differs between a root base and a derived class.
+func (mod *modContext) emitUserSubclassBaseConstruct(w io.Writer, r *schema.Resource, name, superCall, indent string) {
+	fmt.Fprintf(w, "%s%s\n", indent, superCall)
+	// `args` is optional when every input is, but constructBaseResource takes a non-optional Inputs bag; coalesce to
+	// an empty object so the generated call type-checks in both cases.
+	emitConstructBaseCall(w, r.Token, "args ?? {}", constructBasePackageInfo(nil, mod.resourceParameterized(r)),
+		outputNamesLiteral(r.Properties), indent)
+	fmt.Fprintf(w, "%sreturn;\n", indent)
+}
+
+// parameterizedTrailingArg is the trailing getPackage() argument a parameterized package threads through its
+// component super() calls, or empty for a non-parameterized package.
+func parameterizedTrailingArg(parameterized bool) string {
+	if parameterized {
+		return ", utilities.getPackage()"
+	}
+	return ""
+}
+
+// resourceParameterized reports whether the resource's own package is parameterized.
+func (mod *modContext) resourceParameterized(r *schema.Resource) bool {
+	def, err := r.PackageReference.Definition()
+	if err != nil {
+		return false
+	}
+	return def.Parameterization != nil || def.ExtensionParameterization != nil
+}
+
 func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFileInfo, error) {
 	info := resourceFileInfo{}
 
@@ -664,8 +794,19 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		baseType, optionsType = "CustomResource", "CustomResourceOptions"
 	}
 
+	// A derived component extends its base class rather than pulumi.ComponentResource, inheriting its output fields
+	// and methods; an abstract component is projected as an abstract class so it cannot be instantiated directly.
+	extendsClause := "pulumi." + baseType
+	if r.BaseResource != nil {
+		extendsClause = mod.resourceType(&schema.ResourceType{Token: r.BaseResource.Token, Resource: r.BaseResource})
+	}
+	classModifier := ""
+	if r.Abstract {
+		classModifier = "abstract "
+	}
+
 	// Begin defining the class.
-	fmt.Fprintf(w, "export class %s extends pulumi.%s {\n", info.resourceClassName, baseType)
+	fmt.Fprintf(w, "export %sclass %s extends %s {\n", classModifier, info.resourceClassName, extendsClause)
 
 	// Emit a static factory to read instances of this resource unless this is a provider resource or ComponentResource.
 	stateType := name + "State"
@@ -703,8 +844,15 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		pulumiType = mod.pkg.Name()
 	}
 
+	// A component's __pulumiType is typed `string` rather than the inferred string-literal type so that a subclass
+	// (generated or user-authored) declaring its own token does not trip the static-side inheritance check (TS2417).
+	// The analyzer reads the runtime value, not this annotation, so nothing downstream regresses.
+	pulumiTypeAnnotation := ""
+	if r.IsComponent {
+		pulumiTypeAnnotation = ": string"
+	}
 	fmt.Fprintf(w, "    /** @internal */\n")
-	fmt.Fprintf(w, "    public static readonly __pulumiType = '%s';\n", pulumiType)
+	fmt.Fprintf(w, "    public static readonly __pulumiType%s = '%s';\n", pulumiTypeAnnotation, pulumiType)
 	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "    /**\n")
 	fmt.Fprintf(w, "     * Returns true if the given object is an instance of %s.  This is designed to work even\n", name)
@@ -736,7 +884,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		ins.Add(prop.Name)
 		allOptionalInputs = allOptionalInputs && !prop.IsRequired()
 	}
-	for _, prop := range r.Properties {
+	// A derived component declares only its own output fields; the inherited fields come from the base class.
+	outputProperties := r.Properties
+	if r.BaseResource != nil {
+		outputProperties = r.OwnProperties()
+	}
+	for _, prop := range outputProperties {
 		ref := schema.DocRef{}
 		if err := mod.printComment(w, prop.Comment, prop.DeprecationMessage, "    ", ref); err != nil {
 			return info, err
@@ -790,8 +943,15 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
 	}
-	fmt.Fprintf(w, "    constructor(name: string, args%s: %s, opts?: pulumi.%s)%s\n", argsFlags, argsType,
-		optionsType, trailingBrace)
+	// A component that participates in inheritance threads an internal chain-state argument through its constructors
+	// so the whole hierarchy registers exactly once, with the most-derived type token. The chain state is a
+	// codegen-internal structural value with no public API commitment, so it is untyped.
+	chainParam := ""
+	if mod.participatesInInheritance(r) {
+		chainParam = ", __chain?: any /* internal */"
+	}
+	fmt.Fprintf(w, "    constructor(name: string, args%s: %s, opts?: pulumi.%s%s)%s\n", argsFlags, argsType,
+		optionsType, chainParam, trailingBrace)
 
 	genInputProps := func() error {
 		for _, prop := range r.InputProperties {
@@ -866,7 +1026,36 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		return nil
 	}
 
-	if !r.IsProvider {
+	pkg, err := r.PackageReference.Definition()
+	if err != nil {
+		return resourceFileInfo{}, err
+	}
+	parameterized := pkg.Parameterization != nil || pkg.ExtensionParameterization != nil
+
+	if r.BaseResource != nil {
+		// A derived component builds the full flattened inputs itself and threads a chain-state argument up to its
+		// base so that the hierarchy registers exactly once, at the root, with this derived token. When it forwards a
+		// chain from a more-derived subclass (__chain set) it adds nothing; when it is the entry point (__chain
+		// undefined) it also handles user-authored subclasses. Cross-package extends is identical on the consumer
+		// side to same-package — only imports, the class hierarchy, and the user-subclass branch differ — because the
+		// derived package's provider owns the base-construction chain server-side.
+		fmt.Fprintf(w, "        let resourceInputs: pulumi.Inputs = {};\n")
+		fmt.Fprintf(w, "        opts = opts || {};\n")
+		fmt.Fprintf(w, "        if (__chain === undefined) {\n")
+		if err := genInputProps(); err != nil {
+			return resourceFileInfo{}, err
+		}
+		mod.emitComponentResourceOptions(w, r, "            ")
+		fmt.Fprintf(w, "            if (new.target !== %s) {\n", name)
+		superCall := "super(name, args, opts, " +
+			"{ mode: \"userSubclass\", type: (new.target as any).__pulumiType, inputs: resourceInputs });"
+		mod.emitUserSubclassBaseConstruct(w, r, name, superCall, "                ")
+		fmt.Fprintf(w, "            }\n")
+		fmt.Fprintf(w, "        }\n")
+		fmt.Fprintf(w, "        super(name, args, opts, __chain ?? "+
+			"{ mode: \"generated\", type: %s.__pulumiType, inputs: resourceInputs });\n", name)
+		fmt.Fprintf(w, "    }\n")
+	} else if !r.IsProvider {
 		if r.StateInputs != nil {
 			if r.DeprecationMessage != "" {
 				fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
@@ -883,6 +1072,30 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		}
 		fmt.Fprintf(w, "        let resourceInputs: pulumi.Inputs = {};\n")
 		fmt.Fprintf(w, "        opts = opts || {};\n")
+
+		// A base component performs the single most-derived registration on behalf of the whole hierarchy: a generated
+		// subclass supplies the chain state (registering remotely under the derived token), while a user-authored
+		// subclass registers locally (its ad-hoc token has no provider to construct it) and constructs this class as a
+		// base via the engine.
+		if mod.participatesInInheritance(r) {
+			fmt.Fprintf(w, "        if (__chain !== undefined) {\n")
+			fmt.Fprintf(w, "            super(__chain.type, name, __chain.inputs, opts, __chain.mode === \"generated\" /*remote*/")
+			if parameterized {
+				fmt.Fprintf(w, ", utilities.getPackage()")
+			}
+			fmt.Fprintf(w, ");\n")
+			fmt.Fprintf(w, "            return;\n")
+			fmt.Fprintf(w, "        }\n")
+			fmt.Fprintf(w, "        if (new.target !== %s) {\n", name)
+			if err := genInputProps(); err != nil {
+				return resourceFileInfo{}, err
+			}
+			mod.emitComponentResourceOptions(w, r, "            ")
+			superCall := fmt.Sprintf("super((new.target as any).__pulumiType, name, resourceInputs, opts, false /*local*/%s);",
+				parameterizedTrailingArg(parameterized))
+			mod.emitUserSubclassBaseConstruct(w, r, name, superCall, "            ")
+			fmt.Fprintf(w, "        }\n")
+		}
 
 		if r.StateInputs != nil {
 			// The lookup case:
@@ -920,68 +1133,29 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			return resourceFileInfo{}, err
 		}
 	}
-	var secretProps []string
-	for _, prop := range r.Properties {
-		if prop.Secret {
-			secretProps = append(secretProps, prop.Name)
-		}
-	}
-	fmt.Fprintf(w, "        }\n")
+	// A derived component emits its own constructor above (threading the chain up to its base); the shared body below
+	// closes the input block and performs the single local registration for root and non-inheriting resources.
+	if r.BaseResource == nil {
+		fmt.Fprintf(w, "        }\n")
 
-	// If the caller didn't request a specific version, supply one using the version of this library.
-	// If a `pluginDownloadURL` was supplied by the generating schema, we supply a default facility
-	// much like for version. Both operations are handled in the utilities library.
-	fmt.Fprint(w, "        opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);\n")
+		mod.emitComponentResourceOptions(w, r, "        ")
 
-	// Now invoke the super constructor with the type, name, and a property map.
-	if len(r.Aliases) > 0 {
-		fmt.Fprintf(w, "        const aliasOpts = { aliases: [")
-		for i, alias := range r.Aliases {
-			fmt.Fprintf(w, "{ type: \"%v\" }", alias.Type)
-			if i != len(r.Aliases)-1 {
-				fmt.Fprintf(w, ", ")
+		// If it's a ComponentResource, set the remote option.
+		if r.IsComponent {
+			fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/", name)
+		} else {
+			fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts", name)
+			if parameterized {
+				fmt.Fprintf(w, ", false /*dependency*/")
 			}
 		}
-		fmt.Fprintf(w, "] };\n")
-		fmt.Fprintf(w, "        opts = pulumi.mergeOptions(opts, aliasOpts);\n")
-	}
 
-	if len(secretProps) > 0 {
-		fmt.Fprintf(w, `        const secretOpts = { additionalSecretOutputs: ["%s"] };`, strings.Join(secretProps, `", "`))
-		fmt.Fprintf(w, "\n        opts = pulumi.mergeOptions(opts, secretOpts);\n")
-	}
-
-	replaceOnChanges, errList := r.ReplaceOnChanges()
-	for _, err := range errList {
-		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
-	}
-	replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChanges,
-		func(x string) string { return x })
-	if len(replaceOnChanges) > 0 {
-		fmt.Fprintf(w, `        const replaceOnChanges = { replaceOnChanges: ["%s"] };`, strings.Join(replaceOnChangesStrings, `", "`))
-		fmt.Fprintf(w, "\n        opts = pulumi.mergeOptions(opts, replaceOnChanges);\n")
-	}
-
-	pkg, err := r.PackageReference.Definition()
-	if err != nil {
-		return resourceFileInfo{}, err
-	}
-
-	// If it's a ComponentResource, set the remote option.
-	if r.IsComponent {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/", name)
-	} else {
-		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts", name)
-		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
-			fmt.Fprintf(w, ", false /*dependency*/")
+		if parameterized {
+			fmt.Fprintf(w, ", utilities.getPackage()")
 		}
-	}
 
-	if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
-		fmt.Fprintf(w, ", utilities.getPackage()")
+		fmt.Fprintf(w, ");\n    }\n")
 	}
-
-	fmt.Fprintf(w, ");\n    }\n")
 
 	// Generate methods.
 	genMethod := func(method *schema.Method) error {
@@ -1132,10 +1306,17 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		info.stateInterfaceName = stateType
 	}
 
-	// Emit the argument type for construction.
+	// Emit the argument type for construction. A derived component's args interface extends its base args interface and
+	// declares only its own inputs; the full flattened surface is available through inheritance.
 	fmt.Fprintf(w, "\n")
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
-	if err := mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, false, 0); err != nil {
+	argsProps, argsExtends := r.InputProperties, ""
+	if r.BaseResource != nil {
+		argsProps = r.OwnInputProperties()
+		baseRef := mod.resourceType(&schema.ResourceType{Token: r.BaseResource.Token, Resource: r.BaseResource})
+		argsExtends = baseRef + "Args"
+	}
+	if err := mod.genPlainTypeExtends(w, argsType, argsExtends, argsComment, argsProps, true, false, 0); err != nil {
 		return resourceFileInfo{}, err
 	}
 	info.resourceArgsInterfaceName = argsType
@@ -1628,6 +1809,31 @@ func (mod *modContext) getImports(member any, externalImports codegen.StringSet,
 	return mod.getImportsForResource(member, externalImports, imports, nil)
 }
 
+// addBaseArgsImport adds a same-package base component's args interface (`<Base>Args`) to the imports so a derived
+// component's `DerivedArgs extends BaseArgs` resolves. Cross-package bases are reached through the namespace import
+// that the base class reference already brings in, so they need nothing here.
+func (mod *modContext) addBaseArgsImport(base *schema.Resource, imports map[string]codegen.StringSet) {
+	if !codegen.PkgEquals(base.PackageReference, mod.pkg) {
+		return
+	}
+	modName, modPath := mod.pkg.TokenToModule(base.Token), "./index"
+	if override, ok := mod.modToPkg[modName]; ok {
+		modName = override
+	}
+	if modName != mod.mod {
+		mp, err := filepath.Rel(mod.mod, modName)
+		contract.AssertNoErrorf(err, "cannot make %q relative to %q", modName, mod.mod)
+		if path.Base(mp) == "." {
+			mp = path.Dir(mp)
+		}
+		modPath = filepath.ToSlash(mp)
+	}
+	if imports[modPath] == nil {
+		imports[modPath] = codegen.NewStringSet()
+	}
+	imports[modPath].Add(tokenToName(base.Token) + "Args")
+}
+
 func (mod *modContext) getImportsForResource(member any, externalImports codegen.StringSet, imports map[string]codegen.StringSet, res *schema.Resource) bool {
 	seen := codegen.Set{}
 	switch member := member.(type) {
@@ -1642,6 +1848,15 @@ func (mod *modContext) getImportsForResource(member any, externalImports codegen
 		return false
 	case *schema.Resource:
 		needsTypes := false
+		if member.BaseResource != nil {
+			// A derived component extends its base class, so its module must be imported. Its args interface
+			// (`DerivedArgs extends BaseArgs`) needs the base args interface in scope too; for a same-package base
+			// that is a named import, while a cross-package base is reached through the namespace import above.
+			mod.getTypeImportsForResource(
+				&schema.ResourceType{Token: member.BaseResource.Token, Resource: member.BaseResource},
+				false, externalImports, imports, seen, res)
+			mod.addBaseArgsImport(member.BaseResource, imports)
+		}
 		for _, p := range member.Properties {
 			needsTypes = mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
 		}
@@ -2357,6 +2572,12 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 			}
 
 			if r.IsProvider {
+				continue
+			}
+
+			// An abstract component is never registered under its own token — only concrete derivations are — so it
+			// has no URN to rehydrate, and it cannot be `new`-ed (TS2511). Omit it from the rehydration switch.
+			if r.Abstract {
 				continue
 			}
 

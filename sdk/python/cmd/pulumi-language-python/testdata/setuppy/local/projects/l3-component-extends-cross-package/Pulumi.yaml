@@ -1,0 +1,7 @@
+name: l3-component-extends-cross-package
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: mypy
+    virtualenv: venv

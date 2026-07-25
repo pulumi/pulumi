@@ -1,0 +1,5 @@
+component: sdk/python
+kind: feat
+body: Support authoring components that extend another component, locally or from
+  another package, including abstract base components
+time: 2026-07-23T16:00:00-07:00

@@ -33,6 +33,13 @@ func NewFoo(ctx *pulumi.Context,
 	return &resource, nil
 }
 
+// ConstructFooBase constructs Foo as a base of a user-authored derived component. Embed Foo in
+// your component and call this after ctx.RegisterComponentResource to run the base construction
+// through the engine and resolve the base outputs onto the embedded struct.
+func ConstructFooBase(ctx *pulumi.Context, self pulumi.ComponentResource, args *FooArgs) error {
+	return ctx.ConstructBase(self, "example::Foo", args, "", internal.PkgResourceDefaultOpts(nil)...)
+}
+
 type fooArgs struct {
 }
 

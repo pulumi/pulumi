@@ -91,7 +91,9 @@ func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctio
 		}
 	}
 	var method *schema.Method
-	for _, m := range schemaResource.Methods {
+	// AllMethods includes methods inherited from base components; Methods holds only this resource's own methods, so
+	// an inherited (non-overridden) method call would otherwise fail to bind.
+	for _, m := range schemaResource.AllMethods() {
 		if m.Name == methodName {
 			method = m
 			break

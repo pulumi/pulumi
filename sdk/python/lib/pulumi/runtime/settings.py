@@ -29,6 +29,8 @@ from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union
 
 import grpc
 
+from google.protobuf import empty_pb2
+
 from .._utils import contextproperty
 from ..errors import RunError
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc, engine_pb2
@@ -460,6 +462,45 @@ async def monitor_supports_resource_hooks() -> bool:
 
 async def monitor_supports_error_hooks() -> bool:
     return await monitor_supports_feature("errorHooks")
+
+
+async def monitor_supports_construct_base() -> bool:
+    """Whether the resource monitor supports base-class construction via
+    :func:`ResourceMonitor.ConstructBaseResource`.
+
+    Unlike the legacy string-keyed capabilities, this one is negotiated
+    exclusively through the strongly typed ``supportedFeatures`` list returned by
+    ``GetDeploymentInfo`` (the ``SupportsFeature`` string list is frozen). An
+    engine that lacks ``GetDeploymentInfo`` entirely (answering ``Unimplemented``),
+    or that omits the feature, is therefore treated as unsupported.
+    """
+    feature = "constructBase"
+    if feature not in SETTINGS.feature_support:
+        info = await _get_deployment_info()
+        SETTINGS.feature_support[feature] = info is not None and (
+            resource_pb2.RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE
+            in info.supportedFeatures
+        )
+
+    return SETTINGS.feature_support[feature]
+
+
+async def _get_deployment_info() -> Optional[resource_pb2.DeploymentInfo]:
+    monitor = SETTINGS.monitor
+    if not monitor:
+        return None
+
+    def do_rpc_call() -> Optional[resource_pb2.DeploymentInfo]:
+        try:
+            return monitor.GetDeploymentInfo(empty_pb2.Empty())
+        except grpc.RpcError as exn:
+            if exn.code() != grpc.StatusCode.UNIMPLEMENTED:
+                handle_grpc_error(exn)
+            return None
+
+    return await asyncio.get_event_loop().run_in_executor(
+        None, wrap_with_context(do_rpc_call)
+    )
 
 
 def reset_options(

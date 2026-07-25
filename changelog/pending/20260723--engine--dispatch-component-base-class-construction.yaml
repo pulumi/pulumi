@@ -1,0 +1,6 @@
+component: engine
+kind: feat
+body: Support constructing the base-class portions of component resources whose
+  types extend components from other packages, with cycle detection and
+  feature negotiation
+time: 2026-07-23T14:00:00-07:00

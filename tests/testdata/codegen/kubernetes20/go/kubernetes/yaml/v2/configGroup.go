@@ -35,6 +35,13 @@ func NewConfigGroup(ctx *pulumi.Context,
 	return &resource, nil
 }
 
+// ConstructConfigGroupBase constructs ConfigGroup as a base of a user-authored derived component. Embed ConfigGroup in
+// your component and call this after ctx.RegisterComponentResource to run the base construction
+// through the engine and resolve the base outputs onto the embedded struct.
+func ConstructConfigGroupBase(ctx *pulumi.Context, self pulumi.ComponentResource, args *ConfigGroupArgs) error {
+	return ctx.ConstructBase(self, "kubernetes:yaml/v2:ConfigGroup", args, "", utilities.PkgResourceDefaultOpts(nil)...)
+}
+
 type configGroupArgs struct {
 	// Set of paths or a URLs that uniquely identify files.
 	Files interface{} `pulumi:"files"`

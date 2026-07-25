@@ -33,6 +33,13 @@ func NewFargateTaskDefinition(ctx *pulumi.Context,
 	return &resource, nil
 }
 
+// ConstructFargateTaskDefinitionBase constructs FargateTaskDefinition as a base of a user-authored derived component. Embed FargateTaskDefinition in
+// your component and call this after ctx.RegisterComponentResource to run the base construction
+// through the engine and resolve the base outputs onto the embedded struct.
+func ConstructFargateTaskDefinitionBase(ctx *pulumi.Context, self pulumi.ComponentResource, args *FargateTaskDefinitionArgs) error {
+	return ctx.ConstructBase(self, "repro:ecs:FargateTaskDefinition", args, "", internal.PkgResourceDefaultOpts(nil)...)
+}
+
 type fargateTaskDefinitionArgs struct {
 	Container  *TaskDefinitionContainerDefinition           `pulumi:"container"`
 	Containers map[string]TaskDefinitionContainerDefinition `pulumi:"containers"`

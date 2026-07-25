@@ -1,0 +1,5 @@
+component: sdk/python
+kind: feat
+body: Support constructing base classes of components that extend components
+  from other packages
+time: 2026-07-23T15:00:00-07:00

@@ -758,6 +758,153 @@ export namespace ResourceCallRequest {
 
 }
 
+export class ConstructBaseResourceRequest extends jspb.Message { 
+    getUrn(): string;
+    setUrn(value: string): ConstructBaseResourceRequest;
+    getBaseType(): string;
+    setBaseType(value: string): ConstructBaseResourceRequest;
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): ConstructBaseResourceRequest;
+
+    getInputDependenciesMap(): jspb.Map<string, ConstructBaseResourceRequest.PropertyDependencies>;
+    clearInputDependenciesMap(): void;
+    getProvider(): string;
+    setProvider(value: string): ConstructBaseResourceRequest;
+
+    getProvidersMap(): jspb.Map<string, string>;
+    clearProvidersMap(): void;
+    getVersion(): string;
+    setVersion(value: string): ConstructBaseResourceRequest;
+    getPluginDownloadUrl(): string;
+    setPluginDownloadUrl(value: string): ConstructBaseResourceRequest;
+
+    getPluginChecksumsMap(): jspb.Map<string, Uint8Array | string>;
+    clearPluginChecksumsMap(): void;
+    getPackageRef(): string;
+    setPackageRef(value: string): ConstructBaseResourceRequest;
+
+    hasSourcePosition(): boolean;
+    clearSourcePosition(): void;
+    getSourcePosition(): pulumi_source_pb.SourcePosition | undefined;
+    setSourcePosition(value?: pulumi_source_pb.SourcePosition): ConstructBaseResourceRequest;
+
+    hasStackTrace(): boolean;
+    clearStackTrace(): void;
+    getStackTrace(): pulumi_source_pb.StackTrace | undefined;
+    setStackTrace(value?: pulumi_source_pb.StackTrace): ConstructBaseResourceRequest;
+    getParentStackTraceHandle(): string;
+    setParentStackTraceHandle(value: string): ConstructBaseResourceRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ConstructBaseResourceRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ConstructBaseResourceRequest): ConstructBaseResourceRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ConstructBaseResourceRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ConstructBaseResourceRequest;
+    static deserializeBinaryFromReader(message: ConstructBaseResourceRequest, reader: jspb.BinaryReader): ConstructBaseResourceRequest;
+}
+
+export namespace ConstructBaseResourceRequest {
+    export type AsObject = {
+        urn: string,
+        baseType: string,
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+
+        inputDependenciesMap: Array<[string, ConstructBaseResourceRequest.PropertyDependencies.AsObject]>,
+        provider: string,
+
+        providersMap: Array<[string, string]>,
+        version: string,
+        pluginDownloadUrl: string,
+
+        pluginChecksumsMap: Array<[string, Uint8Array | string]>,
+        packageRef: string,
+        sourcePosition?: pulumi_source_pb.SourcePosition.AsObject,
+        stackTrace?: pulumi_source_pb.StackTrace.AsObject,
+        parentStackTraceHandle: string,
+    }
+
+
+    export class PropertyDependencies extends jspb.Message { 
+        clearUrnsList(): void;
+        getUrnsList(): Array<string>;
+        setUrnsList(value: Array<string>): PropertyDependencies;
+        addUrns(value: string, index?: number): string;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): PropertyDependencies.AsObject;
+        static toObject(includeInstance: boolean, msg: PropertyDependencies): PropertyDependencies.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: PropertyDependencies, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): PropertyDependencies;
+        static deserializeBinaryFromReader(message: PropertyDependencies, reader: jspb.BinaryReader): PropertyDependencies;
+    }
+
+    export namespace PropertyDependencies {
+        export type AsObject = {
+            urnsList: Array<string>,
+        }
+    }
+
+}
+
+export class ConstructBaseResourceResponse extends jspb.Message { 
+
+    hasState(): boolean;
+    clearState(): void;
+    getState(): google_protobuf_struct_pb.Struct | undefined;
+    setState(value?: google_protobuf_struct_pb.Struct): ConstructBaseResourceResponse;
+
+    getStateDependenciesMap(): jspb.Map<string, ConstructBaseResourceResponse.PropertyDependencies>;
+    clearStateDependenciesMap(): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ConstructBaseResourceResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ConstructBaseResourceResponse): ConstructBaseResourceResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ConstructBaseResourceResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ConstructBaseResourceResponse;
+    static deserializeBinaryFromReader(message: ConstructBaseResourceResponse, reader: jspb.BinaryReader): ConstructBaseResourceResponse;
+}
+
+export namespace ConstructBaseResourceResponse {
+    export type AsObject = {
+        state?: google_protobuf_struct_pb.Struct.AsObject,
+
+        stateDependenciesMap: Array<[string, ConstructBaseResourceResponse.PropertyDependencies.AsObject]>,
+    }
+
+
+    export class PropertyDependencies extends jspb.Message { 
+        clearUrnsList(): void;
+        getUrnsList(): Array<string>;
+        setUrnsList(value: Array<string>): PropertyDependencies;
+        addUrns(value: string, index?: number): string;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): PropertyDependencies.AsObject;
+        static toObject(includeInstance: boolean, msg: PropertyDependencies): PropertyDependencies.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: PropertyDependencies, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): PropertyDependencies;
+        static deserializeBinaryFromReader(message: PropertyDependencies, reader: jspb.BinaryReader): PropertyDependencies;
+    }
+
+    export namespace PropertyDependencies {
+        export type AsObject = {
+            urnsList: Array<string>,
+        }
+    }
+
+}
+
 export class TransformResourceOptions extends jspb.Message { 
     clearDependsOnList(): void;
     getDependsOnList(): Array<string>;
@@ -1488,6 +1635,7 @@ export enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_ERROR_HOOKS = 11,
     RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS = 12,
     RESOURCE_MONITOR_FEATURE_BYTE_STRING = 13,
+    RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE = 14,
 }
 
 export enum Result {

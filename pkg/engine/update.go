@@ -400,6 +400,9 @@ type UpdateOptions struct {
 	// true if the engine should disable output value support.
 	DisableOutputValues bool
 
+	// true if the engine should disable component base-class construction support.
+	DisableConstructBase bool
+
 	// HostFactory builds the plugin host for this operation.
 	HostFactory HostFactory
 
@@ -1047,6 +1050,7 @@ func newUpdateSource(ctx context.Context,
 		Parallel:                  opts.Parallel,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
+		DisableConstructBase:      opts.DisableConstructBase,
 		AttachDebugger:            opts.AttachDebugger,
 	}
 

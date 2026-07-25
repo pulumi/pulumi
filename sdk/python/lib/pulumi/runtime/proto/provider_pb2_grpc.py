@@ -100,6 +100,11 @@ class ResourceProviderStub(object):
                 request_serializer=pulumi_dot_provider__pb2.ConstructRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.ConstructResponse.FromString,
                 )
+        self.ConstructBase = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/ConstructBase',
+                request_serializer=pulumi_dot_provider__pb2.ConstructBaseRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.ConstructBaseResponse.FromString,
+                )
         self.Cancel = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Cancel',
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -368,6 +373,19 @@ class ResourceProviderServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ConstructBase(self, request, context):
+        """`ConstructBase` constructs the portion of an existing [component resource](component-resources) that
+        corresponds to `type`, which this provider owns, as part of a cross-package component inheritance chain.
+        Unlike [](pulumirpc.ResourceProvider.Construct), no new resource is registered: the implementation adopts
+        `urn` (whose type is the most-derived type of the chain), parents any nested resources it registers to it,
+        and returns the type's output properties. Providers advertise support via the `supports_construct_base`
+        field of [](pulumirpc.ProviderHandshakeResponse) and [](pulumirpc.ConfigureResponse); older providers
+        return UNIMPLEMENTED.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def Cancel(self, request, context):
         """Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
         Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
@@ -516,6 +534,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
                     servicer.Construct,
                     request_deserializer=pulumi_dot_provider__pb2.ConstructRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.ConstructResponse.SerializeToString,
+            ),
+            'ConstructBase': grpc.unary_unary_rpc_method_handler(
+                    servicer.ConstructBase,
+                    request_deserializer=pulumi_dot_provider__pb2.ConstructBaseRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.ConstructBaseResponse.SerializeToString,
             ),
             'Cancel': grpc.unary_unary_rpc_method_handler(
                     servicer.Cancel,
@@ -825,6 +848,23 @@ class ResourceProvider(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Construct',
             pulumi_dot_provider__pb2.ConstructRequest.SerializeToString,
             pulumi_dot_provider__pb2.ConstructResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ConstructBase(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/ConstructBase',
+            pulumi_dot_provider__pb2.ConstructBaseRequest.SerializeToString,
+            pulumi_dot_provider__pb2.ConstructBaseResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

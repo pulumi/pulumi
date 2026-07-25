@@ -53,6 +53,11 @@ class ResourceMonitorStub(object):
                 request_serializer=pulumi_dot_resource__pb2.RegisterResourceOutputsRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.ConstructBaseResource = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/ConstructBaseResource',
+                request_serializer=pulumi_dot_resource__pb2.ConstructBaseResourceRequest.SerializeToString,
+                response_deserializer=pulumi_dot_resource__pb2.ConstructBaseResourceResponse.FromString,
+                )
         self.RegisterStackTransform = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/RegisterStackTransform',
                 request_serializer=pulumi_dot_callback__pb2.Callback.SerializeToString,
@@ -136,6 +141,18 @@ class ResourceMonitorServicer(object):
 
     def RegisterResourceOutputs(self, request, context):
         """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ConstructBaseResource(self, request, context):
+        """Constructs the portion of an already-registered component resource that corresponds to one of its base
+        component types, dispatching to the provider that owns `base_type`. The resource identified by `urn` must
+        already be registered; its type is the most-derived type of the inheritance chain. SDKs call this while
+        executing a derived component's constructor chain. Monitors advertise support via
+        `RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE` in [](pulumirpc.DeploymentInfo)'s `supportedFeatures`; older
+        monitors return UNIMPLEMENTED.
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -228,6 +245,11 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
                     servicer.RegisterResourceOutputs,
                     request_deserializer=pulumi_dot_resource__pb2.RegisterResourceOutputsRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'ConstructBaseResource': grpc.unary_unary_rpc_method_handler(
+                    servicer.ConstructBaseResource,
+                    request_deserializer=pulumi_dot_resource__pb2.ConstructBaseResourceRequest.FromString,
+                    response_serializer=pulumi_dot_resource__pb2.ConstructBaseResourceResponse.SerializeToString,
             ),
             'RegisterStackTransform': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterStackTransform,
@@ -386,6 +408,23 @@ class ResourceMonitor(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterResourceOutputs',
             pulumi_dot_resource__pb2.RegisterResourceOutputsRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ConstructBaseResource(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/ConstructBaseResource',
+            pulumi_dot_resource__pb2.ConstructBaseResourceRequest.SerializeToString,
+            pulumi_dot_resource__pb2.ConstructBaseResourceResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

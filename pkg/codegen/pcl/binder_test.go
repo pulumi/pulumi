@@ -1561,3 +1561,43 @@ resource stackRef "pulumi:pulumi:StackReference" {
 	token, _ := resource.GetToken()
 	assert.Equal(t, "pulumi:pulumi:StackReference", token)
 }
+
+func TestBindCallResolvesInheritedMethod(t *testing.T) {
+	t.Parallel()
+	// derivedcomponent:index:Deployment extends basecomponent:index:Service, which declares the getStatus method.
+	// Binding a call to that inherited method must resolve it. This is a regression test for inheritance not being
+	// resolved on the plugin loader's partial-package bind path: the derived resource used to come back with no base
+	// wired, so AllMethods() was empty and the call failed to bind.
+	source := `
+resource "dep" "derivedcomponent:index:Deployment" {
+    port = 8080
+    replicas = 3
+}
+
+output "status" {
+    value = call(dep, "getStatus", {})
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "inherited-call.pp")
+	require.NoError(t, err)
+	require.Falsef(t, diags.HasErrors(), "unexpected diagnostics: %v", diags)
+	require.NotNil(t, program)
+}
+
+func TestBindCallUnknownMethodStillErrors(t *testing.T) {
+	t.Parallel()
+	// Negative control: a method that exists on neither the derived component nor its base is still rejected, so the
+	// positive test above is meaningful.
+	source := `
+resource "dep" "derivedcomponent:index:Deployment" {
+    port = 8080
+}
+
+output "nope" {
+    value = call(dep, "getNonexistent", {})
+}
+`
+	_, diags, _ := ParseAndBindProgram(t, source, "unknown-call.pp")
+	require.True(t, diags.HasErrors())
+	require.Contains(t, diags.Error(), "has no method")
+}

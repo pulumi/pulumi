@@ -200,6 +200,14 @@ export interface Store {
     supportsErrorHooks: boolean;
 
     /**
+     * Caches whether the resource monitor we are connected to is able to support
+     * constructing base resources (component inheritance). Unlike the other
+     * feature flags this is probed lazily via `GetDeploymentInfo` the first time
+     * base construction is attempted, so `undefined` means "not yet probed".
+     */
+    supportsConstructBase?: boolean;
+
+    /**
      * The callback service running for this deployment. This registers
      * callbacks and forwards them to the engine.
      */

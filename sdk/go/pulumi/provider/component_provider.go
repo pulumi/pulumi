@@ -103,10 +103,11 @@ func (p *componentProvider) Configure(ctx context.Context,
 	req *pulumirpc.ConfigureRequest,
 ) (*pulumirpc.ConfigureResponse, error) {
 	return &pulumirpc.ConfigureResponse{
-		AcceptSecrets:   true,
-		SupportsPreview: true,
-		AcceptResources: true,
-		AcceptOutputs:   true,
+		AcceptSecrets:         true,
+		SupportsPreview:       true,
+		AcceptResources:       true,
+		AcceptOutputs:         true,
+		SupportsConstructBase: p.construct != nil,
 	}, nil
 }
 
@@ -118,6 +119,16 @@ func (p *componentProvider) Construct(ctx context.Context,
 		return Construct(ctx, req, p.host.conn, p.construct)
 	}
 	return nil, status.Error(codes.Unimplemented, "Construct is not yet implemented")
+}
+
+// ConstructBase constructs the base-class portion of an existing component resource and returns its state.
+func (p *componentProvider) ConstructBase(ctx context.Context,
+	req *pulumirpc.ConstructBaseRequest,
+) (*pulumirpc.ConstructBaseResponse, error) {
+	if p.construct != nil {
+		return ConstructBase(ctx, req, p.host.conn, p.construct)
+	}
+	return nil, status.Error(codes.Unimplemented, "ConstructBase is not yet implemented")
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.

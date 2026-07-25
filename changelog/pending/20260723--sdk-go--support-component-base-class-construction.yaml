@@ -1,0 +1,5 @@
+component: sdk/go
+kind: feat
+body: Add `Context.ConstructBase` and embedded base-component state resolution
+  to support components that extend components from other packages
+time: 2026-07-23T15:00:00-07:00

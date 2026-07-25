@@ -28,6 +28,7 @@ interface IResourceProviderService extends grpc.ServiceDefinition<grpc.UntypedSe
     update: IResourceProviderService_IUpdate;
     delete: IResourceProviderService_IDelete;
     construct: IResourceProviderService_IConstruct;
+    constructBase: IResourceProviderService_IConstructBase;
     cancel: IResourceProviderService_ICancel;
     getPluginInfo: IResourceProviderService_IGetPluginInfo;
     attach: IResourceProviderService_IAttach;
@@ -179,6 +180,15 @@ interface IResourceProviderService_IConstruct extends grpc.MethodDefinition<pulu
     responseSerialize: grpc.serialize<pulumi_provider_pb.ConstructResponse>;
     responseDeserialize: grpc.deserialize<pulumi_provider_pb.ConstructResponse>;
 }
+interface IResourceProviderService_IConstructBase extends grpc.MethodDefinition<pulumi_provider_pb.ConstructBaseRequest, pulumi_provider_pb.ConstructBaseResponse> {
+    path: "/pulumirpc.ResourceProvider/ConstructBase";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_provider_pb.ConstructBaseRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_provider_pb.ConstructBaseRequest>;
+    responseSerialize: grpc.serialize<pulumi_provider_pb.ConstructBaseResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_provider_pb.ConstructBaseResponse>;
+}
 interface IResourceProviderService_ICancel extends grpc.MethodDefinition<google_protobuf_empty_pb.Empty, google_protobuf_empty_pb.Empty> {
     path: "/pulumirpc.ResourceProvider/Cancel";
     requestStream: false;
@@ -244,6 +254,7 @@ export interface IResourceProviderServer extends grpc.UntypedServiceImplementati
     update: grpc.handleUnaryCall<pulumi_provider_pb.UpdateRequest, pulumi_provider_pb.UpdateResponse>;
     delete: grpc.handleUnaryCall<pulumi_provider_pb.DeleteRequest, google_protobuf_empty_pb.Empty>;
     construct: grpc.handleUnaryCall<pulumi_provider_pb.ConstructRequest, pulumi_provider_pb.ConstructResponse>;
+    constructBase: grpc.handleUnaryCall<pulumi_provider_pb.ConstructBaseRequest, pulumi_provider_pb.ConstructBaseResponse>;
     cancel: grpc.handleUnaryCall<google_protobuf_empty_pb.Empty, google_protobuf_empty_pb.Empty>;
     getPluginInfo: grpc.handleUnaryCall<google_protobuf_empty_pb.Empty, pulumi_plugin_pb.PluginInfo>;
     attach: grpc.handleUnaryCall<pulumi_plugin_pb.PluginAttach, google_protobuf_empty_pb.Empty>;
@@ -299,6 +310,9 @@ export interface IResourceProviderClient {
     construct(request: pulumi_provider_pb.ConstructRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ConstructResponse) => void): grpc.ClientUnaryCall;
     construct(request: pulumi_provider_pb.ConstructRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ConstructResponse) => void): grpc.ClientUnaryCall;
     construct(request: pulumi_provider_pb.ConstructRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ConstructResponse) => void): grpc.ClientUnaryCall;
+    constructBase(request: pulumi_provider_pb.ConstructBaseRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ConstructBaseResponse) => void): grpc.ClientUnaryCall;
+    constructBase(request: pulumi_provider_pb.ConstructBaseRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ConstructBaseResponse) => void): grpc.ClientUnaryCall;
+    constructBase(request: pulumi_provider_pb.ConstructBaseRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ConstructBaseResponse) => void): grpc.ClientUnaryCall;
     cancel(request: google_protobuf_empty_pb.Empty, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     cancel(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     cancel(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
@@ -365,6 +379,9 @@ export class ResourceProviderClient extends grpc.Client implements IResourceProv
     public construct(request: pulumi_provider_pb.ConstructRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ConstructResponse) => void): grpc.ClientUnaryCall;
     public construct(request: pulumi_provider_pb.ConstructRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ConstructResponse) => void): grpc.ClientUnaryCall;
     public construct(request: pulumi_provider_pb.ConstructRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ConstructResponse) => void): grpc.ClientUnaryCall;
+    public constructBase(request: pulumi_provider_pb.ConstructBaseRequest, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ConstructBaseResponse) => void): grpc.ClientUnaryCall;
+    public constructBase(request: pulumi_provider_pb.ConstructBaseRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ConstructBaseResponse) => void): grpc.ClientUnaryCall;
+    public constructBase(request: pulumi_provider_pb.ConstructBaseRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_provider_pb.ConstructBaseResponse) => void): grpc.ClientUnaryCall;
     public cancel(request: google_protobuf_empty_pb.Empty, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     public cancel(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     public cancel(request: google_protobuf_empty_pb.Empty, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;

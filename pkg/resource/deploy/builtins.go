@@ -328,6 +328,12 @@ func (p *builtinProvider) Construct(context.Context, plugin.ConstructRequest) (p
 	return plugin.ConstructResponse{}, errors.New("builtin resources may not be constructed")
 }
 
+func (p *builtinProvider) ConstructBase(
+	context.Context, plugin.ConstructBaseRequest,
+) (plugin.ConstructBaseResponse, error) {
+	return plugin.ConstructBaseResponse{}, errors.New("builtin resources may not be constructed")
+}
+
 const (
 	readStackOutputs         = "pulumi:pulumi:readStackOutputs"
 	readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs" //nolint:gosec // not a credential

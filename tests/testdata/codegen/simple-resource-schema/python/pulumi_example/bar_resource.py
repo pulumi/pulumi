@@ -76,7 +76,19 @@ class BarResource(pulumi.ComponentResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  foo: pulumi.Input[Optional['Resource']] = None,
-                 __props__=None):
+                 __props__=None,
+                 __chain__=None):
+        if __chain__ is not None:
+            super(BarResource, __self__).__init__(__chain__["type"], resource_name, __chain__["props"], opts, remote=__chain__["mode"] == "generated")
+            return
+        if type(__self__) is not BarResource:
+            opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
+            __props__ = BarResourceArgs.__new__(BarResourceArgs)
+
+            __props__.__dict__["foo"] = foo
+            super(BarResource, __self__).__init__(pulumi.runtime.get_type_token(type(__self__)), resource_name, __props__, opts, remote=False)
+            pulumi.runtime.construct_base_resource(__self__, "bar::BarResource", {"foo": foo}, pulumi.runtime.BaseConstructInfo(version=_utilities.get_version()), ["foo"])
+            return
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
             raise TypeError('Expected resource options to be a ResourceOptions instance')

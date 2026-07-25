@@ -9,7 +9,7 @@ import * as utilities from "../../utilities";
  */
 export class ConfigGroup extends pulumi.ComponentResource {
     /** @internal */
-    public static readonly __pulumiType = 'kubernetes:yaml/v2:ConfigGroup';
+    public static readonly __pulumiType: string = 'kubernetes:yaml/v2:ConfigGroup';
 
     /**
      * Returns true if the given object is an instance of ConfigGroup.  This is designed to work even
@@ -34,9 +34,24 @@ export class ConfigGroup extends pulumi.ComponentResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: ConfigGroupArgs, opts?: pulumi.ComponentResourceOptions) {
+    constructor(name: string, args?: ConfigGroupArgs, opts?: pulumi.ComponentResourceOptions, __chain?: any /* internal */) {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
+        if (__chain !== undefined) {
+            super(__chain.type, name, __chain.inputs, opts, __chain.mode === "generated" /*remote*/);
+            return;
+        }
+        if (new.target !== ConfigGroup) {
+            resourceInputs["files"] = args?.files;
+            resourceInputs["objs"] = args?.objs;
+            resourceInputs["resourcePrefix"] = args?.resourcePrefix;
+            resourceInputs["yaml"] = args?.yaml;
+            resourceInputs["resources"] = undefined /*out*/;
+            opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+            super((new.target as any).__pulumiType, name, resourceInputs, opts, false /*local*/);
+            void pulumi.runtime.constructBaseResource(this, "kubernetes:yaml/v2:ConfigGroup", args ?? {}, { version: utilities.getVersion() }, ["resources"]);
+            return;
+        }
         if (!opts.id) {
             resourceInputs["files"] = args?.files;
             resourceInputs["objs"] = args?.objs;

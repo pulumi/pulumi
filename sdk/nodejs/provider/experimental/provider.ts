@@ -252,11 +252,17 @@ export class ComponentProvider implements Provider {
         if (!constructor) {
             throw new Error(`Component class not found for '${componentName}'`);
         }
-        const instance = new constructor(name, inputs, options);
         if (!this.componentDefinitions) {
             await this.getSchema();
         }
         const componentDefinition = this.componentDefinitions![componentName];
+        // Abstract components exist only to be extended; a direct construct must be rejected. Base construction goes
+        // through a separate path (ConstructBase) and is intentionally not gated here. This is the provider-side
+        // source of truth for abstract enforcement, holding even for old consumer SDKs that ignore the schema flag.
+        if (componentDefinition?.abstract) {
+            throw new Error(`type '${type}' is abstract and cannot be instantiated directly`);
+        }
+        const instance = new constructor(name, inputs, options);
         return {
             urn: instance.urn,
             state: getComponentOutputs(componentDefinition, instance),

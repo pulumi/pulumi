@@ -8,7 +8,7 @@ import {Resource} from "./index";
 
 export class FooResource extends pulumi.ComponentResource {
     /** @internal */
-    public static readonly __pulumiType = 'foo::FooResource';
+    public static readonly __pulumiType: string = 'foo::FooResource';
 
     /**
      * Returns true if the given object is an instance of FooResource.  This is designed to work even
@@ -30,9 +30,20 @@ export class FooResource extends pulumi.ComponentResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: FooResourceArgs, opts?: pulumi.ComponentResourceOptions) {
+    constructor(name: string, args?: FooResourceArgs, opts?: pulumi.ComponentResourceOptions, __chain?: any /* internal */) {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
+        if (__chain !== undefined) {
+            super(__chain.type, name, __chain.inputs, opts, __chain.mode === "generated" /*remote*/);
+            return;
+        }
+        if (new.target !== FooResource) {
+            resourceInputs["foo"] = args?.foo;
+            opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+            super((new.target as any).__pulumiType, name, resourceInputs, opts, false /*local*/);
+            void pulumi.runtime.constructBaseResource(this, "foo::FooResource", args ?? {}, { version: utilities.getVersion() }, ["foo"]);
+            return;
+        }
         if (!opts.id) {
             resourceInputs["foo"] = args?.foo;
         } else {

@@ -508,7 +508,9 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			var fun *schema.Function
-			for _, methodSchema := range schemaResource.Methods {
+			// AllMethods includes methods inherited from base components; Methods holds only this resource's own
+			// methods, so an inherited (non-overridden) method call would otherwise be reported as missing.
+			for _, methodSchema := range schemaResource.AllMethods() {
 				if methodSchema.Name == method {
 					fun = methodSchema.Function
 					break

@@ -74,6 +74,15 @@ from .rpc import (
     register_resource_package,
 )
 
+from .resource import (
+    BaseConstructInfo,
+    construct_base_resource,
+)
+
+# Re-exported so generated component code can reference `pulumi.runtime.get_type_token` alongside
+# the other base-construction helpers it emits (e.g. construct_base_resource).
+from ..type_token import get_type_token
+
 __all__ = [
     # config
     "set_config",
@@ -119,6 +128,10 @@ __all__ = [
     "ResourcePackage",
     "register_resource_module",
     "register_resource_package",
+    # resource
+    "BaseConstructInfo",
+    "construct_base_resource",
+    "get_type_token",
     # submodules
     "rpc",
 ]

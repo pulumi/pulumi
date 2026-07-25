@@ -69,7 +69,9 @@ func generatePackageFilesFromSchema(
 		return nil, diags
 	}
 
-	return genPackageFunc("test", pkg, nil, nil)
+	// Pass the loader through so codegen can resolve cross-package dependencies (e.g. npm/pyproject dependency
+	// metadata for a component that extends a base in another package).
+	return genPackageFunc("test", pkg, nil, loader)
 }
 
 // LoadFiles loads the provided list of files from a directory.

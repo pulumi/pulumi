@@ -1,0 +1,49 @@
+{
+  "$schema": "https://raw.githubusercontent.com/pulumi/pulumi/master/pkg/codegen/schema/pulumi.json",
+  "name": "derivedcomponent",
+  "version": "1.0.0",
+  "dependencies": [
+    {
+      "name": "basecomponent",
+      "version": "1.0.0"
+    }
+  ],
+  "resources": {
+    "derivedcomponent:index:Deployment": {
+      "description": "A component that extends a base component published in another package.",
+      "isComponent": true,
+      "extends": {
+        "$ref": "/basecomponent/v1.0.0/schema.json#/resources/basecomponent:index:Service"
+      },
+      "inputProperties": {
+        "port": {
+          "type": "integer"
+        },
+        "replicas": {
+          "type": "integer"
+        }
+      },
+      "requiredInputs": ["port"],
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "replicas": {
+          "type": "integer"
+        }
+      },
+      "required": ["url", "port"]
+    }
+  },
+  "language": {
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      }
+    },
+    "python": {}
+  }
+}

@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"path/filepath"
 	"reflect"
@@ -42,6 +43,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
 	pconvert "github.com/pulumi/pulumi/pkg/v3/codegen/convert"
@@ -99,6 +101,8 @@ type EvalSourceOptions struct {
 	DisableResourceReferences bool
 	// true to disable output value support.
 	DisableOutputValues bool
+	// true to disable component base-class construction support.
+	DisableConstructBase bool
 	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
 	AttachDebugger []string
 }
@@ -467,6 +471,12 @@ type resmon struct {
 	parameterizedExtensionsLock sync.Mutex
 	parameterizedExtensions     map[string]bool
 
+	// activeBaseConstructs tracks, per resource URN, the base types currently being constructed for it, in
+	// chain order. Every monitor in a base-construct chain is this same resmon, so a repeated type for the
+	// same URN is a definite cycle, and the list length bounds chain depth.
+	activeBaseConstructsLock sync.Mutex
+	activeBaseConstructs     map[resource.URN][]tokens.Type
+
 	// the organization name for the deployment.
 	organization string
 
@@ -522,6 +532,7 @@ func newResourceMonitor(
 		parents:                 map[resource.URN]resource.URN{},
 		resGoals:                map[resource.URN]pkgresource.Goal{},
 		componentProviders:      map[resource.URN]map[string]string{},
+		activeBaseConstructs:    map[resource.URN][]tokens.Type{},
 		regChan:                 regChan,
 		regOutChan:              regOutChan,
 		regReadChan:             regReadChan,
@@ -969,6 +980,9 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	if rm.supportsFeatureID("sendsOptionsToHooks") {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS)
 	}
+	if !rm.opts.DisableConstructBase {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE)
+	}
 	return features
 }
 
@@ -1185,6 +1199,18 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 			}
 
 			rawProviderRef = goal.Provider
+
+			// Inherited component methods dispatch on the *base* package's token while __self__ names a
+			// derived-typed resource whose goal records the derived package's provider. When the token's
+			// package differs from the recorded provider's, ignore the recorded provider and resolve by the
+			// token's package below.
+			if rawProviderRef != "" {
+				if ref, refErr := sdkproviders.ParseReference(rawProviderRef); refErr == nil {
+					if sdkproviders.GetProviderPackage(ref.URN().Type()) != tok.Package() {
+						rawProviderRef = ""
+					}
+				}
+			}
 		}
 
 		if rawProviderRef == "" {
@@ -3020,6 +3046,251 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Object:               obj,
 		PropertyDependencies: outputDeps,
 		Result:               reason,
+	}, nil
+}
+
+// maxBaseConstructDepth bounds the length of a base-construct chain for a single resource. Legitimate chains are
+// short; the cap converts pathological chains the cycle check cannot see into deterministic errors.
+const maxBaseConstructDepth = 32
+
+// pushBaseConstruct records that a base construct of baseType is in flight for urn, failing if doing so would
+// repeat a type already on the chain (a definite cycle) or exceed the depth cap.
+func (rm *resmon) pushBaseConstruct(urn resource.URN, baseType tokens.Type) error {
+	rm.activeBaseConstructsLock.Lock()
+	defer rm.activeBaseConstructsLock.Unlock()
+	chain := rm.activeBaseConstructs[urn]
+	if slices.Contains(chain, baseType) {
+		links := make([]string, 0, len(chain)+2)
+		links = append(links, string(urn.Type()))
+		for _, l := range chain {
+			links = append(links, string(l))
+		}
+		links = append(links, string(baseType))
+		return fmt.Errorf("base construction cycle detected for resource %s: %s",
+			urn, strings.Join(links, " -> "))
+	}
+	if len(chain) >= maxBaseConstructDepth {
+		return fmt.Errorf("base construction chain for resource %s exceeds the maximum depth of %d",
+			urn, maxBaseConstructDepth)
+	}
+	rm.activeBaseConstructs[urn] = append(chain, baseType)
+	return nil
+}
+
+// popBaseConstruct removes the innermost base construct recorded for urn.
+func (rm *resmon) popBaseConstruct(urn resource.URN) {
+	rm.activeBaseConstructsLock.Lock()
+	defer rm.activeBaseConstructsLock.Unlock()
+	chain := rm.activeBaseConstructs[urn]
+	if n := len(chain); n > 0 {
+		chain = chain[:n-1]
+	}
+	if len(chain) == 0 {
+		delete(rm.activeBaseConstructs, urn)
+	} else {
+		rm.activeBaseConstructs[urn] = chain
+	}
+}
+
+// ConstructBaseResource constructs the portion of an already-registered component resource that corresponds to
+// one of its base component types, dispatching to the provider that owns the base type. The base implementation
+// adopts the resource's URN, parents the resources it registers to it, and returns the base type's outputs.
+// Support is advertised to SDKs via RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE.
+func (rm *resmon) ConstructBaseResource(ctx context.Context,
+	req *pulumirpc.ConstructBaseResourceRequest,
+) (*pulumirpc.ConstructBaseResourceResponse, error) {
+	if rm.opts.DisableConstructBase {
+		return nil, status.Error(codes.Unimplemented, "base-class construction has been disabled")
+	}
+
+	urn, err := resource.ParseURN(req.GetUrn())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid resource URN: %v", err)
+	}
+	baseType, err := tokens.ParseTypeToken(req.GetBaseType())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid base type token: %v", err)
+	}
+
+	// The derived resource's registration necessarily completes before its constructor chain can observe the
+	// URN, so its goal must exist; the goal is also the authoritative source for the resource's name.
+	goal, hasGoal := func() (pkgresource.Goal, bool) {
+		rm.resGoalsLock.Lock()
+		defer rm.resGoalsLock.Unlock()
+		g, ok := rm.resGoals[urn]
+		return g, ok
+	}()
+	if !hasGoal {
+		return nil, status.Errorf(codes.NotFound, "no resource %q has been registered", urn)
+	}
+	if goal.Custom {
+		return nil, status.Errorf(codes.InvalidArgument,
+			"resource %q is not a component resource; only components support base-class construction", urn)
+	}
+
+	if err := rm.pushBaseConstruct(urn, baseType); err != nil {
+		return nil, err
+	}
+	defer rm.popBaseConstruct(urn)
+
+	label := fmt.Sprintf("ResourceMonitor.ConstructBaseResource(%s, %s)", urn, baseType)
+
+	// Resolve the base package's provider through the same canon as a remote construct: an explicit package
+	// reference or version fields identify the package; an explicit provider reference, the request's provider
+	// map, the providers recorded when the derived resource registered, and finally the default provider are
+	// consulted in that order.
+	var providerReq providers.ProviderRequest
+	if packageRef := req.GetPackageRef(); packageRef != "" {
+		var has bool
+		providerReq, has = rm.lookupPackageRef(packageRef)
+		if !has {
+			return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
+		}
+	} else {
+		providerReq, err = parseProviderRequest(
+			baseType.Package(), req.GetVersion(),
+			req.GetPluginDownloadUrl(), req.GetPluginChecksums(), nil,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("parse provider request: %w", err)
+		}
+	}
+
+	rawProvider := rm.resolveProvider(req.GetProvider(), req.GetProviders(), urn, baseType.Package())
+	providerRef, err := rm.getProviderReference(rm.defaultProviders, providerReq, rawProvider)
+	if err != nil {
+		return nil, err
+	}
+	if sdkproviders.IsDenyDefaultsProvider(providerRef) {
+		msg := diag.GetDefaultProviderDenied("").Message
+		return nil, fmt.Errorf(msg, baseType.Package().String(), baseType.String())
+	}
+	provider, ok := rm.providers.GetProvider(providerRef)
+	if !ok {
+		return nil, fmt.Errorf("unknown provider '%v'", providerRef)
+	}
+	if err := rm.ensureExtensionParameterizedForConstruct(
+		ctx, provider, providerRef, req.GetPackageRef(),
+	); err != nil {
+		return nil, err
+	}
+
+	// Resolve the provider map to thread through the base construction: entries from the request win over
+	// those recorded when the derived resource registered.
+	rawProviders := map[string]string{}
+	func() {
+		rm.componentProvidersLock.Lock()
+		defer rm.componentProvidersLock.Unlock()
+		maps.Copy(rawProviders, rm.componentProviders[urn])
+	}()
+	maps.Copy(rawProviders, req.GetProviders())
+	providerRefs := make(map[string]string, len(rawProviders))
+	for name, rawRef := range rawProviders {
+		ref, err := rm.getProviderReference(rm.defaultProviders, providerReq, rawRef)
+		if err != nil {
+			return nil, err
+		}
+		providerRefs[name] = ref.String()
+	}
+
+	inputs, err := plugin.UnmarshalProperties(
+		req.GetInputs(), plugin.MarshalOptions{
+			Label:                 label,
+			KeepUnknowns:          true,
+			KeepSecrets:           true,
+			KeepResources:         true,
+			KeepOutputValues:      true,
+			UpgradeToOutputValues: true,
+			WorkingDirectory:      rm.workingDirectory,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal %v inputs: %w", baseType, err)
+	}
+
+	inputDependencies := map[resource.PropertyKey][]resource.URN{}
+	for name, deps := range req.GetInputDependencies() {
+		urns := make([]resource.URN, len(deps.Urns))
+		for i, d := range deps.Urns {
+			urns[i] = resource.URN(d)
+		}
+		inputDependencies[resource.PropertyKey(name)] = urns
+	}
+
+	stackTraceHandle := rm.sourcePositions.recordParentRequest(req)
+	defer stackTraceHandle.Release()
+
+	info := rm.constructInfo
+	info.StackTraceHandle = stackTraceHandle.value
+
+	// Run the base construct on its own goroutine so we can react to a cancellation on rm.cancel, mirroring
+	// the remote-construct dispatch. Unlike Construct, a failure here does not abort the deployment directly:
+	// it fails the enclosing constructor chain, whose outermost Construct owns abort semantics.
+	var constructResult plugin.ConstructBaseResponse
+	constructDone := make(chan error)
+	go func() {
+		var cerr error
+		constructResult, cerr = provider.ConstructBase(ctx, plugin.ConstructBaseRequest{
+			Info:              info,
+			Type:              baseType,
+			Name:              goal.Name,
+			URN:               urn,
+			MostDerivedType:   urn.Type(),
+			Inputs:            inputs,
+			InputDependencies: inputDependencies,
+			Providers:         providerRefs,
+		})
+		if cerr != nil {
+			if errors.Is(cerr, plugin.ErrConstructBaseNotSupported) {
+				cerr = fmt.Errorf(
+					"the provider for package '%s' does not support acting as a base class for component '%s'; "+
+						"upgrade the '%s' provider to a version with component inheritance support",
+					baseType.Package(), urn, baseType.Package())
+			} else {
+				cerr = fmt.Errorf("constructing base %s of %s: %w", baseType, urn, cerr)
+			}
+			constructDone <- cerr
+		}
+		close(constructDone)
+	}()
+
+	select {
+	case err := <-constructDone:
+		if err != nil {
+			logging.V(5).Infof("ResourceMonitor.ConstructBaseResource failed, urn=%s base=%s err=%s",
+				urn, baseType, err)
+			return nil, err
+		}
+	case <-rm.cancel:
+		logging.V(5).Infof("ResourceMonitor.ConstructBaseResource canceled, urn=%s base=%s", urn, baseType)
+		return nil, rpcerror.New(codes.Unavailable,
+			"resource monitor shut down while waiting for base construct to complete")
+	}
+
+	state, err := plugin.MarshalProperties(constructResult.Outputs, plugin.MarshalOptions{
+		Label:            label + ".state",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	stateDependencies := map[string]*pulumirpc.ConstructBaseResourceResponse_PropertyDependencies{}
+	for k, deps := range constructResult.OutputDependencies {
+		urns := make([]string, len(deps))
+		for i, d := range deps {
+			urns[i] = string(d)
+		}
+		stateDependencies[string(k)] = &pulumirpc.ConstructBaseResourceResponse_PropertyDependencies{Urns: urns}
+	}
+
+	logging.V(5).Infof("%s success: #outputs=%d", label, len(constructResult.Outputs))
+	return &pulumirpc.ConstructBaseResourceResponse{
+		State:             state,
+		StateDependencies: stateDependencies,
 	}, nil
 }
 

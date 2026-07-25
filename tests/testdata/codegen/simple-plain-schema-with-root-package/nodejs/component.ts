@@ -8,7 +8,7 @@ import * as utilities from "./utilities";
 
 export class Component extends pulumi.ComponentResource {
     /** @internal */
-    public static readonly __pulumiType = 'example::Component';
+    public static readonly __pulumiType: string = 'example::Component';
 
     /**
      * Returns true if the given object is an instance of Component.  This is designed to work even
@@ -38,9 +38,37 @@ export class Component extends pulumi.ComponentResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args: ComponentArgs, opts?: pulumi.ComponentResourceOptions) {
+    constructor(name: string, args: ComponentArgs, opts?: pulumi.ComponentResourceOptions, __chain?: any /* internal */) {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
+        if (__chain !== undefined) {
+            super(__chain.type, name, __chain.inputs, opts, __chain.mode === "generated" /*remote*/);
+            return;
+        }
+        if (new.target !== Component) {
+            if (args?.a === undefined && !opts.urn) {
+                throw new Error("Missing required property 'a'");
+            }
+            if (args?.c === undefined && !opts.urn) {
+                throw new Error("Missing required property 'c'");
+            }
+            if (args?.e === undefined && !opts.urn) {
+                throw new Error("Missing required property 'e'");
+            }
+            resourceInputs["a"] = args?.a;
+            resourceInputs["b"] = args?.b;
+            resourceInputs["bar"] = args?.bar;
+            resourceInputs["baz"] = args?.baz;
+            resourceInputs["c"] = args?.c;
+            resourceInputs["d"] = args?.d;
+            resourceInputs["e"] = args?.e;
+            resourceInputs["f"] = args?.f;
+            resourceInputs["foo"] = args?.foo;
+            opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
+            super((new.target as any).__pulumiType, name, resourceInputs, opts, false /*local*/);
+            void pulumi.runtime.constructBaseResource(this, "example::Component", args ?? {}, { version: utilities.getVersion() }, ["a", "b", "bar", "baz", "c", "d", "e", "f", "foo"]);
+            return;
+        }
         if (!opts.id) {
             if (args?.a === undefined && !opts.urn) {
                 throw new Error("Missing required property 'a'");

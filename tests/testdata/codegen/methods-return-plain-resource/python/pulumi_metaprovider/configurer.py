@@ -76,7 +76,19 @@ class Configurer(pulumi.ComponentResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  tls_proxy: pulumi.Input[Optional[_builtins.str]] = None,
-                 __props__=None):
+                 __props__=None,
+                 __chain__=None):
+        if __chain__ is not None:
+            super(Configurer, __self__).__init__(__chain__["type"], resource_name, __chain__["props"], opts, remote=__chain__["mode"] == "generated")
+            return
+        if type(__self__) is not Configurer:
+            opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
+            __props__ = ConfigurerArgs.__new__(ConfigurerArgs)
+
+            __props__.__dict__["tls_proxy"] = tls_proxy
+            super(Configurer, __self__).__init__(pulumi.runtime.get_type_token(type(__self__)), resource_name, __props__, opts, remote=False)
+            pulumi.runtime.construct_base_resource(__self__, "metaprovider:index:Configurer", {"tlsProxy": tls_proxy}, pulumi.runtime.BaseConstructInfo(version=_utilities.get_version()), [])
+            return
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
             raise TypeError('Expected resource options to be a ResourceOptions instance')

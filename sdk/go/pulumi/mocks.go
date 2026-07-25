@@ -66,6 +66,24 @@ type mockResourceMonitorWithSignalAndWaitForShutdown interface {
 	SignalAndWaitForShutdown() (*emptypb.Empty, error)
 }
 
+// mockResourceMonitorWithConstructBase is a mock resource monitor that also implements the
+// ConstructBaseResource method, enabling tests that exercise component inheritance. Mocks implementing it
+// are additionally reported as supporting the CONSTRUCT_BASE feature via GetDeploymentInfo.
+type mockResourceMonitorWithConstructBase interface {
+	MockResourceMonitor
+	ConstructBaseResource(args MockConstructBaseArgs) (resource.PropertyMap, error)
+}
+
+// MockConstructBaseArgs is used to construct a ConstructBaseResource mock.
+type MockConstructBaseArgs struct {
+	// URN is the URN of the already-registered resource whose base portion is being constructed.
+	URN string
+	// BaseType is the type token of the base component to construct.
+	BaseType string
+	// Inputs are the inputs to the base component's constructor.
+	Inputs resource.PropertyMap
+}
+
 func WithMocks(project, stack string, mocks MockResourceMonitor) RunOption {
 	return func(info *RunInfo) {
 		info.Project, info.Stack, info.Mocks = project, stack, mocks
@@ -155,6 +173,12 @@ func (m *mockMonitor) GetDeploymentInfo(ctx context.Context, in *emptypb.Empty,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+	}
+
+	// Only advertise base construction when the mock actually implements it, so tests can exercise both the
+	// supported path and the negotiation error against an unsupporting monitor.
+	if _, ok := m.mocks.(mockResourceMonitorWithConstructBase); ok {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE)
 	}
 
 	return &pulumirpc.DeploymentInfo{
@@ -377,6 +401,48 @@ func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (m *mockMonitor) ConstructBaseResource(ctx context.Context, in *pulumirpc.ConstructBaseResourceRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.ConstructBaseResourceResponse, error) {
+	cb, ok := m.mocks.(mockResourceMonitorWithConstructBase)
+	if !ok {
+		return nil, status.Error(codes.Unimplemented, "ConstructBaseResource is not supported by this mock")
+	}
+
+	inputs, err := plugin.UnmarshalProperties(in.GetInputs(), plugin.MarshalOptions{
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepUnknowns:     true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	state, err := cb.ConstructBaseResource(MockConstructBaseArgs{
+		URN:      in.GetUrn(),
+		BaseType: in.GetBaseType(),
+		Inputs:   inputs,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepUnknowns:     true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.ConstructBaseResourceResponse{
+		State: stateOut,
+	}, nil
 }
 
 func (m *mockMonitor) RegisterStackTransform(ctx context.Context, in *pulumirpc.Callback,

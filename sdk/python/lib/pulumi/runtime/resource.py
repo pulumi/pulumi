@@ -642,6 +642,73 @@ def get_resource(
     asyncio.ensure_future(_get_rpc_manager().do_rpc("get resource", do_get)())
 
 
+def attach_resource(
+    res: "Resource",
+    ty: str,
+    props: "Inputs",
+    custom: bool,
+    urn: str,
+    typ: Optional[type] = None,
+) -> None:
+    """Adopt an already-registered resource identified by ``urn``.
+
+    This is the runtime primitive behind base-class construction: the
+    most-derived component has already been registered once (elsewhere, possibly
+    in another language runtime), and this call constructs one of its base
+    portions in-process. Unlike :func:`get_resource`, no state is fetched from
+    the engine -- base construction runs mid-deployment, before ``urn``'s state
+    is finalized -- so the URN is resolved directly and input-derived outputs
+    fall back to the provided inputs, exactly as a local registration with an
+    empty engine response would. No resource is registered. Nested resources
+    created by the constructor body parent to ``urn`` through the ordinary
+    parent-based mechanisms.
+    """
+    log.debug(f"attaching resource: ty={ty}, urn={urn}")
+
+    transform_using_type_metadata = typ is not None
+
+    (resolve_urn, res.__dict__["urn"]) = resource_output(res)
+    resolve_id: Optional[Callable[[Any, bool, bool, Optional[Exception]], None]] = None
+    if custom:
+        (resolve_id, res.__dict__["id"]) = resource_output(res)
+
+    resolvers = rpc.transfer_properties(res, props, custom)
+
+    async def do_attach():
+        try:
+            translate: Optional[Callable[[str], str]] = res.translate_input_property
+            if typ is not None:
+                translate = None
+            property_deps: dict[str, list[Resource]] = {}
+            serialized_props = await rpc.serialize_properties(
+                props, property_deps, res, translate, typ
+            )
+
+            resolve_urn(urn, True, False, None)
+            if resolve_id is not None:
+                # A component has no ID; adopting one never yields a custom ID.
+                resolve_id(None, False, False, None)
+
+            rpc.resolve_outputs(
+                res,
+                serialized_props,
+                struct_pb2.Struct(),
+                {},
+                resolvers,
+                custom,
+                transform_using_type_metadata,
+            )
+        except Exception as exn:
+            log.debug(f"exception when attaching resource: {traceback.format_exc()}")
+            rpc.resolve_outputs_due_to_exception(resolvers, exn)
+            resolve_urn(None, True, False, exn)
+            if resolve_id is not None:
+                resolve_id(None, True, False, exn)
+            raise
+
+    asyncio.ensure_future(_get_rpc_manager().do_rpc("attach resource", do_attach)())
+
+
 def _translate_ignore_changes(
     res: "Resource", typ: Optional[type], ignore_changes: Optional[list[str]]
 ) -> Optional[list[str]]:
@@ -1310,6 +1377,148 @@ def register_resource_outputs(
         _get_rpc_manager().do_rpc(
             "register resource outputs", do_register_resource_outputs
         )()
+    )
+
+
+class BaseConstructInfo(NamedTuple):
+    """Provider routing information emitted by a generated base stub for a
+    :func:`construct_base_resource` call.
+
+    The engine resolves the base package's provider from the base type together
+    with the resource's recorded provider map, so only version/package routing
+    needs to travel from the SDK.
+    """
+
+    version: Optional[str] = None
+    plugin_download_url: Optional[str] = None
+    plugin_checksums: Optional[Mapping[str, bytes]] = None
+    package_ref: Optional[Awaitable[Optional[str]]] = None
+
+
+def construct_base_resource(
+    res: "Resource",
+    base_type: str,
+    inputs: "Inputs",
+    info: "BaseConstructInfo",
+    output_keys: Sequence[str],
+) -> None:
+    """Construct the base-class portion of an already-registered component.
+
+    Issued by a generated derived component's constructor, after its own
+    registration completes, for each base type owned by a *different* package.
+    The engine dispatches the request to the base package's provider, which
+    adopts this resource's URN (see :func:`attach_resource`), runs the base
+    implementation, and returns the base's declared outputs. Those outputs are
+    resolved onto ``res`` for exactly the attributes named in ``output_keys``.
+
+    ``output_keys`` is the source of truth for which returned properties land on
+    the instance: only these keys are ever touched (returned properties not named
+    here are ignored), and a derived override -- assigned by the constructor body
+    after this call -- wins by replacing the cell seeded here.
+    """
+    # Seed output cells synchronously so the derived constructor body observes
+    # them immediately; they resolve once the base construction completes. The
+    # base owns these outputs, so any unresolved placeholder left by the derived
+    # registration is replaced.
+    resolvers = rpc.transfer_properties(
+        res, {key: None for key in output_keys}, custom=False
+    )
+
+    stack_trace = _get_stack_trace()
+    source_position = _get_source_position(stack_trace)
+
+    async def do_construct_base() -> None:
+        try:
+            if not await settings.monitor_supports_construct_base():
+                raise Exception(
+                    f"component '{res._type}' extends '{base_type}' from another "
+                    "package, which requires a newer version of the Pulumi CLI "
+                    "(base construction is not supported by this engine)"
+                )
+
+            urn = await res.urn.future()
+            assert urn is not None, "base construction requires a registered URN"
+
+            # A package reference, once resolved, supersedes the version fields.
+            package_ref_str = None
+            version = info.version
+            plugin_download_url = info.plugin_download_url
+            if info.package_ref is not None:
+                package_ref_str = await info.package_ref
+                if package_ref_str is not None:
+                    version = None
+                    plugin_download_url = None
+
+            property_deps: dict[str, list[Resource]] = {}
+            serialized_inputs = await rpc.serialize_properties(
+                inputs,
+                property_deps,
+                res,
+                keep_output_values=True,
+                exclude_resource_refs_from_deps=True,
+            )
+
+            input_deps: dict[
+                str, resource_pb2.ConstructBaseResourceRequest.PropertyDependencies
+            ] = {}
+            for key, key_deps in property_deps.items():
+                expanded = await _expand_dependencies(key_deps, from_resource=res)
+                input_deps[key] = (
+                    resource_pb2.ConstructBaseResourceRequest.PropertyDependencies(
+                        urns=list(expanded.keys())
+                    )
+                )
+
+            req = resource_pb2.ConstructBaseResourceRequest(
+                urn=urn,
+                base_type=base_type,
+                inputs=serialized_inputs,
+                input_dependencies=input_deps,
+                version=version or "",
+                plugin_download_url=plugin_download_url or "",
+                plugin_checksums=info.plugin_checksums or {},
+                package_ref=package_ref_str or "",
+                source_position=source_position,
+                stack_trace=stack_trace,
+            )
+
+            monitor = settings.get_monitor()
+
+            def do_rpc_call():
+                try:
+                    return monitor.ConstructBaseResource(req)
+                except grpc.RpcError as exn:
+                    handle_grpc_error(exn)
+
+            resp = await asyncio.get_event_loop().run_in_executor(
+                None, wrap_with_context(do_rpc_call)
+            )
+
+            # Lazy import avoids a module-load cycle with the resource module.
+            from ..resource import DependencyResource
+
+            state_deps: dict[str, set[Resource]] = {}
+            for key, pd in resp.state_dependencies.items():
+                state_deps[key] = {DependencyResource(u) for u in pd.urns}
+
+            rpc.resolve_outputs(
+                res,
+                struct_pb2.Struct(),
+                resp.state,
+                state_deps,
+                resolvers,
+                False,
+                transform_using_type_metadata=True,
+            )
+        except Exception as exn:
+            log.debug(
+                f"exception constructing base {base_type}: {traceback.format_exc()}"
+            )
+            rpc.resolve_outputs_due_to_exception(resolvers, exn)
+            raise
+
+    asyncio.ensure_future(
+        _get_rpc_manager().do_rpc("construct base resource", do_construct_base)()
     )
 
 

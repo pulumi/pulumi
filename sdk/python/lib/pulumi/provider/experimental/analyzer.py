@@ -134,6 +134,15 @@ class ComponentDefinition:
     module: Optional[str]
     """The Python module where this component is defined."""
     description: Optional[str] = None
+    extends: Optional[str] = None
+    """
+    The schema $ref of the base component this component extends. A local ref ("#/resources/...") means the base
+    lives in this same package and its members are flattened into this definition; an external ref
+    ("/<pkg>/v.../schema.json#/resources/...") means the base lives in another package and only this component's own
+    members are emitted (the binder materializes the inherited ones).
+    """
+    abstract: bool = False
+    """Whether this component is abstract and may not be instantiated directly, only extended."""
 
 
 @dataclass(frozen=True)
@@ -355,10 +364,27 @@ class Analyzer:
                 f"ComponentResource '{component.__name__}' requires an argument named 'args' with a type annotation in its __init__ method"
             )
 
-        (inputs, inputs_mapping) = self.analyze_type(args, is_component_output=False)
-        (outputs, outputs_mapping) = self.analyze_type(
-            component, is_component_output=True
+        # Classify the component's direct base to decide how it participates in the schema. When it extends a
+        # generated component from an installed package, its members are kept sparse: stop_outputs / stop_inputs mark
+        # the base's member set so the MRO walk collects only this component's own members, and the binder
+        # materializes the inherited ones. A locally-authored base is flattened (nothing to stop at) and referenced
+        # locally; the base is emitted as its own component.
+        extends, stop_outputs, stop_inputs = self.classify_base(component)
+
+        (inputs, inputs_mapping) = self.analyze_type(
+            args, is_component_output=False, stop_at=stop_inputs
         )
+        (outputs, outputs_mapping) = self.analyze_type(
+            component, is_component_output=True, stop_at=stop_outputs
+        )
+
+        # inspect.isabstract covers components with unimplemented abstractmethods; the __pulumi_abstract__ dunder
+        # covers abstract components that have no abstract methods (checked on the class's own __dict__ so a concrete
+        # subclass does not inherit the flag).
+        abstract = inspect.isabstract(component) or bool(
+            component.__dict__.get("__pulumi_abstract__", False)
+        )
+
         return ComponentDefinition(
             name=component.__name__,
             description=component.__doc__.strip() if component.__doc__ else None,
@@ -367,10 +393,73 @@ class Analyzer:
             outputs=outputs,
             outputs_mapping=outputs_mapping,
             module=component.__module__,
+            extends=extends,
+            abstract=abstract,
         )
 
+    def classify_base(
+        self, component: type[ComponentResource]
+    ) -> tuple[Optional[str], Optional[type], Optional[type]]:
+        """
+        Inspect a component's direct base to decide how it participates in the schema. Returns a tuple of
+        ``(extends_ref, stop_outputs, stop_inputs)``:
+
+        * a root component (extends ``ComponentResource`` directly) → ``(None, None, None)``;
+        * a component extending another component authored in this project → a local extends ref and no stops (its
+          members are flattened via the MRO walk, and it is emitted as its own component);
+        * a component extending a generated component from an installed package → an external extends ref, the base
+          component (``stop_outputs``) and the base's args type (``stop_inputs``) whose members analyze_type drops
+          so this component's emitted members stay sparse. The dependency is recorded here.
+        """
+        base = component.__bases__[0] if component.__bases__ else object
+        if base is ComponentResource or not issubclass(base, ComponentResource):
+            return None, None, None
+
+        if not self.is_external_base(base):
+            # A component authored in this project: flatten its members and reference it locally.
+            return f"#/resources/{self.name}:index:{base.__name__}", None, None
+
+        # A generated component from an installed package. Build the external ref from its pulumi_type and record the
+        # dependency. Extending a generated class requires the new-codegen pulumi_type marker; get_package_name
+        # raises a clear "outdated version" error when it is missing.
+        resource_type_string, _ = get_package_name(base, component, "base class")
+        try:
+            dep = get_dependency_for_type(base)
+        except DependencyError as e:
+            raise Exception(f"{base.__name__}: {str(e)}")
+        self.dependencies.add(dep)
+        ref = f"/{dep.name}/v{dep.version}/schema.json#/resources/{resource_type_string.replace('/', '%2F')}"
+        # The base's own args type marks the inherited inputs to subtract from this component's own inputs.
+        base_args = inspect.get_annotations(base.__init__).get("args")
+        stop_inputs = base_args if isinstance(base_args, type) else None
+        return ref, base, stop_inputs
+
+    def is_external_base(self, base: type) -> bool:
+        """
+        Report whether a base component is a generated component from another package, identified by the pulumi_type
+        marker that codegen stamps on generated classes (the same marker the resource-reference path uses). The
+        marker is checked on the class's own __dict__ so that a locally-authored component which extends a generated
+        one does not inherit it and get misclassified as external.
+        """
+        return "pulumi_type" in base.__dict__
+
+    def member_names(self, typ: type) -> set[str]:
+        """
+        Return the raw (Python-named) annotation keys of a type and its bases, excluding private attributes and the
+        Pulumi SDK base classes — the same set analyze_type would collect. Used to subtract a base's members from a
+        sparse subclass.
+        """
+        names: set[str] = set()
+        for cls in typ.__mro__:
+            if cls is object or cls is Resource or cls is ComponentResource:
+                continue
+            names.update(
+                k for k in inspect.get_annotations(cls) if not k.startswith("_")
+            )
+        return names
+
     def analyze_type(
-        self, typ: type, *, is_component_output: bool
+        self, typ: type, *, is_component_output: bool, stop_at: Optional[type] = None
     ) -> tuple[dict[str, PropertyDefinition], dict[str, str]]:
         """
         analyze_type returns a dictionary of the properties of a type based on
@@ -381,6 +470,12 @@ class Analyzer:
         :param is_component_output: whether the type is a used as a component
         output. Types used in component outputs can never have the plain
         property, including nested complex types or in list/dictionaries.
+        :param stop_at: when set, the members contributed by this type (and its
+        ancestors) are dropped by name so that a subclass of a generated base
+        emits only its own members; the base's members are materialized by the
+        binder. Dropping by name — rather than by MRO position — is necessary
+        because a TypedDict merges its bases' annotations into the subclass and
+        does not appear in the subclass's MRO.
 
         For example for the class
 
@@ -414,6 +509,12 @@ class Analyzer:
             if typing.is_typeddict(cls):
                 optional_keys.update(getattr(cls, "__optional_keys__", ()))
         ann = {k: v for k, v in ann.items() if not k.startswith("_")}
+        # For a sparse subclass, drop the members contributed by the generated base (and its ancestors) before
+        # analyzing them: only this component's own members are emitted, and the binder materializes the inherited
+        # ones. Dropping before analysis also avoids registering the base's types into this package's schema.
+        if stop_at is not None:
+            base_members = self.member_names(stop_at)
+            ann = {k: v for k, v in ann.items() if k not in base_members}
         mapping: dict[str, str] = {camel_case(k): k for k in ann.keys()}
         return {
             camel_case(k): self.analyze_property(

@@ -272,6 +272,19 @@ class ResourceProviderStub:
       propagate to resources it registers against the supplied resource monitor.
     """
 
+    ConstructBase: grpc.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.ConstructBaseRequest,
+        pulumi.provider_pb2.ConstructBaseResponse,
+    ]
+    """`ConstructBase` constructs the portion of an existing [component resource](component-resources) that
+    corresponds to `type`, which this provider owns, as part of a cross-package component inheritance chain.
+    Unlike [](pulumirpc.ResourceProvider.Construct), no new resource is registered: the implementation adopts
+    `urn` (whose type is the most-derived type of the chain), parents any nested resources it registers to it,
+    and returns the type's output properties. Providers advertise support via the `supports_construct_base`
+    field of [](pulumirpc.ProviderHandshakeResponse) and [](pulumirpc.ConfigureResponse); older providers
+    return UNIMPLEMENTED.
+    """
+
     Cancel: grpc.UnaryUnaryMultiCallable[
         google.protobuf.empty_pb2.Empty,
         google.protobuf.empty_pb2.Empty,
@@ -571,6 +584,19 @@ class ResourceProviderAsyncStub:
 
     * A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
       propagate to resources it registers against the supplied resource monitor.
+    """
+
+    ConstructBase: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.ConstructBaseRequest,
+        pulumi.provider_pb2.ConstructBaseResponse,
+    ]
+    """`ConstructBase` constructs the portion of an existing [component resource](component-resources) that
+    corresponds to `type`, which this provider owns, as part of a cross-package component inheritance chain.
+    Unlike [](pulumirpc.ResourceProvider.Construct), no new resource is registered: the implementation adopts
+    `urn` (whose type is the most-derived type of the chain), parents any nested resources it registers to it,
+    and returns the type's output properties. Providers advertise support via the `supports_construct_base`
+    field of [](pulumirpc.ProviderHandshakeResponse) and [](pulumirpc.ConfigureResponse); older providers
+    return UNIMPLEMENTED.
     """
 
     Cancel: grpc.aio.UnaryUnaryMultiCallable[
@@ -904,6 +930,21 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
 
         * A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
           propagate to resources it registers against the supplied resource monitor.
+        """
+
+    
+    def ConstructBase(
+        self,
+        request: pulumi.provider_pb2.ConstructBaseRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.provider_pb2.ConstructBaseResponse, collections.abc.Awaitable[pulumi.provider_pb2.ConstructBaseResponse]]:
+        """`ConstructBase` constructs the portion of an existing [component resource](component-resources) that
+        corresponds to `type`, which this provider owns, as part of a cross-package component inheritance chain.
+        Unlike [](pulumirpc.ResourceProvider.Construct), no new resource is registered: the implementation adopts
+        `urn` (whose type is the most-derived type of the chain), parents any nested resources it registers to it,
+        and returns the type's output properties. Providers advertise support via the `supports_construct_base`
+        field of [](pulumirpc.ProviderHandshakeResponse) and [](pulumirpc.ConfigureResponse); older providers
+        return UNIMPLEMENTED.
         """
 
     

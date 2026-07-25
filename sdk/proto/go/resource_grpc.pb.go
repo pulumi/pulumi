@@ -41,6 +41,7 @@ const (
 	ResourceMonitor_ReadResource_FullMethodName                 = "/pulumirpc.ResourceMonitor/ReadResource"
 	ResourceMonitor_RegisterResource_FullMethodName             = "/pulumirpc.ResourceMonitor/RegisterResource"
 	ResourceMonitor_RegisterResourceOutputs_FullMethodName      = "/pulumirpc.ResourceMonitor/RegisterResourceOutputs"
+	ResourceMonitor_ConstructBaseResource_FullMethodName        = "/pulumirpc.ResourceMonitor/ConstructBaseResource"
 	ResourceMonitor_RegisterStackTransform_FullMethodName       = "/pulumirpc.ResourceMonitor/RegisterStackTransform"
 	ResourceMonitor_RegisterStackInvokeTransform_FullMethodName = "/pulumirpc.ResourceMonitor/RegisterStackInvokeTransform"
 	ResourceMonitor_RegisterResourceHook_FullMethodName         = "/pulumirpc.ResourceMonitor/RegisterResourceHook"
@@ -71,6 +72,13 @@ type ResourceMonitorClient interface {
 	ReadResource(ctx context.Context, in *ReadResourceRequest, opts ...grpc.CallOption) (*ReadResourceResponse, error)
 	RegisterResource(ctx context.Context, in *RegisterResourceRequest, opts ...grpc.CallOption) (*RegisterResourceResponse, error)
 	RegisterResourceOutputs(ctx context.Context, in *RegisterResourceOutputsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Constructs the portion of an already-registered component resource that corresponds to one of its base
+	// component types, dispatching to the provider that owns `base_type`. The resource identified by `urn` must
+	// already be registered; its type is the most-derived type of the inheritance chain. SDKs call this while
+	// executing a derived component's constructor chain. Monitors advertise support via
+	// `RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE` in [](pulumirpc.DeploymentInfo)'s `supportedFeatures`; older
+	// monitors return UNIMPLEMENTED.
+	ConstructBaseResource(ctx context.Context, in *ConstructBaseResourceRequest, opts ...grpc.CallOption) (*ConstructBaseResourceResponse, error)
 	// Register a resource transform for the stack
 	RegisterStackTransform(ctx context.Context, in *Callback, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Register an invoke transform for the stack
@@ -172,6 +180,16 @@ func (c *resourceMonitorClient) RegisterResourceOutputs(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *resourceMonitorClient) ConstructBaseResource(ctx context.Context, in *ConstructBaseResourceRequest, opts ...grpc.CallOption) (*ConstructBaseResourceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConstructBaseResourceResponse)
+	err := c.cc.Invoke(ctx, ResourceMonitor_ConstructBaseResource_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *resourceMonitorClient) RegisterStackTransform(ctx context.Context, in *Callback, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -254,6 +272,13 @@ type ResourceMonitorServer interface {
 	ReadResource(context.Context, *ReadResourceRequest) (*ReadResourceResponse, error)
 	RegisterResource(context.Context, *RegisterResourceRequest) (*RegisterResourceResponse, error)
 	RegisterResourceOutputs(context.Context, *RegisterResourceOutputsRequest) (*emptypb.Empty, error)
+	// Constructs the portion of an already-registered component resource that corresponds to one of its base
+	// component types, dispatching to the provider that owns `base_type`. The resource identified by `urn` must
+	// already be registered; its type is the most-derived type of the inheritance chain. SDKs call this while
+	// executing a derived component's constructor chain. Monitors advertise support via
+	// `RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE` in [](pulumirpc.DeploymentInfo)'s `supportedFeatures`; older
+	// monitors return UNIMPLEMENTED.
+	ConstructBaseResource(context.Context, *ConstructBaseResourceRequest) (*ConstructBaseResourceResponse, error)
 	// Register a resource transform for the stack
 	RegisterStackTransform(context.Context, *Callback) (*emptypb.Empty, error)
 	// Register an invoke transform for the stack
@@ -305,6 +330,9 @@ func (UnimplementedResourceMonitorServer) RegisterResource(context.Context, *Reg
 }
 func (UnimplementedResourceMonitorServer) RegisterResourceOutputs(context.Context, *RegisterResourceOutputsRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterResourceOutputs not implemented")
+}
+func (UnimplementedResourceMonitorServer) ConstructBaseResource(context.Context, *ConstructBaseResourceRequest) (*ConstructBaseResourceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ConstructBaseResource not implemented")
 }
 func (UnimplementedResourceMonitorServer) RegisterStackTransform(context.Context, *Callback) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterStackTransform not implemented")
@@ -471,6 +499,24 @@ func _ResourceMonitor_RegisterResourceOutputs_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceMonitor_ConstructBaseResource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConstructBaseResourceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceMonitorServer).ConstructBaseResource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResourceMonitor_ConstructBaseResource_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceMonitorServer).ConstructBaseResource(ctx, req.(*ConstructBaseResourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ResourceMonitor_RegisterStackTransform_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Callback)
 	if err := dec(in); err != nil {
@@ -613,6 +659,10 @@ var ResourceMonitor_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RegisterResourceOutputs",
 			Handler:    _ResourceMonitor_RegisterResourceOutputs_Handler,
+		},
+		{
+			MethodName: "ConstructBaseResource",
+			Handler:    _ResourceMonitor_ConstructBaseResource_Handler,
 		},
 		{
 			MethodName: "RegisterStackTransform",

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://raw.githubusercontent.com/pulumi/pulumi/master/pkg/codegen/schema/pulumi.json",
+  "name": "basecomponent",
+  "version": "1.0.0",
+  "resources": {
+    "basecomponent:index:Service": {
+      "description": "A base component published in its own package.",
+      "isComponent": true,
+      "inputProperties": {
+        "port": {
+          "type": "integer"
+        }
+      },
+      "requiredInputs": ["port"],
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        }
+      },
+      "required": ["url", "port"],
+      "methods": {
+        "getStatus": "basecomponent:index:Service/getStatus"
+      }
+    }
+  },
+  "functions": {
+    "basecomponent:index:Service/getStatus": {
+      "description": "Returns the current status of the service.",
+      "inputs": {
+        "properties": {
+          "__self__": {
+            "$ref": "#/resources/basecomponent:index:Service"
+          }
+        },
+        "required": ["__self__"]
+      },
+      "outputs": {
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": ["status"]
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/basecomponent/go/basecomponent",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      }
+    },
+    "python": {}
+  }
+}

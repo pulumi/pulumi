@@ -160,6 +160,7 @@ func NewWatchCmd() *cobra.Command {
 				DisableProviderPreview:    env.DisableProviderPreview.Value(),
 				DisableResourceReferences: env.DisableResourceReferences.Value(),
 				DisableOutputValues:       env.DisableOutputValues.Value(),
+				DisableConstructBase:      env.DisableConstructBase.Value(),
 				Experimental:              env.Experimental.Value(),
 				SkipPluginPreInstall:      skipPluginPreInstall,
 			}

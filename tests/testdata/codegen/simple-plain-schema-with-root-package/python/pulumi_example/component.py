@@ -186,7 +186,33 @@ class Component(pulumi.ComponentResource):
                  e: Optional[_builtins.str] = None,
                  f: Optional[_builtins.str] = None,
                  foo: pulumi.Input[Optional[Union['FooArgs', 'FooArgsDict']]] = None,
-                 __props__=None):
+                 __props__=None,
+                 __chain__=None):
+        if __chain__ is not None:
+            super(Component, __self__).__init__(__chain__["type"], resource_name, __chain__["props"], opts, remote=__chain__["mode"] == "generated")
+            return
+        if type(__self__) is not Component:
+            opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
+            __props__ = ComponentArgs.__new__(ComponentArgs)
+
+            if a is None and not opts.urn:
+                raise TypeError("Missing required property 'a'")
+            __props__.__dict__["a"] = a
+            __props__.__dict__["b"] = b
+            __props__.__dict__["bar"] = bar
+            __props__.__dict__["baz"] = baz
+            if c is None and not opts.urn:
+                raise TypeError("Missing required property 'c'")
+            __props__.__dict__["c"] = c
+            __props__.__dict__["d"] = d
+            if e is None and not opts.urn:
+                raise TypeError("Missing required property 'e'")
+            __props__.__dict__["e"] = e
+            __props__.__dict__["f"] = f
+            __props__.__dict__["foo"] = foo
+            super(Component, __self__).__init__(pulumi.runtime.get_type_token(type(__self__)), resource_name, __props__, opts, remote=False)
+            pulumi.runtime.construct_base_resource(__self__, "example::Component", {"a": a, "b": b, "bar": bar, "baz": baz, "c": c, "d": d, "e": e, "f": f, "foo": foo}, pulumi.runtime.BaseConstructInfo(version=_utilities.get_version()), ["a", "b", "bar", "baz", "c", "d", "e", "f", "foo"])
+            return
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
             raise TypeError('Expected resource options to be a ResourceOptions instance')

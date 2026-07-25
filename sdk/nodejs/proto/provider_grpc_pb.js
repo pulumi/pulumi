@@ -100,6 +100,28 @@ function deserialize_pulumirpc_ConfigureResponse(buffer_arg) {
   return pulumi_provider_pb.ConfigureResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ConstructBaseRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ConstructBaseRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ConstructBaseRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ConstructBaseRequest(buffer_arg) {
+  return pulumi_provider_pb.ConstructBaseRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ConstructBaseResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ConstructBaseResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ConstructBaseResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ConstructBaseResponse(buffer_arg) {
+  return pulumi_provider_pb.ConstructBaseResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_ConstructRequest(arg) {
   if (!(arg instanceof pulumi_provider_pb.ConstructRequest)) {
     throw new Error('Expected argument of type pulumirpc.ConstructRequest');
@@ -716,6 +738,24 @@ construct: {
     requestDeserialize: deserialize_pulumirpc_ConstructRequest,
     responseSerialize: serialize_pulumirpc_ConstructResponse,
     responseDeserialize: deserialize_pulumirpc_ConstructResponse,
+  },
+  // `ConstructBase` constructs the portion of an existing [component resource](component-resources) that
+// corresponds to `type`, which this provider owns, as part of a cross-package component inheritance chain.
+// Unlike [](pulumirpc.ResourceProvider.Construct), no new resource is registered: the implementation adopts
+// `urn` (whose type is the most-derived type of the chain), parents any nested resources it registers to it,
+// and returns the type's output properties. Providers advertise support via the `supports_construct_base`
+// field of [](pulumirpc.ProviderHandshakeResponse) and [](pulumirpc.ConfigureResponse); older providers
+// return UNIMPLEMENTED.
+constructBase: {
+    path: '/pulumirpc.ResourceProvider/ConstructBase',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_provider_pb.ConstructBaseRequest,
+    responseType: pulumi_provider_pb.ConstructBaseResponse,
+    requestSerialize: serialize_pulumirpc_ConstructBaseRequest,
+    requestDeserialize: deserialize_pulumirpc_ConstructBaseRequest,
+    responseSerialize: serialize_pulumirpc_ConstructBaseResponse,
+    responseDeserialize: deserialize_pulumirpc_ConstructBaseResponse,
   },
   // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
 // Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a

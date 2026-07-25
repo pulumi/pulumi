@@ -138,7 +138,23 @@ class ConfigGroup(pulumi.ComponentResource):
                  objs: pulumi.Input[Optional[Union[Any, Sequence[Any]]]] = None,
                  resource_prefix: pulumi.Input[Optional[_builtins.str]] = None,
                  yaml: pulumi.Input[Optional[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None,
-                 __props__=None):
+                 __props__=None,
+                 __chain__=None):
+        if __chain__ is not None:
+            super(ConfigGroup, __self__).__init__(__chain__["type"], resource_name, __chain__["props"], opts, remote=__chain__["mode"] == "generated")
+            return
+        if type(__self__) is not ConfigGroup:
+            opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
+            __props__ = ConfigGroupArgs.__new__(ConfigGroupArgs)
+
+            __props__.__dict__["files"] = files
+            __props__.__dict__["objs"] = objs
+            __props__.__dict__["resource_prefix"] = resource_prefix
+            __props__.__dict__["yaml"] = yaml
+            __props__.__dict__["resources"] = None
+            super(ConfigGroup, __self__).__init__(pulumi.runtime.get_type_token(type(__self__)), resource_name, __props__, opts, remote=False)
+            pulumi.runtime.construct_base_resource(__self__, "kubernetes:yaml/v2:ConfigGroup", {"files": files, "objs": objs, "resourcePrefix": resource_prefix, "yaml": yaml}, pulumi.runtime.BaseConstructInfo(version=_utilities.get_version()), ["resources"])
+            return
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
             raise TypeError('Expected resource options to be a ResourceOptions instance')

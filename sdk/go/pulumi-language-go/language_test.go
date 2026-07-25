@@ -145,6 +145,12 @@ var expectedFailures = map[string]string{
 	"l1-builtin-string": "cannot convert strings.Split(aString, \"-\") (value of type []string) to type pulumi.StringArray", //nolint:lll
 
 	"l2-failed-create-recover-continue-on-error": "Go SDK output recovery is not implemented",
+
+	// The generated derived SDK correctly imports and embeds the base package, but the test's local-artifact
+	// program go.mod does not wire a replace for the transitive base SDK, so `go mod tidy` cannot resolve it. In a
+	// published scenario the base is a normal module resolved from the proxy. Tracked as a conformance-harness
+	// follow-up (transitive local base-SDK replaces for Go, mirroring the Python fix).
+	"l3-component-extends-cross-package": "local-mode go.mod lacks a replace for the transitive base SDK; go mod tidy fails", //nolint:lll
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

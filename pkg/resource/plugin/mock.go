@@ -180,6 +180,7 @@ type MockProvider struct {
 	DeleteF             func(context.Context, DeleteRequest) (DeleteResponse, error)
 	ListF               func(context.Context, ListRequest) (*ListStream, error)
 	ConstructF          func(context.Context, ConstructRequest) (ConstructResponse, error)
+	ConstructBaseF      func(context.Context, ConstructBaseRequest) (ConstructBaseResponse, error)
 	InvokeF             func(context.Context, InvokeRequest) (InvokeResponse, error)
 	CallF               func(context.Context, CallRequest) (CallResponse, error)
 	GetPluginInfoF      func(context.Context) (PluginInfo, error)
@@ -295,6 +296,13 @@ func (m *MockProvider) Construct(ctx context.Context, req ConstructRequest) (Con
 		return m.ConstructF(ctx, req)
 	}
 	return ConstructResponse{}, status.Error(codes.Unimplemented, "Construct not implemented")
+}
+
+func (m *MockProvider) ConstructBase(ctx context.Context, req ConstructBaseRequest) (ConstructBaseResponse, error) {
+	if m.ConstructBaseF != nil {
+		return m.ConstructBaseF(ctx, req)
+	}
+	return ConstructBaseResponse{}, ErrConstructBaseNotSupported
 }
 
 func (m *MockProvider) Invoke(ctx context.Context, req InvokeRequest) (InvokeResponse, error) {

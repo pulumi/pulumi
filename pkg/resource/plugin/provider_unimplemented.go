@@ -100,6 +100,10 @@ func (p *UnimplementedProvider) Construct(context.Context, ConstructRequest) (Co
 	return ConstructResponse{}, status.Error(codes.Unimplemented, "Construct is not yet implemented")
 }
 
+func (p *UnimplementedProvider) ConstructBase(context.Context, ConstructBaseRequest) (ConstructBaseResponse, error) {
+	return ConstructBaseResponse{}, ErrConstructBaseNotSupported
+}
+
 func (p *UnimplementedProvider) Invoke(context.Context, InvokeRequest) (InvokeResponse, error) {
 	return InvokeResponse{}, status.Error(codes.Unimplemented, "Invoke is not yet implemented")
 }

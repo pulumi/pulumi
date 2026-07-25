@@ -1,0 +1,93 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "resources": {
+    "example:index:Service": {
+      "description": "An abstract base component that cannot be instantiated directly.",
+      "isComponent": true,
+      "abstract": true,
+      "inputProperties": {
+        "port": {
+          "type": "integer"
+        }
+      },
+      "requiredInputs": ["port"],
+      "properties": {
+        "port": {
+          "type": "integer"
+        },
+        "endpoint": {
+          "type": "string"
+        }
+      },
+      "required": ["port", "endpoint"],
+      "methods": {
+        "getEndpoint": "example:index:Service/getEndpoint"
+      }
+    },
+    "example:index:WebService": {
+      "description": "A concrete component that extends the abstract Service.",
+      "isComponent": true,
+      "extends": {
+        "$ref": "#/resources/example:index:Service"
+      },
+      "inputProperties": {
+        "port": {
+          "type": "integer"
+        },
+        "replicas": {
+          "type": "integer"
+        }
+      },
+      "requiredInputs": ["port"],
+      "properties": {
+        "port": {
+          "type": "integer"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "instanceCount": {
+          "type": "integer"
+        }
+      },
+      "required": ["port", "endpoint", "instanceCount"]
+    }
+  },
+  "functions": {
+    "example:index:Service/getEndpoint": {
+      "description": "Returns the service endpoint.",
+      "inputs": {
+        "properties": {
+          "__self__": {
+            "$ref": "#/resources/example:index:Service"
+          }
+        },
+        "required": ["__self__"]
+      },
+      "outputs": {
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          }
+        },
+        "required": ["endpoint"]
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/abstract-component/go/example",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^4.6.0"
+      }
+    },
+    "python": {}
+  }
+}

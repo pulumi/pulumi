@@ -67,7 +67,24 @@ class MemberB2(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 __props__=None):
+                 __props__=None,
+                 __chain__=None):
+        if __chain__ is not None:
+            super(MemberB2, __self__).__init__(__chain__["type"], resource_name, __chain__["props"], opts, remote=__chain__["mode"] == "generated")
+            return
+        if type(__self__) is not MemberB2:
+            opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
+            __props__ = MemberB2Args.__new__(MemberB2Args)
+
+            __props__.__dict__["enum_from_different_module"] = None
+            __props__.__dict__["enum_from_same_module"] = None
+            __props__.__dict__["object_from_different_module"] = None
+            __props__.__dict__["object_from_same_module"] = None
+            __props__.__dict__["resource_from_different_module"] = None
+            __props__.__dict__["resource_from_same_module"] = None
+            super(MemberB2, __self__).__init__(pulumi.runtime.get_type_token(type(__self__)), resource_name, __props__, opts, remote=False)
+            pulumi.runtime.construct_base_resource(__self__, "myPkg:myMod/childB:MemberB2", {}, pulumi.runtime.BaseConstructInfo(version=_utilities.get_version()), ["enum_from_different_module", "enum_from_same_module", "object_from_different_module", "object_from_same_module", "resource_from_different_module", "resource_from_same_module"])
+            return
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
             raise TypeError('Expected resource options to be a ResourceOptions instance')

@@ -45,6 +45,14 @@ service ResourceMonitor {
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
 
+    // Constructs the portion of an already-registered component resource that corresponds to one of its base
+    // component types, dispatching to the provider that owns `base_type`. The resource identified by `urn` must
+    // already be registered; its type is the most-derived type of the inheritance chain. SDKs call this while
+    // executing a derived component's constructor chain. Monitors advertise support via
+    // `RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE` in [](pulumirpc.DeploymentInfo)'s `supportedFeatures`; older
+    // monitors return UNIMPLEMENTED.
+    rpc ConstructBaseResource(ConstructBaseResourceRequest) returns (ConstructBaseResourceResponse) {}
+
     // Register a resource transform for the stack
     rpc RegisterStackTransform(Callback) returns (google.protobuf.Empty) {}
     // Register an invoke transform for the stack
@@ -93,6 +101,9 @@ enum ResourceMonitorFeature {
     // The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
     // string bytes signature and a base64 encoding of the string's bytes.
     RESOURCE_MONITOR_FEATURE_BYTE_STRING = 13;
+    // The monitor supports [](pulumirpc.ResourceMonitor.ConstructBaseResource) for constructing the base-class
+    // portions of component resources whose types extend components from other packages.
+    RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE = 14;
 }
 
 // DeploymentInfo returns monitor execution state currently sent to programs
@@ -340,6 +351,67 @@ message ResourceCallRequest {
     // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
     // carrying the byte string signature and a base64 encoding of the string's bytes.
     bool accepts_byte_string = 20;
+}
+
+// `ConstructBaseResourceRequest` is the type of requests sent as part of a
+// [](pulumirpc.ResourceMonitor.ConstructBaseResource) call.
+message ConstructBaseResourceRequest {
+    // `PropertyDependencies` describes the resources that a particular property depends on.
+    message PropertyDependencies {
+        repeated string urns = 1; // A list of URNs this property depends on.
+    }
+
+    // The URN of the already-registered resource whose base-class portion should be constructed. The resource's
+    // type is the most-derived type of the constructor chain.
+    string urn = 1;
+
+    // The type token of the immediate base component to construct (e.g. `pkgA:index:Foo`). The token's package
+    // identifies the provider that serves the request.
+    string base_type = 2;
+
+    // The inputs to the base component's constructor, as computed by the deriving component's implementation.
+    // Values are always sent as rich output values.
+    google.protobuf.Struct inputs = 3;
+
+    // A map from input property keys to the dependencies of that input.
+    map<string, PropertyDependencies> input_dependencies = 4;
+
+    // An optional explicit provider reference to use for the base package.
+    string provider = 5;
+
+    // An optional map of package name to provider reference to thread through the base construction.
+    map<string, string> providers = 6;
+
+    // The version of the base package to use when servicing this request.
+    string version = 7;
+
+    // The optional plugin download URL of the base package to use when servicing this request.
+    string plugin_download_url = 8;
+
+    // A map of checksums expected for the base package's provider plugin.
+    map<string, bytes> plugin_checksums = 9;
+
+    // An optional reference from RegisterPackageRequest; takes precedence over the version fields above.
+    string package_ref = 10;
+
+    SourcePosition source_position = 11;   // the optional source position of the user code that initiated the call.
+    StackTrace stack_trace = 12;           // the optional stack trace at the time of the request.
+    string parent_stack_trace_handle = 13; // the optional parent stack trace handle for the request.
+}
+
+// `ConstructBaseResourceResponse` is the type of responses to a
+// [](pulumirpc.ResourceMonitor.ConstructBaseResource) call.
+message ConstructBaseResourceResponse {
+    // `PropertyDependencies` describes the resources that a particular property depends on.
+    message PropertyDependencies {
+        repeated string urns = 1; // A list of URNs this property depends on.
+    }
+
+    // The base component's output properties, as rich output values.
+    google.protobuf.Struct state = 1;
+
+    // A map of property dependencies for the base component's outputs.
+    map<string, PropertyDependencies> state_dependencies = 2;
 }
 
 // TransformResourceOptions is a subset of all resource options that are relevant to transforms.

@@ -198,6 +198,15 @@ service ResourceProvider {
     //   propagate to resources it registers against the supplied resource monitor.
     rpc Construct(ConstructRequest) returns (ConstructResponse) {}
 
+    // `ConstructBase` constructs the portion of an existing [component resource](component-resources) that
+    // corresponds to `type`, which this provider owns, as part of a cross-package component inheritance chain.
+    // Unlike [](pulumirpc.ResourceProvider.Construct), no new resource is registered: the implementation adopts
+    // `urn` (whose type is the most-derived type of the chain), parents any nested resources it registers to it,
+    // and returns the type's output properties. Providers advertise support via the `supports_construct_base`
+    // field of [](pulumirpc.ProviderHandshakeResponse) and [](pulumirpc.ConfigureResponse); older providers
+    // return UNIMPLEMENTED.
+    rpc ConstructBase(ConstructBaseRequest) returns (ConstructBaseResponse) {}
+
     // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
     // Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
     // creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up
@@ -322,6 +331,11 @@ message ProviderHandshakeResponse {
     // objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
     // caller may pass such values to the provider.
     bool accepts_byte_string = 6;
+
+    // True if and only if the provider supports [](pulumirpc.ResourceProvider.ConstructBase) for its component
+    // types, allowing them to be used as base classes by components in other packages. *Must* match the value
+    // returned in response to [](pulumirpc.ResourceProvider.Configure).
+    bool supports_construct_base = 7;
 }
 
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
@@ -490,6 +504,11 @@ message ConfigureResponse {
     // user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Handshake) if the provider
     // supports handshaking.
     bool supports_autonaming_configuration = 5;
+
+    // True if and only if the provider supports [](pulumirpc.ResourceProvider.ConstructBase) for its component
+    // types. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Handshake) if the
+    // provider supports handshaking.
+    bool supports_construct_base = 6;
 }
 
 // `ConfigureErrorMissingKeys` is the type of error details that may be sent in response to a
@@ -1250,6 +1269,85 @@ message ConstructResponse {
     // could not receive dependency-communicating [output](outputs) values by setting [](pulumirpc.ConstructRequest)'s
     // `accepts_output_values` field to false.
     map<string, PropertyDependencies> stateDependencies = 3;
+}
+
+// `ConstructBaseRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.ConstructBase)
+// call. It carries the execution context a base construction runs in, mirroring [](pulumirpc.ConstructRequest),
+// but deliberately no resource options: options such as parents, protection, and timeouts are owned by the
+// most-derived registration, and nested resources inherit them through the ordinary parent-based mechanisms.
+// Both peers of this RPC are inheritance-aware by construction, so inputs and state always use rich output
+// values.
+message ConstructBaseRequest {
+    // `PropertyDependencies` describes the resources that a particular property depends on.
+    message PropertyDependencies {
+        // A list of URNs this property depends on.
+        repeated string urns = 1;
+    }
+
+    // The project to which the base construction belongs.
+    string project = 1;
+
+    // The name of the stack being deployed into.
+    string stack = 2;
+
+    // The configuration variables to apply before running.
+    map<string, string> config = 3;
+
+    // The configuration keys that have secret values.
+    repeated string config_secret_keys = 4;
+
+    // True if and only if the request is being made as part of a preview (dry run).
+    bool dry_run = 5;
+
+    // The degree of parallelism for resource operations (<=1 for serial execution).
+    int32 parallel = 6;
+
+    // The address of the [](pulumirpc.ResourceMonitor) that the base construction should register nested
+    // resources against.
+    string monitor_endpoint = 7;
+
+    // The organization of the stack being deployed into.
+    string organization = 8;
+
+    // The type token of the base component to construct. Owned by this provider.
+    string type = 9;
+
+    // The name of the resource being constructed (that of the registered resource identified by `urn`).
+    string name = 10;
+
+    // The URN of the already-registered resource to adopt. The implementation must not register a new resource;
+    // nested resources it creates must be parented to this URN.
+    string urn = 11;
+
+    // The most-derived type of the resource identified by `urn`, for diagnostics.
+    string most_derived_type = 12;
+
+    // The inputs to the base component's constructor, always sent as rich output values.
+    google.protobuf.Struct inputs = 13;
+
+    // A map from input property keys to the dependencies of that input.
+    map<string, PropertyDependencies> input_dependencies = 14;
+
+    // A map of package name to provider reference for resolving the providers of nested resources.
+    map<string, string> providers = 15;
+
+    // The optional stack trace handle for the request. Supports stitching stack traces across plugins.
+    string stack_trace_handle = 16;
+}
+
+// `ConstructBaseResponse` is the type of responses to a [](pulumirpc.ResourceProvider.ConstructBase) call.
+message ConstructBaseResponse {
+    // A `PropertyDependencies` list is a set of URNs that a particular property may depend on.
+    message PropertyDependencies {
+        // A list of URNs that this property depends on.
+        repeated string urns = 1;
+    }
+
+    // The base component's output properties, as rich output values.
+    google.protobuf.Struct state = 1;
+
+    // A map of property dependencies for the base component's outputs.
+    map<string, PropertyDependencies> state_dependencies = 2;
 }
 
 // ErrorResourceInitFailed is sent as a Detail `ResourceProvider.{Create, Update}` fail because a

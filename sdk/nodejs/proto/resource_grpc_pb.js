@@ -58,6 +58,28 @@ function deserialize_pulumirpc_Callback(buffer_arg) {
   return pulumi_callback_pb.Callback.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ConstructBaseResourceRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.ConstructBaseResourceRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ConstructBaseResourceRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ConstructBaseResourceRequest(buffer_arg) {
+  return pulumi_resource_pb.ConstructBaseResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ConstructBaseResourceResponse(arg) {
+  if (!(arg instanceof pulumi_resource_pb.ConstructBaseResourceResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ConstructBaseResourceResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ConstructBaseResourceResponse(buffer_arg) {
+  return pulumi_resource_pb.ConstructBaseResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_DeploymentInfo(arg) {
   if (!(arg instanceof pulumi_resource_pb.DeploymentInfo)) {
     throw new Error('Expected argument of type pulumirpc.DeploymentInfo');
@@ -311,6 +333,23 @@ getDeploymentInfo: {
     requestDeserialize: deserialize_pulumirpc_RegisterResourceOutputsRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // Constructs the portion of an already-registered component resource that corresponds to one of its base
+// component types, dispatching to the provider that owns `base_type`. The resource identified by `urn` must
+// already be registered; its type is the most-derived type of the inheritance chain. SDKs call this while
+// executing a derived component's constructor chain. Monitors advertise support via
+// `RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE` in [](pulumirpc.DeploymentInfo)'s `supportedFeatures`; older
+// monitors return UNIMPLEMENTED.
+constructBaseResource: {
+    path: '/pulumirpc.ResourceMonitor/ConstructBaseResource',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_resource_pb.ConstructBaseResourceRequest,
+    responseType: pulumi_resource_pb.ConstructBaseResourceResponse,
+    requestSerialize: serialize_pulumirpc_ConstructBaseResourceRequest,
+    requestDeserialize: deserialize_pulumirpc_ConstructBaseResourceRequest,
+    responseSerialize: serialize_pulumirpc_ConstructBaseResourceResponse,
+    responseDeserialize: deserialize_pulumirpc_ConstructBaseResourceResponse,
   },
   // Register a resource transform for the stack
 registerStackTransform: {

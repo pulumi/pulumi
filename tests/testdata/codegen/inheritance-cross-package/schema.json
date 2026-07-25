@@ -1,0 +1,55 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "dependencies": [
+    {
+      "name": "basecomponent",
+      "version": "1.0.0"
+    }
+  ],
+  "resources": {
+    "example:index:WebService": {
+      "description": "A web service that extends a base component from another package.",
+      "isComponent": true,
+      "extends": {
+        "$ref": "/basecomponent/v1.0.0/schema.json#/resources/basecomponent:index:Service"
+      },
+      "inputProperties": {
+        "port": {
+          "type": "integer"
+        },
+        "replicas": {
+          "type": "integer"
+        }
+      },
+      "requiredInputs": ["port"],
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "instanceCount": {
+          "type": "integer"
+        }
+      },
+      "required": ["url", "port", "instanceCount"]
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/testing/test/testdata/inheritance-cross-package/go/example",
+      "generateExtraInputTypes": true
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^3.12"
+      },
+      "devDependencies": {
+        "typescript": "^4.6.0"
+      }
+    },
+    "python": {}
+  }
+}

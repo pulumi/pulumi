@@ -152,9 +152,11 @@ class Resource(ObjectType):
     input_properties: dict[str, Property]
     required_inputs: list[str]
     description: Optional[str] = None
+    extends: Optional[str] = None
+    abstract: bool = False
 
     def to_json(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "isComponent": self.is_component,
             "description": self.description,
             "type": self.type.value,
@@ -165,6 +167,11 @@ class Resource(ObjectType):
             "properties": {k: v.to_json() for k, v in self.properties.items()},
             "required": self.required,
         }
+        if self.extends is not None:
+            result["extends"] = {"$ref": self.extends}
+        if self.abstract:
+            result["abstract"] = True
+        return result
 
     @staticmethod
     def from_definition(component: ComponentDefinition) -> "Resource":
@@ -186,6 +193,8 @@ class Resource(ObjectType):
                 [k for k, prop in component.outputs.items() if not prop.optional]
             ),
             description=component.description,
+            extends=component.extends,
+            abstract=component.abstract,
         )
 
 
@@ -258,6 +267,7 @@ class PackageSpec:
     types: dict[str, ComplexType]
     language: dict[str, dict[str, Any]]
     dependencies: Optional[list[PackageDescriptor]]
+    required_features: Optional[list[str]] = None
 
     def to_json(self) -> dict[str, Any]:
         return remove_none(
@@ -270,6 +280,7 @@ class PackageSpec:
                 "types": {k: v.to_json() for k, v in self.types.items()},
                 "language": self.language,
                 "dependencies": [dep.to_json() for dep in self.dependencies or []],
+                "requiredFeatures": self.required_features,
             }
         )
 
@@ -318,6 +329,16 @@ def generate_schema(
 
     for type_name, type in type_definitions.items():
         pkg.types[f"{name}:index:{type_name}"] = ComplexType.from_definition(type)
+
+    # A component that omits inherited members from an external base (an extends ref that is not a local
+    # "#/resources/..." ref) relies on the binder to materialize them, so consumers must understand inheritance.
+    # Declare the feature so old tooling rejects the schema rather than silently dropping those members. Locally
+    # flattened extends refs already carry the full member set and need no marker.
+    if any(
+        c.extends is not None and not c.extends.startswith("#/")
+        for c in components.values()
+    ):
+        pkg.required_features = ["inheritance"]
 
     return pkg
 

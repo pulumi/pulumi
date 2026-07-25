@@ -251,6 +251,7 @@ func NewUpCmd() *cobra.Command {
 			DisableProviderPreview:    env.DisableProviderPreview.Value(),
 			DisableResourceReferences: env.DisableResourceReferences.Value(),
 			DisableOutputValues:       env.DisableOutputValues.Value(),
+			DisableConstructBase:      env.DisableConstructBase.Value(),
 			ShowSecrets:               showSecrets,
 			Targets:                   deploy.NewUrnTargets(targetURNs),
 			Excludes:                  deploy.NewUrnTargets(excludeURNs),

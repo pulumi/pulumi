@@ -75,6 +75,99 @@ describe("Analyzer", function () {
         });
     });
 
+    it("flattens a component that extends a local component", async function () {
+        const dir = path.join(__dirname, "testdata", "component-extends-component");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["Base", "Derived"]));
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            Base: {
+                name: "Base",
+                inputs: {
+                    baseInput: { type: "string", plain: true },
+                },
+                outputs: {
+                    baseOutput: { type: "string" },
+                },
+            },
+            Derived: {
+                name: "Derived",
+                // The derived component's inputs and outputs are flattened to the full member set, and it carries a
+                // local extends ref back to its base.
+                inputs: {
+                    baseInput: { type: "string", plain: true },
+                    derivedInput: { type: "number", plain: true },
+                },
+                outputs: {
+                    baseOutput: { type: "string" },
+                    derivedOutput: { type: "number" },
+                },
+                extends: { $ref: "#/resources/provider:index:Base" },
+            },
+        });
+    });
+
+    it("collects outputs inherited from a base component", async function () {
+        // Regression test for the standing bug where a component extending another component was not recognized and
+        // its inherited outputs were silently dropped.
+        const dir = path.join(__dirname, "testdata", "inherited-outputs");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    input: { type: "string", plain: true },
+                },
+                outputs: {
+                    childOutput: { type: "string" },
+                    baseOutput: { type: "string" },
+                },
+                extends: { $ref: "#/resources/provider:index:BaseComponent" },
+            },
+        });
+    });
+
+    it("emits a sparse external ref for a component that extends a generated component", async function () {
+        const dir = path.join(__dirname, "testdata", "extends-generated");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyService"]));
+        const { components, dependencies } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyService: {
+                name: "MyService",
+                // Only the component's own members are emitted; the base's members live in the base package and are
+                // materialized by the binder.
+                inputs: {
+                    replicas: { type: "number", plain: true },
+                },
+                outputs: {
+                    endpoint: { type: "string" },
+                },
+                extends: {
+                    $ref: "/basecomponent/v1.0.0/schema.json#/resources/basecomponent:index:Service",
+                },
+            },
+        });
+        assert.deepStrictEqual(dependencies, [{ name: "basecomponent", version: "1.0.0" }]);
+    });
+
+    it("marks an abstract component", async function () {
+        const dir = path.join(__dirname, "testdata", "abstract-component");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    input: { type: "string", plain: true },
+                },
+                outputs: {
+                    outResult: { type: "string" },
+                },
+                abstract: true,
+            },
+        });
+    });
+
     it("handles empty args interface", async function () {
         const dir = path.join(__dirname, "testdata", "empty-args");
         const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));

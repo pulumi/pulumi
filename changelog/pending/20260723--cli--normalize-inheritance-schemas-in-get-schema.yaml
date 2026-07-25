@@ -1,0 +1,5 @@
+component: cli
+kind: improvement
+body: Normalize component inheritance schemas to their flattened canonical form in
+  `pulumi package get-schema`
+time: 2026-07-23T16:00:00-07:00

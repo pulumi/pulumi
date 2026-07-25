@@ -841,6 +841,70 @@ func (rm *ResourceMonitor) Call(
 	return outs, deps, nil, nil
 }
 
+// ConstructBaseResource asks the monitor to construct the portion of the registered resource identified by urn
+// that corresponds to the base component type baseType, returning the base's outputs and their dependencies.
+func (rm *ResourceMonitor) ConstructBaseResource(
+	urn resource.URN,
+	baseType tokens.Type,
+	inputs resource.PropertyMap,
+	inputDependencies map[resource.PropertyKey][]resource.URN,
+	provider string,
+	providers map[string]string,
+	version string,
+	packageRef string,
+) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN, error) {
+	mInputs, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepResources:    true,
+		KeepSecrets:      true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mInputDependencies := make(map[string]*pulumirpc.ConstructBaseResourceRequest_PropertyDependencies)
+	for k, p := range inputDependencies {
+		urns := make([]string, len(p))
+		for i, urn := range p {
+			urns[i] = string(urn)
+		}
+		mInputDependencies[string(k)] = &pulumirpc.ConstructBaseResourceRequest_PropertyDependencies{
+			Urns: urns,
+		}
+	}
+
+	resp, err := rm.resmon.ConstructBaseResource(context.Background(), &pulumirpc.ConstructBaseResourceRequest{
+		Urn:               string(urn),
+		BaseType:          string(baseType),
+		Inputs:            mInputs,
+		InputDependencies: mInputDependencies,
+		Provider:          provider,
+		Providers:         providers,
+		Version:           version,
+		PackageRef:        packageRef,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	state, err := rm.unmarshalProperties(resp.State)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	deps := make(map[resource.PropertyKey][]resource.URN)
+	for k, p := range resp.StateDependencies {
+		var urns []resource.URN
+		for _, urn := range p.Urns {
+			urns = append(urns, resource.URN(urn))
+		}
+		deps[resource.PropertyKey(k)] = urns
+	}
+
+	return state, deps, nil
+}
+
 func (rm *ResourceMonitor) RegisterStackTransform(callback *pulumirpc.Callback) error {
 	_, err := rm.resmon.RegisterStackTransform(context.Background(), callback)
 	return err

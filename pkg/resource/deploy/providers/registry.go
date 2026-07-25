@@ -1041,6 +1041,12 @@ func (r *Registry) Construct(context.Context, plugin.ConstructRequest) (plugin.C
 	return plugin.ConstructResult{}, errors.New("provider resources may not be constructed")
 }
 
+func (r *Registry) ConstructBase(
+	context.Context, plugin.ConstructBaseRequest,
+) (plugin.ConstructBaseResponse, error) {
+	return plugin.ConstructBaseResponse{}, errors.New("provider resources may not be constructed")
+}
+
 func (r *Registry) Invoke(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 	// It is the responsibility of the eval source to ensure that we never attempt an invoke using the provider
 	// registry.

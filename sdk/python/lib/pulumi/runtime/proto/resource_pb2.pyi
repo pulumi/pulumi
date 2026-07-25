@@ -59,6 +59,10 @@ class _ResourceMonitorFeatureEnumTypeWrapper(google.protobuf.internal.enum_type_
     """The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
     string bytes signature and a base64 encoding of the string's bytes.
     """
+    RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE: _ResourceMonitorFeature.ValueType  # 14
+    """The monitor supports [](pulumirpc.ResourceMonitor.ConstructBaseResource) for constructing the base-class
+    portions of component resources whose types extend components from other packages.
+    """
 
 class ResourceMonitorFeature(_ResourceMonitorFeature, metaclass=_ResourceMonitorFeatureEnumTypeWrapper):
     """ResourceMonitorFeature is a strongly typed monitor capability identifier.
@@ -83,6 +87,10 @@ RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS: ResourceMonitorFeature.ValueTyp
 RESOURCE_MONITOR_FEATURE_BYTE_STRING: ResourceMonitorFeature.ValueType  # 13
 """The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
 string bytes signature and a base64 encoding of the string's bytes.
+"""
+RESOURCE_MONITOR_FEATURE_CONSTRUCT_BASE: ResourceMonitorFeature.ValueType  # 14
+"""The monitor supports [](pulumirpc.ResourceMonitor.ConstructBaseResource) for constructing the base-class
+portions of component resources whose types extend components from other packages.
 """
 global___ResourceMonitorFeature = ResourceMonitorFeature
 
@@ -1065,6 +1073,226 @@ class ResourceCallRequest(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["accepts_byte_string", b"accepts_byte_string", "argDependencies", b"argDependencies", "args", b"args", "packageRef", b"packageRef", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceCallRequest = ResourceCallRequest
+
+@typing.final
+class ConstructBaseResourceRequest(google.protobuf.message.Message):
+    """`ConstructBaseResourceRequest` is the type of requests sent as part of a
+    [](pulumirpc.ResourceMonitor.ConstructBaseResource) call.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class PropertyDependencies(google.protobuf.message.Message):
+        """`PropertyDependencies` describes the resources that a particular property depends on."""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        URNS_FIELD_NUMBER: builtins.int
+        @property
+        def urns(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+            """A list of URNs this property depends on."""
+
+        def __init__(
+            self,
+            *,
+            urns: collections.abc.Iterable[builtins.str] | None = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["urns", b"urns"]) -> None: ...
+
+    @typing.final
+    class InputDependenciesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        @property
+        def value(self) -> global___ConstructBaseResourceRequest.PropertyDependencies: ...
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: global___ConstructBaseResourceRequest.PropertyDependencies | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    @typing.final
+    class ProvidersEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    @typing.final
+    class PluginChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    URN_FIELD_NUMBER: builtins.int
+    BASE_TYPE_FIELD_NUMBER: builtins.int
+    INPUTS_FIELD_NUMBER: builtins.int
+    INPUT_DEPENDENCIES_FIELD_NUMBER: builtins.int
+    PROVIDER_FIELD_NUMBER: builtins.int
+    PROVIDERS_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    PLUGIN_DOWNLOAD_URL_FIELD_NUMBER: builtins.int
+    PLUGIN_CHECKSUMS_FIELD_NUMBER: builtins.int
+    PACKAGE_REF_FIELD_NUMBER: builtins.int
+    SOURCE_POSITION_FIELD_NUMBER: builtins.int
+    STACK_TRACE_FIELD_NUMBER: builtins.int
+    PARENT_STACK_TRACE_HANDLE_FIELD_NUMBER: builtins.int
+    urn: builtins.str
+    """The URN of the already-registered resource whose base-class portion should be constructed. The resource's
+    type is the most-derived type of the constructor chain.
+    """
+    base_type: builtins.str
+    """The type token of the immediate base component to construct (e.g. `pkgA:index:Foo`). The token's package
+    identifies the provider that serves the request.
+    """
+    provider: builtins.str
+    """An optional explicit provider reference to use for the base package."""
+    version: builtins.str
+    """The version of the base package to use when servicing this request."""
+    plugin_download_url: builtins.str
+    """The optional plugin download URL of the base package to use when servicing this request."""
+    package_ref: builtins.str
+    """An optional reference from RegisterPackageRequest; takes precedence over the version fields above."""
+    parent_stack_trace_handle: builtins.str
+    """the optional parent stack trace handle for the request."""
+    @property
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The inputs to the base component's constructor, as computed by the deriving component's implementation.
+        Values are always sent as rich output values.
+        """
+
+    @property
+    def input_dependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___ConstructBaseResourceRequest.PropertyDependencies]:
+        """A map from input property keys to the dependencies of that input."""
+
+    @property
+    def providers(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """An optional map of package name to provider reference to thread through the base construction."""
+
+    @property
+    def plugin_checksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+        """A map of checksums expected for the base package's provider plugin."""
+
+    @property
+    def source_position(self) -> pulumi.source_pb2.SourcePosition:
+        """the optional source position of the user code that initiated the call."""
+
+    @property
+    def stack_trace(self) -> pulumi.source_pb2.StackTrace:
+        """the optional stack trace at the time of the request."""
+
+    def __init__(
+        self,
+        *,
+        urn: builtins.str = ...,
+        base_type: builtins.str = ...,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        input_dependencies: collections.abc.Mapping[builtins.str, global___ConstructBaseResourceRequest.PropertyDependencies] | None = ...,
+        provider: builtins.str = ...,
+        providers: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        version: builtins.str = ...,
+        plugin_download_url: builtins.str = ...,
+        plugin_checksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        package_ref: builtins.str = ...,
+        source_position: pulumi.source_pb2.SourcePosition | None = ...,
+        stack_trace: pulumi.source_pb2.StackTrace | None = ...,
+        parent_stack_trace_handle: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["inputs", b"inputs", "source_position", b"source_position", "stack_trace", b"stack_trace"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["base_type", b"base_type", "input_dependencies", b"input_dependencies", "inputs", b"inputs", "package_ref", b"package_ref", "parent_stack_trace_handle", b"parent_stack_trace_handle", "plugin_checksums", b"plugin_checksums", "plugin_download_url", b"plugin_download_url", "provider", b"provider", "providers", b"providers", "source_position", b"source_position", "stack_trace", b"stack_trace", "urn", b"urn", "version", b"version"]) -> None: ...
+
+global___ConstructBaseResourceRequest = ConstructBaseResourceRequest
+
+@typing.final
+class ConstructBaseResourceResponse(google.protobuf.message.Message):
+    """`ConstructBaseResourceResponse` is the type of responses to a
+    [](pulumirpc.ResourceMonitor.ConstructBaseResource) call.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class PropertyDependencies(google.protobuf.message.Message):
+        """`PropertyDependencies` describes the resources that a particular property depends on."""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        URNS_FIELD_NUMBER: builtins.int
+        @property
+        def urns(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+            """A list of URNs this property depends on."""
+
+        def __init__(
+            self,
+            *,
+            urns: collections.abc.Iterable[builtins.str] | None = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["urns", b"urns"]) -> None: ...
+
+    @typing.final
+    class StateDependenciesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        @property
+        def value(self) -> global___ConstructBaseResourceResponse.PropertyDependencies: ...
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: global___ConstructBaseResourceResponse.PropertyDependencies | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    STATE_FIELD_NUMBER: builtins.int
+    STATE_DEPENDENCIES_FIELD_NUMBER: builtins.int
+    @property
+    def state(self) -> google.protobuf.struct_pb2.Struct:
+        """The base component's output properties, as rich output values."""
+
+    @property
+    def state_dependencies(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___ConstructBaseResourceResponse.PropertyDependencies]:
+        """A map of property dependencies for the base component's outputs."""
+
+    def __init__(
+        self,
+        *,
+        state: google.protobuf.struct_pb2.Struct | None = ...,
+        state_dependencies: collections.abc.Mapping[builtins.str, global___ConstructBaseResourceResponse.PropertyDependencies] | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["state", b"state"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["state", b"state", "state_dependencies", b"state_dependencies"]) -> None: ...
+
+global___ConstructBaseResourceResponse = ConstructBaseResourceResponse
 
 @typing.final
 class TransformResourceOptions(google.protobuf.message.Message):

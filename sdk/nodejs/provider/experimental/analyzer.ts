@@ -40,6 +40,13 @@ export type ComponentDefinition = {
     description?: string;
     inputs: Record<string, PropertyDefinition>;
     outputs: Record<string, PropertyDefinition>;
+    // extends, when set, is the schema $ref of the base component this component extends. A local ref
+    // ("#/resources/...") means the base lives in this same package and its members are flattened into this
+    // definition; an external ref ("/<pkg>/v.../schema.json#/resources/...") means the base lives in another package
+    // and only this component's own members are emitted (the binder materializes the inherited ones).
+    extends?: { $ref: string };
+    // abstract, when true, marks a component that may not be instantiated directly, only extended.
+    abstract?: boolean;
 };
 
 export type TypeDefinition = {
@@ -299,6 +306,11 @@ Please ensure these components are properly imported to your package's entry poi
     private analyzeComponent(node: typescript.ClassDeclaration): ComponentDefinition {
         const componentName = node.name?.text!;
 
+        // Classify the direct base to decide how this component participates in the schema: a root component
+        // (extends ComponentResource directly), a local subclass (flattened + local extends ref), or a subclass of a
+        // generated component from another package (sparse own-only members + external extends ref + dependency).
+        const base = this.classifyBase(node, componentName);
+
         // We expect exactly 1 constructor, and it must have and 'args'
         // parameter that has an interface type.
         const constructors = node.members.filter((member: typescript.ClassElement) =>
@@ -322,32 +334,44 @@ Please ensure these components are properly imported to your package's entry poi
             throw new Error(`Component '${componentName}' constructor 'args' parameter must be an interface`);
         }
 
+        // For a component extending an external generated base, emit only the inputs declared on this component
+        // (sparse, via the interface's own members); the binder materializes the base's inputs. Otherwise use the
+        // full property set, which includes members inherited through args-interface extension — the flattened form
+        // the schema expects.
+        let argsSymbols: typescript.Symbol[];
+        if (base.kind === "external") {
+            argsSymbols = argsSymbol.members ? symbolTableToSymbols(argsSymbol.members) : [];
+        } else {
+            argsSymbols = args.getProperties();
+        }
         let inputs: Record<string, PropertyDefinition> = {};
-        // Use args.getProperties() instead of argsSymbol.members to include
-        // properties inherited from extended interfaces.
-        const argsProperties = args.getProperties();
-        if (argsProperties.length > 0) {
+        if (argsSymbols.length > 0) {
             inputs = this.analyzeSymbols(
                 { component: componentName, inputOutput: InputOutput.Neither, typeName: argsSymbol.getName() },
-                argsProperties,
+                argsSymbols,
             );
         }
 
-        let outputs: Record<string, PropertyDefinition> = {};
-        const classType = this.checker.getTypeAtLocation(node);
-        const classSymbol = classType.getSymbol();
-        if (classSymbol?.members) {
-            outputs = this.analyzeSymbols(
-                { component: componentName, inputOutput: InputOutput.Output },
-                symbolTableToSymbols(classSymbol.members),
-            );
-        }
+        const outputs = this.collectComponentOutputs(node, componentName);
 
         const definition: ComponentDefinition = {
             name: componentName!,
             inputs: inputs,
             outputs: outputs,
         };
+        if (base.kind !== "root") {
+            definition.extends = { $ref: base.ref };
+        }
+        if (base.kind === "external") {
+            if (
+                !this.dependencies.find((d) => d.name === base.dependency.name && d.version === base.dependency.version)
+            ) {
+                this.dependencies.push(base.dependency);
+            }
+        }
+        if (this.isAbstractClass(node)) {
+            definition.abstract = true;
+        }
 
         const dNode = node as docNode;
         if (dNode.jsDoc && dNode.jsDoc.length > 0) {
@@ -358,21 +382,148 @@ Please ensure these components are properly imported to your package's entry poi
     }
 
     private isPulumiComponent(node: typescript.ClassDeclaration): boolean {
-        if (!node.heritageClauses) {
+        // Walk the full base-class chain (aligning with the runtime prototype walk in provider.ts) so a component
+        // that extends another component — rather than ComponentResource directly — is still recognized.
+        const seen = new Set<typescript.ClassDeclaration>();
+        let current: typescript.ClassDeclaration | undefined = node;
+        while (current && !seen.has(current)) {
+            seen.add(current);
+            const base = this.getExtendsClause(current);
+            if (!base) {
+                return false;
+            }
+            const baseSymbol = this.checker.getTypeAtLocation(base).getSymbol();
+            if (this.isComponentResourceSymbol(baseSymbol)) {
+                return true;
+            }
+            current = this.classDeclarationForSymbol(baseSymbol);
+        }
+        return false;
+    }
+
+    // getExtendsClause returns the `extends` heritage clause's base-type expression, or undefined if the class does
+    // not extend anything. A class extends at most one type, so the extends clause has at most one entry.
+    private getExtendsClause(node: typescript.ClassDeclaration): typescript.ExpressionWithTypeArguments | undefined {
+        const clause = node.heritageClauses?.find((c) => c.token === ts.SyntaxKind.ExtendsKeyword);
+        return clause?.types?.[0];
+    }
+
+    // isComponentResourceSymbol reports whether the symbol is Pulumi's ComponentResource base class, identified by
+    // name and its declaring source file (resource.ts / resource.d.ts) so it is not confused with a user class of the
+    // same name.
+    private isComponentResourceSymbol(symbol: typescript.Symbol | undefined): boolean {
+        if (symbol?.escapedName !== "ComponentResource") {
             return false;
         }
+        const sourceFile = symbol.declarations?.[0]?.getSourceFile();
+        return (
+            sourceFile?.fileName.endsWith("resource.ts") === true ||
+            sourceFile?.fileName.endsWith("resource.d.ts") === true
+        );
+    }
 
-        return node.heritageClauses.some((clause) => {
-            return clause.types.some((clauseNode) => {
-                const type = this.checker.getTypeAtLocation(clauseNode);
-                const symbol = type.getSymbol();
-                const matchesName = symbol?.escapedName === "ComponentResource";
-                const sourceFile = symbol?.declarations?.[0].getSourceFile();
-                const matchesSourceFile =
-                    sourceFile?.fileName.endsWith("resource.ts") || sourceFile?.fileName.endsWith("resource.d.ts");
-                return matchesName && matchesSourceFile;
-            });
-        });
+    // classDeclarationForSymbol resolves a symbol to its class declaration, if it has one. External generated bases
+    // resolve to a declaration in their package's .d.ts file; local bases resolve to a declaration in the project.
+    private classDeclarationForSymbol(symbol: typescript.Symbol | undefined): typescript.ClassDeclaration | undefined {
+        return symbol?.declarations?.find((d) => ts.isClassDeclaration(d)) as typescript.ClassDeclaration | undefined;
+    }
+
+    // isAbstractClass reports whether the class carries the `abstract` modifier.
+    private isAbstractClass(node: typescript.ClassDeclaration): boolean {
+        return node.modifiers?.some((m) => m.kind === ts.SyntaxKind.AbstractKeyword) === true;
+    }
+
+    // classifyBase inspects a component's direct base class to decide how it participates in the schema:
+    //   - root:     extends pulumi.ComponentResource directly; nothing to encode.
+    //   - local:    extends another component declared in this project; members are flattened into this definition
+    //               and a local extends ref ("#/resources/...") is emitted.
+    //   - external: extends a generated component from an installed package (declared under node_modules with a
+    //               static __pulumiType); only this component's own members are emitted (sparse), alongside an
+    //               external extends ref and a dependency entry, and the package is marked requiredFeatures:
+    //               ["inheritance"] at emission.
+    private classifyBase(
+        node: typescript.ClassDeclaration,
+        componentName: string,
+    ): { kind: "root" } | { kind: "local"; ref: string } | { kind: "external"; ref: string; dependency: Dependency } {
+        // isPulumiComponent has already established that the chain reaches ComponentResource, so a component always
+        // has a base type here.
+        const base = this.getExtendsClause(node)!;
+        const baseType = this.checker.getTypeAtLocation(base);
+        const baseSymbol = baseType.getSymbol();
+        if (this.isComponentResourceSymbol(baseSymbol)) {
+            return { kind: "root" };
+        }
+
+        const baseName = baseSymbol?.getName();
+        const baseFile = baseSymbol?.declarations?.[0]?.getSourceFile().fileName ?? "";
+        if (!baseFile.includes("node_modules")) {
+            // A component declared in the user's own project: flatten its members and reference it locally. The base
+            // is emitted as its own component too (it is analyzed independently).
+            return { kind: "local", ref: `#/resources/${this.providerName}:index:${baseName}` };
+        }
+
+        // A generated component from an installed package. Reuse getResourceType to read its __pulumiType and build
+        // the external ref + dependency. Extending a generated class requires the new-codegen __pulumiType marker; a
+        // base SDK generated by an older Pulumi lacks it, so surface a clear "regenerate" error.
+        let resolved: { pulumiType: string; dependency: Dependency };
+        try {
+            resolved = this.getResourceType(
+                { component: componentName, property: baseName!, inputOutput: InputOutput.Neither },
+                baseType,
+            );
+        } catch (err) {
+            throw new Error(
+                `Component '${componentName}' extends '${baseName}' from an installed package, but its Pulumi type ` +
+                    `could not be determined; regenerate your base SDK with a newer Pulumi version. (${err.message})`,
+            );
+        }
+        const ref = `/${resolved.dependency.name}/v${resolved.dependency.version}/schema.json#/resources/${resolved.pulumiType.replace("/", "%2F")}`;
+        return { kind: "external", ref, dependency: resolved.dependency };
+    }
+
+    // collectComponentOutputs gathers a component's output properties: its own declared members plus, when it extends
+    // another component in this same project, that base's members (recursively). It stops at Pulumi's
+    // ComponentResource — so the framework's own members (urn, etc.) are excluded — and at any external generated
+    // base, whose members stay sparse and are materialized by the binder. Nearest-level-wins: a derived member
+    // shadows a base member of the same name. Previously only the class's own members were collected, silently
+    // dropping outputs inherited from a base component.
+    private collectComponentOutputs(
+        node: typescript.ClassDeclaration,
+        componentName: string,
+    ): Record<string, PropertyDefinition> {
+        const symbols: typescript.Symbol[] = [];
+        const seenNames = new Set<string>();
+        const visited = new Set<typescript.ClassDeclaration>();
+        let current: typescript.ClassDeclaration | undefined = node;
+        while (current && !visited.has(current)) {
+            visited.add(current);
+            const classSymbol = this.checker.getTypeAtLocation(current).getSymbol();
+            if (classSymbol?.members) {
+                for (const member of symbolTableToSymbols(classSymbol.members)) {
+                    const name = member.escapedName as string;
+                    if (!seenNames.has(name)) {
+                        seenNames.add(name);
+                        symbols.push(member);
+                    }
+                }
+            }
+            const base = this.getExtendsClause(current);
+            if (!base) {
+                break;
+            }
+            const baseSymbol = this.checker.getTypeAtLocation(base).getSymbol();
+            if (this.isComponentResourceSymbol(baseSymbol)) {
+                break;
+            }
+            const baseDecl = this.classDeclarationForSymbol(baseSymbol);
+            // Stop at an external generated base (declared under node_modules): its members are contributed by the
+            // binder's materialization, keeping this component's emitted members sparse.
+            if (!baseDecl || baseDecl.getSourceFile().fileName.includes("node_modules")) {
+                break;
+            }
+            current = baseDecl;
+        }
+        return this.analyzeSymbols({ component: componentName, inputOutput: InputOutput.Output }, symbols);
     }
 
     private analyzeSymbols(

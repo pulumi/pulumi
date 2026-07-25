@@ -158,6 +158,60 @@ interface CallSite {
 }
 
 /**
+ * {@link AttachBaseResourceOptions} is the internal marker that puts a component
+ * resource into "attach" mode. When present, the resource adopts an existing URN
+ * — the one the engine registered for a more-derived component — instead of
+ * registering a new resource or reading existing state. It is set by the
+ * provider host when serving `ConstructBase`, and is kept off the public
+ * {@link ResourceOptions} surface via a symbol key so that end users never
+ * observe or set it.
+ *
+ * @internal
+ */
+export interface AttachBaseResourceOptions {
+    /**
+     * The URN to adopt. Its type is the most-derived component type token.
+     */
+    urn: URN;
+
+    /**
+     * The most-derived component type token, carried for diagnostics and for
+     * generated component code (which registers with this token). The runtime
+     * attach path itself only needs {@link urn}.
+     */
+    mostDerivedType?: string;
+}
+
+/**
+ * The symbol under which {@link AttachBaseResourceOptions} rides on a resource
+ * options bag. A global-registry symbol so that side-by-side copies of this SDK
+ * agree on the key.
+ *
+ * @internal
+ */
+export const attachBaseResourceKey = Symbol.for("pulumi:attachBaseResource");
+
+/**
+ * Reads the internal attach-mode marker from a resource options bag, if present.
+ *
+ * @internal
+ */
+export function getAttachBaseResource(opts: ResourceOptions | undefined): AttachBaseResourceOptions | undefined {
+    return opts !== undefined ? (opts as any)[attachBaseResourceKey] : undefined;
+}
+
+/**
+ * Threads the internal attach-mode marker onto a resource options bag, so the
+ * component resource constructed from it adopts the given URN. Used by the
+ * provider host when serving `ConstructBase`.
+ *
+ * @internal
+ */
+export function setAttachBaseResource(opts: ResourceOptions, attach: AttachBaseResourceOptions): void {
+    (opts as any)[attachBaseResourceKey] = attach;
+}
+
+/**
  * {@link Resource} represents a class whose CRUD operations are implemented by
  * a provider plugin.
  */
@@ -467,6 +521,10 @@ export abstract class Resource {
             throw new ResourceError("Missing resource name argument (for URN creation)", opts.parent);
         }
 
+        // Capture the internal attach marker before the transformation pass below may
+        // replace the options bag, so the base-adoption dispatch can still see it.
+        const attachBase = getAttachBaseResource(opts);
+
         // Before anything else - if there are transformations registered, invoke them in order to transform the properties and
         // options assigned to this resource.
         const parent = opts.parent || getStackResource();
@@ -582,7 +640,21 @@ export abstract class Resource {
         const stackTrace = Resource.stackTrace(4);
         const sourcePosition = stackTrace.length < 1 ? undefined : stackTrace[0];
 
-        if (opts.urn) {
+        if (attachBase) {
+            // Attach mode: this component already exists as the base portion of a
+            // more-derived component that the engine registered. Adopt its URN
+            // directly — no registration and no `getResource` fetch, since the
+            // resource's state is not finalized mid-deployment (unlike the
+            // `opts.urn` rehydration path below). Its outputs are resolved later
+            // from the `ConstructBase` response by `constructBaseResource`.
+            (this as any).urn = new Output(
+                this,
+                Promise.resolve(attachBase.urn),
+                Promise.resolve(true),
+                Promise.resolve(false),
+                Promise.resolve(this),
+            );
+        } else if (opts.urn) {
             // This is a resource that already exists. Read its state from the engine.
             getResource(this, parent, props, custom, opts.urn);
         } else if (opts.id) {
@@ -1578,8 +1650,13 @@ export class ComponentResource<TData = any> extends Resource {
             false,
             packageRef,
         );
+        const attach = getAttachBaseResource(opts);
         this.__remote = remote;
-        this.__registered = remote || !!opts?.urn;
+        // In attach mode the resource already exists, so `registerOutputs` must be
+        // a no-op (borrowing the rehydration flag); but unlike rehydration we still
+        // run `initialize` so the base component's constructor body executes and its
+        // children parent to the adopted URN.
+        this.__registered = remote || !!opts?.urn || attach !== undefined;
         this.__data =
             remote || opts?.urn
                 ? Promise.resolve(<TData>{})

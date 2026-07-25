@@ -33,6 +33,13 @@ func NewOtherResource(ctx *pulumi.Context,
 	return &resource, nil
 }
 
+// ConstructOtherResourceBase constructs OtherResource as a base of a user-authored derived component. Embed OtherResource in
+// your component and call this after ctx.RegisterComponentResource to run the base construction
+// through the engine and resolve the base outputs onto the embedded struct.
+func ConstructOtherResourceBase(ctx *pulumi.Context, self pulumi.ComponentResource, args *OtherResourceArgs) error {
+	return ctx.ConstructBase(self, "example::OtherResource", args, "", internal.PkgResourceDefaultOpts(nil)...)
+}
+
 type otherResourceArgs struct {
 	Bar []string  `pulumi:"bar"`
 	Foo *Resource `pulumi:"foo"`

@@ -86,6 +86,8 @@ export class ProviderHandshakeResponse extends jspb.Message {
     setSupportsAutonamingConfiguration(value: boolean): ProviderHandshakeResponse;
     getAcceptsByteString(): boolean;
     setAcceptsByteString(value: boolean): ProviderHandshakeResponse;
+    getSupportsConstructBase(): boolean;
+    setSupportsConstructBase(value: boolean): ProviderHandshakeResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeResponse.AsObject;
@@ -104,6 +106,7 @@ export namespace ProviderHandshakeResponse {
         acceptOutputs: boolean,
         supportsAutonamingConfiguration: boolean,
         acceptsByteString: boolean,
+        supportsConstructBase: boolean,
     }
 }
 
@@ -341,6 +344,8 @@ export class ConfigureResponse extends jspb.Message {
     setAcceptoutputs(value: boolean): ConfigureResponse;
     getSupportsAutonamingConfiguration(): boolean;
     setSupportsAutonamingConfiguration(value: boolean): ConfigureResponse;
+    getSupportsConstructBase(): boolean;
+    setSupportsConstructBase(value: boolean): ConfigureResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConfigureResponse.AsObject;
@@ -359,6 +364,7 @@ export namespace ConfigureResponse {
         acceptresources: boolean,
         acceptoutputs: boolean,
         supportsAutonamingConfiguration: boolean,
+        supportsConstructBase: boolean,
     }
 }
 
@@ -1615,6 +1621,158 @@ export namespace ConstructResponse {
         state?: google_protobuf_struct_pb.Struct.AsObject,
 
         statedependenciesMap: Array<[string, ConstructResponse.PropertyDependencies.AsObject]>,
+    }
+
+
+    export class PropertyDependencies extends jspb.Message { 
+        clearUrnsList(): void;
+        getUrnsList(): Array<string>;
+        setUrnsList(value: Array<string>): PropertyDependencies;
+        addUrns(value: string, index?: number): string;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): PropertyDependencies.AsObject;
+        static toObject(includeInstance: boolean, msg: PropertyDependencies): PropertyDependencies.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: PropertyDependencies, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): PropertyDependencies;
+        static deserializeBinaryFromReader(message: PropertyDependencies, reader: jspb.BinaryReader): PropertyDependencies;
+    }
+
+    export namespace PropertyDependencies {
+        export type AsObject = {
+            urnsList: Array<string>,
+        }
+    }
+
+}
+
+export class ConstructBaseRequest extends jspb.Message { 
+    getProject(): string;
+    setProject(value: string): ConstructBaseRequest;
+    getStack(): string;
+    setStack(value: string): ConstructBaseRequest;
+
+    getConfigMap(): jspb.Map<string, string>;
+    clearConfigMap(): void;
+    clearConfigSecretKeysList(): void;
+    getConfigSecretKeysList(): Array<string>;
+    setConfigSecretKeysList(value: Array<string>): ConstructBaseRequest;
+    addConfigSecretKeys(value: string, index?: number): string;
+    getDryRun(): boolean;
+    setDryRun(value: boolean): ConstructBaseRequest;
+    getParallel(): number;
+    setParallel(value: number): ConstructBaseRequest;
+    getMonitorEndpoint(): string;
+    setMonitorEndpoint(value: string): ConstructBaseRequest;
+    getOrganization(): string;
+    setOrganization(value: string): ConstructBaseRequest;
+    getType(): string;
+    setType(value: string): ConstructBaseRequest;
+    getName(): string;
+    setName(value: string): ConstructBaseRequest;
+    getUrn(): string;
+    setUrn(value: string): ConstructBaseRequest;
+    getMostDerivedType(): string;
+    setMostDerivedType(value: string): ConstructBaseRequest;
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): ConstructBaseRequest;
+
+    getInputDependenciesMap(): jspb.Map<string, ConstructBaseRequest.PropertyDependencies>;
+    clearInputDependenciesMap(): void;
+
+    getProvidersMap(): jspb.Map<string, string>;
+    clearProvidersMap(): void;
+    getStackTraceHandle(): string;
+    setStackTraceHandle(value: string): ConstructBaseRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ConstructBaseRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ConstructBaseRequest): ConstructBaseRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ConstructBaseRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ConstructBaseRequest;
+    static deserializeBinaryFromReader(message: ConstructBaseRequest, reader: jspb.BinaryReader): ConstructBaseRequest;
+}
+
+export namespace ConstructBaseRequest {
+    export type AsObject = {
+        project: string,
+        stack: string,
+
+        configMap: Array<[string, string]>,
+        configSecretKeysList: Array<string>,
+        dryRun: boolean,
+        parallel: number,
+        monitorEndpoint: string,
+        organization: string,
+        type: string,
+        name: string,
+        urn: string,
+        mostDerivedType: string,
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+
+        inputDependenciesMap: Array<[string, ConstructBaseRequest.PropertyDependencies.AsObject]>,
+
+        providersMap: Array<[string, string]>,
+        stackTraceHandle: string,
+    }
+
+
+    export class PropertyDependencies extends jspb.Message { 
+        clearUrnsList(): void;
+        getUrnsList(): Array<string>;
+        setUrnsList(value: Array<string>): PropertyDependencies;
+        addUrns(value: string, index?: number): string;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): PropertyDependencies.AsObject;
+        static toObject(includeInstance: boolean, msg: PropertyDependencies): PropertyDependencies.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: PropertyDependencies, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): PropertyDependencies;
+        static deserializeBinaryFromReader(message: PropertyDependencies, reader: jspb.BinaryReader): PropertyDependencies;
+    }
+
+    export namespace PropertyDependencies {
+        export type AsObject = {
+            urnsList: Array<string>,
+        }
+    }
+
+}
+
+export class ConstructBaseResponse extends jspb.Message { 
+
+    hasState(): boolean;
+    clearState(): void;
+    getState(): google_protobuf_struct_pb.Struct | undefined;
+    setState(value?: google_protobuf_struct_pb.Struct): ConstructBaseResponse;
+
+    getStateDependenciesMap(): jspb.Map<string, ConstructBaseResponse.PropertyDependencies>;
+    clearStateDependenciesMap(): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ConstructBaseResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ConstructBaseResponse): ConstructBaseResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ConstructBaseResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ConstructBaseResponse;
+    static deserializeBinaryFromReader(message: ConstructBaseResponse, reader: jspb.BinaryReader): ConstructBaseResponse;
+}
+
+export namespace ConstructBaseResponse {
+    export type AsObject = {
+        state?: google_protobuf_struct_pb.Struct.AsObject,
+
+        stateDependenciesMap: Array<[string, ConstructBaseResponse.PropertyDependencies.AsObject]>,
     }
 
 

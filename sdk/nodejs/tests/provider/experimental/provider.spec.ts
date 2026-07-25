@@ -109,6 +109,27 @@ describe("construct", function () {
         assert.strictEqual(messageValue, "Hello, world!");
     });
 
+    it("rejects a direct construct of an abstract component", async function () {
+        const testDir = path.join(__dirname, "testdata", "abstract-provider-component");
+        const { AbstractComponent } = require(testDir);
+        const provider = new ComponentProvider({
+            components: [AbstractComponent],
+            dirname: testDir,
+            name: "abstract-provider-component",
+        });
+
+        await assert.rejects(
+            () =>
+                provider.construct(
+                    "myInstance",
+                    "abstract-provider-component:index:AbstractComponent",
+                    { message: "world" },
+                    {},
+                ),
+            /type 'abstract-provider-component:index:AbstractComponent' is abstract and cannot be instantiated directly/,
+        );
+    });
+
     it("throws for invalid component type", async function () {
         // Set up a test provider with no components
         const testDir = path.join(__dirname, "testdata", "provider-component");
