@@ -514,13 +514,6 @@ type deleteSnapshotMutation struct {
 	manager *SnapshotManager
 }
 
-// ignoreProtect returns true if the step's deployment is allowed to delete protected
-// resources (i.e. --ignore-protect was set).
-func ignoreProtect(step deploy.Step) bool {
-	deployment := step.Deployment()
-	return deployment != nil && deployment.Opts() != nil && deployment.Opts().IgnoreProtect
-}
-
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	logging.V(9).Infof("SnapshotManager: deleteSnapshotMutation.End(..., %v)", successful)
@@ -531,7 +524,7 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 				!step.Old().Protect ||
 					step.Op() == deploy.OpDiscardReplaced ||
 					step.Op() == deploy.OpDeleteReplaced ||
-					ignoreProtect(step),
+					deploy.IgnoresProtect(step),
 				"Old must be unprotected (got %v) or the operation must be a replace (got %q)",
 				step.Old().Protect, step.Op(),
 			)

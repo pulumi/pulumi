@@ -686,7 +686,13 @@ func (d *Deployment) Diag() diag.Sink                           { return d.ctx.D
 func (d *Deployment) Prev() *Snapshot                           { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*pkgresource.State { return d.olds }
 func (d *Deployment) Source() Source                            { return d.source }
-func (d *Deployment) Opts() *Options                            { return d.opts }
+
+// IgnoresProtect returns true if the step's deployment has been configured to ignore the protect
+// resource option (i.e. --ignore-protect was set), allowing protected resources to be deleted.
+func IgnoresProtect(step Step) bool {
+	d := step.Deployment()
+	return d != nil && d.opts != nil && d.opts.IgnoreProtect
+}
 
 // SameProvider configures a provider from state without changes.
 // If fromCheck is true, the provider was loaded during Check/Diff and we can reuse it.

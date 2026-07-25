@@ -569,7 +569,8 @@ func TestIgnoreProtectDBRChain(t *testing.T) {
 			IgnoreProtect: true,
 		},
 	}
-	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), ignoreProtectOptions, false, p.BackendClient, nil, "2")
+	snap, err = lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, snap), ignoreProtectOptions, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 3)
 }
