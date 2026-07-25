@@ -679,11 +679,11 @@ type deleteSnapshotMutation struct {
 	operationID int64
 }
 
-// forceDeleteProtected returns true if the step's deployment is allowed to delete protected
-// resources (i.e. --force-delete-protected was set).
-func forceDeleteProtected(step deploy.Step) bool {
+// ignoreProtect returns true if the step's deployment is allowed to delete protected
+// resources (i.e. --ignore-protect was set).
+func ignoreProtect(step deploy.Step) bool {
 	deployment := step.Deployment()
-	return deployment != nil && deployment.Opts() != nil && deployment.Opts().ForceDeleteProtected
+	return deployment != nil && deployment.Opts() != nil && deployment.Opts().IgnoreProtect
 }
 
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
@@ -699,7 +699,7 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 			!step.Old().Protect ||
 				step.Op() == deploy.OpDiscardReplaced ||
 				step.Op() == deploy.OpDeleteReplaced ||
-				forceDeleteProtected(step),
+				ignoreProtect(step),
 			"Old must be unprotected (got %v) or the operation must be a replace (got %q)",
 			step.Old().Protect, step.Op(),
 		)

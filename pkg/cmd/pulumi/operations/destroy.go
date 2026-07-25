@@ -92,7 +92,7 @@ func NewDestroyCmd() *cobra.Command {
 	var targetDependents bool
 	var excludeDependents bool
 	var excludeProtected bool
-	var forceDeleteProtected bool
+	var ignoreProtect bool
 	var continueOnError bool
 	var skipPluginPreInstall bool
 
@@ -357,7 +357,7 @@ func NewDestroyCmd() *cobra.Command {
 				DisableOutputValues:       env.DisableOutputValues.Value(),
 				Experimental:              env.Experimental.Value(),
 				ContinueOnError:           continueOnError,
-				ForceDeleteProtected:      forceDeleteProtected,
+				IgnoreProtect:             ignoreProtect,
 				DestroyProgram:            runProgram,
 				SkipPluginPreInstall:      skipPluginPreInstall,
 			}
@@ -460,10 +460,10 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&excludeProtected, "exclude-protected", false, "Do not destroy protected resources."+
 		" Destroy all other resources.")
 	cmd.PersistentFlags().BoolVar(
-		&forceDeleteProtected, "force-delete-protected", false,
-		"Allow protected resources to be destroyed, ignoring their protect option for this operation only. "+
-			"Use with caution: deleted resources cannot be recovered")
-	cmd.MarkFlagsMutuallyExclusive("exclude-protected", "force-delete-protected")
+		&ignoreProtect, "ignore-protect", false,
+		"Ignore the protect resource option for this operation, allowing protected resources to be "+
+			"destroyed. Use with caution: deleted resources cannot be recovered")
+	cmd.MarkFlagsMutuallyExclusive("exclude-protected", "ignore-protect")
 
 	// Currently, we can't mix `--target` and `--exclude`.
 	cmd.MarkFlagsMutuallyExclusive("target", "exclude")

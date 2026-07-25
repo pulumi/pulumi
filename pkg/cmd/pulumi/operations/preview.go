@@ -324,7 +324,7 @@ func NewPreviewCmd() *cobra.Command {
 	var excludeDependents bool
 	var attachDebugger []string
 	var skipPluginPreInstall bool
-	var forceDeleteProtected bool
+	var ignoreProtect bool
 
 	// Flags for Neo.
 	var neoEnabled bool
@@ -549,7 +549,7 @@ func NewPreviewCmd() *cobra.Command {
 					TargetDependents:          targetDependents,
 					Excludes:                  deploy.NewUrnTargets(excludeURNs),
 					ExcludeDependents:         excludeDependents,
-					ForceDeleteProtected:      forceDeleteProtected,
+					IgnoreProtect:             ignoreProtect,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
 					GeneratePlan:         env.Experimental.Value() || planFilePath != "",
@@ -791,8 +791,9 @@ func NewPreviewCmd() *cobra.Command {
 		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
 
 	cmd.PersistentFlags().BoolVar(
-		&forceDeleteProtected, "force-delete-protected", false,
-		"Preview the deletion of protected resources, ignoring their protect option for this operation only")
+		&ignoreProtect, "ignore-protect", false,
+		"Ignore the protect resource option for this operation, previewing the deletion or replacement "+
+			"of protected resources instead of failing")
 
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,

@@ -326,11 +326,11 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 	require.Equal(t, "resB", snap.Resources[2].URN.Name())
 }
 
-// TestForceDeleteProtected tests that a preview and up can delete protected resources when
-// ForceDeleteProtected is set (i.e. the --force-delete-protected flag), and that the flag does not
+// TestIgnoreProtect tests that a preview and up can delete protected resources when
+// IgnoreProtect is set (i.e. the --ignore-protect flag), and that the flag does not
 // modify the protect option of resources that remain in the state.
 // See https://github.com/pulumi/pulumi/issues/9987.
-func TestForceDeleteProtected(t *testing.T) {
+func TestIgnoreProtect(t *testing.T) {
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -374,14 +374,14 @@ func TestForceDeleteProtected(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 4)
 
-	// Now remove both resources from the program and run with ForceDeleteProtected set.
+	// Now remove both resources from the program and run with IgnoreProtect set.
 	creating = false
 	forceOptions := lt.TestUpdateOptions{
 		T:                t,
 		HostF:            hostF,
 		SkipDisplayTests: true,
 		UpdateOptions: engine.UpdateOptions{
-			ForceDeleteProtected: true,
+			IgnoreProtect: true,
 		},
 	}
 
@@ -414,11 +414,11 @@ func TestForceDeleteProtected(t *testing.T) {
 	}
 }
 
-// TestForceDeleteProtectedReplace tests that a protected resource can be replaced when
-// ForceDeleteProtected is set (i.e. the --force-delete-protected flag), and that the resource
+// TestIgnoreProtectReplace tests that a protected resource can be replaced when
+// IgnoreProtect is set (i.e. the --ignore-protect flag), and that the resource
 // remains protected in the state afterwards.
 // See https://github.com/pulumi/pulumi/issues/9987.
-func TestForceDeleteProtectedReplace(t *testing.T) {
+func TestIgnoreProtectReplace(t *testing.T) {
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -471,13 +471,13 @@ func TestForceDeleteProtectedReplace(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "as it is currently marked for protection")
 
-	// Try again with ForceDeleteProtected set, the replace should now succeed.
+	// Try again with IgnoreProtect set, the replace should now succeed.
 	forceOptions := lt.TestUpdateOptions{
 		T:                t,
 		HostF:            hostF,
 		SkipDisplayTests: true,
 		UpdateOptions: engine.UpdateOptions{
-			ForceDeleteProtected: true,
+			IgnoreProtect: true,
 		},
 	}
 	snap, err = lt.TestOp(Update).
@@ -489,11 +489,11 @@ func TestForceDeleteProtectedReplace(t *testing.T) {
 	assert.True(t, snap.Resources[1].Protect)
 }
 
-// TestForceDeleteProtectedDBRChain tests that a protected resource that is part of a
-// delete-before-replace chain can be replaced when ForceDeleteProtected is set
-// (i.e. the --force-delete-protected flag).
+// TestIgnoreProtectDBRChain tests that a protected resource that is part of a
+// delete-before-replace chain can be replaced when IgnoreProtect is set
+// (i.e. the --ignore-protect flag).
 // See https://github.com/pulumi/pulumi/issues/9987.
-func TestForceDeleteProtectedDBRChain(t *testing.T) {
+func TestIgnoreProtectDBRChain(t *testing.T) {
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -560,13 +560,13 @@ func TestForceDeleteProtectedDBRChain(t *testing.T) {
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "as it is currently marked for protection")
 
-	// Try again with ForceDeleteProtected set, the replacement chain should now succeed.
+	// Try again with IgnoreProtect set, the replacement chain should now succeed.
 	forceOptions := lt.TestUpdateOptions{
 		T:                t,
 		HostF:            hostF,
 		SkipDisplayTests: true,
 		UpdateOptions: engine.UpdateOptions{
-			ForceDeleteProtected: true,
+			IgnoreProtect: true,
 		},
 	}
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), forceOptions, false, p.BackendClient, nil, "2")
@@ -574,10 +574,10 @@ func TestForceDeleteProtectedDBRChain(t *testing.T) {
 	require.Len(t, snap.Resources, 3)
 }
 
-// TestForceDeleteProtectedDestroy tests that a destroy can delete protected resources when
-// ForceDeleteProtected is set (i.e. the --force-delete-protected flag).
+// TestIgnoreProtectDestroy tests that a destroy can delete protected resources when
+// IgnoreProtect is set (i.e. the --ignore-protect flag).
 // See https://github.com/pulumi/pulumi/issues/9987.
-func TestForceDeleteProtectedDestroy(t *testing.T) {
+func TestIgnoreProtectDestroy(t *testing.T) {
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -610,18 +610,18 @@ func TestForceDeleteProtectedDestroy(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
 
-	// A destroy without ForceDeleteProtected should error.
+	// A destroy without IgnoreProtect should error.
 	_, err = lt.TestOp(Destroy).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "cannot be deleted")
 
-	// A destroy with ForceDeleteProtected should delete the protected resource.
+	// A destroy with IgnoreProtect should delete the protected resource.
 	forceOptions := lt.TestUpdateOptions{
 		T:                t,
 		HostF:            hostF,
 		SkipDisplayTests: true,
 		UpdateOptions: engine.UpdateOptions{
-			ForceDeleteProtected: true,
+			IgnoreProtect: true,
 		},
 	}
 	snap, err = lt.TestOp(Destroy).

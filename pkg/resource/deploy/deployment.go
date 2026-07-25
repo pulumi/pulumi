@@ -115,9 +115,9 @@ type Options struct {
 	GeneratePlan bool
 	// true if we should continue with the deployment even if a resource operation fails.
 	ContinueOnError bool
-	// true if the deployment is allowed to delete protected resources, ignoring their protect option
-	// for this operation only.
-	ForceDeleteProtected bool
+	// true if the deployment should ignore the protect option on resources, allowing protected
+	// resources to be deleted or replaced. The protect option in the state is left unchanged.
+	IgnoreProtect bool
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
 	Autonamer autonaming.Autonamer
 	// true if the engine should display secrets in diagnostic messages.
