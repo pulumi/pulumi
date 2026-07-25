@@ -376,7 +376,7 @@ func TestIgnoreProtect(t *testing.T) {
 
 	// Now remove both resources from the program and run with IgnoreProtect set.
 	creating = false
-	forceOptions := lt.TestUpdateOptions{
+	ignoreProtectOptions := lt.TestUpdateOptions{
 		T:                t,
 		HostF:            hostF,
 		SkipDisplayTests: true,
@@ -402,12 +402,12 @@ func TestIgnoreProtect(t *testing.T) {
 
 	// Run a preview that will delete both resA and resB.
 	_, err = lt.TestOp(Update).
-		RunStep(p.GetProject(), p.GetTarget(t, snap), forceOptions, true, p.BackendClient, validate, "1")
+		RunStep(p.GetProject(), p.GetTarget(t, snap), ignoreProtectOptions, true, p.BackendClient, validate, "1")
 	require.NoError(t, err)
 
 	// Run an update that will delete both resA and resB.
 	snap, err = lt.TestOp(Update).
-		RunStep(p.GetProject(), p.GetTarget(t, snap), forceOptions, false, p.BackendClient, validate, "2")
+		RunStep(p.GetProject(), p.GetTarget(t, snap), ignoreProtectOptions, false, p.BackendClient, validate, "2")
 	require.NoError(t, err)
 	for _, res := range snap.Resources {
 		assert.NotEqual(t, tokens.Type("pkgA:m:typA"), res.Type)
@@ -472,7 +472,7 @@ func TestIgnoreProtectReplace(t *testing.T) {
 	assert.ErrorContains(t, err, "as it is currently marked for protection")
 
 	// Try again with IgnoreProtect set, the replace should now succeed.
-	forceOptions := lt.TestUpdateOptions{
+	ignoreProtectOptions := lt.TestUpdateOptions{
 		T:                t,
 		HostF:            hostF,
 		SkipDisplayTests: true,
@@ -481,7 +481,7 @@ func TestIgnoreProtectReplace(t *testing.T) {
 		},
 	}
 	snap, err = lt.TestOp(Update).
-		RunStep(p.GetProject(), p.GetTarget(t, snap), forceOptions, false, p.BackendClient, nil, "2")
+		RunStep(p.GetProject(), p.GetTarget(t, snap), ignoreProtectOptions, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "resA", snap.Resources[1].URN.Name())
@@ -561,7 +561,7 @@ func TestIgnoreProtectDBRChain(t *testing.T) {
 	assert.ErrorContains(t, err, "as it is currently marked for protection")
 
 	// Try again with IgnoreProtect set, the replacement chain should now succeed.
-	forceOptions := lt.TestUpdateOptions{
+	ignoreProtectOptions := lt.TestUpdateOptions{
 		T:                t,
 		HostF:            hostF,
 		SkipDisplayTests: true,
@@ -569,7 +569,7 @@ func TestIgnoreProtectDBRChain(t *testing.T) {
 			IgnoreProtect: true,
 		},
 	}
-	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), forceOptions, false, p.BackendClient, nil, "2")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), ignoreProtectOptions, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 3)
 }
@@ -616,7 +616,7 @@ func TestIgnoreProtectDestroy(t *testing.T) {
 	assert.ErrorContains(t, err, "cannot be deleted")
 
 	// A destroy with IgnoreProtect should delete the protected resource.
-	forceOptions := lt.TestUpdateOptions{
+	ignoreProtectOptions := lt.TestUpdateOptions{
 		T:                t,
 		HostF:            hostF,
 		SkipDisplayTests: true,
@@ -625,7 +625,7 @@ func TestIgnoreProtectDestroy(t *testing.T) {
 		},
 	}
 	snap, err = lt.TestOp(Destroy).
-		RunStep(p.GetProject(), p.GetTarget(t, snap), forceOptions, false, p.BackendClient, nil, "2")
+		RunStep(p.GetProject(), p.GetTarget(t, snap), ignoreProtectOptions, false, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 0)
 }
