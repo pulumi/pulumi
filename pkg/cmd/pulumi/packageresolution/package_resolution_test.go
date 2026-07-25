@@ -420,6 +420,54 @@ func TestResolvePackage(t *testing.T) {
 			},
 		},
 		{
+			name: "spec with extensions returns PluginResolution",
+			pluginSpec: workspace.PackageSpec{
+				Source:     "param-pkg",
+				Extensions: []string{"ext-arg1", "ext-arg2"},
+			},
+			workspace: pluginstorage.MockContext{},
+			registryResponse: func() (registry.Registry, error) {
+				meta := apitype.PackageMetadata{
+					Name:              "param-pkg",
+					Publisher:         "pulumi",
+					Source:            "pulumi",
+					Version:           semver.Version{Major: 1, Minor: 0, Patch: 0},
+					PluginDownloadURL: "https://example.com/param-pkg",
+				}
+				return registry.Mock{
+					GetPackageF: func(
+						ctx context.Context, source, publisher, name string, version *semver.Version,
+					) (apitype.PackageMetadata, error) {
+						if source == "pulumi" && publisher == "pulumi" && name == "param-pkg" {
+							return meta, nil
+						}
+						return apitype.PackageMetadata{}, registry.ErrNotFound
+					},
+					ListPackagesF: func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
+						return func(yield func(apitype.PackageMetadata, error) bool) {
+							yield(meta, nil)
+						}
+					},
+				}, nil
+			},
+			expected: PluginResolution{
+				Spec: workspace.PackageSpec{
+					Source:     "pulumi/pulumi/param-pkg",
+					Version:    "1.0.0",
+					Extensions: []string{"ext-arg1", "ext-arg2"},
+				},
+				Pkg: workspace.UnresolvedPackageDescriptor{
+					PluginDescriptor: workspace.PluginDescriptor{
+						Name:              "param-pkg",
+						Kind:              apitype.ResourcePlugin,
+						Version:           &semver.Version{Major: 1, Minor: 0, Patch: 0},
+						PluginDownloadURL: "https://example.com/param-pkg",
+					},
+					ParameterizationArgs: []string{"ext-arg1", "ext-arg2"},
+				},
+			},
+		},
+		{
 			name: "spec with parameters + metadata with parameterization returns error",
 			pluginSpec: workspace.PackageSpec{
 				Source:     "already-param-pkg",

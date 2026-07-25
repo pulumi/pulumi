@@ -1,6 +1,0 @@
-component: programgen
-kind: improvement
-body: Support `onError` resource hooks in generated Go, NodeJS, and Python programs and in the PCL runtime, retrying the failed operation when the hook command exits successfully
-time: 2026-07-09T10:01:00.000000+02:00
-custom:
-    PR: "23839"

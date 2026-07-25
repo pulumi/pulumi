@@ -98,9 +98,10 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	// provider directly), so the command trees diverge here.
 	if pc.stateless {
 		cmd.AddCommand(pc.newStatelessResourceCreateCommand(res))
+		cmd.AddCommand(pc.newStatelessResourceUpsertCommand(res))
 	} else {
 		cmd.AddCommand(pc.newStatefulResourceCreateCommand(res))
-		cmd.AddCommand(pc.newResourceUpsertCommand(res))
+		cmd.AddCommand(pc.newStatefulResourceUpsertCommand(res))
 	}
 	cmd.AddCommand(pc.newResourceReadCommand(res))
 	cmd.AddCommand(pc.newResourcePatchCommand(res))
@@ -156,9 +157,7 @@ func (pc *packageCommand) newStatelessResourceCreateCommand(res *schema.Resource
 				return err
 			}
 			ctx := cmd.Context()
-			urn := resourceURN(res)
-			var checked resource.PropertyMap
-			prepare := func() (*pkgresource.State, error) {
+			return pc.runStatelessCreate(cmd, res, yes, func() (resource.PropertyMap, error) {
 				if err := pc.configureProvider(cmd, ctx); err != nil {
 					return nil, err
 				}
@@ -169,54 +168,8 @@ func (pc *packageCommand) newStatelessResourceCreateCommand(res *schema.Resource
 				if err != nil {
 					return nil, fmt.Errorf("parse input file: %w", err)
 				}
-				checked, err = pc.checkResourceInputs(ctx, urn, res, nil, inputs)
-				if err != nil {
-					return nil, err
-				}
-				return operationState(urn, "", checked, nil), nil
-			}
-			create := func() (*pkgresource.State, error) {
-				response, err := pc.provider.Create(ctx, plugin.CreateRequest{
-					URN:        urn,
-					Name:       urn.Name(),
-					Type:       urn.Type(),
-					Properties: checked,
-					Preview:    pc.dryrun,
-				})
-				if err != nil {
-					return nil, err
-				}
-				id := response.ID
-				if id == "" {
-					id = resource.ID("[unknown]")
-				}
-				return resultState(urn, id, nil, response.Properties, res), nil
-			}
-			if pc.dryrun {
-				return pc.runDisplayedStep(cmd, displayedStep{
-					Op:  deploy.OpCreate,
-					New: operationState(urn, "", nil, nil),
-				}, func() (*pkgresource.State, error) {
-					if _, err := prepare(); err != nil {
-						return nil, err
-					}
-					return create()
-				})
-			}
-			if err := pc.runDisplayedStep(cmd, displayedStep{
-				Op:      deploy.OpCreate,
-				New:     operationState(urn, "", nil, nil),
-				Preview: true,
-			}, prepare); err != nil {
-				return err
-			}
-			if err := pc.confirm(cmd, "", "create", yes); err != nil {
-				return err
-			}
-			return pc.runDisplayedStep(cmd, displayedStep{
-				Op:  deploy.OpCreate,
-				New: operationState(urn, "", checked, nil),
-			}, create)
+				return inputs, nil
+			})
 		},
 	}
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
@@ -224,6 +177,68 @@ func (pc *packageCommand) newStatelessResourceCreateCommand(res *schema.Resource
 		"Automatically approve and perform the operation without a confirmation prompt")
 	addInputFlags(cmd, "input", res.InputProperties)
 	return cmd
+}
+
+func (pc *packageCommand) runStatelessCreate(
+	cmd *cobra.Command, res *schema.Resource, yes bool,
+	prepareInputs func() (resource.PropertyMap, error),
+) error {
+	ctx := cmd.Context()
+	urn := resourceURN(res)
+	var checked resource.PropertyMap
+	prepare := func() (*pkgresource.State, error) {
+		inputs, err := prepareInputs()
+		if err != nil {
+			return nil, err
+		}
+		checked, err = pc.checkResourceInputs(ctx, urn, res, nil, inputs)
+		if err != nil {
+			return nil, err
+		}
+		return operationState(urn, "", checked, nil), nil
+	}
+	create := func() (*pkgresource.State, error) {
+		response, err := pc.provider.Create(ctx, plugin.CreateRequest{
+			URN:        urn,
+			Name:       urn.Name(),
+			Type:       urn.Type(),
+			Properties: checked,
+			Preview:    pc.dryrun,
+		})
+		if err != nil {
+			return nil, err
+		}
+		id := response.ID
+		if id == "" {
+			id = resource.ID("[unknown]")
+		}
+		return resultState(urn, id, nil, response.Properties, res), nil
+	}
+	if pc.dryrun {
+		return pc.runDisplayedStep(cmd, displayedStep{
+			Op:  deploy.OpCreate,
+			New: operationState(urn, "", nil, nil),
+		}, func() (*pkgresource.State, error) {
+			if _, err := prepare(); err != nil {
+				return nil, err
+			}
+			return create()
+		})
+	}
+	if err := pc.runDisplayedStep(cmd, displayedStep{
+		Op:      deploy.OpCreate,
+		New:     operationState(urn, "", nil, nil),
+		Preview: true,
+	}, prepare); err != nil {
+		return err
+	}
+	if err := pc.confirm(cmd, "", "create", yes); err != nil {
+		return err
+	}
+	return pc.runDisplayedStep(cmd, displayedStep{
+		Op:  deploy.OpCreate,
+		New: operationState(urn, "", checked, nil),
+	}, create)
 }
 
 func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Command {
@@ -310,54 +325,9 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 				return fmt.Errorf("parse input file: %w", err)
 			}
 
-			oldInputs := read.Inputs
-			newInputs := oldInputs.Copy()
+			newInputs := read.Inputs.Copy()
 			maps.Copy(newInputs, patch)
-			checked, err := pc.checkResourceInputs(ctx, urn, res, oldInputs, newInputs)
-			if err != nil {
-				return err
-			}
-
-			diff, err := pc.provider.Diff(ctx, plugin.DiffRequest{
-				URN:        urn,
-				Name:       urn.Name(),
-				Type:       urn.Type(),
-				ID:         id,
-				OldInputs:  oldInputs,
-				OldOutputs: read.Outputs,
-				NewInputs:  checked,
-			})
-			if err != nil {
-				return fmt.Errorf("diff: %w", err)
-			}
-			summary := formatPatchSummary(
-				res, id, oldInputs, checked, diff, pc.showSecrets, cmdutil.GetGlobalColorization())
-			if err := pc.confirm(cmd, summary, "patch", yes); err != nil {
-				return err
-			}
-
-			return pc.runDisplayedStep(cmd, displayedStep{
-				Op:           deploy.OpUpdate,
-				Old:          operationState(urn, id, oldInputs, read.Outputs),
-				New:          operationState(urn, id, checked, nil),
-				Diffs:        diff.ChangedKeys,
-				DetailedDiff: diff.DetailedDiff,
-			}, func() (*pkgresource.State, error) {
-				response, err := pc.provider.Update(ctx, plugin.UpdateRequest{
-					URN:        urn,
-					Name:       urn.Name(),
-					Type:       urn.Type(),
-					ID:         id,
-					OldInputs:  oldInputs,
-					OldOutputs: read.Outputs,
-					NewInputs:  checked,
-					Preview:    pc.dryrun,
-				})
-				if err != nil {
-					return nil, err
-				}
-				return resultState(urn, id, checked, response.Properties, res), nil
-			})
+			return pc.runStatelessUpdate(cmd, res, id, read, newInputs, "patch", yes)
 		},
 	}
 	cmd.Flags().StringVar(&inputFormat, "input", "yaml", "Format of the configuration files")
@@ -366,6 +336,60 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 		"Automatically approve and perform the operation without a confirmation prompt")
 	addInputFlags(cmd, "input", res.InputProperties)
 	return cmd
+}
+
+func (pc *packageCommand) runStatelessUpdate(
+	cmd *cobra.Command, res *schema.Resource, id resource.ID,
+	read plugin.ReadResponse, newInputs resource.PropertyMap, operation string, yes bool,
+) error {
+	ctx := cmd.Context()
+	urn := resourceURN(res)
+	oldInputs := read.Inputs
+	checked, err := pc.checkResourceInputs(ctx, urn, res, oldInputs, newInputs)
+	if err != nil {
+		return err
+	}
+
+	diff, err := pc.provider.Diff(ctx, plugin.DiffRequest{
+		URN:        urn,
+		Name:       urn.Name(),
+		Type:       urn.Type(),
+		ID:         id,
+		OldInputs:  oldInputs,
+		OldOutputs: read.Outputs,
+		NewInputs:  checked,
+	})
+	if err != nil {
+		return fmt.Errorf("diff: %w", err)
+	}
+	summary := formatPatchSummary(
+		res, id, oldInputs, checked, diff, pc.showSecrets, cmdutil.GetGlobalColorization())
+	if err := pc.confirm(cmd, summary, operation, yes); err != nil {
+		return err
+	}
+
+	return pc.runDisplayedStep(cmd, displayedStep{
+		Op:           deploy.OpUpdate,
+		Old:          operationState(urn, id, oldInputs, read.Outputs),
+		New:          operationState(urn, id, checked, nil),
+		Diffs:        diff.ChangedKeys,
+		DetailedDiff: diff.DetailedDiff,
+	}, func() (*pkgresource.State, error) {
+		response, err := pc.provider.Update(ctx, plugin.UpdateRequest{
+			URN:        urn,
+			Name:       urn.Name(),
+			Type:       urn.Type(),
+			ID:         id,
+			OldInputs:  oldInputs,
+			OldOutputs: read.Outputs,
+			NewInputs:  checked,
+			Preview:    pc.dryrun,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return resultState(urn, id, checked, response.Properties, res), nil
+	})
 }
 
 func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.Command {

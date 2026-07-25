@@ -496,6 +496,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		KeepSecrets:      rm.supportsSecrets,
 		KeepResources:    rm.supportsResourceReferences,
 		KeepOutputValues: opts.Remote,
+		KeepByteString:   true,
 	})
 	if err != nil {
 		return nil, err
@@ -589,6 +590,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		IgnoreChanges:              opts.IgnoreChanges,
 		AcceptSecrets:              !opts.DisableSecrets,
 		AcceptResources:            !opts.DisableResourceReferences,
+		AcceptsByteString:          true,
 		Version:                    opts.Version,
 		AliasURNs:                  aliasStrings,
 		ImportId:                   string(opts.ImportID),

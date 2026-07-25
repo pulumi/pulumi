@@ -1793,3 +1793,75 @@ func TestResourceHookBeforeCreateErrorIgnoreErrors(t *testing.T) {
 	require.Equal(t, snap.Resources[0].URN.Name(), "default")
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
 }
+
+// Test that strings containing non-UTF8 bytes flow losslessly to resource hooks: the engine sends
+// them to the hook callback with the byte string encoding because the callback advertises
+// accepts_byte_string.
+func TestResourceHookByteString(t *testing.T) {
+	t.Parallel()
+
+	const rawBytes = "\x00hello \x80\xfe\xff world\xf0\x28"
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hookCalled := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		) error {
+			hookCalled = true
+			require.Equal(t, resource.PropertyMap{
+				"foo": resource.NewProperty(rawBytes),
+			}, newInputs)
+			require.Equal(t, resource.PropertyMap{
+				"foo": resource.NewProperty(rawBytes),
+			}, newOutputs)
+			return nil
+		}
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewProperty(rawBytes),
+			},
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				AfterCreate: []*deploytest.ResourceHook{myHook},
+			},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	p.Steps = []lt.TestStep{{Op: Update}}
+	snap := p.Run(t, nil)
+
+	require.True(t, hookCalled)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, resource.PropertyMap{
+		"foo": resource.NewProperty(rawBytes),
+	}, snap.Resources[1].Outputs)
+}

@@ -117,6 +117,9 @@ type pluginProtocol struct {
 
 	// True if this plugin supports custom autonaming configuration.
 	supportsAutonamingConfiguration bool
+
+	// True if this plugin accepts strings containing bytes that are not valid UTF-8.
+	acceptsByteString bool
 }
 
 // pluginConfig holds the configuration of the provider
@@ -209,6 +212,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				MapperTarget:                mapperAddr,
 				LoaderTarget:                loaderAddr,
 				ResolverTarget:              resolverAddr,
+				AcceptsByteString:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -275,6 +279,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				MapperTarget:                mapperAddr,
 				LoaderTarget:                loaderAddr,
 				ResolverTarget:              resolverAddr,
+				AcceptsByteString:           true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -315,6 +320,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			supportsPreview:                 true,
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
+			acceptsByteString:               handshakeRes.AcceptsByteString,
 		}
 	}
 
@@ -375,6 +381,7 @@ func handshake(
 		MapperTarget:                req.MapperTarget,
 		LoaderTarget:                req.LoaderTarget,
 		ResolverTarget:              req.ResolverTarget,
+		AcceptsByteString:           req.AcceptsByteString,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -392,6 +399,7 @@ func handshake(
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		AcceptsByteString:               res.GetAcceptsByteString(),
 	}, nil
 }
 
@@ -439,6 +447,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			MapperTarget:                mapperAddr,
 			LoaderTarget:                loaderAddr,
 			ResolverTarget:              resolverAddr,
+			AcceptsByteString:           true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -470,6 +479,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			supportsPreview:                 true,
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
+			acceptsByteString:               handshakeRes.AcceptsByteString,
 		}
 	}
 
@@ -569,9 +579,21 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		MapperTarget:                req.MapperTarget,
 		LoaderTarget:                req.LoaderTarget,
 		ResolverTarget:              req.ResolverTarget,
+		AcceptsByteString:           req.AcceptsByteString,
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Handshaking is how capabilities are negotiated, so record the provider's answers just as we do when
+	// handshaking at plugin spawn time.
+	p.protocol = &pluginProtocol{
+		acceptSecrets:                   res.GetAcceptSecrets(),
+		acceptResources:                 res.GetAcceptResources(),
+		supportsPreview:                 true,
+		acceptOutputs:                   res.GetAcceptOutputs(),
+		supportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		acceptsByteString:               res.GetAcceptsByteString(),
 	}
 
 	return &ProviderHandshakeResponse{
@@ -579,6 +601,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		AcceptResources:                 res.GetAcceptResources(),
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
+		AcceptsByteString:               res.GetAcceptsByteString(),
 	}, nil
 }
 
@@ -1117,6 +1140,8 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 		}
 
 		if p.protocol == nil {
+			// Byte string support is negotiated only at handshake time; providers that did not
+			// handshake never receive such values.
 			p.protocol = &pluginProtocol{
 				acceptSecrets:                   resp.GetAcceptSecrets(),
 				acceptResources:                 resp.GetAcceptResources(),
@@ -1160,10 +1185,11 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	}
 
 	molds, err := MarshalProperties(req.Olds, MarshalOptions{
-		Label:         label + ".olds",
-		KeepUnknowns:  req.AllowUnknowns,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
+		Label:          label + ".olds",
+		KeepUnknowns:   req.AllowUnknowns,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
 		// Technically, olds can be nil and we ought to be able to send it as nil so that provivders could distinguish
 		// between no old state (as in the case of create) vs the old state being empty (an unlikely but possible
 		// scenario for a resource with no set inputs). However, we have been unconditionally forcing this to empty
@@ -1175,11 +1201,12 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		return CheckResponse{}, err
 	}
 	mnews, err := MarshalProperties(req.News, MarshalOptions{
-		Label:         label + ".news",
-		KeepUnknowns:  req.AllowUnknowns,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".news",
+		KeepUnknowns:   req.AllowUnknowns,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -1289,6 +1316,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1301,6 +1329,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1313,6 +1342,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		KeepUnknowns:       req.AllowUnknowns,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1413,11 +1443,12 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	contract.Assertf(pcfg.known, "Create cannot be called if the configuration is unknown")
 
 	mprops, err := MarshalProperties(req.Properties, MarshalOptions{
-		Label:         label + ".inputs",
-		KeepUnknowns:  req.Preview,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".inputs",
+		KeepUnknowns:   req.Preview,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return CreateResponse{}, err
@@ -1524,6 +1555,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 			ElideAssetContents: true,
 			KeepSecrets:        protocol.acceptSecrets,
 			KeepResources:      protocol.acceptResources,
+			KeepByteString:     protocol.acceptsByteString,
 			PropagateNil:       true,
 		})
 		if err != nil {
@@ -1536,6 +1568,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1543,10 +1576,11 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	}
 
 	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:         label,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1689,6 +1723,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1699,27 +1734,30 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
 	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
-		Label:         label + ".newInputs",
-		KeepUnknowns:  req.Preview,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".newInputs",
+		KeepUnknowns:   req.Preview,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
 
 	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:         label + ".oldViews",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".oldViews",
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1816,6 +1854,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1827,6 +1866,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		ElideAssetContents: true,
 		KeepSecrets:        protocol.acceptSecrets,
 		KeepResources:      protocol.acceptResources,
+		KeepByteString:     protocol.acceptsByteString,
 		PropagateNil:       true,
 	})
 	if err != nil {
@@ -1834,10 +1874,11 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	}
 
 	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:         label + ".oldViews",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".oldViews",
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1881,10 +1922,11 @@ func (p *provider) List(ctx context.Context, req ListRequest) (*ListStream, erro
 	}
 
 	query, err := MarshalProperties(req.Query, MarshalOptions{
-		Label:         label + ".query",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".query",
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return nil, err
@@ -1994,10 +2036,11 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 
 	// Marshal the input properties.
 	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
-		Label:         label + ".inputs",
-		KeepUnknowns:  true,
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
+		Label:          label + ".inputs",
+		KeepUnknowns:   true,
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: protocol.acceptOutputs,
@@ -2192,10 +2235,11 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	}
 
 	margs, err := MarshalProperties(req.Args, MarshalOptions{
-		Label:         label + ".args",
-		KeepSecrets:   protocol.acceptSecrets,
-		KeepResources: protocol.acceptResources,
-		PropagateNil:  true,
+		Label:          label + ".args",
+		KeepSecrets:    protocol.acceptSecrets,
+		KeepResources:  protocol.acceptResources,
+		KeepByteString: protocol.acceptsByteString,
+		PropagateNil:   true,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
@@ -2266,10 +2310,11 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	}
 
 	margs, err := MarshalProperties(req.Args, MarshalOptions{
-		Label:         label + ".args",
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		Label:          label + ".args",
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: protocol.acceptsByteString,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
 		KeepOutputValues: protocol.acceptOutputs,

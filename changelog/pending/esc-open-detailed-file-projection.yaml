@@ -1,0 +1,6 @@
+component: cli
+kind: feat
+body: Project files to disk and surface their paths as environment variables for all output formats when opening an ESC environment
+time: 2026-07-20T00:00:00.000000+00:00
+custom:
+  PR: "23993"

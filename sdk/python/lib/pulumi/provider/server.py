@@ -594,9 +594,8 @@ def _create_provider_resource(ref: str) -> ProviderResource:
     urn_parts = pulumi.urn._parse_urn(urn)
     resource_package = rpc.get_resource_package(urn_parts.typ_name, version="")
     if resource_package is not None:
-        return cast(
-            ProviderResource,
-            resource_package.construct_provider(urn_parts.urn_name, urn_parts.typ, urn),
+        return resource_package.construct_provider(
+            urn_parts.urn_name, urn_parts.typ, urn
         )
 
     return DependencyProviderResource(ref)

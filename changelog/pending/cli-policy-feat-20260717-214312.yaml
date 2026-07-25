@@ -1,4 +1,0 @@
-component: cli/policy
-kind: feat
-body: Add `--runtime-options` to `pulumi policy new`
-time: 2026-07-17T21:43:12.954891+02:00

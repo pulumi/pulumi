@@ -1,6 +1,0 @@
-component: protobuf
-kind: improvement
-body: Allow state converters to declare explicit providers as resources in ConvertState responses and attach imported resources to them via the new provider field
-time: 2026-07-14T17:01:29.39759+02:00
-custom:
-    PR: "23975"

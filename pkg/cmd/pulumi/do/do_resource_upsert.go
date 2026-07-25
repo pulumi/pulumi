@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -78,7 +79,7 @@ type RunStatefulUpdateFunc func(
 	ctx context.Context, flags *pflag.FlagSet, req StatefulUpdateRequest,
 ) (*StatefulUpdateResult, error)
 
-func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.Command {
+func (pc *packageCommand) newStatefulResourceUpsertCommand(res *schema.Resource) *cobra.Command {
 	var inputFile string
 	var inputFormat string
 	var yes bool
@@ -104,6 +105,67 @@ func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.
 		},
 	}
 	addStatefulSnippetUpdateFlags(cmd, &inputFile, &inputFormat, &yes, res.InputProperties)
+	return cmd
+}
+
+func (pc *packageCommand) newStatelessResourceUpsertCommand(res *schema.Resource) *cobra.Command {
+	var inputFile string
+	var inputFormat string
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "upsert <id>",
+		Short: "Create a resource or fully update an existing one",
+		Long: "Create a resource or fully update an existing one.\n\n" +
+			"Reads the resource with the given ID: if it exists, its inputs are fully " +
+			"replaced with the given inputs (unlike `patch`, which merges them into the " +
+			"existing inputs); otherwise a new resource is created, with an ID assigned " +
+			"by the provider.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			contract.Assertf(pc.stateless, "stateless upsert should not be registered in stateful mode")
+			if err := pc.requireYesIfNonInteractive(yes); err != nil {
+				return err
+			}
+			ctx := cmd.Context()
+			if err := pc.configureProvider(cmd, ctx); err != nil {
+				return err
+			}
+			urn := resourceURN(res)
+			id := resource.ID(args[0])
+			read, err := pc.provider.Read(ctx, plugin.ReadRequest{
+				URN:    urn,
+				Name:   urn.Name(),
+				Type:   urn.Type(),
+				ID:     id,
+				Inputs: resource.PropertyMap{},
+				State:  resource.PropertyMap{},
+			})
+			if err != nil {
+				return err
+			}
+			inputs, err := evaluateResourceFile(
+				ctx, inputFile, "input", inputFormat, res, pc.evalContext(),
+				pc.converter, pc.loaderTarget, pc.packageDescriptor,
+				collectInputFlags(cmd, "input", res.InputProperties))
+			if err != nil {
+				return fmt.Errorf("parse input file: %w", err)
+			}
+			if read.Outputs == nil {
+				return pc.runStatelessCreate(cmd, res, yes, func() (resource.PropertyMap, error) {
+					return inputs, nil
+				})
+			}
+			if read.ID != "" {
+				id = read.ID
+			}
+			return pc.runStatelessUpdate(cmd, res, id, read, inputs, "update", yes)
+		},
+	}
+	cmd.Flags().StringVar(&inputFormat, "input", "yaml", "Format of the resource inputs file")
+	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
+	cmd.Flags().BoolVar(&yes, "yes", false,
+		"Automatically approve and perform the operation without a confirmation prompt")
+	addInputFlags(cmd, "input", res.InputProperties)
 	return cmd
 }
 

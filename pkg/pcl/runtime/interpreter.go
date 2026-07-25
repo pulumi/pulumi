@@ -150,6 +150,9 @@ func (s *pclCallbackServer) RegisterCallback(
 	return &pulumirpc.Callback{
 		Token:  uuidString,
 		Target: "127.0.0.1:" + strconv.Itoa(s.handle.Port),
+		// PCL decodes strings containing non-UTF8 bytes losslessly, so the engine may send them to callbacks
+		// hosted here.
+		AcceptsByteString: true,
 	}, nil
 }
 
@@ -431,9 +434,10 @@ func (i *Interpreter) getResource(ctx context.Context, ref resource.ResourceRefe
 	contract.AssertNoErrorf(err, "failed to create structpb for resource reference")
 
 	resp, err := i.monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
-		Tok:             "pulumi:pulumi:getResource",
-		Args:            args,
-		AcceptResources: true,
+		Tok:               "pulumi:pulumi:getResource",
+		Args:              args,
+		AcceptResources:   true,
+		AcceptsByteString: true,
 	})
 	if err != nil {
 		return resource.PropertyMap{}, fmt.Errorf("invoke getResource for %s: %w", ref.URN, err)
@@ -1321,9 +1325,10 @@ func (i *Interpreter) registerResourceWith(
 	}
 
 	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: true,
 	}
 	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
 	if err != nil {
@@ -1359,6 +1364,7 @@ func (i *Interpreter) registerResourceWith(
 		Dependencies:            dependencies,
 		AcceptSecrets:           true,
 		AcceptResources:         true,
+		AcceptsByteString:       true,
 		SupportsResultReporting: true,
 		SnippetId:               i.snippetID,
 	}
@@ -1970,7 +1976,13 @@ func (i *Interpreter) registerResourceWith(
 		return cty.NilVal, err
 	}
 
-	outputs["id"] = resource.NewProperty(resp.GetId())
+	// During previews a created resource has no ID yet; represent it as unknown
+	// rather than a known empty string so it can't be observed as a real value.
+	if id := resp.GetId(); id == "" && i.info.DryRun {
+		outputs["id"] = resource.MakeComputed(resource.NewProperty(""))
+	} else {
+		outputs["id"] = resource.NewProperty(id)
+	}
 	outputs["urn"] = resource.NewProperty(resp.GetUrn())
 	outputs["__name"] = resource.NewProperty(request.Name)
 	outputs["__type"] = resource.NewProperty(request.Type)
@@ -2004,9 +2016,10 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	}
 
 	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: true,
 	}
 	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
 	if err != nil {
@@ -2040,6 +2053,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		Dependencies:         dependencies,
 		AcceptSecrets:        true,
 		AcceptResources:      true,
+		AcceptsByteString:    true,
 		Parent:               i.stackURN,
 		SnippetId:            i.snippetID,
 	}
@@ -2176,9 +2190,10 @@ func (i *Interpreter) registerStackOutputs(ctx context.Context, outputs resource
 		outputs[key] = collapseResourceReferences(val)
 	}
 	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: true,
 	}
 	obj, err := plugin.MarshalProperties(outputs, marshalOpts)
 	if err != nil {

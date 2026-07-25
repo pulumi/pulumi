@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
 import pytest_asyncio
 
 import pulumi
@@ -28,7 +27,6 @@ def compare_stack_ref_output(
 
 
 @pulumi.runtime.test
-@pytest.mark.asyncio
 async def test_stack_reference_output_details(simple_mock):
     ref = StackReference("ref")
 

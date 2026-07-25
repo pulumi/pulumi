@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -94,6 +95,83 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 
 	err = analyzer.Close()
 	require.NoError(t, err)
+}
+
+// TestAnalyzerSpawnBinary verifies that NewPolicyAnalyzer can launch an analyzer plugin
+// that is provided as a bare executable binary (no PulumiPolicy.yaml alongside it), mirroring
+// the behavior of NewProvider.
+func TestAnalyzerSpawnBinary(t *testing.T) {
+	t.Parallel()
+
+	d := diagtest.LogSink(t)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, h.Close()) }()
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
+
+	// Build a tiny go program that exits with a non-zero code; we only need to prove that
+	// NewPolicyAnalyzer actually executed the binary (rather than failing while looking for
+	// a PulumiPolicy.yaml).
+	tmp := t.TempDir()
+	err = os.WriteFile(filepath.Join(tmp, "main.go"), []byte(`
+	package main
+	import "os"
+
+	func main() {
+		os.Exit(1)
+	}
+	`), 0o600)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(`
+	module test-analyzer-exit
+	go 1.24
+	`), 0o600)
+	require.NoError(t, err)
+
+	bin := "test-analyzer-exit"
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
+	cmd := exec.Command("go", "build", "-o", bin, ".")
+	cmd.Dir = tmp
+	stdout, err := cmd.CombinedOutput()
+	t.Log(string(stdout))
+	require.NoError(t, err)
+
+	_, err = plugin.NewPolicyAnalyzer(ctx.Host, ctx, "binary-analyzer", filepath.Join(tmp, bin), nil, nil)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "exit status 1")
+}
+
+// TestAnalyzerBinaryVersionFromYaml verifies that when a binary analyzer plugin ships alongside a
+// PulumiPolicy.yaml, GetAnalyzerInfo reports the version from the yaml rather than the version the
+// plugin returns over the wire.
+func TestAnalyzerBinaryVersionFromYaml(t *testing.T) {
+	t.Parallel()
+
+	d := diagtest.LogSink(t)
+	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, h.Close()) }()
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	require.NoError(t, err)
+
+	binName := "pulumi-analyzer-binary"
+	if runtime.GOOS == "windows" {
+		binName += ".cmd"
+	}
+	pluginPath, err := filepath.Abs(filepath.Join("./testdata/analyzer-binary", binName))
+	require.NoError(t, err)
+
+	analyzer, err := plugin.NewPolicyAnalyzer(ctx.Host, ctx, "binary-analyzer", pluginPath, nil, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, analyzer.Close()) }()
+
+	info, err := analyzer.GetAnalyzerInfo(t.Context())
+	require.NoError(t, err)
+	// The binary reports "999.999.999" from GetAnalyzerInfo; the sibling PulumiPolicy.yaml pins 1.2.3.
+	require.Equal(t, "1.2.3", info.Version)
 }
 
 func TestAnalyzerSpawnViaLanguage(t *testing.T) {
