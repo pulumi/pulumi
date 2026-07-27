@@ -1,0 +1,5 @@
+component: cli
+kind: fix
+body: Fix parallel `pulumi install` processes sharing a `PULUMI_HOME` intermittently
+  failing with a missing provider executable error
+time: 2026-07-27T00:00:00.000000+00:00
