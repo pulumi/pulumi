@@ -124,10 +124,10 @@ func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 	require.Equal(t, projectName, proj.Name.String())
 }
 
-func TestDeriveAIOrTemplateRoutesWithoutPrompting(t *testing.T) {
+func TestWantsAIRoutesWithoutPrompting(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, "template", deriveAIOrTemplate(newArgs{}))
-	assert.Equal(t, "ai", deriveAIOrTemplate(newArgs{aiPrompt: "an s3 bucket"}))
-	assert.Equal(t, "ai", deriveAIOrTemplate(newArgs{aiLanguage: httpstate.PulumiAILanguage("TypeScript")}))
+	assert.False(t, wantsAI(newArgs{}))
+	assert.True(t, wantsAI(newArgs{aiPrompt: "an s3 bucket"}))
+	assert.True(t, wantsAI(newArgs{aiLanguage: httpstate.PulumiAILanguage("TypeScript")}))
 }

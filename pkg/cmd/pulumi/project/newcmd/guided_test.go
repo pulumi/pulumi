@@ -16,8 +16,10 @@ package newcmd
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -28,12 +30,13 @@ import (
 
 type fakeTemplate struct {
 	name string
+	desc string
 	err  error
 }
 
 func (f fakeTemplate) Name() string        { return f.name }
 func (f fakeTemplate) DisplayName() string { return f.name }
-func (f fakeTemplate) Description() string { return "" }
+func (f fakeTemplate) Description() string { return f.desc }
 func (f fakeTemplate) Error() error        { return f.err }
 func (f fakeTemplate) FromRegistry() bool  { return false }
 func (f fakeTemplate) Download(ctx context.Context) (workspace.Template, error) {
@@ -42,7 +45,6 @@ func (f fakeTemplate) Download(ctx context.Context) (workspace.Template, error) 
 
 type fakeRegistryTemplate struct {
 	fakeTemplate
-	publisher string
 }
 
 func (f fakeRegistryTemplate) FromRegistry() bool { return true }
@@ -66,7 +68,7 @@ func TestFromRegistry(t *testing.T) {
 	t.Parallel()
 
 	assert.False(t, fakeTemplate{name: "aws-typescript"}.FromRegistry())
-	assert.True(t, fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}.FromRegistry())
+	assert.True(t, fakeRegistryTemplate{fakeTemplate{name: "vpc"}}.FromRegistry())
 }
 
 func TestGuidedResolvesFeaturedProvider(t *testing.T) {
@@ -179,12 +181,84 @@ func TestGuidedLanguageListIsFilteredToProvider(t *testing.T) {
 	assert.NotContains(t, (*offered)[1], "Bun", "Azure has no bun template")
 }
 
+func TestGuidedExcludesBrokenTemplates(t *testing.T) {
+	t.Parallel()
+
+	templates := []cmdTemplates.Template{
+		fakeTemplate{name: "aws-typescript"},
+		fakeTemplate{name: "aws-go", err: errors.New("boom")},
+	}
+	sel, offered := scriptedSelect(t, "AWS", "TypeScript")
+
+	got, err := chooseGuided(templates, display.Options{}, sel)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "aws-typescript", got.Name())
+	assert.NotContains(t, (*offered)[1], "Go", "broken templates must not be offered")
+}
+
+func TestGuidedFallsBackWhenEverythingIsBroken(t *testing.T) {
+	t.Parallel()
+
+	templates := []cmdTemplates.Template{
+		fakeTemplate{name: "aws-typescript", err: errors.New("boom")},
+		fakeRegistryTemplate{fakeTemplate{name: "vpc", err: errors.New("boom")}},
+	}
+	sel := func(string, []string, display.Options) (string, error) {
+		t.Error("no prompt may be shown when every template is broken")
+		return "", nil
+	}
+
+	got, err := chooseGuided(templates, display.Options{}, sel)
+	assert.Nil(t, got)
+	assert.ErrorIs(t, err, errFallBackToFlatList, "the flat chooser is the only surface that marks broken templates")
+}
+
+func TestGuidedInterruptGoesBackToPreviousStep(t *testing.T) {
+	t.Parallel()
+
+	templates := []cmdTemplates.Template{
+		fakeTemplate{name: "aws-typescript"},
+		fakeTemplate{name: "gcp-go"},
+	}
+	responses := []any{"AWS", terminal.InterruptErr, "GCP", "Go"}
+	i := 0
+	sel := func(message string, options []string, opts display.Options) (string, error) {
+		require.Less(t, i, len(responses), "unexpected extra prompt: %q", message)
+		r := responses[i]
+		i++
+		if err, ok := r.(error); ok {
+			return "", err
+		}
+		require.Contains(t, options, r.(string))
+		return r.(string), nil
+	}
+
+	got, err := chooseGuided(templates, display.Options{}, sel)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "gcp-go", got.Name(), "interrupt at the language step must return to the provider step")
+}
+
+func TestGuidedInterruptAtFirstStepPropagates(t *testing.T) {
+	t.Parallel()
+
+	templates := []cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}}
+	sel := func(string, []string, display.Options) (string, error) {
+		return "", terminal.InterruptErr
+	}
+
+	got, err := chooseGuided(templates, display.Options{}, sel)
+	assert.Nil(t, got)
+	assert.ErrorIs(t, err, terminal.InterruptErr)
+}
+
 func TestGuidedRegistryTemplatesShowSourceStepAndSkipLanguage(t *testing.T) {
 	t.Parallel()
 
-	registry := fakeRegistryTemplate{fakeTemplate{name: "vpc-baseline"}, "acme"}
+	registry := fakeRegistryTemplate{fakeTemplate{name: "vpc-baseline", desc: "A baseline VPC"}}
 	templates := []cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}, registry}
-	sel, offered := scriptedSelect(t, sourceRegistryTemplates, "vpc-baseline")
+	sel, offered := scriptedSelect(t, sourceRegistryTemplates, "vpc-baseline    A baseline VPC")
 
 	got, err := chooseGuided(templates, display.Options{}, sel)
 	require.NoError(t, err)
@@ -196,20 +270,42 @@ func TestGuidedRegistryTemplatesShowSourceStepAndSkipLanguage(t *testing.T) {
 	assert.Contains(t, (*offered)[0], sourceRegistryTemplates)
 }
 
+func TestChooseRegistryTemplateLabelsIncludeDescription(t *testing.T) {
+	t.Parallel()
+
+	first := fakeRegistryTemplate{fakeTemplate{name: "vpc", desc: "A VPC by acme"}}
+	second := fakeRegistryTemplate{fakeTemplate{name: "vpc", desc: "A VPC by globex"}}
+	sel, offered := scriptedSelect(t, "vpc    A VPC by globex")
+
+	got, err := chooseRegistryTemplate(
+		[]cmdTemplates.Template{first, second}, display.Options{}, sel)
+	require.NoError(t, err)
+	assert.Equal(t, second, got, "descriptions must disambiguate same-named templates")
+
+	require.Len(t, *offered, 1)
+	assert.Contains(t, (*offered)[0], "vpc    A VPC by acme")
+}
+
 func TestChooseRegistryTemplateDisambiguatesDuplicateNames(t *testing.T) {
 	t.Parallel()
 
-	first := fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}
-	second := fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "globex"}
-	sel, offered := scriptedSelect(t, "vpc (2)")
+	first := fakeRegistryTemplate{fakeTemplate{name: "vpc"}}
+	second := fakeRegistryTemplate{fakeTemplate{name: "vpc"}}
+	var offered []string
+	sel := func(message string, options []string, opts display.Options) (string, error) {
+		offered = options
+		return options[1], nil
+	}
 
 	got, err := chooseRegistryTemplate(
 		[]cmdTemplates.Template{first, second}, display.Options{}, sel)
 	require.NoError(t, err)
 	require.NotNil(t, got)
+	assert.Equal(t, "vpc", got.Name())
 
-	require.Len(t, *offered, 1)
-	assert.Equal(t, []string{"vpc", "vpc (2)"}, (*offered)[0], "duplicate labels must be suffixed so both are selectable")
+	require.Len(t, offered, 2)
+	assert.NotEqual(t, offered[0], offered[1], "identical labels must be suffixed so both are selectable")
+	assert.Contains(t, offered[1], "(2)")
 }
 
 func TestChooseRegistryTemplateErrorsOnUnknownAnswer(t *testing.T) {
@@ -220,7 +316,7 @@ func TestChooseRegistryTemplateErrorsOnUnknownAnswer(t *testing.T) {
 	}
 
 	got, err := chooseRegistryTemplate(
-		[]cmdTemplates.Template{fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}},
+		[]cmdTemplates.Template{fakeRegistryTemplate{fakeTemplate{name: "vpc"}}},
 		display.Options{},
 		sel,
 	)
@@ -239,6 +335,6 @@ func TestGuidedFallsBackWhenNothingIsCurated(t *testing.T) {
 	}
 
 	got, err := chooseGuided(templates, display.Options{}, sel)
-	require.NoError(t, err, "an empty catalog must not be a hard error")
-	assert.Nil(t, got, "nil signals fallback to the flat chooser")
+	assert.Nil(t, got)
+	assert.ErrorIs(t, err, errFallBackToFlatList)
 }

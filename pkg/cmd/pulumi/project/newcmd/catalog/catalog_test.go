@@ -83,7 +83,7 @@ func TestJavaDisplayNameIsSplitOnlyUnderNone(t *testing.T) {
 
 	cat := testCatalog()
 	displayNames := func(id string) []string {
-		p, ok := cat.Get(id)
+		p, ok := cat.get(id)
 		require.True(t, ok)
 		names := make([]string, len(p.Languages))
 		for i, l := range p.Languages {
@@ -105,7 +105,7 @@ func TestJavaDisplayNameIsSplitOnlyUnderNone(t *testing.T) {
 func TestNoneLanguageOrder(t *testing.T) {
 	t.Parallel()
 
-	none, ok := testCatalog().Get("none")
+	none, ok := testCatalog().get("none")
 	require.True(t, ok)
 
 	displayNames := make([]string, len(none.Languages))
@@ -135,7 +135,7 @@ func TestOthersAreAlphabeticalAndNotFeatured(t *testing.T) {
 func TestLanguageOrderByUsage(t *testing.T) {
 	t.Parallel()
 
-	aws, ok := testCatalog().Get("aws")
+	aws, ok := testCatalog().get("aws")
 	require.True(t, ok)
 
 	displayNames := make([]string, len(aws.Languages))
@@ -241,7 +241,7 @@ func TestUnknownProviderFallsBackToRawDisplayName(t *testing.T) {
 	t.Parallel()
 
 	cat := New([]string{"newcloud-go"})
-	p, ok := cat.Get("newcloud")
+	p, ok := cat.get("newcloud")
 	require.True(t, ok, "a provider not in the curated display map must still be reachable")
 	assert.Equal(t, "newcloud", p.DisplayName)
 }

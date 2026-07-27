@@ -36,11 +36,8 @@ const (
 	refineSelection = "refine"
 )
 
-func deriveAIOrTemplate(args newArgs) string {
-	if args.aiPrompt != "" || args.aiLanguage != "" {
-		return "ai"
-	}
-	return "template"
+func wantsAI(args newArgs) bool {
+	return args.aiPrompt != "" || args.aiLanguage != ""
 }
 
 // Iteratively prompt the user for input, sending their input as a prompt to Pulumi AI.

@@ -219,12 +219,17 @@ func PromptUserErr(
 		}),
 	)
 
-	var response string
-	if err := survey.AskOne(&survey.Select{
+	sel := &survey.Select{
 		Message: prompt,
 		Options: options,
-		Default: defaultOption,
-	}, &response, allSurveyAskOpts...); err != nil {
+	}
+	// survey rejects any non-nil default that is not one of the options, including "".
+	if defaultOption != "" {
+		sel.Default = defaultOption
+	}
+
+	var response string
+	if err := survey.AskOne(sel, &response, allSurveyAskOpts...); err != nil {
 		return "", err
 	}
 	return response, nil

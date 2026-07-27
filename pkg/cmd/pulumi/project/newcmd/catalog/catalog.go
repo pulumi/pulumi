@@ -153,7 +153,7 @@ func (c *Catalog) Empty() bool {
 	return len(c.providers) == 0
 }
 
-func (c *Catalog) Get(id string) (Provider, bool) {
+func (c *Catalog) get(id string) (Provider, bool) {
 	p, ok := c.providers[id]
 	return p, ok
 }

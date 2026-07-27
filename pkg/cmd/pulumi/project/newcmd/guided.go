@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd/catalog"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 const (
@@ -36,17 +35,13 @@ const (
 
 type selectFunc func(message string, options []string, opts display.Options) (string, error)
 
+// errFallBackToFlatList signals that the guided flow cannot structure the available templates and
+// the caller should run the flat chooser instead.
+var errFallBackToFlatList = errors.New("fall back to the flat template list")
+
 func surveySelect(message string, options []string, opts display.Options) (string, error) {
-	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
-	var answer string
-	if err := survey.AskOne(&survey.Select{
-		Message:  message,
-		Options:  options,
-		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
-	}, &answer, ui.SurveyIcons(opts.Color)); err != nil {
-		return "", errors.New("no template selected")
-	}
-	return answer, nil
+	return ui.PromptUserErr("\r"+message+"\n", options, "", opts.Color,
+		survey.WithPageSize(cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)})))
 }
 
 // pick prompts for one of items, presenting each by its display name, and returns the chosen item.
@@ -79,7 +74,6 @@ func pick[T any](
 	return chosen, nil
 }
 
-// chooseGuided returns (nil, nil) when the caller should fall back to the flat chooser.
 func chooseGuided(
 	templates []cmdTemplates.Template, opts display.Options, sel selectFunc,
 ) (cmdTemplates.Template, error) {
@@ -88,6 +82,11 @@ func chooseGuided(
 	curatedNames := make([]string, 0, len(templates))
 	for _, t := range templates {
 		byName[t.Name()] = t
+		// The flat chooser is the only surface that can mark a template broken, so guided never
+		// offers one.
+		if t.Error() != nil {
+			continue
+		}
 		if t.FromRegistry() {
 			registryTemplates = append(registryTemplates, t)
 		} else {
@@ -97,7 +96,7 @@ func chooseGuided(
 
 	cat := catalog.New(curatedNames)
 	if cat.Empty() && len(registryTemplates) == 0 {
-		return nil, nil
+		return nil, errFallBackToFlatList
 	}
 	if cat.Empty() {
 		return chooseRegistryTemplate(registryTemplates, opts, sel)
@@ -105,7 +104,7 @@ func chooseGuided(
 
 	if len(registryTemplates) > 0 {
 		source, err := sel(
-			"\rWhere would you like to start?\n", []string{sourcePulumiTemplates, sourceRegistryTemplates}, opts)
+			"Where would you like to start?", []string{sourcePulumiTemplates, sourceRegistryTemplates}, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -114,13 +113,18 @@ func chooseGuided(
 		}
 	}
 
-	provider, err := chooseProvider(cat, opts, sel)
-	if err != nil {
-		return nil, err
-	}
-
-	language, err := chooseLanguage(provider, opts, sel)
-	if err != nil {
+	var provider catalog.Provider
+	var language string
+	if err := ui.SurveyStack(
+		func() (err error) {
+			provider, err = chooseProvider(cat, opts, sel)
+			return err
+		},
+		func() (err error) {
+			language, err = chooseLanguage(provider, opts, sel)
+			return err
+		},
+	); err != nil {
 		return nil, err
 	}
 
@@ -138,31 +142,33 @@ func chooseGuided(
 	return template, nil
 }
 
+// chooseProvider prompts for a featured cloud, expanding "Other" into the full provider list. The
+// Other row is a sentinel provider with no ID, which is how the second step knows whether it still
+// has to run.
 func chooseProvider(cat *catalog.Catalog, opts display.Options, sel selectFunc) (catalog.Provider, error) {
-	featured := cat.Featured()
-	options := make([]string, 0, len(featured)+1)
-	byDisplayName := make(map[string]catalog.Provider, len(featured))
-	for _, p := range featured {
-		options = append(options, p.DisplayName)
-		byDisplayName[p.DisplayName] = p
-	}
-	options = append(options, optionOther)
-
-	answer, err := sel("\rWhich cloud would you like to use?\n", options, opts)
-	if err != nil {
-		return catalog.Provider{}, err
-	}
-	if answer != optionOther {
-		return byDisplayName[answer], nil
-	}
-	return pick(
-		sel, "\rWhich provider would you like to use?\n", opts, cat.Others(),
-		func(p catalog.Provider) string { return p.DisplayName })
+	displayName := func(p catalog.Provider) string { return p.DisplayName }
+	var provider catalog.Provider
+	err := ui.SurveyStack(
+		func() (err error) {
+			provider, err = pick(
+				sel, "Which cloud would you like to use?", opts,
+				append(cat.Featured(), catalog.Provider{DisplayName: optionOther}), displayName)
+			return err
+		},
+		func() (err error) {
+			if provider.ID != "" {
+				return nil
+			}
+			provider, err = pick(sel, "Which provider would you like to use?", opts, cat.Others(), displayName)
+			return err
+		},
+	)
+	return provider, err
 }
 
 func chooseLanguage(provider catalog.Provider, opts display.Options, sel selectFunc) (string, error) {
 	language, err := pick(
-		sel, "\rWhich language would you like to use?\n", opts,
+		sel, "Which language would you like to use?", opts,
 		provider.Languages, func(l catalog.Language) string { return l.DisplayName })
 	if err != nil {
 		return "", err
@@ -173,6 +179,6 @@ func chooseLanguage(provider catalog.Provider, opts display.Options, sel selectF
 func chooseRegistryTemplate(
 	registryTemplates []cmdTemplates.Template, opts display.Options, sel selectFunc,
 ) (cmdTemplates.Template, error) {
-	message := fmt.Sprintf("\rPlease choose a template (%d total):\n", len(registryTemplates))
-	return pick(sel, message, opts, registryTemplates, func(t cmdTemplates.Template) string { return t.DisplayName() })
+	message := fmt.Sprintf("Please choose a template (%d total):", len(registryTemplates))
+	return pick(sel, message, opts, registryTemplates, templateLabeler(registryTemplates))
 }

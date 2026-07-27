@@ -15,9 +15,11 @@
 package newcmd
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -107,13 +109,34 @@ func TestGuidedChooserFallsBackToFlatWhenNothingIsCurated(t *testing.T) {
 	}
 
 	// A name the catalog can't decompose yields no providers, so guided must defer to the flat list.
+	var notice bytes.Buffer
 	got, err := guidedChooser(sel, flat)(
 		[]cmdTemplates.Template{fakeTemplate{name: "unparseable"}},
-		display.Options{IsInteractive: true},
+		display.Options{IsInteractive: true, Stdout: &notice},
 	)
 	require.NoError(t, err)
 	assert.True(t, flatCalled)
 	assert.Equal(t, "flat", got.Name())
+	assert.Contains(t, notice.String(), "Falling back to the full template list.")
+}
+
+func TestGuidedChooserMapsInterruptToNoTemplateSelected(t *testing.T) {
+	t.Parallel()
+
+	flat := func([]cmdTemplates.Template, display.Options) (cmdTemplates.Template, error) {
+		t.Error("flat chooser must not run when the user cancels the guided flow")
+		return nil, nil
+	}
+	sel := func(string, []string, display.Options) (string, error) {
+		return "", terminal.InterruptErr
+	}
+
+	got, err := guidedChooser(sel, flat)(
+		[]cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}},
+		display.Options{IsInteractive: true},
+	)
+	assert.Nil(t, got)
+	assert.ErrorContains(t, err, "no template selected")
 }
 
 func TestGuidedChooserReturnsGuidedTemplateWithoutFlat(t *testing.T) {

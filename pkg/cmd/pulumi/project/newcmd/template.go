@@ -18,17 +18,12 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 	"sort"
 
-	survey "github.com/AlecAivazis/survey/v2"
-	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/AlecAivazis/survey/v2/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 const (
@@ -41,78 +36,71 @@ func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cm
 		return nil, nil
 	}
 
-	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
-	surveycore.DisableColor = true
-
 	return chooseTemplateFlat(templates, opts)
 }
 
 // guidedChooser walks the user from provider to language to a starter template, falling back to flat
-// when the catalog cannot resolve the answers to one of the available templates.
+// when the guided flow cannot structure the available templates.
 func guidedChooser(sel selectFunc, flat chooseTemplateFunc) chooseTemplateFunc {
 	return func(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error) {
 		if !opts.IsInteractive {
 			return nil, nil
 		}
 
-		surveycore.DisableColor = true
-
 		template, err := chooseGuided(templates, opts, sel)
-		if err != nil {
+		switch {
+		case errors.Is(err, errFallBackToFlatList):
+			if opts.Stdout != nil {
+				fmt.Fprintln(opts.Stdout, "Falling back to the full template list.")
+			}
+			return flat(templates, opts)
+		case errors.Is(err, terminal.InterruptErr):
+			return nil, errors.New("no template selected")
+		case err != nil:
 			return nil, err
 		}
-		if template != nil {
-			return template, nil
-		}
-
-		fmt.Fprintln(os.Stderr, "Falling back to the full template list.") //nolint:forbidigo
-		return flat(templates, opts)
+		return template, nil
 	}
 }
 
 func chooseTemplateFlat(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error) {
 	options, optionToTemplateMap := templatesToOptionArrayAndMap(templates)
-	nopts := len(options)
-	pageSize := cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: nopts})
-	message := fmt.Sprintf("\rPlease choose a template (%d total):\n", nopts)
-	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
+	message := fmt.Sprintf("Please choose a template (%d total):", len(options))
 
-	var option string
-	if err := survey.AskOne(&survey.Select{
-		Message:  message,
-		Options:  options,
-		PageSize: pageSize,
-	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
+	option, err := surveySelect(message, options, opts)
+	if err != nil {
 		return nil, errors.New("no template selected; please use `pulumi new` to choose one")
 	}
 
 	return optionToTemplateMap[option], nil
 }
 
+// templateLabeler formats each template in the set as its display name padded to the longest name,
+// followed by its description (or a broken marker).
+func templateLabeler(templates []cmdTemplates.Template) func(cmdTemplates.Template) string {
+	maxNameLength := 0
+	for _, template := range templates {
+		maxNameLength = max(maxNameLength, len(template.DisplayName()))
+	}
+	return func(template cmdTemplates.Template) string {
+		desc := template.Description()
+		if template.Error() != nil {
+			desc = BrokenTemplateDescription
+		}
+		return fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.DisplayName(), desc)
+	}
+}
+
 // templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.
 // Each option string is made up of the template name and description with some padding in between.
 func templatesToOptionArrayAndMap(templates []cmdTemplates.Template) ([]string, map[string]cmdTemplates.Template) {
-	// Find the longest name length. Used to add padding between the name and description.
-	maxNameLength := 0
-	for _, template := range templates {
-		if len(template.DisplayName()) > maxNameLength {
-			maxNameLength = len(template.DisplayName())
-		}
-	}
+	label := templateLabeler(templates)
 
-	// Build the array and map.
 	var options []string
 	var brokenOptions []string
 	nameToTemplateMap := make(map[string]cmdTemplates.Template)
 	for _, template := range templates {
-		// Create the option string that combines the name, padding, and description.
-		desc := template.Description()
-		// If template is broken, indicate it in the description.
-		if template.Error() != nil {
-			desc = BrokenTemplateDescription
-		}
-		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.DisplayName(), desc)
-
+		option := label(template)
 		nameToTemplateMap[option] = template
 		if template.Error() != nil {
 			brokenOptions = append(brokenOptions, option)

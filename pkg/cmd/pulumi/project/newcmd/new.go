@@ -118,6 +118,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	opts := display.Options{
 		Color:         cmdutil.GetGlobalColorization(),
 		IsInteractive: args.interactive,
+		Stdout:        args.stdout,
 	}
 
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -856,7 +857,7 @@ func promptRuntimeOptions(ctx *plugin.Context, language plugin.LanguageRuntime, 
 func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args newArgs,
 	opts display.Options,
 ) (string, error) {
-	if deriveAIOrTemplate(args) != "ai" {
+	if !wantsAI(args) {
 		return "", nil
 	}
 
