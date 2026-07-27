@@ -17,9 +17,9 @@
 #                    see pulumi-language-oci). The engine dialing 127.0.0.1:<port> reaches
 #                    ITSELF, not the program, and the update fails with
 #                    "invoke transform: ... dial tcp 127.0.0.1:<port>: connection refused".
-#   CRI            — INFERRED, UNVERIFIED: every pod member shares the one sandbox netns, so
-#                    loopback should be shared and the callback should resolve. Nobody has
-#                    run this on CRI; do not treat that path as covered.
+#   CRI            — MEASURED by run-pod-cri-transform.sh, which PASSES: every pod member
+#                    shares the one sandbox netns (engine and sandbox netns resolve to the
+#                    same inode there), so loopback is shared and the callback resolves.
 #
 # This script runs the DOCKER path, so it is EXPECTED TO FAIL TODAY. It is written as a
 # ratchet, not a characterization test: it asserts the CORRECT behavior (the transform is
