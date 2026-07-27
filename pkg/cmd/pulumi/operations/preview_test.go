@@ -359,6 +359,75 @@ func TestBuildImportFile_ExistingProvider(t *testing.T) {
 	assert.Equal(t, expected, importFile.Resources[0])
 }
 
+// TestBuildImportFile_RenamedProviderReference tests that if a provider's generated import-file
+// name is renamed after a resource has already referenced it, the resource's Provider field is
+// updated to the provider's new name.
+func TestBuildImportFile_RenamedProviderReference(t *testing.T) {
+	t.Parallel()
+
+	events := make(chan engine.Event)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
+
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeRootStackMetadata(deploy.OpSame),
+	})
+
+	// Occupy the provider's logical name so the provider is initially renamed from "prov" to "provPkg".
+	existingState := makeStateMetadata(t, "prov", "other:index:Existing", true, stateOptions{})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpSame, existingState),
+	})
+
+	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
+		Inputs: resource.NewPropertyMapFromMap(map[string]any{
+			"version": "3.2.1",
+		}),
+	})
+	uuid, err := uuid.NewV4()
+	require.NoError(t, err)
+	providerState.ID = resource.ID(uuid.String())
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpSame, providerState),
+	})
+
+	providerRef, err := providers.NewReference(providerState.URN, providerState.ID)
+	require.NoError(t, err)
+	usesProvider := makeStateMetadata(t, "usesProvider", "pkg:mod:typ", true, stateOptions{
+		Provider: &providerRef,
+	})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, usesProvider),
+	})
+
+	// This resource takes the provider's current generated name, forcing the provider alias to
+	// be renamed again from "provPkg" to "provPkg2".
+	conflictingState := makeStateMetadata(t, "provPkg", "other:index:Conflict", true, stateOptions{})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, conflictingState),
+	})
+
+	close(events)
+	importFile, err := importFilePromise.Result(t.Context())
+	require.NoError(t, err)
+
+	require.Len(t, importFile.NameTable, 1)
+	assert.Equal(t, providerState.URN, importFile.NameTable["provPkg2"])
+
+	require.Len(t, importFile.Resources, 2)
+	assert.Equal(t, importSpec{
+		ID:       "<PLACEHOLDER>",
+		Type:     "pkg:mod:typ",
+		Name:     "usesProvider",
+		Provider: "provPkg2",
+		Version:  "3.2.1",
+	}, importFile.Resources[0])
+	assert.Equal(t, importSpec{
+		ID:   "<PLACEHOLDER>",
+		Type: "other:index:Conflict",
+		Name: "provPkg",
+	}, importFile.Resources[1])
+}
+
 // TestBuildImportFile_NewProvider tests that we can generate an import file for a resource that uses
 // an explicit provider that is also being created in the same deployment (#15453).
 func TestBuildImportFile_NewProvider(t *testing.T) {
