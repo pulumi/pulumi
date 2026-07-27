@@ -3,4 +3,4 @@ kind: improvement
 body: The Neo diagnostics link now suggests `pulumi neo --debug-update` or `pulumi neo --debug-preview` to investigate the failed operation
 time: 2026-07-27T00:00:00+00:00
 custom:
-  PR: ""
+  PR: "24075"
