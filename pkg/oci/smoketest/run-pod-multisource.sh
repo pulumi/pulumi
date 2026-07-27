@@ -22,7 +22,22 @@
 # private copy is staged by pulling the public synth and pushing it to the private port
 # (setup only; the engine's pulls are fresh).
 #
-# Usage: run-pod-multisource.sh
+# ADDRESS MODE (OCI_ADDRESS_MODE=1) runs the same proof over the address model: each
+# provider is its own container on the pod network, attached by container DNS name at the
+# forwarder shim's well-known port, instead of sharing the engine's netns and being dialed
+# over 127.0.0.1. This is the case where the shim is load-bearing — two providers of the
+# SAME package attach at the SAME port :7777 and can only be told apart by their DNS names,
+# which a shared netns cannot express.
+#
+# The two halves of address mode are driven by this ONE switch and must never be set
+# independently: the engine's PULUMI_POD_ADDRESS_MODE puts providers on the pod network,
+# and the proxy's PULUMI_POD_SHIM_BIN makes the images it synthesizes boot through the shim.
+# Shim-on with netns providers would put both shims in one netns, where the second bind of
+# 0.0.0.0:7777 fails and kills that provider — a failure that appears only once there are
+# two providers, so a single-provider test would not catch the skew.
+#
+# Usage: run-pod-multisource.sh                 # netns mode (providers share the engine netns)
+#        OCI_ADDRESS_MODE=1 run-pod-multisource.sh   # address mode (own container, attach by DNS)
 # Requires a running Docker daemon (with outbound access to get.pulumi.com, which the
 # public port synthesizes from) and the repo Go toolchain.
 set -euo pipefail
@@ -38,6 +53,17 @@ GOARCH="$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')"
 
 PROVIDER_PKG="random"
 PROVIDER_VERSION="4.21.0"
+
+# The one address-mode switch (see the header). Both settings below are derived from it so
+# they cannot skew: empty = the netns behavior this test has always had, since the engine's
+# gate and the proxy's shim gate both read "unset or empty" as off.
+ADDRESS_MODE="${OCI_ADDRESS_MODE:-}"
+PROXY_SHIM_BIN="" # empty = pre-shim synthesis; /shim = synthesized images boot through the shim
+MODE_LABEL="netns (providers share the engine netns, dialed over 127.0.0.1)"
+if [ -n "$ADDRESS_MODE" ]; then
+  PROXY_SHIM_BIN="/shim"
+  MODE_LABEL="address (each provider its own container, attached by DNS at the shim port :7777)"
+fi
 
 POD_ID="msrc-$$"
 NET="pulumi-pod-$POD_ID"
@@ -75,6 +101,13 @@ cleanup() {
   [ -n "$leftovers" ] && docker rm -f $leftovers >/dev/null 2>&1 || true
   docker rm -f "$PROXY_NAME" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
+  # Pod-scoped volumes (the workspace, and any plugin-injection volume) outlive their
+  # containers. The engine reaps them on a clean Close(), so this only matters when a run
+  # dies first — but that is exactly when it matters: each aborted run otherwise strands a
+  # workspace volume, and enough of them fill the daemon's disk.
+  local vols
+  vols="$(docker volume ls -q --filter "label=$POD_LABEL" 2>/dev/null || true)"
+  [ -n "$vols" ] && docker volume rm $vols >/dev/null 2>&1 || true
   # Identity refs + staging refs this run owns.
   docker image rm -f "$PUBLIC_REF" "$PRIVATE_REF" "$PUBLIC_STAGE" "$PRIVATE_STAGE" >/dev/null 2>&1 || true
   rm -f "$SMOKE_DIR/program-linux"
@@ -100,11 +133,17 @@ docker buildx build --builder "$BUILDER" --load \
 # Public :5000 synthesizes first-party pulumi/pulumi-provider-* from get.pulumi.com;
 # private :5001 is a plain read-write registry. Both are published to the host so the
 # engine's host-daemon pulls reach them at localhost:PORT (auto-insecure).
+# In address mode PULUMI_POD_SHIM_BIN is set, so every image the public port synthesizes
+# gets the shim embedded and its entrypoint rewritten to boot through it. This must be true
+# BEFORE the staging pull below: the private copy is a push of the public synth, so a proxy
+# started shim-off would strand the private provider shimless while the public one works.
 echo "==> starting registry-proxy (public :$REG_PUB_PORT + private :$REG_PRIV_PORT)"
 docker rm -f "$PROXY_NAME" >/dev/null 2>&1 || true
 docker run -d --name "$PROXY_NAME" -p "$REG_PUB_PORT:5000" -p "$REG_PRIV_PORT:5001" \
   -e PROXY_TARGET_ARCH="$GOARCH" -e PROXY_PRIVATE_ADDR=":5001" \
+  -e PULUMI_POD_SHIM_BIN="$PROXY_SHIM_BIN" \
   -v "$WORK/cli/registry-proxy-linux":/registry-proxy:ro \
+  -v "$WORK/cli/pulumi-pod-shim-linux":/shim:ro \
   alpine sh -c 'apk add --no-cache ca-certificates >/dev/null 2>&1 && exec /registry-proxy' >/dev/null
 for _ in $(seq 1 30); do
   curl -sf "http://$PUBLIC_ENDPOINT/v2/" >/dev/null 2>&1 && curl -sf "http://$PRIVATE_ENDPOINT/v2/" >/dev/null 2>&1 && break
@@ -133,6 +172,7 @@ docker network create "$NET" >/dev/null
 cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
 
 echo "==> running engine container $ENGINE_NAME (endpoint map remaps each pull to its port)"
+echo "    provider attach mode: $MODE_LABEL"
 docker run --rm -i \
   --privileged \
   --network "$NET" \
@@ -147,6 +187,7 @@ docker run --rm -i \
   -e PULUMI_POD_NETWORK="$NET" \
   -e PULUMI_POD_ADVERTISE_HOST="$ENGINE_NAME" \
   -e PULUMI_POD_ID="$POD_ID" \
+  -e PULUMI_POD_ADDRESS_MODE="$ADDRESS_MODE" \
   -e PULUMI_POD_REGISTRY_ENDPOINTS="$REGISTRY_ENDPOINTS" \
   -e PULUMI_BACKEND_URL=file:///state \
   -e PULUMI_CONFIG_PASSPHRASE="$PULUMI_CONFIG_PASSPHRASE" \
@@ -199,6 +240,35 @@ if ! grep -q "synthesizing pulumi/pulumi-provider-$PROVIDER_PKG" "$WORK/proxy.lo
 fi
 echo "    proxy public port synthesized on demand — the public endpoint was reached"
 
+# Each mode asserts the attach topology it claims, so a run always proves which one it took.
+if [ -n "$ADDRESS_MODE" ]; then
+  echo "==> asserting each provider was attached at its OWN container DNS name"
+  if grep -q 'attaching at 127.0.0.1' "$WORK/engine.log"; then
+    echo "!! a provider was attached over 127.0.0.1 — address mode did not take effect"
+    grep -n 'attaching at' "$WORK/engine.log" || true
+    exit 1
+  fi
+  # The claim netns cannot make: two attaches at the SAME well-known port, told apart only
+  # by DNS name. Distinct hosts also rule out one container being attached twice, which a
+  # bare count of ":7777" lines would not.
+  ATTACH_HOSTS="$(sed -n 's/.*attaching at \([^ :]*\):7777.*/\1/p' "$WORK/engine.log" | sort -u)"
+  DISTINCT="$(printf '%s\n' "$ATTACH_HOSTS" | grep -c . || true)"
+  if [ "$DISTINCT" -lt 2 ]; then
+    echo "!! expected two DISTINCT provider hosts at the shim port :7777, saw $DISTINCT"
+    grep -n 'attaching at' "$WORK/engine.log" || true
+    exit 1
+  fi
+  echo "    attached at: $(printf '%s\n' "$ATTACH_HOSTS" | tr '\n' ' ')"
+  echo "    same package, two DNS names, one shared port :7777 — the collision netns cannot express"
+else
+  echo "==> asserting the netns default is unchanged (providers dialed over loopback)"
+  if ! grep -q 'attaching at 127.0.0.1' "$WORK/engine.log"; then
+    echo "!! no loopback attach — the netns default did not hold"
+    grep -n 'attaching at' "$WORK/engine.log" || true
+    exit 1
+  fi
+fi
+
 PET_PUB="$(sed -n 's/.*SMOKE petPub=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1)"
 PET_PRIV="$(sed -n 's/.*SMOKE petPriv=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1)"
 if [ -z "$PET_PUB" ] || [ -z "$PET_PRIV" ]; then
@@ -207,4 +277,5 @@ if [ -z "$PET_PUB" ] || [ -z "$PET_PRIV" ]; then
 fi
 echo "    petPub (first-party) = $PET_PUB"
 echo "    petPriv (private)    = $PET_PRIV"
-echo "==> DOCKER MULTI-SOURCE smoke test PASS — first-party and private packages resolved to separate registries in one program"
+echo "==> DOCKER MULTI-SOURCE smoke test PASS ($MODE_LABEL)"
+echo "    first-party and private packages resolved to separate registries in one program"
