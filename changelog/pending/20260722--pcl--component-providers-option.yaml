@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Apply the `providers` option of a `component` block to the resources and invokes it declares
+time: 2026-07-22T00:00:00+00:00
