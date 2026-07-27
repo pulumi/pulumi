@@ -135,6 +135,11 @@ var AccessToken = env.String("ACCESS_TOKEN",
 	"The access token used to authenticate with the Pulumi Service.",
 	env.Secret)
 
+var CredentialStore = env.String("CREDENTIAL_STORE",
+	`Where to keep CLI credentials: "auto" encrypts them with a key protected by the operating `+
+		`system (macOS Keychain, Windows Credential Manager, Linux Secret Service, TPM) when such `+
+		`protection is usable, "os" requires it, and "plaintext" uses the plaintext credentials file.`)
+
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")
 

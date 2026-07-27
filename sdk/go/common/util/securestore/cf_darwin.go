@@ -1,0 +1,227 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+//go:build darwin
+
+package securestore
+
+import (
+	"fmt"
+	"sync"
+	"unsafe"
+
+	"github.com/ebitengine/purego"
+)
+
+// CoreFoundation bindings, resolved at runtime with purego (no cgo). All
+// CFTypeRef-like values are carried as uintptr.
+//
+// Ownership follows the CF "Create Rule": every ref obtained from a function
+// with Create or Copy in its name must be passed to cf.release exactly once.
+// Refs obtained from Get-style calls (e.g. CFDictionaryGetValue) are borrowed
+// and must not be released.
+
+const (
+	coreFoundationPath = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
+	securityPath       = "/System/Library/Frameworks/Security.framework/Security"
+
+	// kCFStringEncodingUTF8 from CoreFoundation/CFString.h.
+	kCFStringEncodingUTF8 = 0x08000100
+	// kCFNumberSInt64Type from CoreFoundation/CFNumber.h.
+	kCFNumberSInt64Type = 4
+)
+
+// lib wraps a dlopen'd library and accumulates the first symbol-resolution
+// error, so call sites can bind many symbols without per-symbol error
+// handling.
+type lib struct {
+	path   string
+	handle uintptr
+	err    error
+}
+
+func openLib(path string) *lib {
+	l := &lib{path: path}
+	handle, err := purego.Dlopen(path, purego.RTLD_LAZY|purego.RTLD_GLOBAL)
+	if err != nil {
+		l.err = fmt.Errorf("loading %s: %w", path, err)
+		return l
+	}
+	l.handle = handle
+	return l
+}
+
+// fn binds fptr (a pointer to a Go func variable) to the named C function.
+func (l *lib) fn(fptr any, name string) {
+	if l.err != nil {
+		return
+	}
+	sym, err := purego.Dlsym(l.handle, name)
+	if err != nil {
+		l.err = fmt.Errorf("resolving %s in %s: %w", name, l.path, err)
+		return
+	}
+	purego.RegisterFunc(fptr, sym)
+}
+
+// addr returns the address of an exported data symbol, for struct-typed
+// symbols (e.g. kCFTypeDictionaryKeyCallBacks) that C code passes by address.
+func (l *lib) addr(name string) uintptr {
+	if l.err != nil {
+		return 0
+	}
+	sym, err := purego.Dlsym(l.handle, name)
+	if err != nil {
+		l.err = fmt.Errorf("resolving %s in %s: %w", name, l.path, err)
+		return 0
+	}
+	return sym
+}
+
+// constant returns the value of an exported pointer-typed data symbol such as
+// `const CFStringRef kSecClass`: Dlsym yields the address of the variable, so
+// one dereference yields the CFStringRef value itself.
+func (l *lib) constant(name string) uintptr {
+	addr := l.addr(name)
+	if addr == 0 {
+		return 0
+	}
+	// Double-indirect through &addr so go vet does not flag a plain
+	// uintptr-to-unsafe.Pointer conversion; addr points at immortal dyld data.
+	return **(**uintptr)(unsafe.Pointer(&addr))
+}
+
+// cfAPI holds the CoreFoundation functions and data symbols we use.
+type cfAPI struct {
+	release            func(ref uintptr)
+	stringCreate       func(alloc uintptr, cstr string, encoding uint32) uintptr
+	stringGetLength    func(s uintptr) int
+	stringGetCString   func(s uintptr, buf []byte, size int, encoding uint32) bool
+	stringGetTypeID    func() uintptr
+	dataCreate         func(alloc uintptr, bytes []byte, length int) uintptr
+	dataGetLength      func(data uintptr) int
+	dataGetBytePtr     func(data uintptr) *byte
+	dictionaryCreate   func(alloc uintptr, keys, values *uintptr, count int, keyCB, valueCB uintptr) uintptr
+	dictionaryGetValue func(dict, key uintptr) uintptr
+	numberGetValue     func(num uintptr, numType int, out *int64) bool
+	getTypeID          func(ref uintptr) uintptr
+
+	typeDictKeyCallBacks   uintptr
+	typeDictValueCallBacks uintptr
+	booleanTrue            uintptr
+	booleanFalse           uintptr
+}
+
+func newCFAPI(l *lib) *cfAPI {
+	c := &cfAPI{}
+	l.fn(&c.release, "CFRelease")
+	l.fn(&c.stringCreate, "CFStringCreateWithCString")
+	l.fn(&c.stringGetLength, "CFStringGetLength")
+	l.fn(&c.stringGetCString, "CFStringGetCString")
+	l.fn(&c.stringGetTypeID, "CFStringGetTypeID")
+	l.fn(&c.dataCreate, "CFDataCreate")
+	l.fn(&c.dataGetLength, "CFDataGetLength")
+	l.fn(&c.dataGetBytePtr, "CFDataGetBytePtr")
+	l.fn(&c.dictionaryCreate, "CFDictionaryCreate")
+	l.fn(&c.dictionaryGetValue, "CFDictionaryGetValue")
+	l.fn(&c.numberGetValue, "CFNumberGetValue")
+	l.fn(&c.getTypeID, "CFGetTypeID")
+	c.typeDictKeyCallBacks = l.addr("kCFTypeDictionaryKeyCallBacks")
+	c.typeDictValueCallBacks = l.addr("kCFTypeDictionaryValueCallBacks")
+	c.booleanTrue = l.constant("kCFBooleanTrue")
+	c.booleanFalse = l.constant("kCFBooleanFalse")
+	return c
+}
+
+// newString creates a CFString (caller releases) from a Go string.
+func (c *cfAPI) newString(s string) uintptr {
+	return c.stringCreate(0, s, kCFStringEncodingUTF8)
+}
+
+// goString copies a borrowed CFString into a Go string.
+func (c *cfAPI) goString(s uintptr) string {
+	n := c.stringGetLength(s) // length in UTF-16 code units
+	if n <= 0 {
+		return ""
+	}
+	buf := make([]byte, n*4+1) // worst-case UTF-8 expansion plus NUL
+	if !c.stringGetCString(s, buf, len(buf), kCFStringEncodingUTF8) {
+		return ""
+	}
+	for i, b := range buf {
+		if b == 0 {
+			return string(buf[:i])
+		}
+	}
+	return string(buf)
+}
+
+// newData creates a CFData (caller releases) holding a copy of b.
+func (c *cfAPI) newData(b []byte) uintptr {
+	return c.dataCreate(0, b, len(b))
+}
+
+// dataBytes copies the contents of a CFData into a fresh Go slice.
+func (c *cfAPI) dataBytes(data uintptr) []byte {
+	n := c.dataGetLength(data)
+	if n <= 0 {
+		return nil
+	}
+	ptr := c.dataGetBytePtr(data)
+	if ptr == nil {
+		return nil
+	}
+	out := make([]byte, n)
+	copy(out, unsafe.Slice(ptr, n))
+	return out
+}
+
+// newDict creates a CFDictionary (caller releases) from parallel keys/values.
+// The dictionary retains its keys and values, so the caller may release any
+// refs it created for them immediately afterwards.
+func (c *cfAPI) newDict(keys, values []uintptr) uintptr {
+	return c.dictionaryCreate(0, &keys[0], &values[0], len(keys),
+		c.typeDictKeyCallBacks, c.typeDictValueCallBacks)
+}
+
+var (
+	darwinAPIOnce sync.Once
+	darwinAPIErr  error
+	// cf and sec are non-nil iff loadDarwinAPI returned nil.
+	cf  *cfAPI
+	sec *secAPI
+)
+
+// loadDarwinAPI resolves the CoreFoundation and Security framework bindings
+// once per process. Both frameworks ship with macOS, so failure here is
+// unexpected; it is still surfaced as an error rather than a panic so that
+// backend probing can fall back gracefully.
+func loadDarwinAPI() error {
+	darwinAPIOnce.Do(func() {
+		cfLib := openLib(coreFoundationPath)
+		secLib := openLib(securityPath)
+		cfBound := newCFAPI(cfLib)
+		secBound := newSecAPI(secLib)
+		if cfLib.err != nil {
+			darwinAPIErr = cfLib.err
+			return
+		}
+		if secLib.err != nil {
+			darwinAPIErr = secLib.err
+			return
+		}
+		cf, sec = cfBound, secBound
+	})
+	return darwinAPIErr
+}
