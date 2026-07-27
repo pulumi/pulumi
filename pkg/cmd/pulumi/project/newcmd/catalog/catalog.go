@@ -13,12 +13,12 @@
 // limitations under the License.
 
 // Package catalog turns the flat list of available template names into the provider/language
-// structure the guided `pulumi new` flow walks through. Providers are open-ended: a template for a
-// previously unseen provider appears automatically (with its raw id as the display name until someone
-// curates one). Languages are a closed set: languageDisplayNames doubles as the vocabulary that splits
-// "<provider>-<language>" names, so a template whose suffix is an unregistered language id won't parse
-// and stays out of the guided flow (still reachable via the flat list) until the id is added here.
-// Only presentation (display names, featured set, ordering) is curated.
+// structure the guided `pulumi new` flow walks through. Both sides of a "<provider>-<language>" name
+// are closed vocabularies: languageDisplayNames splits off the language suffix and
+// providerDisplayNames admits the provider prefix. A name that doesn't decompose into a known
+// provider and language — an unregistered language, an uncurated provider, or a compound flavor
+// such as "container-aws-typescript" — stays out of the guided flow and remains reachable through
+// the "Browse all templates" fallback.
 package catalog
 
 import (
@@ -68,8 +68,9 @@ var languageDisplayOverrides = map[string]map[string]string{
 	noneProvider: {"java": "Java (Maven)"},
 }
 
-// providerDisplayNames curates the human labels. Providers absent here still appear (using their raw
-// id) rather than being hidden, so a newly published provider is reachable before anyone curates it.
+// providerDisplayNames curates the human labels and doubles as the set of providers the guided flow
+// offers. A template whose prefix is absent here — a compound flavor such as "container-aws", or a
+// provider nobody has curated yet — stays out of the catalog and lives behind "Browse all templates".
 var providerDisplayNames = map[string]string{
 	"aws":          "AWS",
 	"azure":        "Azure",
@@ -127,6 +128,9 @@ func New(templateNames []string) *Catalog {
 		if !ok {
 			continue
 		}
+		if _, curated := providerDisplayNames[providerID]; !curated {
+			continue
+		}
 		if names[providerID] == nil {
 			names[providerID] = map[string]string{}
 		}
@@ -141,7 +145,7 @@ func New(templateNames []string) *Catalog {
 		}
 		providers[providerID] = Provider{
 			ID:          providerID,
-			DisplayName: providerDisplayName(providerID),
+			DisplayName: providerDisplayNames[providerID],
 			Featured:    featuredRank(providerID) >= 0,
 			Languages:   buildLanguages(providerID, languageIDs),
 		}
@@ -220,13 +224,6 @@ func buildLanguages(providerID string, languageIDs []string) []Language {
 		return langs[i].DisplayName < langs[j].DisplayName
 	})
 	return langs
-}
-
-func providerDisplayName(id string) string {
-	if name, ok := providerDisplayNames[id]; ok {
-		return name
-	}
-	return id
 }
 
 func languageDisplayName(providerID, languageID string) string {

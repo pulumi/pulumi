@@ -240,11 +240,27 @@ func TestEmptyCatalog(t *testing.T) {
 	assert.False(t, testCatalog().Empty())
 }
 
-func TestUnknownProviderFallsBackToRawDisplayName(t *testing.T) {
+func TestUncuratedProviderStaysOutOfCatalog(t *testing.T) {
 	t.Parallel()
 
 	cat := New([]string{"newcloud-go"})
-	p, ok := cat.get("newcloud")
-	require.True(t, ok, "a provider not in the curated display map must still be reachable")
-	assert.Equal(t, "newcloud", p.DisplayName)
+	assert.True(t, cat.Empty(), "an uncurated provider must fall through to Browse all templates")
+}
+
+func TestCompoundTemplateNamesStayOutOfCatalog(t *testing.T) {
+	t.Parallel()
+
+	cat := New([]string{
+		"aws-typescript", "kubernetes-go",
+		"container-aws-typescript", "kubernetes-aws-go", "esc-connector-lambda-python", "vm-gcp-csharp",
+	})
+
+	for _, id := range []string{"container-aws", "kubernetes-aws", "esc-connector-lambda", "vm-gcp"} {
+		_, ok := cat.get(id)
+		assert.False(t, ok, "%s must not be minted as a provider", id)
+	}
+	_, ok := cat.get("aws")
+	assert.True(t, ok)
+	_, ok = cat.get("kubernetes")
+	assert.True(t, ok, "plain kubernetes is curated and must stay")
 }
