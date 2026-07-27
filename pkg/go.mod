@@ -57,6 +57,8 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization/v3 v3.0.0-beta.3
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions v1.3.0
 	github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys v1.4.0
 	github.com/BurntSushi/toml v1.6.0
 	github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2
@@ -68,7 +70,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.31.4
 	github.com/aws/aws-sdk-go-v2/service/kms v1.50.3
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.102.2
+	github.com/aws/aws-sdk-go-v2/service/sso v1.30.19
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.2
 	github.com/aws/aws-sdk-go-v2/service/sts v1.42.3
+	github.com/aws/smithy-go v1.27.0
 	github.com/ccojocar/zxcvbn-go v1.0.1
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/charmbracelet/x/ansi v0.11.7
@@ -159,9 +164,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.25 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.25 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.1.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.30.19 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.2 // indirect
-	github.com/aws/smithy-go v1.27.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
