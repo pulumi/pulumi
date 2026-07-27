@@ -8,9 +8,12 @@
 # dials back INTO the program for every resource registration.
 #
 # That callback server binds 127.0.0.1 on a kernel-chosen port and advertises that literal
-# address (sdk/go/pulumi/callback.go builds `Target: "127.0.0.1:" + port`). It is therefore
-# reachable only where the engine shares the program's loopback — and whether it does is
-# RUNTIME-DEPENDENT today:
+# address (sdk/go/pulumi/callback.go builds `Target: "127.0.0.1:" + port`).
+#
+# So the invariant is: TRANSFORMS ARE BROKEN WHEREVER THE PROGRAM HAS ITS OWN NETNS. Not
+# "broken in pod mode" — pod mode is incidental. The two runtimes below are instances of
+# that rule, and any runtime lacking a shared-netns pod primitive lands in the failing
+# column by construction:
 #
 #   docker/nerdctl — MEASURED: the program runs in its OWN netns as a sibling on the pod
 #                    bridge and reaches the engine by advertised DNS name (podAdvertiseHost;
