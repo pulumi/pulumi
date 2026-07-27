@@ -31,6 +31,7 @@ var testTemplateNames = []string{
 	"gcp-typescript", "gcp-python", "gcp-csharp", "gcp-fsharp", "gcp-go", "gcp-java", "gcp-visualbasic", "gcp-yaml",
 	"typescript", "python", "go", "csharp", "fsharp", "java", "java-gradle", "javascript", "bun", "visualbasic", "yaml",
 	"alicloud-typescript", "azuredevops-python", "linode-go", "rediscloud-python", "rediscloud-go",
+	"aws-hcl", "hcl",
 }
 
 func testCatalog() *Catalog { return New(testTemplateNames) }
@@ -114,7 +115,7 @@ func TestNoneLanguageOrder(t *testing.T) {
 	}
 	assert.Equal(t, []string{
 		"TypeScript", "Python", "Go", "C#", "YAML", "Java (Maven)",
-		"Java (Gradle)", "JavaScript", "Bun", "F#", "Visual Basic",
+		"Java (Gradle)", "JavaScript", "Bun", "F#", "Visual Basic", "HCL",
 	}, displayNames)
 }
 
@@ -143,7 +144,7 @@ func TestLanguageOrderByUsage(t *testing.T) {
 		displayNames[i] = l.DisplayName
 	}
 	assert.Equal(t, []string{
-		"TypeScript", "Python", "Go", "C#", "YAML", "Java", "Bun", "F#", "Scala", "Visual Basic",
+		"TypeScript", "Python", "Go", "C#", "YAML", "Java", "Bun", "F#", "Scala", "Visual Basic", "HCL",
 	}, displayNames)
 
 	ranks := make([]int, len(aws.Languages))
@@ -210,6 +211,8 @@ func TestSplitTemplateName(t *testing.T) {
 		ok             bool
 	}{
 		{"aws-typescript", "aws", "typescript", true},
+		{"aws-hcl", "aws", "hcl", true},
+		{"hcl", "none", "hcl", true},
 		{"rediscloud-go", "rediscloud", "go", true},
 		{"typescript", "none", "typescript", true},
 		{"java", "none", "java", true},

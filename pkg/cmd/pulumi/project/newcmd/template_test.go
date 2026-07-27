@@ -120,6 +120,22 @@ func TestGuidedChooserFallsBackToFlatWhenNothingIsCurated(t *testing.T) {
 	assert.Contains(t, notice.String(), "Falling back to the full template list.")
 }
 
+func TestGuidedChooserBrowseAllRunsFlat(t *testing.T) {
+	t.Parallel()
+
+	flat := func([]cmdTemplates.Template, display.Options) (cmdTemplates.Template, error) {
+		return fakeTemplate{name: "flat"}, nil
+	}
+	sel, _ := scriptedSelect(t, optionBrowseAll)
+
+	got, err := guidedChooser(sel, flat)(
+		[]cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}},
+		display.Options{IsInteractive: true},
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "flat", got.Name())
+}
+
 func TestGuidedChooserMapsInterruptToNoTemplateSelected(t *testing.T) {
 	t.Parallel()
 

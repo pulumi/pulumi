@@ -50,6 +50,7 @@ var languageDisplayNames = map[string]string{
 	"csharp":      "C#",
 	"fsharp":      "F#",
 	"go":          "Go",
+	"hcl":         "HCL",
 	"java":        "Java",
 	"java-gradle": "Java (Gradle)",
 	"javascript":  "JavaScript",
@@ -108,6 +109,7 @@ var languageRank = map[string]int{
 	"fsharp":      9,
 	"scala":       10,
 	"visualbasic": 11,
+	"hcl":         12,
 }
 
 // Catalog is the provider/language structure derived from a set of template names.

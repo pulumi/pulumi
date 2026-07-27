@@ -50,9 +50,6 @@ func guidedChooser(sel selectFunc, flat chooseTemplateFunc) chooseTemplateFunc {
 		template, err := chooseGuided(templates, opts, sel)
 		switch {
 		case errors.Is(err, errFallBackToFlatList):
-			if opts.Stdout != nil {
-				fmt.Fprintln(opts.Stdout, "Falling back to the full template list.")
-			}
 			return flat(templates, opts)
 		case errors.Is(err, terminal.InterruptErr):
 			return nil, errors.New("no template selected")

@@ -147,7 +147,18 @@ func TestGuidedNonePositionInCloudPrompt(t *testing.T) {
 
 	_, err := chooseGuided(templates, display.Options{}, sel)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"AWS", "Azure", "GCP", "None", optionOther}, (*offered)[0])
+	assert.Equal(t, []string{"AWS", "Azure", "GCP", "None", optionOther, optionBrowseAll}, (*offered)[0])
+}
+
+func TestGuidedBrowseAllFallsBackToFlatList(t *testing.T) {
+	t.Parallel()
+
+	templates := []cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}}
+	sel, _ := scriptedSelect(t, optionBrowseAll)
+
+	got, err := chooseGuided(templates, display.Options{}, sel)
+	assert.Nil(t, got)
+	assert.ErrorIs(t, err, errFallBackToFlatList)
 }
 
 func TestGuidedNoneJavaIsSplitByBuildSystem(t *testing.T) {

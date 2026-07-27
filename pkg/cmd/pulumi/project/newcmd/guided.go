@@ -29,6 +29,7 @@ import (
 
 const (
 	optionOther             = "Other"
+	optionBrowseAll         = "Browse all templates"
 	sourcePulumiTemplates   = "Pulumi templates"
 	sourceRegistryTemplates = "Registry templates"
 )
@@ -96,6 +97,9 @@ func chooseGuided(
 
 	cat := catalog.New(curatedNames)
 	if cat.Empty() && len(registryTemplates) == 0 {
+		if opts.Stdout != nil {
+			fmt.Fprintln(opts.Stdout, "Falling back to the full template list.")
+		}
 		return nil, errFallBackToFlatList
 	}
 	if cat.Empty() {
@@ -142,17 +146,21 @@ func chooseGuided(
 	return template, nil
 }
 
-// chooseProvider prompts for a featured cloud, expanding "Other" into the full provider list. The
-// Other row is a sentinel provider with no ID, which is how the second step knows whether it still
-// has to run.
+// chooseProvider prompts for a featured cloud, expanding "Other" into the full provider list and
+// "Browse all templates" into the flat-list fallback. Both extra rows are sentinel providers with no
+// ID, which is how the second step knows whether it still has to run.
 func chooseProvider(cat *catalog.Catalog, opts display.Options, sel selectFunc) (catalog.Provider, error) {
 	displayName := func(p catalog.Provider) string { return p.DisplayName }
+	extras := []catalog.Provider{{DisplayName: optionOther}, {DisplayName: optionBrowseAll}}
 	var provider catalog.Provider
 	err := ui.SurveyStack(
 		func() (err error) {
 			provider, err = pick(
 				sel, "Which cloud would you like to use?", opts,
-				append(cat.Featured(), catalog.Provider{DisplayName: optionOther}), displayName)
+				append(cat.Featured(), extras...), displayName)
+			if err == nil && provider.DisplayName == optionBrowseAll {
+				return errFallBackToFlatList
+			}
 			return err
 		},
 		func() (err error) {
