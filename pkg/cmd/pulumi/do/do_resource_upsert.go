@@ -356,7 +356,13 @@ func addStatefulSnippetUpdateFlags(
 	cmd.Flags().StringVar(inputFormat, "input", "yaml",
 		"Format of the resource inputs file (any language name supported by an installed converter)")
 	cmd.Flags().StringVar(resourcesFile, "resources-file", "",
-		"Path to a JSON file mapping identifiers to resource URNs that input expressions may reference")
+		"Path to a JSON file mapping identifiers to resource URNs that input expressions may reference.\n"+
+			"The file must be a JSON object whose keys are the identifiers used in input expressions and\n"+
+			"whose values are the URNs of existing resources in the stack, for example:\n"+
+			"  {\n"+
+			"    \"myBucket\": \"urn:pulumi:dev::my-project::aws:s3/bucket:Bucket::my-bucket\",\n"+
+			"    \"myVpc\":    \"urn:pulumi:dev::my-project::aws:ec2/vpc:Vpc::my-vpc\"\n"+
+			"  }")
 	cmd.Flags().BoolVar(yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
 	addInputFlags(cmd, "input", inputs)
