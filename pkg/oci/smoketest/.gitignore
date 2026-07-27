@@ -1,0 +1,9 @@
+# Transient build artifacts the run-pod-*.sh drivers stage into this directory and remove
+# again on exit. They are listed here so an interrupted run cannot leave a multi-megabyte
+# binary or a whole SDK tree looking like tracked changes.
+
+# Cross-compiled demo programs (run-pod-*.sh build these before the image build).
+program-linux
+
+# This branch's Node SDK, staged into the program build context by run-pod-node-transform.sh.
+program-node-transform/sdk-bin/

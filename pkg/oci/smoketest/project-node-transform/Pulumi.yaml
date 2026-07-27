@@ -1,0 +1,7 @@
+name: oci-smoketest-node-transform
+description: Transform smoke test for a Node program (OCI) — proves the engine can dial back
+runtime:
+  name: oci
+  options:
+    # Its own image tag, so this test never contends with run-pod-node.sh over one tag.
+    image: oci-smoke-node-transform:latest

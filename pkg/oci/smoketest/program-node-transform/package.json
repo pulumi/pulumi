@@ -1,0 +1,9 @@
+{
+  "name": "oci-smoke-node-transform-program",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "@pulumi/pulumi": "^3.142.0",
+    "@pulumi/random": "4.21.0"
+  }
+}
