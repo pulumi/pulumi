@@ -355,7 +355,7 @@ func addStatefulSnippetUpdateFlags(
 	cmd.Flags().StringVar(inputFile, "input-file", "", "Path to a file containing resource inputs")
 	cmd.Flags().StringVar(inputFormat, "input", "yaml",
 		"Format of the resource inputs file (any language name supported by an installed converter)")
-	cmd.Flags().StringVar(resourcesFile, "resources", "",
+	cmd.Flags().StringVar(resourcesFile, "resources-file", "",
 		"Path to a JSON file mapping identifiers to resource URNs that input expressions may reference")
 	cmd.Flags().BoolVar(yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")

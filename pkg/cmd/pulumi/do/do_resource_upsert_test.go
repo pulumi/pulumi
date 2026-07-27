@@ -210,7 +210,7 @@ func TestDoCmdResourceUpsertConstructsSnippetWithReferences(t *testing.T) {
 	resourcesFile := writeHCLFile(t, "resources.json", `{"source":"`+string(referencedURN)+`"}`)
 	cmd.SetArgs([]string{
 		"azure:index:myResource", "upsert", "myres", "--yes",
-		"--input", "pcl", "--input-file", inputFile, "--resources", resourcesFile,
+		"--input", "pcl", "--input-file", inputFile, "--resources-file", resourcesFile,
 	})
 	require.NoError(t, cmd.Execute())
 
@@ -679,7 +679,7 @@ func TestDoCmdResourceStatefulCreateConstructsSnippetWithReferences(t *testing.T
 	resourcesFile := writeHCLFile(t, "resources.json", `{"source":"`+string(referencedURN)+`"}`)
 	cmd.SetArgs([]string{
 		"azure:index:myResource", "create", "myres", "--yes",
-		"--input", "pcl", "--input-file", inputFile, "--resources", resourcesFile,
+		"--input", "pcl", "--input-file", inputFile, "--resources-file", resourcesFile,
 	})
 	require.NoError(t, cmd.Execute())
 
