@@ -1,0 +1,7 @@
+name: oci-smoketest-python-transform
+description: Transform smoke test for a Python program (OCI) — proves the engine can dial back
+runtime:
+  name: oci
+  options:
+    # Its own image tag, so this test never contends with the other python smoke tests.
+    image: oci-smoke-python-transform:latest
