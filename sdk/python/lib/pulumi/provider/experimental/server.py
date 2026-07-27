@@ -20,6 +20,7 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 from typing import Optional, Any, cast
 import argparse
 import asyncio
+import os
 import sys
 import traceback
 
@@ -668,7 +669,12 @@ def main(args: list[str], version: str, provider: provider.Provider) -> None:
             args, version, provider, engine_address=engine_address
         )
         provider_pb2_grpc.add_ResourceProviderServicer_to_server(servicer, server)
-        port = server.add_insecure_port(address="127.0.0.1:0")
+        # See PULUMI_PLUGIN_LISTEN_ADDRESS in pulumi/dynamic/__main__.py: a containerized
+        # plugin needs an address the engine can know before it starts. The bound port is
+        # still what the handshake prints.
+        port = server.add_insecure_port(
+            address=os.getenv("PULUMI_PLUGIN_LISTEN_ADDRESS") or "127.0.0.1:0"
+        )
         await server.start()
         sys.stdout.buffer.write(f"{port}\n".encode())
         sys.stdout.buffer.flush()

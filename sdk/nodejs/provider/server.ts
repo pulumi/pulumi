@@ -798,8 +798,12 @@ export async function main(provider: Provider, args: string[]) {
 
     const engineAddr = parsedArgs?.engineAddress;
     server.addService(provrpc.ResourceProviderService, new Server(engineAddr, provider, uncaughtErrors));
+    // See PULUMI_PLUGIN_LISTEN_ADDRESS in cmd/dynamic-provider: a containerized plugin needs an
+    // address the engine can know before it starts. The bound port is still what the handshake
+    // prints.
+    const listenAddress = process.env.PULUMI_PLUGIN_LISTEN_ADDRESS || `127.0.0.1:0`;
     const port: number = await new Promise<number>((resolve, reject) => {
-        server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+        server.bindAsync(listenAddress, grpc.ServerCredentials.createInsecure(), (err, p) => {
             if (err) {
                 reject(err);
             } else {

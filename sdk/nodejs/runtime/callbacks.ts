@@ -90,8 +90,19 @@ export class CallbackServer implements ICallbackServer {
         this._server.addService(callrpc.CallbacksService, implementation);
 
         const self = this;
+        // The engine dials this server back for every transform, so it must be told an address it
+        // can actually reach. Loopback is right whenever the engine shares this process's network
+        // namespace, and wrong when the program runs in its own — where the engine dialing
+        // 127.0.0.1 reaches itself.
+        //
+        // Only a host is supplied, not a full address: unlike a plugin, which the engine must
+        // address before it starts, this server reports itself after binding, so a kernel-chosen
+        // port is fine. Bind and advertise are derived from ONE read — advertising a routable host
+        // while still bound to loopback fails identically to not advertising at all.
+        const advertiseHost = process.env.PULUMI_CALLBACKS_ADVERTISE_HOST;
+        const bindAddress = advertiseHost ? `0.0.0.0:0` : `127.0.0.1:0`;
         this._target = new Promise<string>((resolve, reject) => {
-            self._server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, port) => {
+            self._server.bindAsync(bindAddress, grpc.ServerCredentials.createInsecure(), (err, port) => {
                 if (err !== null) {
                     reject(err);
                     return;
@@ -136,9 +147,15 @@ export class CallbackServer implements ICallbackServer {
 
                 // The server takes a while to _actually_ startup so we need to keep trying to send an invoke
                 // to ourselves before we resolve the address to tell the engine about it.
-                const target = `127.0.0.1:${port}`;
+                //
+                // The readiness probe always dials loopback: it is reaching our own process, and a
+                // 0.0.0.0 bind covers loopback too. Only the address handed to the ENGINE needs the
+                // advertised host — keeping them separate means the probe never depends on this
+                // container being able to resolve its own name.
+                const probeTarget = `127.0.0.1:${port}`;
+                const target = advertiseHost ? `${advertiseHost}:${port}` : probeTarget;
 
-                const client = new callrpc.CallbacksClient(target, grpc.credentials.createInsecure());
+                const client = new callrpc.CallbacksClient(probeTarget, grpc.credentials.createInsecure());
 
                 const connect = () => {
                     client.invoke(new CallbackInvokeRequest(), (error, _) => {

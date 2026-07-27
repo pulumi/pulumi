@@ -250,7 +250,13 @@ def main():
         options=_GRPC_CHANNEL_OPTIONS,
     )
     provider_pb2_grpc.add_ResourceProviderServicer_to_server(monitor, server)
-    port = server.add_insecure_port(address="127.0.0.1:0")
+    # A plugin in its own container must be reachable from outside its network namespace, and
+    # at an address the engine can know before the process starts — so the env supplies both
+    # interface and port. add_insecure_port returns the port actually bound, which is what the
+    # handshake below prints, so a host that scrapes stdout is unaffected either way.
+    port = server.add_insecure_port(
+        address=os.getenv("PULUMI_PLUGIN_LISTEN_ADDRESS") or "127.0.0.1:0"
+    )
     server.start()
     sys.stdout.buffer.write(f"{port}\n".encode())
     try:

@@ -498,8 +498,13 @@ export async function main(args: string[]) {
     });
     const resourceProvider = new ResourceProviderService();
     server.addService(provrpc.ResourceProviderService, resourceProvider);
+    // A plugin in its own container must be reachable from outside its network namespace, and
+    // at an address the engine can know before the process starts — so the env supplies both
+    // interface and port. bindAsync yields the port actually bound, which is what the handshake
+    // below prints, so a host that scrapes stdout is unaffected either way.
+    const listenAddress = process.env.PULUMI_PLUGIN_LISTEN_ADDRESS || `127.0.0.1:0`;
     const port: number = await new Promise<number>((resolve, reject) => {
-        server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+        server.bindAsync(listenAddress, grpc.ServerCredentials.createInsecure(), (err, p) => {
             if (err) {
                 reject(err);
             } else {

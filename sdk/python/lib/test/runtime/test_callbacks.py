@@ -26,6 +26,43 @@ from ..grpc_stubs import monitor_servicer_stub, callback_servicer_stub
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(60)
+async def test_callback_servicer_advertises_configured_host(monkeypatch):
+    """
+    The engine dials the callback server back, so the address it is handed has to be one it
+    can reach. Loopback is right only when the engine shares this process's network namespace;
+    a program in its own container must advertise a host the engine can route to.
+    """
+
+    async def make_servicer(monitor_stub):
+        servicer = _CallbackServicer(monitor_stub)
+        # Manage shutdown ourselves rather than through the global list.
+        servicer._servicers.remove(servicer)
+        return servicer
+
+    async with monitor_servicer_stub(ResourceMonitorServicer()) as monitor_stub:
+        monkeypatch.delenv("PULUMI_CALLBACKS_ADVERTISE_HOST", raising=False)
+        default = await make_servicer(monitor_stub)
+        try:
+            host, _, port = default._target.rpartition(":")
+            assert host == "127.0.0.1", "unset must keep the loopback default"
+            assert int(port) > 0, "the advertised port must be the one actually bound"
+        finally:
+            await default._server.stop(grace=0)
+
+        monkeypatch.setenv("PULUMI_CALLBACKS_ADVERTISE_HOST", "pulumi-pod-p1-program")
+        advertised = await make_servicer(monitor_stub)
+        try:
+            host, _, port = advertised._target.rpartition(":")
+            assert host == "pulumi-pod-p1-program"
+            assert int(port) > 0, (
+                "a kernel-chosen port is fine; only the host is configured"
+            )
+        finally:
+            await advertised._server.stop(grace=0)
+
+
+@pytest.mark.asyncio
 # This test will hang indefinitely if we don't abort the GRPC connection
 @pytest.mark.timeout(60)
 async def test_callback_servicer_transform_errors():

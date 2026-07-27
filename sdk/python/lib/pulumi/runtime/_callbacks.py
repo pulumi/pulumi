@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import traceback
 import uuid
 from collections.abc import Awaitable, Callable, Mapping
@@ -78,8 +79,20 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         self._monitor = monitor
         self._server = aio.server(options=_GRPC_CHANNEL_OPTIONS)
         callback_pb2_grpc.add_CallbacksServicer_to_server(self, self._server)
-        port = self._server.add_insecure_port(address="127.0.0.1:0")
-        self._target = f"127.0.0.1:{port}"
+        # The engine dials this server back for every transform, so it must be told an
+        # address it can actually reach. Loopback is right whenever the engine shares this
+        # process's network namespace, and wrong when the program runs in its own — where
+        # the engine dialing 127.0.0.1 reaches itself.
+        #
+        # Only a host is supplied, not a full address: unlike a plugin, which the engine must
+        # address before it starts, this server reports itself after binding, so a
+        # kernel-chosen port is fine. Bind and advertise are derived from ONE read —
+        # advertising a routable host while still bound to loopback fails identically to not
+        # advertising at all.
+        advertise_host = os.getenv("PULUMI_CALLBACKS_ADVERTISE_HOST")
+        bind_host = "0.0.0.0" if advertise_host else "127.0.0.1"
+        port = self._server.add_insecure_port(address=f"{bind_host}:0")
+        self._target = f"{advertise_host or '127.0.0.1'}:{port}"
 
     async def serve(self):
         # Workaround for https://github.com/grpc/grpc/issues/38679,
