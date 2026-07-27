@@ -1197,7 +1197,8 @@ func TestStackReferenceRegister(t *testing.T) {
 							payload.URN.Type() == "pulumi:pulumi:StackReference" &&
 							strings.Contains(
 								payload.Message,
-								"The \"pulumi:pulumi:StackReference\" resource type is deprecated.")
+								"The \"pulumi:pulumi:StackReference\" resource type is deprecated.",
+							)
 						found = found || ok
 					}
 				}
@@ -1548,7 +1549,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 			resource.NewProperty("foo"),
 			resource.NewProperty("bar"),
 		})),
-	}, nil, []display.StepOp{deploy.OpUpdate}, "ignore-secret")
+	}, nil, []display.StepOp{deploy.OpSame}, "ignore-secret")
 
 	// Now check that changing a value (but not secretness) can be ignored
 	_ = updateProgramWithProps(snap, resource.PropertyMap{
@@ -1809,6 +1810,91 @@ func TestReplaceOnChanges(t *testing.T) {
 	// We simulate a provider that does not have it's own diff function. This tests the engines diff
 	// function instead.
 	replaceOnChangesTest(t, "engine diff", nil)
+}
+
+// TestReplaceOnChangesSecretness ensures that wrapping an existing property value in a secret
+// (without changing the underlying value) does not trigger a replacement, even when the
+// property is listed in replaceOnChanges. Only the underlying value should matter for diffing.
+func TestReplaceOnChangesSecretness(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				// No DiffF — exercise the engine's built-in diff.
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID("id123"),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	runUpdate := func(snap *deploy.Snapshot, props resource.PropertyMap, disallowed []display.StepOp) *deploy.Snapshot {
+		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs:           props,
+				ReplaceOnChanges: []string{"a"},
+			})
+			require.NoError(t, err)
+			return nil
+		})
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+		p := &lt.TestPlan{
+			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+			Steps: []lt.TestStep{
+				{
+					Op: Update,
+					Validate: func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
+						events []Event, err error,
+					) error {
+						for _, event := range events {
+							if event.Type != ResourcePreEvent {
+								continue
+							}
+							payload := event.Payload().(ResourcePreEventPayload)
+							if payload.Internal {
+								continue
+							}
+							for _, bad := range disallowed {
+								assert.NotEqual(t, bad, payload.Metadata.Op,
+									"resource unexpectedly got op %s for %s", payload.Metadata.Op, payload.Metadata.URN)
+							}
+						}
+						return err
+					},
+				},
+			},
+		}
+		return p.RunWithName(t, snap, fmt.Sprintf("%v", props))
+	}
+
+	// Create the resource with a non-secret value.
+	snap := runUpdate(nil, resource.PropertyMap{
+		"a": resource.NewProperty("hello"),
+	}, nil)
+
+	// Update with the same underlying value, but wrapped as a secret. This should NOT replace.
+	replaceOps := []display.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced}
+	snap = runUpdate(snap, resource.PropertyMap{
+		"a": resource.MakeSecret(resource.NewProperty("hello")),
+	}, replaceOps)
+
+	// Even though the step was OpSame, the persisted state should reflect the new secret-ness
+	// of the input — otherwise the diff would re-fire on the next update.
+	var res *pkgresource.State
+	for _, r := range snap.Resources {
+		if r.URN.Name() == "resA" {
+			res = r
+			break
+		}
+	}
+	require.NotNil(t, res, "resA not found in snapshot")
+	require.True(t, res.Inputs["a"].IsSecret(), "input 'a' should be stored as a secret, got %v", res.Inputs["a"])
+	require.True(t, res.Outputs["a"].IsSecret(), "output 'a' should be stored as a secret, got %v", res.Outputs["a"])
 }
 
 func TestPersistentDiff(t *testing.T) {
@@ -3208,7 +3294,8 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 	project := p.GetProject()
 
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
-		"<{%reset%}>Expected an ID for urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>"))
+		"<{%reset%}>Expected an ID for urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>",
+	))
 
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	require.NoError(t, err)
@@ -3413,14 +3500,16 @@ func TestDefaultParents(t *testing.T) {
 			resource.RootStackType,
 			info.Project+"-"+info.Stack,
 			false,
-			deploytest.ResourceOptions{})
+			deploytest.ResourceOptions{},
+		)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource(
 			"pkgA:m:typA",
 			"resA",
 			true,
-			deploytest.ResourceOptions{})
+			deploytest.ResourceOptions{},
+		)
 		require.NoError(t, err)
 
 		return nil
@@ -3813,14 +3902,16 @@ func TestTimestampTracking(t *testing.T) {
 			resource.RootStackType,
 			info.Project+"-"+info.Stack,
 			false,
-			deploytest.ResourceOptions{})
+			deploytest.ResourceOptions{},
+		)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource(
 			"pkgA:m:typA",
 			"resA",
 			true,
-			deploytest.ResourceOptions{})
+			deploytest.ResourceOptions{},
+		)
 		require.NoError(t, err)
 
 		return nil
@@ -4967,7 +5058,8 @@ func TestProgramError(t *testing.T) {
 	}
 
 	snap, err := lt.TestOp(Update).RunStep(
-		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0",
+	)
 	require.NotNil(t, snap)
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 3)
@@ -4978,7 +5070,8 @@ func TestProgramError(t *testing.T) {
 	returnError = true
 
 	snap, err = lt.TestOp(Update).RunStep(
-		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1",
+	)
 	require.NotNil(t, snap)
 	require.Error(t, err)
 	require.True(t, result.IsBail(err))
@@ -5017,7 +5110,8 @@ func TestResourceError(t *testing.T) {
 	}
 
 	_, err := lt.TestOp(Update).RunStep(
-		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0",
+	)
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "create failed intentionally")
 }

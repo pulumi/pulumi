@@ -161,7 +161,8 @@ type IgnorePathFunc func(path PropertyPath) bool
 // The passed in property path will be mutated via append.
 type InitialPropertyPath PropertyPath
 
-func (opt IgnoreKeyFunc) apply(o *diffOptions)       { o.ignoreKeyFuncs = append(o.ignoreKeyFuncs, opt) }
+func (opt IgnoreKeyFunc) apply(o *diffOptions) { o.ignoreKeyFuncs = append(o.ignoreKeyFuncs, opt) }
+
 func (opt IgnorePathFunc) apply(o *diffOptions)      { o.ignorePathFunc = append(o.ignorePathFunc, opt) }
 func (opt InitialPropertyPath) apply(o *diffOptions) { o.initialPath = PropertyPath(opt) }
 
@@ -269,8 +270,23 @@ func (v PropertyValue) Diff(other PropertyValue, ignoreKeys ...IgnoreKeyFunc) *V
 	return v.DiffWithOptions(other, opts...)
 }
 
+func normalizeDiffPropertyValue(v PropertyValue) PropertyValue {
+	for v.IsSecret() {
+		v = v.SecretValue().Element
+	}
+	if v.IsOutput() {
+		output := v.OutputValue()
+		output.Secret = false
+		v = NewProperty(output)
+	}
+	return v
+}
+
 // Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
 func (v PropertyValue) diff(other PropertyValue, opts diffOptions, path PropertyPath) *ValueDiff {
+	v = normalizeDiffPropertyValue(v)
+	other = normalizeDiffPropertyValue(other)
+
 	if v.IsArray() && other.IsArray() {
 		old := v.ArrayValue()
 		new := other.ArrayValue()
@@ -465,6 +481,55 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 
 	// For all other cases, primitives are equal if their values are equal.
 	return v.V == other.V
+}
+
+// DeepEqualsIgnoreSecrets is like DeepEquals but treats a secret-wrapped value as equal to the
+// unwrapped value it contains. Only secret-ness is ignored; every other aspect (type, contents,
+// nested values, computed-ness, etc.) must still match exactly.
+func (props PropertyMap) DeepEqualsIgnoreSecrets(other PropertyMap) bool {
+	for _, k := range props.StableKeys() {
+		v := props[k]
+		if p, has := other[k]; has {
+			if !v.DeepEqualsIgnoreSecrets(p) {
+				return false
+			}
+		} else if v.HasValue() {
+			return false
+		}
+	}
+	for _, k := range other.StableKeys() {
+		if _, has := props[k]; !has && other[k].HasValue() {
+			return false
+		}
+	}
+	return true
+}
+
+// DeepEqualsIgnoreSecrets is like DeepEquals but treats a secret-wrapped value as equal to the
+// unwrapped value it contains.
+func (v PropertyValue) DeepEqualsIgnoreSecrets(other PropertyValue) bool {
+	if v.IsSecret() {
+		v = v.SecretValue().Element
+	}
+	if other.IsSecret() {
+		other = other.SecretValue().Element
+	}
+	if v.IsArray() && other.IsArray() {
+		va, oa := v.ArrayValue(), other.ArrayValue()
+		if len(va) != len(oa) {
+			return false
+		}
+		for i := range va {
+			if !va[i].DeepEqualsIgnoreSecrets(oa[i]) {
+				return false
+			}
+		}
+		return true
+	}
+	if v.IsObject() && other.IsObject() {
+		return v.ObjectValue().DeepEqualsIgnoreSecrets(other.ObjectValue())
+	}
+	return v.DeepEquals(other)
 }
 
 // DiffIncludeUnknowns returns a diffset by comparing the property map to another; it returns nil if there are no diffs.

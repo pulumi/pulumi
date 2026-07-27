@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Ignore changes of secretness for replaceOnChanges
+time: 2026-07-27T12:23:40.735699+01:00

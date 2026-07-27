@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -411,27 +412,8 @@ func TestSecretVsNonSecretMapDiff(t *testing.T) {
 	assert.False(t, reflect.DeepEqual(plain, secret))
 	assert.False(t, reflect.DeepEqual(secret, plain))
 
-	diff := plain.Diff(secret)
-	require.NotNil(t, diff)
-	assert.Empty(t, diff.Adds)
-	assert.Empty(t, diff.Deletes)
-	assert.Empty(t, diff.Sames)
-	require.Contains(t, diff.Updates, "k")
-
-	vd := diff.Updates["k"]
-	assert.True(t, vd.Old.IsString())
-	assert.Equal(t, "v", vd.Old.AsString())
-	assert.False(t, vd.Old.Secret())
-	assert.True(t, vd.New.IsString())
-	assert.Equal(t, "v", vd.New.AsString())
-	assert.True(t, vd.New.Secret())
-	assert.Nil(t, vd.Array)
-	assert.Nil(t, vd.Object)
-
-	// And the reverse direction should also surface as an update.
-	rdiff := secret.Diff(plain)
-	require.NotNil(t, rdiff)
-	require.Contains(t, rdiff.Updates, "k")
+	assert.Nil(t, plain.Diff(secret))
+	assert.Nil(t, secret.Diff(plain))
 }
 
 func TestComputedProperyValueDiff(t *testing.T) {
@@ -455,16 +437,9 @@ func TestSecretVsNonSecretWholeMapDiff(t *testing.T) {
 	assert.False(t, reflect.DeepEqual(plain, secret))
 	assert.False(t, reflect.DeepEqual(secret, plain))
 
-	// At the value level the secret wrapper makes the whole thing differ —
-	// the diff is a flat Old/New replacement, not a recursive Object diff.
+	// Just being different on secrets doesn't cause a diff.
 	vd := plain.Diff(secret)
-	require.NotNil(t, vd)
-	assert.Nil(t, vd.Object)
-	assert.Nil(t, vd.Array)
-	assert.True(t, vd.Old.IsMap())
-	assert.False(t, vd.Old.Secret())
-	assert.True(t, vd.New.IsMap())
-	assert.True(t, vd.New.Secret())
+	require.Nil(t, vd)
 }
 
 func TestSecretVsNonSecretWholeArrayDiff(t *testing.T) {
@@ -477,14 +452,49 @@ func TestSecretVsNonSecretWholeArrayDiff(t *testing.T) {
 	assert.False(t, reflect.DeepEqual(plain, secret))
 	assert.False(t, reflect.DeepEqual(secret, plain))
 
-	// As with maps, wrapping the whole array in a secret produces a flat
-	// Old/New replacement rather than a recursive Array diff.
+	// Just being different on secrets doesn't cause a diff.
 	vd := plain.Diff(secret)
+	require.Nil(t, vd)
+}
+
+func TestSecretVsNonSecretPrimitiveDiff(t *testing.T) {
+	t.Parallel()
+
+	plain := New("v")
+	secret := New("v").WithSecret(true)
+
+	assert.False(t, reflect.DeepEqual(plain, secret))
+	assert.False(t, reflect.DeepEqual(secret, plain))
+
+	assert.Nil(t, plain.Diff(secret))
+	assert.Nil(t, secret.Diff(plain))
+}
+
+func TestSecretWrappedArrayDiffReportsUnwrappedValues(t *testing.T) {
+	t.Parallel()
+
+	old := New([]Value{New(1.0)}).WithSecret(true)
+	new := New([]Value{New(2.0)}).WithSecret(true)
+
+	vd := old.Diff(new)
 	require.NotNil(t, vd)
-	assert.Nil(t, vd.Array)
-	assert.Nil(t, vd.Object)
-	assert.True(t, vd.Old.IsArray())
+	require.NotNil(t, vd.Array)
 	assert.False(t, vd.Old.Secret())
+	assert.False(t, vd.New.Secret())
+	assert.True(t, vd.Old.IsArray())
 	assert.True(t, vd.New.IsArray())
-	assert.True(t, vd.New.Secret())
+}
+
+func TestSecretDependencyDiffReportsUnwrappedValues(t *testing.T) {
+	t.Parallel()
+
+	old := New("v").WithSecret(true).WithDependencies([]urn.URN{"urn1"})
+	new := New("v").WithSecret(true).WithDependencies([]urn.URN{"urn2"})
+
+	vd := old.Diff(new)
+	require.NotNil(t, vd)
+	assert.False(t, vd.Old.Secret())
+	assert.False(t, vd.New.Secret())
+	assert.Equal(t, []urn.URN{"urn1"}, vd.Old.Dependencies())
+	assert.Equal(t, []urn.URN{"urn2"}, vd.New.Dependencies())
 }

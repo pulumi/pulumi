@@ -161,7 +161,8 @@ type IgnorePathFunc func(path Path) bool
 // The passed in property path will be mutated via append.
 type InitialPropertyPath Path
 
-func (opt IgnoreKeyFunc) apply(o *diffOptions)       { o.ignoreKeyFuncs = append(o.ignoreKeyFuncs, opt) }
+func (opt IgnoreKeyFunc) apply(o *diffOptions) { o.ignoreKeyFuncs = append(o.ignoreKeyFuncs, opt) }
+
 func (opt IgnorePathFunc) apply(o *diffOptions)      { o.ignorePathFunc = append(o.ignorePathFunc, opt) }
 func (opt InitialPropertyPath) apply(o *diffOptions) { o.initialPath = Path(opt) }
 
@@ -255,16 +256,15 @@ func (props Value) Diff(other Value, options ...DiffOption) *ValueDiff {
 
 // Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
 func (v Value) diff(other Value, opts diffOptions, path Path) *ValueDiff {
-	// If secretness differs, then the values are different.
-	if v.Secret() != other.Secret() {
-		return &ValueDiff{Old: v, New: other}
-	}
 	// If the dependencies differ, then the values are different.
 	if !slices.Equal(v.Dependencies(), other.Dependencies()) {
-		return &ValueDiff{Old: v, New: other}
+		return &ValueDiff{Old: v.WithSecret(false), New: other.WithSecret(false)}
 	}
 
-	opaque := v.Secret() || len(v.Dependencies()) > 0
+	v = v.WithSecret(false)
+	other = other.WithSecret(false)
+
+	opaque := len(v.Dependencies()) > 0
 
 	if v.IsArray() && other.IsArray() {
 		old := v.AsArray()
