@@ -924,8 +924,6 @@ func (rm *resmon) supportsFeatureID(id string) bool {
 		return true
 	case "sendsOptionsToHooks":
 		return true
-	case "invokeParent":
-		return true
 	}
 	return false
 }
@@ -971,11 +969,10 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	if rm.supportsFeatureID("sendsOptionsToHooks") {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS)
 	}
-	features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING)
-	if rm.supportsFeatureID("invokeParent") {
-		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_PARENT)
-	}
-	return features
+	return append(features,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_PARENT,
+	)
 }
 
 func (rm *resmon) GetDeploymentInfo(_ context.Context,
