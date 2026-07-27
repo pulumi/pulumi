@@ -142,9 +142,15 @@ func MainContext(
 		close(cancelChannel)
 	}()
 
-	// Fire up a gRPC server, letting the kernel choose a free port for us.
+	// Fire up a gRPC server, letting the kernel choose a free port for us — unless the
+	// environment names an address to bind. A provider running in its own container must
+	// be addressable by the engine before it starts, which a kernel-chosen loopback port
+	// can never be; PULUMI_PLUGIN_LISTEN_ADDRESS supplies both the interface and the port.
+	// The handshake below still prints the bound port, so a host that scrapes it is
+	// unaffected. Unset preserves the loopback default exactly.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: cancelChannel,
+		Cancel:        cancelChannel,
+		ListenAddress: os.Getenv("PULUMI_PLUGIN_LISTEN_ADDRESS"),
 		Init: func(srv *grpc.Server) error {
 			prov, proverr := provMaker(host)
 			if proverr != nil {

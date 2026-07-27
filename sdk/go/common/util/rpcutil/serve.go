@@ -47,7 +47,20 @@ func IsBenignCloseErr(err error) bool {
 
 type ServeOptions struct {
 	// Port to listen on. Passing 0 makes the system choose a port automatically.
+	// Ignored when ListenAddress is set, which carries its own port.
 	Port int
+
+	// ListenAddress is the full host:port to bind, overriding both the loopback
+	// default and Port. It exists for plugins that must be reachable from outside
+	// their own network namespace — a containerized plugin the engine attaches to by
+	// container DNS rather than over a shared loopback.
+	//
+	// This is deliberately a per-caller option rather than an environment read inside
+	// this function: the engine, the resource monitor, and the language host all serve
+	// through here and rely on kernel-chosen ports to coexist in one namespace. Only
+	// plugin entrypoints — which own a whole container — should source it from the
+	// environment. Empty preserves the loopback default exactly.
+	ListenAddress string
 
 	// Initializer for the server. A typical Init registers handlers.
 	Init func(*grpc.Server) error
@@ -85,14 +98,21 @@ func serveWithOptions(opts ServeOptions) (ServeHandle, chan error, error) {
 	// bind all interfaces. The address advertised to peers is rewritten to a
 	// container-reachable host by whoever launches them (e.g. the OCI language
 	// host). The gate keeps default (non-pod) behavior byte-for-byte identical.
-	listenAddr := "127.0.0.1"
+	//
+	// An explicit ListenAddress supersedes both: it names the host AND the port, which
+	// is what a containerized plugin needs — the engine must be able to address it
+	// before it starts, so a kernel-chosen port is not enough (see ServeOptions).
+	bindAddr := "127.0.0.1:" + strconv.Itoa(port)
 	if os.Getenv("PULUMI_POD_MODE") == "true" {
-		listenAddr = "0.0.0.0"
+		bindAddr = "0.0.0.0:" + strconv.Itoa(port)
 	}
-	lis, err := net.Listen("tcp", listenAddr+":"+strconv.Itoa(port))
+	if opts.ListenAddress != "" {
+		bindAddr = opts.ListenAddress
+	}
+	lis, err := net.Listen("tcp", bindAddr)
 	if err != nil {
 		return ServeHandle{Port: port}, nil,
-			fmt.Errorf("failed to listen on TCP port ':%v': %v", port, err)
+			fmt.Errorf("failed to listen on %q: %v", bindAddr, err)
 	}
 
 	health := health.NewServer()
@@ -118,7 +138,9 @@ func serveWithOptions(opts ServeOptions) (ServeHandle, chan error, error) {
 	}
 
 	// If the port was 0, look up what port the kernel chosen, by accessing the underlying TCP listener/address.
-	if port == 0 {
+	// An explicit ListenAddress carries its own port, which likewise has to be reported back: the handshake
+	// a plugin prints must name the port it actually bound, not the 0 it asked for.
+	if port == 0 || opts.ListenAddress != "" {
 		tcpl := lis.(*net.TCPListener)
 		tcpa := tcpl.Addr().(*net.TCPAddr)
 		port = tcpa.Port
