@@ -591,7 +591,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			} else {
 				invokeArgs = expr.Args[1].(*model.ObjectConsExpression)
 			}
-			pcl.GenerateMultiArguments(g.Formatter, w, "None", invokeArgs, pcl.SortedFunctionParameters(expr))
+			pcl.GenerateMultiArguments(g.Formatter, w, "None", invokeArgs, pcl.SortedFunctionParameters(expr), false)
 		} else {
 			switch arg := expr.Args[1].(type) {
 			case *model.FunctionCallExpression:
