@@ -272,9 +272,7 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 	return cmd
 }
 
-// gcpLoginEnvVars returns the Google SDK environment variables that reference the gcp-login
-// provider's outputs at pathRef (e.g. "gcp.login"), matching the environments the Pulumi Cloud
-// console writes so `esc run` picks up credentials without extra wiring.
+// gcpLoginEnvVars returns the Google SDK environment variables that reference the gcp-login outputs
 func gcpLoginEnvVars(pathRef string) []envVar {
 	return []envVar{
 		{"GOOGLE_PROJECT", "${" + pathRef + ".project}"},

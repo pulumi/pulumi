@@ -112,10 +112,7 @@ func newEnvProviderAzureLoginStaticCmd(env *envCommand) *cobra.Command {
 	return cmd
 }
 
-// azureLoginOIDCEnvVars returns the ARM_* environment variables that reference the azure-login
-// provider's OIDC outputs at pathRef (e.g. "azure.login"), matching the environments the Pulumi
-// Cloud console writes. ARM_SUBSCRIPTION_ID is included only when the login block pins a
-// subscription; the tenant-scoped environment pins none, so its consumers select their own.
+// azureLoginOIDCEnvVars returns the ARM_* environment variables that reference the azure-login OIDC outputs
 func azureLoginOIDCEnvVars(pathRef string, hasSubscription bool) []envVar {
 	vars := []envVar{
 		{"ARM_USE_OIDC", "true"},
@@ -129,9 +126,7 @@ func azureLoginOIDCEnvVars(pathRef string, hasSubscription bool) []envVar {
 	return vars
 }
 
-// azureLoginStaticEnvVars returns the ARM_* environment variables that reference the azure-login
-// provider's client-secret outputs at pathRef, matching the environments the Pulumi Cloud console
-// writes.
+// azureLoginStaticEnvVars returns the ARM_* environment variables that reference the azure-login static outputs
 func azureLoginStaticEnvVars(pathRef string) []envVar {
 	return []envVar{
 		{"ARM_CLIENT_ID", "${" + pathRef + ".clientId}"},

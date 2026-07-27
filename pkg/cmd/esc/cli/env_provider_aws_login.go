@@ -115,9 +115,7 @@ func newEnvProviderAWSLoginStaticCmd(env *envCommand) *cobra.Command {
 	return cmd
 }
 
-// awsLoginEnvVars returns the standard AWS SDK environment variables that reference the aws-login
-// provider's outputs at pathRef (e.g. "aws.login"), matching the environments the Pulumi Cloud
-// console writes so `esc run` picks up credentials without extra wiring.
+// awsLoginEnvVars returns the standard AWS SDK environment variables that reference the aws-login outputs
 func awsLoginEnvVars(pathRef string) []envVar {
 	return []envVar{
 		{"AWS_ACCESS_KEY_ID", "${" + pathRef + ".accessKeyId}"},
