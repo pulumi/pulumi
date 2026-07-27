@@ -793,7 +793,7 @@ export interface PulumiCancelOptions extends BaseOptions {
     logtostderr?: boolean;
     /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
     memprofilerate?: number;
-    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors */
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
     otelTraces?: string;
     /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
     profiling?: string;
@@ -821,7 +821,7 @@ export interface PulumiImportOptions extends BaseOptions {
     logtostderr?: boolean;
     /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
     memprofilerate?: number;
-    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors */
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
     otelTraces?: string;
     /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
     profiling?: string;
@@ -895,7 +895,7 @@ export interface PulumiNewOptions extends BaseOptions {
     logtostderr?: boolean;
     /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
     memprofilerate?: number;
-    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors */
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
     otelTraces?: string;
     /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
     profiling?: string;
@@ -953,7 +953,7 @@ export interface PulumiOrgOptions extends BaseOptions {
     logtostderr?: boolean;
     /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
     memprofilerate?: number;
-    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors */
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
     otelTraces?: string;
     /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
     profiling?: string;
@@ -979,7 +979,7 @@ export interface PulumiOrgGetDefaultOptions extends BaseOptions {
     logtostderr?: boolean;
     /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
     memprofilerate?: number;
-    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors */
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
     otelTraces?: string;
     /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
     profiling?: string;
@@ -1005,7 +1005,7 @@ export interface PulumiOrgSearchOptions extends BaseOptions {
     logtostderr?: boolean;
     /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
     memprofilerate?: number;
-    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors */
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
     otelTraces?: string;
     /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
     profiling?: string;
@@ -1046,7 +1046,7 @@ export interface PulumiOrgSearchAiOptions extends BaseOptions {
     logtostderr?: boolean;
     /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
     memprofilerate?: number;
-    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors */
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
     otelTraces?: string;
     /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
     profiling?: string;
@@ -1082,7 +1082,7 @@ export interface PulumiOrgSetDefaultOptions extends BaseOptions {
     logtostderr?: boolean;
     /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
     memprofilerate?: number;
-    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors */
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
     otelTraces?: string;
     /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
     profiling?: string;

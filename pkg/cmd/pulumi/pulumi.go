@@ -465,7 +465,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
 	cmd.PersistentFlags().StringVar(&otelTracesFlag, "otel-traces", "",
 		"Export OpenTelemetry traces to the specified endpoint. "+
-			"Use file:// for local JSON files, grpc:// for remote collectors")
+			"Use file:// for local JSON files, grpc:// or https:// for remote collectors")
 	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVar(&memProfileRate, "memprofilerate", 0,

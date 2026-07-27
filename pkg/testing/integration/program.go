@@ -282,6 +282,8 @@ type ProgramTestOptions struct {
 	//   - file:///path/to/traces.json  — writes OTLP JSON to a local file
 	//   - grpc://host:port             — sends via insecure gRPC
 	//   - grpcs://host:port            — sends via TLS-secured gRPC
+	//   - http://host:port             — sends via insecure OTLP HTTP
+	//   - https://host:port            — sends via TLS-secured OTLP HTTP
 	//
 	// Template `{command}` syntax will be expanded to the current
 	// command name such as `pulumi-up`. This is useful for file-based
