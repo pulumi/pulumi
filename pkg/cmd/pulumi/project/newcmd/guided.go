@@ -17,6 +17,7 @@ package newcmd
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	survey "github.com/AlecAivazis/survey/v2"
 
@@ -28,10 +29,8 @@ import (
 )
 
 const (
-	optionOther             = "Other"
-	optionBrowseAll         = "Browse all templates"
-	sourcePulumiTemplates   = "Pulumi templates"
-	sourceRegistryTemplates = "Registry templates"
+	optionOther     = "Other"
+	optionBrowseAll = "Browse all templates"
 )
 
 type selectFunc func(message string, options []string, opts display.Options) (string, error)
@@ -106,38 +105,33 @@ func chooseGuided(
 		return chooseRegistryTemplate(registryTemplates, opts, sel)
 	}
 
-	if len(registryTemplates) > 0 {
-		source, err := sel(
-			"Where would you like to start?", []string{sourcePulumiTemplates, sourceRegistryTemplates}, opts)
-		if err != nil {
-			return nil, err
-		}
-		if source == sourceRegistryTemplates {
-			return chooseRegistryTemplate(registryTemplates, opts, sel)
-		}
-	}
-
-	var provider catalog.Provider
+	var choice guidedChoice
 	var language string
 	if err := ui.SurveyStack(
 		func() (err error) {
-			provider, err = chooseProvider(cat, opts, sel)
+			choice, err = chooseCloud(cat, registryTemplates, opts, sel)
 			return err
 		},
 		func() (err error) {
-			language, err = chooseLanguage(provider, opts, sel)
+			if choice.template != nil {
+				return nil
+			}
+			language, err = chooseLanguage(choice.provider, opts, sel)
 			return err
 		},
 	); err != nil {
 		return nil, err
 	}
+	if choice.template != nil {
+		return choice.template, nil
+	}
 
 	// Past this point the user has answered the provider and language prompts, so a miss is a broken
 	// invariant (the prompts only offer values the catalog can resolve), not a reason to silently fall
 	// back to the flat list after having already prompted. Surface it instead.
-	name, ok := cat.Resolve(provider.ID, language)
+	name, ok := cat.Resolve(choice.provider.ID, language)
 	if !ok {
-		return nil, fmt.Errorf("no template for provider %q and language %q", provider.ID, language)
+		return nil, fmt.Errorf("no template for provider %q and language %q", choice.provider.ID, language)
 	}
 	template, ok := byName[name]
 	if !ok {
@@ -146,32 +140,89 @@ func chooseGuided(
 	return template, nil
 }
 
-// chooseProvider prompts for a featured cloud, expanding "Other" into the full provider list and
-// "Browse all templates" into the flat-list fallback. Both extra rows are sentinel providers with no
-// ID, which is how the second step knows whether it still has to run.
-func chooseProvider(cat *catalog.Catalog, opts display.Options, sel selectFunc) (catalog.Provider, error) {
-	displayName := func(p catalog.Provider) string { return p.DisplayName }
-	extras := []catalog.Provider{{DisplayName: optionOther}, {DisplayName: optionBrowseAll}}
-	var provider catalog.Provider
+// guidedChoice is the outcome of the cloud prompt: either a provider that still needs a language, or
+// a registry template chosen directly.
+type guidedChoice struct {
+	provider catalog.Provider
+	template cmdTemplates.Template
+}
+
+// cloudRow is one option in the cloud prompt: a featured provider, the Other expansion, a publishing
+// organization's registry templates, or the Browse-all fallback.
+type cloudRow struct {
+	label    string
+	provider catalog.Provider
+	registry []cmdTemplates.Template
+}
+
+func cloudRows(cat *catalog.Catalog, registryTemplates []cmdTemplates.Template) []cloudRow {
+	featured := cat.Featured()
+	rows := make([]cloudRow, 0, len(featured)+3)
+	for _, p := range featured {
+		rows = append(rows, cloudRow{label: p.DisplayName, provider: p})
+	}
+	rows = append(rows, cloudRow{label: optionOther})
+	rows = append(rows, registryRows(registryTemplates)...)
+	rows = append(rows, cloudRow{label: optionBrowseAll})
+	return rows
+}
+
+// registryRows buckets registry templates by publishing organization, one row per org.
+func registryRows(registryTemplates []cmdTemplates.Template) []cloudRow {
+	byPublisher := map[string][]cmdTemplates.Template{}
+	for _, t := range registryTemplates {
+		byPublisher[t.Publisher()] = append(byPublisher[t.Publisher()], t)
+	}
+	publishers := make([]string, 0, len(byPublisher))
+	for publisher := range byPublisher {
+		publishers = append(publishers, publisher)
+	}
+	sort.Strings(publishers)
+
+	rows := make([]cloudRow, 0, len(byPublisher))
+	for _, publisher := range publishers {
+		group := byPublisher[publisher]
+		label := fmt.Sprintf("%s templates (%d)", publisher, len(group))
+		if publisher == "" {
+			label = fmt.Sprintf("Registry templates (%d)", len(group))
+		}
+		rows = append(rows, cloudRow{label: label, registry: group})
+	}
+	return rows
+}
+
+// chooseCloud prompts for a featured cloud, expanding "Other" into the full provider list, an org row
+// into that org's registry templates, and "Browse all templates" into the flat-list fallback.
+func chooseCloud(
+	cat *catalog.Catalog, registryTemplates []cmdTemplates.Template, opts display.Options, sel selectFunc,
+) (guidedChoice, error) {
+	rows := cloudRows(cat, registryTemplates)
+	var row cloudRow
+	var choice guidedChoice
 	err := ui.SurveyStack(
 		func() (err error) {
-			provider, err = pick(
-				sel, "Which cloud would you like to use?", opts,
-				append(cat.Featured(), extras...), displayName)
-			if err == nil && provider.DisplayName == optionBrowseAll {
+			row, err = pick(sel, "Which cloud would you like to use?", opts, rows,
+				func(r cloudRow) string { return r.label })
+			if err == nil && row.label == optionBrowseAll {
 				return errFallBackToFlatList
 			}
 			return err
 		},
 		func() (err error) {
-			if provider.ID != "" {
-				return nil
+			choice = guidedChoice{}
+			switch {
+			case row.registry != nil:
+				choice.template, err = chooseRegistryTemplate(row.registry, opts, sel)
+			case row.label == optionOther:
+				choice.provider, err = pick(sel, "Which provider would you like to use?", opts, cat.Others(),
+					func(p catalog.Provider) string { return p.DisplayName })
+			default:
+				choice.provider = row.provider
 			}
-			provider, err = pick(sel, "Which provider would you like to use?", opts, cat.Others(), displayName)
 			return err
 		},
 	)
-	return provider, err
+	return choice, err
 }
 
 func chooseLanguage(provider catalog.Provider, opts display.Options, sel selectFunc) (string, error) {

@@ -129,6 +129,9 @@ type Template interface {
 	// FromRegistry reports whether this template comes from the registry (a published or org
 	// template) rather than the curated pulumi/templates set.
 	FromRegistry() bool
+	// Publisher returns the organization that published this template, or "" when the template
+	// has no publisher (the curated set, local templates).
+	Publisher() string
 	// Download the template and return an instantiable [workspace.Template] for this template.
 	Download(ctx context.Context) (workspace.Template, error)
 }

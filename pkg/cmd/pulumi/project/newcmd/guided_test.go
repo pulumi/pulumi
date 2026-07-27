@@ -39,15 +39,18 @@ func (f fakeTemplate) DisplayName() string { return f.name }
 func (f fakeTemplate) Description() string { return f.desc }
 func (f fakeTemplate) Error() error        { return f.err }
 func (f fakeTemplate) FromRegistry() bool  { return false }
+func (f fakeTemplate) Publisher() string   { return "" }
 func (f fakeTemplate) Download(ctx context.Context) (workspace.Template, error) {
 	return workspace.Template{}, nil
 }
 
 type fakeRegistryTemplate struct {
 	fakeTemplate
+	publisher string
 }
 
 func (f fakeRegistryTemplate) FromRegistry() bool { return true }
+func (f fakeRegistryTemplate) Publisher() string  { return f.publisher }
 
 // scriptedSelect answers each prompt in order, asserting the option offered is present.
 func scriptedSelect(t *testing.T, answers ...string) (selectFunc, *[]([]string)) {
@@ -68,7 +71,7 @@ func TestFromRegistry(t *testing.T) {
 	t.Parallel()
 
 	assert.False(t, fakeTemplate{name: "aws-typescript"}.FromRegistry())
-	assert.True(t, fakeRegistryTemplate{fakeTemplate{name: "vpc"}}.FromRegistry())
+	assert.True(t, fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}.FromRegistry())
 }
 
 func TestGuidedResolvesFeaturedProvider(t *testing.T) {
@@ -87,7 +90,7 @@ func TestGuidedResolvesFeaturedProvider(t *testing.T) {
 	assert.Equal(t, "aws-typescript", got.Name())
 }
 
-func TestGuidedSkipsSourceStepWithoutRegistryTemplates(t *testing.T) {
+func TestGuidedShowsNoRegistryRowsWithoutRegistryTemplates(t *testing.T) {
 	t.Parallel()
 
 	templates := []cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}}
@@ -95,9 +98,8 @@ func TestGuidedSkipsSourceStepWithoutRegistryTemplates(t *testing.T) {
 
 	_, err := chooseGuided(templates, display.Options{}, sel)
 	require.NoError(t, err)
-	require.Len(t, *offered, 2, "expected exactly provider + language prompts")
-	assert.Contains(t, (*offered)[0], "AWS")
-	assert.NotContains(t, (*offered)[0], sourcePulumiTemplates)
+	require.Len(t, *offered, 2, "expected exactly cloud + language prompts")
+	assert.Equal(t, []string{"AWS", optionOther, optionBrowseAll}, (*offered)[0])
 }
 
 func TestGuidedOtherExpandsToSecondProviderList(t *testing.T) {
@@ -213,7 +215,7 @@ func TestGuidedFallsBackWhenEverythingIsBroken(t *testing.T) {
 
 	templates := []cmdTemplates.Template{
 		fakeTemplate{name: "aws-typescript", err: errors.New("boom")},
-		fakeRegistryTemplate{fakeTemplate{name: "vpc", err: errors.New("boom")}},
+		fakeRegistryTemplate{fakeTemplate{name: "vpc", err: errors.New("boom")}, "acme"},
 	}
 	sel := func(string, []string, display.Options) (string, error) {
 		t.Error("no prompt may be shown when every template is broken")
@@ -264,28 +266,77 @@ func TestGuidedInterruptAtFirstStepPropagates(t *testing.T) {
 	assert.ErrorIs(t, err, terminal.InterruptErr)
 }
 
-func TestGuidedRegistryTemplatesShowSourceStepAndSkipLanguage(t *testing.T) {
+func TestGuidedOrgRowOpensRegistryTemplatesAndSkipsLanguage(t *testing.T) {
 	t.Parallel()
 
-	registry := fakeRegistryTemplate{fakeTemplate{name: "vpc-baseline", desc: "A baseline VPC"}}
+	registry := fakeRegistryTemplate{fakeTemplate{name: "vpc-baseline", desc: "A baseline VPC"}, "acme"}
 	templates := []cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}, registry}
-	sel, offered := scriptedSelect(t, sourceRegistryTemplates, "vpc-baseline    A baseline VPC")
+	sel, offered := scriptedSelect(t, "acme templates (1)", "vpc-baseline    A baseline VPC")
 
 	got, err := chooseGuided(templates, display.Options{}, sel)
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	assert.Equal(t, "vpc-baseline", got.Name())
 
-	require.Len(t, *offered, 2, "registry path should be source + template, no language prompt")
-	assert.Contains(t, (*offered)[0], sourcePulumiTemplates)
-	assert.Contains(t, (*offered)[0], sourceRegistryTemplates)
+	require.Len(t, *offered, 2, "org path should be cloud prompt + template list, no language prompt")
+	assert.Equal(t, []string{"AWS", optionOther, "acme templates (1)", optionBrowseAll}, (*offered)[0],
+		"org rows sit between Other and Browse all")
+}
+
+func TestGuidedGroupsRegistryRowsByPublisher(t *testing.T) {
+	t.Parallel()
+
+	templates := []cmdTemplates.Template{
+		fakeTemplate{name: "aws-typescript"},
+		fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "globex"},
+		fakeRegistryTemplate{fakeTemplate{name: "eks"}, "acme"},
+		fakeRegistryTemplate{fakeTemplate{name: "gke"}, "acme"},
+		fakeRegistryTemplate{fakeTemplate{name: "legacy"}, ""},
+	}
+	sel, offered := scriptedSelect(t, "acme templates (2)", "eks    ")
+
+	got, err := chooseGuided(templates, display.Options{}, sel)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "eks", got.Name())
+
+	assert.Equal(t, []string{
+		"AWS", optionOther, "Registry templates (1)", "acme templates (2)", "globex templates (1)", optionBrowseAll,
+	}, (*offered)[0], "one row per publisher, sorted, unpublished group labeled generically")
+	assert.Equal(t, []string{"eks    ", "gke    "}, (*offered)[1], "org row lists only that org's templates")
+}
+
+func TestGuidedInterruptInRegistryListGoesBackToCloudPrompt(t *testing.T) {
+	t.Parallel()
+
+	templates := []cmdTemplates.Template{
+		fakeTemplate{name: "aws-typescript"},
+		fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"},
+	}
+	responses := []any{"acme templates (1)", terminal.InterruptErr, "AWS", "TypeScript"}
+	i := 0
+	sel := func(message string, options []string, opts display.Options) (string, error) {
+		require.Less(t, i, len(responses), "unexpected extra prompt: %q", message)
+		r := responses[i]
+		i++
+		if err, ok := r.(error); ok {
+			return "", err
+		}
+		require.Contains(t, options, r.(string))
+		return r.(string), nil
+	}
+
+	got, err := chooseGuided(templates, display.Options{}, sel)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "aws-typescript", got.Name(), "interrupt in the registry list must return to the cloud prompt")
 }
 
 func TestChooseRegistryTemplateLabelsIncludeDescription(t *testing.T) {
 	t.Parallel()
 
-	first := fakeRegistryTemplate{fakeTemplate{name: "vpc", desc: "A VPC by acme"}}
-	second := fakeRegistryTemplate{fakeTemplate{name: "vpc", desc: "A VPC by globex"}}
+	first := fakeRegistryTemplate{fakeTemplate{name: "vpc", desc: "A VPC by acme"}, "acme"}
+	second := fakeRegistryTemplate{fakeTemplate{name: "vpc", desc: "A VPC by globex"}, "globex"}
 	sel, offered := scriptedSelect(t, "vpc    A VPC by globex")
 
 	got, err := chooseRegistryTemplate(
@@ -300,8 +351,8 @@ func TestChooseRegistryTemplateLabelsIncludeDescription(t *testing.T) {
 func TestChooseRegistryTemplateDisambiguatesDuplicateNames(t *testing.T) {
 	t.Parallel()
 
-	first := fakeRegistryTemplate{fakeTemplate{name: "vpc"}}
-	second := fakeRegistryTemplate{fakeTemplate{name: "vpc"}}
+	first := fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}
+	second := fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}
 	var offered []string
 	sel := func(message string, options []string, opts display.Options) (string, error) {
 		offered = options
@@ -327,7 +378,7 @@ func TestChooseRegistryTemplateErrorsOnUnknownAnswer(t *testing.T) {
 	}
 
 	got, err := chooseRegistryTemplate(
-		[]cmdTemplates.Template{fakeRegistryTemplate{fakeTemplate{name: "vpc"}}},
+		[]cmdTemplates.Template{fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}},
 		display.Options{},
 		sel,
 	)
