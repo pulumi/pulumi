@@ -60,6 +60,8 @@ const (
 	// The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
 	// string bytes signature and a base64 encoding of the string's bytes.
 	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING ResourceMonitorFeature = 13
+	// The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`.
+	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_PARENT ResourceMonitorFeature = 15
 )
 
 // Enum value maps for ResourceMonitorFeature.
@@ -79,6 +81,7 @@ var (
 		11: "RESOURCE_MONITOR_FEATURE_ERROR_HOOKS",
 		12: "RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS",
 		13: "RESOURCE_MONITOR_FEATURE_BYTE_STRING",
+		15: "RESOURCE_MONITOR_FEATURE_INVOKE_PARENT",
 	}
 	ResourceMonitorFeature_value = map[string]int32{
 		"RESOURCE_MONITOR_FEATURE_SECRETS":                0,
@@ -95,6 +98,7 @@ var (
 		"RESOURCE_MONITOR_FEATURE_ERROR_HOOKS":            11,
 		"RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS": 12,
 		"RESOURCE_MONITOR_FEATURE_BYTE_STRING":            13,
+		"RESOURCE_MONITOR_FEATURE_INVOKE_PARENT":          15,
 	}
 )
 
@@ -1156,8 +1160,12 @@ type ResourceInvokeRequest struct {
 	// When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
 	// carrying the byte string signature and a base64 encoding of the string's bytes.
 	AcceptsByteString bool `protobuf:"varint,12,opt,name=accepts_byte_string,json=acceptsByteString,proto3" json:"accepts_byte_string,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// An optional URN of the resource this invoke is parented to. When `provider` is empty, the invoke is served by
+	// the provider its parent's `providers` option names for the invoke's package, the same resolution applied to
+	// resource registrations. Only respected when the monitor advertises `INVOKE_PARENT`.
+	Parent        string `protobuf:"bytes,15,opt,name=parent,proto3" json:"parent,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ResourceInvokeRequest) Reset() {
@@ -1272,6 +1280,13 @@ func (x *ResourceInvokeRequest) GetAcceptsByteString() bool {
 		return x.AcceptsByteString
 	}
 	return false
+}
+
+func (x *ResourceInvokeRequest) GetParent() string {
+	if x != nil {
+		return x.Parent
+	}
+	return ""
 }
 
 type ResourceCallRequest struct {
@@ -3237,7 +3252,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v28.pulumirpc.RegisterResourceResponse.PropertyDependenciesR\x05value:\x028\x01\"e\n" +
 	"\x1eRegisterResourceOutputsRequest\x12\x10\n" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x121\n" +
-	"\aoutputs\x18\x02 \x01(\v2\x17.google.protobuf.StructR\aoutputs\"\x8b\x05\n" +
+	"\aoutputs\x18\x02 \x01(\v2\x17.google.protobuf.StructR\aoutputs\"\xa3\x05\n" +
 	"\x15ResourceInvokeRequest\x12\x10\n" +
 	"\x03tok\x18\x01 \x01(\tR\x03tok\x12+\n" +
 	"\x04args\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04args\x12\x1a\n" +
@@ -3255,7 +3270,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\n" +
 	"packageRef\x18\t \x01(\tR\n" +
 	"packageRef\x12.\n" +
-	"\x13accepts_byte_string\x18\f \x01(\bR\x11acceptsByteString\x1aB\n" +
+	"\x13accepts_byte_string\x18\f \x01(\bR\x11acceptsByteString\x12\x16\n" +
+	"\x06parent\x18\x0f \x01(\tR\x06parent\x1aB\n" +
 	"\x14PluginChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xec\a\n" +
@@ -3449,7 +3465,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\rignore_errors\x18\x04 \x01(\bR\fignoreErrors\"_\n" +
 	"\x18RegisterErrorHookRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12/\n" +
-	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback*\x8c\x05\n" +
+	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback*\xb8\x05\n" +
 	"\x16ResourceMonitorFeature\x12$\n" +
 	" RESOURCE_MONITOR_FEATURE_SECRETS\x10\x00\x120\n" +
 	",RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES\x10\x01\x12*\n" +
@@ -3465,7 +3481,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x12(\n" +
 	"$RESOURCE_MONITOR_FEATURE_ERROR_HOOKS\x10\v\x123\n" +
 	"/RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS\x10\f\x12(\n" +
-	"$RESOURCE_MONITOR_FEATURE_BYTE_STRING\x10\r*)\n" +
+	"$RESOURCE_MONITOR_FEATURE_BYTE_STRING\x10\r\x12*\n" +
+	"&RESOURCE_MONITOR_FEATURE_INVOKE_PARENT\x10\x0f*)\n" +
 	"\x06Result\x12\v\n" +
 	"\aSUCCESS\x10\x00\x12\b\n" +
 	"\x04FAIL\x10\x01\x12\b\n" +

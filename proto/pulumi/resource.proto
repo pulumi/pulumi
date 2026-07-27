@@ -93,6 +93,8 @@ enum ResourceMonitorFeature {
     // The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
     // string bytes signature and a base64 encoding of the string's bytes.
     RESOURCE_MONITOR_FEATURE_BYTE_STRING = 13;
+    // The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`.
+    RESOURCE_MONITOR_FEATURE_INVOKE_PARENT = 15;
 }
 
 // DeploymentInfo returns monitor execution state currently sent to programs
@@ -309,6 +311,11 @@ message ResourceInvokeRequest {
     // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
     // carrying the byte string signature and a base64 encoding of the string's bytes.
     bool accepts_byte_string = 12;
+
+    // An optional URN of the resource this invoke is parented to. When `provider` is empty, the invoke is served by
+    // the provider its parent's `providers` option names for the invoke's package, the same resolution applied to
+    // resource registrations. Only respected when the monitor advertises `INVOKE_PARENT`.
+    string parent = 15;
 }
 
 message ResourceCallRequest {
