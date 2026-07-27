@@ -318,37 +318,48 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	// after here.
 	op.Opts.Engine.GeneratePlan = false
 
-	if !op.Opts.Display.ShowDiff {
-		_, changes, res := apply(ctx, kind, stack, op, opts, events)
-		return changes, res
+	var changes sdkDisplay.ResourceChanges
+	err := runCollectingDiff(op.Opts.Display, events, func(ev chan<- engine.Event) error {
+		var res error
+		_, changes, res = apply(ctx, kind, stack, op, opts, ev)
+		return res
+	})
+	return changes, err
+}
+
+func runCollectingDiff(displayOpts display.Options, callerEvents chan<- engine.Event,
+	run func(events chan<- engine.Event) error,
+) error {
+	if !displayOpts.ShowDiff {
+		return run(callerEvents)
 	}
 
-	// Collect the update's events so we can render the resolved diff afterwards, mirroring the
-	// preview diff shown before the confirmation.
 	collected := make(chan engine.Event)
-	var updateEvents []engine.Event
+	var events []engine.Event
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		for e := range collected {
+			// Keep only the resource step events CreateDiff renders — the same set PreviewThenPrompt
+			// collects for its pre-confirmation diff; everything else is display-only noise.
 			if !e.Internal() && (e.Type == engine.ResourcePreEvent || e.Type == engine.ResourceOutputsEvent ||
 				e.Type == engine.PolicyRemediationEvent) {
-				updateEvents = append(updateEvents, e)
+				events = append(events, e)
 			}
-			if events != nil {
-				events <- e
+			if callerEvents != nil {
+				callerEvents <- e
 			}
 		}
 	}()
-	_, changes, res := apply(ctx, kind, stack, op, opts, collected)
+	err := run(collected)
 	close(collected)
 	<-done
-	if res == nil {
-		diffOpts := op.Opts.Display
+	if err == nil {
+		diffOpts := displayOpts
 		diffOpts.Type = display.DisplayDiff
-		contract.IgnoreError(printDiff(updateEvents, diffOpts))
+		contract.IgnoreError(printDiff(events, diffOpts))
 	}
-	return changes, res
+	return err
 }
 
 type updateStats struct {

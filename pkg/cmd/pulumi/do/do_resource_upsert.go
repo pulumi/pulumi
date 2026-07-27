@@ -307,13 +307,10 @@ func DefaultRunStatefulUpdate(
 		return nil, errors.New("stateful update requires a loaded stack")
 	}
 	displayOpts := display.Options{
-		Color:       cmdutil.GetGlobalColorization(),
-		ShowSecrets: req.ShowSecrets,
-	}
-	if req.DryRun {
-		displayOpts.Type = display.DisplayDiff
-	} else {
-		displayOpts.ShowDiff = true
+		Color:         cmdutil.GetGlobalColorization(),
+		ShowSecrets:   req.ShowSecrets,
+		IsInteractive: cmdutil.Interactive(),
+		ShowDiff:      true,
 	}
 
 	ssml := cmdStack.SecretsManagerLoader{FallbackToState: true}

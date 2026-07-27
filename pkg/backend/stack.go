@@ -82,7 +82,14 @@ func PreviewStack(
 	op UpdateOperation,
 	events chan<- engine.Event,
 ) (*deploy.Plan, display.ResourceChanges, error) {
-	return s.Backend().Preview(ctx, s, op, events)
+	var plan *deploy.Plan
+	var changes display.ResourceChanges
+	err := runCollectingDiff(op.Opts.Display, events, func(ev chan<- engine.Event) error {
+		var e error
+		plan, changes, e = s.Backend().Preview(ctx, s, op, ev)
+		return e
+	})
+	return plan, changes, err
 }
 
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
