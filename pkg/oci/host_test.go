@@ -35,7 +35,12 @@ type fakePod struct{ imageExists bool }
 
 func (f fakePod) CreateNetwork(context.Context) (Network, error)                   { panic("unused") }
 func (f fakePod) RunContainer(context.Context, ContainerConfig) (Container, error) { panic("unused") }
-func (f fakePod) WaitContainer(context.Context, Container) (int, error)            { panic("unused") }
+
+// ContainerName is answered rather than panicking: it is a pure naming query with no side
+// effects, and returning the logical name unchanged matches the CRI manager's behavior.
+func (f fakePod) ContainerName(logical string) string { return logical }
+
+func (f fakePod) WaitContainer(context.Context, Container) (int, error) { panic("unused") }
 
 func (f fakePod) ContainerLogs(context.Context, Container, bool) (io.ReadCloser, error) {
 	panic("unused")

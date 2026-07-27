@@ -266,6 +266,15 @@ func (m *criPodManager) CreateNetwork(ctx context.Context) (Network, error) {
 	return Network{ID: m.sandboxID, Name: m.sandboxID}, nil
 }
 
+// ContainerName uses the logical name verbatim: a CRI container is already scoped by its
+// pod sandbox, so it needs no pod-id prefix to stay unique. Note this is NOT a DNS name —
+// sandbox members share one network namespace and reach each other over loopback, so
+// nothing addresses a CRI container by name. It is reported truthfully anyway, because a
+// caller that asks must get what RunContainer will actually use.
+func (m *criPodManager) ContainerName(logical string) string {
+	return logical
+}
+
 func (m *criPodManager) RunContainer(ctx context.Context, cfg ContainerConfig) (Container, error) {
 	if cfg.Name == "" {
 		return Container{}, errors.New("container config requires a Name")
@@ -312,7 +321,7 @@ func (m *criPodManager) RunContainer(ctx context.Context, cfg ContainerConfig) (
 		return Container{}, fmt.Errorf("oci: starting container %q (%s): %w", cfg.Name, id, err)
 	}
 
-	c := Container{ID: id, Name: cfg.Name}
+	c := Container{ID: id, Name: m.ContainerName(cfg.Name)}
 	m.track(func() {
 		m.containers = append(m.containers, c)
 		m.logPaths[id] = logPath

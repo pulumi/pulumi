@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"os"
 	"strconv"
 	"sync"
 
@@ -33,11 +35,24 @@ type callbackFunction = func(ctx context.Context, req []byte) (proto.Message, er
 type callbackServer struct {
 	pulumirpc.UnsafeCallbacksServer
 
-	stop          chan bool
-	handle        rpcutil.ServeHandle
+	stop   chan bool
+	handle rpcutil.ServeHandle
+	// advertiseHost is the host the engine is told to dial for callbacks. Empty means
+	// loopback, which is correct whenever the engine shares this process's network
+	// namespace — the same process, or a container the engine shares a netns with.
+	advertiseHost string
 	functions     map[string]callbackFunction
 	functionsLock sync.RWMutex
 }
+
+// callbackAdvertiseHostEnvVar names the host the engine should dial to reach this
+// process's callback server. It is set only when loopback would be wrong: the program
+// runs in its own network namespace, so the engine dialing 127.0.0.1 reaches itself.
+//
+// Only a host is needed, not a full address. Unlike a plugin — which the engine must be
+// able to address before it starts, and so needs a well-known port — a callback server
+// reports its address to the engine after binding, so a kernel-chosen port is fine.
+const callbackAdvertiseHostEnvVar = "PULUMI_CALLBACKS_ADVERTISE_HOST"
 
 func newCallbackServer() (*callbackServer, error) {
 	callbackServer := &callbackServer{
@@ -45,8 +60,18 @@ func newCallbackServer() (*callbackServer, error) {
 		stop:      make(chan bool),
 	}
 
+	// Bind and advertise are derived from ONE read, deliberately: advertising a routable
+	// host while still bound to loopback yields a connection refused indistinguishable
+	// from advertising loopback in the first place.
+	callbackServer.advertiseHost = os.Getenv(callbackAdvertiseHostEnvVar)
+	listenAddress := ""
+	if callbackServer.advertiseHost != "" {
+		listenAddress = "0.0.0.0:0"
+	}
+
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: callbackServer.stop,
+		Cancel:        callbackServer.stop,
+		ListenAddress: listenAddress,
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterCallbacksServer(srv, callbackServer)
 			return nil
@@ -61,6 +86,15 @@ func newCallbackServer() (*callbackServer, error) {
 	return callbackServer, nil
 }
 
+// target is the address the engine dials to invoke a callback in this process.
+func (s *callbackServer) target() string {
+	host := s.advertiseHost
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	return net.JoinHostPort(host, strconv.Itoa(s.handle.Port))
+}
+
 func (s *callbackServer) RegisterCallback(function callbackFunction) (*pulumirpc.Callback, error) {
 	uuid, err := uuid.NewRandom()
 	if err != nil {
@@ -72,7 +106,7 @@ func (s *callbackServer) RegisterCallback(function callbackFunction) (*pulumirpc
 	s.functions[uuidString] = function
 	return &pulumirpc.Callback{
 		Token:  uuidString,
-		Target: "127.0.0.1:" + strconv.Itoa(s.handle.Port),
+		Target: s.target(),
 	}, nil
 }
 

@@ -130,7 +130,7 @@ func (m *dockerPodManager) RunContainer(ctx context.Context, cfg ContainerConfig
 		return Container{}, errors.New("container config requires an Image")
 	}
 
-	name := m.resourceName(cfg.Name)
+	name := m.ContainerName(cfg.Name)
 	args := []string{"run", "-d", "--name", name, "--label", m.label()}
 	if cfg.Network != "" {
 		args = append(args, "--network", cfg.Network)
@@ -559,6 +559,13 @@ func (m *dockerPodManager) Cleanup(ctx context.Context) error {
 // collisions on a shared host.
 func (m *dockerPodManager) resourceName(suffix string) string {
 	return fmt.Sprintf("pulumi-pod-%s-%s", m.podID, suffix)
+}
+
+// ContainerName is the pod-namespaced container name, which on a user-defined docker
+// network is also the container's DNS name. RunContainer calls this for the name it
+// passes to `docker run --name`, so the two cannot disagree.
+func (m *dockerPodManager) ContainerName(logical string) string {
+	return m.resourceName(logical)
 }
 
 // label returns the "key=value" label applied to every resource in this pod.

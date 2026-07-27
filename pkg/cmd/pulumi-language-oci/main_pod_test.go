@@ -18,31 +18,70 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/oci"
 	"github.com/stretchr/testify/assert"
 )
 
-// TestPodAdvertiseHost pins the program→engine address wiring across runtimes: on CRI the
-// program shares the engine's sandbox netns, so it dials the engine on loopback regardless of
-// any advertised DNS name; on the docker/nerdctl bridge it dials the advertised container name.
+// TestPodAdvertiseHost pins the program→engine address wiring. The runtime decision does NOT
+// live here: the wrapper knows what is reachable and supplies it, setting 127.0.0.1 on CRI
+// (all sandbox members share one netns) and the engine's container name on the docker/nerdctl
+// bridge. The language host only reads that back, which is what keeps it runtime-agnostic.
 func TestPodAdvertiseHost(t *testing.T) {
-	t.Run("cri uses loopback even with an advertise host set", func(t *testing.T) {
-		t.Setenv(oci.PodRuntimeEnvVar, "cri")
-		t.Setenv("PULUMI_POD_ADVERTISE_HOST", "engine-container")
-		assert.Equal(t, "127.0.0.1", podAdvertiseHost())
-	})
-
-	t.Run("bridge uses the advertised container name", func(t *testing.T) {
-		t.Setenv(oci.PodRuntimeEnvVar, "") // docker
+	t.Run("uses the host the wrapper supplied", func(t *testing.T) {
 		t.Setenv("PULUMI_POD_ADVERTISE_HOST", "engine-container")
 		assert.Equal(t, "engine-container", podAdvertiseHost())
 	})
 
-	t.Run("bridge falls back to this container's hostname", func(t *testing.T) {
-		t.Setenv(oci.PodRuntimeEnvVar, "")
+	t.Run("honors a loopback host for shared-netns runtimes", func(t *testing.T) {
+		t.Setenv("PULUMI_POD_ADVERTISE_HOST", "127.0.0.1")
+		assert.Equal(t, "127.0.0.1", podAdvertiseHost())
+	})
+
+	t.Run("falls back to this container's hostname", func(t *testing.T) {
 		t.Setenv("PULUMI_POD_ADVERTISE_HOST", "")
 		host, _ := os.Hostname()
 		assert.Equal(t, host, podAdvertiseHost())
+	})
+}
+
+// fixedNamer is a containerNamer that namespaces like the docker pod manager.
+type fixedNamer struct{ prefix string }
+
+func (f fixedNamer) ContainerName(logical string) string { return f.prefix + logical }
+
+// TestProgramAdvertiseHost covers the inbound mirror: what the program tells the engine to
+// dial for its callback server. The rule is netns symmetry — if the engine advertises itself
+// to the program over loopback, the two share a namespace and the program can answer in kind.
+func TestProgramAdvertiseHost(t *testing.T) {
+	namer := fixedNamer{prefix: "pulumi-pod-p1-"}
+
+	const podNet = "pulumi-pod-p1-net"
+
+	t.Run("no override when the engine advertises loopback", func(t *testing.T) {
+		t.Setenv("PULUMI_POD_ADVERTISE_HOST", "127.0.0.1")
+		assert.Empty(t, programAdvertiseHost(namer, podNet),
+			"shared netns: the SDK's loopback default is already correct")
+	})
+
+	t.Run("no override for other loopback spellings", func(t *testing.T) {
+		for _, h := range []string{"localhost", "::1", "127.0.1.1"} {
+			t.Setenv("PULUMI_POD_ADVERTISE_HOST", h)
+			assert.Empty(t, programAdvertiseHost(namer, podNet), "%s is loopback", h)
+		}
+	})
+
+	t.Run("advertises the program's own container name on a bridge", func(t *testing.T) {
+		t.Setenv("PULUMI_POD_ADVERTISE_HOST", "pulumi-pod-p1-engine")
+		assert.Equal(t, "pulumi-pod-p1-program", programAdvertiseHost(namer, podNet),
+			"own netns: the engine must dial the program by a routable name")
+	})
+
+	// Engine-on-host (Option A): pod mode, but no pod network, so the default bridge has no
+	// embedded DNS and the engine is outside it. A container name would be unresolvable, so
+	// advertising one is worse than leaving the loopback default in place.
+	t.Run("no override without a pod network", func(t *testing.T) {
+		t.Setenv("PULUMI_POD_ADVERTISE_HOST", "host.docker.internal")
+		assert.Empty(t, programAdvertiseHost(namer, ""),
+			"no pod network means no name the engine could resolve")
 	})
 }
 

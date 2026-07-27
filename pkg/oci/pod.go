@@ -90,6 +90,17 @@ type PodManager interface {
 	// Use WaitContainer to block on exit and ContainerLogs to read its output.
 	RunContainer(ctx context.Context, cfg ContainerConfig) (Container, error)
 
+	// ContainerName returns the name RunContainer will give a container created with
+	// this logical name — the same string that lands in Container.Name, and hence its
+	// DNS name on runtimes that give containers one.
+	//
+	// It exists for the one case that cannot wait until after the container exists: a
+	// container that must be told its OWN address up front, because it advertises that
+	// address to a peer itself (the program container's callback server does this). Every
+	// implementation must derive this and RunContainer's naming from one place, so a
+	// caller can never be handed a name the container does not end up having.
+	ContainerName(logical string) string
+
 	// WaitContainer blocks until the container exits and returns its exit code. A
 	// non-zero exit code is reported via the int return, not as an error; err is
 	// non-nil only if waiting itself failed.

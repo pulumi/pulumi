@@ -337,6 +337,23 @@ func runProgramContainer(ctx context.Context, image string, env map[string]strin
 	}
 
 	network := os.Getenv("PULUMI_POD_NETWORK")
+
+	// Tell the program how to advertise ITS OWN inbound servers — today the SDK's callback
+	// server, which the engine dials for every resource registration when the program
+	// registers a transform. This is the inbound mirror of the monitor/engine rewrite above:
+	// that one tells the program how to reach the engine, this one tells the program how the
+	// engine can reach back.
+	//
+	// It is set here rather than in the shared env map because it is only true of a program
+	// in its own container. In subprocess mode the program is a local process sharing the
+	// engine's loopback, where the SDK default is already correct and a routable host would
+	// be wrong.
+	if host := programAdvertiseHost(pod, network); host != "" {
+		env[callbackAdvertiseHostEnvVar] = host
+		//nolint:forbidigo // language-host diagnostics go to the engine-attached stderr
+		fmt.Fprintf(os.Stderr, "oci: program advertises its callback server at %s\n", host)
+	}
+
 	cfg := oci.ContainerConfig{
 		Image:   image,
 		Name:    "program",
@@ -498,6 +515,64 @@ func podAdvertiseHost() string {
 	}
 	host, _ := os.Hostname()
 	return host
+}
+
+// callbackAdvertiseHostEnvVar mirrors the SDK constant of the same name: the host a program
+// tells the engine to dial for its callback server. Restated rather than imported because a
+// language host must not depend on the Go SDK's program-side package — and because this is
+// language-agnostic contract, which every SDK will need to read for itself. That is already
+// how PULUMI_MONITOR and PULUMI_ENGINE work above. Nothing pins the two spellings together,
+// so run-pod-transform.sh asserts the diagnostic below end-to-end.
+const callbackAdvertiseHostEnvVar = "PULUMI_CALLBACKS_ADVERTISE_HOST"
+
+// programAdvertiseHost returns the host the program container should advertise for servers
+// the ENGINE dials — or "" to leave the SDK's loopback default in place.
+//
+// The decision rests on a symmetry: netns sharing is mutual. If the engine can advertise
+// itself to the program over loopback, the two share a network namespace, and the program can
+// advertise itself back the same way. So whenever the engine's own advertised host is
+// loopback — which is how the wrapper configures CRI, where every pod member shares the
+// sandbox netns — the program needs no override.
+//
+// Otherwise the program is in its own namespace (docker/nerdctl, where it is a sibling on the
+// pod bridge) and must advertise a routable host: its own container name, which the runtime's
+// embedded DNS resolves. Asking the pod manager for that name rather than composing it keeps
+// this from drifting out of step with what the container is actually called.
+//
+// Deriving it this way, rather than from a runtime check, keeps the language host
+// runtime-agnostic: the wrapper already decides what is reachable, and this reads that
+// decision back out.
+func programAdvertiseHost(namer containerNamer, network string) string {
+	// No pod network, no embedded DNS: there is no name the engine could resolve, so no
+	// override is possible. This is engine-on-host (Option A), where the program is on the
+	// default bridge and the engine is outside it entirely — the topology Mode 1 will have
+	// to solve, and which needs a reachable inbound address rather than a name.
+	if network == "" {
+		return ""
+	}
+	// Shared netns: loopback already works in both directions, so leave the default alone.
+	if isLoopbackHost(podAdvertiseHost()) {
+		return ""
+	}
+	return namer.ContainerName("program")
+}
+
+// containerNamer is the sliver of oci.PodManager this needs: what a container will be called
+// once started. Narrowed so the naming decision can be tested without standing up a pod.
+type containerNamer interface {
+	ContainerName(logical string) string
+}
+
+// isLoopbackHost reports whether a host names this machine's loopback interface. It accepts
+// the spellings a caller might reasonably use — nothing pins the wrapper to the numeric form.
+func isLoopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
 }
 
 func optString(s *structpb.Struct, key string) string {

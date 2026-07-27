@@ -164,6 +164,15 @@ PET="$(sed -n 's/.*SMOKE petName=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1
 case "$PET" in
   transformed-*)
     echo "    petName = $PET (carries the transform's prefix)"
+    # The prefix alone does not say WHY it worked. This line does, and it is also the only
+    # thing tying the language host's spelling of PULUMI_CALLBACKS_ADVERTISE_HOST to the
+    # SDK's — they are separate string constants in separate modules, by design, so a rename
+    # on one side would otherwise surface only as a confusing dial failure.
+    if ! grep -q 'oci: program advertises its callback server at' "$WORK/engine.log"; then
+      echo "!! the transform applied, but the program never advertised a callback host."
+      echo "   Something other than the advertise path made this pass — find out what."
+      exit 1
+    fi
     echo "==> TRANSFORM smoke test PASS — the engine dialed back into the program"
     ;;
   "")
