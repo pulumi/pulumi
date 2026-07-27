@@ -141,10 +141,8 @@ func TestPackageRefResolutionAcrossExtensionsOnSameBase(t *testing.T) {
 
 	require.NoError(t, i.registerPackages(t.Context()))
 
-	ayeRef, err := i.getPackageRefFromToken("extbase:index:Aye")
-	require.NoError(t, err)
-	beeRef, err := i.getPackageRefFromToken("extbase:index:Bee")
-	require.NoError(t, err)
+	ayeRef := i.getPackageRefFromToken("extbase:index:Aye")
+	beeRef := i.getPackageRefFromToken("extbase:index:Bee")
 
 	require.Equal(t, "ref-exta", ayeRef, "extbase:index:Aye is defined by the exta extension")
 	require.Equal(t, "ref-extb", beeRef, "extbase:index:Bee is defined by the extb extension")

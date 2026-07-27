@@ -406,16 +406,8 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 func (i *Interpreter) invoke(
 	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
 ) (*pulumirpc.InvokeResponse, error) {
-	ref, err := i.getPackageRefFromToken(req.Tok)
-	if err != nil {
-		return nil, err
-	}
-	req.PackageRef = ref
-
-	// An invoke inside a component is parented to that component, so the engine serves it with
-	// whichever provider the component's `providers` option names for the invoke's package.
+	req.PackageRef = i.getPackageRefFromToken(req.Tok)
 	req.Parent = i.stackURN
-
 	resp, err := i.monitor.Invoke(ctx, req)
 	return resp, err
 }
@@ -423,11 +415,7 @@ func (i *Interpreter) invoke(
 func (i *Interpreter) call(
 	ctx context.Context, req *pulumirpc.ResourceCallRequest,
 ) (*pulumirpc.CallResponse, error) {
-	ref, err := i.getPackageRefFromToken(req.Tok)
-	if err != nil {
-		return nil, err
-	}
-	req.PackageRef = ref
+	req.PackageRef = i.getPackageRefFromToken(req.Tok)
 	resp, err := i.monitor.Call(ctx, req)
 	return resp, err
 }
@@ -810,9 +798,7 @@ func PackageNameFromToken(token string) (string, error) {
 	return pkg, nil
 }
 
-func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
-	return i.packageRefs[token], nil
-}
+func (i *Interpreter) getPackageRefFromToken(token string) string { return i.packageRefs[token] }
 
 func (i *Interpreter) registerPackages(ctx context.Context) error {
 	if i.monitor == nil {
@@ -1418,11 +1404,7 @@ func (i *Interpreter) registerResourceWith(
 		SupportsResultReporting: true,
 		SnippetId:               i.snippetID,
 	}
-	packageRef, err := i.getPackageRefFromToken(token)
-	if err != nil {
-		return cty.NilVal, err
-	}
-	request.PackageRef = packageRef
+	request.PackageRef = i.getPackageRefFromToken(token)
 
 	if res.Options != nil {
 		if res.Options.AdditionalSecretOutputs != nil {
