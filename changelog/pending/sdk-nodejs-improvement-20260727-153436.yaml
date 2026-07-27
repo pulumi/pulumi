@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: improvement
+body: Improve error message when resource registrations are still pending when pulumi exits
+time: 2026-07-27T15:34:36.570336151+02:00
