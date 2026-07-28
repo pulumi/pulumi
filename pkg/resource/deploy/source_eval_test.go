@@ -3392,9 +3392,9 @@ func TestCall(t *testing.T) {
 			Provider: &deploytest.Provider{
 				CallF: func(context.Context, plugin.CallRequest, *deploytest.ResourceMonitor) (plugin.CallResponse, error) {
 					return plugin.CallResponse{
-						Return: resource.PropertyMap{
-							"result": resource.NewProperty(100.0),
-						},
+						Return: property.NewMap(map[string]property.Value{
+							"result": property.New(100.0),
+						}),
 						ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 							"prop": {
 								"urn:pulumi:stack::project::type::dep1",

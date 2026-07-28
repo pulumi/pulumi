@@ -999,7 +999,7 @@ type CallResult struct {
 	// The returned values, if the call was successful.
 	// In the case of a scalar/non-map result, a single key with any name can be used to return the
 	// value.
-	Return resource.PropertyMap
+	Return property.Map
 	// A map from return value keys to the dependencies of the return value.
 	ReturnDependencies map[resource.PropertyKey][]resource.URN
 	// The failures if any arguments didn't pass verification.

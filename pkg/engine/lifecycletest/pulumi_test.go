@@ -1197,7 +1197,8 @@ func TestStackReferenceRegister(t *testing.T) {
 							payload.URN.Type() == "pulumi:pulumi:StackReference" &&
 							strings.Contains(
 								payload.Message,
-								"The \"pulumi:pulumi:StackReference\" resource type is deprecated.")
+								"The \"pulumi:pulumi:StackReference\" resource type is deprecated.",
+							)
 						found = found || ok
 					}
 				}
@@ -2358,8 +2359,8 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 					}
 
 					return plugin.CallResponse{
-						Return: resource.NewPropertyMapFromMap(map[string]any{
-							"message": ret,
+						Return: property.NewMap(map[string]property.Value{
+							"message": property.New(ret),
 						}),
 					}, nil
 				},
@@ -3208,7 +3209,8 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 	project := p.GetProject()
 
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
-		"<{%reset%}>Expected an ID for urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>"))
+		"<{%reset%}>Expected an ID for urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>",
+	))
 
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
 	require.NoError(t, err)
@@ -3413,14 +3415,16 @@ func TestDefaultParents(t *testing.T) {
 			resource.RootStackType,
 			info.Project+"-"+info.Stack,
 			false,
-			deploytest.ResourceOptions{})
+			deploytest.ResourceOptions{},
+		)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource(
 			"pkgA:m:typA",
 			"resA",
 			true,
-			deploytest.ResourceOptions{})
+			deploytest.ResourceOptions{},
+		)
 		require.NoError(t, err)
 
 		return nil
@@ -3813,14 +3817,16 @@ func TestTimestampTracking(t *testing.T) {
 			resource.RootStackType,
 			info.Project+"-"+info.Stack,
 			false,
-			deploytest.ResourceOptions{})
+			deploytest.ResourceOptions{},
+		)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource(
 			"pkgA:m:typA",
 			"resA",
 			true,
-			deploytest.ResourceOptions{})
+			deploytest.ResourceOptions{},
+		)
 		require.NoError(t, err)
 
 		return nil
@@ -4967,7 +4973,8 @@ func TestProgramError(t *testing.T) {
 	}
 
 	snap, err := lt.TestOp(Update).RunStep(
-		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0",
+	)
 	require.NotNil(t, snap)
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 3)
@@ -4978,7 +4985,8 @@ func TestProgramError(t *testing.T) {
 	returnError = true
 
 	snap, err = lt.TestOp(Update).RunStep(
-		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1",
+	)
 	require.NotNil(t, snap)
 	require.Error(t, err)
 	require.True(t, result.IsBail(err))
@@ -5017,7 +5025,8 @@ func TestResourceError(t *testing.T) {
 	}
 
 	_, err := lt.TestOp(Update).RunStep(
-		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0",
+	)
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "create failed intentionally")
 }
