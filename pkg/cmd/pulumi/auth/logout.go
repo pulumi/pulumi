@@ -82,6 +82,17 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 					cloudURL, err = pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 					if err != nil {
+						// A credentials file that can no longer be decrypted must not
+						// leave the user unable to log out: fall back to removing all
+						// stored credentials, which does not require reading the file.
+						if workspace.IsUndecryptableCredentials(err) {
+							if err = deleteAllAccounts(); err != nil {
+								return err
+							}
+							fmt.Fprintln(cmd.OutOrStdout(),
+								"Removed stored credentials that could no longer be decrypted; logged out of everything")
+							return nil
+						}
 						return fmt.Errorf("could not determine current cloud: %w", err)
 					}
 
@@ -91,6 +102,14 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 				}
 
 				err = deleteAccount(cloudURL)
+				if workspace.IsUndecryptableCredentials(err) {
+					if err = deleteAllAccounts(); err != nil {
+						return err
+					}
+					fmt.Fprintln(cmd.OutOrStdout(),
+						"Removed stored credentials that could no longer be decrypted; logged out of everything")
+					return nil
+				}
 				fmt.Fprintf(cmd.OutOrStdout(), "Logged out of %s\n", cloudURL)
 			}
 

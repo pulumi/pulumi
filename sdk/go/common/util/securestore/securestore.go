@@ -39,6 +39,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
+	"sync"
 )
 
 // Backend identifies the mechanism protecting the key. It is recorded in the
@@ -241,6 +242,12 @@ func (s *Store) GetKey() ([]byte, error) {
 	return key, nil
 }
 
+// createKeyMu serializes first-time key creation within the process: several
+// credential reads/writes can race through a single command's first run, and
+// OS store "add" operations are not atomic (e.g. `security` returns
+// "duplicate item" to the loser of such a race).
+var createKeyMu sync.Mutex
+
 // GetOrCreateKey returns the stored key, generating and persisting a new
 // random 32-byte key if — and only if — the backend cleanly reports that no
 // key exists. Any other failure is returned as-is: regenerating a key on a
@@ -256,6 +263,19 @@ func (s *Store) GetOrCreateKey() ([]byte, error) {
 		return nil, err
 	}
 
+	createKeyMu.Lock()
+	defer createKeyMu.Unlock()
+	// Re-check under the lock: a concurrent caller may have created the key.
+	key, err = s.GetKey()
+	switch {
+	case err == nil:
+		return key, nil
+	case errors.Is(err, ErrKeyNotFound):
+		// still absent — create it
+	default:
+		return nil, err
+	}
+
 	key = make([]byte, 32)
 	if _, err := rand.Read(key); err != nil {
 		return nil, err
@@ -264,11 +284,18 @@ func (s *Store) GetOrCreateKey() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("protecting new key: %w", err)
 	}
-	if err := s.b.store.set(formatItem(s.b.wrap.kind(), blob)); err != nil {
-		return nil, fmt.Errorf("storing key: %w", err)
+	if setErr := s.b.store.set(formatItem(s.b.wrap.kind(), blob)); setErr != nil {
+		// The add can lose to another process (or to OS store state that a
+		// preceding lookup did not yet observe, e.g. securityd settling after
+		// a delete). If a key is readable now, reconcile onto it silently
+		// instead of failing — the persisted item always wins.
+		if stored, getErr := s.GetKey(); getErr == nil {
+			return stored, nil
+		}
+		return nil, fmt.Errorf("storing key: %w", setErr)
 	}
 	// Read back and reconcile: store writes have been observed to silently
-	// fail on some CI images, and concurrent first runs may race — the
+	// fail on some CI images, and cross-process first runs may race — the
 	// persisted item wins.
 	stored, err := s.GetKey()
 	if err != nil {

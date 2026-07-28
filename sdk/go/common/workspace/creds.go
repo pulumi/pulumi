@@ -143,13 +143,24 @@ func DeleteAllAccounts() error {
 		return err
 	}
 
+	// Logging out of everything also drops the credentials encryption key and
+	// the secure-store marker state: leave nothing behind. Best effort — the
+	// store may legitimately be unavailable here. The key is looked up both
+	// via the backend recorded in the (possibly undecryptable) envelope and
+	// via the best currently-available backend, since they can differ.
+	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
+		if backend, backendErr := securestore.EnvelopeBackend(raw); backendErr == nil {
+			if st, stErr := securestore.ForBackend(backend); stErr == nil {
+				if err = st.DeleteKey(); err != nil {
+					logging.V(3).Infof("could not delete credentials encryption key: %v", err)
+				}
+			}
+		}
+	}
 	var result error
 	if err = os.Remove(credsFile); err != nil && !os.IsNotExist(err) {
 		result = errors.Join(result, err)
 	}
-	// Logging out of everything also drops the credentials encryption key and
-	// the secure-store marker state: leave nothing behind. Best effort — the
-	// store may legitimately be unavailable here.
 	if st, stErr := securestore.Resolve(securestore.ModeAuto); stErr == nil {
 		if err = st.DeleteKey(); err != nil {
 			logging.V(3).Infof("could not delete credentials encryption key: %v", err)
@@ -179,7 +190,16 @@ func StoreAccount(key string, account Account, current bool) error {
 func storeAccountAt(path, key string, account Account, current bool) error {
 	creds, err := readCredentialsFile(path)
 	if err != nil && !os.IsNotExist(err) {
-		return err
+		// A file that can no longer be decrypted is replaced rather than
+		// blocking the write: storing an account only happens after a
+		// successful authentication, and the unreadable previous contents
+		// cannot be preserved anyway. This is what lets `pulumi login`
+		// recover from a lost encryption key.
+		if !IsUndecryptableCredentials(err) {
+			return err
+		}
+		logging.V(3).Infof("replacing credentials that can no longer be decrypted: %v", err)
+		creds = Credentials{}
 	}
 	if creds.AccessTokens == nil {
 		creds.AccessTokens = make(map[string]string)
@@ -417,6 +437,31 @@ func readCredentialsFile(credsFile string) (Credentials, error) {
 	return creds, nil
 }
 
+// UndecryptableCredentialsError indicates a stored credentials file that is
+// an encrypted envelope which cannot be decrypted in this environment —
+// typically because the key was deleted from the OS credential store, the
+// home directory was restored or copied to another machine, or the file was
+// tampered with. Read paths surface it as an actionable error; `pulumi
+// login` and `pulumi logout` recover by replacing or removing the stored
+// credentials instead of failing.
+type UndecryptableCredentialsError struct {
+	// Path is the credentials file that could not be decrypted.
+	Path string
+	// Err describes why decryption failed.
+	Err error
+}
+
+func (e *UndecryptableCredentialsError) Error() string { return e.Err.Error() }
+
+func (e *UndecryptableCredentialsError) Unwrap() error { return e.Err }
+
+// IsUndecryptableCredentials reports whether err (or anything it wraps)
+// indicates an encrypted credentials file that cannot be decrypted here.
+func IsUndecryptableCredentials(err error) bool {
+	var undecryptable *UndecryptableCredentialsError
+	return errors.As(err, &undecryptable)
+}
+
 // decryptCredentials opens a secure-store envelope using the backend
 // recorded in it, mapping failures to actionable errors.
 func decryptCredentials(credsFile string, data []byte) ([]byte, error) {
@@ -426,22 +471,25 @@ func decryptCredentials(credsFile string, data []byte) ([]byte, error) {
 	}
 	st, err := securestore.ForBackend(backend)
 	if err != nil {
-		return nil, fmt.Errorf("credentials file '%s' is encrypted but cannot be decrypted here: %w. "+
-			"Run `pulumi login` in this environment or set PULUMI_ACCESS_TOKEN", credsFile, err)
+		return nil, &UndecryptableCredentialsError{Path: credsFile, Err: fmt.Errorf(
+			"credentials file '%s' is encrypted but cannot be decrypted here: %w. "+
+				"Run `pulumi login` in this environment or set PULUMI_ACCESS_TOKEN", credsFile, err)}
 	}
 	key, err := st.GetKey()
 	if err != nil {
 		if errors.Is(err, securestore.ErrKeyNotFound) {
-			return nil, fmt.Errorf("credentials file '%s' is encrypted but its key is missing from the "+
-				"OS credential store (was it deleted, or is this a restored or copied home directory?): "+
-				"run `pulumi login` to re-authenticate", credsFile)
+			return nil, &UndecryptableCredentialsError{Path: credsFile, Err: fmt.Errorf(
+				"credentials file '%s' is encrypted but its key is missing from the "+
+					"OS credential store (was it deleted, or is this a restored or copied home directory?): "+
+					"run `pulumi login` to re-authenticate", credsFile)}
 		}
-		return nil, fmt.Errorf("retrieving the credentials encryption key: %w", err)
+		return nil, &UndecryptableCredentialsError{Path: credsFile, Err: fmt.Errorf(
+			"retrieving the credentials encryption key for '%s': %w", credsFile, err)}
 	}
 	plaintext, err := securestore.Open(key, data)
 	if err != nil {
-		return nil, fmt.Errorf("decrypting credentials file '%s': %w: run `pulumi login` to re-authenticate",
-			credsFile, err)
+		return nil, &UndecryptableCredentialsError{Path: credsFile, Err: fmt.Errorf(
+			"decrypting credentials file '%s': %w: run `pulumi login` to re-authenticate", credsFile, err)}
 	}
 	return plaintext, nil
 }
@@ -468,6 +516,26 @@ func writeCredentialsFile(credsFile string, creds Credentials) error {
 	st, err := writeStore()
 	if err != nil {
 		return err
+	}
+	// Encryption is sticky: when no mode is configured, a file that is
+	// already an envelope keeps being written as one — otherwise every
+	// command run without PULUMI_CREDENTIAL_STORE set would silently
+	// downgrade migrated credentials back to plaintext. Only the explicit
+	// "plaintext" mode decrypts on write.
+	if st.Backend() == securestore.BackendPlaintext {
+		if mode, _ := credentialStoreMode(); mode == securestore.ModeDefault {
+			if existing, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(existing) {
+				backend, backendErr := securestore.EnvelopeBackend(existing)
+				if backendErr == nil {
+					sticky, stickyErr := securestore.ForBackend(backend)
+					if stickyErr != nil {
+						return fmt.Errorf("refusing to overwrite encrypted credentials with plaintext: %w. "+
+							"Set PULUMI_CREDENTIAL_STORE=plaintext to store credentials unencrypted", stickyErr)
+					}
+					st = sticky
+				}
+			}
+		}
 	}
 	if st.Backend() != securestore.BackendPlaintext {
 		key, keyErr := st.GetOrCreateKey()
@@ -529,6 +597,42 @@ func migrateCredentialsToSecureStore(credsFile string, creds Credentials) {
 		return
 	}
 	logging.V(7).Infof("Migrated credentials to secure store backend %q", st.Backend())
+}
+
+// ResetStoredCredentials removes the stored credentials file along with the
+// encryption key and secure-store marker state protecting it, leaving other
+// local configuration intact. It is the recovery path used by `pulumi login`
+// when the existing file can no longer be decrypted.
+func ResetStoredCredentials() error {
+	credsFile, err := getCredsFilePath()
+	if err != nil {
+		return err
+	}
+	// Drop the key both via the backend recorded in the envelope and via the
+	// best currently-available backend — they can differ. Best effort.
+	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
+		if backend, backendErr := securestore.EnvelopeBackend(raw); backendErr == nil {
+			if st, stErr := securestore.ForBackend(backend); stErr == nil {
+				if err := st.DeleteKey(); err != nil {
+					logging.V(3).Infof("could not delete credentials encryption key: %v", err)
+				}
+			}
+		}
+	}
+	if st, stErr := securestore.Resolve(securestore.ModeAuto); stErr == nil {
+		if err := st.DeleteKey(); err != nil {
+			logging.V(3).Infof("could not delete credentials encryption key: %v", err)
+		}
+	}
+	if err := os.Remove(credsFile); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if statePath, stErr := credStoreStatePath(); stErr == nil {
+		if err := os.Remove(statePath); err != nil && !os.IsNotExist(err) {
+			logging.V(3).Infof("could not delete credential-store state: %v", err)
+		}
+	}
+	return nil
 }
 
 // StoreCredentials updates the stored credentials on the machine, replacing the existing set.  If the credentials

@@ -221,6 +221,114 @@ func TestWarnPlaintextFallbackOnlyOnce(t *testing.T) {
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestUnsetModePreservesExistingEncryption(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+
+	// Re-store with the env var unset: the file must stay encrypted —
+	// otherwise every ordinary command would silently downgrade migrated
+	// credentials back to plaintext.
+	t.Setenv("PULUMI_CREDENTIAL_STORE", "")
+	resetWriteStoreForTesting()
+
+	updated := testCreds()
+	updated.AccessTokens["https://api.other.com"] = "pul-second-token"
+	require.NoError(t, StoreCredentials(updated))
+
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	raw, err := os.ReadFile(credsFile)
+	require.NoError(t, err)
+	assert.True(t, securestore.IsEnvelope(raw), "encryption must be sticky when no mode is configured")
+	assert.False(t, bytes.Contains(raw, []byte("pul-second-token")))
+
+	creds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, "pul-second-token", creds.AccessTokens["https://api.other.com"])
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestExplicitPlaintextModeDowngrades(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+
+	// The explicit plaintext mode is the deliberate escape hatch: writes
+	// decrypt the file back to plaintext.
+	t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
+	resetWriteStoreForTesting()
+
+	require.NoError(t, StoreCredentials(testCreds()))
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	raw, err := os.ReadFile(credsFile)
+	require.NoError(t, err)
+	assert.False(t, securestore.IsEnvelope(raw))
+	assert.Contains(t, string(raw), "pul-secret-token")
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestStoreAccountRecoversFromUndecryptableFile(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+
+	// Lose the key: reads must fail with the typed error...
+	st, err := securestore.Resolve(securestore.ModeAuto)
+	require.NoError(t, err)
+	require.NoError(t, st.DeleteKey())
+	_, err = GetStoredCredentials()
+	require.Error(t, err)
+	assert.True(t, IsUndecryptableCredentials(err))
+
+	// ...but storing a fresh account (what login does after authenticating)
+	// replaces the unreadable file instead of failing.
+	require.NoError(t, StoreAccount("https://api.pulumi.com",
+		Account{AccessToken: "pul-fresh-token"}, true))
+
+	creds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, "pul-fresh-token", creds.AccessTokens["https://api.pulumi.com"])
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestResetStoredCredentialsClearsUndecryptableState(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+
+	st, err := securestore.Resolve(securestore.ModeAuto)
+	require.NoError(t, err)
+	require.NoError(t, st.DeleteKey())
+
+	require.NoError(t, ResetStoredCredentials())
+
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	_, err = os.Stat(credsFile)
+	assert.True(t, os.IsNotExist(err))
+
+	// A fresh read now behaves like a logged-out machine.
+	creds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Empty(t, creds.AccessTokens)
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestDeleteAllAccountsWorksWhenUndecryptable(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+
+	st, err := securestore.Resolve(securestore.ModeAuto)
+	require.NoError(t, err)
+	require.NoError(t, st.DeleteKey())
+
+	require.NoError(t, DeleteAllAccounts(), "logout --all must not require reading the file")
+
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	_, err = os.Stat(credsFile)
+	assert.True(t, os.IsNotExist(err))
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestInvalidModeSurfacesOnWrite(t *testing.T) {
 	pinSecureCreds(t, "bogus")
 	err := StoreCredentials(testCreds())

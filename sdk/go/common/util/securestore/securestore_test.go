@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -170,4 +171,74 @@ func TestForBackendUnknown(t *testing.T) {
 	st, err := ForBackend(BackendPlaintext)
 	require.NoError(t, err)
 	assert.Equal(t, BackendPlaintext, st.Backend())
+}
+
+// raceLosingStore simulates losing a non-atomic create race: set fails with a
+// duplicate-item error while — as the concurrent winner would have — a key
+// becomes readable afterwards.
+type raceLosingStore struct {
+	winner string
+	gets   int
+}
+
+func (r *raceLosingStore) available() error { return nil }
+
+func (r *raceLosingStore) get() (string, error) {
+	r.gets++
+	if r.gets == 1 {
+		// The initial lookup (and the under-lock re-check) miss the item,
+		// mirroring `security find-generic-password` returning "not found"
+		// just before `add-generic-password` collides.
+		return "", ErrKeyNotFound
+	}
+	if r.gets == 2 {
+		return "", ErrKeyNotFound
+	}
+	return r.winner, nil
+}
+
+func (r *raceLosingStore) set(value string) error {
+	return errors.New("exit status 45")
+}
+
+func (r *raceLosingStore) delete() error { return nil }
+
+//nolint:paralleltest // mutates the package-global mock resolver
+func TestGetOrCreateKeyReconcilesWhenSetLosesRace(t *testing.T) {
+	winnerKey := testKey(t)
+	store := &raceLosingStore{winner: formatItem(wrapRaw, winnerKey)}
+	mockResolver = func() []backendImpl {
+		return []backendImpl{{id: BackendMock, store: store, wrap: rawWrapper{}}}
+	}
+	t.Cleanup(func() { mockResolver = nil })
+
+	st, err := Resolve(ModeAuto)
+	require.NoError(t, err)
+	key, err := st.GetOrCreateKey()
+	require.NoError(t, err, "losing the create race must reconcile silently, not fail")
+	assert.Equal(t, winnerKey, key, "the persisted (winning) key must be adopted")
+}
+
+//nolint:paralleltest // mutates the package-global mock resolver
+func TestGetOrCreateKeyConcurrent(t *testing.T) {
+	MockInit(t)
+	st, err := Resolve(ModeAuto)
+	require.NoError(t, err)
+
+	const n = 16
+	keys := make([][]byte, n)
+	errs := make([]error, n)
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			keys[i], errs[i] = st.GetOrCreateKey()
+		}(i)
+	}
+	wg.Wait()
+	for i := 0; i < n; i++ {
+		require.NoError(t, errs[i])
+		assert.Equal(t, keys[0], keys[i], "all concurrent callers must converge on one key")
+	}
 }
