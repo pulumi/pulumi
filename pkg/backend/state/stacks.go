@@ -24,6 +24,18 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
+// BackendURLKey returns the stable URL used to scope workspace stack selection.
+// For Pulumi Cloud backends this is the API URL (e.g. https://api.pulumi.com), matching
+// GetCurrentCloudURL / credentials.Current. Backend.URL() is wrong here: for the cloud
+// backend it returns a console URL that may include the current user.
+func BackendURLKey(b backend.Backend) string {
+	type cloudURLer interface{ CloudURL() string }
+	if c, ok := b.(cloudURLer); ok {
+		return c.CloudURL()
+	}
+	return b.URL()
+}
+
 // CurrentStack reads the current stack and returns an instance connected to its backend provider.
 func CurrentStack(ctx context.Context, ws pkgWorkspace.Context, b backend.Backend) (backend.Stack, error) {
 	return CurrentStackAt(ctx, ws, b, "")
@@ -35,7 +47,7 @@ func CurrentStack(ctx context.Context, ws pkgWorkspace.Context, b backend.Backen
 func CurrentStackAt(
 	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, dir string,
 ) (backend.Stack, error) {
-	stackName, fromLegacy, err := getCurrentStackName(ws, dir, b.URL())
+	stackName, fromLegacy, err := getCurrentStackName(ws, dir, b)
 	if err != nil {
 		return nil, err
 	} else if stackName == "" {
@@ -62,7 +74,9 @@ func CurrentStackAt(
 	return b.GetStack(ctx, ref)
 }
 
-func getCurrentStackName(ws pkgWorkspace.Context, dir, backendURL string) (name string, fromLegacy bool, err error) {
+func getCurrentStackName(
+	ws pkgWorkspace.Context, dir string, b backend.Backend,
+) (name string, fromLegacy bool, err error) {
 	// PULUMI_STACK environment variable overrides any stack name in the workspace settings
 	if stackName, ok := os.LookupEnv("PULUMI_STACK"); ok {
 		return stackName, false, nil
@@ -74,7 +88,14 @@ func getCurrentStackName(ws pkgWorkspace.Context, dir, backendURL string) (name 
 		return "", false, err
 	}
 
-	name, fromLegacy = w.Settings().StackForBackend(backendURL)
+	settings := w.Settings()
+	// Legacy workspace.json files only have Stack. Skip BackendURLKey until a
+	// per-backend map exists so callers (and tests) without URL() still work.
+	if len(settings.Stacks) == 0 {
+		name, fromLegacy = settings.StackForBackend("")
+		return name, fromLegacy, nil
+	}
+	name, fromLegacy = settings.StackForBackend(BackendURLKey(b))
 	return name, fromLegacy, nil
 }
 

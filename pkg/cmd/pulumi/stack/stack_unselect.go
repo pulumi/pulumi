@@ -60,10 +60,9 @@ func newStackUnselectCmd() *cobra.Command {
 			}
 
 			if err := state.SetCurrentStack(ws, backendURL, ""); err != nil {
-				fmt.Fprintf(cmd.OutOrStdout(), "Could not unselect the current stack from the workspace: %s", err)
-				return err
+				return fmt.Errorf("could not unselect the current stack from the workspace: %s", err)
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "Stack was unselected")
+			fmt.Fprintln(cmd.ErrOrStderr(), "Stack was unselected")
 			return nil
 		},
 	}

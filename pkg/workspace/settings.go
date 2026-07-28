@@ -16,8 +16,10 @@ package workspace
 
 // Settings defines workspace settings shared amongst many related projects.
 type Settings struct {
-	// Stack is the legacy unscoped selected stack. Prefer Stacks[backendURL].
-	// Kept so older workspace.json files continue to load; new writes use Stacks.
+	// Stack is an optional default stack to use.
+
+	// Deprecated: Prefer Stacks[backendURL]. Kept so older
+	// workspace.json files continue to load; new writes use Stacks.
 	Stack string `json:"stack,omitempty" yaml:"env,omitempty"`
 
 	// Stacks maps backend URL -> selected stack name for that backend.
@@ -32,10 +34,8 @@ func (s *Settings) IsEmpty() bool {
 // StackForBackend returns the selected stack for backendURL.
 // If there is no per-backend entry, it falls back to the legacy Stack field.
 func (s *Settings) StackForBackend(backendURL string) (name string, fromLegacy bool) {
-	if s.Stacks != nil {
-		if name, ok := s.Stacks[backendURL]; ok {
-			return name, false
-		}
+	if name, ok := s.Stacks[backendURL]; ok {
+		return name, false
 	}
 	return s.Stack, s.Stack != ""
 }

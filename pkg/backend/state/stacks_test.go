@@ -16,6 +16,7 @@ package state
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -27,6 +28,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// mockCloudBackend mimics httpstate.Backend: URL() is a console URL (possibly
+// user-scoped) while CloudURL() is the stable API URL used by credentials /
+// GetCurrentCloudURL.
+type mockCloudBackend struct {
+	backend.MockBackend
+	cloudURL string
+}
+
+func (b *mockCloudBackend) CloudURL() string { return b.cloudURL }
 
 func TestCurrentStack(t *testing.T) {
 	ctx := t.Context()
@@ -156,6 +167,7 @@ func TestCurrentStack(t *testing.T) {
 	})
 
 	t.Run("legacy cloud selection is ignored on local backend", func(t *testing.T) {
+		t.Parallel()
 		settings := &pkgWorkspace.Settings{
 			Stack: "cloud-org/my-project/my-stack",
 		}
@@ -173,7 +185,7 @@ func TestCurrentStack(t *testing.T) {
 			},
 			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
 				assert.Equal(t, "cloud-org/my-project/my-stack", s)
-				return nil, fmt.Errorf("organization name must be 'organization'")
+				return nil, errors.New("organization name must be 'organization'")
 			},
 			GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
 				t.Fatal("GetStack should not be called for a legacy selection from another backend")
@@ -187,6 +199,7 @@ func TestCurrentStack(t *testing.T) {
 	})
 
 	t.Run("per-backend selections do not leak across backends", func(t *testing.T) {
+		t.Parallel()
 		settings := &pkgWorkspace.Settings{
 			Stacks: map[string]string{
 				"https://api.pulumi.com": "cloud-org/my-project/dev",
@@ -215,7 +228,7 @@ func TestCurrentStack(t *testing.T) {
 		}
 		got, err := CurrentStack(ctx, ws, localBe)
 		require.NoError(t, err)
-		assert.NotNil(t, got)
+		require.NotNil(t, got)
 
 		cloudBe := &backend.MockBackend{
 			URLF: func() string { return "https://api.pulumi.com" },
@@ -231,10 +244,11 @@ func TestCurrentStack(t *testing.T) {
 		}
 		got, err = CurrentStack(ctx, ws, cloudBe)
 		require.NoError(t, err)
-		assert.NotNil(t, got)
+		require.NotNil(t, got)
 	})
 
 	t.Run("invalid scoped selection still returns parse error", func(t *testing.T) {
+		t.Parallel()
 		settings := &pkgWorkspace.Settings{
 			Stacks: map[string]string{
 				"file://~": "cloud-org/my-project/dev",
@@ -250,13 +264,59 @@ func TestCurrentStack(t *testing.T) {
 		be := &backend.MockBackend{
 			URLF: func() string { return "file://~" },
 			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
-				return nil, fmt.Errorf("organization name must be 'organization'")
+				return nil, errors.New("organization name must be 'organization'")
 			},
 		}
 
 		_, err := CurrentStack(ctx, ws, be)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "organization name must be 'organization'")
+	})
+
+	t.Run("cloud selection is keyed by API URL not console URL", func(t *testing.T) {
+		t.Parallel()
+		apiURL := "https://api.pulumi.com"
+		consoleURL := "https://app.pulumi.com/pulumi-bot"
+		stackName := "pulumi-bot/my-project/dev"
+
+		settings := &pkgWorkspace.Settings{}
+		ws := &pkgWorkspace.MockContext{
+			NewF: func(string) (pkgWorkspace.W, error) {
+				return &pkgWorkspace.MockW{
+					SettingsF: func() *pkgWorkspace.Settings { return settings },
+					SaveF:     func() error { return nil },
+				}, nil
+			},
+		}
+		be := &mockCloudBackend{
+			MockBackend: backend.MockBackend{
+				URLF: func() string { return consoleURL },
+				ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+					assert.Equal(t, stackName, s)
+					return &backend.MockStackReference{
+						FullyQualifiedNameV: tokens.QName(s),
+					}, nil
+				},
+				GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+					return &backend.MockStack{}, nil
+				},
+			},
+			cloudURL: apiURL,
+		}
+
+		require.Equal(t, apiURL, BackendURLKey(be))
+		require.NoError(t, SetCurrentStack(ws, BackendURLKey(be), stackName))
+		require.Equal(t, stackName, settings.Stacks[apiURL])
+		assert.Empty(t, settings.Stacks[consoleURL], "must not key selection by console URL")
+
+		// Readers that use GetCurrentCloudURL (API URL) must see the selection.
+		name, fromLegacy := settings.StackForBackend(apiURL)
+		require.Equal(t, stackName, name)
+		require.False(t, fromLegacy)
+
+		got, err := CurrentStack(ctx, ws, be)
+		require.NoError(t, err)
+		require.NotNil(t, got)
 	})
 }
 

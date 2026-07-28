@@ -120,7 +120,7 @@ func newStackRemoveCmd() *cobra.Command {
 			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Ref(), colors.Reset)
 			fmt.Fprintln(cmd.OutOrStdout(), opts.Color.Colorize(msg))
 
-			contract.IgnoreError(state.SetCurrentStack(ws, s.Backend().URL(), ""))
+			contract.IgnoreError(state.SetCurrentStack(ws, state.BackendURLKey(s.Backend()), ""))
 			return nil
 		},
 	}
