@@ -56,7 +56,7 @@ type testResourceInputs struct {
 }
 
 func (*testResourceInputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*testResourceArgs)(nil))
+	return reflect.TypeFor[*testResourceArgs]()
 }
 
 func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
@@ -694,7 +694,7 @@ type remoteComponentInputs struct {
 }
 
 func (*remoteComponentInputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*remoteComponentArgs)(nil)).Elem()
+	return reflect.TypeFor[remoteComponentArgs]()
 }
 
 type remoteComponent struct {

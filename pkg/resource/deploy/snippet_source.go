@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 
@@ -216,9 +217,7 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 
 func snippetReferenceValue(urn resource.URN, reg URNRegistration) resource.PropertyValue {
 	obj := make(resource.PropertyMap, len(reg.Outputs)+4)
-	for k, v := range reg.Outputs {
-		obj[k] = v
-	}
+	maps.Copy(obj, reg.Outputs)
 	obj["urn"] = resource.NewProperty(string(urn))
 	obj["id"] = resource.NewProperty(string(reg.ID))
 	obj["__name"] = resource.NewProperty(urn.Name())

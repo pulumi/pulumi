@@ -59,7 +59,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // buildImportFile takes an event stream from the engine and builds an import file from it for every create.
@@ -89,10 +88,13 @@ func buildImportFile(
 			NameTable: map[string]resource.URN{},
 		}
 
-		// A mapping of names to the index of the resourceSpec in imports.Resources that used it. We have to
-		// fix up names _as we go_ because we're mapping over the event stream, and it would be pretty
-		// inefficient to wait for the whole thing to finish before building the import specs.
-		takenNames := map[string]int{}
+		// A mapping of names to their logical name and type that used it. We have to fix up names _as we go_
+		// because we're mapping over the event stream, and it would be pretty inefficient to wait for the
+		// whole thing to finish before building the import specs.
+		takenNames := map[string]struct {
+			name string
+			typ  tokens.Type
+		}{}
 
 		// We want to prefer using the urns name for the source name, but if it conflicts with other resources
 		// we'll auto suffix it, first with the type, then with rising numbers. This function does that
@@ -120,34 +122,44 @@ func buildImportFile(
 
 			urn := preEvent.Metadata.URN
 			name := urn.Name()
-			if i, has := takenNames[name]; has {
-				// Another resource already has this name, lets check if that was it's original name or if it was a rename
-				importI := imports.Resources[i]
-				if importI.LogicalName != "" {
-					// i was renamed, so we're going to go backwards rename it again and then we can use our name for this resource.
-					newName := uniqueName(importI.LogicalName, importI.Type)
-					imports.Resources[i].Name = newName
-					// Go through all the resources and fix up any parent references to use the new name.
-					for j := range imports.Resources {
-						if imports.Resources[j].Parent == name {
-							imports.Resources[j].Parent = newName
-						}
-					}
-					// Fix up the nametable if needed
+			if old, has := takenNames[name]; has {
+				// Another resource already has this name, lets check if that was it's original name or if it was a rename.
+				if old.name != name {
+					// old was renamed, so we're going to go backwards rename it again and then we can use our name for this resource.
+					newName := uniqueName(old.name, old.typ)
+
+					// Fix up the name table to reflect the rename.
 					if urn, has := imports.NameTable[name]; has {
 						delete(imports.NameTable, name)
 						imports.NameTable[newName] = urn
 					}
+					// Then go through all the resources and fix up any name, parent or provider references to use the new name.
+					for j := range imports.Resources {
+						if imports.Resources[j].Name == name {
+							imports.Resources[j].Name = newName
+						}
+						if imports.Resources[j].Parent == name {
+							imports.Resources[j].Parent = newName
+						}
+						if imports.Resources[j].Provider == name {
+							imports.Resources[j].Provider = newName
+						}
+					}
 					// Fix up takenNames incase this is hit again
-					takenNames[newName] = i
+					takenNames[newName] = takenNames[name]
+					delete(takenNames, name)
 				} else {
-					// i just had the same name as us, lets find a new one
+					// old just had the same name as us, lets find a new one
 					name = uniqueName(name, urn.Type())
 				}
 			}
 
 			// Name is unique at this point
 			fullNameTable[urn] = name
+			takenNames[name] = struct {
+				name string
+				typ  tokens.Type
+			}{urn.Name(), urn.Type()}
 
 			// If this is a provider we need to note we've seen it so we can build the Version and PluginDownloadURL of
 			// any resources that use it.
@@ -258,7 +270,6 @@ func buildImportFile(
 				logicalName = urn.Name()
 			}
 
-			takenNames[name] = len(imports.Resources)
 			imports.Resources = append(imports.Resources, importSpec{
 				Type:              new.Type,
 				Name:              name,
@@ -286,6 +297,7 @@ func NewPreviewCmd() *cobra.Command {
 	var stackName string
 	var configArray []string
 	var configFile string
+	var envOverrides []string
 	var configPath bool
 	var client string
 	var planFilePath string
@@ -470,7 +482,7 @@ func NewPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -487,12 +499,12 @@ func NewPreviewCmd() *cobra.Command {
 			stackName := s.Ref().Name().String()
 			if skipConfigValidation {
 				// Still apply project config defaults onto the stack config, but skip validation.
-				if configErr := workspace.ApplyProjectConfig(
+				if configErr := pkgWorkspace.ApplyProjectConfig(
 					ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
 					return fmt.Errorf("applying stack config: %w", configErr)
 				}
 			} else {
-				configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 					ctx,
 					stackName,
 					proj,
@@ -659,6 +671,7 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
+	config.OverrideEnvFlag(cmd, &envOverrides)
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the preview and save to the stack config file")

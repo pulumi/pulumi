@@ -640,6 +640,18 @@ func GetDiscriminatedUnionObjectMapping(t *model.UnionType) map[string]model.Typ
 	mapping := map[string]model.Type{}
 	for _, t := range t.ElementTypes {
 		k, v := getDiscriminatedUnionObjectItem(t)
+		if k == "" {
+			continue
+		}
+		// When the union comes from a lifted schema.InputType, each variant
+		// appears twice — once as the input-shape ObjectType and once wrapped
+		// in an OutputType containing the plain shape. Both share a token.
+		// Prefer the first (input-shape) match so downstream conversion picks
+		// the shape whose fields carry OutputType, which is what triggers
+		// literals to be wrapped as pulumi.String / pulumi.Bool inputs.
+		if _, exists := mapping[k]; exists {
+			continue
+		}
 		mapping[k] = v
 	}
 	return mapping

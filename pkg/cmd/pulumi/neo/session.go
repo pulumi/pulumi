@@ -34,8 +34,8 @@ import (
 )
 
 // Reconnect tuning. Backoff doubles per consecutive failure up to reconnectMaxBackoff;
-// the total budget resets on every successfully-delivered event. Vars (not consts) so
-// tests can override them.
+// the total budget resets on every successfully-delivered event or keep-alive. Vars
+// (not consts) so tests can override them.
 var (
 	reconnectInitialBackoff = 1 * time.Second
 	reconnectMaxBackoff     = 30 * time.Second
@@ -143,7 +143,8 @@ func (s *Session) Run(ctx context.Context) error {
 
 // drainStream reads events until the channel closes, ctx is cancelled, or an error
 // event arrives. It updates *lastEventID for each event that carries an `id:`. The
-// first return reports whether any non-error event was delivered.
+// first return reports whether the stream made progress by delivering either data or
+// a keep-alive.
 func (s *Session) drainStream(
 	ctx context.Context, stream <-chan client.NeoStreamEvent, lastEventID *string,
 ) (bool, error) {
@@ -158,6 +159,10 @@ func (s *Session) drainStream(
 			}
 			if evt.Err != nil {
 				return gotEvent, evt.Err
+			}
+			if evt.KeepAlive {
+				gotEvent = true
+				continue
 			}
 			if evt.ID != "" {
 				*lastEventID = evt.ID

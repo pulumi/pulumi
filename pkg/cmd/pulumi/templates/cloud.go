@@ -276,29 +276,29 @@ func (r registryTemplate) FromRegistry() bool { return true }
 
 func (r registryTemplate) Publisher() string { return r.t.Publisher }
 
-func (r registryTemplate) Download(ctx context.Context) (workspace.Template, error) {
+func (r registryTemplate) Download(ctx context.Context) (ProjectTemplate, error) {
 	templateBytes, err := r.registry.DownloadTemplate(ctx, r.t.DownloadURL)
 	if err != nil {
-		return workspace.Template{}, fmt.Errorf("failed to download from %q: %w", r.t.DownloadURL, err)
+		return ProjectTemplate{}, fmt.Errorf("failed to download from %q: %w", r.t.DownloadURL, err)
 	}
 	defer contract.IgnoreClose(templateBytes)
 	templateDir, err := os.MkdirTemp("", "pulumi-template-")
 	if err != nil {
-		return workspace.Template{}, fmt.Errorf("failed to make temporary directory: %w", err)
+		return ProjectTemplate{}, fmt.Errorf("failed to make temporary directory: %w", err)
 	}
 	// Having created a template directory, we now add it to the list of directories to close.
 	r.source.addCloser(func() error { return os.RemoveAll(templateDir) })
 	tarReader, err := createTarReader(templateBytes)
 	if err != nil {
-		return workspace.Template{}, fmt.Errorf("failed to create tar reader: %w", err)
+		return ProjectTemplate{}, fmt.Errorf("failed to create tar reader: %w", err)
 	}
 	defer tarReader.Close()
 
 	if err := writeTar(ctx, tar.NewReader(tarReader), templateDir); err != nil {
-		return workspace.Template{}, err
+		return ProjectTemplate{}, err
 	}
 
-	template, err := workspace.LoadTemplate(templateDir)
+	template, err := LoadTemplate(templateDir)
 	return template, err
 }
 
@@ -452,27 +452,27 @@ func (t orgTemplate) Description() string { return t.t.Description }
 func (t orgTemplate) Error() error        { return nil }
 func (t orgTemplate) FromRegistry() bool  { return true }
 func (t orgTemplate) Publisher() string   { return t.org }
-func (t orgTemplate) Download(ctx context.Context) (workspace.Template, error) {
+func (t orgTemplate) Download(ctx context.Context) (ProjectTemplate, error) {
 	templateDir, err := os.MkdirTemp("", "pulumi-template-")
 	if err != nil {
-		return workspace.Template{}, err
+		return ProjectTemplate{}, err
 	}
 	// Having created a template directory, we now add it to the list of directories to close.
 	t.source.addCloser(func() error { return os.RemoveAll(templateDir) })
 
 	tarReader, err := t.backend.DownloadTemplate(ctx, t.org, t.t.TemplateURL)
 	if err != nil {
-		return workspace.Template{}, err
+		return ProjectTemplate{}, err
 	}
 	if err := errors.Join(
 		writeTar(ctx, tarReader.Tar(), templateDir),
 		tarReader.Close(),
 	); err != nil {
-		return workspace.Template{}, err
+		return ProjectTemplate{}, err
 	}
 	slog.InfoContext(ctx, "downloaded template", "template", t.t.Name, "dir", templateDir)
 
-	return workspace.LoadTemplate(templateDir)
+	return LoadTemplate(templateDir)
 }
 
 const maxDecompressedSize = 100 << 20 // 100MB

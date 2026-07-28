@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple
 
@@ -25,7 +26,7 @@ from pulumi.errors import (
 )
 from pulumi.provider.server import ComponentInitError
 import pulumi.output
-from pulumi.provider import ConstructResult
+from pulumi.provider import CallResult, ConstructResult
 from pulumi.provider.provider import Provider
 import pytest
 
@@ -36,6 +37,7 @@ from pulumi.runtime import Mocks, ResourceModule, proto, rpc
 from pulumi.runtime.proto.provider_pb2 import ConstructRequest
 from pulumi.runtime.proto import status_pb2, errors_pb2
 from pulumi.runtime.settings import Settings, configure
+from pulumi.runtime import config, settings
 from semver import VersionInfo as Version
 from ..grpc_stubs import provider_servicer_stub
 
@@ -661,6 +663,40 @@ class MockProvider(Provider):
         )
 
 
+class ConcurrentConstructCallProvider(Provider):
+    def __init__(self):
+        super().__init__("1.0.0")
+        self.construct_waiting = asyncio.Event()
+        self.call_ran = asyncio.Event()
+        self.construct_stack_after_call: Optional[str] = None
+        self.construct_config_after_call: Optional[str] = None
+
+    def construct(
+        self,
+        name: str,
+        resource_type: str,
+        inputs: Inputs,
+        options: Optional[ResourceOptions] = None,
+    ) -> ConstructResult:
+        assert settings.get_stack() == "construct-stack"
+        assert config.get_config("test:key") == "construct-config"
+
+        async def urn() -> str:
+            self.construct_waiting.set()
+            await self.call_ran.wait()
+            self.construct_stack_after_call = settings.get_stack()
+            self.construct_config_after_call = config.get_config("test:key")
+            return f"urn:pulumi:{name}::{resource_type}::test-resource"
+
+        return ConstructResult(urn=urn(), state={"result": "construct"})
+
+    def call(self, token: str, args: Inputs) -> CallResult:
+        assert settings.get_stack() == "call-stack"
+        assert config.get_config("test:key") == "call-config"
+        self.call_ran.set()
+        return CallResult({"result": "call"})
+
+
 @pytest.mark.asyncio
 async def test_construct_success():
     provider = MockProvider()
@@ -672,6 +708,36 @@ async def test_construct_success():
 
         assert response.urn.startswith("urn:pulumi:")
         assert "test-resource" in response.urn
+
+
+@pytest.mark.asyncio
+async def test_construct_and_call_can_run_concurrently():
+    provider = ConcurrentConstructCallProvider()
+    servicer = ProviderServicer(provider, [], "")
+
+    async with provider_servicer_stub(servicer) as stub:
+        construct_request = proto.ConstructRequest(
+            name="construct",
+            type="test:index:Component",
+            stack="construct-stack",
+            config={"test:key": "construct-config"},
+        )
+        construct_task = asyncio.ensure_future(stub.Construct(construct_request))
+
+        await asyncio.wait_for(provider.construct_waiting.wait(), timeout=2)
+
+        call_request = proto.CallRequest(
+            tok="test:index:call",
+            stack="call-stack",
+            config={"test:key": "call-config"},
+        )
+        call_response = await asyncio.wait_for(stub.Call(call_request), timeout=2)
+        construct_response = await asyncio.wait_for(construct_task, timeout=2)
+
+        assert getattr(call_response, "return")["result"] == "call"
+        assert construct_response.urn.endswith("::test-resource")
+        assert provider.construct_stack_after_call == "construct-stack"
+        assert provider.construct_config_after_call == "construct-config"
 
 
 @pytest.mark.asyncio

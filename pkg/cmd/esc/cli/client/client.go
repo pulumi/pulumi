@@ -19,10 +19,12 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"path"
 	"runtime"
@@ -47,6 +49,10 @@ const (
 
 type CheckYAMLOption struct {
 	ShowSecrets bool
+}
+
+type OpenYAMLOption struct {
+	EnvironmentOverrides map[string]string
 }
 
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
@@ -248,6 +254,7 @@ type Client interface {
 		orgName string,
 		yaml []byte,
 		duration time.Duration,
+		opts ...OpenYAMLOption,
 	) (string, []EnvironmentDiagnostic, error)
 
 	// GetOpenEnvironment returns the AST, values, and schema for the open environment with ID openEnvID in
@@ -1020,11 +1027,22 @@ func (pc *client) OpenYAMLEnvironment(
 	orgName string,
 	yaml []byte,
 	duration time.Duration,
+	opts ...OpenYAMLOption,
 ) (string, []EnvironmentDiagnostic, error) {
 	queryObj := struct {
-		Duration string `url:"duration"`
+		Duration             string `url:"duration"`
+		EnvironmentOverrides string `url:"environmentOverrides,omitempty"`
 	}{
 		Duration: duration.String(),
+	}
+
+	overrides := firstOrDefault(opts).EnvironmentOverrides
+	if len(overrides) > 0 {
+		encoded, err := json.Marshal(overrides)
+		if err != nil {
+			return "", nil, fmt.Errorf("marshaling environment overrides: %w", err)
+		}
+		queryObj.EnvironmentOverrides = base64.RawURLEncoding.EncodeToString(encoded)
 	}
 
 	var resp struct {
@@ -1751,9 +1769,7 @@ func (pc *client) httpCall(
 	req.Header.Set("Content-Type", "application/json")
 
 	// Set headers from the incoming options.
-	for k, v := range opts.Header {
-		req.Header[k] = v
-	}
+	maps.Copy(req.Header, opts.Header)
 
 	// Add a User-Agent header to allow for the backend to make breaking API changes while preserving
 	// backwards compatibility.

@@ -243,8 +243,12 @@ type ProviderHandshakeRequest struct {
 	// The target of a [](pulumirpc.PackageResolver) service the provider can use to resolve package specifications to
 	// concrete package dependencies. May be empty on older engines.
 	ResolverTarget *string `protobuf:"bytes,10,opt,name=resolver_target,json=resolverTarget,proto3,oneof" json:"resolver_target,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// True if and only if the engine supports strings containing bytes that are not valid UTF-8, marshaled as objects
+	// carrying the byte string signature and a base64 encoding of the string's bytes. If true, the provider may
+	// return such values to the engine.
+	AcceptsByteString bool `protobuf:"varint,11,opt,name=accepts_byte_string,json=acceptsByteString,proto3" json:"accepts_byte_string,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ProviderHandshakeRequest) Reset() {
@@ -347,6 +351,13 @@ func (x *ProviderHandshakeRequest) GetResolverTarget() string {
 	return ""
 }
 
+func (x *ProviderHandshakeRequest) GetAcceptsByteString() bool {
+	if x != nil {
+		return x.AcceptsByteString
+	}
+	return false
+}
+
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
 type ProviderHandshakeResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -364,8 +375,12 @@ type ProviderHandshakeResponse struct {
 	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
 	// user. *Must* match the value returned in response to [](pulumirpc.ResourceProvider.Configure).
 	SupportsAutonamingConfiguration bool `protobuf:"varint,4,opt,name=supports_autonaming_configuration,json=supportsAutonamingConfiguration,proto3" json:"supports_autonaming_configuration,omitempty"`
-	unknownFields                   protoimpl.UnknownFields
-	sizeCache                       protoimpl.SizeCache
+	// True if and only if the provider supports strings containing bytes that are not valid UTF-8, marshaled as
+	// objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
+	// caller may pass such values to the provider.
+	AcceptsByteString bool `protobuf:"varint,6,opt,name=accepts_byte_string,json=acceptsByteString,proto3" json:"accepts_byte_string,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ProviderHandshakeResponse) Reset() {
@@ -422,6 +437,13 @@ func (x *ProviderHandshakeResponse) GetAcceptOutputs() bool {
 func (x *ProviderHandshakeResponse) GetSupportsAutonamingConfiguration() bool {
 	if x != nil {
 		return x.SupportsAutonamingConfiguration
+	}
+	return false
+}
+
+func (x *ProviderHandshakeResponse) GetAcceptsByteString() bool {
+	if x != nil {
+		return x.AcceptsByteString
 	}
 	return false
 }
@@ -4281,7 +4303,7 @@ var File_pulumi_provider_proto protoreflect.FileDescriptor
 
 const file_pulumi_provider_proto_rawDesc = "" +
 	"\n" +
-	"\x15pulumi/provider.proto\x12\tpulumirpc\x1a\x12pulumi/alias.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xcc\x04\n" +
+	"\x15pulumi/provider.proto\x12\tpulumirpc\x1a\x12pulumi/alias.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xfc\x04\n" +
 	"\x18ProviderHandshakeRequest\x12%\n" +
 	"\x0eengine_address\x18\x01 \x01(\tR\rengineAddress\x12*\n" +
 	"\x0eroot_directory\x18\x02 \x01(\tH\x00R\rrootDirectory\x88\x01\x01\x120\n" +
@@ -4293,17 +4315,19 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\rmapper_target\x18\b \x01(\tH\x02R\fmapperTarget\x88\x01\x01\x12(\n" +
 	"\rloader_target\x18\t \x01(\tH\x03R\floaderTarget\x88\x01\x01\x12,\n" +
 	"\x0fresolver_target\x18\n" +
-	" \x01(\tH\x04R\x0eresolverTarget\x88\x01\x01B\x11\n" +
+	" \x01(\tH\x04R\x0eresolverTarget\x88\x01\x01\x12.\n" +
+	"\x13accepts_byte_string\x18\v \x01(\bR\x11acceptsByteStringB\x11\n" +
 	"\x0f_root_directoryB\x14\n" +
 	"\x12_program_directoryB\x10\n" +
 	"\x0e_mapper_targetB\x10\n" +
 	"\x0e_loader_targetB\x12\n" +
-	"\x10_resolver_target\"\xfc\x01\n" +
+	"\x10_resolver_target\"\xac\x02\n" +
 	"\x19ProviderHandshakeResponse\x12%\n" +
 	"\x0eaccept_secrets\x18\x01 \x01(\bR\racceptSecrets\x12)\n" +
 	"\x10accept_resources\x18\x02 \x01(\bR\x0facceptResources\x12%\n" +
 	"\x0eaccept_outputs\x18\x03 \x01(\bR\racceptOutputs\x12J\n" +
-	"!supports_autonaming_configuration\x18\x04 \x01(\bR\x1fsupportsAutonamingConfigurationJ\x04\b\x05\x10\x06R\x14pulumi_version_range\"\xad\x02\n" +
+	"!supports_autonaming_configuration\x18\x04 \x01(\bR\x1fsupportsAutonamingConfiguration\x12.\n" +
+	"\x13accepts_byte_string\x18\x06 \x01(\bR\x11acceptsByteStringJ\x04\b\x05\x10\x06R\x14pulumi_version_range\"\xad\x02\n" +
 	"\x13ParameterizeRequest\x12C\n" +
 	"\x04args\x18\x01 \x01(\v2-.pulumirpc.ParameterizeRequest.ParametersArgsH\x00R\x04args\x12F\n" +
 	"\x05value\x18\x02 \x01(\v2..pulumirpc.ParameterizeRequest.ParametersValueH\x00R\x05value\x1a$\n" +

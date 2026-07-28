@@ -97,7 +97,7 @@ func TestSummaryEventResultRoundTrip(t *testing.T) {
 func TestConvertJSONEventExhaustive(t *testing.T) {
 	t.Parallel()
 
-	rt := reflect.TypeOf(apitype.EngineEvent{})
+	rt := reflect.TypeFor[apitype.EngineEvent]()
 	for i := 0; i < rt.NumField(); i++ {
 		f := rt.Field(i)
 		// Only consider exported pointer-to-struct fields.

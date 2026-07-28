@@ -79,6 +79,11 @@ type ProviderHandshakeRequest struct {
 	// The target of a PackageResolver service the provider can use to resolve package specifications to concrete
 	// package dependencies. May be nil on older engines.
 	ResolverTarget *string
+
+	// True if and only if the engine supports strings containing bytes that are not valid UTF-8, marshaled as
+	// objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
+	// provider may return such values to the engine.
+	AcceptsByteString bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -98,6 +103,11 @@ type ProviderHandshakeResponse struct {
 	// True if the provider accepts and respects autonaming configuration that the engine provides on behalf of the
 	// user.
 	SupportsAutonamingConfiguration bool
+
+	// True if and only if the provider supports strings containing bytes that are not valid UTF-8, marshaled as
+	// objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
+	// caller may pass such values to the provider.
+	AcceptsByteString bool
 }
 
 // ParameterizeParameters can either be of concrete type ParameterizeArgs or ParameterizeValue, for when parameterizing
@@ -989,7 +999,7 @@ type CallResult struct {
 	// The returned values, if the call was successful.
 	// In the case of a scalar/non-map result, a single key with any name can be used to return the
 	// value.
-	Return resource.PropertyMap
+	Return property.Map
 	// A map from return value keys to the dependencies of the return value.
 	ReturnDependencies map[resource.PropertyKey][]resource.URN
 	// The failures if any arguments didn't pass verification.
@@ -1011,8 +1021,8 @@ type View struct {
 	ParentName string
 
 	// The view resource's inputs.
-	Inputs resource.PropertyMap
+	Inputs property.Map
 
 	// The view resource's outputs.
-	Outputs resource.PropertyMap
+	Outputs property.Map
 }

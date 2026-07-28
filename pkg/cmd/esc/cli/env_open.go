@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/spf13/cobra"
@@ -120,6 +121,23 @@ func (env *envCommand) renderValue(
 		}
 	}
 
+	// Filesystem projection: materialize the environment's `files` to disk (unless path provided)
+	var environ []string
+	if len(path) == 0 {
+		var filesByKey map[string]string
+		var err error
+		_, environ, _, filesByKey, err = env.prepareEnvironment(
+			e,
+			PrepareOptions{Pretend: pretend, Quote: true, Redact: !showSecrets},
+		)
+		if err != nil {
+			// If we fail to write temporary files, print warning and continue
+			msg := fmt.Sprintf("%swarning: %v%s\n", colors.SpecWarning, err, colors.Reset)
+			fmt.Fprint(env.esc.stderr, env.esc.colors.Colorize(msg))
+		}
+		projectFilesToEnvironmentVariables(&val, filesByKey)
+	}
+
 	switch format {
 	case "json":
 		body := val.ToJSON(!showSecrets)
@@ -136,25 +154,11 @@ func (env *envCommand) renderValue(
 		enc.SetIndent("", "  ")
 		return enc.Encode(val)
 	case "dotenv":
-		_, environ, _, err := env.prepareEnvironment(
-			e,
-			PrepareOptions{Pretend: pretend, Quote: true, Redact: !showSecrets},
-		)
-		if err != nil {
-			return err
-		}
 		for _, kvp := range environ {
 			fmt.Fprintln(out, kvp)
 		}
 		return nil
 	case "shell":
-		_, environ, _, err := env.prepareEnvironment(
-			e,
-			PrepareOptions{Pretend: pretend, Quote: true, Redact: !showSecrets},
-		)
-		if err != nil {
-			return err
-		}
 		for _, kvp := range environ {
 			fmt.Fprintf(out, "export %v\n", kvp)
 		}
@@ -173,12 +177,40 @@ func (env *envCommand) renderValue(
 	}
 }
 
+// projectFilesToEnvironmentVariables adds an entry to the environmentVariables map for each projected file.
+func projectFilesToEnvironmentVariables(val *esc.Value, filesByKey map[string]string) {
+	if len(filesByKey) == 0 {
+		return
+	}
+	top, ok := val.Value.(map[string]esc.Value)
+	if !ok {
+		return
+	}
+	files, _ := top["files"].Value.(map[string]esc.Value)
+
+	envVars, ok := top["environmentVariables"].Value.(map[string]esc.Value)
+	if !ok {
+		envVars = map[string]esc.Value{}
+		top["environmentVariables"] = esc.NewValue(envVars)
+	}
+
+	for k, path := range filesByKey {
+		node := esc.NewValue(path)
+		if files[k].Secret {
+			node = esc.NewSecret(path)
+		}
+		node.Trace = files[k].Trace
+		envVars[k] = node
+	}
+}
+
 // prepareEnvironment prepares the envvar and temporary file projections for an environment. Returns the paths to
-// temporary files, environment variable pairs, and secret values.
+// temporary files, environment variable pairs, secret values, and a map from each temporary file's environment
+// variable name to its projected path.
 func (env *envCommand) prepareEnvironment(
 	e *esc.Environment,
 	opts PrepareOptions,
-) (files, environ, secrets []string, err error) {
+) (files, environ, secrets []string, filesByKey map[string]string, err error) {
 	opts.fs = env.esc.fs
 	return PrepareEnvironment(e, &opts)
 }

@@ -18,12 +18,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/internal/util"
-	"golang.org/x/exp/maps"
 )
 
 // ValueType defines the types of concrete values stored inside a Value.
@@ -172,8 +172,7 @@ func fromJSON(path string, v any) (Value, error) {
 		}
 		return NewValue(vs), nil
 	case map[string]any:
-		keys := maps.Keys(v)
-		sort.Strings(keys)
+		keys := slices.Sorted(maps.Keys(v))
 		vs := make(map[string]Value, len(keys))
 		for _, k := range keys {
 			vv, err := fromJSON(util.JoinKey(path, k), v[k])
@@ -242,8 +241,7 @@ func (v Value) ToString(redact bool) string {
 		}
 		return strings.Join(vals, ",")
 	case map[string]Value:
-		keys := maps.Keys(pv)
-		sort.Strings(keys)
+		keys := slices.Sorted(maps.Keys(pv))
 
 		pairs := make([]string, len(pv))
 		for i, k := range keys {

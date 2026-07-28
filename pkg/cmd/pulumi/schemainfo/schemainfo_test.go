@@ -160,3 +160,65 @@ func TestWriteProperties(t *testing.T) {
 		assert.Contains(t, b.String(), Underline(colors.Always, "string"))
 	})
 }
+
+func TestCleanComment(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "empty",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "no markup",
+			input:    "Function entry point in your code.",
+			expected: "Function entry point in your code.",
+		},
+		{
+			name: "language-choice span renders the canonical camelCase choice",
+			input: "Required if <span pulumi-lang-nodejs=\"`packageType`\" " +
+				"pulumi-lang-python=\"`package_type`\">`packageType`</span> is `Zip`.",
+			expected: "Required if `packageType` is `Zip`.",
+		},
+		{
+			name: "multiple spans on one line are handled independently",
+			input: "Conflicts with <span pulumi-lang-go=\"`imageUri`\">`imageUri`</span> " +
+				"and <span pulumi-lang-go=\"`s3Bucket`\">`s3Bucket`</span>.",
+			expected: "Conflicts with `imageUri` and `s3Bucket`.",
+		},
+		{
+			name:     "span nested in backticks",
+			input:    "Valid values are `[<span pulumi-lang-python=\"x86_64\">\"x8664\"</span>]` and `[\"arm64\"]`.",
+			expected: "Valid values are `[\"x8664\"]` and `[\"arm64\"]`.",
+		},
+		{
+			name:     "literal angle-bracket placeholders are left untouched",
+			input:    "Use the form arn:aws:s3:::<bucket>/<key>.",
+			expected: "Use the form arn:aws:s3:::<bucket>/<key>.",
+		},
+		{
+			name: "a paired env var collapses to the uppercase name",
+			input: "Can also be set using the `HTTP_PROXY` or " +
+				"<span pulumi-lang-nodejs=\"`httpProxy`\" " +
+				"pulumi-lang-python=\"`http_proxy`\">`httpProxy`</span> environment variables.",
+			expected: "Can also be set using the `HTTP_PROXY` environment variable.",
+		},
+		{
+			name:     "a lone env var is left untouched",
+			input:    "Can also be configured using the `AWS_RETRY_MODE` environment variable.",
+			expected: "Can also be configured using the `AWS_RETRY_MODE` environment variable.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.expected, CleanComment(tt.input))
+		})
+	}
+}

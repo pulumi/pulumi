@@ -371,7 +371,7 @@ func TestPackageGetSchema(t *testing.T) {
 	// Now try and get the parameterized schema from within a Pulumi project with a packages declaration.
 	err = os.WriteFile(
 		filepath.Join(e.CWD, "Pulumi.yaml"),
-		[]byte(fmt.Sprintf(`name: project
+		fmt.Appendf(nil, `name: project
 runtime: yaml
 packages:
   tp: %s
@@ -379,7 +379,7 @@ backend:
   url: '%s'`,
 			providerDir,
 			e.LocalURL(),
-		)), 0o600)
+		), 0o600)
 	require.NoError(t, err)
 
 	schemaJSON, _ = e.RunCommand("pulumi", "package", "get-schema", "tp", "parameter")
@@ -719,13 +719,13 @@ func TestSecretsProvidersInitializationSmoke(t *testing.T) {
 				require.NoError(t, err)
 
 				projectYAML := filepath.Join(projectDir, "Pulumi.yaml")
-				err = os.WriteFile(projectYAML, []byte(fmt.Sprintf(`name: project
+				err = os.WriteFile(projectYAML, fmt.Appendf(nil, `name: project
 runtime: %s
 backend:
   url: '%s'`,
 					runtime,
 					e.LocalURL(),
-				)), 0o600)
+				), 0o600)
 				require.NoError(t, err)
 
 				stackYAML := filepath.Join(projectDir, "Pulumi.dev.yaml")

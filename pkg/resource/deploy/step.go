@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -71,6 +73,10 @@ type Step interface {
 	Res() *pkgresource.State
 	// true if this step represents a logical operation in the program.
 	Logical() bool
+	// IsUntargeted returns true if this step was generated solely because its resource was not
+	// included in a target-constrained operation rather than because a diff found the resource
+	// unchanged. Such steps leave their resource untouched, carrying its old state forward verbatim.
+	IsUntargeted() bool
 	// the deployment to which this step belongs.
 	Deployment() *Deployment
 
@@ -90,6 +96,10 @@ type SameStep struct {
 	// If this is a same-step for a resource being created but which was not --target'ed by the user
 	// (and thus was skipped).
 	skippedCreate bool
+
+	// If this is a same-step emitted for a resource that was not included in a
+	// target-constrained operation.
+	untargeted bool
 }
 
 var _ Step = (*SameStep)(nil)
@@ -115,6 +125,14 @@ func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *pk
 		old:        old,
 		new:        new,
 	}
+}
+
+// NewUntargetedSameStep produces a SameStep for a resource that is only "same" because it was not
+// included in a target-constrained operation, as opposed to having been diffed and found unchanged.
+func NewUntargetedSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *pkgresource.State) Step {
+	step := NewSameStep(deployment, reg, old, new).(*SameStep)
+	step.untargeted = true
+	return step
 }
 
 // NewSkippedCreateStep produces a SameStep for a resource that was created but not targeted
@@ -197,6 +215,10 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 func (s *SameStep) IsSkippedCreate() bool {
 	return s.skippedCreate
+}
+
+func (s *SameStep) IsUntargeted() bool {
+	return s.untargeted
 }
 
 func (s *SameStep) Fail() {
@@ -294,6 +316,7 @@ func (s *CreateStep) Keys() []resource.PropertyKey                 { return s.ke
 func (s *CreateStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *CreateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *CreateStep) Logical() bool                                { return !s.replacing }
+func (s *CreateStep) IsUntargeted() bool                           { return false }
 
 func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	if err := s.Deployment().RunHooks(
@@ -575,6 +598,7 @@ func (s *DeleteStep) Old() *pkgresource.State { return s.old }
 func (s *DeleteStep) New() *pkgresource.State { return nil }
 func (s *DeleteStep) Res() *pkgresource.State { return s.old }
 func (s *DeleteStep) Logical() bool           { return !s.replacing }
+func (s *DeleteStep) IsUntargeted() bool      { return false }
 
 func isDeletedWith(with resource.URN, otherDeletions map[resource.URN]bool) bool {
 	if with == "" {
@@ -853,6 +877,7 @@ func (s *RemovePendingReplaceStep) Old() *pkgresource.State { return s.old }
 func (s *RemovePendingReplaceStep) New() *pkgresource.State { return nil }
 func (s *RemovePendingReplaceStep) Res() *pkgresource.State { return s.old }
 func (s *RemovePendingReplaceStep) Logical() bool           { return false }
+func (s *RemovePendingReplaceStep) IsUntargeted() bool      { return false }
 
 func (s *RemovePendingReplaceStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	return resource.StatusOK, nil, nil
@@ -927,6 +952,7 @@ func (s *UpdateStep) Old() *pkgresource.State                      { return s.ol
 func (s *UpdateStep) New() *pkgresource.State                      { return s.new }
 func (s *UpdateStep) Res() *pkgresource.State                      { return s.new }
 func (s *UpdateStep) Logical() bool                                { return true }
+func (s *UpdateStep) IsUntargeted() bool                           { return false }
 func (s *UpdateStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *UpdateStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 
@@ -1173,6 +1199,7 @@ func (s *ReplaceStep) Keys() []resource.PropertyKey                 { return s.k
 func (s *ReplaceStep) Diffs() []resource.PropertyKey                { return s.diffs }
 func (s *ReplaceStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.detailedDiff }
 func (s *ReplaceStep) Logical() bool                                { return true }
+func (s *ReplaceStep) IsUntargeted() bool                           { return false }
 
 func (s *ReplaceStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// If this is a pending delete, we should have marked the old resource for deletion in the CreateReplacement step.
@@ -1275,6 +1302,7 @@ func (s *ReadStep) Old() *pkgresource.State { return s.old }
 func (s *ReadStep) New() *pkgresource.State { return s.new }
 func (s *ReadStep) Res() *pkgresource.State { return s.new }
 func (s *ReadStep) Logical() bool           { return !s.replacing }
+func (s *ReadStep) IsUntargeted() bool      { return false }
 
 func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	urn := s.new.URN
@@ -1469,6 +1497,7 @@ func (s *RefreshStep) New() *pkgresource.State {
 }
 func (s *RefreshStep) Res() *pkgresource.State                      { return s.old }
 func (s *RefreshStep) Logical() bool                                { return false }
+func (s *RefreshStep) IsUntargeted() bool                           { return false }
 func (s *RefreshStep) Diffs() []resource.PropertyKey                { return s.diff.ChangedKeys }
 func (s *RefreshStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.diff.DetailedDiff }
 
@@ -1788,6 +1817,7 @@ func (s *ExtensionParameterizeStep) Old() *pkgresource.State { return nil }
 func (s *ExtensionParameterizeStep) New() *pkgresource.State { return nil }
 func (s *ExtensionParameterizeStep) Res() *pkgresource.State { return nil }
 func (s *ExtensionParameterizeStep) Logical() bool           { return false }
+func (s *ExtensionParameterizeStep) IsUntargeted() bool      { return false }
 func (s *ExtensionParameterizeStep) Deployment() *Deployment { return s.deployment }
 func (s *ExtensionParameterizeStep) Fail()                   {}
 func (s *ExtensionParameterizeStep) Skip()                   {}
@@ -1871,8 +1901,6 @@ func newImportDeploymentStep(deployment *Deployment, new *pkgresource.State, ran
 	contract.Requiref(!new.Delete, "new", "must not be marked for deletion")
 	contract.Requiref(!new.External, "new", "must not be external")
 	contract.Requiref(!new.Custom || randomSeed != nil, "randomSeed", "must not be nil")
-	contract.Assertf(len(new.Inputs) == 0, "import resource cannot have existing inputs")
-
 	contract.Requiref(new.ViewOf == "", "new", "must not be a view")
 
 	return &ImportStep{
@@ -1900,6 +1928,27 @@ func (s *ImportStep) Original() *pkgresource.State { return s.original }
 func (s *ImportStep) New() *pkgresource.State      { return s.new }
 func (s *ImportStep) Res() *pkgresource.State      { return s.new }
 func (s *ImportStep) Logical() bool                { return !s.replacing }
+func (s *ImportStep) IsUntargeted() bool           { return false }
+
+// mergeSuppliedProperties fills the gaps in properties read from the provider with properties supplied
+// by the import: a supplied value is used where the read one is missing or null, so values a provider's
+// importer cannot return (e.g. write-only attributes) survive, while the provider stays authoritative
+// for everything it does return. A value that was supplied as a secret stays secret even if the
+// provider returns it in plain text.
+func mergeSuppliedProperties(read, supplied resource.PropertyMap) resource.PropertyMap {
+	if len(supplied) == 0 {
+		return read
+	}
+	merged := read.Copy()
+	for k, v := range supplied {
+		if r, has := read[k]; !has || r.IsNull() {
+			merged[k] = v
+		} else if v.IsSecret() && !r.IsSecret() {
+			merged[k] = resource.MakeSecret(r)
+		}
+	}
+	return merged
+}
 
 func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) {
 	defer func() {
@@ -1938,12 +1987,36 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		}
 	}
 
-	// Only need to do anything here for custom resources, components just import as empty
+	suppliedInputs := s.new.Inputs
+	suppliedOutputs := s.new.Outputs
 	inputs := resource.PropertyMap{}
 	outputs := resource.PropertyMap{}
 	var prov plugin.Provider
 	rst := resource.StatusOK
-	if s.new.Custom {
+	if len(suppliedOutputs) > 0 {
+		// The import supplied the resource's full state (e.g. from a state converter): trust it rather
+		// than reading from the provider, so the import can run without access to the underlying cloud.
+		contract.Assertf(s.planned, "only planned imports may supply outputs")
+
+		if s.new.Custom {
+			var err error
+			prov, err = getProvider(s, s.provider)
+			if err != nil {
+				return resource.StatusOK, nil, err
+			}
+		}
+
+		s.new.Lock.Lock()
+		defer s.new.Lock.Unlock()
+
+		if suppliedInputs != nil {
+			inputs = suppliedInputs
+		}
+		outputs = suppliedOutputs
+		if s.new.Custom {
+			s.new.ID = s.new.ImportID
+		}
+	} else if s.new.Custom {
 		// Read the current state of the resource to import. If the provider does not hand us back any inputs for the
 		// resource, it probably needs to be updated. If the resource does not exist at all, fail the import.
 		var err error
@@ -2000,17 +2073,25 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		}
 		inputs = read.Inputs
 		outputs = read.Outputs
+		if s.planned {
+			inputs = mergeSuppliedProperties(read.Inputs, suppliedInputs)
+		}
 		s.new.RefreshBeforeUpdate = read.RefreshBeforeUpdate
 	} else {
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
+
+		// Local components have no state to read; keep any inputs the import supplied.
+		if s.planned && suppliedInputs != nil {
+			inputs = suppliedInputs
+		}
 	}
 
 	s.new.Inputs = inputs
 	s.new.Outputs = outputs
-	// Magic up an old state so the frontend can display a proper diff. This state is the output of the just-executed
-	// `Read` combined with the resource identity and metadata from the desired state. This ensures that the only
-	// differences between the old and new states are between the inputs and outputs.
+	// Magic up an old state so the frontend can display a proper diff. The old state takes the same inputs and
+	// outputs as the new state (assigned just above), so any diff shown comes from later adjustments to the new
+	// state's inputs.
 	s.old = pkgresource.NewState{
 		Type:                    s.new.Type,
 		URN:                     s.new.URN,
@@ -2042,7 +2123,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		IgnoreChanges:           s.new.IgnoreChanges,
 		HideDiff:                s.new.HideDiff,
 		ReplaceOnChanges:        s.new.ReplaceOnChanges,
-		ReplacementTrigger:      resource.NewNullProperty(),
+		ReplacementTrigger:      property.Value{},
 		RefreshBeforeUpdate:     s.new.RefreshBeforeUpdate,
 		ViewOf:                  s.new.ViewOf,
 		ResourceHooks:           nil,
@@ -2332,12 +2413,7 @@ func ConstrainedTo(op display.StepOp, constraint display.StepOp) bool {
 	case OpReplace, OpCreateReplacement, OpDeleteReplaced:
 		allowed = []display.StepOp{OpSame, OpUpdate, constraint}
 	}
-	for _, candidate := range allowed {
-		if candidate == op {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(allowed, op)
 }
 
 // getProvider fetches the provider for the given step.
@@ -2399,6 +2475,7 @@ func (s *DiffStep) Old() *pkgresource.State { return s.old }
 func (s *DiffStep) New() *pkgresource.State { return s.new }
 func (s *DiffStep) Res() *pkgresource.State { return s.new }
 func (s *DiffStep) Logical() bool           { return true }
+func (s *DiffStep) IsUntargeted() bool      { return false }
 
 func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// DiffStep is a special step in that we're just using it as a way to get access to the parallel step
@@ -2516,6 +2593,8 @@ func (s *ViewStep) Logical() bool {
 	}
 	return true
 }
+
+func (s *ViewStep) IsUntargeted() bool { return false }
 
 func (s *ViewStep) ResultOp() display.StepOp {
 	return s.resultOp

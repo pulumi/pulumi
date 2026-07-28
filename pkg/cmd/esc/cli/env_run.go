@@ -165,7 +165,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 				return envcmd.writePropertyEnvironmentDiagnostics(envcmd.esc.stderr, diags)
 			}
 
-			files, environ, secrets, err := envcmd.prepareEnvironment(env, PrepareOptions{})
+			files, environ, secrets, _, err := envcmd.prepareEnvironment(env, PrepareOptions{})
 			if err != nil {
 				return err
 			}

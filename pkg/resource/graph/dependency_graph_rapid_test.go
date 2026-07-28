@@ -35,6 +35,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"slices"
 	"testing"
 
 	"pgregory.net/rapid"
@@ -56,12 +57,7 @@ var hasProvider R = func(res, provider *pkgresource.State) bool {
 }
 
 var hasDependency R = func(res, dependency *pkgresource.State) bool {
-	for _, dep := range res.Dependencies {
-		if dependency.URN == dep {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(res.Dependencies, dependency.URN)
 }
 
 var expectedDependenciesOf = union(isParent, hasProvider, hasDependency)

@@ -68,13 +68,11 @@ func makeTestContext(t testing.TB, cancelCtx *cancel.Context) *testContext {
 	}
 
 	// Begin draining events.
-	ctx.wg.Add(1)
-	go func() {
+	ctx.wg.Go(func() {
 		for e := range events {
 			ctx.firedEvents = append(ctx.firedEvents, e)
 		}
-		ctx.wg.Done()
-	}()
+	})
 
 	return ctx
 }

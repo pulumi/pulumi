@@ -49,7 +49,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -70,6 +72,7 @@ type contextState struct {
 
 	keepResources            bool         // true if resources should be marshaled as strongly-typed references.
 	keepOutputValues         bool         // true if outputs should be marshaled as strongly-type output values.
+	keepByteString           bool         // true if strings containing non-UTF8 bytes may be sent to the monitor.
 	supportsDeletedWith      bool         // true if deletedWith supported by pulumi
 	supportsReplaceWith      bool         // true if replaceWith supported by pulumi
 	supportsAliasSpecs       bool         // true if full alias specification is supported by pulumi
@@ -144,66 +147,27 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		monitor = wrap(monitor)
 	}
 
-	supportsFeature := func(id string) (bool, error) {
-		if monitor != nil {
-			resp, err := monitor.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{Id: id})
-			if err != nil {
-				return false, fmt.Errorf("checking monitor features: %w", err)
+	var monitorFeatures []pulumirpc.ResourceMonitorFeature
+	if monitor != nil {
+		deploymentInfo, err := monitor.GetDeploymentInfo(ctx, &emptypb.Empty{})
+		if err == nil {
+			monitorFeatures = deploymentInfo.GetSupportedFeatures()
+		} else if status.Code(err) == codes.Unimplemented {
+			for _, k := range slices.Sorted(maps.Keys(legacyFeatureMapping)) {
+				r, err := monitor.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{Id: k})
+				if err != nil {
+					return nil, fmt.Errorf("checking monitor feature %q: %w", k, err)
+				}
+				if r.GetHasSupport() {
+					monitorFeatures = append(monitorFeatures, legacyFeatureMapping[k])
+				}
 			}
-			return resp.GetHasSupport(), nil
+		} else {
+			return nil, fmt.Errorf("checking monitor features: %w", err)
 		}
-		return false, nil
 	}
 
-	keepResources, err := supportsFeature("resourceReferences")
-	if err != nil {
-		return nil, err
-	}
-
-	keepOutputValues, err := supportsFeature("outputValues")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsDeletedWith, err := supportsFeature("deletedWith")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsReplaceWith, err := supportsFeature("replaceWith")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsAliasSpecs, err := supportsFeature("aliasSpecs")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsTransforms, err := supportsFeature("transforms")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsInvokeTransforms, err := supportsFeature("invokeTransforms")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsParameterization, err := supportsFeature("parameterization")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsResourceHooks, err := supportsFeature("resourceHooks")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsErrorHooks, err := supportsFeature("errorHooks")
-	if err != nil {
-		return nil, err
-	}
+	has := func(feature pulumirpc.ResourceMonitorFeature) bool { return slices.Contains(monitorFeatures, feature) }
 
 	contextState := &contextState{
 		info:                     info,
@@ -212,16 +176,17 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		monitor:                  monitor,
 		engineConn:               engineConn,
 		engine:                   engine,
-		keepResources:            keepResources,
-		keepOutputValues:         keepOutputValues,
-		supportsDeletedWith:      supportsDeletedWith,
-		supportsReplaceWith:      supportsReplaceWith,
-		supportsAliasSpecs:       supportsAliasSpecs,
-		supportsTransforms:       supportsTransforms,
-		supportsInvokeTransforms: supportsInvokeTransforms,
-		supportsParameterization: supportsParameterization,
-		supportsResourceHooks:    supportsResourceHooks,
-		supportsErrorHooks:       supportsErrorHooks,
+		keepResources:            has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES),
+		keepOutputValues:         has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES),
+		keepByteString:           has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING),
+		supportsDeletedWith:      has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_DELETED_WITH),
+		supportsReplaceWith:      has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REPLACE_WITH),
+		supportsAliasSpecs:       has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ALIAS_SPECS),
+		supportsTransforms:       has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_TRANSFORMS),
+		supportsInvokeTransforms: has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS),
+		supportsParameterization: has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_PARAMETERIZATION),
+		supportsResourceHooks:    has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS),
+		supportsErrorHooks:       has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS),
 		registeredOutputs:        make(map[URN]bool),
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
@@ -236,6 +201,22 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	}
 
 	return context, nil
+}
+
+// A frozen map of old feature IDs to the new resource monitor features.
+//
+// This map should never be updated.
+var legacyFeatureMapping = map[string]pulumirpc.ResourceMonitorFeature{
+	"resourceReferences": pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+	"outputValues":       pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES,
+	"deletedWith":        pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+	"replaceWith":        pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+	"aliasSpecs":         pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
+	"transforms":         pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_TRANSFORMS,
+	"invokeTransforms":   pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+	"parameterization":   pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+	"resourceHooks":      pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+	"errorHooks":         pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
 }
 
 // Context returns the base context used to instantiate the current context.
@@ -337,12 +318,7 @@ func (ctx *Context) GetConfig(key string) (string, bool) {
 
 // IsConfigSecret returns true if the config value is a secret.
 func (ctx *Context) IsConfigSecret(key string) bool {
-	for _, secretKey := range ctx.state.info.ConfigSecretKeys {
-		if key == secretKey {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ctx.state.info.ConfigSecretKeys, key)
 }
 
 // registerTransform starts up a callback server if not already running and registers the given transform.
@@ -496,9 +472,10 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			rpcRes.Properties, err = plugin.MarshalProperties(
 				properties,
 				plugin.MarshalOptions{
-					KeepUnknowns:  true,
-					KeepSecrets:   true,
-					KeepResources: ctx.state.keepResources,
+					KeepUnknowns:   true,
+					KeepSecrets:    true,
+					KeepResources:  ctx.state.keepResources,
+					KeepByteString: ctx.state.keepByteString,
 				},
 			)
 			if err != nil {
@@ -689,9 +666,10 @@ func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callb
 			rpcRes.Args, err = plugin.MarshalProperties(
 				args,
 				plugin.MarshalOptions{
-					KeepUnknowns:  true,
-					KeepSecrets:   true,
-					KeepResources: ctx.state.keepResources,
+					KeepUnknowns:   true,
+					KeepSecrets:    true,
+					KeepResources:  ctx.state.keepResources,
+					KeepByteString: ctx.state.keepByteString,
 				},
 			)
 			if err != nil {
@@ -792,9 +770,10 @@ func (ctx *Context) invokePackageRaw(
 	rpcArgs, err := plugin.MarshalProperties(
 		resolvedArgsMap,
 		plugin.MarshalOptions{
-			KeepUnknowns:  true,
-			KeepSecrets:   true,
-			KeepResources: ctx.state.keepResources,
+			KeepUnknowns:   true,
+			KeepSecrets:    true,
+			KeepResources:  ctx.state.keepResources,
+			KeepByteString: ctx.state.keepByteString,
 		},
 	)
 	if err != nil {
@@ -810,6 +789,7 @@ func (ctx *Context) invokePackageRaw(
 		Version:           options.Version,
 		PluginDownloadURL: options.PluginDownloadURL,
 		AcceptResources:   !disableResourceReferences,
+		AcceptsByteString: true,
 		PackageRef:        packageRef,
 	})
 	if err != nil {
@@ -1094,6 +1074,7 @@ func (ctx *Context) CallPackage(
 				KeepUnknowns:     true,
 				KeepSecrets:      true,
 				KeepResources:    ctx.state.keepResources,
+				KeepByteString:   ctx.state.keepByteString,
 				KeepOutputValues: ctx.state.keepOutputValues,
 			})
 		if err != nil {
@@ -1103,7 +1084,7 @@ func (ctx *Context) CallPackage(
 		// Convert the arg dependencies map for RPC and remove duplicates.
 		rpcArgDeps := make(map[string]*pulumirpc.ResourceCallRequest_ArgumentDependencies)
 		for k, deps := range argDeps {
-			sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
+			slices.Sort(deps)
 
 			urns := slice.Prealloc[string](len(deps))
 			for i, d := range deps {
@@ -1126,6 +1107,7 @@ func (ctx *Context) CallPackage(
 			Version:           version,
 			PluginDownloadURL: pluginURL,
 			PackageRef:        packageRef,
+			AcceptsByteString: true,
 		}, nil
 	}
 
@@ -1437,6 +1419,7 @@ func (ctx *Context) readPackageResource(
 			Id:                      string(idToRead),
 			AcceptSecrets:           true,
 			AcceptResources:         !disableResourceReferences,
+			AcceptsByteString:       true,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 			SourcePosition:          sourcePosition,
 			StackTrace:              stackTrace,
@@ -1465,9 +1448,10 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 	rpcArgs, err := plugin.MarshalProperties(
 		resolvedArgsMap,
 		plugin.MarshalOptions{
-			KeepUnknowns:  true,
-			KeepSecrets:   true,
-			KeepResources: ctx.state.keepResources,
+			KeepUnknowns:   true,
+			KeepSecrets:    true,
+			KeepResources:  ctx.state.keepResources,
+			KeepByteString: ctx.state.keepByteString,
 		},
 	)
 	if err != nil {
@@ -1477,9 +1461,10 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 	tok := "pulumi:pulumi:getResource"
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
 	resp, err := ctx.state.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
-		Tok:             "pulumi:pulumi:getResource",
-		Args:            rpcArgs,
-		AcceptResources: !disableResourceReferences,
+		Tok:               "pulumi:pulumi:getResource",
+		Args:              rpcArgs,
+		AcceptResources:   !disableResourceReferences,
+		AcceptsByteString: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("invoke(%s, ...): error: %w", tok, err)
@@ -1874,6 +1859,7 @@ func (ctx *Context) registerResource(
 				Aliases:                    aliases,
 				AcceptSecrets:              true,
 				AcceptResources:            !disableResourceReferences,
+				AcceptsByteString:          true,
 				AdditionalSecretOutputs:    inputs.additionalSecretOutputs,
 				Version:                    inputs.version,
 				PluginDownloadURL:          inputs.pluginDownloadURL,
@@ -2084,15 +2070,11 @@ func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderR
 	// copy parent providers
 	result := make(map[string]ProviderResource)
 	if parent != nil {
-		for k, v := range parent.getProviders() {
-			result[k] = v
-		}
+		maps.Copy(result, parent.getProviders())
 	}
 
 	// copy provider map
-	for k, v := range providerMap {
-		result[k] = v
-	}
+	maps.Copy(result, providerMap)
 
 	// copy specific provider, if any
 	if provider != nil {
@@ -2181,7 +2163,7 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 	return aliasURNs, nil
 }
 
-var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
+var mapOutputType = reflect.TypeFor[MapOutput]()
 
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
@@ -2609,9 +2591,10 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
 		plugin.MarshalOptions{
-			KeepUnknowns:  true,
-			KeepSecrets:   true,
-			KeepResources: ctx.state.keepResources,
+			KeepUnknowns:   true,
+			KeepSecrets:    true,
+			KeepResources:  ctx.state.keepResources,
+			KeepByteString: ctx.state.keepByteString,
 			// To initially scope the use of this new feature, we only keep output values when
 			// remote is true (for multi-lang components).
 			KeepOutputValues: remote && ctx.state.keepOutputValues,
@@ -2658,6 +2641,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 					KeepUnknowns:     true,
 					KeepSecrets:      true,
 					KeepResources:    ctx.state.keepResources,
+					KeepByteString:   ctx.state.keepByteString,
 					KeepOutputValues: remote && ctx.state.keepOutputValues,
 				},
 			)
@@ -2922,9 +2906,10 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 		outsMarshalled, err := plugin.MarshalProperties(
 			outsResolved.ObjectValue(),
 			plugin.MarshalOptions{
-				KeepUnknowns:  true,
-				KeepSecrets:   true,
-				KeepResources: ctx.state.keepResources,
+				KeepUnknowns:   true,
+				KeepSecrets:    true,
+				KeepResources:  ctx.state.keepResources,
+				KeepByteString: ctx.state.keepByteString,
 			})
 		if err != nil {
 			return

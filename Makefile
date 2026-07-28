@@ -13,8 +13,9 @@ _ := $(shell mkdir -p bin)
 _ := $(shell cd pkg && go build -o ../bin/helpmakego github.com/iwahbe/helpmakego)
 
 PKG_CODEGEN := github.com/pulumi/pulumi/pkg/v3/codegen
-# nodejs and python codegen tests are much slower than go:
 PROJECT_PKGS    = $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(go|nodejs|python)')
+LANGUAGE_CONFORMANCE_PKG := github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language
+TEST_FAST_PKGS  = $(filter-out ${LANGUAGE_CONFORMANCE_PKG},${PROJECT_PKGS})
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 PERFORMANCE_PKG := github.com/pulumi/pulumi/tests/performance
 TESTS_PKGS      = $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$ | grep -v ^${PERFORMANCE_PKG}$)
@@ -229,8 +230,8 @@ lint_actions:
 format:: ensure
 	cd sdk/nodejs && npx biome format --write ../../pkg/codegen/schema/pulumi.json
 
-test_fast:: build get_schemas
-	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
+test_fast:: get_schemas
+	@cd pkg && $(GO_TEST_FAST) ${TEST_FAST_PKGS}
 
 test_all:: test_pkg test_integration
 

@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"go/format"
 	"io"
+	"maps"
 	"net/url"
 	"os"
 	"path"
@@ -853,13 +854,9 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 		if len(ourPkgGoInfo.PackageImportAliases) > 0 {
 			pkgImportAliases = make(map[string]string)
 			// Copy the external import aliases.
-			for k, v := range goInfo.PackageImportAliases {
-				pkgImportAliases[k] = v
-			}
+			maps.Copy(pkgImportAliases, goInfo.PackageImportAliases)
 			// Copy the local import aliases, overwriting any external aliases.
-			for k, v := range ourPkgGoInfo.PackageImportAliases {
-				pkgImportAliases[k] = v
-			}
+			maps.Copy(pkgImportAliases, ourPkgGoInfo.PackageImportAliases)
 		}
 	}
 
@@ -1134,13 +1131,10 @@ func (pkg *pkgContext) toOutputMethod(t schema.Type) string {
 // printComment filters examples for the Go languages and prepends double forward slash to each line in the given
 // comment. If indent is true, each line is indented with tab character. It returns the number of lines in the
 // resulting comment. It guarantees that each line is terminated with newline character.
-func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef schema.DocRef, indent bool) (int, error) {
-	if comment == "" {
-		return 0, nil
-	}
-	comment = codegen.FilterExamples(comment, "go")
-
-	comment, err := pkg.pkg.InterpretPulumiRefs(comment, func(ref schema.DocRef) (string, bool) {
+// docRefResolver returns a resolver for `{{% ref %}}` shortcodes that produces Go names. If
+// selfRef is set, refs within the same scope are returned unqualified.
+func (pkg *pkgContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef) (string, bool) {
+	return func(ref schema.DocRef) (string, bool) {
 		var base string
 		switch ref.Kind {
 		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
@@ -1148,11 +1142,11 @@ func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef schema.
 		case schema.DocRefKindResourceInputProperty:
 			base = pkg.tokenToResource(ref.ResourceToken()) + "Args"
 		case schema.DocRefKindFunction:
-			base = tokenToName(ref.Function.Token)
+			base = pkg.docRefFunctionName(ref.Function)
 		case schema.DocRefKindFunctionInputProperty:
-			base = tokenToName(ref.Function.Token) + "Args"
+			base = pkg.docRefFunctionName(ref.Function) + "Args"
 		case schema.DocRefKindFunctionOutputProperty:
-			base = tokenToName(ref.Function.Token)
+			base = pkg.docRefFunctionName(ref.Function)
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
 			base = pkg.tokenToType(ref.Type.String())
 		case schema.DocRefKindUnknown:
@@ -1180,7 +1174,16 @@ func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef schema.
 		}
 
 		return fmt.Sprintf("%s.%s", base, property), true
-	})
+	}
+}
+
+func (pkg *pkgContext) printComment(w io.Writer, comment string, selfRef schema.DocRef, indent bool) (int, error) {
+	if comment == "" {
+		return 0, nil
+	}
+	comment = codegen.FilterExamples(comment, "go")
+
+	comment, err := pkg.pkg.InterpretPulumiRefs(comment, pkg.docRefResolver(selfRef))
 	if err != nil {
 		return 0, fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, err)
 	}
@@ -3224,6 +3227,21 @@ func (pkg *pkgContext) functionName(f *schema.Function) string {
 	return name
 }
 
+func (pkg *pkgContext) docRefFunctionName(f *schema.Function) string {
+	if f == nil {
+		return ""
+	}
+
+	name := tokenToName(f.Token)
+	mod := pkg.tokenToPackage(f.Token)
+	if modPkg, ok := pkg.packages[mod]; ok {
+		if override, ok := modPkg.functionNames[f]; ok {
+			name = override
+		}
+	}
+	return name
+}
+
 func (pkg *pkgContext) functionOutputName(f *schema.Function) string {
 	originalName := pkg.functionName(f)
 	return originalName + "Output"
@@ -3906,8 +3924,8 @@ func (pkg *pkgContext) genTypeRegistrations(
 			}
 		}
 		for _, t := range types {
-			if strings.HasSuffix(t, "Input") {
-				fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%s)(nil)).Elem(), %s{})\n", t, strings.TrimSuffix(t, "Input"))
+			if before, ok := strings.CutSuffix(t, "Input"); ok {
+				fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%s)(nil)).Elem(), %s{})\n", t, before)
 			}
 		}
 	}
@@ -5571,8 +5589,8 @@ func (pkg *pkgContext) GenUtilitiesFile(w io.Writer, packageRegex string) error 
 	subtitutions := map[string]string{
 		`"${packageRegex}"`: fmt.Sprintf("%q", packageRegex),
 	}
-	i := strings.Index(embeddedUtilities, "package utilities")
-	code := embeddedUtilities[i+len("package utilities"):]
+	_, after, _ := strings.Cut(embeddedUtilities, "package utilities")
+	code := after
 	for x, y := range subtitutions {
 		code = strings.ReplaceAll(code, x, y)
 	}

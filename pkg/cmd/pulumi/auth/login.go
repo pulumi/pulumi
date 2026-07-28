@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -289,10 +290,8 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 func validateCloudBackendType(typ string) error {
 	kind := strings.SplitN(typ, ":", 2)[0]
 	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http", "postgres"}
-	for _, supportedKind := range supportedKinds {
-		if kind == supportedKind {
-			return nil
-		}
+	if slices.Contains(supportedKinds, kind) {
+		return nil
 	}
 	return fmt.Errorf("unknown backend cloudUrl format '%s' (supported Url formats are: "+
 		"azblob://, gs://, s3://, file://, https://, http:// and postgres://)",
@@ -377,10 +376,10 @@ func extractOIDCDefaults(organization, team, user, token string) (string, string
 			}
 		}
 		for _, scope := range scopes {
-			if strings.HasPrefix(scope, "team:") {
-				jwtTeam = strings.TrimPrefix(scope, "team:")
-			} else if strings.HasPrefix(scope, "user:") {
-				jwtUser = strings.TrimPrefix(scope, "user:")
+			if after, ok0 := strings.CutPrefix(scope, "team:"); ok0 {
+				jwtTeam = after
+			} else if after, ok0 := strings.CutPrefix(scope, "user:"); ok0 {
+				jwtUser = after
 			}
 			// Note: runner scope not yet implemented in CLI
 		}

@@ -367,7 +367,7 @@ func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc
 ) (*emptypb.Empty, error) {
 	// Get the concrete type of the mock resource monitor.
 	// This is needed to call the RegisterResourceOutputs method on the mock resource monitor if it exists.
-	if reflect.TypeOf(m.mocks).Implements(reflect.TypeOf((*mockResourceMonitorWithRegisterResourceOutput)(nil)).Elem()) {
+	if reflect.TypeOf(m.mocks).Implements(reflect.TypeFor[mockResourceMonitorWithRegisterResourceOutput]()) {
 		// Call the RegisterResourceOutputs method on the mock resource monitor.
 		if m, ok := m.mocks.(mockResourceMonitorWithRegisterResourceOutput); ok {
 			return m.RegisterResourceOutputs()

@@ -136,7 +136,7 @@ func drawValue(t *rapid.T, typ schema.Type, label string, depth int) property.Va
 		}
 		n := rapid.IntRange(0, 4).Draw(t, label+":alen")
 		elems := make([]property.Value, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			elems[i] = drawValue(t, tt.ElementType, fmt.Sprintf("%s:%d", label, i), depth-1)
 		}
 		return property.New(elems)
@@ -221,7 +221,7 @@ func drawJSONLikeValue(t *rapid.T, label string, depth int) property.Value {
 	case 4:
 		n := rapid.IntRange(0, 3).Draw(t, label+":jaln")
 		elems := make([]property.Value, n)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			elems[i] = drawJSONLikeValue(t, fmt.Sprintf("%s:%d", label, i), depth-1)
 		}
 		return property.New(elems)

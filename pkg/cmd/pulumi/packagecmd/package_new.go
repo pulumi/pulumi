@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -175,8 +176,8 @@ func runNewPackage(ctx context.Context, out io.Writer, args newPackageArgs) erro
 		}
 	}
 
-	repo, err := workspace.RetrieveTemplates(
-		ctx, args.templateNameOrURL, args.offline, workspace.TemplateKindPackage)
+	repo, err := cmdTemplates.RetrieveTemplates(
+		ctx, args.templateNameOrURL, args.offline, cmdTemplates.TemplateKindPackage)
 	if err != nil {
 		return err
 	}
@@ -189,7 +190,7 @@ func runNewPackage(ctx context.Context, out io.Writer, args newPackageArgs) erro
 		return err
 	}
 
-	var template workspace.PackageTemplate
+	var template cmdTemplates.PackageTemplate
 	switch {
 	case len(templates) == 0:
 		return errors.New("no templates")
@@ -209,7 +210,7 @@ func runNewPackage(ctx context.Context, out io.Writer, args newPackageArgs) erro
 	}
 
 	if !args.force {
-		if err := workspace.CopyTemplateFilesDryRun(template.Dir, cwd, args.name); err != nil {
+		if err := cmdTemplates.CopyTemplateFilesDryRun(template.Dir, cwd, args.name); err != nil {
 			if os.IsNotExist(err) {
 				return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 			}
@@ -248,7 +249,7 @@ func runNewPackage(ctx context.Context, out io.Writer, args newPackageArgs) erro
 		}
 	}
 
-	if err := workspace.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
+	if err := cmdTemplates.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("template '%s' not found: %w", args.templateNameOrURL, err)
 		}
@@ -315,11 +316,11 @@ func runNewPackage(ctx context.Context, out io.Writer, args newPackageArgs) erro
 }
 
 func choosePackageTemplate(
-	templates []workspace.PackageTemplate, opts display.Options,
-) (workspace.PackageTemplate, error) {
+	templates []cmdTemplates.PackageTemplate, opts display.Options,
+) (cmdTemplates.PackageTemplate, error) {
 	const chooseTemplateErr = "no template selected; please use `pulumi package new` to choose one"
 	if !opts.IsInteractive {
-		return workspace.PackageTemplate{}, errors.New(chooseTemplateErr)
+		return cmdTemplates.PackageTemplate{}, errors.New(chooseTemplateErr)
 	}
 
 	surveycore.DisableColor = true
@@ -334,14 +335,14 @@ func choosePackageTemplate(
 		Options:  options,
 		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),
 	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
-		return workspace.PackageTemplate{}, errors.New(chooseTemplateErr)
+		return cmdTemplates.PackageTemplate{}, errors.New(chooseTemplateErr)
 	}
 	return optionToTemplateMap[option], nil
 }
 
 func packageTemplatesToOptions(
-	templates []workspace.PackageTemplate,
-) ([]string, map[string]workspace.PackageTemplate) {
+	templates []cmdTemplates.PackageTemplate,
+) ([]string, map[string]cmdTemplates.PackageTemplate) {
 	maxNameLength := 0
 	for _, t := range templates {
 		if len(t.Name) > maxNameLength {
@@ -350,7 +351,7 @@ func packageTemplatesToOptions(
 	}
 
 	var options, brokenOptions []string
-	nameToTemplateMap := make(map[string]workspace.PackageTemplate)
+	nameToTemplateMap := make(map[string]cmdTemplates.PackageTemplate)
 	for _, t := range templates {
 		if t.Errored() {
 			t.Description = newcmd.BrokenTemplateDescription

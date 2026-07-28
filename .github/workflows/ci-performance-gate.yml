@@ -71,18 +71,6 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/setup-go@v6
-        with:
-          cache: true
-          cache-dependency-path: pkg/go.sum
-          go-version-file: pkg/go.mod
-      - uses: ./.github/actions/retry
-        with:
-          action: jdx/mise-action@v2
-          with: |
-            experimental: true
-      - name: Install CLI
-        run: SDKS='' make install
       - name: build matrix
         id: matrix
         env:

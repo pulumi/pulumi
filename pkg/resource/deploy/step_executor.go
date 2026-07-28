@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -255,9 +256,7 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	// mean it was deleted, so we keep old outputs, overwriting new ones.
 	if finalizingStackOutputs && errored {
 		outs = oldOuts.Copy()
-		for k, v := range e.Outputs() {
-			outs[k] = v
-		}
+		maps.Copy(outs, e.Outputs())
 	}
 
 	// If a plan is present check that these outputs match what we recorded before

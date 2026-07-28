@@ -62,6 +62,7 @@ func NewDestroyCmd() *cobra.Command {
 	var execAgent string
 	var configArray []string
 	var configFile string
+	var envOverrides []string
 	var path bool
 	var client string
 
@@ -257,7 +258,7 @@ func NewDestroyCmd() *cobra.Command {
 				// The config may be missing, fallback on the latest configuration in the backend.
 				getConfig = config.GetStackConfigurationOrLatest
 			}
-			cfg, sm, err := getConfig(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
+			cfg, sm, err := getConfig(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -278,7 +279,7 @@ func NewDestroyCmd() *cobra.Command {
 			// where config may diverge between branches.
 			if runProgram && !skipConfigValidation {
 				// Running the program: validate the stack config (and apply project defaults).
-				configError := workspace.ValidateStackConfigAndApplyProjectConfig(
+				configError := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 					ctx,
 					stackName,
 					proj,
@@ -292,7 +293,7 @@ func NewDestroyCmd() *cobra.Command {
 			} else {
 				// The program isn't run, or validation was explicitly skipped: still apply
 				// project config defaults onto the stack config, but skip validation.
-				if configError := workspace.ApplyProjectConfig(
+				if configError := pkgWorkspace.ApplyProjectConfig(
 					ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configError != nil {
 					return fmt.Errorf("applying stack config: %w", configError)
 				}
@@ -430,6 +431,7 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
+	config.OverrideEnvFlag(cmd, &envOverrides)
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the destroy and save to the stack config file")

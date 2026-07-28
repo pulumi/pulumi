@@ -14,6 +14,7 @@
 
 syntax = "proto3";
 
+import "google/protobuf/struct.proto";
 import "pulumi/codegen/hcl.proto";
 import "pulumi/codegen/loader.proto";
 
@@ -41,6 +42,8 @@ message ConvertStateRequest {
     // the args passed to `pulumi import` for this conversion. Normally used to specifiy a state file to
     // import from.
     repeated string args = 2;
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string loader_target = 3;
 }
 
 // A ResourceImport specifies a resource to import.
@@ -81,6 +84,22 @@ message ResourceImport {
     // the input properties to include when generating code for the resource. Defaults to the resource's
     // required properties.
     repeated string properties = 12;
+
+    // the name of the resource's explicit provider, if any. Must reference the name of a provider
+    // declared as another resource (of type "pulumi:providers:<package>") in the same response;
+    // resources without a provider are served by an appropriate default provider.
+    string provider = 13;
+
+    // input properties supplied for the resource, if any. Values the provider's Read cannot return
+    // (e.g. write-only attributes) are taken from here instead. For a provider declared in the
+    // response, inputs is its configuration. Secret values are marked with Pulumi's standard secret
+    // signature.
+    google.protobuf.Struct inputs = 14;
+
+    // the resource's full output state, if any. When set, the resource is imported from these values
+    // directly and the provider's Read is skipped entirely. Secret values are marked with Pulumi's
+    // standard secret signature.
+    google.protobuf.Struct outputs = 15;
 }
 
 // A ResourceParameterization describes the base plugin that a resource's parameterized provider is built
@@ -155,6 +174,17 @@ message ConvertSnippetRequest {
 
     // any extra attributes to convert.
     map<string, string> attributes = 6;
+
+    message ResourceReference {
+        // The resource token for the referenced resource.
+        string token = 1;
+
+        // The package description to load for the referenced resource.
+        .codegen.GetSchemaRequest package = 2;
+    }
+
+    // any external resource references to convert.
+    map<string, ResourceReference> resources = 7;
 }
 
 message ConvertSnippetResponse {
@@ -169,4 +199,8 @@ message ConvertSnippetResponse {
 
     // any extra attributes to merge into the final pcl result.
     map<string, string> attributes = 4;
+
+    // any external resource names that were rewritten during conversion. The keys are identifiers
+    // in the source language and the values are identifiers in the generated PCL.
+    map<string, string> resource_names = 5;
 }

@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os/exec"
 	"sort"
 	"strconv"
@@ -149,6 +150,9 @@ func (s *pclCallbackServer) RegisterCallback(
 	return &pulumirpc.Callback{
 		Token:  uuidString,
 		Target: "127.0.0.1:" + strconv.Itoa(s.handle.Port),
+		// PCL decodes strings containing non-UTF8 bytes losslessly, so the engine may send them to callbacks
+		// hosted here.
+		AcceptsByteString: true,
 	}, nil
 }
 
@@ -402,11 +406,8 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 func (i *Interpreter) invoke(
 	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
 ) (*pulumirpc.InvokeResponse, error) {
-	ref, err := i.getPackageRefFromToken(req.Tok)
-	if err != nil {
-		return nil, err
-	}
-	req.PackageRef = ref
+	req.PackageRef = i.getPackageRefFromToken(req.Tok)
+	req.Parent = i.stackURN
 	resp, err := i.monitor.Invoke(ctx, req)
 	return resp, err
 }
@@ -414,11 +415,7 @@ func (i *Interpreter) invoke(
 func (i *Interpreter) call(
 	ctx context.Context, req *pulumirpc.ResourceCallRequest,
 ) (*pulumirpc.CallResponse, error) {
-	ref, err := i.getPackageRefFromToken(req.Tok)
-	if err != nil {
-		return nil, err
-	}
-	req.PackageRef = ref
+	req.PackageRef = i.getPackageRefFromToken(req.Tok)
 	resp, err := i.monitor.Call(ctx, req)
 	return resp, err
 }
@@ -430,9 +427,10 @@ func (i *Interpreter) getResource(ctx context.Context, ref resource.ResourceRefe
 	contract.AssertNoErrorf(err, "failed to create structpb for resource reference")
 
 	resp, err := i.monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
-		Tok:             "pulumi:pulumi:getResource",
-		Args:            args,
-		AcceptResources: true,
+		Tok:               "pulumi:pulumi:getResource",
+		Args:              args,
+		AcceptResources:   true,
+		AcceptsByteString: true,
 	})
 	if err != nil {
 		return resource.PropertyMap{}, fmt.Errorf("invoke getResource for %s: %w", ref.URN, err)
@@ -800,9 +798,7 @@ func PackageNameFromToken(token string) (string, error) {
 	return pkg, nil
 }
 
-func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
-	return i.packageRefs[token], nil
-}
+func (i *Interpreter) getPackageRefFromToken(token string) string { return i.packageRefs[token] }
 
 func (i *Interpreter) registerPackages(ctx context.Context) error {
 	if i.monitor == nil {
@@ -1072,6 +1068,51 @@ func unwrapOutputs(value resource.PropertyValue) (resource.PropertyValue, []reso
 	return value, nil
 }
 
+// providerReferences translates an evaluated `providers` option into the package name to provider
+// reference map the resource monitor expects. The option may be written either as an array of
+// provider resources, in which case each provider's package is taken from its URN, or as a map from
+// package name to provider resource.
+func providerReferences(providers resource.PropertyValue) (map[string]string, error) {
+	reference := func(v resource.PropertyValue) (string, string, error) {
+		urn, id, err := unwrapResource(v)
+		if err != nil {
+			return "", "", fmt.Errorf("providers: %w", err)
+		}
+		idstr := plugin.UnknownStringValue
+		if id.IsString() {
+			idstr = id.StringValue()
+		}
+		return urn, fmt.Sprintf("%s::%s", urn, idstr), nil
+	}
+
+	psopt := map[string]string{}
+	switch {
+	case providers.IsObject():
+		for k, v := range providers.ObjectValue() {
+			_, ref, err := reference(v)
+			if err != nil {
+				return nil, err
+			}
+			psopt[string(k)] = ref
+		}
+	case providers.IsArray():
+		for _, v := range providers.ArrayValue() {
+			urn, ref, err := reference(v)
+			if err != nil {
+				return nil, err
+			}
+			typ := resource.URN(urn).Type()
+			_, _, pkg, diags := pcl.DecomposeToken(string(typ), hcl.Range{})
+			contract.Assertf(!diags.HasErrors(), "invalid token format from URN %s: %s", urn, typ)
+			psopt[pkg] = ref
+		}
+	default:
+		return nil, errors.New(
+			"providers must be an array of provider objects or a map of provider name to provider objects")
+	}
+	return psopt, nil
+}
+
 func unwrapResource(value resource.PropertyValue) (string, resource.PropertyValue, error) {
 	value, _ = unwrapOutputs(value)
 	if !value.IsObject() {
@@ -1223,15 +1264,12 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	}
 
 	if rangeValue.IsNumber() {
-		count := int(rangeValue.NumberValue())
-		if count < 0 {
-			count = 0
-		}
+		count := max(int(rangeValue.NumberValue()), 0)
 		items := make([]struct {
 			suffix  string
 			evalCtx *EvalContext
 		}, 0, count)
-		for idx := 0; idx < count; idx++ {
+		for idx := range count {
 			idxVal := cty.NumberIntVal(int64(idx))
 			items = append(items, struct {
 				suffix  string
@@ -1323,9 +1361,10 @@ func (i *Interpreter) registerResourceWith(
 	}
 
 	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: true,
 	}
 	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
 	if err != nil {
@@ -1361,14 +1400,11 @@ func (i *Interpreter) registerResourceWith(
 		Dependencies:            dependencies,
 		AcceptSecrets:           true,
 		AcceptResources:         true,
+		AcceptsByteString:       true,
 		SupportsResultReporting: true,
 		SnippetId:               i.snippetID,
 	}
-	packageRef, err := i.getPackageRefFromToken(token)
-	if err != nil {
-		return cty.NilVal, err
-	}
-	request.PackageRef = packageRef
+	request.PackageRef = i.getPackageRefFromToken(token)
 
 	if res.Options != nil {
 		if res.Options.AdditionalSecretOutputs != nil {
@@ -1807,44 +1843,9 @@ func (i *Interpreter) registerResourceWith(
 				return cty.NilVal, diags
 			}
 			if !providers.IsNull() && !providers.IsComputed() {
-				// Providers is either a list of provider objects or a map of provider name to provider objects. We need
-				// to support both forms and translate the list into the map form expected by the RPC.
-				psopt := map[string]string{}
-				if providers.IsObject() {
-					for k, v := range providers.ObjectValue() {
-						urn, id, err := unwrapResource(v)
-						if err != nil {
-							return cty.NilVal, fmt.Errorf("providers: %w", err)
-						}
-						var idstr string
-						if id.IsString() {
-							idstr = id.StringValue()
-						} else {
-							idstr = plugin.UnknownStringValue
-						}
-						psopt[string(k)] = fmt.Sprintf("%s::%s", urn, idstr)
-					}
-				} else if providers.IsArray() {
-					for _, v := range providers.ArrayValue() {
-						urn, id, err := unwrapResource(v)
-						if err != nil {
-							return cty.NilVal, fmt.Errorf("providers: %w", err)
-						}
-						typ := resource.URN(urn).Type()
-						_, _, pkg, diags := pcl.DecomposeToken(string(typ), hcl.Range{})
-						contract.Assertf(!diags.HasErrors(), "invalid token format from URN %s: %s", urn, typ)
-
-						var idstr string
-						if id.IsString() {
-							idstr = id.StringValue()
-						} else {
-							idstr = plugin.UnknownStringValue
-						}
-						psopt[pkg] = fmt.Sprintf("%s::%s", urn, idstr)
-					}
-				} else {
-					return cty.NilVal, errors.New(
-						"providers must be an array of provider objects or a map of provider name to provider objects")
+				psopt, err := providerReferences(providers)
+				if err != nil {
+					return cty.NilVal, err
 				}
 				request.Providers = psopt
 			}
@@ -1972,7 +1973,13 @@ func (i *Interpreter) registerResourceWith(
 		return cty.NilVal, err
 	}
 
-	outputs["id"] = resource.NewProperty(resp.GetId())
+	// During previews a created resource has no ID yet; represent it as unknown
+	// rather than a known empty string so it can't be observed as a real value.
+	if id := resp.GetId(); id == "" && i.info.DryRun {
+		outputs["id"] = resource.MakeComputed(resource.NewProperty(""))
+	} else {
+		outputs["id"] = resource.NewProperty(id)
+	}
 	outputs["urn"] = resource.NewProperty(resp.GetUrn())
 	outputs["__name"] = resource.NewProperty(request.Name)
 	outputs["__type"] = resource.NewProperty(request.Type)
@@ -2006,9 +2013,10 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	}
 
 	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: true,
 	}
 	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
 	if err != nil {
@@ -2042,6 +2050,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		Dependencies:         dependencies,
 		AcceptSecrets:        true,
 		AcceptResources:      true,
+		AcceptsByteString:    true,
 		Parent:               i.stackURN,
 		SnippetId:            i.snippetID,
 	}
@@ -2067,6 +2076,30 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		}
 	}
 
+	// Providers given to a component apply to everything the component registers; the engine applies
+	// them to child resources and to invokes parented to the component.
+	if component.Options != nil && component.Options.Providers != nil {
+		providers, poison, diags := i.evalContext.Evaluate(component.Options.Providers)
+		if poison != nil {
+			i.evalContext.SetVariable(component.Name(), makePoisonValue(*poison))
+			return nil
+		}
+		if diags.HasErrors() {
+			return diags
+		}
+		if !providers.IsNull() && !providers.IsComputed() {
+			psopt, err := providerReferences(providers)
+			if err != nil {
+				return hcl.Diagnostics{{
+					Severity: hcl.DiagError,
+					Summary:  "Failed to evaluate component providers",
+					Detail:   err.Error(),
+				}}
+			}
+			request.Providers = psopt
+		}
+	}
+
 	resp, err := i.monitor.RegisterResource(ctx, request)
 	if err != nil {
 		return hcl.Diagnostics{{
@@ -2083,7 +2116,19 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		}}
 	}
 
-	componentEval := NewEvalContext(
+	componentInterpreter := &Interpreter{
+		program:     component.Program,
+		info:        i.info,
+		monitor:     i.monitor,
+		engine:      i.engine,
+		loader:      i.loader,
+		stackURN:    resp.GetUrn(),
+		namePrefix:  componentName,
+		packageRefs: i.packageRefs,
+	}
+	// The eval context must call back into the component's own interpreter so that invokes written
+	// in the component are parented to the component.
+	componentInterpreter.evalContext = NewEvalContext(
 		i.info.WorkingDir,
 		i.info.RootDirectory,
 		i.info.Organization,
@@ -2092,20 +2137,9 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		i.lookupResource,
 		i.lookupFunction,
 		i.getResource,
-		i.invoke,
-		i.call,
+		componentInterpreter.invoke,
+		componentInterpreter.call,
 	)
-	componentInterpreter := &Interpreter{
-		program:     component.Program,
-		info:        i.info,
-		monitor:     i.monitor,
-		engine:      i.engine,
-		loader:      i.loader,
-		evalContext: componentEval,
-		stackURN:    resp.GetUrn(),
-		namePrefix:  componentName,
-		packageRefs: i.packageRefs,
-	}
 
 	for k, v := range inputs {
 		if err := componentInterpreter.setVariable(ctx, string(k), v); err != nil {
@@ -2153,9 +2187,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		"id":  resource.NewProperty(resp.GetId()),
 		"urn": resource.NewProperty(resp.GetUrn()),
 	}
-	for k, v := range componentOutputs {
-		componentObject[k] = v
-	}
+	maps.Copy(componentObject, componentOutputs)
 
 	result := resource.NewProperty(resource.Output{
 		Element:      resource.NewProperty(componentObject),
@@ -2180,9 +2212,10 @@ func (i *Interpreter) registerStackOutputs(ctx context.Context, outputs resource
 		outputs[key] = collapseResourceReferences(val)
 	}
 	marshalOpts := plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
+		KeepUnknowns:   true,
+		KeepSecrets:    true,
+		KeepResources:  true,
+		KeepByteString: true,
 	}
 	obj, err := plugin.MarshalProperties(outputs, marshalOpts)
 	if err != nil {

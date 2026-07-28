@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
@@ -41,6 +42,9 @@ func (c *testConverter) ConvertState(
 	}
 	if req.MapperTarget != "localhost:1234" {
 		return nil, fmt.Errorf("unexpected MapperTarget: %s", req.MapperTarget)
+	}
+	if req.LoaderTarget != "localhost:4321" {
+		return nil, fmt.Errorf("unexpected LoaderTarget: %s", req.LoaderTarget)
 	}
 
 	diags := hcl.Diagnostics{
@@ -74,6 +78,14 @@ func (c *testConverter) ConvertState(
 				},
 				Parent:     "test:parent",
 				Properties: []string{"prop1", "prop2"},
+				Provider:   "test:provider",
+				Inputs: resource.PropertyMap{
+					"region": resource.NewProperty("us-east-1"),
+					"secret": resource.MakeSecret(resource.NewProperty("shh")),
+				},
+				Outputs: resource.PropertyMap{
+					"arn": resource.NewProperty("test:arn"),
+				},
 			},
 		},
 		Diagnostics: diags,
@@ -145,6 +157,7 @@ func TestConverterServer_State(t *testing.T) {
 	resp, err := server.ConvertState(t.Context(), &pulumirpc.ConvertStateRequest{
 		Args:         []string{"arg1", "arg2"},
 		MapperTarget: "localhost:1234",
+		LoaderTarget: "localhost:4321",
 	})
 
 	require.NoError(t, err)
@@ -169,6 +182,19 @@ func TestConverterServer_State(t *testing.T) {
 	assert.Equal(t, []byte("test:extValue"), res.Extension.Value)
 	assert.Equal(t, "test:parent", res.Parent)
 	assert.Equal(t, []string{"prop1", "prop2"}, res.Properties)
+	assert.Equal(t, "test:provider", res.Provider)
+
+	inputs, err := UnmarshalProperties(res.Inputs, MarshalOptions{KeepSecrets: true})
+	require.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"region": resource.NewProperty("us-east-1"),
+		"secret": resource.MakeSecret(resource.NewProperty("shh")),
+	}, inputs)
+	outputs, err := UnmarshalProperties(res.Outputs, MarshalOptions{KeepSecrets: true})
+	require.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"arn": resource.NewProperty("test:arn"),
+	}, outputs)
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, codegenrpc.DiagnosticSeverity_DIAG_ERROR, diag.Severity)

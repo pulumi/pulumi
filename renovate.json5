@@ -100,6 +100,9 @@
         commands: [
           'make renovate',
         ],
+        installTools: {
+          mise: {},
+        },
         executionMode: 'branch', // Only run once per PR.
       },
     },
@@ -135,6 +138,7 @@
       ],
       matchFileNames: [
         'scripts/get-language-providers.sh',
+        'pkg/util/plugin.go',
       ],
       dependencyDashboardApproval: false,
       minimumReleaseAge: '0 days',
@@ -144,6 +148,9 @@
         commands: [
           'make renovate',
         ],
+        installTools: {
+          mise: {},
+        },
         executionMode: 'branch', // Only run once per PR.
       },
     },

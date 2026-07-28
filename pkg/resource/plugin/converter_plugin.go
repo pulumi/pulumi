@@ -117,6 +117,7 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 	resp, err := c.clientRaw.ConvertState(ctx, &pulumirpc.ConvertStateRequest{
 		MapperTarget: req.MapperTarget,
 		Args:         req.Args,
+		LoaderTarget: req.LoaderTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -137,6 +138,7 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 			IsComponent:       resource.IsComponent,
 			Parent:            resource.Parent,
 			Properties:        resource.Properties,
+			Provider:          resource.Provider,
 		}
 		if p := resource.Parameterization; p != nil {
 			resources[i].Parameterization = &ResourceParameterization{
@@ -151,6 +153,20 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 				Version: e.Version,
 				Value:   e.Value,
 			}
+		}
+		if resource.Inputs != nil {
+			inputs, err := UnmarshalProperties(resource.Inputs, MarshalOptions{Label: label, KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling inputs for resource %q: %w", resource.Name, err)
+			}
+			resources[i].Inputs = inputs
+		}
+		if resource.Outputs != nil {
+			outputs, err := UnmarshalProperties(resource.Outputs, MarshalOptions{Label: label, KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling outputs for resource %q: %w", resource.Name, err)
+			}
+			resources[i].Outputs = outputs
 		}
 	}
 
@@ -210,6 +226,7 @@ func (c *converter) ConvertSnippet(
 		Package:      req.Package,
 		Token:        req.Token,
 		Attributes:   req.Attributes,
+		Resources:    convertSnippetResourceReferencesToRPC(req.Resources),
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -224,9 +241,26 @@ func (c *converter) ConvertSnippet(
 
 	logging.V(7).Infof("%s success", label)
 	return &ConvertSnippetResponse{
-		Diagnostics: diags,
-		Filename:    resp.Filename,
-		Source:      resp.Source,
-		Attributes:  resp.Attributes,
+		Diagnostics:   diags,
+		Filename:      resp.Filename,
+		Source:        resp.Source,
+		Attributes:    resp.Attributes,
+		ResourceNames: resp.ResourceNames,
 	}, nil
+}
+
+func convertSnippetResourceReferencesToRPC(
+	resources map[string]ConvertSnippetResourceReference,
+) map[string]*pulumirpc.ConvertSnippetRequest_ResourceReference {
+	if len(resources) == 0 {
+		return nil
+	}
+	result := make(map[string]*pulumirpc.ConvertSnippetRequest_ResourceReference, len(resources))
+	for name, res := range resources {
+		result[name] = &pulumirpc.ConvertSnippetRequest_ResourceReference{
+			Token:   res.Token,
+			Package: res.Package,
+		}
+	}
+	return result
 }

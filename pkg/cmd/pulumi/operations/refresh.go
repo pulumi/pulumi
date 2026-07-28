@@ -47,7 +47,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func NewRefreshCmd() *cobra.Command {
@@ -61,6 +60,7 @@ func NewRefreshCmd() *cobra.Command {
 	var stackName string
 	var configArray []string
 	var configFile string
+	var envOverrides []string
 	var path bool
 	var client string
 
@@ -231,7 +231,7 @@ func NewRefreshCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -252,7 +252,7 @@ func NewRefreshCmd() *cobra.Command {
 			// where config may diverge between branches.
 			if runProgram && !skipConfigValidation {
 				// Running the program: validate the stack config (and apply project defaults).
-				configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+				configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 					ctx,
 					stackName,
 					proj,
@@ -266,7 +266,7 @@ func NewRefreshCmd() *cobra.Command {
 			} else {
 				// The program isn't run, or validation was explicitly skipped: still apply
 				// project config defaults onto the stack config, but skip validation.
-				if configErr := workspace.ApplyProjectConfig(
+				if configErr := pkgWorkspace.ApplyProjectConfig(
 					ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
 					return fmt.Errorf("applying stack config: %w", configErr)
 				}
@@ -399,6 +399,7 @@ func NewRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
+	config.OverrideEnvFlag(cmd, &envOverrides)
 	cmd.PersistentFlags().StringArrayVarP(
 		&configArray, "config", "c", []string{},
 		"Config to use during the refresh and save to the stack config file")

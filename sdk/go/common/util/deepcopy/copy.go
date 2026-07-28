@@ -16,6 +16,7 @@ package deepcopy
 
 import (
 	"reflect"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
@@ -40,7 +41,7 @@ func deepCopy(v reflect.Value) reflect.Value {
 		return v
 	}
 
-	if v.Type() == reflect.TypeOf(internal.OutputState{}) {
+	if v.Type() == reflect.TypeFor[internal.OutputState]() {
 		contract.Failf("Outputs cannot be deep copied")
 	}
 
@@ -106,6 +107,12 @@ func deepCopy(v reflect.Value) reflect.Value {
 		if typ == reflect.TypeFor[property.Value]() ||
 			typ == reflect.TypeFor[property.Array]() ||
 			typ == reflect.TypeFor[property.Map]() {
+			return v
+		}
+
+		// time.Time only has unexported fields, so field-by-field reflection can't copy it. It's safe to copy
+		// by value.
+		if typ == reflect.TypeFor[time.Time]() {
 			return v
 		}
 

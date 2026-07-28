@@ -868,7 +868,24 @@ type reconnectStreamer struct {
 	lastIDs []string
 }
 
-var reconnectBackoffMu sync.Mutex
+var reconnectTuningTestMu sync.Mutex
+
+func overrideReconnectTuningForTest(t *testing.T, override func()) {
+	t.Helper()
+
+	reconnectTuningTestMu.Lock()
+	initial := reconnectInitialBackoff
+	maxBackoff := reconnectMaxBackoff
+	budget := reconnectTotalBudget
+	override()
+
+	t.Cleanup(func() {
+		reconnectInitialBackoff = initial
+		reconnectMaxBackoff = maxBackoff
+		reconnectTotalBudget = budget
+		reconnectTuningTestMu.Unlock()
+	})
+}
 
 func (r *reconnectStreamer) StreamNeoTaskEvents(
 	_ context.Context, _, _, lastEventID string,
@@ -895,13 +912,9 @@ func TestSession_ReconnectsAfterTransientStreamError(t *testing.T) {
 
 	// A connection-reset mid-stream must reopen the stream with the last seen
 	// event ID so the service can replay missed events losslessly.
-	reconnectBackoffMu.Lock()
-	prevBackoff := reconnectInitialBackoff
-	defer func() {
-		reconnectInitialBackoff = prevBackoff
-		reconnectBackoffMu.Unlock()
-	}()
-	reconnectInitialBackoff = 1 * time.Millisecond
+	overrideReconnectTuningForTest(t, func() {
+		reconnectInitialBackoff = 1 * time.Millisecond
+	})
 
 	stream1 := make(chan client.NeoStreamEvent, 2)
 	stream2 := make(chan client.NeoStreamEvent, 2)
@@ -936,13 +949,9 @@ func TestSession_ReconnectsAfterTransientStreamError(t *testing.T) {
 func TestSession_ReconnectsAfterHTTP2InternalStreamError(t *testing.T) {
 	t.Parallel()
 
-	reconnectBackoffMu.Lock()
-	prevBackoff := reconnectInitialBackoff
-	defer func() {
-		reconnectInitialBackoff = prevBackoff
-		reconnectBackoffMu.Unlock()
-	}()
-	reconnectInitialBackoff = 1 * time.Millisecond
+	overrideReconnectTuningForTest(t, func() {
+		reconnectInitialBackoff = 1 * time.Millisecond
+	})
 
 	stream1 := make(chan client.NeoStreamEvent, 2)
 	stream2 := make(chan client.NeoStreamEvent, 2)
@@ -975,6 +984,43 @@ func TestSession_ReconnectsAfterHTTP2InternalStreamError(t *testing.T) {
 	defer streamer.mu.Unlock()
 	assert.Equal(t, []string{"", "e1"}, streamer.lastIDs,
 		"HTTP/2 stream resets must reconnect with the last seen event ID")
+}
+
+func TestSession_KeepAliveResetsReconnectBudget(t *testing.T) {
+	t.Parallel()
+
+	overrideReconnectTuningForTest(t, func() {
+		reconnectInitialBackoff = 10 * time.Millisecond
+		reconnectMaxBackoff = 10 * time.Millisecond
+		reconnectTotalBudget = 5 * time.Millisecond
+	})
+
+	stream1 := make(chan client.NeoStreamEvent, 1)
+	stream2 := make(chan client.NeoStreamEvent, 2)
+	stream3 := make(chan client.NeoStreamEvent, 1)
+	streamer := &reconnectStreamer{streams: []chan client.NeoStreamEvent{stream1, stream2, stream3}}
+
+	stream1 <- client.NeoStreamEvent{Err: &net.OpError{Op: "read", Err: syscall.ECONNRESET}}
+	close(stream1)
+
+	stream2 <- client.NeoStreamEvent{KeepAlive: true}
+	stream2 <- client.NeoStreamEvent{Err: &net.OpError{Op: "read", Err: syscall.ECONNRESET}}
+	close(stream2)
+
+	stream3 <- client.NeoStreamEvent{
+		Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+		}),
+		ID: "e1",
+	}
+	close(stream3)
+
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
+	require.NoError(t, s.Run(t.Context()))
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Equal(t, []string{"", "", ""}, streamer.lastIDs)
 }
 
 func TestSession_StartsFromInitialLastEventID(t *testing.T) {

@@ -22,11 +22,13 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type testConverterClient struct {
@@ -41,6 +43,9 @@ func (c *testConverterClient) ConvertState(
 	}
 	if req.MapperTarget != "localhost:1234" {
 		return nil, fmt.Errorf("unexpected MapperTarget: %s", req.MapperTarget)
+	}
+	if req.LoaderTarget != "localhost:4321" {
+		return nil, fmt.Errorf("unexpected LoaderTarget: %s", req.LoaderTarget)
 	}
 
 	return &pulumirpc.ConvertStateResponse{
@@ -66,10 +71,26 @@ func (c *testConverterClient) ConvertState(
 				},
 				Parent:     "test:parent",
 				Properties: []string{"prop1", "prop2"},
+				Provider:   "test:provider",
+				Inputs: mustMarshalProperties(resource.PropertyMap{
+					"region": resource.NewProperty("us-east-1"),
+					"secret": resource.MakeSecret(resource.NewProperty("shh")),
+				}),
+				Outputs: mustMarshalProperties(resource.PropertyMap{
+					"arn": resource.NewProperty("test:arn"),
+				}),
 			},
 		},
 		Diagnostics: c.diagnostics,
 	}, nil
+}
+
+func mustMarshalProperties(m resource.PropertyMap) *structpb.Struct {
+	s, err := MarshalProperties(m, MarshalOptions{KeepSecrets: true})
+	if err != nil {
+		panic(err)
+	}
+	return s
 }
 
 func (c *testConverterClient) ConvertProgram(
@@ -134,6 +155,7 @@ func TestConverterPlugin_State(t *testing.T) {
 	resp, err := plugin.ConvertState(t.Context(), &ConvertStateRequest{
 		Args:         []string{"arg1", "arg2"},
 		MapperTarget: "localhost:1234",
+		LoaderTarget: "localhost:4321",
 	})
 
 	require.NoError(t, err)
@@ -158,6 +180,14 @@ func TestConverterPlugin_State(t *testing.T) {
 	assert.Equal(t, []byte("test:extValue"), res.Extension.Value)
 	assert.Equal(t, "test:parent", res.Parent)
 	assert.Equal(t, []string{"prop1", "prop2"}, res.Properties)
+	assert.Equal(t, "test:provider", res.Provider)
+	assert.Equal(t, resource.PropertyMap{
+		"region": resource.NewProperty("us-east-1"),
+		"secret": resource.MakeSecret(resource.NewProperty("shh")),
+	}, res.Inputs)
+	assert.Equal(t, resource.PropertyMap{
+		"arn": resource.NewProperty("test:arn"),
+	}, res.Outputs)
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, hcl.DiagError, diag.Severity)

@@ -106,10 +106,12 @@ var expectedFailures = map[string]string{
 	"l1-expand-final":                    "Python program generation does not support `...` argument expansion",
 	"l1-builtin-can":                     "Temporarily disabled until pr #18916 is submitted",
 	"l3-deferred-outputs":                "does not type-check",
+	"l3-component-invoke":                "invokes in a component are not parented to it, so they miss its providers",
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l3-component-nested":                "syntax error",
 	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
 	"l3-range-invoke-output-traversal":   "len()/apply on an Output: generated program fails mypy",
+	"l2-raw-string-bytes":                "the Python SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
 }
 
 type languageTestConfig struct {
@@ -122,6 +124,10 @@ type languageTestConfig struct {
 }
 
 func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
+	if testing.Short() {
+		t.Skip("skipping language conformance tests in short mode")
+	}
+
 	// Set PATH to include the local dist directory so policy can run.
 	dist, err := filepath.Abs(filepath.Join("..", "..", "dist"))
 	require.NoError(t, err)

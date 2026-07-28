@@ -45,6 +45,10 @@ func (e inlineEnvironments) LoadEnvironment(_ context.Context, name string) ([]b
 	return src, rot128{}, nil
 }
 
+func (e inlineEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
+}
+
 // deepImportChain is a 5-environment stack all merging the same key, so the
 // Trace.Base chain is deep enough (>2) for Full and None to diverge observably.
 var deepImportChain = inlineEnvironments{

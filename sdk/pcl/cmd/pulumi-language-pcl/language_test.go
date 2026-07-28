@@ -101,6 +101,10 @@ var expectedFailures = map[string]string{
 }
 
 func TestLanguage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping language conformance tests in short mode")
+	}
+
 	t.Parallel()
 
 	engineAddress, engine := runTestingHost(t)

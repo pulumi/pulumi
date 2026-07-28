@@ -25,7 +25,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type fakeTemplate struct {
@@ -40,8 +39,8 @@ func (f fakeTemplate) Description() string { return f.desc }
 func (f fakeTemplate) Error() error        { return f.err }
 func (f fakeTemplate) FromRegistry() bool  { return false }
 func (f fakeTemplate) Publisher() string   { return "" }
-func (f fakeTemplate) Download(ctx context.Context) (workspace.Template, error) {
-	return workspace.Template{}, nil
+func (f fakeTemplate) Download(ctx context.Context) (cmdTemplates.ProjectTemplate, error) {
+	return cmdTemplates.ProjectTemplate{}, nil
 }
 
 type fakeRegistryTemplate struct {

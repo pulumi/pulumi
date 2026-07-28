@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // TestViewsBasic tests the basic functionality of views in a resource lifecycle, doing an update to create
@@ -56,12 +57,12 @@ func TestViewsBasic(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": req.Properties["foo"],
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": req.Properties["foo"],
-								},
+								}),
 							},
 						},
 					})
@@ -87,12 +88,12 @@ func TestViewsBasic(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -114,12 +115,12 @@ func TestViewsBasic(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": req.NewInputs["foo"],
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": req.NewInputs["foo"],
-								},
+								}),
 							},
 						},
 					})
@@ -136,12 +137,12 @@ func TestViewsBasic(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("baz"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("baz"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("baz"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("baz"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -300,12 +301,12 @@ func TestViewsUpdateError(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": req.Properties["foo"],
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": req.Properties["foo"],
-								},
+								}),
 							},
 						},
 					})
@@ -331,12 +332,12 @@ func TestViewsUpdateError(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -462,12 +463,12 @@ func TestViewsUpdateDelete(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": req.Properties["foo"],
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": req.Properties["foo"],
-								},
+								}),
 							},
 						},
 					})
@@ -493,12 +494,12 @@ func TestViewsUpdateDelete(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -621,12 +622,12 @@ func TestViewsRefreshSame(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("bar"),
-								},
+								}),
 							},
 						},
 					})
@@ -644,12 +645,12 @@ func TestViewsRefreshSame(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -754,12 +755,12 @@ func TestViews_RefreshBeforeUpdate_Same(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("bar"),
-								},
+								}),
 							},
 						},
 					})
@@ -778,12 +779,12 @@ func TestViews_RefreshBeforeUpdate_Same(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -889,12 +890,12 @@ func TestViewsRefreshUpdate(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("bar"),
-								},
+								}),
 							},
 						},
 					})
@@ -912,12 +913,12 @@ func TestViewsRefreshUpdate(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -938,12 +939,12 @@ func TestViewsRefreshUpdate(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: req.OldViews[0].Type,
 								Name: req.OldViews[0].Name,
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("baz"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("baz"),
-								},
+								}),
 							},
 						},
 					})
@@ -1027,12 +1028,12 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("bar"),
-								},
+								}),
 							},
 						},
 					})
@@ -1051,12 +1052,12 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -1077,12 +1078,12 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: req.OldViews[0].Type,
 								Name: req.OldViews[0].Name,
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("baz"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("baz"),
-								},
+								}),
 							},
 						},
 					})
@@ -1166,12 +1167,12 @@ func TestViewsRefreshDelete(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("bar"),
-								},
+								}),
 							},
 						},
 					})
@@ -1189,12 +1190,12 @@ func TestViewsRefreshDelete(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -1285,12 +1286,12 @@ func TestViews_RefreshBeforeUpdate_Delete(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("bar"),
-								},
+								}),
 							},
 						},
 					})
@@ -1309,12 +1310,12 @@ func TestViews_RefreshBeforeUpdate_Delete(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -1405,12 +1406,12 @@ func TestViewsImport(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("bar"),
-								},
+								}),
 							},
 						},
 					})
@@ -1500,12 +1501,12 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": req.Properties["foo"],
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": req.Properties["foo"],
-								},
+								}),
 							},
 						},
 					})
@@ -1531,12 +1532,12 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -1568,12 +1569,12 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": req.NewInputs["foo"],
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": req.NewInputs["foo"],
-								},
+								}),
 							},
 						},
 						{
@@ -1582,12 +1583,12 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": req.NewInputs["foo"],
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": req.NewInputs["foo"],
-								},
+								}),
 							},
 						},
 					})
@@ -1702,12 +1703,12 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": req.Properties["foo"],
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": req.Properties["foo"],
-								},
+								}),
 							},
 						},
 					})
@@ -1733,12 +1734,12 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -1760,12 +1761,12 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": req.NewInputs["foo"],
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": req.NewInputs["foo"],
-								},
+								}),
 							},
 						},
 						{
@@ -1780,12 +1781,12 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": req.NewInputs["foo"],
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": req.NewInputs["foo"],
-								},
+								}),
 							},
 						},
 						{
@@ -1912,12 +1913,12 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("bar"),
-								},
+								}),
 							},
 						},
 					})
@@ -1935,12 +1936,12 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -1988,12 +1989,12 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("baz"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("baz"),
-								},
+								}),
 							},
 						},
 					})
@@ -2077,12 +2078,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("bar"),
-								},
+								}),
 							},
 						},
 					})
@@ -2101,12 +2102,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -2155,12 +2156,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("baz"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("baz"),
-								},
+								}),
 							},
 						},
 					})
@@ -2248,12 +2249,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("bar"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("bar"),
-								},
+								}),
 							},
 						},
 					})
@@ -2271,12 +2272,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 						{
 							Type: tokens.Type("pkgA:m:typAView"),
 							Name: req.URN.Name() + "-child",
-							Inputs: resource.PropertyMap{
-								"input": resource.NewProperty("bar"),
-							},
-							Outputs: resource.PropertyMap{
-								"result": resource.NewProperty("bar"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"input": property.New("bar"),
+							}),
+							Outputs: property.NewMap(map[string]property.Value{
+								"result": property.New("bar"),
+							}),
 						},
 					}, req.OldViews)
 
@@ -2324,12 +2325,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": resource.NewProperty("baz"),
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": resource.NewProperty("baz"),
-								},
+								}),
 							},
 						},
 					})
@@ -2415,12 +2416,12 @@ func TestViewsDestroyPreview(t *testing.T) {
 							New: &deploytest.ViewStepState{
 								Type: tokens.Type("pkgA:m:typAView"),
 								Name: req.URN.Name() + "-child",
-								Inputs: resource.PropertyMap{
+								Inputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"input": req.Properties["foo"],
-								},
-								Outputs: resource.PropertyMap{
+								}),
+								Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 									"result": req.Properties["foo"],
-								},
+								}),
 							},
 						},
 					})

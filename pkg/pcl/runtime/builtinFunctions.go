@@ -361,9 +361,10 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			marshalOpts := plugin.MarshalOptions{
-				KeepUnknowns:  true,
-				KeepSecrets:   true,
-				KeepResources: true,
+				KeepUnknowns:   true,
+				KeepSecrets:    true,
+				KeepResources:  true,
+				KeepByteString: true,
 			}
 			obj, err := plugin.MarshalProperties(argsPV.ObjectValue(), marshalOpts)
 			if err != nil {
@@ -371,8 +372,9 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			request := &pulumirpc.ResourceInvokeRequest{
-				Tok:  token,
-				Args: obj,
+				Tok:               token,
+				Args:              obj,
+				AcceptsByteString: true,
 			}
 
 			if len(args) == 3 && !args[2].IsNull() {
@@ -540,10 +542,14 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, errors.New("call self must have an id property of type string")
 			}
 
-			urn := urnVal.AsString()
+			// The ID is unknown when self is a resource still being created during a preview.
+			idPV := resource.MakeComputed(resource.NewProperty(""))
+			if id.IsKnown() {
+				idPV = resource.NewProperty(id.AsString())
+			}
 			argsPM["__self__"] = resource.NewProperty(resource.ResourceReference{
-				URN: resource.URN(urn),
-				ID:  resource.NewProperty(id.AsString()),
+				URN: resource.URN(urnVal.AsString()),
+				ID:  idPV,
 			})
 
 			marshalOpts := plugin.MarshalOptions{
@@ -551,6 +557,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				KeepSecrets:      true,
 				KeepResources:    true,
 				KeepOutputValues: true,
+				KeepByteString:   true,
 			}
 			obj, err := plugin.MarshalProperties(argsPM, marshalOpts)
 			if err != nil {
@@ -558,8 +565,9 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 
 			request := &pulumirpc.ResourceCallRequest{
-				Tok:  fun.Token,
-				Args: obj,
+				Tok:               fun.Token,
+				Args:              obj,
+				AcceptsByteString: true,
 			}
 
 			var dependsOn []resource.URN

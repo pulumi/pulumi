@@ -1,6 +1,5 @@
 // Copyright 2016, Pulumi Corporation.  All rights reserved.
 //go:build !all
-// +build !all
 
 package main
 
@@ -9,14 +8,13 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 )
 
 func main() {
-	if err := provider.ComponentMain("testcomponent", "0.0.1", nil /* schema */, construct); err != nil {
+	if err := pulumiprovider.ComponentMain("testcomponent", "0.0.1", nil, construct); err != nil {
 		cmdutil.Exit(err)
 	}
 }
@@ -105,7 +103,7 @@ type RandomArgs struct {
 
 // ElementType implements the pulumi.Input interface.
 func (RandomArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*randomArgs)(nil)).Elem()
+	return reflect.TypeFor[randomArgs]()
 }
 
 type randomArgs struct {

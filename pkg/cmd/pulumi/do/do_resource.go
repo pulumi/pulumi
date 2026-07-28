@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"strings"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -67,11 +68,14 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 
 	shorthelp := fmt.Sprintf("Operate on the %s resource", name)
 	longhelp := shorthelp + "."
-	if res.Comment != "" {
-		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, cleanComment(res.Comment))
+	if description := schemainfo.RenderDescription(res.Comment); description != "" {
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, description)
 	}
 	if schemaHelp := resourceSchemaHelp(res); schemaHelp != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, schemaHelp)
+	}
+	if len(res.InputProperties) > 0 {
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, inputFlagsHelp)
 	}
 
 	cmd := &cobra.Command{
@@ -89,7 +93,16 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 		"The URN of a provider resource in the current stack whose inputs to use as the "+
 			"base of the provider configuration (requires a stack context)")
 	addPersistentInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties)
-	cmd.AddCommand(pc.newResourceCreateCommand(res))
+	// `create` and `upsert` have different UX between stateful (takes a resource <name> and adds a
+	// snippet to the stack) and stateless (uses the resource type's short name and calls the
+	// provider directly), so the command trees diverge here.
+	if pc.stateless {
+		cmd.AddCommand(pc.newStatelessResourceCreateCommand(res))
+		cmd.AddCommand(pc.newStatelessResourceUpsertCommand(res))
+	} else {
+		cmd.AddCommand(pc.newStatefulResourceCreateCommand(res))
+		cmd.AddCommand(pc.newStatefulResourceUpsertCommand(res))
+	}
 	cmd.AddCommand(pc.newResourceReadCommand(res))
 	cmd.AddCommand(pc.newResourcePatchCommand(res))
 	cmd.AddCommand(pc.newResourceDeleteCommand(res))
@@ -99,7 +112,41 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 	return cmd
 }
 
-func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.Command {
+// newStatefulResourceCreateCommand adds a snippet to the current stack and runs the deployment
+// engine targeting only that snippet. Errors if a snippet with the same (Name, Type) already
+// exists — `upsert` is the command for replacing one in place.
+func (pc *packageCommand) newStatefulResourceCreateCommand(res *schema.Resource) *cobra.Command {
+	var inputFile string
+	var inputFormat string
+	var resourcesFile string
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "create <name>",
+		Short: "Create a resource",
+		Long: "Create a resource.\n\n" +
+			"The created resource is tracked in the stack, so Pulumi can manage its lifecycle. " +
+			"Fails if a resource with the given name already exists — use `upsert` to replace " +
+			"one in place.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			contract.Assertf(!pc.stateless, "stateful create should not be registered in stateless mode")
+			return pc.runStatefulSnippetUpdate(cmd, statefulSnippetUpdate{
+				res:           res,
+				name:          args[0],
+				inputFile:     inputFile,
+				inputFormat:   inputFormat,
+				resourcesFile: resourcesFile,
+				yes:           yes,
+				verb:          "created",
+				requireFresh:  true,
+			})
+		},
+	}
+	addStatefulSnippetUpdateFlags(cmd, &inputFile, &inputFormat, &resourcesFile, &yes, res.InputProperties)
+	return cmd
+}
+
+func (pc *packageCommand) newStatelessResourceCreateCommand(res *schema.Resource) *cobra.Command {
 	var inputFile string
 	var yes bool
 	cmd := &cobra.Command{
@@ -107,16 +154,12 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 		Short: "Create a resource",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !pc.stateless {
-				return errStatefulNotImplemented("create")
-			}
+			contract.Assertf(pc.stateless, "stateless create should not be registered in stateful mode")
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err
 			}
 			ctx := cmd.Context()
-			urn := resourceURN(res)
-			var checked resource.PropertyMap
-			prepare := func() (*pkgresource.State, error) {
+			return pc.runStatelessCreate(cmd, res, yes, func() (resource.PropertyMap, error) {
 				if err := pc.configureProvider(cmd, ctx); err != nil {
 					return nil, err
 				}
@@ -127,54 +170,8 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 				if err != nil {
 					return nil, fmt.Errorf("parse input file: %w", err)
 				}
-				checked, err = pc.checkResourceInputs(ctx, urn, res, nil, inputs)
-				if err != nil {
-					return nil, err
-				}
-				return operationState(urn, "", checked, nil), nil
-			}
-			create := func() (*pkgresource.State, error) {
-				response, err := pc.provider.Create(ctx, plugin.CreateRequest{
-					URN:        urn,
-					Name:       urn.Name(),
-					Type:       urn.Type(),
-					Properties: checked,
-					Preview:    pc.dryrun,
-				})
-				if err != nil {
-					return nil, err
-				}
-				id := response.ID
-				if id == "" {
-					id = resource.ID("[unknown]")
-				}
-				return resultState(urn, id, nil, response.Properties, res), nil
-			}
-			if pc.dryrun {
-				return pc.runDisplayedStep(cmd, displayedStep{
-					Op:  deploy.OpCreate,
-					New: operationState(urn, "", nil, nil),
-				}, func() (*pkgresource.State, error) {
-					if _, err := prepare(); err != nil {
-						return nil, err
-					}
-					return create()
-				})
-			}
-			if err := pc.runDisplayedStep(cmd, displayedStep{
-				Op:      deploy.OpCreate,
-				New:     operationState(urn, "", nil, nil),
-				Preview: true,
-			}, prepare); err != nil {
-				return err
-			}
-			if err := pc.confirm(cmd, "", "create", yes); err != nil {
-				return err
-			}
-			return pc.runDisplayedStep(cmd, displayedStep{
-				Op:  deploy.OpCreate,
-				New: operationState(urn, "", checked, nil),
-			}, create)
+				return inputs, nil
+			})
 		},
 	}
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
@@ -182,6 +179,68 @@ func (pc *packageCommand) newResourceCreateCommand(res *schema.Resource) *cobra.
 		"Automatically approve and perform the operation without a confirmation prompt")
 	addInputFlags(cmd, "input", res.InputProperties)
 	return cmd
+}
+
+func (pc *packageCommand) runStatelessCreate(
+	cmd *cobra.Command, res *schema.Resource, yes bool,
+	prepareInputs func() (resource.PropertyMap, error),
+) error {
+	ctx := cmd.Context()
+	urn := resourceURN(res)
+	var checked resource.PropertyMap
+	prepare := func() (*pkgresource.State, error) {
+		inputs, err := prepareInputs()
+		if err != nil {
+			return nil, err
+		}
+		checked, err = pc.checkResourceInputs(ctx, urn, res, nil, inputs)
+		if err != nil {
+			return nil, err
+		}
+		return operationState(urn, "", checked, nil), nil
+	}
+	create := func() (*pkgresource.State, error) {
+		response, err := pc.provider.Create(ctx, plugin.CreateRequest{
+			URN:        urn,
+			Name:       urn.Name(),
+			Type:       urn.Type(),
+			Properties: checked,
+			Preview:    pc.dryrun,
+		})
+		if err != nil {
+			return nil, err
+		}
+		id := response.ID
+		if id == "" {
+			id = resource.ID("[unknown]")
+		}
+		return resultState(urn, id, nil, response.Properties, res), nil
+	}
+	if pc.dryrun {
+		return pc.runDisplayedStep(cmd, displayedStep{
+			Op:  deploy.OpCreate,
+			New: operationState(urn, "", nil, nil),
+		}, func() (*pkgresource.State, error) {
+			if _, err := prepare(); err != nil {
+				return nil, err
+			}
+			return create()
+		})
+	}
+	if err := pc.runDisplayedStep(cmd, displayedStep{
+		Op:      deploy.OpCreate,
+		New:     operationState(urn, "", nil, nil),
+		Preview: true,
+	}, prepare); err != nil {
+		return err
+	}
+	if err := pc.confirm(cmd, "", "create", yes); err != nil {
+		return err
+	}
+	return pc.runDisplayedStep(cmd, displayedStep{
+		Op:  deploy.OpCreate,
+		New: operationState(urn, "", checked, nil),
+	}, create)
 }
 
 func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Command {
@@ -268,56 +327,9 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 				return fmt.Errorf("parse input file: %w", err)
 			}
 
-			oldInputs := read.Inputs
-			newInputs := oldInputs.Copy()
-			for key, value := range patch {
-				newInputs[key] = value
-			}
-			checked, err := pc.checkResourceInputs(ctx, urn, res, oldInputs, newInputs)
-			if err != nil {
-				return err
-			}
-
-			diff, err := pc.provider.Diff(ctx, plugin.DiffRequest{
-				URN:        urn,
-				Name:       urn.Name(),
-				Type:       urn.Type(),
-				ID:         id,
-				OldInputs:  oldInputs,
-				OldOutputs: read.Outputs,
-				NewInputs:  checked,
-			})
-			if err != nil {
-				return fmt.Errorf("diff: %w", err)
-			}
-			summary := formatPatchSummary(
-				res, id, oldInputs, checked, diff, pc.showSecrets, cmdutil.GetGlobalColorization())
-			if err := pc.confirm(cmd, summary, "patch", yes); err != nil {
-				return err
-			}
-
-			return pc.runDisplayedStep(cmd, displayedStep{
-				Op:           deploy.OpUpdate,
-				Old:          operationState(urn, id, oldInputs, read.Outputs),
-				New:          operationState(urn, id, checked, nil),
-				Diffs:        diff.ChangedKeys,
-				DetailedDiff: diff.DetailedDiff,
-			}, func() (*pkgresource.State, error) {
-				response, err := pc.provider.Update(ctx, plugin.UpdateRequest{
-					URN:        urn,
-					Name:       urn.Name(),
-					Type:       urn.Type(),
-					ID:         id,
-					OldInputs:  oldInputs,
-					OldOutputs: read.Outputs,
-					NewInputs:  checked,
-					Preview:    pc.dryrun,
-				})
-				if err != nil {
-					return nil, err
-				}
-				return resultState(urn, id, checked, response.Properties, res), nil
-			})
+			newInputs := read.Inputs.Copy()
+			maps.Copy(newInputs, patch)
+			return pc.runStatelessUpdate(cmd, res, id, read, newInputs, "patch", yes)
 		},
 	}
 	cmd.Flags().StringVar(&inputFormat, "input", "yaml", "Format of the configuration files")
@@ -328,15 +340,73 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 	return cmd
 }
 
+func (pc *packageCommand) runStatelessUpdate(
+	cmd *cobra.Command, res *schema.Resource, id resource.ID,
+	read plugin.ReadResponse, newInputs resource.PropertyMap, operation string, yes bool,
+) error {
+	ctx := cmd.Context()
+	urn := resourceURN(res)
+	oldInputs := read.Inputs
+	checked, err := pc.checkResourceInputs(ctx, urn, res, oldInputs, newInputs)
+	if err != nil {
+		return err
+	}
+
+	diff, err := pc.provider.Diff(ctx, plugin.DiffRequest{
+		URN:        urn,
+		Name:       urn.Name(),
+		Type:       urn.Type(),
+		ID:         id,
+		OldInputs:  oldInputs,
+		OldOutputs: read.Outputs,
+		NewInputs:  checked,
+	})
+	if err != nil {
+		return fmt.Errorf("diff: %w", err)
+	}
+	summary := formatPatchSummary(
+		res, id, oldInputs, checked, diff, pc.showSecrets, cmdutil.GetGlobalColorization())
+	if err := pc.confirm(cmd, summary, operation, yes); err != nil {
+		return err
+	}
+
+	return pc.runDisplayedStep(cmd, displayedStep{
+		Op:           deploy.OpUpdate,
+		Old:          operationState(urn, id, oldInputs, read.Outputs),
+		New:          operationState(urn, id, checked, nil),
+		Diffs:        diff.ChangedKeys,
+		DetailedDiff: diff.DetailedDiff,
+	}, func() (*pkgresource.State, error) {
+		response, err := pc.provider.Update(ctx, plugin.UpdateRequest{
+			URN:        urn,
+			Name:       urn.Name(),
+			Type:       urn.Type(),
+			ID:         id,
+			OldInputs:  oldInputs,
+			OldOutputs: read.Outputs,
+			NewInputs:  checked,
+			Preview:    pc.dryrun,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return resultState(urn, id, checked, response.Properties, res), nil
+	})
+}
+
 func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.Command {
 	var yes bool
+	use := "delete <id>"
+	if !pc.stateless {
+		use = "delete <name>"
+	}
 	cmd := &cobra.Command{
-		Use:   "delete <id>",
+		Use:   use,
 		Short: "Delete a resource",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !pc.stateless {
-				return errStatefulNotImplemented("delete")
+				return pc.runStatefulSnippetDelete(cmd, res, args[0], yes)
 			}
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err

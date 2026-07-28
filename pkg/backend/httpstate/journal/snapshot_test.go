@@ -101,7 +101,7 @@ func TestJournalerBasicBatching(t *testing.T) {
 
 	// Add some journal entries
 	numEntries := 5
-	for i := 0; i < numEntries; i++ {
+	for i := range numEntries {
 		entry := engine.JournalEntry{SequenceID: int64(i)}
 		err := journaler.AddJournalEntry(entry)
 		require.NoError(t, err)
@@ -235,7 +235,7 @@ func TestJournalerErrorHandling(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(numEntries)
 	errors := make([]error, numEntries)
-	for i := 0; i < numEntries; i++ {
+	for i := range numEntries {
 		go func() {
 			defer wg.Done()
 			entry := engine.JournalEntry{SequenceID: int64(i)}
@@ -283,7 +283,7 @@ func TestJournaler413ErrorHandling(t *testing.T) {
 	// Add some journal entries
 	var wg sync.WaitGroup
 	wg.Add(numEntries)
-	for i := 0; i < numEntries; i++ {
+	for i := range numEntries {
 		go func() {
 			defer wg.Done()
 			entry := engine.JournalEntry{SequenceID: int64(i)}
@@ -330,7 +330,7 @@ func TestJournaler413MinimumBatchSize(t *testing.T) {
 	// Add some journal entries
 	var wg sync.WaitGroup
 	wg.Add(numEntries)
-	for i := 0; i < numEntries; i++ {
+	for i := range numEntries {
 		go func() {
 			defer wg.Done()
 			entry := engine.JournalEntry{SequenceID: int64(i)}
@@ -412,7 +412,7 @@ func TestSendBatchesOneBatchAtATime(t *testing.T) {
 	}()
 
 	results := make([]chan error, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		results[i] = make(chan error, 1)
 		entries <- saveJournalEntry{
 			entry:  apitype.JournalEntry{SequenceID: int64(i)},
@@ -454,7 +454,7 @@ func TestSendBatchesSendsAfterTimerTick(t *testing.T) {
 	}()
 
 	result := make(chan error, 2)
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		entries <- saveJournalEntry{
 			entry:  apitype.JournalEntry{SequenceID: int64(i)},
 			result: result,
@@ -606,7 +606,7 @@ func runBenchmark(sender sender, period time.Duration, delayFunc delayFunc, coun
 	}()
 
 	results := make([]chan error, count)
-	for j := 0; j < count; j++ {
+	for j := range count {
 		if delay := delayFunc(j); delay > 0 {
 			time.Sleep(delay)
 		}

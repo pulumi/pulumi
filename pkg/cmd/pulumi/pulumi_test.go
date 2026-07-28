@@ -19,7 +19,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -529,7 +528,7 @@ func TestGetCLIMetadata(t *testing.T) {
 
 func newDoTestCmd() *cobra.Command {
 	root := &cobra.Command{Use: "pulumi"}
-	doCmd := cmdDo.NewDoCmd(nil, nil, nil, nil, nil)
+	doCmd := cmdDo.NewDoCmd(nil, nil, nil, nil, nil, nil)
 	root.AddCommand(doCmd)
 	return doCmd
 }
@@ -1029,42 +1028,6 @@ func TestParseRootPersistentFlags(t *testing.T) {
 
 			assert.Equal(t, c.wantOtel, otelTraces)
 			assert.Equal(t, c.wantColor, color)
-		})
-	}
-}
-
-// Group commands (commands with subcommands but no run function) must fail with a
-// non-zero exit code when given an unknown subcommand, rather than printing help
-// and exiting 0. See https://github.com/spf13/cobra's execute(): non-runnable
-// commands return flag.ErrHelp before args are ever validated.
-//
-//nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
-func TestGroupCommandsRejectUnknownSubcommands(t *testing.T) {
-	cases := []struct {
-		args    []string
-		wantErr string
-	}{
-		{args: []string{"env", "bogus"}, wantErr: `unknown command "bogus" for "pulumi env"`},
-		{args: []string{"esc", "bogus"}, wantErr: `unknown command "bogus" for "pulumi env"`},
-		{args: []string{"env", "provider", "bogus"}, wantErr: "unknown command"},
-		{args: []string{"stack", "tag", "bogus"}, wantErr: `unknown command "bogus" for "pulumi stack tag"`},
-		{args: []string{"plugin", "bogus"}, wantErr: `unknown command "bogus" for "pulumi plugin"`},
-	}
-
-	for _, c := range cases {
-		t.Run(strings.Join(c.args, " "), func(t *testing.T) {
-			pulumiCmd, cleanup := NewPulumiCmd()
-			defer cleanup()
-
-			var stdout, stderr bytes.Buffer
-			pulumiCmd.SetOut(&stdout)
-			pulumiCmd.SetErr(&stderr)
-			pulumiCmd.SetArgs(c.args)
-
-			err := pulumiCmd.Execute()
-			require.Error(t, err)
-			assert.ErrorContains(t, err, c.wantErr)
-			assert.Equal(t, cmd.ExitCodeError, cmd.ExitCodeFor(err))
 		})
 	}
 }

@@ -31,6 +31,7 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -712,7 +713,7 @@ func TestLocalStateLocking(t *testing.T) {
 	stderrs := make(chan string, count)
 
 	// Run 10 concurrent updates
-	for i := 0; i < count; i++ {
+	for range count {
 		go func() {
 			_, stderr, err := e.GetCommandResults("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 			if err == nil {
@@ -728,7 +729,7 @@ func TestLocalStateLocking(t *testing.T) {
 	numsuccess := 0
 	numerrors := 0
 
-	for i := 0; i < count; i++ {
+	for range count {
 		stderr := <-stderrs
 		if stderr == "" {
 			assert.Equal(t, 0, numsuccess, "more than one concurrent update succeeded")
@@ -744,7 +745,7 @@ func TestLocalStateLocking(t *testing.T) {
 	}
 
 	// Run 10 concurrent previews
-	for i := 0; i < count; i++ {
+	for range count {
 		go func() {
 			_, stderr, err := e.GetCommandResults("pulumi", "preview", "--non-interactive")
 			if err == nil {
@@ -756,7 +757,7 @@ func TestLocalStateLocking(t *testing.T) {
 	}
 
 	// Ensure that all of the concurrent previews succeed.
-	for i := 0; i < count; i++ {
+	for range count {
 		stderr := <-stderrs
 		assert.Equal(t, "", stderr)
 	}
@@ -893,9 +894,10 @@ func assertBackupStackFile(t *testing.T, stackName string, file os.DirEntry, bef
 }
 
 func getStackProjectBackupDir(e *ptesting.Environment, projectName, stackName string) (string, error) {
-	return filepath.Join(e.RootPath,
+	return filepath.Join(
+		e.RootPath,
 		workspace.BookkeepingDir,
-		workspace.BackupDir,
+		pkgWorkspace.BackupDir,
 		projectName,
 		stackName,
 	), nil

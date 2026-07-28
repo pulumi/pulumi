@@ -17,6 +17,9 @@ const setRes = new optional_primitive_ref.Resource("setRes", {data: {
     },
 }});
 const unsetRes = new optional_primitive_ref.Resource("unsetRes", {data: {}});
+const fromNestedOptional = new optional_primitive_ref.Resource("fromNestedOptional", {data: {
+    string: setRes.data.apply(data => data.string),
+}});
 export const setBoolean = setRes.data.apply(data => data.boolean);
 export const setFloat = setRes.data.apply(data => data.float);
 export const setInteger = setRes.data.apply(data => data.integer);

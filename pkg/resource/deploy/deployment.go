@@ -18,8 +18,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
@@ -173,9 +175,7 @@ func NewUrnTargetsFromUrns(urns []resource.URN) UrnTargets {
 func (t UrnTargets) Clone() UrnTargets {
 	newLiterals := append(make([]resource.URN, 0, len(t.literals)), t.literals...)
 	newGlobs := make(map[string]*regexp.Regexp, len(t.globs))
-	for k, v := range t.globs {
-		newGlobs[k] = v
-	}
+	maps.Copy(newGlobs, t.globs)
 	return UrnTargets{
 		literals: newLiterals,
 		globs:    newGlobs,
@@ -216,10 +216,8 @@ func (t UrnTargets) Contains(urn resource.URN) bool {
 	if !t.IsConstrained() {
 		return true
 	}
-	for _, literal := range t.literals {
-		if literal == urn {
-			return true
-		}
+	if slices.Contains(t.literals, urn) {
+		return true
 	}
 	for glob := range t.globs {
 		if t.getMatcher(glob).MatchString(string(urn)) {
@@ -772,8 +770,8 @@ func (d *Deployment) GetOldViews(urn resource.URN) []plugin.View {
 		view := plugin.View{
 			Type:    res.URN.Type(),
 			Name:    res.URN.Name(),
-			Inputs:  res.Inputs,
-			Outputs: res.Outputs,
+			Inputs:  resource.FromResourcePropertyMap(res.Inputs),
+			Outputs: resource.FromResourcePropertyMap(res.Outputs),
 		}
 		if res.Parent != "" && res.Parent != res.ViewOf {
 			view.ParentType = res.Parent.Type()

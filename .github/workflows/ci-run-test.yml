@@ -260,9 +260,11 @@ jobs:
             echo "Deleting pulumi"
             rm -rf "$(command -v pulumi.exe)/../pulumi*"
           fi
-      - name: Install yarn and pnpm
+      - name: Install npm, yarn and pnpm
         run: |
-          npm install -g yarn pnpm@11
+          # npm added min-release-age-exclude in 11.17.0. Use a compatible npm 11 version so the
+          # cooldown and first-party exceptions work across every Node.js version in the matrix.
+          npm install -g yarn pnpm@11 npm@^11.17.0
       - name: Install bun
         uses: ./.github/actions/retry
         with:

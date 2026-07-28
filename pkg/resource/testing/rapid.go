@@ -415,10 +415,7 @@ func outputPropertyGenerator(ctx *StackContext, maxDepth int) *rapid.Generator[r
 		urnGenerator, dependenciesUpperBound = URNGenerator(), 32
 	} else {
 		urnGenerator = ctx.URNSampler()
-		dependenciesUpperBound = len(ctx.Resources())
-		if dependenciesUpperBound > 32 {
-			dependenciesUpperBound = 32
-		}
+		dependenciesUpperBound = min(len(ctx.Resources()), 32)
 	}
 
 	return rapid.Custom(func(t *rapid.T) resource.PropertyValue {

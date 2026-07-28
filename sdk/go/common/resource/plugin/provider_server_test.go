@@ -197,7 +197,7 @@ func TestProviderServer_List_streamsLazyResults(t *testing.T) {
 		ListFunc: func(req ListRequest) (*ListStream, error) {
 			return &ListStream{
 				Items: func(yield func(ListResult, error) bool) {
-					for i := 0; i < 3; i++ {
+					for i := range 3 {
 						if !yield(ListResult{ID: resource.ID(fmt.Sprintf("id-%d", i))}, nil) {
 							return
 						}

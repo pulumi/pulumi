@@ -270,6 +270,25 @@ class MockMonitor:
         has_support = request.id != "outputValues"
         return type("SupportsFeatureResponse", (object,), {"hasSupport": has_support})
 
+    def GetDeploymentInfo(self, request):
+        # Support for "outputValues" is deliberately disabled for the mock monitor so
+        # instances of `Output` don't show up in `MockResourceArgs` inputs.
+        return resource_pb2.DeploymentInfo(
+            supportedFeatures=[
+                resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+            ]
+        )
+
     def RegisterPackage(self, request):
         # Mocks don't _really_ support packages, so we just return a fake package ref.
         return resource_pb2.RegisterPackageResponse(ref="mock-uuid")
@@ -331,4 +350,5 @@ def set_mocks(
 
     # Ensure a new root stack resource has been initialized.
     if get_root_resource() is None:
-        Stack(lambda: None)
+        root_stack = Stack()
+        root_stack._finish()

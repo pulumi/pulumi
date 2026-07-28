@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"math"
 	"net/url"
 	"os"
@@ -1992,9 +1993,7 @@ func TestValidateTypeToken(t *testing.T) {
 				spec.Meta = &MetadataSpec{ModuleFormat: c.moduleFormat}
 			}
 			allowed := map[string][]string{"example": nil}
-			for pkg, mods := range c.allowedExtras {
-				allowed[pkg] = mods
-			}
+			maps.Copy(allowed, c.allowedExtras)
 			errors := spec.validateTypeToken(allowed, "type", c.input)
 			if c.expectError {
 				assert.True(t, errors.HasErrors(), "expected an error but got none")

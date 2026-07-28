@@ -257,10 +257,10 @@ func ParseEnvironment(source []byte, node syntax.Node) (*EnvironmentDecl, syntax
 }
 
 var (
-	parseDeclType  = reflect.TypeOf((*parseDecl)(nil)).Elem()
-	nonNilDeclType = reflect.TypeOf((*nonNilDecl)(nil)).Elem()
-	recordDeclType = reflect.TypeOf((*recordDecl)(nil)).Elem()
-	exprType       = reflect.TypeOf((*Expr)(nil)).Elem()
+	parseDeclType  = reflect.TypeFor[parseDecl]()
+	nonNilDeclType = reflect.TypeFor[nonNilDecl]()
+	recordDeclType = reflect.TypeFor[recordDecl]()
+	exprType       = reflect.TypeFor[Expr]()
 )
 
 func parseNode[T Node](name string, dest *T, node syntax.Node) syntax.Diagnostics {

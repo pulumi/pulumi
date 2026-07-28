@@ -16,7 +16,6 @@ package property
 
 import (
 	"slices"
-	"sort"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
@@ -79,7 +78,7 @@ func (diff *ObjectDiff) Keys() []string {
 	for k := range diff.Updates {
 		ks = append(ks, k)
 	}
-	sort.Slice(ks, func(i, j int) bool { return ks[i] < ks[j] })
+	slices.Sort(ks)
 	return ks
 }
 

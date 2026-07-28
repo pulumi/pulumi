@@ -1146,7 +1146,7 @@ func (g *generator) addPulumiImport(pkg, versionPath, mod, name string) {
 
 		if strings.Contains(pkgName, "-") {
 			var alias strings.Builder
-			for _, part := range strings.Split(pkgName, "-") {
+			for part := range strings.SplitSeq(pkgName, "-") {
 				alias.WriteString(strcase.ToLowerCamel(part))
 			}
 			pkgName = alias.String()
@@ -2437,7 +2437,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	}
 
 	if v.Description != "" {
-		for _, line := range strings.Split(v.Description, "\n") {
+		for line := range strings.SplitSeq(v.Description, "\n") {
 			g.Fgenf(w, "%s// %s\n", g.Indent, line)
 		}
 	}

@@ -304,6 +304,10 @@ func (e *testEnvironments) LoadEnvironment(ctx context.Context, name string) ([]
 	return bytes, rot128{}, nil
 }
 
+func (e *testEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
+}
+
 type benchEnvironments struct {
 	defs  map[string][]byte
 	delay time.Duration
@@ -344,6 +348,10 @@ func (e *benchEnvironments) LoadEnvironment(ctx context.Context, name string) ([
 		return nil, nil, os.ErrNotExist
 	}
 	return bytes, rot128{}, nil
+}
+
+func (e *benchEnvironments) AuthorizeImport(_ context.Context, _ string, _ string, _ bool) error {
+	return nil
 }
 
 func sortEnvironmentDiagnostics(diags syntax.Diagnostics) {

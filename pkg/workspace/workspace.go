@@ -180,8 +180,8 @@ func (pw *projectWorkspace) readSettings() error {
 }
 
 func (pw *projectWorkspace) settingsPath() string {
-	uniqueFileName := string(pw.name) + "-" + sha1HexString(pw.project) + "-" + workspace.WorkspaceFile
-	path, err := workspace.GetPulumiPath(workspace.WorkspaceDir, uniqueFileName)
+	uniqueFileName := string(pw.name) + "-" + sha1HexString(pw.project) + "-" + WorkspaceFile
+	path, err := workspace.GetPulumiPath(WorkspaceDir, uniqueFileName)
 	contract.AssertNoErrorf(err, "could not get workspace path")
 	return path
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -411,18 +412,22 @@ func (p *ConfigurerProvider) Call(
 	case "configurer:index:Configurer/plainValue":
 		// Single-value plain returns use the magic key "res" on the wire.
 		return plugin.CallResponse{
-			Return: resource.PropertyMap{"res": resource.NewProperty(42.0)},
+			Return: property.NewMap(map[string]property.Value{
+				"res": property.New(42.0),
+			}),
 		}, nil
 	case "configurer:index:Configurer/plainProvider":
 		return plugin.CallResponse{
-			Return: resource.PropertyMap{"res": *innerRefValue},
+			Return: property.NewMap(map[string]property.Value{
+				"res": resource.FromResourcePropertyValue(*innerRefValue),
+			}),
 		}, nil
 	case "configurer:index:Configurer/nestedPlainProvider":
 		return plugin.CallResponse{
-			Return: resource.PropertyMap{
-				"provider": *innerRefValue,
-				"value":    resource.NewProperty(42.0),
-			},
+			Return: property.NewMap(map[string]property.Value{
+				"provider": resource.FromResourcePropertyValue(*innerRefValue),
+				"value":    property.New(42.0),
+			}),
 		}, nil
 	}
 	return plugin.CallResponse{}, fmt.Errorf("unknown function %v", req.Tok)
