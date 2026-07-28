@@ -17,6 +17,9 @@ set_res = optional_primitive_ref.Resource("setRes", data={
     },
 })
 unset_res = optional_primitive_ref.Resource("unsetRes", data={})
+from_nested_optional = optional_primitive_ref.Resource("fromNestedOptional", data={
+    "string": set_res.data.string,
+})
 pulumi.export("setBoolean", set_res.data.boolean)
 pulumi.export("setFloat", set_res.data.float)
 pulumi.export("setInteger", set_res.data.integer)
