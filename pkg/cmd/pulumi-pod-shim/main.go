@@ -73,6 +73,18 @@ func run() error {
 	//nolint:gosec // the wrapped command is supplied by the pod, not untrusted input
 	cmd := exec.Command(os.Args[1], os.Args[2:]...)
 	cmd.Stderr = os.Stderr
+
+	// The shim exists to adapt a plugin that does NOT speak the bind contract. The engine
+	// sets PULUMI_PLUGIN_LISTEN_ADDRESS on every provider container without knowing whether
+	// the image is shim-wrapped; a wrapped plugin that honors it would bind the ingress port
+	// first, making the shim's own bind — second — fatal. Strip the request so the wrapped
+	// plugin always behaves like the stock loopback plugin the shim was built to adapt.
+	cmd.Env = []string{}
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, "PULUMI_PLUGIN_LISTEN_ADDRESS=") {
+			cmd.Env = append(cmd.Env, kv)
+		}
+	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("wiring plugin stdout: %w", err)

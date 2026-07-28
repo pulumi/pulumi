@@ -5,8 +5,10 @@
 # Cross-compiled demo programs (run-pod-*.sh build these before the image build).
 program-linux
 
-# This branch's Node SDK, staged into the program build context by run-pod-node-transform.sh.
+# This branch's Node SDK, staged into program build contexts by run-pod-node-transform.sh
+# and run-pod-dynamic.sh.
 program-node-transform/sdk-bin/
+program-node-dynamic/sdk-bin/
 
 # This branch's Python SDK + the CLI's exec shim, staged by run-pod-python-transform.sh.
 program-python-transform/sdk-lib/

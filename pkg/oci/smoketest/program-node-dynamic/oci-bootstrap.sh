@@ -12,8 +12,9 @@ set -e
 # shim does (require.resolve) — so we inherit the SDK's own module resolution. The
 # entry historically requires an engine-address argv; that is vestigial (the engine
 # dials the provider, not the reverse), but the arg must still be present, so pass
-# PULUMI_ENGINE if set else a placeholder. The provider binds loopback and prints
-# its port; the engine, sharing this netns, scrapes it and attaches.
+# PULUMI_ENGINE if set else a placeholder. The provider binds the address the engine
+# requested via PULUMI_PLUGIN_LISTEN_ADDRESS (loopback-ephemeral when unset), prints
+# the bound port, and the engine scrapes it and attaches.
 if [ "$PULUMI_OCI_ROLE" = "dynamic-provider" ]; then
   SCRIPT="$(node -e "console.log(require.resolve('@pulumi/pulumi/cmd/dynamic-provider'))")"
   echo "oci-node-bootstrap: role=dynamic-provider -> exec node $SCRIPT" >&2

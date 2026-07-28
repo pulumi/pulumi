@@ -210,11 +210,20 @@ func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 
 // podAddressMode reports whether providers run as their own containers on the pod network and
 // are attached by container DNS address, rather than sharing the engine's netns and being
-// reached over 127.0.0.1. It pairs with the forwarder shim, which exposes each provider at a
-// well-known port on all interfaces; without the shim a provider binds loopback and is
-// unreachable by DNS, so this is off unless explicitly enabled. Gated during the netns→address
-// transition.
+// reached over 127.0.0.1. A provider becomes reachable at the well-known port one of two ways:
+// the engine asks the plugin to bind it directly (PULUMI_PLUGIN_LISTEN_ADDRESS, honored by
+// plugins built against an SDK with the bind contract), or the forwarder shim wraps a plugin
+// that predates the contract and re-exposes its loopback port there. Off unless explicitly
+// enabled; gated during the netns→address transition.
 func podAddressMode() bool { return os.Getenv("PULUMI_POD_ADDRESS_MODE") != "" }
+
+// pluginListenPort is the well-known container port every provider serves in address mode.
+// Distinct containers make one fixed port collision-free. It matches the forwarder shim's
+// default ingress port, so an SDK-bound plugin and a shim-wrapped one are observationally
+// identical to the engine: both announce this port in their handshake and answer gRPC on it.
+// If this ever needs configuring it must stay ONE knob shared with the registry-proxy's shim
+// synthesis (PULUMI_POD_SHIM_PORT), never two values that can skew.
+const pluginListenPort = 7777
 
 // podNetwork is the network providers join in address mode — the same one the engine and
 // program containers share — so they reach one another by container DNS name.
@@ -522,10 +531,11 @@ func (h *containerHost) trackPlugin(ctx *plugin.Context, c Container, signalCanc
 	h.started[key] = append(h.started[key], podPlugin{container: c, signalCancel: signalCancel})
 }
 
-// Provider starts the provider as a container sharing the engine's network
-// namespace and attaches to it, rather than spawning a plugin binary. Stateless
-// providers run from their own image; run-from-program-image providers run from the
-// program image with their binary injected (see providerContainer).
+// Provider starts the provider as a container and attaches to it, rather than spawning a
+// plugin binary — over the shared loopback when it joins the engine's netns, or by container
+// DNS address in address mode. Stateless providers run from their own image;
+// run-from-program-image providers run from the program image with their binary injected
+// (see providerContainer).
 func (h *containerHost) Provider(
 	ctx *plugin.Context, descriptor workspace.PluginDescriptor, _ env.Env,
 ) (plugin.Provider, error) {
@@ -543,6 +553,23 @@ func (h *containerHost) Provider(
 	if err != nil {
 		_ = h.pod.StopContainer(context.Background(), c)
 		return nil, fmt.Errorf("oci: discovering port for provider %s: %w", descriptor.Name, err)
+	}
+
+	// In address mode the container was asked to serve the well-known port (the bind
+	// contract, via PULUMI_PLUGIN_LISTEN_ADDRESS; or the shim's ingress). A handshake
+	// announcing any other port means the plugin ignored the request and bound an ephemeral
+	// loopback port inside its own netns — the attach below would dial a port nothing
+	// reachable is serving, and fail as a bare connection error after a retry window. Turn
+	// that into an immediate, named diagnosis instead.
+	if podAddressMode() && port != pluginListenPort {
+		_ = h.pod.StopContainer(context.Background(), c)
+		return nil, fmt.Errorf(
+			"oci: provider %s announced port %d instead of the requested listen port %d: the plugin "+
+				"ignored PULUMI_PLUGIN_LISTEN_ADDRESS (built against an SDK without the bind contract) "+
+				"and its image does not wrap it in the forwarder shim, so it is serving loopback inside "+
+				"its own container where the engine cannot reach it. Rebuild the plugin against a newer "+
+				"SDK, use a shim-wrapped image, or unset PULUMI_POD_ADDRESS_MODE",
+			descriptor.Name, port, pluginListenPort)
 	}
 
 	attachAddr := "127.0.0.1:" + strconv.Itoa(port)
@@ -565,11 +592,12 @@ func (h *containerHost) Provider(
 	return prov, nil
 }
 
-// providerContainer builds the spec for a provider container, on the engine's
-// netns so the provider binds 127.0.0.1 and the engine reaches it over the shared
-// loopback. A stateless provider runs from its own image. A run-from-program-image
-// provider instead runs from the *program* image — rooted in the program's
-// filesystem so it sees the workspace and toolchain — with its binary injected
+// providerContainer builds the spec for a provider container, joined to the network
+// providerNetwork selects: the engine's netns, where the provider binds 127.0.0.1 and is
+// reached over the shared loopback, or (address mode) its own container on the pod network,
+// asked to serve the well-known plugin port. A stateless provider runs from its own image.
+// A run-from-program-image provider instead runs from the *program* image — rooted in the
+// program's filesystem so it sees the workspace and toolchain — with its binary injected
 // from the provider image via an ephemeral, pod-scoped volume. See the design
 // doc's "execution as one primitive" section.
 func (h *containerHost) providerContainer(
@@ -594,6 +622,17 @@ func (h *containerHost) providerContainer(
 		// analogue of a spawned provider inheriting os.Environ(). This is how a
 		// provider's credentials reach it; see projectedProviderEnv.
 		Env: projectedProviderEnv(),
+	}
+
+	// In address mode, ask the plugin itself to bind the well-known port on all interfaces
+	// (the bind contract) — every archetype, dynamic providers included, since they all
+	// serve gRPC from their own container there. A plugin built against an SDK without the
+	// contract ignores this and stays on ephemeral loopback; it is reachable only if its
+	// image wraps it in the forwarder shim, which strips this variable and does the same
+	// job by proxy. Never set in netns mode: there every provider shares the engine's
+	// netns, and the second bind of a fixed port is fatal.
+	if podAddressMode() {
+		cfg.Env["PULUMI_PLUGIN_LISTEN_ADDRESS"] = fmt.Sprintf("0.0.0.0:%d", pluginListenPort)
 	}
 
 	// Dynamic providers are native to the program image: the SDK's dynamic-provider
