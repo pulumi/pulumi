@@ -104,6 +104,7 @@
         "tests/runtime/asyncIterableUtil.spec.ts",
         "tests/runtime/codePaths.spec.ts",
         "tests/runtime/dependsOn.spec.ts",
+        "tests/runtime/featureSupport.spec.ts",
         "tests/runtime/findWorkspaceRoot.spec.ts",
         "tests/runtime/manifest.spec.ts",
         "tests/runtime/registerPackage.spec.ts",
