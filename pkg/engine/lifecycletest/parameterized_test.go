@@ -355,8 +355,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 	}
 
 	snap, err := lt.TestOp(Update).RunStep(
-		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up",
-	)
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 7)
@@ -378,15 +377,13 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 	}), prov.Inputs)
 
 	snap, err = lt.TestOp(Refresh).RunStep(
-		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh",
-	)
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 7)
 
 	snap, err = lt.TestOp(Destroy).RunStep(
-		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "destroy",
-	)
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "destroy")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 0)
@@ -486,8 +483,7 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 	}
 
 	snap, err := lt.TestOp(Update).RunStep(
-		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up",
-	)
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 4)
@@ -506,15 +502,13 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 	}), prov.Inputs)
 
 	snap, err = lt.TestOp(Refresh).RunStep(
-		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh",
-	)
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 4)
 
 	snap, err = lt.TestOp(Destroy).RunStep(
-		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "destroy",
-	)
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "destroy")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 0)
@@ -630,8 +624,7 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 	}
 
 	snap, err := lt.TestOp(Update).RunStep(
-		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up",
-	)
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "up")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 6)
