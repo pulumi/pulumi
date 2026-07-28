@@ -1242,6 +1242,9 @@ def register_resource(
                 rpc.resolve_outputs_due_to_exception(resolvers, register_exn)
             else:
                 keep_unknowns = resp.result == resource_pb2.Result.SUCCESS
+                skipped_create = (
+                    custom and not settings.is_dry_run() and resp.skipped_create
+                )
                 rpc.resolve_outputs(
                     res,
                     resolver.serialized_props,
@@ -1251,6 +1254,7 @@ def register_resource(
                     custom,
                     transform_using_type_metadata,
                     keep_unknowns,
+                    resolve_missing_as_unknown=skipped_create,
                 )
             resolve_outputs_called = True
 
@@ -1326,6 +1330,7 @@ class RegisterResponse:
     object: struct_pb2.Struct
     propertyDependencies: Optional[dict[str, PropertyDependencies]]
     result: Optional[resource_pb2.Result.ValueType]
+    skipped_create: bool
 
     def __init__(
         self,
@@ -1334,12 +1339,14 @@ class RegisterResponse:
         object: struct_pb2.Struct,
         propertyDependencies: Optional[dict[str, PropertyDependencies]],
         result: Optional[resource_pb2.Result.ValueType],
+        skipped_create: bool = False,
     ):
         self.urn = urn
         self.id = id
         self.object = object
         self.propertyDependencies = propertyDependencies
         self.result = result
+        self.skipped_create = skipped_create
 
 
 def convert_providers(

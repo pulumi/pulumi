@@ -288,6 +288,7 @@ message RegisterResourceResponse {
     repeated string stables = 5;                                // an optional list of guaranteed-stable properties.
     map<string, PropertyDependencies> propertyDependencies = 6; // a map from property keys to the dependencies of the property.
     Result result = 7;                                          // the reason, whether the resource registration was successful, failed, or skipped.
+    bool skipped_create = 8;                                    // true if the create was elided, e.g. because it was not targeted; result is still SUCCESS and SDKs should resolve outputs as unknown.
 }
 
 // RegisterResourceOutputsRequest adds extra resource outputs created by the program after registration has occurred.

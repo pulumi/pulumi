@@ -806,6 +806,7 @@ class RegisterResourceResponse(google.protobuf.message.Message):
     STABLES_FIELD_NUMBER: builtins.int
     PROPERTYDEPENDENCIES_FIELD_NUMBER: builtins.int
     RESULT_FIELD_NUMBER: builtins.int
+    SKIPPED_CREATE_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the URN assigned by the engine."""
     id: builtins.str
@@ -814,6 +815,8 @@ class RegisterResourceResponse(google.protobuf.message.Message):
     """if true, the object's state is stable and may be trusted not to change."""
     result: global___Result.ValueType
     """the reason, whether the resource registration was successful, failed, or skipped."""
+    skipped_create: builtins.bool
+    """true if the create was elided, e.g. because it was not targeted; result is still SUCCESS and SDKs should resolve outputs as unknown."""
     @property
     def object(self) -> google.protobuf.struct_pb2.Struct:
         """the resulting object properties, including provider defaults."""
@@ -836,9 +839,10 @@ class RegisterResourceResponse(google.protobuf.message.Message):
         stables: collections.abc.Iterable[builtins.str] | None = ...,
         propertyDependencies: collections.abc.Mapping[builtins.str, global___RegisterResourceResponse.PropertyDependencies] | None = ...,
         result: global___Result.ValueType = ...,
+        skipped_create: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["object", b"object"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "object", b"object", "propertyDependencies", b"propertyDependencies", "result", b"result", "stable", b"stable", "stables", b"stables", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "object", b"object", "propertyDependencies", b"propertyDependencies", "result", b"result", "skipped_create", b"skipped_create", "stable", b"stable", "stables", b"stables", "urn", b"urn"]) -> None: ...
 
 global___RegisterResourceResponse = RegisterResourceResponse
 

@@ -1941,6 +1941,9 @@ func (ctx *Context) registerResource(
 			if err == nil && resp.Result != pulumirpc.Result_SUCCESS {
 				err = fmt.Errorf("resource %s [%s] failed to register", name, t)
 			}
+			if custom && resp.Result == pulumirpc.Result_SUCCESS && resp.SkippedCreate {
+				keepUnknowns = true
+			}
 		}
 	}()
 
@@ -2379,7 +2382,8 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 	internal.ResolveOutput(state.rawOutputs, outprops, true, false, resourcesToInternal(nil))
 
 	for k, output := range state.outputs {
-		// If this is an unknown or missing value during a dry run, do nothing.
+		// If this is an unknown or missing value during a dry run or for a skipped
+		// create, do nothing.
 		v, ok := outprops[resource.PropertyKey(k)]
 		if !ok && !keepUnknowns {
 			v = inprops[resource.PropertyKey(k)]

@@ -4912,7 +4912,8 @@ object: (f = msg.getObject()) && google_protobuf_struct_pb.Struct.toObject(inclu
 stable: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
 stablesList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
 propertydependenciesMap: (f = msg.getPropertydependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.RegisterResourceResponse.PropertyDependencies.toObject) : [],
-result: jspb.Message.getFieldWithDefault(msg, 7, 0)
+result: jspb.Message.getFieldWithDefault(msg, 7, 0),
+skippedCreate: jspb.Message.getBooleanFieldWithDefault(msg, 8, false)
   };
 
   if (includeInstance) {
@@ -4979,6 +4980,10 @@ proto.pulumirpc.RegisterResourceResponse.deserializeBinaryFromReader = function(
     case 7:
       var value = /** @type {!proto.pulumirpc.Result} */ (reader.readEnum());
       msg.setResult(value);
+      break;
+    case 8:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setSkippedCreate(value);
       break;
     default:
       reader.skipField();
@@ -5053,6 +5058,13 @@ proto.pulumirpc.RegisterResourceResponse.serializeBinaryToWriter = function(mess
   if (f !== 0.0) {
     writer.writeEnum(
       7,
+      f
+    );
+  }
+  f = message.getSkippedCreate();
+  if (f) {
+    writer.writeBool(
+      8,
       f
     );
   }
@@ -5381,6 +5393,24 @@ proto.pulumirpc.RegisterResourceResponse.prototype.getResult = function() {
  */
 proto.pulumirpc.RegisterResourceResponse.prototype.setResult = function(value) {
   return jspb.Message.setProto3EnumField(this, 7, value);
+};
+
+
+/**
+ * optional bool skipped_create = 8;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceResponse.prototype.getSkippedCreate = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 8, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceResponse} returns this
+ */
+proto.pulumirpc.RegisterResourceResponse.prototype.setSkippedCreate = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 8, value);
 };
 
 

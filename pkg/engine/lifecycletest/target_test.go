@@ -1105,6 +1105,8 @@ func TestCreateDuringTargetedUpdate_UntargetedCreateReferencedByChangedTarget(t 
 
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "a", true)
 		require.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, resA.Result)
+		assert.True(t, resA.SkippedCreate)
 
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{resA.URN},

@@ -472,11 +472,12 @@ func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource
 }
 
 type RegisterResourceResponse struct {
-	URN          resource.URN
-	ID           resource.ID
-	Outputs      resource.PropertyMap
-	Dependencies map[resource.PropertyKey][]resource.URN
-	Result       pulumirpc.Result
+	URN           resource.URN
+	ID            resource.ID
+	Outputs       resource.PropertyMap
+	Dependencies  map[resource.PropertyKey][]resource.URN
+	Result        pulumirpc.Result
+	SkippedCreate bool
 }
 
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
@@ -646,11 +647,12 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	}
 
 	return &RegisterResourceResponse{
-		URN:          resource.URN(resp.Urn),
-		ID:           resource.ID(resp.Id),
-		Outputs:      outs,
-		Dependencies: depsMap,
-		Result:       resp.Result,
+		URN:           resource.URN(resp.Urn),
+		ID:            resource.ID(resp.Id),
+		Outputs:       outs,
+		Dependencies:  depsMap,
+		Result:        resp.Result,
+		SkippedCreate: resp.SkippedCreate,
 	}, nil
 }
 
