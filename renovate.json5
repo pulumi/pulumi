@@ -138,6 +138,7 @@
       ],
       matchFileNames: [
         'scripts/get-language-providers.sh',
+        'pkg/util/plugin.go',
       ],
       dependencyDashboardApproval: false,
       minimumReleaseAge: '0 days',
