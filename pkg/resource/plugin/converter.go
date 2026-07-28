@@ -118,6 +118,12 @@ type ConvertSnippetRequest struct {
 	Package    *codegenrpc.GetSchemaRequest
 	Token      string
 	Attributes map[string]string
+	Resources  map[string]ConvertSnippetResourceReference
+}
+
+type ConvertSnippetResourceReference struct {
+	Token   string
+	Package *codegenrpc.GetSchemaRequest
 }
 
 type ConvertSnippetResponse struct {
@@ -125,6 +131,8 @@ type ConvertSnippetResponse struct {
 	Filename    string
 	Source      []byte
 	Attributes  map[string]string
+	// ResourceNames maps source-language resource names to generated PCL names.
+	ResourceNames map[string]string
 }
 
 type Converter interface {

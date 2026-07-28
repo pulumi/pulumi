@@ -325,7 +325,8 @@ func parseFile(
 	loaderTarget string,
 	packageDescriptor *codegenrpc.GetSchemaRequest,
 	inputFlags map[string]inputFlagValue,
-) ([]byte, string, error) {
+	resources map[string]plugin.ConvertSnippetResourceReference,
+) ([]byte, string, map[string]string, error) {
 	contract.Requiref(inputFormat != "", "inputFormat", "inputFormat must be non-empty")
 	filename := path
 
@@ -337,7 +338,7 @@ func parseFile(
 		var err error
 		pcl, err = os.ReadFile(path)
 		if err != nil {
-			return nil, "", fmt.Errorf("open %s file: %w", fileType, err)
+			return nil, "", nil, fmt.Errorf("open %s file: %w", fileType, err)
 		}
 	}
 
@@ -353,12 +354,13 @@ func parseFile(
 
 	literals, err := inputFlagLiterals(plainFlags)
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
 	if literals == nil {
 		literals = map[string]string{}
 	}
 
+	resourceNames := map[string]string{}
 	if inputFormat == "pcl" {
 		for name, flag := range exprFlags {
 			literals[name] = flag.value
@@ -366,7 +368,7 @@ func parseFile(
 	} else if len(pcl) > 0 || len(exprFlags) > 0 {
 		converter, err := loadConverter(inputFormat)
 		if err != nil {
-			return nil, "", fmt.Errorf("load %s input converter: %w", inputFormat, err)
+			return nil, "", nil, fmt.Errorf("load %s input converter: %w", inputFormat, err)
 		}
 		defer contract.IgnoreClose(converter)
 
@@ -377,18 +379,19 @@ func parseFile(
 			Package:      packageDescriptor,
 			Token:        token,
 			Attributes:   inputFlagAttributes(exprFlags),
+			Resources:    resources,
 		})
 		if err != nil {
 			if status.Code(err) == codes.Unimplemented {
-				return nil, "", fmt.Errorf(
+				return nil, "", nil, fmt.Errorf(
 					"%s %s converter does not support snippet conversion; use pcl format or try installing a newer %s converter",
 					inputFormat, fileType, inputFormat,
 				)
 			}
-			return nil, "", fmt.Errorf("generate PCL from %s file: %w", fileType, err)
+			return nil, "", nil, fmt.Errorf("generate PCL from %s file: %w", fileType, err)
 		}
 		if resp.Diagnostics.HasErrors() {
-			return nil, "", resp.Diagnostics
+			return nil, "", nil, resp.Diagnostics
 		}
 		pcl = resp.Source
 		filename = resp.Filename
@@ -396,14 +399,17 @@ func parseFile(
 			filename = fmt.Sprintf("<converted %s>", fileType)
 		}
 		maps.Copy(literals, resp.Attributes)
+		if resp.ResourceNames != nil {
+			resourceNames = resp.ResourceNames
+		}
 	}
 
 	merged, err := mergeAttributeLiteralsIntoPCL(pcl, filename, fileType, literals)
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
 
-	return merged, filename, nil
+	return merged, filename, resourceNames, nil
 }
 
 // evaluateFile reads an input file in the given format and evaluates it. For non-PCL formats the source is routed
@@ -421,9 +427,9 @@ func evaluateFile(
 	evalContext functionEvalContext,
 	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
-	merged, filename, err := parseFile(
+	merged, filename, _, err := parseFile(
 		ctx, path, fileType, inputFormat, token,
-		loadConverter, loaderTarget, packageDescriptor, inputFlags,
+		loadConverter, loaderTarget, packageDescriptor, inputFlags, nil,
 	)
 	if err != nil {
 		return nil, err
