@@ -103,14 +103,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	go func() {
 		// Pull out relevant events we will want to display in the confirmation below.
 		for e := range eventsChannel {
-			// Don't include internal events in the confirmation stats.
-			if e.Internal() {
-				continue
-			}
-			if e.Type == engine.ResourcePreEvent ||
-				e.Type == engine.ResourceOutputsEvent ||
-				e.Type == engine.PolicyRemediationEvent ||
-				e.Type == engine.SummaryEvent {
+			if diffEvent(e) {
 				events = append(events, e)
 			}
 		}
@@ -319,7 +312,7 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	op.Opts.Engine.GeneratePlan = false
 
 	var changes sdkDisplay.ResourceChanges
-	err := runCollectingDiff(op.Opts.Display, events, func(ev chan<- engine.Event) error {
+	err := RunCollectingDiff(op.Opts.Display, events, func(ev chan<- engine.Event) error {
 		var res error
 		_, changes, res = apply(ctx, kind, stack, op, opts, ev)
 		return res
@@ -327,7 +320,18 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	return changes, err
 }
 
-func runCollectingDiff(displayOpts display.Options, callerEvents chan<- engine.Event,
+// diffEvent reports whether e is one of the resource step events CreateDiff renders — the set both
+// the pre-confirmation preview diff and the post-operation diff collect.
+func diffEvent(e engine.Event) bool {
+	return !e.Internal() && (e.Type == engine.ResourcePreEvent ||
+		e.Type == engine.ResourceOutputsEvent ||
+		e.Type == engine.PolicyRemediationEvent ||
+		e.Type == engine.SummaryEvent)
+}
+
+// RunCollectingDiff runs an apply or preview operation and, when ShowDiff is set, prints the diff
+// afterwards from the events it emitted. Events are forwarded to callerEvents when it is non-nil.
+func RunCollectingDiff(displayOpts display.Options, callerEvents chan<- engine.Event,
 	run func(events chan<- engine.Event) error,
 ) error {
 	if !displayOpts.ShowDiff {
@@ -340,10 +344,7 @@ func runCollectingDiff(displayOpts display.Options, callerEvents chan<- engine.E
 	go func() {
 		defer close(done)
 		for e := range collected {
-			// Keep only the resource step events CreateDiff renders — the same set PreviewThenPrompt
-			// collects for its pre-confirmation diff; everything else is display-only noise.
-			if !e.Internal() && (e.Type == engine.ResourcePreEvent || e.Type == engine.ResourceOutputsEvent ||
-				e.Type == engine.PolicyRemediationEvent) {
+			if diffEvent(e) {
 				events = append(events, e)
 			}
 			if callerEvents != nil {

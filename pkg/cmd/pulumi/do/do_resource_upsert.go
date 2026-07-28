@@ -352,7 +352,10 @@ func DefaultRunStatefulUpdate(
 	}
 
 	if req.DryRun {
-		_, _, err = backend.PreviewStack(ctx, req.Stack, op, nil /* events */)
+		err = backend.RunCollectingDiff(op.Opts.Display, nil, func(events chan<- engine.Event) error {
+			_, _, e := backend.PreviewStack(ctx, req.Stack, op, events)
+			return e
+		})
 	} else {
 		_, err = backend.UpdateStack(ctx, req.Stack, op, nil /* events */)
 	}
