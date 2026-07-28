@@ -514,7 +514,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		nil,
 		nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	processed := 0
@@ -780,7 +780,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		nil,
 		nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	processed, defaults := 0, make(map[string]struct{})
@@ -924,7 +924,7 @@ func TestRegistrationObserverResolveOnRegisterResource(t *testing.T) {
 		nil,
 		observer,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	for {
@@ -997,7 +997,7 @@ func TestRegistrationObserverNotResolvedForUnsuccessfulRegisterResource(t *testi
 			iter, err := NewEvalSource(
 				ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
 				NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-			).Iterate(t.Context(), &testProviderSource{})
+			).Iterate(t.Context(), &testProviderSource{}, nil)
 			require.NoError(t, err)
 
 			for {
@@ -1085,7 +1085,7 @@ func TestRegistrationObserverNotResolvedForLocalComponentOnRegister(t *testing.T
 		nil,
 		observer,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	for {
@@ -1213,7 +1213,7 @@ func TestRegistrationObserverComponentResolvedAtRegisterResourceOutputs(t *testi
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	driveIter(t, iter, runInfo)
@@ -1274,7 +1274,7 @@ func TestRegistrationObserverRemoteComponentNotResolvedOnRegister(t *testing.T) 
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{defaultProvider: provider})
+	).Iterate(t.Context(), &testProviderSource{defaultProvider: provider}, nil)
 	require.NoError(t, err)
 
 	driveIter(t, iter, runInfo)
@@ -1337,7 +1337,7 @@ func TestRegistrationObserverCustomResourceAliasesArePublished(t *testing.T) {
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	// Drive the iter. A custom resource implicitly requests a default provider, so two
@@ -1427,7 +1427,7 @@ func TestRegistrationObserverComponentAliasesArePublishedAtROC(t *testing.T) {
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, observer,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{}, nil)
 	require.NoError(t, err)
 
 	driveIter(t, iter, runInfo)
@@ -1516,7 +1516,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), providerSource)
+	).Iterate(t.Context(), providerSource, nil)
 	require.NoError(t, err)
 
 	reads := 0
@@ -1634,7 +1634,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	iter, err := NewEvalSource(
 		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 		NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-	).Iterate(t.Context(), providerSource)
+	).Iterate(t.Context(), providerSource, nil)
 	require.NoError(t, err)
 
 	reads, registers := 0, 0
@@ -1892,7 +1892,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 			iter, err := NewEvalSource(
 				ctx, runInfo, nil, nil, EvalSourceOptions{}, nil, nil,
 				NewProgramSource(ctx, runInfo, EvalSourceOptions{}, nil),
-			).Iterate(t.Context(), providerSource)
+			).Iterate(t.Context(), providerSource, nil)
 			require.NoError(t, err)
 
 			for {
@@ -2200,7 +2200,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 			}
 
 			ctx := t.Context()
-			iter, res := evalSource.Iterate(ctx, &testProviderSource{defaultProvider: provider})
+			iter, res := evalSource.Iterate(ctx, &testProviderSource{defaultProvider: provider}, nil)
 			require.Nil(t, res, "iterate eval source")
 
 			for ev, res := iter.Next(); ev != nil; ev, res = iter.Next() {
@@ -2713,7 +2713,7 @@ func TestEvalSource(t *testing.T) {
 					},
 				},
 			}
-			_, err := src.Iterate(t.Context(), &providerSourceMock{})
+			_, err := src.Iterate(t.Context(), &providerSourceMock{}, nil)
 			assert.ErrorContains(t, err, "failed to decrypt config")
 			assert.True(t, decrypterCalled)
 		})
@@ -2784,7 +2784,7 @@ func TestGetDeploymentInfo(t *testing.T) {
 			DisableOutputValues:       true,
 			DisableResourceReferences: false,
 		},
-	}, &providerSourceMock{}, nil, nil, nil, nil, programComplete.Promise(), cfg, secretKeys,
+	}, &providerSourceMock{}, nil, nil, nil, nil, nil, programComplete.Promise(), cfg, secretKeys,
 		opentracing.SpanFromContext(t.Context()))
 	require.NoError(t, err)
 
@@ -2814,6 +2814,7 @@ func TestGetDeploymentInfo(t *testing.T) {
 	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SECRETS)
 	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES)
 	assert.NotContains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES)
+	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON)
 }
 
 func TestSourceEvalServeOptions(t *testing.T) {
@@ -3007,7 +3008,7 @@ func TestInvoke(t *testing.T) {
 					return plugin.InvokeResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
+		}, nil, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -3071,7 +3072,7 @@ func TestInvoke(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
+		}, nil, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -3144,7 +3145,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
+		}, nil, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		abortChan := make(chan bool)
@@ -3245,7 +3246,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
+		}, nil, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		abortChan := make(chan bool)
@@ -3329,7 +3330,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
+		}, nil, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -3411,7 +3412,7 @@ func TestCall(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
+		}, nil, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -4170,4 +4171,63 @@ func TestDowngradeOutputValues(t *testing.T) {
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
+}
+
+// mapStateSource is a StateSource over a fixed set of states.
+type mapStateSource map[resource.URN]*pkgresource.State
+
+func (m mapStateSource) LookupState(urn resource.URN) (*pkgresource.State, bool) {
+	state, ok := m[urn]
+	return state, ok
+}
+
+func (m mapStateSource) EachState(f func(*pkgresource.State) bool) {
+	for _, state := range m {
+		if !f(state) {
+			return
+		}
+	}
+}
+
+// TestPendingInvokeDependenciesAwaitsRegistration covers a component provider that returns from Construct without
+// awaiting the children it registered. The children's registrations are still in flight and so have produced no state,
+// which a gate that only reads state would take for "no such resource" and let the invoke run early -- the very
+// ordering bug the gate exists to prevent. Nothing in the protocol requires a provider to await its children, so the
+// gate waits for the registrations instead of assuming it.
+func TestPendingInvokeDependenciesAwaitsRegistration(t *testing.T) {
+	t.Parallel()
+
+	comp := resource.URN("urn:pulumi:dev::proj::pkgA:m:typComponent::comp")
+	child := resource.URN("urn:pulumi:dev::proj::pkgA:m:typComponent$pkgA:m:typChild::child")
+
+	states := mapStateSource{comp: &pkgresource.State{URN: comp}}
+	rm := &resmon{state: states}
+	registered := rm.registrations.begin(comp)
+
+	type gateResult struct {
+		pending bool
+		err     error
+	}
+	gated := make(chan gateResult, 1)
+	go func() {
+		pending, err := rm.pendingInvokeDependencies([]string{string(comp)})
+		gated <- gateResult{pending: pending, err: err}
+	}()
+
+	select {
+	case <-gated:
+		t.Fatal("the gate answered while a registration beneath the dependency was still in flight")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	// Completing the registration publishes the child with no id, as a create does during a preview. The write is
+	// made under the tracker's lock so that it is ordered against the gate's reads of the state source.
+	rm.registrations.lock.Lock()
+	states[child] = &pkgresource.State{URN: child, Custom: true, Parent: comp}
+	rm.registrations.lock.Unlock()
+	registered()
+
+	result := <-gated
+	require.NoError(t, result.err)
+	assert.True(t, result.pending, "the child has no id, so the invoke's dependencies are pending")
 }

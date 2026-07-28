@@ -42,6 +42,16 @@ type ProviderSource interface {
 	GetProvider(ref providers.Reference) (plugin.Provider, bool)
 }
 
+// A StateSource provides access to the resource states produced so far by the current operation, whether registered or
+// read. May be nil for sources that have no state, such as tests driving a source directly.
+type StateSource interface {
+	// LookupState returns the state this operation has produced for the given URN, if any.
+	LookupState(urn resource.URN) (*pkgresource.State, bool)
+
+	// EachState calls f for each state this operation has produced, in no particular order, until f returns false.
+	EachState(f func(*pkgresource.State) bool)
+}
+
 // A Source can generate a new set of resources that the planner will process accordingly.
 type Source interface {
 	io.Closer
@@ -50,7 +60,8 @@ type Source interface {
 	Project() tokens.PackageName
 
 	// Iterate begins iterating the source. Error is non-nil upon failure; otherwise, a valid iterator is returned.
-	Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error)
+	// state provides visibility into the states the operation has produced so far and may be nil.
+	Iterate(ctx context.Context, providers ProviderSource, state StateSource) (SourceIterator, error)
 }
 
 // A SourceIterator enumerates the list of resources that a source has to offer and tracks associated state.

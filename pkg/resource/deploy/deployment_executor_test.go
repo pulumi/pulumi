@@ -212,7 +212,7 @@ type source struct {
 
 func (src *source) Close() error                { return nil }
 func (src *source) Project() tokens.PackageName { return "project" }
-func (src *source) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
+func (src *source) Iterate(ctx context.Context, providers ProviderSource, state StateSource) (SourceIterator, error) {
 	return src.iterator, nil
 }
 

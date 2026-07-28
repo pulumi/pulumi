@@ -93,6 +93,9 @@ enum ResourceMonitorFeature {
     // The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
     // string bytes signature and a base64 encoding of the string's bytes.
     RESOURCE_MONITOR_FEATURE_BYTE_STRING = 13;
+    // The monitor accepts `dependsOn` and `acceptsUnknowns` on `ResourceInvokeRequest` and gates the invoke on the
+    // created-ness of the dependencies, returning `unknown` on `ResourceInvokeResponse` when they are pending.
+    RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON = 14;
     // The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`.
     RESOURCE_MONITOR_FEATURE_INVOKE_PARENT = 15;
 }
@@ -312,6 +315,17 @@ message ResourceInvokeRequest {
     // carrying the byte string signature and a base64 encoding of the string's bytes.
     bool accepts_byte_string = 12;
 
+    // The URNs of the resources this invoke depends on.
+    //
+    // The engine will advertise `INVOKE_DEPENDS_ON` when it reads this field.
+    repeated string dependsOn = 13;
+
+    // True if the caller understands an unknown result: the `unknown` field on `ResourceInvokeResponse` and unknown
+    // property sentinels in `return`.
+    //
+    // The engine will advertise `INVOKE_DEPENDS_ON` when it reads this field.
+    bool acceptsUnknowns = 14;
+
     // An optional URN of the resource this invoke is parented to. When `provider` is empty, the invoke is served by
     // the provider its parent's `providers` option names for the invoke's package, the same resolution applied to
     // resource registrations. Only respected when the monitor advertises `INVOKE_PARENT`.
@@ -321,6 +335,11 @@ message ResourceInvokeRequest {
 message ResourceInvokeResponse {
     google.protobuf.Struct return = 1;  // the returned values, if invoke was successful.
     repeated CheckFailure failures = 2; // the failures if any arguments didn't pass verification.
+
+    // True if the result must be treated as wholly unknown, which the monitor reports when it declines to service an
+    // invoke whose dependencies are pending creation. Only sent to callers that set `acceptsUnknowns` on
+    // `ResourceInvokeRequest`.
+    bool unknown = 3;
 }
 
 message ResourceCallRequest {

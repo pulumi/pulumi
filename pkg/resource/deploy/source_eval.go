@@ -202,7 +202,9 @@ func (src *evalSource) Stack() tokens.StackName {
 }
 
 // Iterate will spawn an evaluator coroutine and prepare to interact with it on subsequent calls to Next.
-func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (SourceIterator, error) {
+func (src *evalSource) Iterate(
+	ctx context.Context, providers ProviderSource, state StateSource,
+) (SourceIterator, error) {
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
 	// Decrypt the configuration.
@@ -224,6 +226,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	mon, err := newResourceMonitor(
 		src,
 		providers,
+		state,
 		regChan,
 		regOutChan,
 		regReadChan,
@@ -417,10 +420,13 @@ type resmon struct {
 	parents     map[resource.URN]resource.URN // map of child URNs to their parent URNs
 	parentsLock sync.Mutex
 
+	registrations registrationTracker
+
 	resGoals               map[resource.URN]pkgresource.Goal  // map of seen URNs and their goals.
 	resGoalsLock           sync.Mutex                         // locks the resGoals map.
 	diagnostics            diag.Sink                          // logger for user-facing messages
 	providers              ProviderSource                     // the provider source itself.
+	state                  StateSource                        // the states produced so far by this operation; may be nil.
 	componentProviders     map[resource.URN]map[string]string // which providers component resources used
 	componentProvidersLock sync.Mutex                         // which locks the componentProviders map
 	defaultProviders       *defaultProviders                  // the default provider manager.
@@ -487,6 +493,7 @@ var _ SourceResourceMonitor = (*resmon)(nil)
 func newResourceMonitor(
 	src *evalSource,
 	provs ProviderSource,
+	state StateSource,
 	regChan chan *registerResourceEvent,
 	regOutChan chan *registerResourceOutputsEvent,
 	regReadChan chan *readResourceEvent,
@@ -515,6 +522,7 @@ func newResourceMonitor(
 	resmon := &resmon{
 		diagnostics:             src.plugctx.Diag,
 		providers:               provs,
+		state:                   state,
 		defaultProviders:        d,
 		workingDirectory:        src.runinfo.Pwd,
 		sourcePositions:         newSourcePositions(src.runinfo.ProjectRoot),
@@ -971,6 +979,7 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	}
 	return append(features,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_PARENT,
 	)
 }
@@ -1076,6 +1085,23 @@ func (rm *resmon) Invoke(
 		return nil, fmt.Errorf("Invoke: %w", err)
 	}
 
+	// If the caller declared dependencies, the invoke must observe the resources it depends on: expand the
+	// dependency set -- components, including remote components whose children the caller cannot see, aggregate
+	// every descendant reachable through component ancestors -- and require that each custom resource in it has
+	// been created. A custom resource without an id is pending: either this preview plans to create it, or this
+	// operation skipped its creation (e.g. --target). Either way the invoke cannot observe it, so the result is
+	// wholly unknown.
+	if len(req.GetDependsOn()) > 0 {
+		pending, err := rm.pendingInvokeDependencies(req.GetDependsOn())
+		if err != nil {
+			return nil, err
+		}
+		if pending {
+			logging.V(5).Infof("ResourceMonitor.Invoke: tok=%v has pending dependencies, returning unknown", tok)
+			return unknownInvokeResponse(req.GetAcceptsUnknowns(), rm.workingDirectory)
+		}
+	}
+
 	// Do the invoke and then return the arguments.
 	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	resp, err := prov.Invoke(ctx, plugin.InvokeRequest{
@@ -1114,6 +1140,144 @@ func (rm *resmon) Invoke(
 		})
 	}
 	return &pulumirpc.ResourceInvokeResponse{Return: mret, Failures: chkfails}, nil
+}
+
+// pendingInvokeDependencies reports whether any custom resource in the expansion of the given dependency URNs has not
+// been created by this operation. The expansion mirrors the SDKs' client-side rule: a custom resource contributes only
+// itself, and a component aggregates every descendant reachable through component ancestors, stopping at the first
+// custom resource on each branch. URNs that don't resolve to a state produced by this operation are skipped: the
+// caller could not see them either.
+func (rm *resmon) pendingInvokeDependencies(dependsOn []string) (bool, error) {
+	roots := map[resource.URN]struct{}{}
+	for _, dep := range dependsOn {
+		urn, err := resource.ParseURN(dep)
+		if err != nil {
+			return false, fmt.Errorf("invalid dependsOn URN %q: %w", dep, err)
+		}
+		roots[urn] = struct{}{}
+	}
+	if rm.state == nil {
+		return false, nil
+	}
+
+	// A registration in flight beneath a dependency has produced no state yet. Wait for it rather than reading the
+	// resource it registers as absent: nothing in the protocol requires a component provider to await the children
+	// it registered before returning from Construct, so the gate cannot assume it did.
+	rm.registrations.await(func(parent resource.URN) bool {
+		return rm.underComponentRoot(parent, roots)
+	})
+
+	for urn := range roots {
+		if state, ok := rm.state.LookupState(urn); ok {
+			state.Lock.Lock()
+			pending := state.Custom && state.ID == ""
+			state.Lock.Unlock()
+			if pending {
+				return true, nil
+			}
+		} else {
+			logging.V(5).Infof("pendingInvokeDependencies: no state for %v, skipping", urn)
+		}
+	}
+
+	for state := range rm.state.EachState {
+		state.Lock.Lock()
+		custom, id, parent := state.Custom, state.ID, state.Parent
+		state.Lock.Unlock()
+		if custom && id == "" && rm.underComponentRoot(parent, roots) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// underComponentRoot reports whether urn or one of its ancestors is a root, walking up through component ancestors
+// only: the first custom resource on the branch ends the walk, because a custom resource contributes only itself. An
+// ancestor with no state has a registration that has not completed, and is accounted for by awaitRegistrations.
+func (rm *resmon) underComponentRoot(urn resource.URN, roots map[resource.URN]struct{}) bool {
+	for current := urn; current != ""; {
+		state, ok := rm.state.LookupState(current)
+		if !ok {
+			return false
+		}
+		state.Lock.Lock()
+		custom, parent := state.Custom, state.Parent
+		state.Lock.Unlock()
+		if custom {
+			return false
+		}
+		if _, isRoot := roots[current]; isRoot {
+			return true
+		}
+		current = parent
+	}
+	return false
+}
+
+// registrationTracker counts the RegisterResource calls in flight beneath each requested parent URN. Until such a call
+// completes it has produced no state, leaving the resource it registers invisible to a StateSource; waiting on the
+// tracker is how the invoke gate tells that resource apart from one that does not exist. The zero value is ready to
+// use.
+type registrationTracker struct {
+	lock  sync.Mutex
+	done  *sync.Cond
+	count map[resource.URN]int
+}
+
+// begin records a registration in flight beneath parent, returning the function that records its completion.
+func (t *registrationTracker) begin(parent resource.URN) func() {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	if t.count == nil {
+		t.count, t.done = map[resource.URN]int{}, sync.NewCond(&t.lock)
+	}
+	t.count[parent]++
+
+	return func() {
+		t.lock.Lock()
+		defer t.lock.Unlock()
+		if t.count[parent]--; t.count[parent] == 0 {
+			delete(t.count, parent)
+		}
+		t.done.Broadcast()
+	}
+}
+
+// await blocks until no registration is in flight beneath a parent for which under reports true. Registrations always
+// complete, so this terminates.
+func (t *registrationTracker) await(under func(parent resource.URN) bool) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
+	for {
+		waitingOn := resource.URN("")
+		for parent := range t.count {
+			if under(parent) {
+				waitingOn = parent
+				break
+			}
+		}
+		if waitingOn == "" {
+			return
+		}
+		logging.V(5).Infof("invoke gate waiting on a registration beneath %v", waitingOn)
+		t.done.Wait()
+	}
+}
+
+// unknownInvokeResponse is the response for an invoke whose result is wholly unknown: the unknown marker for callers
+// that understand it, and the empty result for callers that don't.
+func unknownInvokeResponse(acceptsUnknowns bool, workingDirectory string) (*pulumirpc.ResourceInvokeResponse, error) {
+	if acceptsUnknowns {
+		return &pulumirpc.ResourceInvokeResponse{Unknown: true}, nil
+	}
+	empty, err := plugin.MarshalProperties(resource.PropertyMap{}, plugin.MarshalOptions{
+		WorkingDirectory: workingDirectory,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.ResourceInvokeResponse{Return: empty}, nil
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.
@@ -2152,6 +2316,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
 	}
+
+	defer rm.registrations.begin(parent)()
 
 	if parent != "" {
 		rm.resGoalsLock.Lock()
