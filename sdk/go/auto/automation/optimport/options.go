@@ -62,7 +62,7 @@ type Options struct {
 	Memprofilerate int
 	// Optional message to associate with the update operation
 	Message string
-	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors
+	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
 	// The path to the file that will contain the generated resource declarations
 	Out string

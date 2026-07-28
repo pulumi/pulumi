@@ -69,7 +69,7 @@ class API:
         :param logflow: Flow log settings to child processes (like plugins)
         :param logtostderr: Log to stderr instead of to files
         :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
-        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
         :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
@@ -174,7 +174,7 @@ class API:
         :param logflow: Flow log settings to child processes (like plugins)
         :param logtostderr: Log to stderr instead of to files
         :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
-        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
         :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
@@ -342,7 +342,7 @@ class API:
         :param logflow: Flow log settings to child processes (like plugins)
         :param logtostderr: Log to stderr instead of to files
         :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
-        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
         :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
@@ -467,7 +467,7 @@ class API:
         :param logflow: Flow log settings to child processes (like plugins)
         :param logtostderr: Log to stderr instead of to files
         :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
-        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
         :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
@@ -547,7 +547,7 @@ class API:
         :param logflow: Flow log settings to child processes (like plugins)
         :param logtostderr: Log to stderr instead of to files
         :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
-        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
         :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
@@ -643,7 +643,7 @@ class API:
         :param logflow: Flow log settings to child processes (like plugins)
         :param logtostderr: Log to stderr instead of to files
         :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
-        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
         :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
@@ -737,7 +737,7 @@ class API:
         :param logflow: Flow log settings to child processes (like plugins)
         :param logtostderr: Log to stderr instead of to files
         :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
-        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
         :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
@@ -813,7 +813,7 @@ class API:
         :param logflow: Flow log settings to child processes (like plugins)
         :param logtostderr: Log to stderr instead of to files
         :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
-        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// for remote collectors
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
         :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
