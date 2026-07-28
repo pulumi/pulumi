@@ -1,4 +1,0 @@
-component: cli/import
-kind: fix
-body: Fix import file generation when parent resources share names
-time: 2026-07-24T16:39:49.824025259+01:00

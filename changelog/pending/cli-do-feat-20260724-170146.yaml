@@ -1,4 +1,0 @@
-component: cli/do
-kind: feat
-body: Add `--resources` to refer to existing resources in state in `do` input expressions
-time: 2026-07-24T17:01:46.483564+01:00

@@ -1,4 +1,0 @@
-component: sdk/python
-kind: improvement
-body: Allow `UV_PROJECT_ENVIRONMENT` to override the virtualenv path if uv is used
-time: 2026-07-27T11:19:15.36565495+02:00

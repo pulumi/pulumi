@@ -1,4 +1,0 @@
-component: cli
-kind: improvement
-body: Allow otel traces to be sent over https
-time: 2026-07-27T12:20:20.003939991+02:00
