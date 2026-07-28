@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -393,8 +394,8 @@ func (p *CallProvider) callCustomProviderValue(
 	result := provValue.GetStringValue() + resValue.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]any{
-			"result": result,
+		Return: property.NewMap(map[string]property.Value{
+			"result": property.New(result),
 		}),
 	}, nil
 }
@@ -423,8 +424,8 @@ func (p *CallProvider) callProviderIdentity(
 	result := value.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]any{
-			"result": result,
+		Return: property.NewMap(map[string]property.Value{
+			"result": property.New(result),
 		}),
 	}, nil
 }
@@ -466,8 +467,8 @@ func (p *CallProvider) callProviderPrefixed(
 	result := prefix.StringValue() + value.GetStringValue()
 
 	return plugin.CallResponse{
-		Return: resource.NewPropertyMapFromMap(map[string]any{
-			"result": result,
+		Return: property.NewMap(map[string]property.Value{
+			"result": property.New(result),
 		}),
 	}, nil
 }

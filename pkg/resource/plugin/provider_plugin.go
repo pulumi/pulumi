@@ -2388,7 +2388,10 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	}
 
 	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
-	return CallResult{Return: ret, ReturnDependencies: returnDependencies, Failures: failures}, nil
+	return CallResult{
+		Return:             resource.FromResourcePropertyMap(ret),
+		ReturnDependencies: returnDependencies, Failures: failures,
+	}, nil
 }
 
 // GetPluginInfo returns this plugin's information.

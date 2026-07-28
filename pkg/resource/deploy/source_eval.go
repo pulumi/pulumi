@@ -1301,7 +1301,8 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	if ret.ReturnDependencies == nil {
 		ret.ReturnDependencies = map[resource.PropertyKey][]resource.URN{}
 	}
-	for k, v := range ret.Return {
+	retReturn := resource.ToResourcePropertyMap(ret.Return)
+	for k, v := range retReturn {
 		ret.ReturnDependencies[k] = extendOutputDependencies(ret.ReturnDependencies[k], v)
 	}
 
@@ -1314,7 +1315,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
-	mret, err := plugin.MarshalProperties(ret.Return, plugin.MarshalOptions{
+	mret, err := plugin.MarshalProperties(retReturn, plugin.MarshalOptions{
 		Label:            label,
 		KeepUnknowns:     true,
 		KeepSecrets:      true,

@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -193,9 +194,9 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 					}, req.Options.ArgDependencies)
 
 					return plugin.CallResponse{
-						Return: resource.PropertyMap{
-							"output": resource.NewProperty("output"),
-						},
+						Return: property.NewMap(map[string]property.Value{
+							"output": property.New("output"),
+						}),
 						ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 							"output": {"urn:pulumi:stack::m::typA::resB"},
 						},

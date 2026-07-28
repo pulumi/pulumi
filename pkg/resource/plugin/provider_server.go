@@ -1069,7 +1069,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 
 	opts := p.marshalOptions("return")
 	opts.KeepOutputValues = req.AcceptsOutputValues
-	rpcResult, err := MarshalProperties(result.Return, opts)
+	rpcResult, err := MarshalProperties(resource.ToResourcePropertyMap(result.Return), opts)
 	if err != nil {
 		return nil, err
 	}

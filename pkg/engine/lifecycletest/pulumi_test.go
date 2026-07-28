@@ -2358,8 +2358,8 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 					}
 
 					return plugin.CallResponse{
-						Return: resource.NewPropertyMapFromMap(map[string]any{
-							"message": ret,
+						Return: property.NewMap(map[string]property.Value{
+							"message": property.New(ret),
 						}),
 					}, nil
 				},
