@@ -29,6 +29,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -576,6 +578,16 @@ func resourceMonitorClientWithoutFeatures(
 		ResourceMonitorClient: cl,
 		notFeatures:           notFeatureSet,
 	}
+}
+
+// GetDeploymentInfo returns Unimplemented so that feature detection falls back to
+// SupportsFeature, where notFeatures is applied.
+func (c *resmonClientWithFeatures) GetDeploymentInfo(
+	ctx context.Context,
+	req *emptypb.Empty,
+	opts ...grpc.CallOption,
+) (*pulumirpc.DeploymentInfo, error) {
+	return nil, status.Error(codes.Unimplemented, "GetDeploymentInfo is not implemented")
 }
 
 func (c *resmonClientWithFeatures) SupportsFeature(

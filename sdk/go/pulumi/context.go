@@ -147,81 +147,27 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		monitor = wrap(monitor)
 	}
 
-	supportsFeature := func(id string) (bool, error) {
-		if monitor != nil {
-			resp, err := monitor.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{Id: id})
-			if err != nil {
-				return false, fmt.Errorf("checking monitor features: %w", err)
-			}
-			return resp.GetHasSupport(), nil
-		}
-		return false, nil
-	}
-
-	keepResources, err := supportsFeature("resourceReferences")
-	if err != nil {
-		return nil, err
-	}
-
-	keepOutputValues, err := supportsFeature("outputValues")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsDeletedWith, err := supportsFeature("deletedWith")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsReplaceWith, err := supportsFeature("replaceWith")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsAliasSpecs, err := supportsFeature("aliasSpecs")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsTransforms, err := supportsFeature("transforms")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsInvokeTransforms, err := supportsFeature("invokeTransforms")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsParameterization, err := supportsFeature("parameterization")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsResourceHooks, err := supportsFeature("resourceHooks")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsErrorHooks, err := supportsFeature("errorHooks")
-	if err != nil {
-		return nil, err
-	}
-
-	// Newer monitor capabilities are advertised via GetDeploymentInfo rather than SupportsFeature. Older
-	// monitors don't implement it, which is treated as supporting no such capabilities.
-	keepByteString := false
+	var monitorFeatures []pulumirpc.ResourceMonitorFeature
 	if monitor != nil {
-		info, err := monitor.GetDeploymentInfo(ctx, &emptypb.Empty{})
-		if err != nil {
-			if status.Code(err) != codes.Unimplemented {
-				return nil, fmt.Errorf("checking monitor features: %w", err)
+		deploymentInfo, err := monitor.GetDeploymentInfo(ctx, &emptypb.Empty{})
+		if err == nil {
+			monitorFeatures = deploymentInfo.GetSupportedFeatures()
+		} else if status.Code(err) == codes.Unimplemented {
+			for _, k := range slices.Sorted(maps.Keys(legacyFeatureMapping)) {
+				r, err := monitor.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{Id: k})
+				if err != nil {
+					return nil, fmt.Errorf("checking monitor feature %q: %w", k, err)
+				}
+				if r.GetHasSupport() {
+					monitorFeatures = append(monitorFeatures, legacyFeatureMapping[k])
+				}
 			}
 		} else {
-			keepByteString = slices.Contains(info.GetSupportedFeatures(),
-				pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING)
+			return nil, fmt.Errorf("checking monitor features: %w", err)
 		}
 	}
+
+	has := func(feature pulumirpc.ResourceMonitorFeature) bool { return slices.Contains(monitorFeatures, feature) }
 
 	contextState := &contextState{
 		info:                     info,
@@ -230,17 +176,17 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		monitor:                  monitor,
 		engineConn:               engineConn,
 		engine:                   engine,
-		keepResources:            keepResources,
-		keepOutputValues:         keepOutputValues,
-		keepByteString:           keepByteString,
-		supportsDeletedWith:      supportsDeletedWith,
-		supportsReplaceWith:      supportsReplaceWith,
-		supportsAliasSpecs:       supportsAliasSpecs,
-		supportsTransforms:       supportsTransforms,
-		supportsInvokeTransforms: supportsInvokeTransforms,
-		supportsParameterization: supportsParameterization,
-		supportsResourceHooks:    supportsResourceHooks,
-		supportsErrorHooks:       supportsErrorHooks,
+		keepResources:            has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES),
+		keepOutputValues:         has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES),
+		keepByteString:           has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING),
+		supportsDeletedWith:      has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_DELETED_WITH),
+		supportsReplaceWith:      has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REPLACE_WITH),
+		supportsAliasSpecs:       has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ALIAS_SPECS),
+		supportsTransforms:       has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_TRANSFORMS),
+		supportsInvokeTransforms: has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS),
+		supportsParameterization: has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_PARAMETERIZATION),
+		supportsResourceHooks:    has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS),
+		supportsErrorHooks:       has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS),
 		registeredOutputs:        make(map[URN]bool),
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
@@ -255,6 +201,22 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	}
 
 	return context, nil
+}
+
+// A frozen map of old feature IDs to the new resource monitor features.
+//
+// This map should never be updated.
+var legacyFeatureMapping = map[string]pulumirpc.ResourceMonitorFeature{
+	"resourceReferences": pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+	"outputValues":       pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES,
+	"deletedWith":        pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+	"replaceWith":        pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+	"aliasSpecs":         pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
+	"transforms":         pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_TRANSFORMS,
+	"invokeTransforms":   pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+	"parameterization":   pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+	"resourceHooks":      pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+	"errorHooks":         pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
 }
 
 // Context returns the base context used to instantiate the current context.
