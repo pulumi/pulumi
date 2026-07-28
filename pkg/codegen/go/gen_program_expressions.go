@@ -1468,7 +1468,15 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			return string(*destType)
 		}
 	case *model.ObjectType:
-
+		// If this ObjectType was synthesized from a component's config
+		// variable, we know the generated Go struct name — use it (as a
+		// pointer, matching how values are rendered) rather than falling
+		// back to map[string]interface{}.
+		if !isInput {
+			if md, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](destType); ok {
+				return "*" + md.TypeName
+			}
+		}
 		if isInput {
 			// check for element type uniformity and return appropriate type if so
 			allSameType := true

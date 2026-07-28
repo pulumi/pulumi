@@ -41,7 +41,7 @@ func main() {
 				KeyBase64:     "base64 encoded key",
 				WebhookSecret: "very important secret",
 			},
-			Servers: []map[string]interface{}{
+			Servers: []*ServersArgs{
 				&ServersArgs{
 					Name: "First",
 				},
