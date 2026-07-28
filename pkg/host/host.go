@@ -328,6 +328,7 @@ func (host *defaultHost) PolicyAnalyzer(
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(ctx.Request())
 			if infoerr != nil {
+				contract.IgnoreError(plug.Close())
 				return nil, infoerr
 			}
 
@@ -372,6 +373,7 @@ func (host *defaultHost) Provider(
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(ctx.Request())
 			if infoerr != nil {
+				contract.IgnoreError(plug.Close())
 				return nil, infoerr
 			}
 
@@ -469,6 +471,7 @@ func (host *defaultHost) LanguageRuntime(ctx *plugin.Context, runtime string,
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(ctx.Request())
 			if infoerr != nil {
+				contract.IgnoreError(plug.Close())
 				return nil, infoerr
 			}
 

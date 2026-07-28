@@ -255,6 +255,9 @@ func NewPolicyAnalyzer(
 				logging.V(7).Infof("StackConfigure: not supported by '%v'", name)
 			} else {
 				logging.V(7).Infof("StackConfigure: failed: err=%v", status)
+				if closeErr := plug.Close(); closeErr != nil {
+					logging.V(7).Infof("StackConfigure: failed to close plugin: err=%v", closeErr)
+				}
 				return nil, rpcerror.Convert(err)
 			}
 		}
