@@ -2,7 +2,7 @@ module github.com/pulumi/pulumi/sdk/v3
 
 go 1.25.11
 
-replace golang.org/x/text => golang.org/x/text v0.3.8
+replace golang.org/x/text => golang.org/x/text v0.39.0
 
 replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 
@@ -26,10 +26,10 @@ require (
 	github.com/texttheater/golang-levenshtein v1.0.1
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	go.opentelemetry.io/otel/bridge/opentracing v1.33.0
-	golang.org/x/crypto v0.52.0
-	golang.org/x/mod v0.35.0 // indirect
-	golang.org/x/net v0.55.0
-	golang.org/x/sys v0.45.0
+	golang.org/x/crypto v0.53.0
+	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/net v0.56.0
+	golang.org/x/sys v0.46.0
 	google.golang.org/grpc v1.82.1
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -49,7 +49,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.22.0
 	github.com/iancoleman/strcase v0.2.0
 	github.com/iwdgo/sigintwindows v0.2.2
-	github.com/klauspost/compress v1.18.0
+	github.com/klauspost/compress v1.18.7
 	github.com/pgavlin/fx v0.1.6
 	github.com/pgavlin/fx/v2 v2.0.12
 	github.com/pkg/term v1.1.0
@@ -57,15 +57,15 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	go.opentelemetry.io/collector/pdata v1.53.0
 	go.opentelemetry.io/contrib/bridges/otelslog v0.18.0
-	go.opentelemetry.io/otel v1.43.0
+	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.19.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.41.0
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.opentelemetry.io/otel/sdk/log v0.19.0
-	go.opentelemetry.io/otel/trace v1.43.0
+	go.opentelemetry.io/otel/trace v1.44.0
 	go.opentelemetry.io/proto/otlp v1.10.0
-	golang.org/x/sync v0.20.0
-	golang.org/x/term v0.43.0
+	golang.org/x/sync v0.21.0
+	golang.org/x/term v0.44.0
 	lukechampine.com/frand v1.4.2
 )
 
@@ -118,10 +118,10 @@ require (
 	go.opentelemetry.io/collector/featuregate v1.53.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.41.0 // indirect
 	go.opentelemetry.io/otel/log v0.19.0 // indirect
-	go.opentelemetry.io/otel/metric v1.43.0 // indirect
+	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
-	golang.org/x/tools v0.44.0 // indirect
+	golang.org/x/tools v0.47.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
 )
@@ -141,7 +141,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/text v0.37.0
+	golang.org/x/text v0.39.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 )
