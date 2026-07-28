@@ -135,7 +135,7 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 					logging.V(10).Infof("Sync invoke: Received error invoking: %s\n", err)
 					logging.V(10).Infof("Sync invoke: Converting error to response.\n")
 					if res == nil {
-						res = &pulumirpc.InvokeResponse{}
+						res = &pulumirpc.ResourceInvokeResponse{}
 					}
 
 					res.Failures = append(res.Failures, &pulumirpc.CheckFailure{
@@ -191,7 +191,7 @@ type monitorProxy struct {
 
 func (p *monitorProxy) Invoke(
 	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
-) (*pulumirpc.InvokeResponse, error) {
+) (*pulumirpc.ResourceInvokeResponse, error) {
 	return p.target.Invoke(ctx, req)
 }
 

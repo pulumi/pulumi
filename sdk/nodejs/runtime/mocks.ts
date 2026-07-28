@@ -144,7 +144,7 @@ export class MockMonitor {
                 if (!registeredResource) {
                     throw new Error(`unknown resource ${inputs.urn}`);
                 }
-                const resp = new provproto.InvokeResponse();
+                const resp = new resproto.ResourceInvokeResponse();
                 resp.setReturn(structproto.Struct.fromJavaScript(registeredResource));
                 callback(null, resp);
                 return;
@@ -155,7 +155,7 @@ export class MockMonitor {
                 inputs: inputs,
                 provider: req.getProvider(),
             });
-            const response = new provproto.InvokeResponse();
+            const response = new resproto.ResourceInvokeResponse();
             response.setReturn(structproto.Struct.fromJavaScript(await serializeProperties("", result)));
             callback(null, response);
         } catch (err) {

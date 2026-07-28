@@ -64,7 +64,7 @@ type mockResmon struct {
 	CancelF func(ctx context.Context) error
 
 	InvokeF func(ctx context.Context,
-		req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
+		req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error)
 
 	CallF func(ctx context.Context,
 		req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
@@ -106,7 +106,7 @@ func (rm *mockResmon) Cancel(ctx context.Context) error {
 
 func (rm *mockResmon) Invoke(ctx context.Context,
 	req *pulumirpc.ResourceInvokeRequest,
-) (*pulumirpc.InvokeResponse, error) {
+) (*pulumirpc.ResourceInvokeResponse, error) {
 	if rm.InvokeF != nil {
 		return rm.InvokeF(ctx, req)
 	}

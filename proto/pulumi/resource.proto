@@ -39,7 +39,7 @@ service ResourceMonitor {
     rpc GetDeploymentInfo(google.protobuf.Empty) returns (DeploymentInfo) {}
 
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
-    rpc Invoke(ResourceInvokeRequest) returns (InvokeResponse) {}
+    rpc Invoke(ResourceInvokeRequest) returns (ResourceInvokeResponse) {}
     rpc Call(ResourceCallRequest) returns (CallResponse) {}
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
@@ -316,6 +316,11 @@ message ResourceInvokeRequest {
     // the provider its parent's `providers` option names for the invoke's package, the same resolution applied to
     // resource registrations. Only respected when the monitor advertises `INVOKE_PARENT`.
     string parent = 15;
+}
+
+message ResourceInvokeResponse {
+    google.protobuf.Struct return = 1;  // the returned values, if invoke was successful.
+    repeated CheckFailure failures = 2; // the failures if any arguments didn't pass verification.
 }
 
 message ResourceCallRequest {

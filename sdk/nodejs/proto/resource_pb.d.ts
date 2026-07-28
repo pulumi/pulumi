@@ -671,6 +671,34 @@ export namespace ResourceInvokeRequest {
     }
 }
 
+export class ResourceInvokeResponse extends jspb.Message { 
+
+    hasReturn(): boolean;
+    clearReturn(): void;
+    getReturn(): google_protobuf_struct_pb.Struct | undefined;
+    setReturn(value?: google_protobuf_struct_pb.Struct): ResourceInvokeResponse;
+    clearFailuresList(): void;
+    getFailuresList(): Array<pulumi_provider_pb.CheckFailure>;
+    setFailuresList(value: Array<pulumi_provider_pb.CheckFailure>): ResourceInvokeResponse;
+    addFailures(value?: pulumi_provider_pb.CheckFailure, index?: number): pulumi_provider_pb.CheckFailure;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ResourceInvokeResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ResourceInvokeResponse): ResourceInvokeResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ResourceInvokeResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResourceInvokeResponse;
+    static deserializeBinaryFromReader(message: ResourceInvokeResponse, reader: jspb.BinaryReader): ResourceInvokeResponse;
+}
+
+export namespace ResourceInvokeResponse {
+    export type AsObject = {
+        pb_return?: google_protobuf_struct_pb.Struct.AsObject,
+        failuresList: Array<pulumi_provider_pb.CheckFailure.AsObject>,
+    }
+}
+
 export class ResourceCallRequest extends jspb.Message { 
     getTok(): string;
     setTok(value: string): ResourceCallRequest;

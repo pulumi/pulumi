@@ -296,7 +296,7 @@ func evaluatePCL(
 		func(context.Context, resource.ResourceReference) (resource.PropertyMap, error) {
 			return nil, notSupported("reference resources")
 		},
-		func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
+		func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error) {
 			return nil, notSupported("invoke functions")
 		},
 		func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error) {

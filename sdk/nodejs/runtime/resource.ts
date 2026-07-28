@@ -242,7 +242,7 @@ export function getResource(
                                         req,
                                         (
                                             rpcError: grpc.ServiceError | null,
-                                            innerResponse: provproto.InvokeResponse | undefined,
+                                            innerResponse: resproto.ResourceInvokeResponse | undefined,
                                         ) => {
                                             log.debug(
                                                 `getResource Invoke RPC finished: err: ${rpcError}, resp: ${innerResponse}`,
