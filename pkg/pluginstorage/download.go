@@ -104,8 +104,12 @@ func UnpackContents(
 		}
 
 		// Either the partial file exists--meaning a previous attempt at installing the plugin failed--or we're
-		// deliberately reinstalling the plugin. Delete finalDir so we can try installing again. There's no need to
-		// delete the partial file since we'd just be recreating it again below anyway.
+		// deliberately reinstalling the plugin. Delete finalDir so we can try installing again. Create the partial
+		// file before deleting so concurrent processes never observe the directory mid-deletion as a completed
+		// install.
+		if err := os.WriteFile(partialFilePath, nil, 0o600); err != nil {
+			return nil, err
+		}
 		if err := os.RemoveAll(finalDir); err != nil {
 			return nil, err
 		}

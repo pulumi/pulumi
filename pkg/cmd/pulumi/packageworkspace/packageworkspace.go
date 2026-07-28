@@ -203,7 +203,7 @@ func (w Workspace) DownloadPlugin(
 			"Unpacking provider "+pluginSpec.Name, diagutils.GetGlobalColorization())
 	}
 	cleanup, err := pluginstorage.UnpackContents(
-		ctx, pluginSpec, pluginstorage.TarPlugin(unpackStream), true, /* reinstall */
+		ctx, pluginSpec, pluginstorage.TarPlugin(unpackStream), false, /* reinstall */
 	)
 	if err != nil {
 		return "", nil, err
