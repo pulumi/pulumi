@@ -1,0 +1,4 @@
+component: sdkgen/go
+kind: fix
+body: Fixes nested optional output conversions
+time: 2026-07-28T15:48:26.664135+02:00

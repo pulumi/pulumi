@@ -33,6 +33,16 @@ func main() {
 		if err != nil {
 			return err
 		}
+		_, err = optionalprimitiveref.NewResource(ctx, "fromNestedOptional", &optionalprimitiveref.ResourceArgs{
+			Data: &optionalprimitiveref.DataArgs{
+				String: setRes.Data.ApplyT(func(data optionalprimitiveref.Data) (*string, error) {
+					return data.String, nil
+				}).(pulumi.StringPtrOutput),
+			},
+		})
+		if err != nil {
+			return err
+		}
 		ctx.Export("setBoolean", setRes.Data.ApplyT(func(data optionalprimitiveref.Data) (*bool, error) {
 			return data.Boolean, nil
 		}).(pulumi.BoolPtrOutput))

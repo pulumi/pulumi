@@ -422,6 +422,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					// interface type strips those methods and breaks use in
 					// pulumi.AssetOrArchiveArray, etc.
 					g.Fgenf(w, "%.v", from)
+				} else if isFromOutput &&
+					model.IsOptionalType(model.ResolveOutputs(fromType)) &&
+					pcl.UnwrapOption(model.ResolveOutputs(fromType)).Equals(to) {
+					// Optional scalar outputs are represented by pointer outputs in Go. When the
+					// destination is the corresponding optional input, the output already implements
+					// that input interface. Wrapping it in the value constructor would not compile.
+					g.Fgenf(w, "%.v", from)
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
 				}
