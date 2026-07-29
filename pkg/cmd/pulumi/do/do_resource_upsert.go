@@ -158,7 +158,7 @@ func (pc *packageCommand) newStatelessResourceUpsertCommand(res *schema.Resource
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
 			}
-			if read.Outputs == nil {
+			if readNotFound(read) {
 				return pc.runStatelessCreate(cmd, res, yes, func() (resource.PropertyMap, error) {
 					return inputs, nil
 				})
