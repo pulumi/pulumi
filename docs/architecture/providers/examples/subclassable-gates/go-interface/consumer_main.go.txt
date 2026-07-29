@@ -1,0 +1,35 @@
+// Demonstrates that the interface projection gives Go the polymorphism struct embedding cannot:
+// a heterogeneous []delivery.Gate, a uniform call over the inherited surface, and a downcast via
+// type assertion (Go's answer to "QueryInterface" -- given the base view, recover the subtype).
+package main
+
+import (
+	"fmt"
+
+	"example.com/go-iface/delivery"
+)
+
+func main() {
+	approval := &delivery.ApprovalGate{}
+	metric := &delivery.MetricGate{}
+
+	// The payoff: differently-typed gates held uniformly as the base interface. This line does NOT
+	// compile if Gate is a struct (embedding is not subtyping); it compiles because Gate is an
+	// interface both subclasses satisfy.
+	gates := []delivery.Gate{approval, metric}
+
+	for _, g := range gates {
+		// Uniform call over the inherited surface (GetStatus/Explain come from GateBase).
+		_ = g.GetStatus()
+		_ = g.Explain()
+		_ = g.URN() // inherited from the embedded pulumi.ResourceState
+
+		// Downcast: recover the concrete subtype from the base interface (the QueryInterface move).
+		switch t := g.(type) {
+		case *delivery.MetricGate:
+			fmt.Printf("metric gate, query=%v\n", t.Query)
+		case *delivery.ApprovalGate:
+			fmt.Printf("approval gate, approvers=%v\n", t.Approvers)
+		}
+	}
+}
