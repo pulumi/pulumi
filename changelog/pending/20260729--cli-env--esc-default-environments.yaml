@@ -1,0 +1,6 @@
+component: cli/env
+kind: feat
+body: Infer a default environment for esc commands from the nearest .esc.yaml file
+  or the selected Pulumi stack, show it with `esc env default`, and annotate it in
+  `esc env ls`
+time: 2026-07-29T00:00:00+00:00

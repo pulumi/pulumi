@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -68,15 +69,16 @@ func (d *defaultEnvironment) description() string {
 		return fmt.Sprintf("environment: %v\n", d.ref.String())
 	}
 
-	s := "environment:\n"
+	var s strings.Builder
+	s.WriteString("environment:\n")
 	if d.orgName != "" {
-		s += fmt.Sprintf("  organization: %v\n", d.orgName)
+		fmt.Fprintf(&s, "  organization: %v\n", d.orgName)
 	}
-	s += "  imports:\n"
+	s.WriteString("  imports:\n")
 	for _, imp := range d.imports {
-		s += fmt.Sprintf("    - %v\n", imp)
+		fmt.Fprintf(&s, "    - %v\n", imp)
 	}
-	return s
+	return s.String()
 }
 
 // resolveDefaultEnvironment infers the default environment for the current working directory. It
