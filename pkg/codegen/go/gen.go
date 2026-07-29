@@ -5504,7 +5504,7 @@ func GeneratePackage(tool string,
 		err = gomod.AddGoStmt("1.25")
 		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
-		pulumiVersion := "v3.255.0"
+		pulumiVersion := "v3.256.0"
 		err = gomod.AddRequire(pulumiPackagePath, pulumiVersion)
 		contract.AssertNoErrorf(err, "could not add require statement to go.mod")
 		if replacementPath, hasReplacement := localDependencies["pulumi"]; hasReplacement {
