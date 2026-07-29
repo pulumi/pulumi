@@ -1973,12 +1973,12 @@ func (i *Interpreter) registerResourceWith(
 		return cty.NilVal, err
 	}
 
-	skippedCreate := custom && !i.info.DryRun && resp.GetSkippedCreate()
+	unknown := custom && !i.info.DryRun && resp.GetUnknown()
 
 	// During previews a created resource has no ID yet, and a skipped create never gets
 	// one; represent it as unknown rather than a known empty string so it can't be
 	// observed as a real value.
-	if id := resp.GetId(); id == "" && (i.info.DryRun || skippedCreate) {
+	if id := resp.GetId(); id == "" && (i.info.DryRun || unknown) {
 		outputs["id"] = resource.MakeComputed(resource.NewProperty(""))
 	} else {
 		outputs["id"] = resource.NewProperty(id)
@@ -1993,7 +1993,7 @@ func (i *Interpreter) registerResourceWith(
 	// - preview or skipped create: unknown/computed
 	// - update: explicit null
 	if schemaResource != nil {
-		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || skippedCreate)
+		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || unknown)
 	}
 
 	result := resource.NewProperty(resource.Output{

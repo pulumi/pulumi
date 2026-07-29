@@ -3080,7 +3080,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		Object:               obj,
 		PropertyDependencies: outputDeps,
 		Result:               reason,
-		SkippedCreate:        result.SkippedCreate,
+		Unknown:              result.Unknown,
 	}, nil
 }
 

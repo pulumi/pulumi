@@ -105,9 +105,9 @@ type RegisterResourceEvent interface {
 
 // RegisterResult is the state of the resource after it has been registered.
 type RegisterResult struct {
-	State         *pkgresource.State // the resource state.
-	Result        ResultState        // the result of the registration.
-	SkippedCreate bool               // true if the create was elided, e.g. because it was not targeted; Result is still success.
+	State   *pkgresource.State // the resource state.
+	Result  ResultState        // the result of the registration.
+	Unknown bool               // true if the result is unknown, e.g. because the create was elided.
 }
 
 // RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.

@@ -4913,7 +4913,7 @@ stable: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
 stablesList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
 propertydependenciesMap: (f = msg.getPropertydependenciesMap()) ? f.toObject(includeInstance, proto.pulumirpc.RegisterResourceResponse.PropertyDependencies.toObject) : [],
 result: jspb.Message.getFieldWithDefault(msg, 7, 0),
-skippedCreate: jspb.Message.getBooleanFieldWithDefault(msg, 8, false)
+unknown: jspb.Message.getBooleanFieldWithDefault(msg, 8, false)
   };
 
   if (includeInstance) {
@@ -4983,7 +4983,7 @@ proto.pulumirpc.RegisterResourceResponse.deserializeBinaryFromReader = function(
       break;
     case 8:
       var value = /** @type {boolean} */ (reader.readBool());
-      msg.setSkippedCreate(value);
+      msg.setUnknown(value);
       break;
     default:
       reader.skipField();
@@ -5061,7 +5061,7 @@ proto.pulumirpc.RegisterResourceResponse.serializeBinaryToWriter = function(mess
       f
     );
   }
-  f = message.getSkippedCreate();
+  f = message.getUnknown();
   if (f) {
     writer.writeBool(
       8,
@@ -5397,10 +5397,10 @@ proto.pulumirpc.RegisterResourceResponse.prototype.setResult = function(value) {
 
 
 /**
- * optional bool skipped_create = 8;
+ * optional bool unknown = 8;
  * @return {boolean}
  */
-proto.pulumirpc.RegisterResourceResponse.prototype.getSkippedCreate = function() {
+proto.pulumirpc.RegisterResourceResponse.prototype.getUnknown = function() {
   return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 8, false));
 };
 
@@ -5409,7 +5409,7 @@ proto.pulumirpc.RegisterResourceResponse.prototype.getSkippedCreate = function()
  * @param {boolean} value
  * @return {!proto.pulumirpc.RegisterResourceResponse} returns this
  */
-proto.pulumirpc.RegisterResourceResponse.prototype.setSkippedCreate = function(value) {
+proto.pulumirpc.RegisterResourceResponse.prototype.setUnknown = function(value) {
   return jspb.Message.setProto3BooleanField(this, 8, value);
 };
 

@@ -764,7 +764,7 @@ export function registerResource(
                                 getObject: () => req.getObject(),
                                 getPropertydependenciesMap: () => undefined,
                                 getResult: () => 0,
-                                getSkippedCreate: () => false,
+                                getUnknown: () => false,
                             };
                         }
                     } catch (e) {
@@ -775,7 +775,7 @@ export function registerResource(
                             getObject: () => req.getObject(),
                             getPropertydependenciesMap: () => undefined,
                             getResult: () => 0,
-                            getSkippedCreate: () => false,
+                            getUnknown: () => false,
                         };
                     }
 
@@ -806,7 +806,7 @@ export function registerResource(
                         }
                     }
 
-                    const skippedCreate = custom && !resultFailed && !isDryRun() && resp.getSkippedCreate();
+                    const unknown = custom && !resultFailed && !isDryRun() && resp.getUnknown();
 
                     // Now resolve the output properties.
                     await resolveOutputs(
@@ -818,7 +818,7 @@ export function registerResource(
                         deps,
                         resop.resolvers,
                         effectiveErr,
-                        resultFailed || skippedCreate,
+                        resultFailed || unknown,
                     );
                     done();
                 });

@@ -1941,7 +1941,7 @@ func (ctx *Context) registerResource(
 			if err == nil && resp.Result != pulumirpc.Result_SUCCESS {
 				err = fmt.Errorf("resource %s [%s] failed to register", name, t)
 			}
-			if custom && resp.Result == pulumirpc.Result_SUCCESS && resp.SkippedCreate {
+			if custom && resp.Result == pulumirpc.Result_SUCCESS && resp.Unknown {
 				keepUnknowns = true
 			}
 		}

@@ -206,7 +206,7 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		// cases the only Done callback we care about is the one for the root
 		// resource.
 		if s.reg != nil {
-			s.reg.Done(&RegisterResult{State: s.new, SkippedCreate: s.skippedCreate})
+			s.reg.Done(&RegisterResult{State: s.new, Unknown: s.skippedCreate})
 		}
 	}
 	return resource.StatusOK, complete, nil

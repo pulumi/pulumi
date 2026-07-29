@@ -530,8 +530,8 @@ export class RegisterResourceResponse extends jspb.Message {
     clearPropertydependenciesMap(): void;
     getResult(): Result;
     setResult(value: Result): RegisterResourceResponse;
-    getSkippedCreate(): boolean;
-    setSkippedCreate(value: boolean): RegisterResourceResponse;
+    getUnknown(): boolean;
+    setUnknown(value: boolean): RegisterResourceResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceResponse.AsObject;
@@ -553,7 +553,7 @@ export namespace RegisterResourceResponse {
 
         propertydependenciesMap: Array<[string, RegisterResourceResponse.PropertyDependencies.AsObject]>,
         result: Result,
-        skippedCreate: boolean,
+        unknown: boolean,
     }
 
 
