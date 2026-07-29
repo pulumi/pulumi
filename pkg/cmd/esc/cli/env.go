@@ -49,6 +49,45 @@ type envCommand struct {
 	esc *escCommand
 
 	envNameFlag string
+
+	// Memoized result of resolveDefaultEnvironment.
+	defaultEnvOnce bool
+	defaultEnv     *defaultEnvironment
+	defaultEnvErr  error
+}
+
+// errAnonymousDefault is returned when a command that requires a named environment picks up a
+// default environment that is an anonymous list of imports.
+var errAnonymousDefault = errors.New(
+	"the default environment is an anonymous list of imports; this command requires a named environment. " +
+		"Pass an environment explicitly")
+
+// envTarget identifies the environment a command operates on: either a named environment or the
+// anonymous import list implied by a default.
+type envTarget struct {
+	ref  environmentRef
+	anon *defaultEnvironment
+}
+
+// isAnonymous returns true if the target is an anonymous import list rather than a named environment.
+func (t envTarget) isAnonymous() bool {
+	return t.anon != nil
+}
+
+// orgName returns the organization the target is evaluated in.
+func (t envTarget) orgName() string {
+	if t.anon != nil {
+		return t.anon.orgName
+	}
+	return t.ref.orgName
+}
+
+// name returns a display name for the target.
+func (t envTarget) name() string {
+	if t.anon != nil {
+		return "default"
+	}
+	return t.ref.envName
 }
 
 func newEnvCmd(esc *escCommand) *cobra.Command {
@@ -78,6 +117,7 @@ func newEnvCmd(esc *escCommand) *cobra.Command {
 
 	cmd.AddCommand(newEnvInitCmd(env))
 	cmd.AddCommand(newEnvCloneCmd(env))
+	cmd.AddCommand(newEnvDefaultCmd(env))
 	cmd.AddCommand(newEnvEditCmd(env))
 	cmd.AddCommand(newEnvGetCmd(env))
 	cmd.AddCommand(newEnvDiffCmd(env))

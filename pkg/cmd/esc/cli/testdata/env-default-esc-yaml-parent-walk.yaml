@@ -1,0 +1,18 @@
+run: esc env default
+process:
+  fs:
+    work/.esc.yaml: |
+      environment: test-user/default/test
+  cwd: work/app/sub
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env default
+environment: test-user/default/test
+source: work/.esc.yaml
+
+---
+> esc env default
