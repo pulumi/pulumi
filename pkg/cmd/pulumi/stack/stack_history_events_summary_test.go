@@ -205,6 +205,49 @@ func TestBuildUpdateSummary_ResultFallbacks(t *testing.T) {
 	}))
 	require.NoError(t, err)
 	assert.Equal(t, apitype.OperationResultSucceeded, s.Result)
+
+	// Program stderr alone doesn't imply failure: it is reported, but a summary
+	// event with no result still reads as succeeded.
+	s, err = buildUpdateSummary(eventSeq(
+		apitype.EngineEvent{
+			DiagnosticEvent: &apitype.DiagnosticEvent{Message: "npm notice", Severity: "info#err"},
+		},
+		apitype.EngineEvent{SummaryEvent: &apitype.SummaryEvent{DurationSeconds: 1}},
+	))
+	require.NoError(t, err)
+	assert.Equal(t, apitype.OperationResultSucceeded, s.Result)
+	require.Len(t, s.Diagnostics, 1)
+}
+
+// A program error never reaches a resource operation, so the failed preview it
+// produces carries no "error" diagnostic and no ResOpFailed — its stderr output
+// is the only record of what went wrong.
+func TestBuildUpdateSummary_ReportsProgramErrors(t *testing.T) {
+	t.Parallel()
+
+	s, err := buildUpdateSummary(eventSeq(
+		apitype.EngineEvent{
+			DiagnosticEvent: &apitype.DiagnosticEvent{Message: "warming up", Severity: "info"},
+		},
+		apitype.EngineEvent{
+			DiagnosticEvent: &apitype.DiagnosticEvent{
+				Message:  "Error: length: Cannot assign type 'string' to type 'integer'\n",
+				Severity: "info#err",
+			},
+		},
+		apitype.EngineEvent{
+			DiagnosticEvent: &apitype.DiagnosticEvent{Message: "transient", Severity: "info#err", Ephemeral: true},
+		},
+		apitype.EngineEvent{
+			SummaryEvent: &apitype.SummaryEvent{DurationSeconds: 1, Result: apitype.OperationResultFailed},
+		},
+	))
+	require.NoError(t, err)
+
+	assert.Equal(t, apitype.OperationResultFailed, s.Result)
+	require.Len(t, s.Diagnostics, 1)
+	assert.Equal(t, "info#err", s.Diagnostics[0].Severity)
+	assert.Equal(t, "Error: length: Cannot assign type 'string' to type 'integer'", s.Diagnostics[0].Message)
 }
 
 func TestBuildUpdateSummary_DurationFallsBackToTimestamps(t *testing.T) {
