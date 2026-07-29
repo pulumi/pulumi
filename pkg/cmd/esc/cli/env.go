@@ -306,13 +306,27 @@ func (cmd *envCommand) getNewEnvRef(
 
 // Get an environment reference for an existing environment
 // If the given path is ambiguous, we need to make additional API calls to disambiguate
+//
+// If no environment is given, the default environment for the working directory is used. Commands
+// that route through this function require a named environment, so an anonymous default (a list of
+// imports) is rejected.
 func (cmd *envCommand) getExistingEnvRef(
 	ctx context.Context,
 	args []string,
 ) (environmentRef, []string, error) {
 	if cmd.envNameFlag == "" {
 		if len(args) == 0 {
-			return environmentRef{}, nil, errors.New("no environment name specified")
+			def, err := cmd.resolveDefaultEnvironment(ctx)
+			if err != nil {
+				return environmentRef{}, nil, err
+			}
+			if def == nil {
+				return environmentRef{}, nil, errors.New("no environment name specified")
+			}
+			if def.ref == nil {
+				return environmentRef{}, nil, errAnonymousDefault
+			}
+			return *def.ref, nil, nil
 		}
 		cmd.envNameFlag, args = args[0], args[1:]
 	}
