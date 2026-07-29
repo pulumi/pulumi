@@ -376,10 +376,6 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				Args:              obj,
 				AcceptsByteString: true,
 				AcceptsUnknowns:   true,
-				DependsOn:         make([]string, len(dependsOn)),
-			}
-			for i, urn := range dependsOn {
-				request.DependsOn[i] = string(urn)
 			}
 
 			if len(args) == 3 && !args[2].IsNull() {
@@ -423,6 +419,11 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 					}
 					request.Provider = fmt.Sprintf("%s::%s", urnAttr.AsString(), idAttr.AsString())
 				}
+			}
+
+			request.DependsOn = make([]string, len(dependsOn))
+			for i, urn := range dependsOn {
+				request.DependsOn[i] = string(urn)
 			}
 
 			resp, err := ectx.invoke(context.TODO(), request)
