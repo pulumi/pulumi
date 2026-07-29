@@ -490,6 +490,88 @@ func TestInvokeDependsOnTargetedUp(t *testing.T) {
 	assert.False(t, invoked, "invoke must not execute against a resource whose creation was skipped")
 }
 
+// TestInvokeDependsOnDestroyRunProgram checks that `destroy --run-program` over a partially destroyed stack doesn't
+// trigger invokes that depend on resources not in state.
+func TestInvokeDependsOnDestroyRunProgram(t *testing.T) {
+	t.Parallel()
+
+	invoked := 0
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: previewAwareCreate,
+				DeleteF: func(_ context.Context, _ plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
+				},
+				InvokeF: func(_ context.Context, _ plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					invoked++
+					return plugin.InvokeResponse{Properties: resource.PropertyMap{
+						"result": resource.NewProperty("read"),
+					}}, nil
+				},
+			}, nil
+		}),
+	}
+
+	// gone is registered only on the destroy run, standing in for a resource a previous partial destroy removed from
+	// state. dependent is in state both times, but depends on gone during the destroy.
+	destroying := false
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		standalone, err := monitor.RegisterResource("pkgA:m:typA", "standalone", true)
+		require.NoError(t, err)
+
+		var dependsOnGone []resource.URN
+		if destroying {
+			gone, err := monitor.RegisterResource("pkgA:m:typA", "gone", true)
+			require.NoError(t, err)
+			assert.Empty(t, gone.ID, "a resource absent from state is a skipped create during destroy")
+			dependsOnGone = append(dependsOnGone, gone.URN)
+		}
+
+		dependent, err := monitor.RegisterResource("pkgA:m:typA", "dependent", true, deploytest.ResourceOptions{
+			Dependencies: dependsOnGone,
+		})
+		require.NoError(t, err)
+
+		invokeOn := func(urns ...resource.URN) bool {
+			result, err := monitor.InvokeWithResult("pkgA:index:read", nil, "", "", "", deploytest.InvokeOptions{
+				DependsOn:       urns,
+				AcceptsUnknowns: true,
+			})
+			require.NoError(t, err)
+			require.Empty(t, result.Failures)
+			return result.Unknown
+		}
+
+		assert.Equal(t, destroying, invokeOn(dependent.URN),
+			"a resource in state loses its id when a dependency is skipped, so its invoke is unknown during destroy")
+		assert.False(t, invokeOn(standalone.URN),
+			"a resource in state with an intact dependency closure keeps its id, so its invoke runs")
+		if destroying {
+			assert.True(t, invokeOn(dependsOnGone...),
+				"a resource absent from state has no id, so its invoke is unknown")
+		}
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Equal(t, 2, invoked, "every dependency exists, so both invokes reach the provider")
+
+	invoked = 0
+	destroying = true
+	snap, err = lt.TestOp(DestroyV2).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	assert.Equal(t, 1, invoked, "only the invoke on the standalone resource reaches the provider")
+	assert.Empty(t, snap.Resources, "the destroy still tears the stack down")
+}
+
 func TestSecretsInvoke(t *testing.T) {
 	t.Parallel()
 
