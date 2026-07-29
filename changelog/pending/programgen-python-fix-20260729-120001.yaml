@@ -1,0 +1,4 @@
+component: programgen/python
+kind: fix
+body: Avoid redundant applies when projecting properties from Python outputs
+time: 2026-07-29T12:00:01+02:00
