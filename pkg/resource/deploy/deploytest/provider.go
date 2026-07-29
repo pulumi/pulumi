@@ -142,6 +142,10 @@ func (prov *Provider) Check(ctx context.Context, req plugin.CheckRequest) (plugi
 
 func (prov *Provider) Create(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 	if prov.CreateF == nil {
+		// A real provider cannot know the id of a resource it has not created yet.
+		if req.Preview {
+			return plugin.CreateResponse{Properties: resource.PropertyMap{}}, nil
+		}
 		// generate a new uuid
 		uuid, err := uuid.NewV4()
 		if err != nil {

@@ -61,8 +61,8 @@ class _ResourceMonitorFeatureEnumTypeWrapper(google.protobuf.internal.enum_type_
     string bytes signature and a base64 encoding of the string's bytes.
     """
     RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON: _ResourceMonitorFeature.ValueType  # 14
-    """The monitor accepts `dependsOn` and `acceptsUnknowns` on `ResourceInvokeRequest` and gates the invoke on the
-    created-ness of the dependencies, returning `unknown` on `ResourceInvokeResponse` when they are pending.
+    """The monitor accepts `dependsOn` on `ResourceInvokeRequest` and gates the invoke on the created-ness of the
+    dependencies, returning `unknown` on `ResourceInvokeResponse` when they are pending.
     """
     RESOURCE_MONITOR_FEATURE_INVOKE_PARENT: _ResourceMonitorFeature.ValueType  # 15
     """The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`."""
@@ -92,8 +92,8 @@ RESOURCE_MONITOR_FEATURE_BYTE_STRING: ResourceMonitorFeature.ValueType  # 13
 string bytes signature and a base64 encoding of the string's bytes.
 """
 RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON: ResourceMonitorFeature.ValueType  # 14
-"""The monitor accepts `dependsOn` and `acceptsUnknowns` on `ResourceInvokeRequest` and gates the invoke on the
-created-ness of the dependencies, returning `unknown` on `ResourceInvokeResponse` when they are pending.
+"""The monitor accepts `dependsOn` on `ResourceInvokeRequest` and gates the invoke on the created-ness of the
+dependencies, returning `unknown` on `ResourceInvokeResponse` when they are pending.
 """
 RESOURCE_MONITOR_FEATURE_INVOKE_PARENT: ResourceMonitorFeature.ValueType  # 15
 """The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`."""
@@ -900,7 +900,6 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     PACKAGEREF_FIELD_NUMBER: builtins.int
     ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
     DEPENDSON_FIELD_NUMBER: builtins.int
-    ACCEPTSUNKNOWNS_FIELD_NUMBER: builtins.int
     PARENT_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
@@ -919,12 +918,6 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     accepts_byte_string: builtins.bool
     """When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
     carrying the byte string signature and a base64 encoding of the string's bytes.
-    """
-    acceptsUnknowns: builtins.bool
-    """True if the caller understands an unknown result: the `unknown` field on `ResourceInvokeResponse` and unknown
-    property sentinels in `return`.
-
-    The engine will advertise `INVOKE_DEPENDS_ON` when it reads this field.
     """
     parent: builtins.str
     """An optional URN of the resource this invoke is parented to. When `provider` is empty, the invoke is served by
@@ -970,11 +963,10 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
         packageRef: builtins.str = ...,
         accepts_byte_string: builtins.bool = ...,
         dependsOn: collections.abc.Iterable[builtins.str] | None = ...,
-        acceptsUnknowns: builtins.bool = ...,
         parent: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["args", b"args", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "acceptsUnknowns", b"acceptsUnknowns", "accepts_byte_string", b"accepts_byte_string", "args", b"args", "dependsOn", b"dependsOn", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "accepts_byte_string", b"accepts_byte_string", "args", b"args", "dependsOn", b"dependsOn", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceInvokeRequest = ResourceInvokeRequest
 
@@ -987,8 +979,7 @@ class ResourceInvokeResponse(google.protobuf.message.Message):
     UNKNOWN_FIELD_NUMBER: builtins.int
     unknown: builtins.bool
     """True if the result must be treated as wholly unknown, which the monitor reports when it declines to service an
-    invoke whose dependencies are pending creation. Only sent to callers that set `acceptsUnknowns` on
-    `ResourceInvokeRequest`.
+    invoke whose dependencies are pending creation.
     """
     @property
     def failures(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.provider_pb2.CheckFailure]:

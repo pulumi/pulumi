@@ -1092,7 +1092,7 @@ func (rm *resmon) Invoke(
 		}
 		if rm.registrations.HasUnresolved(roots) {
 			logging.V(5).Infof("ResourceMonitor.Invoke: tok=%v has pending dependencies, returning unknown", tok)
-			return unknownInvokeResponse(req.GetAcceptsUnknowns(), rm.workingDirectory)
+			return &pulumirpc.ResourceInvokeResponse{Unknown: true}, nil
 		}
 	}
 
@@ -1149,21 +1149,6 @@ func (rm *resmon) trackSettledResource(state *pkgresource.State, parent resource
 	urn, id := state.URN, state.ID
 	state.Lock.Unlock()
 	rm.registrations.Track(urn, parent, custom, id != "")
-}
-
-// unknownInvokeResponse is the response for an invoke whose result is wholly unknown: the unknown marker for callers
-// that understand it, and the empty result for callers that don't.
-func unknownInvokeResponse(acceptsUnknowns bool, workingDirectory string) (*pulumirpc.ResourceInvokeResponse, error) {
-	if acceptsUnknowns {
-		return &pulumirpc.ResourceInvokeResponse{Unknown: true}, nil
-	}
-	empty, err := plugin.MarshalProperties(resource.PropertyMap{}, plugin.MarshalOptions{
-		WorkingDirectory: workingDirectory,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &pulumirpc.ResourceInvokeResponse{Return: empty}, nil
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.

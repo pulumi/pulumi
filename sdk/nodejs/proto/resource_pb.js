@@ -5617,7 +5617,6 @@ parentstacktracehandle: jspb.Message.getFieldWithDefault(msg, 11, ""),
 packageref: jspb.Message.getFieldWithDefault(msg, 9, ""),
 acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
 dependsonList: (f = jspb.Message.getRepeatedField(msg, 13)) == null ? undefined : f,
-acceptsunknowns: jspb.Message.getBooleanFieldWithDefault(msg, 14, false),
 parent: jspb.Message.getFieldWithDefault(msg, 15, "")
   };
 
@@ -5711,10 +5710,6 @@ proto.pulumirpc.ResourceInvokeRequest.deserializeBinaryFromReader = function(msg
     case 13:
       var value = /** @type {string} */ (reader.readString());
       msg.addDependson(value);
-      break;
-    case 14:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setAcceptsunknowns(value);
       break;
     case 15:
       var value = /** @type {string} */ (reader.readString());
@@ -5837,13 +5832,6 @@ proto.pulumirpc.ResourceInvokeRequest.serializeBinaryToWriter = function(message
   if (f.length > 0) {
     writer.writeRepeatedString(
       13,
-      f
-    );
-  }
-  f = message.getAcceptsunknowns();
-  if (f) {
-    writer.writeBool(
-      14,
       f
     );
   }
@@ -6169,24 +6157,6 @@ proto.pulumirpc.ResourceInvokeRequest.prototype.addDependson = function(value, o
  */
 proto.pulumirpc.ResourceInvokeRequest.prototype.clearDependsonList = function() {
   return this.setDependsonList([]);
-};
-
-
-/**
- * optional bool acceptsUnknowns = 14;
- * @return {boolean}
- */
-proto.pulumirpc.ResourceInvokeRequest.prototype.getAcceptsunknowns = function() {
-  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 14, false));
-};
-
-
-/**
- * @param {boolean} value
- * @return {!proto.pulumirpc.ResourceInvokeRequest} returns this
- */
-proto.pulumirpc.ResourceInvokeRequest.prototype.setAcceptsunknowns = function(value) {
-  return jspb.Message.setProto3BooleanField(this, 14, value);
 };
 
 

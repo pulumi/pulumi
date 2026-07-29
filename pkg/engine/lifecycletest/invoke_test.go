@@ -157,14 +157,6 @@ func TestInvokeParentResolvesComponentProviders(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// previewAwareCreate mimics a real provider's create: no id is assigned during previews.
-func previewAwareCreate(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-	if req.Preview {
-		return plugin.CreateResponse{Properties: resource.PropertyMap{}}, nil
-	}
-	return plugin.CreateResponse{ID: "created-id", Properties: resource.PropertyMap{}}, nil
-}
-
 // TestInvokeDependsOnRemoteComponent checks that an output-form invoke that depends on a MLC does not fire until the
 // component's children have been created.
 //
@@ -176,7 +168,6 @@ func TestInvokeDependsOnRemoteComponent(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: previewAwareCreate,
 				ConstructF: func(
 					_ context.Context, req plugin.ConstructRequest, monitor *deploytest.ResourceMonitor,
 				) (plugin.ConstructResponse, error) {
@@ -214,8 +205,7 @@ func TestInvokeDependsOnRemoteComponent(t *testing.T) {
 		// component's children, so it sends the component's URN and the engine
 		// expands it.
 		result, err := monitor.InvokeWithResult("pkgA:index:readChild", nil, "", "", "", deploytest.InvokeOptions{
-			DependsOn:       []resource.URN{comp.URN},
-			AcceptsUnknowns: true,
+			DependsOn: []resource.URN{comp.URN},
 		})
 		require.NoError(t, err)
 		require.Empty(t, result.Failures)
@@ -261,7 +251,6 @@ func TestInvokeDependsOnNestedRemoteComponent(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: previewAwareCreate,
 				ConstructF: func(
 					_ context.Context, req plugin.ConstructRequest, monitor *deploytest.ResourceMonitor,
 				) (plugin.ConstructResponse, error) {
@@ -299,8 +288,7 @@ func TestInvokeDependsOnNestedRemoteComponent(t *testing.T) {
 		// The dependency names the outer component, so reaching the pending child means descending outer ->
 		// remote component -> child.
 		result, err := monitor.InvokeWithResult("pkgA:index:readChild", nil, "", "", "", deploytest.InvokeOptions{
-			DependsOn:       []resource.URN{outer.URN},
-			AcceptsUnknowns: true,
+			DependsOn: []resource.URN{outer.URN},
 		})
 		require.NoError(t, err)
 		require.Empty(t, result.Failures)
@@ -338,7 +326,6 @@ func TestInvokeDependsOnPendingCustomResource(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: previewAwareCreate,
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					invoked = true
 					return plugin.InvokeResponse{Properties: resource.PropertyMap{
@@ -354,8 +341,7 @@ func TestInvokeDependsOnPendingCustomResource(t *testing.T) {
 		require.NoError(t, err)
 
 		result, err := monitor.InvokeWithResult("pkgA:index:read", nil, "", "", "", deploytest.InvokeOptions{
-			DependsOn:       []resource.URN{dep.URN},
-			AcceptsUnknowns: true,
+			DependsOn: []resource.URN{dep.URN},
 		})
 		require.NoError(t, err)
 		require.Empty(t, result.Failures)
@@ -390,7 +376,6 @@ func TestInvokeDependsOnStopsAtCustomResources(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: previewAwareCreate,
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					invoked = true
 					return plugin.InvokeResponse{Properties: resource.PropertyMap{
@@ -414,8 +399,7 @@ func TestInvokeDependsOnStopsAtCustomResources(t *testing.T) {
 		require.NoError(t, err)
 
 		result, err := monitor.InvokeWithResult("pkgA:index:read", nil, "", "", "", deploytest.InvokeOptions{
-			DependsOn:       []resource.URN{parent.URN},
-			AcceptsUnknowns: true,
+			DependsOn: []resource.URN{parent.URN},
 		})
 		require.NoError(t, err)
 		require.Empty(t, result.Failures)
@@ -447,7 +431,6 @@ func TestInvokeDependsOnTargetedUp(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: previewAwareCreate,
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					invoked = true
 					return plugin.InvokeResponse{Properties: resource.PropertyMap{
@@ -465,8 +448,7 @@ func TestInvokeDependsOnTargetedUp(t *testing.T) {
 		require.NoError(t, err)
 
 		result, err := monitor.InvokeWithResult("pkgA:index:read", nil, "", "", "", deploytest.InvokeOptions{
-			DependsOn:       []resource.URN{dep.URN},
-			AcceptsUnknowns: true,
+			DependsOn: []resource.URN{dep.URN},
 		})
 		require.NoError(t, err)
 		require.Empty(t, result.Failures)
@@ -499,7 +481,6 @@ func TestInvokeDependsOnDestroyRunProgram(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				CreateF: previewAwareCreate,
 				DeleteF: func(_ context.Context, _ plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 				},
@@ -535,8 +516,7 @@ func TestInvokeDependsOnDestroyRunProgram(t *testing.T) {
 
 		invokeOn := func(urns ...resource.URN) bool {
 			result, err := monitor.InvokeWithResult("pkgA:index:read", nil, "", "", "", deploytest.InvokeOptions{
-				DependsOn:       urns,
-				AcceptsUnknowns: true,
+				DependsOn: urns,
 			})
 			require.NoError(t, err)
 			require.Empty(t, result.Failures)

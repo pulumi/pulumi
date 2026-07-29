@@ -726,14 +726,12 @@ func (rm *ResourceMonitor) ReadResource(
 	return resource.URN(resp.Urn), outs, nil
 }
 
-// InvokeOptions groups the optional parts of an invoke request.
+// InvokeOptions is an optional bag of options for the Invoke method.
 type InvokeOptions struct {
 	// Parent is the URN of the resource the invoke is parented to.
 	Parent resource.URN
 	// DependsOn is the set of dependency URNs to declare on the request.
 	DependsOn []resource.URN
-	// AcceptsUnknowns declares that the caller understands unknown results.
-	AcceptsUnknowns bool
 }
 
 // InvokeResult is the full result of an invoke, including the unknown marker that the plain Invoke wrapper discards.
@@ -767,9 +765,6 @@ func (rm *ResourceMonitor) InvokeWithResult(tok tokens.ModuleMember, inputs reso
 		if o.DependsOn != nil {
 			opts.DependsOn = o.DependsOn
 		}
-		if o.AcceptsUnknowns {
-			opts.AcceptsUnknowns = true
-		}
 	}
 
 	// marshal inputs
@@ -789,14 +784,13 @@ func (rm *ResourceMonitor) InvokeWithResult(tok tokens.ModuleMember, inputs reso
 
 	// submit request
 	resp, err := rm.resmon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
-		Tok:             string(tok),
-		Provider:        provider,
-		Parent:          string(opts.Parent),
-		Args:            ins,
-		Version:         version,
-		PackageRef:      packageRef,
-		DependsOn:       dependsOn,
-		AcceptsUnknowns: opts.AcceptsUnknowns,
+		Tok:        string(tok),
+		Provider:   provider,
+		Parent:     string(opts.Parent),
+		Args:       ins,
+		Version:    version,
+		PackageRef: packageRef,
+		DependsOn:  dependsOn,
 	})
 	if err != nil {
 		return nil, err

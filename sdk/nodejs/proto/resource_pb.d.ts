@@ -643,8 +643,6 @@ export class ResourceInvokeRequest extends jspb.Message {
     getDependsonList(): Array<string>;
     setDependsonList(value: Array<string>): ResourceInvokeRequest;
     addDependson(value: string, index?: number): string;
-    getAcceptsunknowns(): boolean;
-    setAcceptsunknowns(value: boolean): ResourceInvokeRequest;
     getParent(): string;
     setParent(value: string): ResourceInvokeRequest;
 
@@ -674,7 +672,6 @@ export namespace ResourceInvokeRequest {
         packageref: string,
         acceptsByteString: boolean,
         dependsonList: Array<string>,
-        acceptsunknowns: boolean,
         parent: string,
     }
 }
