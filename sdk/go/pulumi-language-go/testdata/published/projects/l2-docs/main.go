@@ -18,9 +18,7 @@ func main() {
 		_, err = docs.NewResource(ctx, "res", &docs.ResourceArgs{
 			In: docs.FunOutput(ctx, docs.FunOutputArgs{
 				In: pulumi.Bool(false),
-			}, nil).ApplyT(func(invoke docs.FunResult) (bool, error) {
-				return invoke.Out, nil
-			}).(pulumi.BoolOutput),
+			}, nil).Out(),
 			ExternalEnum: enum.StringEnumStringOne,
 		})
 		if err != nil {

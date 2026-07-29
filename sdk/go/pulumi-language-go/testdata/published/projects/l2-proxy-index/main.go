@@ -55,9 +55,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("bool", res.Data.ApplyT(func(data refref.Data) (bool, error) {
-			return data.Boolean, nil
-		}).(pulumi.BoolOutput))
+		ctx.Export("bool", res.Data.Boolean())
 		ctx.Export("array", res.Data.ApplyT(func(data refref.Data) (bool, error) {
 			return data.BoolArray[0], nil
 		}).(pulumi.BoolOutput))
