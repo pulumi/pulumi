@@ -363,7 +363,6 @@ async function createInvokeRequest(
     req.setPackageref(packageRefStr || "");
     if (dependsOn !== undefined) {
         req.setDependsonList(Array.from(dependsOn));
-        req.setAcceptsunknowns(true);
     }
     return req;
 }
