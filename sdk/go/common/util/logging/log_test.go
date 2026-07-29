@@ -98,63 +98,75 @@ func TestInitLoggingSkipsLogFileWithOTel(t *testing.T) { //nolint:paralleltest /
 	assert.Equal(t, prevPath, logFilePath)
 }
 
-func TestFilter(t *testing.T) {
-	t.Parallel()
+//nolint:paralleltest // exercises the process-global secret filter state.
+func TestFilterString(t *testing.T) {
+	rwLock.Lock()
+	prevSeen, prevPairs, prevReplacer := secretsSeen, secretsPairs, secretsReplacer
+	secretsSeen, secretsPairs, secretsReplacer = nil, nil, nil
+	rwLock.Unlock()
+	t.Cleanup(func() {
+		rwLock.Lock()
+		secretsSeen, secretsPairs, secretsReplacer = prevSeen, prevPairs, prevReplacer
+		rwLock.Unlock()
+	})
 
-	filter1 := CreateFilter([]string{"secret1", "secret2"}, "[secret]")
-	msg1 := filter1.Filter(
-		"These are my secrets: secret1, secret2, secret3, secret10")
+	AddGlobalSecretFilter([]string{"secret1", "secret2"}, "[secret]")
 	assert.Equal(t,
 		"These are my secrets: [secret], [secret], secret3, [secret]0",
-		msg1)
+		FilterString("These are my secrets: secret1, secret2, secret3, secret10"))
 
 	// Ensure that special characters don't screw up the search
-	filter2 := CreateFilter([]string{"secret.*", "secre[t]3"}, "[creds]")
-	msg2 := filter2.Filter(
-		"These are my secrets: secret1, secret2, secret3, secret.*, secre[t]3")
+	AddGlobalSecretFilter([]string{"secret.*", "secre[t]3"}, "[creds]")
 	assert.Equal(t,
-		"These are my secrets: secret1, secret2, secret3, [creds], [creds]",
-		msg2)
+		"These are my secrets: secret3, [creds], [creds]",
+		FilterString("These are my secrets: secret3, secret.*, secre[t]3"))
 
 	// Ensure that non-UTF8 characters don't screw up the search
-	filter3 := CreateFilter([]string{"nonutf8\xa7", "secret1"}, "[creds]")
-	msg3 := filter3.Filter(
-		"These are my secrets: secret1, nonutf8\xa7")
+	AddGlobalSecretFilter([]string{"nonutf8\xa7"}, "[creds]")
 	assert.Equal(t,
-		"These are my secrets: [creds], [creds]",
-		msg3)
+		"These are my secrets: [creds]",
+		FilterString("These are my secrets: nonutf8\xa7"))
 
 	// Short secrets of 1-2 characters are not masked
-	filter4 := CreateFilter([]string{"a", "my", "123"}, "[creds]")
-	msg4 := filter4.Filter(
-		"These are my secrets: a, my, 123")
+	AddGlobalSecretFilter([]string{"a", "my", "123"}, "[creds]")
 	assert.Equal(t,
 		"These are my secrets: a, my, [creds]",
-		msg4)
+		FilterString("These are my secrets: a, my, 123"))
 
 	// Ensure that multi-line secrets are masked in output.
-	filter5 := CreateFilter([]string{"multi\nline\nsecret"}, "[secret]")
-	msg5 := filter5.Filter(
-		`These are my secrets: multi\nline\nsecret`)
+	AddGlobalSecretFilter([]string{"multi\nline\nsecret"}, "[secret]")
 	assert.Equal(t,
 		"These are my secrets: [secret]",
-		msg5)
+		FilterString(`These are my secrets: multi\nline\nsecret`))
 
 	// Ensure that secrets with tabs are masked in output.
-	filter6 := CreateFilter([]string{"secretwith\t"}, "[secret]")
-	msg6 := filter6.Filter(
-		`These are my secrets: secretwith\t`)
+	AddGlobalSecretFilter([]string{"secretwith\t"}, "[secret]")
 	assert.Equal(t,
 		"These are my secrets: [secret]",
-		msg6)
+		FilterString(`These are my secrets: secretwith\t`))
 
 	// Boolean strings "true" and "false" are not masked, regardless of case.
-	filter7 := CreateFilter([]string{"true", "false", "True", "FALSE", "realsecret"}, "[secret]")
-	msg7 := filter7.Filter(
-		"value is True and FALSE but realsecret is hidden")
+	AddGlobalSecretFilter([]string{"true", "false", "True", "FALSE", "realsecret"}, "[secret]")
 	assert.Equal(t,
 		"value is True and FALSE but [secret] is hidden",
-		msg7)
+		FilterString("value is True and FALSE but realsecret is hidden"))
+
+	// Secrets serialized to JSON are masked in their escaped form as well.
+	AddGlobalSecretFilter([]string{`quo"te`}, "[secret]")
+	assert.Equal(t,
+		`values: [secret], [secret]`,
+		FilterString(`values: quo"te, quo\"te`))
+
+	// Different replacements can be used for different secrets.
+	AddGlobalSecretFilter([]string{"hunter2"}, "[credential]")
+	assert.Equal(t,
+		"[secret] and [credential]",
+		FilterString("realsecret and hunter2"))
+
+	// Re-registering secrets must not grow the replacement list.
+	before := len(secretsPairs)
+	AddGlobalSecretFilter([]string{"secret1", "realsecret"}, "[secret]")
+	assert.Equal(t, before, len(secretsPairs))
 }
 
 func TestLoggingDoesNotConflictWithGlog(t *testing.T) {

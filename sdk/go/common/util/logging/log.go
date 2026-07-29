@@ -43,10 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
-type Filter interface {
-	Filter(s string) string
-}
-
 var (
 	LogToStderr = false // true if logging is being redirected to stderr.
 	Verbose     = 0     // >0 if verbose logging is enabled at a particular level.
@@ -54,8 +50,11 @@ var (
 )
 
 var (
-	rwLock  sync.RWMutex
-	filters []Filter
+	rwLock sync.RWMutex
+
+	secretsSeen     map[string]struct{}
+	secretsPairs    []string
+	secretsReplacer *strings.Replacer
 )
 
 var (
@@ -446,27 +445,7 @@ func (f formattingHandler) WithGroup(name string) slog.Handler {
 	return formattingHandler{inner: f.inner.WithGroup(name)}
 }
 
-type nopFilter struct{}
-
-func (f *nopFilter) Filter(s string) string {
-	return s
-}
-
-type replacerFilter struct {
-	replacer *strings.Replacer
-}
-
-func (f *replacerFilter) Filter(s string) string {
-	return f.replacer.Replace(s)
-}
-
-func AddGlobalFilter(filter Filter) {
-	rwLock.Lock()
-	filters = append(filters, filter)
-	rwLock.Unlock()
-}
-
-func CreateFilter(secrets []string, replacement string) Filter {
+func replacements(secrets []string, replacement string) []string {
 	items := slice.Prealloc[string](len(secrets))
 	for _, secret := range secrets {
 		// For short secrets, don't actually add them to the filter, this is a trade-off we make to prevent
@@ -488,23 +467,41 @@ func CreateFilter(secrets []string, replacement string) Filter {
 			items = append(items, escaped, replacement)
 		}
 	}
-	if len(items) > 0 {
-		return &replacerFilter{replacer: strings.NewReplacer(items...)}
-	}
+	return items
+}
 
-	return &nopFilter{}
+// AddGlobalSecretFilter registers secrets to be replaced by FilterString. Secrets registered
+// here are deduplicated and folded into a single replacer, so FilterString makes one pass over
+// its input no matter how many operations register their secrets.
+func AddGlobalSecretFilter(secrets []string, replacement string) {
+	rwLock.Lock()
+	defer rwLock.Unlock()
+
+	changed := false
+	for _, secret := range secrets {
+		if _, seen := secretsSeen[secret]; seen {
+			continue
+		}
+		if secretsSeen == nil {
+			secretsSeen = map[string]struct{}{}
+		}
+		secretsSeen[secret] = struct{}{}
+		secretsPairs = append(secretsPairs, replacements([]string{secret}, replacement)...)
+		changed = true
+	}
+	if changed && len(secretsPairs) > 0 {
+		secretsReplacer = strings.NewReplacer(secretsPairs...)
+	}
 }
 
 func FilterString(msg string) string {
-	var localFilters []Filter
 	rwLock.RLock()
-	localFilters = filters
+	secretsFilter := secretsReplacer
 	rwLock.RUnlock()
 
-	for _, filter := range localFilters {
-		msg = filter.Filter(msg)
+	if secretsFilter != nil {
+		msg = secretsFilter.Replace(msg)
 	}
-
 	return msg
 }
 
