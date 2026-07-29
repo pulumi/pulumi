@@ -642,8 +642,9 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	// Refuse to delete protected resources (unless we're replacing them in
-	// which case we will of checked protect elsewhere)
-	if !s.replacing && s.old.Protect {
+	// which case we will of checked protect elsewhere, or protect is being
+	// ignored for this operation)
+	if !s.replacing && s.old.Protect && !s.deployment.opts.IgnoreProtect {
 		return resource.StatusOK, nil, deleteProtectedError{urn: s.old.URN}
 	}
 

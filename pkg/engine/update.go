@@ -419,6 +419,10 @@ type UpdateOptions struct {
 	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
 	ContinueOnError bool
 
+	// IgnoreProtect is true if the engine should ignore the protect option on resources, allowing
+	// protected resources to be deleted or replaced by this operation.
+	IgnoreProtect bool
+
 	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
 	AttachDebugger []string
 
