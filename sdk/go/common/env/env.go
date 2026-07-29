@@ -197,6 +197,7 @@ var (
 
 // Environment variables which affect Pulumi AI integrations
 var (
+	// Deprecated: Pulumi AI has been retired; this setting is unused.
 	AIServiceEndpoint = env.String("AI_SERVICE_ENDPOINT", "Endpoint for Pulumi AI service")
 )
 

@@ -1332,37 +1332,6 @@ func assertTemplateContains(t *testing.T, actual, expected string) {
 	}
 }
 
-func TestNoPromptWithYes(t *testing.T) {
-	t.Parallel()
-	for _, interactive := range []bool{true, false} {
-		t.Run(fmt.Sprintf("interactive=%t", interactive), func(t *testing.T) {
-			t.Parallel()
-			args := newArgs{
-				interactive: interactive,
-				yes:         true,
-			}
-
-			mockBackend := &backend.MockBackend{
-				GetReadOnlyCloudRegistryF: func() registry.Registry {
-					return &backend.MockCloudRegistry{
-						Mock: registry.Mock{
-							ListTemplatesF: func(
-								ctx context.Context, opts registry.ListTemplatesOptions,
-							) iter.Seq2[apitype.TemplateMetadata, error] {
-								assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-								return func(yield func(apitype.TemplateMetadata, error) bool) {}
-							},
-						},
-					}
-				},
-				NameF: func() string { return "mock" },
-			}
-
-			require.False(t, shouldPromptForAIOrTemplate(args, mockBackend))
-		})
-	}
-}
-
 func languageTemplateMock(ctx context.Context, language plugin.LanguageRuntime, info plugin.ProgramInfo,
 	projectName tokens.PackageName,
 ) error {
