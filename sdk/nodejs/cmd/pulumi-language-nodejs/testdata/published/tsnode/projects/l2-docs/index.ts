@@ -9,6 +9,6 @@ const enumRes = new _enum.Res("enumRes", {
 const res = new docs.Resource("res", {
     "in": docs.funOutput({
         "in": false,
-    }).apply(invoke => invoke.out),
+    }).out,
     externalEnum: _enum.StringEnum.StringOne,
 });
