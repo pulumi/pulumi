@@ -60,6 +60,9 @@ const (
 	// The monitor accepts strings containing bytes that are not valid UTF-8, marshaled as objects carrying the raw
 	// string bytes signature and a base64 encoding of the string's bytes.
 	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING ResourceMonitorFeature = 13
+	// The monitor accepts `dependsOn` on `ResourceInvokeRequest` and gates the invoke on the created-ness of the
+	// dependencies, returning `unknown` on `ResourceInvokeResponse` when they are pending.
+	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON ResourceMonitorFeature = 14
 	// The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`.
 	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_PARENT ResourceMonitorFeature = 15
 )
@@ -81,6 +84,7 @@ var (
 		11: "RESOURCE_MONITOR_FEATURE_ERROR_HOOKS",
 		12: "RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS",
 		13: "RESOURCE_MONITOR_FEATURE_BYTE_STRING",
+		14: "RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON",
 		15: "RESOURCE_MONITOR_FEATURE_INVOKE_PARENT",
 	}
 	ResourceMonitorFeature_value = map[string]int32{
@@ -98,6 +102,7 @@ var (
 		"RESOURCE_MONITOR_FEATURE_ERROR_HOOKS":            11,
 		"RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS": 12,
 		"RESOURCE_MONITOR_FEATURE_BYTE_STRING":            13,
+		"RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON":      14,
 		"RESOURCE_MONITOR_FEATURE_INVOKE_PARENT":          15,
 	}
 )
@@ -1160,6 +1165,10 @@ type ResourceInvokeRequest struct {
 	// When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
 	// carrying the byte string signature and a base64 encoding of the string's bytes.
 	AcceptsByteString bool `protobuf:"varint,12,opt,name=accepts_byte_string,json=acceptsByteString,proto3" json:"accepts_byte_string,omitempty"`
+	// The URNs of the resources this invoke depends on.
+	//
+	// The engine will advertise `INVOKE_DEPENDS_ON` when it reads this field.
+	DependsOn []string `protobuf:"bytes,13,rep,name=dependsOn,proto3" json:"dependsOn,omitempty"`
 	// An optional URN of the resource this invoke is parented to. When `provider` is empty, the invoke is served by
 	// the provider its parent's `providers` option names for the invoke's package, the same resolution applied to
 	// resource registrations. Only respected when the monitor advertises `INVOKE_PARENT`.
@@ -1282,6 +1291,13 @@ func (x *ResourceInvokeRequest) GetAcceptsByteString() bool {
 	return false
 }
 
+func (x *ResourceInvokeRequest) GetDependsOn() []string {
+	if x != nil {
+		return x.DependsOn
+	}
+	return nil
+}
+
 func (x *ResourceInvokeRequest) GetParent() string {
 	if x != nil {
 		return x.Parent
@@ -1290,9 +1306,12 @@ func (x *ResourceInvokeRequest) GetParent() string {
 }
 
 type ResourceInvokeResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Return        *structpb.Struct       `protobuf:"bytes,1,opt,name=return,proto3" json:"return,omitempty"`     // the returned values, if invoke was successful.
-	Failures      []*CheckFailure        `protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"` // the failures if any arguments didn't pass verification.
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Return   *structpb.Struct       `protobuf:"bytes,1,opt,name=return,proto3" json:"return,omitempty"`     // the returned values, if invoke was successful.
+	Failures []*CheckFailure        `protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"` // the failures if any arguments didn't pass verification.
+	// True if the result must be treated as wholly unknown, which the monitor reports when it declines to service an
+	// invoke whose dependencies are pending creation.
+	Unknown       bool `protobuf:"varint,3,opt,name=unknown,proto3" json:"unknown,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1339,6 +1358,13 @@ func (x *ResourceInvokeResponse) GetFailures() []*CheckFailure {
 		return x.Failures
 	}
 	return nil
+}
+
+func (x *ResourceInvokeResponse) GetUnknown() bool {
+	if x != nil {
+		return x.Unknown
+	}
+	return false
 }
 
 type ResourceCallRequest struct {
@@ -3304,7 +3330,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\v28.pulumirpc.RegisterResourceResponse.PropertyDependenciesR\x05value:\x028\x01\"e\n" +
 	"\x1eRegisterResourceOutputsRequest\x12\x10\n" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x121\n" +
-	"\aoutputs\x18\x02 \x01(\v2\x17.google.protobuf.StructR\aoutputs\"\xa3\x05\n" +
+	"\aoutputs\x18\x02 \x01(\v2\x17.google.protobuf.StructR\aoutputs\"\xc1\x05\n" +
 	"\x15ResourceInvokeRequest\x12\x10\n" +
 	"\x03tok\x18\x01 \x01(\tR\x03tok\x12+\n" +
 	"\x04args\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04args\x12\x1a\n" +
@@ -3322,14 +3348,16 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\n" +
 	"packageRef\x18\t \x01(\tR\n" +
 	"packageRef\x12.\n" +
-	"\x13accepts_byte_string\x18\f \x01(\bR\x11acceptsByteString\x12\x16\n" +
+	"\x13accepts_byte_string\x18\f \x01(\bR\x11acceptsByteString\x12\x1c\n" +
+	"\tdependsOn\x18\r \x03(\tR\tdependsOn\x12\x16\n" +
 	"\x06parent\x18\x0f \x01(\tR\x06parent\x1aB\n" +
 	"\x14PluginChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"~\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\x98\x01\n" +
 	"\x16ResourceInvokeResponse\x12/\n" +
 	"\x06return\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x06return\x123\n" +
-	"\bfailures\x18\x02 \x03(\v2\x17.pulumirpc.CheckFailureR\bfailures\"\xec\a\n" +
+	"\bfailures\x18\x02 \x03(\v2\x17.pulumirpc.CheckFailureR\bfailures\x12\x18\n" +
+	"\aunknown\x18\x03 \x01(\bR\aunknown\"\xec\a\n" +
 	"\x13ResourceCallRequest\x12\x10\n" +
 	"\x03tok\x18\x01 \x01(\tR\x03tok\x12+\n" +
 	"\x04args\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04args\x12]\n" +
@@ -3520,7 +3548,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\rignore_errors\x18\x04 \x01(\bR\fignoreErrors\"_\n" +
 	"\x18RegisterErrorHookRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12/\n" +
-	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback*\xb8\x05\n" +
+	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback*\xe8\x05\n" +
 	"\x16ResourceMonitorFeature\x12$\n" +
 	" RESOURCE_MONITOR_FEATURE_SECRETS\x10\x00\x120\n" +
 	",RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES\x10\x01\x12*\n" +
@@ -3536,7 +3564,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x12(\n" +
 	"$RESOURCE_MONITOR_FEATURE_ERROR_HOOKS\x10\v\x123\n" +
 	"/RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS\x10\f\x12(\n" +
-	"$RESOURCE_MONITOR_FEATURE_BYTE_STRING\x10\r\x12*\n" +
+	"$RESOURCE_MONITOR_FEATURE_BYTE_STRING\x10\r\x12.\n" +
+	"*RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON\x10\x0e\x12*\n" +
 	"&RESOURCE_MONITOR_FEATURE_INVOKE_PARENT\x10\x0f*)\n" +
 	"\x06Result\x12\v\n" +
 	"\aSUCCESS\x10\x00\x12\b\n" +

@@ -730,14 +730,41 @@ func (rm *ResourceMonitor) ReadResource(
 type InvokeOptions struct {
 	// Parent is the URN of the resource the invoke is parented to.
 	Parent resource.URN
+	// DependsOn is the set of dependency URNs to declare on the request.
+	DependsOn []resource.URN
+}
+
+// InvokeResult is the full result of an invoke, including the unknown marker that the plain Invoke wrapper discards.
+type InvokeResult struct {
+	Return   resource.PropertyMap
+	Failures []*pulumirpc.CheckFailure
+	Unknown  bool
 }
 
 func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.PropertyMap,
 	provider string, version string, packageRef string, options ...InvokeOptions,
 ) (resource.PropertyMap, []*pulumirpc.CheckFailure, error) {
-	var opts InvokeOptions
+	result, err := rm.InvokeWithResult(tok, inputs, provider, version, packageRef, options...)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(result.Failures) != 0 {
+		return nil, result.Failures, nil
+	}
+	return result.Return, nil, nil
+}
+
+func (rm *ResourceMonitor) InvokeWithResult(tok tokens.ModuleMember, inputs resource.PropertyMap,
+	provider string, version string, packageRef string, options ...InvokeOptions,
+) (*InvokeResult, error) {
+	opts := InvokeOptions{}
 	for _, o := range options {
-		opts = o
+		if o.Parent != "" {
+			opts.Parent = o.Parent
+		}
+		if o.DependsOn != nil {
+			opts.DependsOn = o.DependsOn
+		}
 	}
 
 	// marshal inputs
@@ -747,7 +774,12 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 		KeepSecrets:   true,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
+	}
+
+	dependsOn := make([]string, len(opts.DependsOn))
+	for i, urn := range opts.DependsOn {
+		dependsOn[i] = string(urn)
 	}
 
 	// submit request
@@ -758,23 +790,23 @@ func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.Prope
 		Args:       ins,
 		Version:    version,
 		PackageRef: packageRef,
+		DependsOn:  dependsOn,
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	// handle failures
 	if len(resp.Failures) != 0 {
-		return nil, resp.Failures, nil
+		return &InvokeResult{Failures: resp.Failures}, nil
 	}
 
 	// unmarshal outputs
 	outs, err := rm.unmarshalProperties(resp.Return)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return outs, nil, nil
+	return &InvokeResult{Return: outs, Unknown: resp.Unknown}, nil
 }
 
 func (rm *ResourceMonitor) Call(

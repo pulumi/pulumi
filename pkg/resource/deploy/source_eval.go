@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/resourcetracker"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -416,6 +417,8 @@ type resmon struct {
 
 	parents     map[resource.URN]resource.URN // map of child URNs to their parent URNs
 	parentsLock sync.Mutex
+
+	registrations resourcetracker.Tracker
 
 	resGoals               map[resource.URN]pkgresource.Goal  // map of seen URNs and their goals.
 	resGoalsLock           sync.Mutex                         // locks the resGoals map.
@@ -971,6 +974,7 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	}
 	return append(features,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_PARENT,
 	)
 }
@@ -1076,6 +1080,22 @@ func (rm *resmon) Invoke(
 		return nil, fmt.Errorf("Invoke: %w", err)
 	}
 
+	// If the caller declared dependencies, the invoke must observe the resources it depends on.
+	if deps := req.GetDependsOn(); len(deps) > 0 {
+		roots := mapset.NewThreadUnsafeSetWithSize[resource.URN](len(deps))
+		for _, dep := range deps {
+			urn, err := resource.ParseURN(dep)
+			if err != nil {
+				return nil, fmt.Errorf("invalid dependsOn URN %q: %w", dep, err)
+			}
+			roots.Add(urn)
+		}
+		if rm.registrations.HasUnresolved(roots) {
+			logging.V(5).Infof("ResourceMonitor.Invoke: tok=%v has pending dependencies, returning unknown", tok)
+			return &pulumirpc.ResourceInvokeResponse{Unknown: true}, nil
+		}
+	}
+
 	// Do the invoke and then return the arguments.
 	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	resp, err := prov.Invoke(ctx, plugin.InvokeRequest{
@@ -1114,6 +1134,21 @@ func (rm *resmon) Invoke(
 		})
 	}
 	return &pulumirpc.ResourceInvokeResponse{Return: mret, Failures: chkfails}, nil
+}
+
+// trackSettledResource records the resource a completed registration or read produced.
+//
+// parent and custom are the caller's, not the state's: Construct hands back a state carrying only a URN and outputs, so
+// a remote component's own state has neither, and filing it under the empty parent would hide it and everything beneath
+// it from a dependency declared on an ancestor. The step generator does not rewrite a goal's parent, so on the paths
+// where the state does carry one it is this same value.
+//
+// The step has finished, but the snapshot manager may still be reading the state, so take its lock to read the id.
+func (rm *resmon) trackSettledResource(state *pkgresource.State, parent resource.URN, custom bool) {
+	state.Lock.Lock()
+	urn, id := state.URN, state.ID
+	state.Lock.Unlock()
+	rm.registrations.Track(urn, parent, custom, id != "")
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.
@@ -1443,6 +1478,9 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}
 
 	contract.Assertf(result != nil, "ReadResource operation returned a nil result")
+	// A read always produces an id, so it is never pending, but it can still be an invoke's declared dependency.
+	rm.trackSettledResource(result.State, parent, true)
+
 	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
 		Label:            label,
 		KeepUnknowns:     true,
@@ -2152,6 +2190,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
 	}
+
+	defer rm.registrations.MarkInFlight(parent)()
 
 	if parent != "" {
 		rm.resGoalsLock.Lock()
@@ -2895,6 +2935,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				rm.componentProviders[result.State.URN] = opts.GetProviders()
 			}()
 		}
+		rm.trackSettledResource(result.State, parent, custom)
 	}
 
 	// Filter out partially-known values if the requestor does not support them.

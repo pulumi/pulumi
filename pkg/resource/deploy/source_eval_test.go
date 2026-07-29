@@ -2814,6 +2814,7 @@ func TestGetDeploymentInfo(t *testing.T) {
 	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SECRETS)
 	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES)
 	assert.NotContains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES)
+	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON)
 }
 
 func TestSourceEvalServeOptions(t *testing.T) {
