@@ -166,7 +166,7 @@ func (m *mockMonitor) GetDeploymentInfo(ctx context.Context, in *emptypb.Empty,
 
 func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRequest,
 	opts ...grpc.CallOption,
-) (*pulumirpc.InvokeResponse, error) {
+) (*pulumirpc.ResourceInvokeResponse, error) {
 	args, err := plugin.UnmarshalProperties(in.GetArgs(), plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
@@ -189,7 +189,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 		if err != nil {
 			return nil, err
 		}
-		return &pulumirpc.InvokeResponse{
+		return &pulumirpc.ResourceInvokeResponse{
 			Return: result,
 		}, nil
 	}
@@ -210,7 +210,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 		return nil, err
 	}
 
-	return &pulumirpc.InvokeResponse{
+	return &pulumirpc.ResourceInvokeResponse{
 		Return: result,
 	}, nil
 }

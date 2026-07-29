@@ -1001,7 +1001,9 @@ func (rm *resmon) GetDeploymentInfo(_ context.Context,
 }
 
 // Invoke performs an invocation of a member located in a resource provider.
-func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
+func (rm *resmon) Invoke(
+	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
+) (*pulumirpc.ResourceInvokeResponse, error) {
 	// Fetch the token.
 	tok := tokens.ModuleMember(req.GetTok())
 
@@ -1111,7 +1113,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 			Reason:   failure.Reason,
 		})
 	}
-	return &pulumirpc.InvokeResponse{Return: mret, Failures: chkfails}, nil
+	return &pulumirpc.ResourceInvokeResponse{Return: mret, Failures: chkfails}, nil
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.

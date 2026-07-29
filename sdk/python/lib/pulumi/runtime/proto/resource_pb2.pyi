@@ -25,6 +25,7 @@ import google.protobuf.message
 import google.protobuf.struct_pb2
 import pulumi.alias_pb2
 import pulumi.callback_pb2
+import pulumi.provider_pb2
 import pulumi.source_pb2
 import sys
 import typing
@@ -951,6 +952,26 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "accepts_byte_string", b"accepts_byte_string", "args", b"args", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceInvokeRequest = ResourceInvokeRequest
+
+@typing.final
+class ResourceInvokeResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    RETURN_FIELD_NUMBER: builtins.int
+    FAILURES_FIELD_NUMBER: builtins.int
+    @property
+    def failures(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.provider_pb2.CheckFailure]:
+        """the failures if any arguments didn't pass verification."""
+
+    def __init__(
+        self,
+        *,
+        failures: collections.abc.Iterable[pulumi.provider_pb2.CheckFailure] | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["return", b"return"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["failures", b"failures", "return", b"return"]) -> None: ...
+
+global___ResourceInvokeResponse = ResourceInvokeResponse
 
 @typing.final
 class ResourceCallRequest(google.protobuf.message.Message):

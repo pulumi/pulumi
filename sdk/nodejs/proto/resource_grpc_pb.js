@@ -69,17 +69,6 @@ function deserialize_pulumirpc_DeploymentInfo(buffer_arg) {
   return pulumi_resource_pb.DeploymentInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_InvokeResponse(arg) {
-  if (!(arg instanceof pulumi_provider_pb.InvokeResponse)) {
-    throw new Error('Expected argument of type pulumirpc.InvokeResponse');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
-  return pulumi_provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_ReadResourceRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.ReadResourceRequest)) {
     throw new Error('Expected argument of type pulumirpc.ReadResourceRequest');
@@ -201,6 +190,17 @@ function deserialize_pulumirpc_ResourceInvokeRequest(buffer_arg) {
   return pulumi_resource_pb.ResourceInvokeRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ResourceInvokeResponse(arg) {
+  if (!(arg instanceof pulumi_resource_pb.ResourceInvokeResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ResourceInvokeResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ResourceInvokeResponse(buffer_arg) {
+  return pulumi_resource_pb.ResourceInvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_SupportsFeatureRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.SupportsFeatureRequest)) {
     throw new Error('Expected argument of type pulumirpc.SupportsFeatureRequest');
@@ -262,11 +262,11 @@ getDeploymentInfo: {
     requestStream: false,
     responseStream: false,
     requestType: pulumi_resource_pb.ResourceInvokeRequest,
-    responseType: pulumi_provider_pb.InvokeResponse,
+    responseType: pulumi_resource_pb.ResourceInvokeResponse,
     requestSerialize: serialize_pulumirpc_ResourceInvokeRequest,
     requestDeserialize: deserialize_pulumirpc_ResourceInvokeRequest,
-    responseSerialize: serialize_pulumirpc_InvokeResponse,
-    responseDeserialize: deserialize_pulumirpc_InvokeResponse,
+    responseSerialize: serialize_pulumirpc_ResourceInvokeResponse,
+    responseDeserialize: deserialize_pulumirpc_ResourceInvokeResponse,
   },
   call: {
     path: '/pulumirpc.ResourceMonitor/Call',

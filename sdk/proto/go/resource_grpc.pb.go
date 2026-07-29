@@ -66,7 +66,7 @@ type ResourceMonitorClient interface {
 	// - Clients should fall back to existing request fields/env vars/SupportsFeature.
 	GetDeploymentInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DeploymentInfo, error)
 	SupportsFeature(ctx context.Context, in *SupportsFeatureRequest, opts ...grpc.CallOption) (*SupportsFeatureResponse, error)
-	Invoke(ctx context.Context, in *ResourceInvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
+	Invoke(ctx context.Context, in *ResourceInvokeRequest, opts ...grpc.CallOption) (*ResourceInvokeResponse, error)
 	Call(ctx context.Context, in *ResourceCallRequest, opts ...grpc.CallOption) (*CallResponse, error)
 	ReadResource(ctx context.Context, in *ReadResourceRequest, opts ...grpc.CallOption) (*ReadResourceResponse, error)
 	RegisterResource(ctx context.Context, in *RegisterResourceRequest, opts ...grpc.CallOption) (*RegisterResourceResponse, error)
@@ -122,9 +122,9 @@ func (c *resourceMonitorClient) SupportsFeature(ctx context.Context, in *Support
 	return out, nil
 }
 
-func (c *resourceMonitorClient) Invoke(ctx context.Context, in *ResourceInvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error) {
+func (c *resourceMonitorClient) Invoke(ctx context.Context, in *ResourceInvokeRequest, opts ...grpc.CallOption) (*ResourceInvokeResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(InvokeResponse)
+	out := new(ResourceInvokeResponse)
 	err := c.cc.Invoke(ctx, ResourceMonitor_Invoke_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -249,7 +249,7 @@ type ResourceMonitorServer interface {
 	// - Clients should fall back to existing request fields/env vars/SupportsFeature.
 	GetDeploymentInfo(context.Context, *emptypb.Empty) (*DeploymentInfo, error)
 	SupportsFeature(context.Context, *SupportsFeatureRequest) (*SupportsFeatureResponse, error)
-	Invoke(context.Context, *ResourceInvokeRequest) (*InvokeResponse, error)
+	Invoke(context.Context, *ResourceInvokeRequest) (*ResourceInvokeResponse, error)
 	Call(context.Context, *ResourceCallRequest) (*CallResponse, error)
 	ReadResource(context.Context, *ReadResourceRequest) (*ReadResourceResponse, error)
 	RegisterResource(context.Context, *RegisterResourceRequest) (*RegisterResourceResponse, error)
@@ -291,7 +291,7 @@ func (UnimplementedResourceMonitorServer) GetDeploymentInfo(context.Context, *em
 func (UnimplementedResourceMonitorServer) SupportsFeature(context.Context, *SupportsFeatureRequest) (*SupportsFeatureResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SupportsFeature not implemented")
 }
-func (UnimplementedResourceMonitorServer) Invoke(context.Context, *ResourceInvokeRequest) (*InvokeResponse, error) {
+func (UnimplementedResourceMonitorServer) Invoke(context.Context, *ResourceInvokeRequest) (*ResourceInvokeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Invoke not implemented")
 }
 func (UnimplementedResourceMonitorServer) Call(context.Context, *ResourceCallRequest) (*CallResponse, error) {

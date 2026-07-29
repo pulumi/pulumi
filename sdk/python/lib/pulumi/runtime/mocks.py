@@ -189,7 +189,7 @@ class MockMonitor:
                 rpc.serialize_properties(registered_resource._asdict(), {})
             )
             fields = {"failures": None, "return": ret_proto}
-            return provider_pb2.InvokeResponse(**fields)
+            return resource_pb2.ResourceInvokeResponse(**fields)
 
         call_args = MockCallArgs(
             token=request.tok, args=args, provider=request.provider
@@ -209,7 +209,7 @@ class MockMonitor:
         ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
 
         fields = {"failures": failures, "return": ret_proto}
-        return provider_pb2.InvokeResponse(**fields)
+        return resource_pb2.ResourceInvokeResponse(**fields)
 
     def ReadResource(self, request):
         # Ensure we have an event loop on this thread because it's needed when deserializing resource references.

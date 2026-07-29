@@ -405,7 +405,7 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 
 func (i *Interpreter) invoke(
 	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
-) (*pulumirpc.InvokeResponse, error) {
+) (*pulumirpc.ResourceInvokeResponse, error) {
 	req.PackageRef = i.getPackageRefFromToken(req.Tok)
 	req.Parent = i.stackURN
 	resp, err := i.monitor.Invoke(ctx, req)

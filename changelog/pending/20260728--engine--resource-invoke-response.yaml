@@ -1,0 +1,5 @@
+component: engine
+kind: improvement
+body: Give the resource monitor's `Invoke` its own response message, separating it from
+  the one a provider returns
+time: 2026-07-28T00:00:00+00:00
