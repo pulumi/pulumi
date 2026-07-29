@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -51,6 +52,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -743,7 +745,7 @@ func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T
 	})
 	require.NoError(t, err)
 
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
 	require.ErrorIs(t, err, ErrUnauthorized)
 	assert.Nil(t, account)
 	assert.Equal(t, 0, signupCalls)
@@ -792,7 +794,7 @@ func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testi
 	})
 	require.NoError(t, err)
 
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
 	require.ErrorIs(t, err, ErrUnauthorized)
 	require.ErrorIs(t, err, backenderr.LoginRequiredError{})
 	assert.ErrorContains(t, err, "ask the user to run `pulumi login`")
@@ -842,7 +844,7 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 	require.NoError(t, err)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "valid-agent-token", account.AccessToken)
@@ -924,7 +926,7 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-token", account.AccessToken)
@@ -996,7 +998,7 @@ func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-access-token", account.AccessToken)
@@ -1062,7 +1064,7 @@ func TestCurrentSignupAgentAccountWithoutRefreshTokenLeavesAccountEmpty(t *testi
 	t.Cleanup(server.Close)
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "agent-access-token", account.AccessToken)
@@ -1141,7 +1143,7 @@ func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *test
 	}, true))
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "new-access-token", account.AccessToken)
@@ -1214,7 +1216,7 @@ func TestCurrentAgentAccountRefreshesLocallyExpiredAccessTokenInsteadOfResigning
 	}, true))
 
 	ctx := ContextWithAgentCredentialUse(t.Context())
-	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex")
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
 	assert.Equal(t, "fresh-access-token", account.AccessToken,
@@ -1295,7 +1297,7 @@ func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 			}))
 			t.Cleanup(server.Close)
 
-			account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+			account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
 			require.ErrorContains(t, err, tt.wantErr)
 			assert.Nil(t, account)
 		})
@@ -3007,4 +3009,38 @@ func (nopBatchDecrypter) BatchDecrypt(context.Context, []string) ([]string, erro
 
 func (nopBatchDecrypter) Enqueue(context.Context, string, *resource.Secret) error {
 	return nil
+}
+
+// Regression test: an undecryptable credentials file must surface its
+// actionable error from Current instead of degrading into "not logged in".
+// Mirrors the report: PULUMI_BACKEND_URL set (so no earlier read fails),
+// explicit credentials path, no env token, no agent environment.
+//
+//nolint:paralleltest // mutates environment and the process-global secure-store mock
+func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
+	t.Setenv("PULUMI_CREDENTIALS_PATH", t.TempDir())
+	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	securestore.MockInit(t)
+
+	// Construct an envelope whose key is then lost.
+	st, err := securestore.Resolve(securestore.ModeAuto)
+	require.NoError(t, err)
+	key, err := st.GetOrCreateKey()
+	require.NoError(t, err)
+	cloudURL := "https://api.undecryptable-current.example.com"
+	payload, err := json.Marshal(workspace.Credentials{
+		Current:      cloudURL,
+		AccessTokens: map[string]string{cloudURL: "pul-lost"},
+	})
+	require.NoError(t, err)
+	envelope, err := securestore.Seal(key, st.Backend(), payload)
+	require.NoError(t, err)
+	credsFile := filepath.Join(os.Getenv("PULUMI_CREDENTIALS_PATH"), "credentials.json")
+	require.NoError(t, os.WriteFile(credsFile, envelope, 0o600))
+	require.NoError(t, st.DeleteKey())
+
+	_, err = defaultLoginManager{}.Current(t.Context(), cloudURL, false, false)
+	require.Error(t, err, "Current must not treat an undecryptable file as logged-out")
+	assert.True(t, workspace.IsUndecryptableCredentials(err))
+	assert.Contains(t, err.Error(), "pulumi login")
 }

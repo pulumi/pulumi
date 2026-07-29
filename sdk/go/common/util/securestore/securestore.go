@@ -40,6 +40,8 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // Backend identifies the mechanism protecting the key. It is recorded in the
@@ -176,13 +178,16 @@ func Resolve(mode Mode) (*Store, error) {
 	var firstErr error
 	for _, cand := range candidates() {
 		if err := cand.available(); err != nil {
+			logging.V(7).Infof("secure store backend %q not usable: %v", cand.id, err)
 			if firstErr == nil {
 				firstErr = err
 			}
 			continue
 		}
+		logging.V(7).Infof("secure store resolved to backend %q", cand.id)
 		return &Store{cand}, nil
 	}
+	logging.V(7).Infof("no secure store backend usable")
 	if mode == ModeOS {
 		if firstErr == nil {
 			firstErr = ErrUnavailable
@@ -254,14 +259,11 @@ var createKeyMu sync.Mutex
 // transient error would permanently orphan the user's encrypted data.
 func (s *Store) GetOrCreateKey() ([]byte, error) {
 	key, err := s.GetKey()
-	switch {
-	case err == nil:
+	if err == nil {
 		return key, nil
-	case errors.Is(err, ErrKeyNotFound):
-		// fall through to creation
-	default:
-		return nil, err
 	}
+	// All failure cases proceed under the lock, where they are re-checked
+	// and either recovered (creation, wrap upgrade) or surfaced.
 
 	createKeyMu.Lock()
 	defer createKeyMu.Unlock()
@@ -273,6 +275,14 @@ func (s *Store) GetOrCreateKey() ([]byte, error) {
 	case errors.Is(err, ErrKeyNotFound):
 		// still absent — create it
 	default:
+		// A raw-wrapped item under a TPM backend means the machine gained a
+		// usable TPM after the key was first stored (or group permissions
+		// were granted later). Upgrade in place: the raw key is readable, so
+		// re-wrap it with the TPM instead of failing — failing here would
+		// downgrade the user to plaintext.
+		if upgraded, upErr := s.upgradeKeyWrap(); upErr == nil && upgraded != nil {
+			return upgraded, nil
+		}
 		return nil, err
 	}
 
@@ -305,6 +315,32 @@ func (s *Store) GetOrCreateKey() ([]byte, error) {
 		key = stored
 	}
 	return key, nil
+}
+
+// upgradeKeyWrap re-protects a raw-wrapped stored key with this backend's
+// stronger wrapper (raw → TPM). It returns (nil, nil) when the stored item
+// is not a raw-wrapped key — only that one upgrade direction is possible,
+// since a TPM-wrapped key cannot be unwrapped without its TPM.
+func (s *Store) upgradeKeyWrap() ([]byte, error) {
+	if s.b.wrap.kind() == wrapRaw {
+		return nil, nil
+	}
+	value, err := s.b.store.get()
+	if err != nil {
+		return nil, err
+	}
+	kind, blob, err := parseItem(value)
+	if err != nil || kind != wrapRaw || len(blob) != 32 {
+		return nil, nil
+	}
+	wrapped, err := s.b.wrap.wrap(blob)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.b.store.set(formatItem(s.b.wrap.kind(), wrapped)); err != nil {
+		return nil, err
+	}
+	return blob, nil
 }
 
 // DeleteKey removes the key and any wrapper material. Deleting a missing key

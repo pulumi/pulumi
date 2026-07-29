@@ -17,6 +17,7 @@ package workspace
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
@@ -334,4 +335,45 @@ func TestInvalidModeSurfacesOnWrite(t *testing.T) {
 	err := StoreCredentials(testCreds())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "PULUMI_CREDENTIAL_STORE")
+}
+
+//nolint:paralleltest // t.Setenv, the package-global secure-store mock, and the real credentials file
+func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
+	// The agent fallback must not mask an undecryptable default credentials
+	// file as "not logged in" when no usable agent credentials stand in.
+	// Follows the established agent-test pattern: temporarily operate on the
+	// real credentials path (saved and restored), agent dir redirected.
+	securestore.MockInit(t)
+	resetWriteStoreForTesting()
+	t.Cleanup(resetWriteStoreForTesting)
+
+	oldCreds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
+		resetWriteStoreForTesting()
+		require.NoError(t, StoreCredentials(oldCreds))
+		require.NoError(t, DeleteAgentCredentials())
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	setAgentEnv(t)
+	t.Setenv(PulumiCredentialsPathEnvVar, "")
+	t.Setenv("PULUMI_HOME", "")
+	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
+	resetWriteStoreForTesting()
+
+	cloudURL := "https://api.undecryptable.example.com"
+	require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "tok"}, true))
+
+	// Lose the key: the file is now an undecryptable envelope.
+	st, err := securestore.Resolve(securestore.ModeAuto)
+	require.NoError(t, err)
+	require.NoError(t, st.DeleteKey())
+
+	_, _, err = GetAccountWithAgentFallback(cloudURL)
+	require.Error(t, err, "agent fallback must not swallow the undecryptable error")
+	assert.True(t, IsUndecryptableCredentials(err))
 }

@@ -105,6 +105,13 @@ func GetAccountWithAgentFallback(key string) (Account, bool, error) {
 		return Account{}, false, errors.Join(err, agentErr)
 	}
 	if !agentAccount.HasCredential() {
+		// An undecryptable default credentials file is an actionable state
+		// the user must resolve (or recover from via `pulumi login`); when no
+		// usable agent credentials stand in for it, it must not be masked as
+		// a plain "not logged in".
+		if IsUndecryptableCredentials(err) {
+			return Account{}, false, err
+		}
 		return Account{}, false, nil
 	}
 	return agentAccount, true, nil

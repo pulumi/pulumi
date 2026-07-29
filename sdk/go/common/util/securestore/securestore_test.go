@@ -242,3 +242,51 @@ func TestGetOrCreateKeyConcurrent(t *testing.T) {
 		assert.Equal(t, keys[0], keys[i], "all concurrent callers must converge on one key")
 	}
 }
+
+// fakeTPMWrapper simulates a TPM keyWrapper for tests: it "seals" by
+// prefixing a marker so wrapped and raw payloads are distinguishable.
+type fakeTPMWrapper struct{}
+
+func (fakeTPMWrapper) kind() wrapKind   { return wrapTPM }
+func (fakeTPMWrapper) available() error { return nil }
+func (fakeTPMWrapper) wrap(key []byte) ([]byte, error) {
+	return append([]byte("sealed:"), key...), nil
+}
+
+func (fakeTPMWrapper) unwrap(blob []byte) ([]byte, error) {
+	if !bytes.HasPrefix(blob, []byte("sealed:")) {
+		return nil, errors.New("not a sealed blob")
+	}
+	return bytes.TrimPrefix(blob, []byte("sealed:")), nil
+}
+
+//nolint:paralleltest // mutates the package-global mock resolver
+func TestGetOrCreateKeyUpgradesRawItemToTPM(t *testing.T) {
+	// A raw-wrapped key stored before a TPM became usable must be upgraded
+	// in place, not fail (which would downgrade the user to plaintext).
+	rawKey := testKey(t)
+	mem := &memStore{}
+	require.NoError(t, mem.set(formatItem(wrapRaw, rawKey)))
+	mockResolver = func() []backendImpl {
+		return []backendImpl{{id: BackendMock, store: mem, wrap: fakeTPMWrapper{}}}
+	}
+	t.Cleanup(func() { mockResolver = nil })
+
+	st, err := Resolve(ModeAuto)
+	require.NoError(t, err)
+	key, err := st.GetOrCreateKey()
+	require.NoError(t, err, "raw->tpm upgrade must succeed")
+	assert.Equal(t, rawKey, key, "the existing key must be preserved, not regenerated")
+
+	value, err := mem.get()
+	require.NoError(t, err)
+	kind, blob, err := parseItem(value)
+	require.NoError(t, err)
+	assert.Equal(t, wrapTPM, kind, "stored item must now be TPM-wrapped")
+	assert.Equal(t, append([]byte("sealed:"), rawKey...), blob)
+
+	// And reads keep working through the upgraded item.
+	got, err := st.GetKey()
+	require.NoError(t, err)
+	assert.Equal(t, rawKey, got)
+}

@@ -612,6 +612,14 @@ func (m defaultLoginManager) Current(
 	if err == nil && existingAccount.HasCredential() {
 		logging.V(7).Infof("Found stored credentials for %q in default credentials", cloudURL)
 	} else if err != nil {
+		// An undecryptable credentials file is an actionable state that must
+		// not silently degrade into "not logged in": surface it. Exception: a
+		// PULUMI_ACCESS_TOKEN takes precedence over stored credentials anyway
+		// and its next store replaces the unreadable file. `pulumi login` and
+		// `pulumi logout` recover from this state explicitly.
+		if accessToken == "" && workspace.IsUndecryptableCredentials(err) {
+			return nil, err
+		}
 		logging.V(7).Infof("Could not read default credentials for %q: %v", cloudURL, err)
 	}
 	if err == nil && existingAccount.HasCredential() &&
@@ -644,7 +652,7 @@ func (m defaultLoginManager) Current(
 				return nil, err
 			}
 			logging.V(7).Infof("Detected agent mode (%s); checking shared agent credentials", agent)
-			return m.currentOrSignupAgentAccount(ctx, cloudURL, insecure, setCurrent, agent)
+			return m.currentOrSignupAgentAccount(ctx, cloudURL, insecure, setCurrent, agent, err)
 		}
 		// No access token available, this isn't an error per-se but we don't have a backend.
 		logging.V(7).Infof("No access token or agent mode detected for %q", cloudURL)
@@ -685,6 +693,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	insecure bool,
 	setCurrent bool,
 	agentName string,
+	defaultCredsErr error,
 ) (*workspace.Account, error) {
 	now := time.Now()
 	if deleted, err := workspace.DeleteExpiredAgentCredentials(now); err != nil {
@@ -737,6 +746,14 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		logging.V(7).Infof("Shared agent credentials for %q are not valid; creating a new agent account", cloudURL)
 	} else {
 		logging.V(7).Infof("No shared agent credentials found for %q; creating a new agent account", cloudURL)
+	}
+
+	// Never paper over an undecryptable default credentials file by signing
+	// up a fresh ephemeral agent identity: the user has an account whose key
+	// is unusable (deleted item, restored backup, locked keyring) — surface
+	// the actionable error so they (or the agent) can run `pulumi login`.
+	if workspace.IsUndecryptableCredentials(defaultCredsErr) {
+		return nil, defaultCredsErr
 	}
 
 	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)
