@@ -24,14 +24,22 @@ export class Example_resource extends pulumi.CustomResource {
     public static readonly __pulumiType = 'legacy_names:index:example_resource';
 
     /**
-     * Returns true if the given object is an instance of Example_resource.  This is designed to work even
-     * when multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an instance of Example_resource (or a subclass of it).  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the
+     * same process.
      */
     public static isInstance(obj: any): obj is Example_resource {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === Example_resource.__pulumiType;
+        if (obj instanceof Example_resource) {
+            return true;
+        }
+        if (obj['__pulumiType'] === Example_resource.__pulumiType) {
+            return true;
+        }
+        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];
+        return Array.isArray(baseTypes) && baseTypes.indexOf(Example_resource.__pulumiType) !== -1;
     }
 
     declare public /*out*/ readonly URL: pulumi.Output<string | undefined>;

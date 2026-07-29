@@ -13,14 +13,22 @@ export class Component extends pulumi.ComponentResource {
     public static readonly __pulumiType: string = 'foo:index:Component';
 
     /**
-     * Returns true if the given object is an instance of Component.  This is designed to work even
-     * when multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an instance of Component (or a subclass of it).  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the
+     * same process.
      */
     public static isInstance(obj: any): obj is Component {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === Component.__pulumiType;
+        if (obj instanceof Component) {
+            return true;
+        }
+        if (obj['__pulumiType'] === Component.__pulumiType) {
+            return true;
+        }
+        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];
+        return Array.isArray(baseTypes) && baseTypes.indexOf(Component.__pulumiType) !== -1;
     }
 
     declare public readonly eniConfig: pulumi.Output<{[key: string]: outputs.crd.k8s.amazonaws.com.v1alpha1.ENIConfigSpec} | undefined>;

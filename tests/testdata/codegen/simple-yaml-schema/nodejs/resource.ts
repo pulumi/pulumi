@@ -21,14 +21,22 @@ export class Resource extends pulumi.CustomResource {
     public static readonly __pulumiType = 'example::Resource';
 
     /**
-     * Returns true if the given object is an instance of Resource.  This is designed to work even
-     * when multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an instance of Resource (or a subclass of it).  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the
+     * same process.
      */
     public static isInstance(obj: any): obj is Resource {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === Resource.__pulumiType;
+        if (obj instanceof Resource) {
+            return true;
+        }
+        if (obj['__pulumiType'] === Resource.__pulumiType) {
+            return true;
+        }
+        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];
+        return Array.isArray(baseTypes) && baseTypes.indexOf(Resource.__pulumiType) !== -1;
     }
 
     declare public readonly bar: pulumi.Output<string | undefined>;

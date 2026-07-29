@@ -13,15 +13,26 @@ export class WebService extends pulumiBasecomponent.Service {
     /** @internal */
     public static readonly __pulumiType: string = 'example:index:WebService';
 
+    /** @internal */
+    public static readonly __pulumiBaseTypes: string[] = ['basecomponent:index:Service'];
+
     /**
-     * Returns true if the given object is an instance of WebService.  This is designed to work even
-     * when multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an instance of WebService (or a subclass of it).  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the
+     * same process.
      */
     public static isInstance(obj: any): obj is WebService {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === WebService.__pulumiType;
+        if (obj instanceof WebService) {
+            return true;
+        }
+        if (obj['__pulumiType'] === WebService.__pulumiType) {
+            return true;
+        }
+        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];
+        return Array.isArray(baseTypes) && baseTypes.indexOf(WebService.__pulumiType) !== -1;
     }
 
     declare public /*out*/ readonly instanceCount: pulumi.Output<number>;

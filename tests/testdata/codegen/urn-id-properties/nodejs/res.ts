@@ -26,14 +26,22 @@ export class Res extends pulumi.CustomResource {
     public static readonly __pulumiType = 'urnid:index:Res';
 
     /**
-     * Returns true if the given object is an instance of Res.  This is designed to work even
-     * when multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an instance of Res (or a subclass of it).  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the
+     * same process.
      */
     public static isInstance(obj: any): obj is Res {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === Res.__pulumiType;
+        if (obj instanceof Res) {
+            return true;
+        }
+        if (obj['__pulumiType'] === Res.__pulumiType) {
+            return true;
+        }
+        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];
+        return Array.isArray(baseTypes) && baseTypes.indexOf(Res.__pulumiType) !== -1;
     }
 
     declare public /*out*/ readonly output: pulumi.Output<outputs.InnerType | undefined>;

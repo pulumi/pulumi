@@ -1,0 +1,6 @@
+component: sdkgen/nodejs
+kind: fix
+body: Make a generated component's `isInstance` recognize subclass instances, so
+  `Base.isInstance(derived)` returns true for both generated and user-authored
+  subclasses
+time: 2026-07-28T09:00:00-07:00

@@ -24,14 +24,22 @@ export class Nursery extends pulumi.CustomResource {
     public static readonly __pulumiType = 'plant:tree/v1:Nursery';
 
     /**
-     * Returns true if the given object is an instance of Nursery.  This is designed to work even
-     * when multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an instance of Nursery (or a subclass of it).  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the
+     * same process.
      */
     public static isInstance(obj: any): obj is Nursery {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === Nursery.__pulumiType;
+        if (obj instanceof Nursery) {
+            return true;
+        }
+        if (obj['__pulumiType'] === Nursery.__pulumiType) {
+            return true;
+        }
+        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];
+        return Array.isArray(baseTypes) && baseTypes.indexOf(Nursery.__pulumiType) !== -1;
     }
 
 

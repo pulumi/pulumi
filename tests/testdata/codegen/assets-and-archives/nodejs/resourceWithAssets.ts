@@ -23,14 +23,22 @@ export class ResourceWithAssets extends pulumi.CustomResource {
     public static readonly __pulumiType = 'example:index:ResourceWithAssets';
 
     /**
-     * Returns true if the given object is an instance of ResourceWithAssets.  This is designed to work even
-     * when multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an instance of ResourceWithAssets (or a subclass of it).  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the
+     * same process.
      */
     public static isInstance(obj: any): obj is ResourceWithAssets {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === ResourceWithAssets.__pulumiType;
+        if (obj instanceof ResourceWithAssets) {
+            return true;
+        }
+        if (obj['__pulumiType'] === ResourceWithAssets.__pulumiType) {
+            return true;
+        }
+        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];
+        return Array.isArray(baseTypes) && baseTypes.indexOf(ResourceWithAssets.__pulumiType) !== -1;
     }
 
     declare public readonly archive: pulumi.Output<pulumi.asset.Archive>;

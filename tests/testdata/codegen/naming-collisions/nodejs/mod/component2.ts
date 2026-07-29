@@ -21,14 +21,22 @@ export class Component2 extends pulumi.CustomResource {
     public static readonly __pulumiType = 'example:mod:Component2';
 
     /**
-     * Returns true if the given object is an instance of Component2.  This is designed to work even
-     * when multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an instance of Component2 (or a subclass of it).  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the
+     * same process.
      */
     public static isInstance(obj: any): obj is Component2 {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === Component2.__pulumiType;
+        if (obj instanceof Component2) {
+            return true;
+        }
+        if (obj['__pulumiType'] === Component2.__pulumiType) {
+            return true;
+        }
+        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];
+        return Array.isArray(baseTypes) && baseTypes.indexOf(Component2.__pulumiType) !== -1;
     }
 
 

@@ -12,14 +12,22 @@ export class ConfigGroup extends pulumi.ComponentResource {
     public static readonly __pulumiType: string = 'kubernetes:yaml/v2:ConfigGroup';
 
     /**
-     * Returns true if the given object is an instance of ConfigGroup.  This is designed to work even
-     * when multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an instance of ConfigGroup (or a subclass of it).  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the
+     * same process.
      */
     public static isInstance(obj: any): obj is ConfigGroup {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === ConfigGroup.__pulumiType;
+        if (obj instanceof ConfigGroup) {
+            return true;
+        }
+        if (obj['__pulumiType'] === ConfigGroup.__pulumiType) {
+            return true;
+        }
+        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];
+        return Array.isArray(baseTypes) && baseTypes.indexOf(ConfigGroup.__pulumiType) !== -1;
     }
 
     /**

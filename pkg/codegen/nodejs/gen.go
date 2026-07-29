@@ -854,13 +854,33 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	fmt.Fprintf(w, "    /** @internal */\n")
 	fmt.Fprintf(w, "    public static readonly __pulumiType%s = '%s';\n", pulumiTypeAnnotation, pulumiType)
 	fmt.Fprintf(w, "\n")
+
+	// A derived component advertises its transitive base type tokens so that `Base.isInstance(...)` can recognize a
+	// subclass instance -- including one that arrived from a different loaded copy of this SDK, where `instanceof`
+	// does not span copies.
+	if r.BaseResource != nil {
+		baseTokens := make([]string, 0, 2)
+		for b := r.BaseResource; b != nil; b = b.BaseResource {
+			baseTokens = append(baseTokens, fmt.Sprintf("'%s'", b.Token))
+		}
+		fmt.Fprintf(w, "    /** @internal */\n")
+		fmt.Fprintf(w, "    public static readonly __pulumiBaseTypes: string[] = [%s];\n", strings.Join(baseTokens, ", "))
+		fmt.Fprintf(w, "\n")
+	}
+
 	fmt.Fprintf(w, "    /**\n")
-	fmt.Fprintf(w, "     * Returns true if the given object is an instance of %s.  This is designed to work even\n", name)
-	fmt.Fprintf(w, "     * when multiple copies of the Pulumi SDK have been loaded into the same process.\n")
+	fmt.Fprintf(w, "     * Returns true if the given object is an instance of %s (or a subclass of it).  This is\n", name)
+	fmt.Fprintf(w, "     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the\n")
+	fmt.Fprintf(w, "     * same process.\n")
 	fmt.Fprintf(w, "     */\n")
 	fmt.Fprintf(w, "    public static isInstance(obj: any): obj is %s {\n", name)
 	fmt.Fprintf(w, "        if (obj === undefined || obj === null) {\n")
 	fmt.Fprintf(w, "            return false;\n")
+	fmt.Fprintf(w, "        }\n")
+	// The prototype-chain check honors inheritance within a single SDK copy, catching both generated and
+	// user-authored subclasses. The token checks below additionally work across copies of the SDK.
+	fmt.Fprintf(w, "        if (obj instanceof %s) {\n", name)
+	fmt.Fprintf(w, "            return true;\n")
 	fmt.Fprintf(w, "        }\n")
 
 	typeExpression := name + ".__pulumiType"
@@ -872,7 +892,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		// check here.
 		typeExpression = "\"pulumi:providers:\" + " + typeExpression
 	}
-	fmt.Fprintf(w, "        return obj['__pulumiType'] === %s;\n", typeExpression)
+	fmt.Fprintf(w, "        if (obj['__pulumiType'] === %s) {\n", typeExpression)
+	fmt.Fprintf(w, "            return true;\n")
+	fmt.Fprintf(w, "        }\n")
+	// A subclass from another loaded copy of this SDK advertises this base among its __pulumiBaseTypes.
+	fmt.Fprintf(w, "        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];\n")
+	fmt.Fprintf(w, "        return Array.isArray(baseTypes) && baseTypes.indexOf(%s) !== -1;\n", typeExpression)
 	fmt.Fprintf(w, "    }\n")
 	fmt.Fprintf(w, "\n")
 

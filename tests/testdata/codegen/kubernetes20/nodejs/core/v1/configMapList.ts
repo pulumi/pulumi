@@ -26,14 +26,22 @@ export class ConfigMapList extends pulumi.CustomResource {
     public static readonly __pulumiType = 'kubernetes:core/v1:ConfigMapList';
 
     /**
-     * Returns true if the given object is an instance of ConfigMapList.  This is designed to work even
-     * when multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an instance of ConfigMapList (or a subclass of it).  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the
+     * same process.
      */
     public static isInstance(obj: any): obj is ConfigMapList {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === ConfigMapList.__pulumiType;
+        if (obj instanceof ConfigMapList) {
+            return true;
+        }
+        if (obj['__pulumiType'] === ConfigMapList.__pulumiType) {
+            return true;
+        }
+        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];
+        return Array.isArray(baseTypes) && baseTypes.indexOf(ConfigMapList.__pulumiType) !== -1;
     }
 
     /**

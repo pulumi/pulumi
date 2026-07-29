@@ -13,15 +13,26 @@ export class Service extends Resource {
     /** @internal */
     public static readonly __pulumiType: string = 'example:index:Service';
 
+    /** @internal */
+    public static readonly __pulumiBaseTypes: string[] = ['example:index:Resource'];
+
     /**
-     * Returns true if the given object is an instance of Service.  This is designed to work even
-     * when multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an instance of Service (or a subclass of it).  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the
+     * same process.
      */
     public static isInstance(obj: any): obj is Service {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === Service.__pulumiType;
+        if (obj instanceof Service) {
+            return true;
+        }
+        if (obj['__pulumiType'] === Service.__pulumiType) {
+            return true;
+        }
+        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];
+        return Array.isArray(baseTypes) && baseTypes.indexOf(Service.__pulumiType) !== -1;
     }
 
     declare public readonly port: pulumi.Output<number>;

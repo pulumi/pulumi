@@ -24,14 +24,22 @@ export class User extends pulumi.CustomResource {
     public static readonly __pulumiType = 'credentials:index:User';
 
     /**
-     * Returns true if the given object is an instance of User.  This is designed to work even
-     * when multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an instance of User (or a subclass of it).  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the
+     * same process.
      */
     public static isInstance(obj: any): obj is User {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === User.__pulumiType;
+        if (obj instanceof User) {
+            return true;
+        }
+        if (obj['__pulumiType'] === User.__pulumiType) {
+            return true;
+        }
+        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];
+        return Array.isArray(baseTypes) && baseTypes.indexOf(User.__pulumiType) !== -1;
     }
 
     declare public /*out*/ readonly name: pulumi.Output<string>;

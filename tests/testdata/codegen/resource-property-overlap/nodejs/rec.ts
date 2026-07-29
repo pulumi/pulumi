@@ -23,14 +23,22 @@ export class Rec extends pulumi.CustomResource {
     public static readonly __pulumiType = 'example::Rec';
 
     /**
-     * Returns true if the given object is an instance of Rec.  This is designed to work even
-     * when multiple copies of the Pulumi SDK have been loaded into the same process.
+     * Returns true if the given object is an instance of Rec (or a subclass of it).  This is
+     * designed to work even when multiple copies of the Pulumi SDK have been loaded into the
+     * same process.
      */
     public static isInstance(obj: any): obj is Rec {
         if (obj === undefined || obj === null) {
             return false;
         }
-        return obj['__pulumiType'] === Rec.__pulumiType;
+        if (obj instanceof Rec) {
+            return true;
+        }
+        if (obj['__pulumiType'] === Rec.__pulumiType) {
+            return true;
+        }
+        const baseTypes = obj?.constructor?.['__pulumiBaseTypes'];
+        return Array.isArray(baseTypes) && baseTypes.indexOf(Rec.__pulumiType) !== -1;
     }
 
     declare public /*out*/ readonly rec: pulumi.Output<Rec | undefined>;
