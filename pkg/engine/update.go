@@ -780,7 +780,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 					policyOpts.AdditionalEnv = resolved.EnvironmentVariables
 				}
 				if len(resolved.Secrets) > 0 {
-					logging.AddGlobalFilter(logging.CreateFilter(resolved.Secrets, "[secret]"))
+					logging.AddGlobalSecretFilter(resolved.Secrets, "[secret]")
 				}
 			}
 
@@ -884,7 +884,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 						policyOpts.AdditionalEnv = resolved.EnvironmentVariables
 					}
 					if len(resolved.Secrets) > 0 {
-						logging.AddGlobalFilter(logging.CreateFilter(resolved.Secrets, "[secret]"))
+						logging.AddGlobalSecretFilter(resolved.Secrets, "[secret]")
 					}
 				}
 			}
