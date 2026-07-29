@@ -17,6 +17,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -36,13 +37,23 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 	var draft string
 
 	cmd := &cobra.Command{
-		Use:   "open [<org-name>/][<project-name>/]<environment-name>[@<version>] [property path]",
+		Use:   "open [[<org-name>/][<project-name>/]<environment-name>[@<version>]] [property path]",
 		Args:  cobra.MaximumNArgs(2),
 		Short: "Open the environment with the given name.",
 		Long: "Open the environment with the given name and return the result\n" +
 			"\n" +
 			"This command opens the environment with the given name. The result is written to\n" +
-			"stdout as JSON. If a property path is specified, only retrieves that property.\n",
+			"stdout as JSON. If a property path is specified, only retrieves that property.\n" +
+			"\n" +
+			"If no environment is given, the default environment for the working directory is\n" +
+			"opened. The default environment is taken from the nearest .esc.yaml file in the\n" +
+			"working directory or one of its parents, or, failing that, from the environments\n" +
+			"imported by the currently-selected Pulumi stack. Run `env default` to see the\n" +
+			"default environment in effect.\n" +
+			"\n" +
+			"When a default environment is configured, a single argument that does not contain a\n" +
+			"'/' is treated as a property path rather than an environment name. An argument that\n" +
+			"contains a '/' is always treated as an environment reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
@@ -50,7 +61,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 
-			ref, args, err := envcmd.getExistingEnvRef(ctx, args)
+			target, args, err := envcmd.getEnvTargetForOpenGet(ctx, args)
 			if err != nil {
 				return err
 			}
@@ -75,7 +86,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				return fmt.Errorf("unknown output format %q", format)
 			}
 
-			env, diags, err := envcmd.openEnvironment(ctx, ref, duration, draft)
+			env, diags, err := envcmd.openTarget(ctx, target, duration, draft)
 			if err != nil {
 				return err
 			}
@@ -247,5 +258,34 @@ func (env *envCommand) openEnvironment(
 		return nil, diags, err
 	}
 	open, err := env.esc.client.GetOpenEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, envID)
+	return open, nil, err
+}
+
+// openTarget opens the given target, which may be either a named environment or the anonymous list
+// of imports implied by a default environment.
+func (env *envCommand) openTarget(
+	ctx context.Context,
+	target envTarget,
+	duration time.Duration,
+	changeRequestID string,
+) (*esc.Environment, []client.EnvironmentDiagnostic, error) {
+	if !target.isAnonymous() {
+		return env.openEnvironment(ctx, target.ref, duration, changeRequestID)
+	}
+
+	// Drafts are a property of a stored environment, so there is nothing to open a draft of.
+	if changeRequestID != "" {
+		return nil, nil, errors.New("--draft requires a named environment")
+	}
+
+	orgName := target.anon.orgName
+	envID, diags, err := env.esc.client.OpenYAMLEnvironment(ctx, orgName, target.anon.definition(), duration)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(diags) != 0 {
+		return nil, diags, nil
+	}
+	open, err := env.esc.client.GetAnonymousOpenEnvironment(ctx, orgName, envID)
 	return open, nil, err
 }
