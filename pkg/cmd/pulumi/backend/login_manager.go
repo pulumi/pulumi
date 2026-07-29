@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -102,7 +103,9 @@ func (f *lm) Login(
 	opts := display.Options{
 		Color: color,
 	}
-	_, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", httpstate.WelcomeUser, setCurrent, opts)
+	consoleURL := client.CloudConsoleURL(httpstate.ValueOrDefaultURL(ws, url))
+	welcome := func(opts display.Options) { httpstate.WelcomeUser(opts, consoleURL) }
+	_, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", welcome, setCurrent, opts)
 	if err != nil {
 		return nil, err
 	}
