@@ -375,7 +375,6 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				Tok:               token,
 				Args:              obj,
 				AcceptsByteString: true,
-				AcceptsUnknowns:   true,
 			}
 
 			if len(args) == 3 && !args[2].IsNull() {
