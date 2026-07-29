@@ -1,4 +1,0 @@
-component: cli/do
-kind: feat
-body: Allow expressions for number inputs
-time: 2026-07-16T12:30:11.716465+01:00

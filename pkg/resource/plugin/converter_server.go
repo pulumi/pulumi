@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -73,6 +74,20 @@ func (c *converterServer) ConvertState(ctx context.Context,
 				Value:   e.Value,
 			}
 		}
+		if resource.Inputs != nil {
+			inputs, err := MarshalProperties(resource.Inputs, MarshalOptions{KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("marshaling inputs for resource %q: %w", resource.Name, err)
+			}
+			resources[i].Inputs = inputs
+		}
+		if resource.Outputs != nil {
+			outputs, err := MarshalProperties(resource.Outputs, MarshalOptions{KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("marshaling outputs for resource %q: %w", resource.Name, err)
+			}
+			resources[i].Outputs = outputs
+		}
 	}
 
 	// Translate the hcl.Diagnostics into rpc diagnostics.
@@ -124,6 +139,7 @@ func (c *converterServer) ConvertSnippet(ctx context.Context,
 		Package:      req.Package,
 		Token:        req.Token,
 		Attributes:   req.Attributes,
+		Resources:    convertSnippetResourceReferencesFromRPC(req.Resources),
 	})
 	if err != nil {
 		return nil, err
@@ -135,9 +151,26 @@ func (c *converterServer) ConvertSnippet(ctx context.Context,
 	}
 
 	return &pulumirpc.ConvertSnippetResponse{
-		Diagnostics: diags,
-		Filename:    resp.Filename,
-		Source:      resp.Source,
-		Attributes:  resp.Attributes,
+		Diagnostics:   diags,
+		Filename:      resp.Filename,
+		Source:        resp.Source,
+		Attributes:    resp.Attributes,
+		ResourceNames: resp.ResourceNames,
 	}, nil
+}
+
+func convertSnippetResourceReferencesFromRPC(
+	resources map[string]*pulumirpc.ConvertSnippetRequest_ResourceReference,
+) map[string]ConvertSnippetResourceReference {
+	if len(resources) == 0 {
+		return nil
+	}
+	result := make(map[string]ConvertSnippetResourceReference, len(resources))
+	for name, res := range resources {
+		result[name] = ConvertSnippetResourceReference{
+			Token:   res.Token,
+			Package: res.Package,
+		}
+	}
+	return result
 }

@@ -91,8 +91,8 @@ func newTestScanLogCmd() (*insightsAccountScanLogCmd, *bytes.Buffer) {
 }
 
 func continuationPage(lines int, token string) apitype.InsightsScanLogs {
-	var entries []apitype.InsightsScanLogLine
-	for i := 0; i < lines; i++ {
+	entries := make([]apitype.InsightsScanLogLine, 0, lines)
+	for i := range lines {
 		entries = append(entries, apitype.InsightsScanLogLine{
 			Header:    "scan",
 			Timestamp: time.Date(2026, 5, 1, 14, 30, i, 0, time.UTC),
@@ -110,7 +110,7 @@ func continuationPage(lines int, token string) apitype.InsightsScanLogs {
 // nextOffset cursor mirroring what the live API returns.
 func stepPage(lines int, prefix string, nextOffset int64) apitype.InsightsScanLogs {
 	entries := make([]apitype.InsightsScanLogLine, 0, lines)
-	for i := 0; i < lines; i++ {
+	for i := range lines {
 		entries = append(entries, apitype.InsightsScanLogLine{
 			Timestamp: time.Date(2026, 5, 1, 14, 30, i, 0, time.UTC),
 			Line:      prefix + "-" + string(rune('0'+i)) + "\n",

@@ -144,7 +144,7 @@ export class MockMonitor {
                 if (!registeredResource) {
                     throw new Error(`unknown resource ${inputs.urn}`);
                 }
-                const resp = new provproto.InvokeResponse();
+                const resp = new resproto.ResourceInvokeResponse();
                 resp.setReturn(structproto.Struct.fromJavaScript(registeredResource));
                 callback(null, resp);
                 return;
@@ -155,7 +155,7 @@ export class MockMonitor {
                 inputs: inputs,
                 provider: req.getProvider(),
             });
-            const response = new provproto.InvokeResponse();
+            const response = new resproto.ResourceInvokeResponse();
             response.setReturn(structproto.Struct.fromJavaScript(await serializeProperties("", result)));
             callback(null, response);
         } catch (err) {
@@ -242,6 +242,26 @@ export class MockMonitor {
         callback(null, {
             getHassupport: () => hasSupport,
         });
+    }
+
+    public getDeploymentInfo(req: any, callback: (err: any, innerResponse: any) => void) {
+        // Support for "outputValues" is deliberately disabled for the mock monitor so
+        // instances of `Output` don't show up in `MockResourceArgs` inputs.
+        const resp = new resproto.DeploymentInfo();
+        resp.setSupportedfeaturesList([
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_SECRETS,
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER,
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+        ]);
+        callback(null, resp);
     }
 
     public registerPackage(req: any, callback: (err: any, innerResponse: any) => void) {

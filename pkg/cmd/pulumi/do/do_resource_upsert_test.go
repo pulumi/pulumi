@@ -18,10 +18,12 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/gofrs/uuid"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,14 +33,17 @@ import (
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	deployproviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -97,6 +102,39 @@ func installMockUpsertBackend(t *testing.T, snapshot *deploy.Snapshot) (pkgWorks
 	return mws, mlm
 }
 
+func snapshotWithReferencedResource(t *testing.T, referencedURN resource.URN) *deploy.Snapshot {
+	t.Helper()
+
+	providerURN := resource.URN("urn:pulumi:dev::proj::pulumi:providers:azure::default_1_2_3")
+	providerID := resource.ID("provider-id")
+	providerRef, err := sdkproviders.NewReference(providerURN, providerID)
+	require.NoError(t, err)
+
+	version := semver.MustParse("1.2.3")
+	providerInputs := resource.PropertyMap{}
+	deployproviders.SetProviderVersion(providerInputs, &version)
+	deployproviders.SetProviderURL(providerInputs, "https://example.com/azure")
+
+	return &deploy.Snapshot{
+		Resources: []*pkgresource.State{
+			{
+				Type:   "pulumi:providers:azure",
+				URN:    providerURN,
+				Custom: true,
+				ID:     providerID,
+				Inputs: providerInputs,
+			},
+			{
+				Type:     referencedURN.Type(),
+				URN:      referencedURN,
+				Custom:   true,
+				ID:       "resource-id",
+				Provider: providerRef.String(),
+			},
+		},
+	}
+}
+
 // TestDoCmdResourceUpsertConstructsSnippet checks the CLI-to-UpdateOperation path for
 // `pulumi do <token> upsert <name>`: the input file's raw contents become the snippet's Code, the
 // snippet carries a fresh UUID (no existing snippet in the snapshot to match against), and the
@@ -146,6 +184,157 @@ size = 2
 
 	assert.Contains(t, stdout.String(), got.Snippet.UUID)
 	_ = stderr
+}
+
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceUpsertConstructsSnippetWithReferences(t *testing.T) {
+	referencedURN := resource.URN("urn:pulumi:dev::proj::azure:index:myResource::source")
+	mws, mlm := installMockUpsertBackend(t, snapshotWithReferencedResource(t, referencedURN))
+
+	var got StatefulUpdateRequest
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		got = req
+		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "upsert.pcl", `name = source.name`)
+	resourcesFile := writeHCLFile(t, "resources.json", `{"source":"`+string(referencedURN)+`"}`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "upsert", "myres", "--yes",
+		"--input", "pcl", "--input-file", inputFile, "--resources-file", resourcesFile,
+	})
+	require.NoError(t, cmd.Execute())
+
+	assert.Equal(t, map[string]string{"source": string(referencedURN)}, got.Snippet.References)
+	_ = stdout
+	_ = stderr
+}
+
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceUpsertConvertsReferences(t *testing.T) {
+	referencedURN := resource.URN("urn:pulumi:dev::proj::azure:index:myResource::source")
+	mws, mlm := installMockUpsertBackend(t, snapshotWithReferencedResource(t, referencedURN))
+
+	var got StatefulUpdateRequest
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		got = req
+		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+
+	loadConverter := func(_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		assert.Equal(t, "yaml", name)
+		return &plugin.MockConverter{
+			ConvertSnippetF: func(_ context.Context, req *plugin.ConvertSnippetRequest) (
+				*plugin.ConvertSnippetResponse, error,
+			) {
+				assert.Equal(t, "upsert.yaml", filepath.Base(req.Filename))
+				assert.Equal(t, "name: ${source-name.name}\n", string(req.Source))
+				require.Len(t, req.Resources, 1)
+				ref := req.Resources["source-name"]
+				assert.Equal(t, "azure:index:myResource", ref.Token)
+				require.NotNil(t, ref.Package)
+				assert.Equal(t, "azure", ref.Package.Package)
+				assert.Equal(t, "1.2.3", ref.Package.Version)
+				assert.Equal(t, "https://example.com/azure", ref.Package.DownloadUrl)
+				return &plugin.ConvertSnippetResponse{
+					Filename: "upsert.pp",
+					Source:   []byte("name = sourceName.name\n"),
+					ResourceNames: map[string]string{
+						"source-name": "sourceName",
+					},
+				}, nil
+			},
+		}, nil
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, loadConverter, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "upsert.yaml", "name: ${source-name.name}\n")
+	resourcesFile := writeHCLFile(t, "resources.json", `{"source-name":"`+string(referencedURN)+`"}`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "upsert", "myres", "--yes",
+		"--input", "yaml", "--input-file", inputFile, "--resources-file", resourcesFile,
+	})
+	require.NoError(t, cmd.Execute())
+
+	assert.Equal(t, "name = sourceName.name\n", got.Snippet.Code)
+	assert.Equal(t, map[string]string{"sourceName": string(referencedURN)}, got.Snippet.References)
+	_ = stdout
+	_ = stderr
+}
+
+func TestResourceReferenceInfosIncludesProviderParameterization(t *testing.T) {
+	t.Parallel()
+
+	referencedURN := resource.URN("urn:pulumi:dev::proj::myparam:index:Thing::source")
+	providerURN := resource.URN("urn:pulumi:dev::proj::pulumi:providers:myparam::default_1_2_3")
+	providerID := resource.ID("provider-id")
+	providerRef, err := sdkproviders.NewReference(providerURN, providerID)
+	require.NoError(t, err)
+
+	baseVersion := semver.MustParse("2.0.0")
+	parameterVersion := semver.MustParse("1.2.3")
+	parameterValue := []byte("parameter-value")
+	providerInputs := resource.PropertyMap{}
+	deployproviders.SetProviderVersion(providerInputs, &baseVersion)
+	deployproviders.SetProviderName(providerInputs, "terraform-provider")
+	deployproviders.SetProviderParameterization(providerInputs, &workspace.Parameterization{
+		Name:    "myparam",
+		Version: parameterVersion,
+		Value:   parameterValue,
+	})
+	deployproviders.SetProviderURL(providerInputs, "https://example.com/terraform-provider")
+
+	infos, err := resourceReferenceInfos(map[string]string{
+		"source": string(referencedURN),
+	}, &deploy.Snapshot{
+		Resources: []*pkgresource.State{
+			{
+				Type:   "pulumi:providers:myparam",
+				URN:    providerURN,
+				Custom: true,
+				ID:     providerID,
+				Inputs: providerInputs,
+			},
+			{
+				Type:     referencedURN.Type(),
+				URN:      referencedURN,
+				Custom:   true,
+				ID:       "resource-id",
+				Provider: providerRef.String(),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	ref := infos["source"]
+	assert.Equal(t, "myparam:index:Thing", ref.Token)
+	require.NotNil(t, ref.Package)
+	assert.Equal(t, "terraform-provider", ref.Package.Package)
+	assert.Equal(t, "2.0.0", ref.Package.Version)
+	assert.Equal(t, "https://example.com/terraform-provider", ref.Package.DownloadUrl)
+	require.NotNil(t, ref.Package.Parameterization)
+	assert.Equal(t, "myparam", ref.Package.Parameterization.Name)
+	assert.Equal(t, "1.2.3", ref.Package.Parameterization.Version)
+	assert.Equal(t, parameterValue, ref.Package.Parameterization.Value)
 }
 
 // TestDoCmdResourceUpsertReusesExistingSnippet asserts that upsert against a stack whose snapshot
@@ -306,16 +495,361 @@ size = 3
 	_ = stderr
 }
 
-// TestDoCmdResourceUpsertHiddenInStatelessMode verifies that `upsert` is not registered as a
-// subcommand when the user opts into stateless mode. The subcommand tree shouldn't advertise
-// commands the user can't actually run.
-func TestDoCmdResourceUpsertHiddenInStatelessMode(t *testing.T) {
+// TestDoCmdResourceUpsertStateless drives `upsert` in stateless mode: the given ID is read from
+// the provider, and the resource is either fully updated (existing) or created (missing).
+func TestDoCmdResourceUpsertStateless(t *testing.T) {
+	t.Parallel()
+
+	t.Run("fully updates an existing resource", func(t *testing.T) {
+		t.Parallel()
+		var calls []string
+		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(false),
+			MockProvider: plugin.MockProvider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					calls = append(calls, "read")
+					assert.Equal(t, resource.ID("res-1"), req.ID)
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID: "res-1",
+							Inputs: resource.PropertyMap{
+								"name":    resource.NewProperty("old"),
+								"size":    resource.NewProperty(1.0),
+								"enabled": resource.NewProperty(true),
+							},
+							Outputs: resource.PropertyMap{
+								"name":    resource.NewProperty("old"),
+								"size":    resource.NewProperty(1.0),
+								"enabled": resource.NewProperty(true),
+							},
+						},
+					}, nil
+				},
+				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					calls = append(calls, "check")
+					assert.Equal(t, "old", req.Olds["name"].StringValue())
+					assert.Equal(t, "new", req.News["name"].StringValue())
+					assert.Equal(t, 2.0, req.News["size"].NumberValue())
+					_, hasEnabled := req.News["enabled"]
+					assert.False(t, hasEnabled, "inputs should be fully replaced, not merged")
+					return plugin.CheckResponse{Properties: req.News}, nil
+				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+					calls = append(calls, "diff")
+					return plugin.DiffResponse{
+						Changes:     plugin.DiffSome,
+						ChangedKeys: []resource.PropertyKey{"name", "size", "enabled"},
+					}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					calls = append(calls, "update")
+					assert.Equal(t, "new", req.NewInputs["name"].StringValue())
+					assert.Equal(t, 2.0, req.NewInputs["size"].NumberValue())
+					_, hasEnabled := req.NewInputs["enabled"]
+					assert.False(t, hasEnabled, "inputs should be fully replaced, not merged")
+					return plugin.UpdateResponse{
+						Properties: resource.PropertyMap{
+							"name": resource.NewProperty("new"),
+							"size": resource.NewProperty(2.0),
+						},
+					}, nil
+				},
+			},
+		})
+
+		inputFile := writeHCLFile(t, "upsert.pcl", `
+name = "new"
+size = 2
+`)
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "upsert", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile, "--output", "json",
+		})
+		require.NoError(t, cmd.Execute())
+		assert.Equal(t, []string{"read", "check", "diff", "update"}, calls)
+		assert.JSONEq(t, `{"id":"res-1","name":"new","size":2}`, stdout.String())
+	})
+
+	t.Run("creates a missing resource", func(t *testing.T) {
+		t.Parallel()
+		var calls []string
+		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(false),
+			MockProvider: plugin.MockProvider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					calls = append(calls, "read")
+					assert.Equal(t, resource.ID("res-1"), req.ID)
+					return plugin.ReadResponse{}, nil
+				},
+				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					calls = append(calls, "check")
+					assert.Empty(t, req.Olds)
+					assert.Equal(t, "new", req.News["name"].StringValue())
+					return plugin.CheckResponse{Properties: req.News}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					calls = append(calls, "create")
+					assert.Equal(t, "new", req.Properties["name"].StringValue())
+					return plugin.CreateResponse{
+						ID: "res-2",
+						Properties: resource.PropertyMap{
+							"name": resource.NewProperty("new"),
+							"size": resource.NewProperty(2.0),
+						},
+					}, nil
+				},
+			},
+		})
+
+		inputFile := writeHCLFile(t, "upsert.pcl", `
+name = "new"
+size = 2
+`)
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "upsert", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile, "--output", "json",
+		})
+		require.NoError(t, cmd.Execute())
+		assert.Equal(t, []string{"read", "check", "create"}, calls)
+		assert.JSONEq(t, `{"id":"res-2","name":"new","size":2}`, stdout.String())
+	})
+}
+
+// TestDoCmdResourceStatefulCreateConstructsSnippet mirrors the upsert-constructs-snippet test but
+// for stateful `create`: the CLI takes a name arg, mints a fresh UUID, hands the snippet to
+// runStatefulUpdate, and the completion line uses "created" rather than "upserted".
+//
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceStatefulCreateConstructsSnippet(t *testing.T) {
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{})
+
+	var got StatefulUpdateRequest
+	var called bool
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		called = true
+		got = req
+		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "create.pcl", `name = "example"`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "create", "myres", "--yes",
+		"--input", "pcl", "--input-file", inputFile,
+	})
+	require.NoError(t, cmd.Execute())
+
+	require.True(t, called, "runStatefulUpdate should have been invoked")
+	assert.Equal(t, "myres", got.Snippet.Name)
+	assert.Equal(t, "azure:index:myResource", got.Snippet.Type)
+	assert.Contains(t, got.Snippet.Code, `name = "example"`)
+	require.NotEmpty(t, got.Snippet.UUID)
+	assert.Contains(t, stdout.String(), "created myres")
+	_ = stderr
+}
+
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceStatefulCreateConstructsSnippetWithReferences(t *testing.T) {
+	referencedURN := resource.URN("urn:pulumi:dev::proj::azure:index:myResource::source")
+	mws, mlm := installMockUpsertBackend(t, snapshotWithReferencedResource(t, referencedURN))
+
+	var got StatefulUpdateRequest
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		got = req
+		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "create.pcl", `name = source.name`)
+	resourcesFile := writeHCLFile(t, "resources.json", `{"source":"`+string(referencedURN)+`"}`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "create", "myres", "--yes",
+		"--input", "pcl", "--input-file", inputFile, "--resources-file", resourcesFile,
+	})
+	require.NoError(t, cmd.Execute())
+
+	assert.Equal(t, map[string]string{"source": string(referencedURN)}, got.Snippet.References)
+	_ = stdout
+	_ = stderr
+}
+
+func TestReadResourceReferences(t *testing.T) {
+	t.Parallel()
+
+	referencedURN := "urn:pulumi:dev::proj::azure:index:myResource::source"
+	resourcesFile := writeHCLFile(t, "resources.json", `{"source":"`+referencedURN+`"}`)
+
+	refs, err := readResourceReferences(resourcesFile)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"source": referencedURN}, refs)
+}
+
+func TestReadResourceReferencesRejectsInvalidInput(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		contents string
+		wantErr  string
+	}{
+		{
+			name:     "invalid urn",
+			contents: `{"source":"not-a-urn"}`,
+			wantErr:  `invalid URN for "source"`,
+		},
+		{
+			name:     "not object",
+			contents: `[]`,
+			wantErr:  "parse resources file",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			resourcesFile := writeHCLFile(t, "resources.json", tt.contents)
+			_, err := readResourceReferences(resourcesFile)
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
+// TestDoCmdResourceStatefulCreateRejectsExisting checks the invariant that distinguishes create
+// from upsert: if a snippet with the same (Name, Type) already lives in the snapshot, create
+// refuses rather than replacing it in place.
+//
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceStatefulCreateRejectsExisting(t *testing.T) {
+	existing := resource.Snippet{
+		UUID: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+		Name: "myres", Type: "azure:index:myResource",
+		Code:       `name = "old"`,
+		Descriptor: resource.PackageDescriptor{Name: "azure"},
+	}
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{Snippets: []resource.Snippet{existing}})
+
+	stub := func(_ context.Context, _ *pflag.FlagSet, _ StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		require.Fail(t, "runStatefulUpdate should not be called when the snippet already exists")
+		return nil, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "create.pcl", `name = "new"`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "create", "myres", "--yes",
+		"--input", "pcl", "--input-file", inputFile,
+	})
+	err := cmd.Execute()
+	require.ErrorContains(t, err, "already exists")
+	require.ErrorContains(t, err, "upsert")
+	_ = stdout
+	_ = stderr
+}
+
+// TestDoCmdResourceStatefulDeleteConstructsSnippetDelete checks that stateful `delete` resolves
+// the existing snippet by (Name, Type), targets that snippet UUID, and marks the request as a
+// snippet deletion.
+//
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceStatefulDeleteConstructsSnippetDelete(t *testing.T) {
+	existing := resource.Snippet{
+		UUID: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+		Name: "myres", Type: "azure:index:myResource",
+		Code:       `name = "old"`,
+		Descriptor: resource.PackageDescriptor{Name: "azure"},
+	}
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{Snippets: []resource.Snippet{existing}})
+
+	var got StatefulUpdateRequest
+	var called bool
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		called = true
+		got = req
+		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	cmd.SetArgs([]string{"azure:index:myResource", "delete", "myres", "--yes"})
+	require.NoError(t, cmd.Execute())
+
+	require.True(t, called, "runStatefulUpdate should have been invoked")
+	assert.True(t, got.Delete)
+	assert.Equal(t, existing.UUID, got.Snippet.UUID)
+	assert.Equal(t, "myres", got.Snippet.Name)
+	assert.Equal(t, "azure:index:myResource", got.Snippet.Type)
+	assert.Contains(t, stdout.String(), "deleted myres")
+	assert.Contains(t, stdout.String(), existing.UUID)
+	_ = stderr
+}
+
+// TestDoCmdResourceStatefulDeleteRejectsMissing checks that delete refuses to run a backend update
+// when the named snippet does not exist in the stack snapshot.
+//
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceStatefulDeleteRejectsMissing(t *testing.T) {
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{})
+
+	stub := func(_ context.Context, _ *pflag.FlagSet, _ StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		require.Fail(t, "runStatefulUpdate should not be called when the snippet is missing")
+		return nil, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	cmd.SetArgs([]string{"azure:index:myResource", "delete", "myres", "--yes"})
+	err := cmd.Execute()
+	require.ErrorContains(t, err, "does not exist")
+	require.ErrorContains(t, err, "myres")
+	_ = stdout
+	_ = stderr
+}
+
+// TestDoCmdResourceCreateStatelessTakesNoNameArg pins the diverging UX between the two `create`
+// variants: stateless `create` uses the resource type's short name (no positional arg), stateful
+// `create` requires an explicit `<name>`.
+func TestDoCmdResourceCreateStatelessTakesNoNameArg(t *testing.T) {
 	t.Parallel()
 
 	cmd, stdout, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(false)})
-	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "--help"})
-	require.NoError(t, cmd.Execute())
-	assert.NotContains(t, stdout.String(), "upsert")
+	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "create", "myres"})
+	err := cmd.Execute()
+	require.Error(t, err, "stateless create should reject a positional name arg")
+	_ = stdout
 }
 
 // TestDoCmdResourceUpsertMergesInputFlags verifies that --input-* flags are merged into the
@@ -512,5 +1046,64 @@ func TestDefaultRunStatefulUpdateYesAutoApprovesUpdate(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.True(t, updateCalled, "non-dry-run upsert should call UpdateStack")
+	require.Equal(t, "3fa85f64-5717-4562-b3fc-2c963f66afa6", result.SnippetUUID)
+}
+
+//nolint:paralleltest // Uses t.Chdir
+func TestDefaultRunStatefulUpdateDeletePassesNilSnippet(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(root+"/Pulumi.yaml", []byte("name: proj\nruntime: yaml\n"), 0o600))
+	t.Chdir(root)
+
+	stackRef := &backend.MockStackReference{
+		StringV:             "myorg/proj/dev",
+		NameV:               tokens.MustParseStackName("dev"),
+		FullyQualifiedNameV: "myorg/proj/dev",
+	}
+	var updateCalled bool
+	mockBackend := &backend.MockBackend{
+		UpdateF: func(_ context.Context, _ backend.Stack, op backend.UpdateOperation) (sdkDisplay.ResourceChanges, error) {
+			updateCalled = true
+			require.Len(t, op.Opts.Engine.TargetSnippets, 1)
+			assert.Equal(t, "3fa85f64-5717-4562-b3fc-2c963f66afa6", op.Opts.Engine.TargetSnippets[0])
+			require.Len(t, op.Opts.Engine.Snippets, 1)
+			snippetID := uuid.Must(uuid.FromString("3fa85f64-5717-4562-b3fc-2c963f66afa6"))
+			assert.Nil(t, op.Opts.Engine.Snippets[snippetID])
+			return nil, nil
+		},
+	}
+	mockStack := &backend.MockStack{
+		RefF:            func() backend.StackReference { return stackRef },
+		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{IsRemote: true} },
+		LoadRemoteF: func(context.Context, *workspace.Project) (*workspace.ProjectStack, error) {
+			return &workspace.ProjectStack{}, nil
+		},
+		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+			return b64.NewBase64SecretsManager(), nil
+		},
+		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+			return &deploy.Snapshot{SecretsManager: b64.NewBase64SecretsManager()}, nil
+		},
+		BackendF: func() backend.Backend { return mockBackend },
+	}
+	var stdout, stderr bytes.Buffer
+
+	result, err := DefaultRunStatefulUpdate(
+		t.Context(), pflag.NewFlagSet("test", pflag.ContinueOnError), StatefulUpdateRequest{
+			Snippet: resource.Snippet{
+				UUID: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+				Name: "myres",
+				Type: "azure:index:myResource",
+			},
+			Stack:  mockStack,
+			Yes:    true,
+			Delete: true,
+			Proj:   &workspace.Project{Name: tokens.PackageName("proj")},
+			Root:   root,
+			Sink:   diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{Color: colors.Never}),
+		},
+	)
+	require.NoError(t, err)
+	require.True(t, updateCalled, "stateful delete should call UpdateStack")
 	require.Equal(t, "3fa85f64-5717-4562-b3fc-2c963f66afa6", result.SnippetUUID)
 }

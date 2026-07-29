@@ -69,6 +69,9 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 	if schemaHelp := functionSchemaHelp(fn); schemaHelp != "" {
 		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, schemaHelp)
 	}
+	if fn.Inputs != nil && len(fn.Inputs.Properties) > 0 {
+		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, inputFlagsHelp)
+	}
 
 	var inputFile string
 

@@ -25,7 +25,7 @@ import (
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/acarl005/stripansi"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -240,7 +240,7 @@ func TestNewModel_InitialViewDoesNotWrapPlaceholderToTinyWidth(t *testing.T) {
 	t.Parallel()
 
 	m := NewModel(ModelConfig{Busy: true, InitialWidth: 215})
-	view := stripansi.Strip(m.viewString())
+	view := ansi.Strip(m.viewString())
 
 	assert.Equal(t, 215, m.width)
 	assert.Equal(t, 211, m.liveWidth())
@@ -248,13 +248,13 @@ func TestNewModel_InitialViewDoesNotWrapPlaceholderToTinyWidth(t *testing.T) {
 		"first frame before WindowSizeMsg must render the full placeholder")
 
 	m.textInput.SetWidth(2)
-	view = stripansi.Strip(m.viewString())
+	view = ansi.Strip(m.viewString())
 	assert.Contains(t, view, "Send a message...",
 		"empty input render must not trust a stale tiny textarea viewport")
 
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 4, Height: 79})
 	um := updated.(Model)
-	view = stripansi.Strip(um.viewString())
+	view = ansi.Strip(um.viewString())
 
 	assert.Equal(t, 215, um.width)
 	assert.Equal(t, 211, um.liveWidth())
@@ -2328,7 +2328,7 @@ func TestModel_LiveView_OnlyShowsLiveBlocks(t *testing.T) {
 	view := m.viewString()
 	// Live blocks are visible. Shimmer styles each char with its own ANSI
 	// run, so strip escapes before substring-matching the label.
-	assert.Contains(t, stripansi.Strip(view), "Thinking", "busy label must appear in View")
+	assert.Contains(t, ansi.Strip(view), "Thinking", "busy label must appear in View")
 	// Committed blocks are NOT visible — they were emitted to scrollback.
 	assert.NotContains(t, view, "USERSCROLLBACK")
 	assert.NotContains(t, view, "TOOLCOMPLETESCROLLBACK")
@@ -2672,7 +2672,7 @@ func TestModel_PrepareInitialScrollbackSuppressesFirstFlush(t *testing.T) {
 	})
 
 	prepared, rendered := m.prepareInitialScrollback(100, 30)
-	stripped := stripansi.Strip(rendered)
+	stripped := ansi.Strip(rendered)
 	assert.Contains(t, stripped, "historical prompt")
 	assert.Contains(t, stripped, "historical answer")
 	assert.True(t, prepared.sizeReceived)
@@ -2794,7 +2794,7 @@ func TestView_LeadingBlankLine_Idle(t *testing.T) {
 	// After the leading blank, the next thing must be the prompt — not a
 	// second blank line. The textarea wraps the "❯ " prompt in ANSI escapes,
 	// so strip them before doing the prefix check.
-	stripped := stripansi.Strip(view)
+	stripped := ansi.Strip(view)
 	assert.True(t, strings.HasPrefix(stripped, "\n❯ "),
 		"idle View() must put the prompt immediately after the leading blank; got: %q", stripped)
 }
@@ -2807,7 +2807,7 @@ func TestView_LeadingBlankLine_Busy_SpinnerFlushWithPrompt(t *testing.T) {
 	m.height = 24
 	m.blocks = []block{{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb}}
 
-	view := stripansi.Strip(m.viewString())
+	view := ansi.Strip(m.viewString())
 	require.True(t, strings.HasPrefix(view, "\n"),
 		"View() must start with a blank line above the live frame; got: %q", view)
 
@@ -2834,7 +2834,7 @@ func TestLiveView_BlankBetweenLiveBlocks(t *testing.T) {
 		{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb},
 	}
 
-	live := stripansi.Strip(m.liveView())
+	live := ansi.Strip(m.liveView())
 	require.Contains(t, live, "PULUMI_LIVE")
 	require.Contains(t, live, "Thinking")
 

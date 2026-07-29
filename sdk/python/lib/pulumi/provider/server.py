@@ -85,7 +85,6 @@ class ProviderServicer(ResourceProviderServicer):
     engine_address: str
     provider: Provider
     args: list[str]
-    lock: asyncio.Lock
 
     def create_grpc_invalid_properties_status(
         self, message: str, errors: Optional[list[InputPropertyErrorDetails]]
@@ -121,9 +120,6 @@ class ProviderServicer(ResourceProviderServicer):
     async def Construct(
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
-        # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
-        # avoid modifying globals, we can remove the locking.
-        await self.lock.acquire()
         try:
             return await self._construct(request, context)
         except Exception as e:  # noqa
@@ -150,8 +146,6 @@ class ProviderServicer(ResourceProviderServicer):
                     stack = traceback.extract_tb(e.__traceback__)[:]
                 pretty_stack = "".join(traceback.format_list(stack))
                 raise Exception(f"{str(e)}:\n{pretty_stack}")
-        finally:
-            self.lock.release()
 
     async def _construct(
         self, request: proto.ConstructRequest, context
@@ -349,9 +343,6 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.ConstructResponse(urn=urn, state=state, stateDependencies=deps)
 
     async def Call(self, request: proto.CallRequest, context):
-        # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
-        # avoid modifying globals, we can remove the locking.
-        await self.lock.acquire()
         try:
             return await self._call(request, context)
         except InputPropertiesError as e:
@@ -366,8 +357,6 @@ class ProviderServicer(ResourceProviderServicer):
             await context.abort_with_status(status)
             # We already aborted at this point
             raise
-        finally:
-            self.lock.release()
 
     async def _call(self, request: proto.CallRequest, context):
         assert isinstance(request, proto.CallRequest), (
@@ -510,7 +499,6 @@ class ProviderServicer(ResourceProviderServicer):
         self.provider = provider
         self.args = args
         self.engine_address = engine_address
-        self.lock = asyncio.Lock()
 
 
 def main(provider: Provider, args: list[str]) -> None:  # args not in use?
@@ -594,9 +582,8 @@ def _create_provider_resource(ref: str) -> ProviderResource:
     urn_parts = pulumi.urn._parse_urn(urn)
     resource_package = rpc.get_resource_package(urn_parts.typ_name, version="")
     if resource_package is not None:
-        return cast(
-            ProviderResource,
-            resource_package.construct_provider(urn_parts.urn_name, urn_parts.typ, urn),
+        return resource_package.construct_provider(
+            urn_parts.urn_name, urn_parts.typ, urn
         )
 
     return DependencyProviderResource(ref)

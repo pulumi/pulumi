@@ -117,7 +117,7 @@ func TestCachingPluginMapper_ConcurrentAccess(t *testing.T) {
 	wg.Add(numGoroutines)
 
 	// Create multiple goroutines that will all try to access the map at the same time
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		// Use two different provider names to enforce multiple map writes
 		provider := "gcp"
 		if i%2 == 0 {

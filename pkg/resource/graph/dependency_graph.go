@@ -15,6 +15,8 @@
 package graph
 
 import (
+	"slices"
+
 	mapset "github.com/deckarep/golang-set/v2"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -156,10 +158,8 @@ func (dg *DependencyGraph) OnlyDependsOn(res *pkgresource.State) []*pkgresource.
 		if provider != "" {
 			ref, err := providers.ParseReference(provider)
 			contract.AssertNoErrorf(err, "cannot parse provider reference %q", provider)
-			for _, id := range dependentSet[ref.URN()] {
-				if id == ref.ID() {
-					return true
-				}
+			if slices.Contains(dependentSet[ref.URN()], ref.ID()) {
+				return true
 			}
 		}
 
@@ -182,7 +182,7 @@ func (dg *DependencyGraph) OnlyDependsOn(res *pkgresource.State) []*pkgresource.
 	//
 	// We also walk through the list of resources before the requested resource, as resources
 	// sorted later could still be dependent on the requested resource.
-	for i := 0; i < cursorIndex; i++ {
+	for i := range cursorIndex {
 		candidate := dg.resources[i]
 		nonDependentSet[candidate.URN] = append(nonDependentSet[candidate.URN], candidate.ID)
 	}

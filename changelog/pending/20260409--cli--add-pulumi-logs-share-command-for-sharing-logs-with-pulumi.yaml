@@ -1,5 +1,0 @@
-component: cli
-kind: feat
-body: Add `pulumi logs share` command for sharing logs with Pulumi
-custom:
-    PR: "22546"

@@ -135,8 +135,8 @@ func printRevision(stdout io.Writer, st *style.Stylist, r client.EnvironmentRevi
 		if r.Retracted.Reason != "" {
 			fmt.Fprintln(stdout, "")
 
-			reason := strings.Split(r.Retracted.Reason, "\n")
-			for _, line := range reason {
+			reason := strings.SplitSeq(r.Retracted.Reason, "\n")
+			for line := range reason {
 				fmt.Fprintf(stdout, "    %v\n", line)
 			}
 		}

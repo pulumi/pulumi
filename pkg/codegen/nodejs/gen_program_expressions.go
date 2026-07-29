@@ -610,6 +610,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if isOut {
 			name = name + "Output"
 		}
+		invokeOptions, hasOptions := pcl.InvokeOptions(expr)
+		parentThis := g.isComponent && !pcl.InvokeOptionSet(expr, "parent")
+		// The options bag is positional, so it can only be emitted once the arguments before it are.
+		emitOptions := len(expr.Args) >= 2 && (hasOptions || parentThis)
+
 		g.Fprintf(w, "%s(", name)
 		if len(expr.Args) >= 2 {
 			if expr.Signature.MultiArgumentInputs {
@@ -622,15 +627,19 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					invokeArgs = expr.Args[1].(*model.ObjectConsExpression)
 				}
 
-				pcl.GenerateMultiArguments(g.Formatter, w, "undefined", invokeArgs, pcl.SortedFunctionParameters(expr))
+				pcl.GenerateMultiArguments(
+					g.Formatter, w, "undefined", invokeArgs, pcl.SortedFunctionParameters(expr), emitOptions)
 			} else {
 				g.Fgenf(w, "%.v", expr.Args[1])
 			}
 		}
-		if len(expr.Args) == 3 {
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
-				g.Fgen(w, ", {")
-				g.Indented(func() {
+		if emitOptions {
+			g.Fgen(w, ", {")
+			g.Indented(func() {
+				if parentThis {
+					g.Fgenf(w, "\n%sparent: this,", g.Indent)
+				}
+				if hasOptions {
 					for _, item := range invokeOptions.Items {
 						key := pcl.LiteralValueString(item.Key)
 						g.Fgenf(w, "\n%s", g.Indent)
@@ -643,9 +652,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 							g.Fgenf(w, "%s: %v,", key, item.Value)
 						}
 					}
-				})
-				g.Fgenf(w, "\n%s}", g.Indent)
-			}
+				}
+			})
+			g.Fgenf(w, "\n%s}", g.Indent)
 		}
 		g.Fprint(w, ")")
 	case "join":

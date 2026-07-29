@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -151,7 +152,7 @@ func getStackConfigurationFromProjectStack(
 
 		pulumiEnv = env.Properties["pulumiConfig"]
 
-		_, environ, secrets, err := cli.PrepareEnvironment(env, nil)
+		_, environ, secrets, _, err := cli.PrepareEnvironment(env, nil)
 		if err != nil {
 			return backend.StackConfiguration{}, fmt.Errorf("preparing environment: %w", err)
 		}
@@ -218,10 +219,8 @@ func needsCrypter(cfg config.Map, env esc.Value) bool {
 		}
 		switch v := v.Value.(type) {
 		case []esc.Value:
-			for _, v := range v {
-				if hasSecrets(v) {
-					return true
-				}
+			if slices.ContainsFunc(v, hasSecrets) {
+				return true
 			}
 		case map[string]esc.Value:
 			for _, v := range v {

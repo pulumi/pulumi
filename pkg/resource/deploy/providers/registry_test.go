@@ -798,7 +798,7 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 	// We're going to create a few thousand providers in parallel, registering a load of aliases for each of
 	// them.
 	var wg sync.WaitGroup
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -806,7 +806,7 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 			typ := providers.MakeProviderType("pkgA")
 			providerURN := resource.NewURN("test", "test", "", typ, fmt.Sprintf("p%d", i))
 
-			for j := 0; j < 1000; j++ {
+			for j := range 1000 {
 				aliasURN := resource.NewURN("test", "test", "", typ, fmt.Sprintf("p%d_%d", i, j))
 				r.RegisterAlias(providerURN, aliasURN)
 			}
@@ -1387,7 +1387,7 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 	t.Parallel()
 
 	// Run the test multiple times to increase chance of hitting race conditions.
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		func() {
 			// Create a loader that returns closable providers so we can track closes.
 			var createdProviders []*closableTestProvider

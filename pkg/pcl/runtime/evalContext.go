@@ -39,7 +39,7 @@ type EvalContext struct {
 	lookupResource func(context.Context, string) (*schema.Resource, error)
 	lookupFunction func(context.Context, string) (*schema.Function, error)
 
-	invoke      func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
+	invoke      func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error)
 	call        func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error)
 
@@ -54,7 +54,7 @@ func NewEvalContext(
 	lookupResource func(context.Context, string) (*schema.Resource, error),
 	lookupFunction func(context.Context, string) (*schema.Function, error),
 	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),
-	invoke func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error),
+	invoke func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error),
 	call func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error),
 ) *EvalContext {
 	ctx := &EvalContext{

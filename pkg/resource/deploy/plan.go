@@ -17,6 +17,7 @@ package deploy
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -89,13 +90,7 @@ type PlanDiff struct {
 
 // Returns true if the Deletes array contains the given key
 func (planDiff *PlanDiff) ContainsDelete(key resource.PropertyKey) bool {
-	found := false
-	for i := range planDiff.Deletes {
-		if planDiff.Deletes[i] == key {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(planDiff.Deletes, key)
 	return found
 }
 

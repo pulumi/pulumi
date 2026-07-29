@@ -41,12 +41,10 @@ func TestContextRequest_race(t *testing.T) {
 
 	// Run 10 goroutines that all call context.Request() concurrently to trigger the race detector.
 	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 10 {
+		wg.Go(func() {
 			ctx.Request()
-		}()
+		})
 	}
 	wg.Wait()
 }

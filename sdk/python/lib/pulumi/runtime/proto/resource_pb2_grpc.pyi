@@ -61,7 +61,7 @@ class ResourceMonitorStub:
 
     Invoke: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ResourceInvokeRequest,
-        pulumi.provider_pb2.InvokeResponse,
+        pulumi.resource_pb2.ResourceInvokeResponse,
     ]
 
     Call: grpc.UnaryUnaryMultiCallable[
@@ -158,7 +158,7 @@ class ResourceMonitorAsyncStub:
 
     Invoke: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.ResourceInvokeRequest,
-        pulumi.provider_pb2.InvokeResponse,
+        pulumi.resource_pb2.ResourceInvokeResponse,
     ]
 
     Call: grpc.aio.UnaryUnaryMultiCallable[
@@ -262,7 +262,7 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
         self,
         request: pulumi.resource_pb2.ResourceInvokeRequest,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.provider_pb2.InvokeResponse, collections.abc.Awaitable[pulumi.provider_pb2.InvokeResponse]]: ...
+    ) -> typing.Union[pulumi.resource_pb2.ResourceInvokeResponse, collections.abc.Awaitable[pulumi.resource_pb2.ResourceInvokeResponse]]: ...
 
     
     def Call(

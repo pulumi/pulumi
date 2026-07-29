@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 
 	"github.com/blang/semver"
 
@@ -132,9 +133,7 @@ func (p *PrimitiveDefaultsProvider) Check(
 
 	// Start with user-provided values.
 	props := resource.PropertyMap{}
-	for k, v := range req.News {
-		props[k] = v
-	}
+	maps.Copy(props, req.News)
 
 	// For each optional property: assert it is present and validate its type.
 	assertPresentAndType := func(

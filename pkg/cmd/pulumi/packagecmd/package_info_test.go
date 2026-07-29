@@ -251,7 +251,12 @@ func TestResourceInfo(t *testing.T) {
 	err = cmd.Execute()
 	require.NoError(t, err)
 	require.Equal(t, `Resource: test:index:Test
-Description: test resource description
+Description:
+test
+resource
+description
+
+another paragraph
 
 Inputs:
  - prop1 (string): this is a string property
@@ -314,7 +319,6 @@ Outputs: string
 	err = cmd.Execute()
 	require.NoError(t, err)
 	require.Equal(t, "Function: test:funs:TestFunction2\n"+
-		"Description: \n"+
 		"\n"+
 		"Inputs:\n"+
 		" - input1 (boolean*): a flag input\n"+

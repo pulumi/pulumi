@@ -476,7 +476,7 @@ func BenchmarkDAG_NewEdge_DenseGraph(b *testing.B) {
 				b.StopTimer()
 				dag := pdag.New[int]()
 				nodes := make([]pdag.Node, size)
-				for j := 0; j < size; j++ {
+				for j := range size {
 					nodes[j] = newFinishedNode(dag, j)
 				}
 				b.StartTimer()
@@ -512,7 +512,7 @@ func BenchmarkDAG_NewEdge_CycleDetection(b *testing.B) {
 			// Build a long chain once
 			dag := pdag.New[int]()
 			nodes := make([]pdag.Node, size)
-			for j := 0; j < size; j++ {
+			for j := range size {
 				nodes[j] = newFinishedNode(dag, j)
 			}
 			// Create chain: 0 -> 1 -> 2 -> ... -> size-1

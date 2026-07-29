@@ -109,7 +109,7 @@ func Summarize(description string) string {
 	description = CleanComment(description)
 
 	var summary strings.Builder
-	for _, line := range strings.Split(strings.TrimSpace(description), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(description), "\n") {
 		if strings.TrimSpace(line) == "" {
 			// A blank line ends the first paragraph.
 			break

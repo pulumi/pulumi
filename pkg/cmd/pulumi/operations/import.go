@@ -73,12 +73,12 @@ import (
 )
 
 func parseResourceSpec(spec string) (string, resource.URN, error) {
-	equals := strings.Index(spec, "=")
-	if equals == -1 {
+	before, after, ok := strings.Cut(spec, "=")
+	if !ok {
 		return "", "", errors.New("spec must be of the form name=URN")
 	}
 
-	name, urn := spec[:equals], resource.URN(spec[equals+1:])
+	name, urn := before, resource.URN(after)
 	if name == "" || urn == "" {
 		return "", "", errors.New("spec must be of the form name=URN")
 	}
@@ -93,10 +93,31 @@ func parseResourceSpec(spec string) (string, resource.URN, error) {
 	return name, urn, nil
 }
 
-func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFile, error) {
+func makeImportFileFromResourceList(ctx context.Context, resources []plugin.ResourceImport) (importFile, error) {
+	// Serialized with secrets in plain text, marked with the secret signature: the converter response
+	// carries them the same way, and parseImportFile deserializes them back into secret values.
+	serialize := func(props resource.PropertyMap, name, kind string) (map[string]any, error) {
+		if props == nil {
+			return nil, nil
+		}
+		serialized, err := resourcestack.SerializeProperties(ctx, props, sdkconfig.NopEncrypter, true /*showSecrets*/)
+		if err != nil {
+			return nil, fmt.Errorf("serializing %s for resource %q: %w", kind, name, err)
+		}
+		return serialized, nil
+	}
+
 	nameTable := map[string]resource.URN{}
 	specs := make([]importSpec, len(resources))
 	for i, res := range resources {
+		inputs, err := serialize(res.Inputs, res.Name, "inputs")
+		if err != nil {
+			return importFile{}, err
+		}
+		outputs, err := serialize(res.Outputs, res.Name, "outputs")
+		if err != nil {
+			return importFile{}, err
+		}
 		specs[i] = importSpec{
 			Type:              tokens.Type(res.Type),
 			Name:              res.Name,
@@ -109,6 +130,8 @@ func makeImportFileFromResourceList(resources []plugin.ResourceImport) (importFi
 			Parent:            res.Parent,
 			Properties:        res.Properties,
 			Provider:          res.Provider,
+			Inputs:            inputs,
+			Outputs:           outputs,
 		}
 		if p := res.Parameterization; p != nil {
 			specs[i].Parameterization = &importParameterization{
@@ -190,6 +213,14 @@ type importSpec struct {
 	Component         bool        `json:"component,omitempty"`
 	Remote            bool        `json:"remote,omitempty"`
 
+	// Inputs holds input properties supplied for the resource. Values the provider's Read cannot return
+	// (e.g. write-only attributes) are taken from here instead. For a provider declared in the resources
+	// block, Inputs is its configuration.
+	Inputs map[string]any `json:"inputs,omitempty"`
+	// Outputs holds the resource's full output state. When set, the resource is imported from these
+	// values directly and the provider's Read is skipped entirely.
+	Outputs map[string]any `json:"outputs,omitempty"`
+
 	// LogicalName is the resources Pulumi name (i.e. the first argument to `new Resource`).
 	LogicalName string `json:"logicalName,omitempty"`
 
@@ -225,6 +256,8 @@ type importFile struct {
 	// ProviderInputs maps provider names (as used in NameTable and importSpec.Provider) to
 	// their serialized inputs. This allows the import system to create explicit providers
 	// that are not yet in state with the correct configuration. Secrets are encrypted.
+	//
+	// Deprecated: declare the provider in Resources and set its configuration via its Inputs instead.
 	ProviderInputs map[string]map[string]any `json:"providerInputs,omitempty"`
 }
 
@@ -366,6 +399,9 @@ func parseImportFile(
 			}
 			if spec.Parent != "" {
 				pusherrf("%v is a provider and may not have a parent", describeResource(i, spec))
+			}
+			if len(spec.Outputs) > 0 {
+				pusherrf("%v is a provider and may not have outputs", describeResource(i, spec))
 			}
 		} else if !spec.Component && spec.ID == "" {
 			pusherrf("%v has no ID", describeResource(i, spec))
@@ -559,13 +595,34 @@ func parseImportFile(
 		}
 
 		if providers.IsProviderType(spec.Type) {
-			if serializedInputs, ok := f.ProviderInputs[spec.Name]; ok {
+			serializedInputs, ok := f.ProviderInputs[spec.Name]
+			if spec.Inputs != nil {
+				serializedInputs, ok = spec.Inputs, true
+			}
+			if ok {
 				providerInputs, err := resourcestack.DeserializeProperties(serializedInputs, dec)
 				if err != nil {
 					pusherrf("could not deserialize provider inputs for %v: %w",
 						describeResource(i, spec), err)
 				} else {
 					imp.ProviderInputs = providerInputs
+				}
+			}
+		} else {
+			if spec.Inputs != nil {
+				inputs, err := resourcestack.DeserializeProperties(spec.Inputs, dec)
+				if err != nil {
+					pusherrf("could not deserialize inputs for %v: %w", describeResource(i, spec), err)
+				} else {
+					imp.Inputs = inputs
+				}
+			}
+			if spec.Outputs != nil {
+				outputs, err := resourcestack.DeserializeProperties(spec.Outputs, dec)
+				if err != nil {
+					pusherrf("could not deserialize outputs for %v: %w", describeResource(i, spec), err)
+				} else {
+					imp.Outputs = outputs
 				}
 			}
 		}
@@ -936,7 +993,7 @@ func NewImportCmd() *cobra.Command {
 					return errors.New("conversion failed")
 				}
 
-				f, err := makeImportFileFromResourceList(resp.Resources)
+				f, err := makeImportFileFromResourceList(ctx, resp.Resources)
 				if err != nil {
 					return err
 				}
@@ -1052,6 +1109,11 @@ func NewImportCmd() *cobra.Command {
 
 			decrypter := sm.Decrypter()
 			encrypter := sm.Encrypter()
+
+			if len(importFile.ProviderInputs) > 0 {
+				sink.Warningf(diag.Message("", "the 'providerInputs' field is deprecated: declare the "+
+					"provider in 'resources' and set its configuration via its 'inputs' instead"))
+			}
 
 			imports, nameTable, err := parseImportFile(
 				importFile, s.Ref().Name(), proj.Name, protectResources, decrypter)

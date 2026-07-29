@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -878,12 +879,7 @@ func updateSpecificTargets(t *testing.T, targets, globTargets []string, targetDe
 }
 
 func contains(list []string, entry string) bool {
-	for _, e := range list {
-		if e == entry {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, entry)
 }
 
 func updateInvalidTarget(t *testing.T) {
@@ -3277,6 +3273,10 @@ func TestTargetChangeAndSameProviderVersion(t *testing.T) {
 // Parents and aliases are of particular interest because they result in URN
 // changes.
 func TestUntargetedDependencyChainsArePreserved(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping large targeted-update matrix in short mode")
+	}
+
 	t.Parallel()
 
 	// Arrange.

@@ -1147,7 +1147,8 @@ supportsRefreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 6, fal
 invokeWithPreview: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
 mapperTarget: (f = jspb.Message.getField(msg, 8)) == null ? undefined : f,
 loaderTarget: (f = jspb.Message.getField(msg, 9)) == null ? undefined : f,
-resolverTarget: (f = jspb.Message.getField(msg, 10)) == null ? undefined : f
+resolverTarget: (f = jspb.Message.getField(msg, 10)) == null ? undefined : f,
+acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 11, false)
   };
 
   if (includeInstance) {
@@ -1223,6 +1224,10 @@ proto.pulumirpc.ProviderHandshakeRequest.deserializeBinaryFromReader = function(
     case 10:
       var value = /** @type {string} */ (reader.readString());
       msg.setResolverTarget(value);
+      break;
+    case 11:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsByteString(value);
       break;
     default:
       reader.skipField();
@@ -1320,6 +1325,13 @@ proto.pulumirpc.ProviderHandshakeRequest.serializeBinaryToWriter = function(mess
   if (f != null) {
     writer.writeString(
       10,
+      f
+    );
+  }
+  f = message.getAcceptsByteString();
+  if (f) {
+    writer.writeBool(
+      11,
       f
     );
   }
@@ -1596,6 +1608,24 @@ proto.pulumirpc.ProviderHandshakeRequest.prototype.hasResolverTarget = function(
 };
 
 
+/**
+ * optional bool accepts_byte_string = 11;
+ * @return {boolean}
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.getAcceptsByteString = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 11, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.setAcceptsByteString = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 11, value);
+};
+
+
 
 
 
@@ -1631,7 +1661,8 @@ proto.pulumirpc.ProviderHandshakeResponse.toObject = function(includeInstance, m
 acceptSecrets: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
 acceptResources: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
 acceptOutputs: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
-supportsAutonamingConfiguration: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+supportsAutonamingConfiguration: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 6, false)
   };
 
   if (includeInstance) {
@@ -1683,6 +1714,10 @@ proto.pulumirpc.ProviderHandshakeResponse.deserializeBinaryFromReader = function
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setSupportsAutonamingConfiguration(value);
+      break;
+    case 6:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsByteString(value);
       break;
     default:
       reader.skipField();
@@ -1738,6 +1773,13 @@ proto.pulumirpc.ProviderHandshakeResponse.serializeBinaryToWriter = function(mes
   if (f) {
     writer.writeBool(
       4,
+      f
+    );
+  }
+  f = message.getAcceptsByteString();
+  if (f) {
+    writer.writeBool(
+      6,
       f
     );
   }
@@ -1813,6 +1855,24 @@ proto.pulumirpc.ProviderHandshakeResponse.prototype.getSupportsAutonamingConfigu
  */
 proto.pulumirpc.ProviderHandshakeResponse.prototype.setSupportsAutonamingConfiguration = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
+};
+
+
+/**
+ * optional bool accepts_byte_string = 6;
+ * @return {boolean}
+ */
+proto.pulumirpc.ProviderHandshakeResponse.prototype.getAcceptsByteString = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 6, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ProviderHandshakeResponse} returns this
+ */
+proto.pulumirpc.ProviderHandshakeResponse.prototype.setAcceptsByteString = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 6, value);
 };
 
 

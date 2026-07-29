@@ -131,7 +131,7 @@ func TestRenderMarkdownStyled(t *testing.T) {
 	// Text is wrapped at eighty columns, a link and its URL always share a line, and continuation
 	// lines of a blockquote keep the rail.
 	quoteLines := 0
-	for _, line := range strings.Split(stripEscapes(out), "\n") {
+	for line := range strings.SplitSeq(stripEscapes(out), "\n") {
 		assert.LessOrEqual(t, len([]rune(line)), 80)
 		if strings.Contains(line, "S3 on Outposts") {
 			assert.Contains(t, line, "S3 on Outposts (https://example.com/outposts)")

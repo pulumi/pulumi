@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"strconv"
 	"time"
 
@@ -167,9 +168,7 @@ func (c object) Merge(base object) object {
 	if co, ok := c.value.(map[string]object); ok {
 		if bo, ok := base.value.(map[string]object); ok {
 			mo := make(map[string]object, len(co))
-			for k, v := range bo {
-				mo[k] = v
-			}
+			maps.Copy(mo, bo)
 			for k, v := range co {
 				mo[k] = v.Merge(mo[k])
 			}

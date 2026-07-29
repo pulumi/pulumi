@@ -33,7 +33,7 @@ func ToResourcePropertyMap(v property.Map) PropertyMap {
 	return rMap
 }
 
-// Translate a Value into a PropertyValue.
+// Translate a [property.Value] into a [PropertyValue].
 //
 // This is a lossless transition, such that this will be true:
 //
@@ -90,7 +90,7 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 	return r
 }
 
-// Translate a [PropertyValue] into a [property.Value].
+// Translate a [PropertyMap] into a [property.Map].
 //
 // This is a normalizing transition, such that the last expression will be true:
 //
@@ -104,7 +104,7 @@ func FromResourcePropertyMap(v PropertyMap) property.Map {
 	return property.NewMap(rMap)
 }
 
-// Translate a PropertyValue into a Value.
+// Translate a [PropertyValue] into a [property.Value].
 //
 // This is a normalizing transition, such that the last expression will be true:
 //
@@ -233,7 +233,7 @@ func toResourceArrayDiff(v *property.ArrayDiff) *ArrayDiff {
 	}
 }
 
-// Translates a [property.ObjectDiff] into an [ObjectDiff].
+// Translate a [property.ObjectDiff] into an [ObjectDiff].
 func ToResourceObjectDiff(v *property.ObjectDiff) *ObjectDiff {
 	if v == nil {
 		return nil

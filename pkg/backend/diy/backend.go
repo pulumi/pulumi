@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"os/user"
@@ -634,6 +635,11 @@ func massageBlobPath(path string) (string, error) {
 //   - a scheme-less endpoint (e.g. endpoint=minio:9000) gets an explicit http:// or https://
 //     scheme depending on disableSSL; the v1 SDK implied the scheme, while the v2 SDK
 //     requires one.
+//   - when an endpoint is set (i.e. a third-party S3-compatible store rather than AWS),
+//     request_checksum_calculation defaults to when_required, unless it is configured
+//     explicitly via the URL or the AWS_REQUEST_CHECKSUM_CALCULATION environment variable.
+//     The v2 SDK's default of computing CRC32 checksums with aws-chunked streaming uploads
+//     is rejected by some third-party stores; the v1 SDK never sent them.
 //
 // The other v1-era parameters (s3ForcePathStyle, awssdk) are still understood by gocloud.dev
 // and need no translation.
@@ -656,13 +662,20 @@ func translateLegacyS3Params(urlstr string) (string, error) {
 		changed = true
 	}
 
-	if endpoint := query.Get("endpoint"); endpoint != "" && !strings.Contains(endpoint, "://") {
-		scheme := "https"
-		if disableSSL {
-			scheme = "http"
+	if endpoint := query.Get("endpoint"); endpoint != "" {
+		if !strings.Contains(endpoint, "://") {
+			scheme := "https"
+			if disableSSL {
+				scheme = "http"
+			}
+			query.Set("endpoint", scheme+"://"+endpoint)
+			changed = true
 		}
-		query.Set("endpoint", scheme+"://"+endpoint)
-		changed = true
+		if query.Get("request_checksum_calculation") == "" &&
+			os.Getenv("AWS_REQUEST_CHECKSUM_CALCULATION") == "" {
+			query.Set("request_checksum_calculation", "when_required")
+			changed = true
+		}
 	}
 
 	if !changed {
@@ -1587,9 +1600,7 @@ func (b *diyBackend) UpdateStackTags(ctx context.Context,
 
 	if diyStack, ok := stack.(*diyStack); ok {
 		tagsCopy := make(map[apitype.StackTagName]string, len(tags))
-		for k, v := range tags {
-			tagsCopy[k] = v
-		}
+		maps.Copy(tagsCopy, tags)
 		diyStack.tags.Store(&tagsCopy)
 	}
 

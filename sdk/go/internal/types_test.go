@@ -27,7 +27,7 @@ import (
 func TestApplier_Call(t *testing.T) {
 	t.Parallel()
 
-	stringType := reflect.TypeOf("")
+	stringType := reflect.TypeFor[string]()
 
 	t.Run("minimal", func(t *testing.T) {
 		t.Parallel()
@@ -96,7 +96,7 @@ func TestApplier_Call(t *testing.T) {
 func TestNewApplier_errors(t *testing.T) {
 	t.Parallel()
 
-	stringType := reflect.TypeOf("")
+	stringType := reflect.TypeFor[string]()
 	tests := []struct {
 		desc string
 		give any
@@ -171,7 +171,7 @@ func TestOutputState_nil(t *testing.T) {
 func TestOutputWithDependencies(t *testing.T) {
 	t.Parallel()
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	state := out.getState()
 	require.Empty(t, state.dependencies())
 
@@ -197,7 +197,7 @@ func TestOutputWithDependencies(t *testing.T) {
 func TestOutputWithDependenciesReject(t *testing.T) {
 	t.Parallel()
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	state := out.getState()
 	require.Empty(t, state.dependencies())
 

@@ -28,6 +28,7 @@ from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union
 
 import grpc
+from google.protobuf import empty_pb2
 
 from .._utils import contextproperty
 from ..errors import RunError
@@ -504,23 +505,51 @@ async def _monitor_supports_feature(
                 handle_grpc_error(exn)
             return False
 
-    return await asyncio.get_event_loop().run_in_executor(
+    return await asyncio.get_running_loop().run_in_executor(
         None, wrap_with_context(do_rpc_call)
     )
 
 
+# A frozen map of old feature IDs to the new resource monitor features.
+#
+# This map should never be updated.
+_LEGACY_FEATURE_MAPPING = {
+    "secrets": resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS,
+    "resourceReferences": resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+    "outputValues": resource_pb2.RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES,
+    "deletedWith": resource_pb2.RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+    "replaceWith": resource_pb2.RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+    "aliasSpecs": resource_pb2.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
+    "transforms": resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
+    "invokeTransforms": resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+    "parameterization": resource_pb2.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+    "resourceHooks": resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+    "errorHooks": resource_pb2.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+}
+
+
 async def _load_monitor_feature_support():
-    # Prime the feature support cache.
-    await asyncio.gather(
-        monitor_supports_feature("secrets"),
-        monitor_supports_feature("resourceReferences"),
-        monitor_supports_feature("outputValues"),
-        monitor_supports_feature("deletedWith"),
-        monitor_supports_feature("replaceWith"),
-        monitor_supports_feature("aliasSpecs"),
-        monitor_supports_feature("transforms"),
-        monitor_supports_feature("invokeTransforms"),
-        monitor_supports_feature("parameterization"),
-        monitor_supports_feature("resourceHooks"),
-        monitor_supports_feature("errorHooks"),
-    )
+    if not SETTINGS.monitor:
+        return
+
+    try:
+        deployment_info = await asyncio.get_running_loop().run_in_executor(
+            None,
+            wrap_with_context(
+                lambda: SETTINGS.monitor.GetDeploymentInfo(empty_pb2.Empty())
+            ),
+        )
+        for feature, value in _LEGACY_FEATURE_MAPPING.items():
+            SETTINGS.feature_support[feature] = (
+                value in deployment_info.supportedFeatures
+            )
+
+    except grpc.RpcError as exn:
+        if exn.code() != grpc.StatusCode.UNIMPLEMENTED:
+            handle_grpc_error(exn)
+        await asyncio.gather(
+            *(
+                monitor_supports_feature(feature)
+                for feature in sorted(_LEGACY_FEATURE_MAPPING)
+            )
+        )

@@ -16,8 +16,10 @@ package do
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
@@ -32,8 +34,12 @@ import (
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	deployproviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -54,6 +60,7 @@ type StatefulUpdateRequest struct {
 	DryRun      bool
 	Yes         bool
 	ShowSecrets bool
+	Delete      bool
 	Proj        *workspace.Project
 	Root        string
 	Sink        diag.Sink
@@ -77,9 +84,10 @@ type RunStatefulUpdateFunc func(
 	ctx context.Context, flags *pflag.FlagSet, req StatefulUpdateRequest,
 ) (*StatefulUpdateResult, error)
 
-func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.Command {
+func (pc *packageCommand) newStatefulResourceUpsertCommand(res *schema.Resource) *cobra.Command {
 	var inputFile string
 	var inputFormat string
+	var resourcesFile string
 	var yes bool
 	cmd := &cobra.Command{
 		Use:   "upsert <name>",
@@ -91,110 +99,460 @@ func (pc *packageCommand) newResourceUpsertCommand(res *schema.Resource) *cobra.
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			contract.Assertf(!pc.stateless, "upsert should not be registered in stateless mode")
-			contract.Assertf(pc.runStatefulUpdate != nil, "stateful `upsert` is not wired up in this build")
+			return pc.runStatefulSnippetUpdate(cmd, statefulSnippetUpdate{
+				res:           res,
+				name:          args[0],
+				inputFile:     inputFile,
+				inputFormat:   inputFormat,
+				resourcesFile: resourcesFile,
+				yes:           yes,
+				verb:          "upserted",
+				requireFresh:  false,
+			})
+		},
+	}
+	addStatefulSnippetUpdateFlags(cmd, &inputFile, &inputFormat, &resourcesFile, &yes, res.InputProperties)
+	return cmd
+}
 
-			if pc.proj == nil {
-				return errors.New("`upsert` requires a Pulumi project (run inside a project directory)")
-			}
+func (pc *packageCommand) newStatelessResourceUpsertCommand(res *schema.Resource) *cobra.Command {
+	var inputFile string
+	var inputFormat string
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "upsert <id>",
+		Short: "Create a resource or fully update an existing one",
+		Long: "Create a resource or fully update an existing one.\n\n" +
+			"Reads the resource with the given ID: if it exists, its inputs are fully " +
+			"replaced with the given inputs (unlike `patch`, which merges them into the " +
+			"existing inputs); otherwise a new resource is created, with an ID assigned " +
+			"by the provider.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			contract.Assertf(pc.stateless, "stateless upsert should not be registered in stateful mode")
 			if err := pc.requireYesIfNonInteractive(yes); err != nil {
 				return err
 			}
-			name := args[0]
-
 			ctx := cmd.Context()
-
-			// Merge --input-* flags into the file's PCL AST so the persisted snippet body
-			// matches what the user typed on the command line. If no file was provided,
-			// the flags become the snippet body by themselves.
-			inputFlags := collectInputFlags(cmd, "input", res.InputProperties)
-			code, _, err := parseFile(
-				ctx, inputFile, "input", inputFormat, res.Token,
-				pc.converter, pc.loaderTarget, pc.packageDescriptor, inputFlags,
-			)
-			if err != nil {
-				return fmt.Errorf("read input file: %w", err)
-			}
-
-			// Open the stack up front so we can look at the existing snapshot before deciding
-			// whether this upsert is a create (new snippet) or an update (existing snippet with
-			// the same Name+Type). The stack is threaded through to runStatefulUpdate so it
-			// doesn't re-load.
-			displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
-			stack, err := cmdStack.RequireStack(
-				ctx, pc.diagFwd, pc.ws, pc.lm,
-				"",                                 /*stackName — use currently selected*/
-				cmdStack.LoadOnly, displayOpts, "", /*configFile*/
-			)
-			if err != nil {
-				return fmt.Errorf("load stack: %w", err)
-			}
-			snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
-			if err != nil {
-				return fmt.Errorf("load stack snapshot: %w", err)
-			}
-
-			// Snippet identity in the snapshot is (Name, Type) — reuse the existing UUID so the
-			// engine's applySnippetUpdates path replaces the snippet in place rather than adding
-			// a duplicate that would then race to register the same URN.
-			snippetUUID, err := resolveSnippetUUID(snap, name, res.Token)
-			if err != nil {
+			if err := pc.configureProvider(cmd, ctx); err != nil {
 				return err
 			}
-			snippet := resource.Snippet{
-				UUID:       snippetUUID,
-				Name:       name,
-				Type:       res.Token,
-				Code:       string(code),
-				Descriptor: packageDescriptorFromProto(pc.packageDescriptor),
-			}
-
-			result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
-				Snippet:     snippet,
-				Stack:       stack,
-				DryRun:      pc.dryrun,
-				Yes:         yes,
-				ShowSecrets: pc.showSecrets,
-				Proj:        pc.proj,
-				Root:        pc.root,
-				Sink:        pc.diagFwd,
+			urn := resourceURN(res)
+			id := resource.ID(args[0])
+			read, err := pc.provider.Read(ctx, plugin.ReadRequest{
+				URN:    urn,
+				Name:   urn.Name(),
+				Type:   urn.Type(),
+				ID:     id,
+				Inputs: resource.PropertyMap{},
+				State:  resource.PropertyMap{},
 			})
 			if err != nil {
 				return err
 			}
-			if result != nil && !pc.dryrun {
-				fmt.Fprintf(cmd.OutOrStdout(), "upserted %s (snippet %s)\n", name, result.SnippetUUID)
+			inputs, err := evaluateResourceFile(
+				ctx, inputFile, "input", inputFormat, res, pc.evalContext(),
+				pc.converter, pc.loaderTarget, pc.packageDescriptor,
+				collectInputFlags(cmd, "input", res.InputProperties),
+			)
+			if err != nil {
+				return fmt.Errorf("parse input file: %w", err)
 			}
-			return nil
+			if read.Outputs == nil {
+				return pc.runStatelessCreate(cmd, res, yes, func() (resource.PropertyMap, error) {
+					return inputs, nil
+				})
+			}
+			if read.ID != "" {
+				id = read.ID
+			}
+			return pc.runStatelessUpdate(cmd, res, id, read, inputs, "update", yes)
 		},
 	}
+	cmd.Flags().StringVar(&inputFormat, "input", "yaml", "Format of the resource inputs file")
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing resource inputs")
-	cmd.Flags().StringVar(&inputFormat, "input", "yaml",
-		"Format of the resource inputs file (any language name supported by an installed converter)")
 	cmd.Flags().BoolVar(&yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
 	addInputFlags(cmd, "input", res.InputProperties)
 	return cmd
 }
 
+// statefulSnippetUpdate carries the pieces of a stateful snippet-add operation (create / upsert)
+// that vary between commands. Everything else — parsing the input file, loading the stack,
+// resolving the snippet UUID, and dispatching to runStatefulUpdate — is shared.
+type statefulSnippetUpdate struct {
+	res           *schema.Resource
+	name          string
+	inputFile     string
+	inputFormat   string
+	resourcesFile string
+	yes           bool
+	verb          string // completion-message verb, e.g. "created" or "upserted"
+	// requireFresh errors when a snippet with the same (Name, Type) already exists in the stack —
+	// the invariant `create` enforces to distinguish itself from `upsert`.
+	requireFresh bool
+}
+
+// runStatefulSnippetUpdate is the shared body of `create` (with requireFresh=true) and `upsert`
+// (with requireFresh=false). Both take the same inputs, differ only in the pre-run policy check
+// against any existing snippet with the same (Name, Type).
+func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args statefulSnippetUpdate) error {
+	contract.Assertf(pc.runStatefulUpdate != nil, "stateful snippet update is not wired up in this build")
+
+	if pc.proj == nil {
+		return fmt.Errorf("`%s` requires a Pulumi project (run inside a project directory)", cmd.Name())
+	}
+	if err := pc.requireYesIfNonInteractive(args.yes); err != nil {
+		return err
+	}
+
+	ctx := cmd.Context()
+	// Open the stack up front so we can look at the existing snapshot before deciding whether
+	// this operation is legal (create requires a fresh snippet, upsert accepts either). The
+	// stack is threaded through to runStatefulUpdate so it doesn't re-load. We also use the same
+	// snapshot to resolve resource-reference package metadata before conversion.
+	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
+	stack, err := cmdStack.RequireStack(
+		ctx, pc.diagFwd, pc.ws, pc.lm,
+		"",                                 /*stackName — use currently selected*/
+		cmdStack.LoadOnly, displayOpts, "", /*configFile*/
+	)
+	if err != nil {
+		return fmt.Errorf("load stack: %w", err)
+	}
+	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	if err != nil {
+		return fmt.Errorf("load stack snapshot: %w", err)
+	}
+
+	resources, err := readResourceReferences(args.resourcesFile)
+	if err != nil {
+		return err
+	}
+	resourceInfos, err := resourceReferenceInfos(resources, snap)
+	if err != nil {
+		return err
+	}
+
+	// Merge --input-* flags into the file's PCL AST so the persisted snippet body matches what
+	// the user typed on the command line. If no file was provided, the flags become the snippet
+	// body by themselves.
+	inputFlags := collectInputFlags(cmd, "input", args.res.InputProperties)
+	code, _, resourceNames, err := parseFile(
+		ctx, args.inputFile, "input", args.inputFormat, args.res.Token,
+		pc.converter, pc.loaderTarget, pc.packageDescriptor, inputFlags, resourceInfos,
+	)
+	if err != nil {
+		return fmt.Errorf("read input file: %w", err)
+	}
+	references, err := applyResourceNameRemaps(resources, resourceNames)
+	if err != nil {
+		return err
+	}
+
+	// Snippet identity in the snapshot is (Name, Type) — reuse the existing UUID so the engine's
+	// applySnippetUpdates path replaces the snippet in place rather than adding a duplicate that
+	// would then race to register the same URN.
+	snippetUUID, existed, err := resolveSnippetUUID(snap, args.name, args.res.Token)
+	if err != nil {
+		return err
+	}
+	if args.requireFresh && existed {
+		return fmt.Errorf("resource %s %q already exists in stack %s; use `upsert` to replace it",
+			args.res.Token, args.name, stack.Ref())
+	}
+	snippet := resource.Snippet{
+		UUID:       snippetUUID,
+		Name:       args.name,
+		Type:       args.res.Token,
+		Code:       string(code),
+		Descriptor: packageDescriptorFromProto(pc.packageDescriptor),
+		References: references,
+	}
+
+	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
+		Snippet:     snippet,
+		Stack:       stack,
+		DryRun:      pc.dryrun,
+		Yes:         args.yes,
+		ShowSecrets: pc.showSecrets,
+		Proj:        pc.proj,
+		Root:        pc.root,
+		Sink:        pc.diagFwd,
+	})
+	if err != nil {
+		return err
+	}
+	if result != nil && !pc.dryrun {
+		fmt.Fprintf(cmd.OutOrStdout(), "%s %s (snippet %s)\n", args.verb, args.name, result.SnippetUUID)
+	}
+	return nil
+}
+
+func (pc *packageCommand) runStatefulSnippetDelete(
+	cmd *cobra.Command, res *schema.Resource, name string, yes bool,
+) error {
+	contract.Assertf(pc.runStatefulUpdate != nil, "stateful snippet update is not wired up in this build")
+
+	if pc.proj == nil {
+		return fmt.Errorf("`%s` requires a Pulumi project (run inside a project directory)", cmd.Name())
+	}
+	if err := pc.requireYesIfNonInteractive(yes); err != nil {
+		return err
+	}
+
+	ctx := cmd.Context()
+	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
+	stack, err := cmdStack.RequireStack(
+		ctx, pc.diagFwd, pc.ws, pc.lm,
+		"",                                 /*stackName — use currently selected*/
+		cmdStack.LoadOnly, displayOpts, "", /*configFile*/
+	)
+	if err != nil {
+		return fmt.Errorf("load stack: %w", err)
+	}
+	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	if err != nil {
+		return fmt.Errorf("load stack snapshot: %w", err)
+	}
+
+	snippetUUID, exists, err := resolveSnippetUUID(snap, name, res.Token)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("resource %s %q does not exist in stack %s", res.Token, name, stack.Ref())
+	}
+
+	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
+		Snippet: resource.Snippet{
+			UUID: snippetUUID,
+			Name: name,
+			Type: res.Token,
+		},
+		Stack:       stack,
+		DryRun:      pc.dryrun,
+		Yes:         yes,
+		ShowSecrets: pc.showSecrets,
+		Delete:      true,
+		Proj:        pc.proj,
+		Root:        pc.root,
+		Sink:        pc.diagFwd,
+	})
+	if err != nil {
+		return err
+	}
+	if result != nil && !pc.dryrun {
+		fmt.Fprintf(cmd.OutOrStdout(), "deleted %s (snippet %s)\n", name, result.SnippetUUID)
+	}
+	return nil
+}
+
+// addStatefulSnippetUpdateFlags installs the flag set shared by stateful `create` and `upsert`.
+func addStatefulSnippetUpdateFlags(
+	cmd *cobra.Command, inputFile, inputFormat, resourcesFile *string, yes *bool, inputs []*schema.Property,
+) {
+	cmd.Flags().StringVar(inputFile, "input-file", "", "Path to a file containing resource inputs")
+	cmd.Flags().StringVar(inputFormat, "input", "yaml",
+		"Format of the resource inputs file (any language name supported by an installed converter)")
+	cmd.Flags().StringVar(resourcesFile, "resources-file", "",
+		"Path to a JSON file mapping identifiers to resource URNs that input expressions may reference.\n"+
+			"The file must be a JSON object whose keys are the identifiers used in input expressions and\n"+
+			"whose values are the URNs of existing resources in the stack, for example:\n"+
+			"  {\n"+
+			"    \"myBucket\": \"urn:pulumi:dev::my-project::aws:s3/bucket:Bucket::my-bucket\",\n"+
+			"    \"myVpc\":    \"urn:pulumi:dev::my-project::aws:ec2/vpc:Vpc::my-vpc\"\n"+
+			"  }")
+	cmd.Flags().BoolVar(yes, "yes", false,
+		"Automatically approve and perform the operation without a confirmation prompt")
+	addInputFlags(cmd, "input", inputs)
+}
+
+func readResourceReferences(path string) (map[string]string, error) {
+	if path == "" {
+		return nil, nil
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("open resources file: %w", err)
+	}
+	defer contract.IgnoreClose(f)
+
+	var refs map[string]string
+	if err := json.NewDecoder(f).Decode(&refs); err != nil {
+		return nil, fmt.Errorf("parse resources file: %w", err)
+	}
+	for name, rawURN := range refs {
+		if name == "" {
+			return nil, errors.New("resources file contains an empty resource name")
+		}
+		urn, err := resource.ParseURN(rawURN)
+		if err != nil {
+			return nil, fmt.Errorf("resources file contains invalid URN for %q: %w", name, err)
+		}
+		refs[name] = string(urn)
+	}
+	return refs, nil
+}
+
+func resourceReferenceInfos(
+	resources map[string]string, snap *deploy.Snapshot,
+) (map[string]plugin.ConvertSnippetResourceReference, error) {
+	if len(resources) == 0 {
+		return nil, nil
+	}
+
+	statesByURN := map[resource.URN]*pkgresource.State{}
+	providersByRef := map[string]*pkgresource.State{}
+	if snap != nil {
+		for _, state := range snap.Resources {
+			if state == nil {
+				continue
+			}
+			statesByURN[state.URN] = state
+			if sdkproviders.IsProviderType(state.Type) {
+				ref, err := sdkproviders.NewReference(state.URN, state.ID)
+				if err != nil {
+					return nil, fmt.Errorf("could not build provider reference for %s: %w", state.URN, err)
+				}
+				providersByRef[ref.String()] = state
+			}
+		}
+	}
+
+	refs := make(map[string]plugin.ConvertSnippetResourceReference, len(resources))
+	for name, rawURN := range resources {
+		urn := resource.URN(rawURN)
+		state, ok := statesByURN[urn]
+		if !ok {
+			return nil, fmt.Errorf("resources file references %q as %s, but that resource was not found in the stack", name, urn)
+		}
+
+		typ := state.Type
+		pkg := typ.Package()
+		if sdkproviders.IsProviderType(typ) {
+			pkg = sdkproviders.GetProviderPackage(typ)
+		}
+		packageReq := &codegenrpc.GetSchemaRequest{
+			Package: string(pkg),
+		}
+
+		providerState, err := resourceReferenceProviderState(state, providersByRef)
+		if err != nil {
+			return nil, fmt.Errorf("resources file reference %q: %w", name, err)
+		}
+		if providerState != nil {
+			providerPackage := sdkproviders.GetProviderPackage(providerState.Type)
+			schemaPackage, err := deployproviders.GetProviderName(providerPackage, providerState.Inputs)
+			if err != nil {
+				return nil, fmt.Errorf("resources file reference %q: get provider name: %w", name, err)
+			}
+			packageReq.Package = string(schemaPackage)
+
+			version, err := deployproviders.GetProviderVersion(providerState.Inputs)
+			if err != nil {
+				return nil, fmt.Errorf("resources file reference %q: get provider version: %w", name, err)
+			}
+			if version != nil {
+				packageReq.Version = version.String()
+			}
+
+			downloadURL, err := deployproviders.GetProviderDownloadURL(providerState.Inputs)
+			if err != nil {
+				return nil, fmt.Errorf("resources file reference %q: get provider download URL: %w", name, err)
+			}
+			packageReq.DownloadUrl = downloadURL
+
+			parameterization, err := deployproviders.GetProviderParameterization(providerPackage, providerState.Inputs)
+			if err != nil {
+				return nil, fmt.Errorf("resources file reference %q: get provider parameterization: %w", name, err)
+			}
+			if parameterization != nil {
+				packageReq.Parameterization = &codegenrpc.Parameterization{
+					Name:    parameterization.Name,
+					Version: parameterization.Version.String(),
+					Value:   parameterization.Value,
+				}
+			}
+		}
+
+		refs[name] = plugin.ConvertSnippetResourceReference{
+			Token:   string(typ),
+			Package: packageReq,
+		}
+	}
+	return refs, nil
+}
+
+func resourceReferenceProviderState(
+	state *pkgresource.State, providersByRef map[string]*pkgresource.State,
+) (*pkgresource.State, error) {
+	if sdkproviders.IsProviderType(state.Type) {
+		return state, nil
+	}
+	if state.Provider == "" {
+		return nil, nil
+	}
+	providerState, ok := providersByRef[state.Provider]
+	if !ok {
+		return nil, fmt.Errorf("provider %s was not found in the stack", state.Provider)
+	}
+	return providerState, nil
+}
+
+func applyResourceNameRemaps(resources, resourceNames map[string]string) (map[string]string, error) {
+	if len(resources) == 0 {
+		return nil, nil
+	}
+
+	refs := make(map[string]string, len(resources))
+	for oldName, urn := range resources {
+		newName := oldName
+		if renamed, ok := resourceNames[oldName]; ok {
+			if renamed == "" {
+				return nil, fmt.Errorf("converter returned an empty resource name for %q", oldName)
+			}
+			newName = renamed
+		}
+		if _, exists := refs[newName]; exists {
+			return nil, fmt.Errorf("converter mapped multiple resources to %q", newName)
+		}
+		refs[newName] = urn
+	}
+
+	for oldName, newName := range resourceNames {
+		if _, ok := resources[oldName]; !ok {
+			return nil, fmt.Errorf("converter returned a resource name mapping for unknown resource %q", oldName)
+		}
+		if newName == "" {
+			return nil, fmt.Errorf("converter returned an empty resource name for %q", oldName)
+		}
+	}
+
+	return refs, nil
+}
+
 // resolveSnippetUUID looks up an existing snippet in snap matching (name, resourceToken) and
-// returns its UUID for reuse; otherwise it mints a fresh UUIDv4.
+// returns its UUID for reuse (with existed=true); otherwise it mints a fresh UUIDv4 (existed=false).
+// Callers use existed to enforce operation-specific invariants: stateful `create` errors when a
+// snippet already exists, `upsert` doesn't care, and stateful `delete` errors when it doesn't.
 //
 // Snippet identity within a snapshot is (Name, Type): a second snippet with the same pair would
-// register the same resource URN and race with the first, so upsert always resolves to the
-// existing entry when one is present.
-func resolveSnippetUUID(snap *deploy.Snapshot, name, resourceToken string) (string, error) {
+// register the same resource URN and race with the first, so any resolver that reuses an existing
+// entry is preserving that invariant.
+func resolveSnippetUUID(snap *deploy.Snapshot, name, resourceToken string) (string, bool, error) {
 	if snap != nil {
 		for _, existing := range snap.Snippets {
 			if existing.Name == name && existing.Type == resourceToken {
-				return existing.UUID, nil
+				return existing.UUID, true, nil
 			}
 		}
 	}
 	fresh, err := uuid.NewV4()
 	if err != nil {
-		return "", fmt.Errorf("generate snippet uuid: %w", err)
+		return "", false, fmt.Errorf("generate snippet uuid: %w", err)
 	}
-	return fresh.String(), nil
+	return fresh.String(), false, nil
 }
 
 // DefaultRunStatefulUpdate is the production implementation of the runStatefulUpdate hook. The
@@ -228,10 +586,13 @@ func DefaultRunStatefulUpdate(
 	if err != nil {
 		return nil, fmt.Errorf("snippet uuid: %w", err)
 	}
-	snippet := req.Snippet
+	var snippet *resource.Snippet
+	if !req.Delete {
+		snippet = &req.Snippet
+	}
 
 	engineOpts := engine.UpdateOptions{
-		Snippets:       map[uuid.UUID]*resource.Snippet{snippetUUIDVal: &snippet},
+		Snippets:       map[uuid.UUID]*resource.Snippet{snippetUUIDVal: snippet},
 		TargetSnippets: []string{snippetUUIDVal.String()},
 		ShowSecrets:    req.ShowSecrets,
 	}

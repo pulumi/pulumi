@@ -130,6 +130,10 @@ Outputs:
 List Inputs:
  - prefix (string)
 
+Simple inputs can be set with flags: --<input> <value> takes the value as a
+literal, while --<input>+ <value> parses the value as an expression in the
+input format.
+
 Usage:
   do azure:index:myResource [command]
 
@@ -150,7 +154,7 @@ Flags:
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
-      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.
+      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so patch/delete error out unless --stateless is set.
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `
@@ -182,6 +186,10 @@ Outputs:
  - name (string)
  - size (integer)
 
+Simple inputs can be set with flags: --<input> <value> takes the value as a
+literal, while --<input>+ <value> parses the value as an expression in the
+input format.
+
 Usage:
   do azure:index:myResource [command]
 
@@ -201,7 +209,7 @@ Flags:
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
       --show-secrets           Show secret values in output
-      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so create/patch/delete error out unless --stateless is set.
+      --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so patch/delete error out unless --stateless is set.
 
 Use "do azure:index:myResource [command] --help" for more information about a command.
 `

@@ -969,7 +969,10 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	if rm.supportsFeatureID("sendsOptionsToHooks") {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS)
 	}
-	return features
+	return append(features,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_PARENT,
+	)
 }
 
 func (rm *resmon) GetDeploymentInfo(_ context.Context,
@@ -998,7 +1001,9 @@ func (rm *resmon) GetDeploymentInfo(_ context.Context,
 }
 
 // Invoke performs an invocation of a member located in a resource provider.
-func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error) {
+func (rm *resmon) Invoke(
+	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
+) (*pulumirpc.ResourceInvokeResponse, error) {
 	// Fetch the token.
 	tok := tokens.ModuleMember(req.GetTok())
 
@@ -1016,8 +1021,13 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
 
+	parent, err := resource.ParseOptionalURN(req.GetParent())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
+	}
+
 	opts := &pulumirpc.TransformInvokeOptions{
-		Provider:          req.GetProvider(),
+		Provider:          rm.resolveProvider(req.GetProvider(), nil, parent, tok.Package()),
 		Version:           req.GetVersion(),
 		PluginDownloadUrl: req.GetPluginDownloadURL(),
 		PluginChecksums:   req.GetPluginChecksums(),
@@ -1090,6 +1100,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    keepResources,
+		KeepByteString:   req.GetAcceptsByteString(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -1102,7 +1113,7 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeReque
 			Reason:   failure.Reason,
 		})
 	}
-	return &pulumirpc.InvokeResponse{Return: mret, Failures: chkfails}, nil
+	return &pulumirpc.ResourceInvokeResponse{Return: mret, Failures: chkfails}, nil
 }
 
 // Call dynamically executes a method in the provider associated with a component resource.
@@ -1292,7 +1303,8 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	if ret.ReturnDependencies == nil {
 		ret.ReturnDependencies = map[resource.PropertyKey][]resource.URN{}
 	}
-	for k, v := range ret.Return {
+	retReturn := resource.ToResourcePropertyMap(ret.Return)
+	for k, v := range retReturn {
 		ret.ReturnDependencies[k] = extendOutputDependencies(ret.ReturnDependencies[k], v)
 	}
 
@@ -1305,11 +1317,12 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
-	mret, err := plugin.MarshalProperties(ret.Return, plugin.MarshalOptions{
+	mret, err := plugin.MarshalProperties(retReturn, plugin.MarshalOptions{
 		Label:            label,
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
+		KeepByteString:   req.GetAcceptsByteString(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -1435,6 +1448,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		KeepUnknowns:     true,
 		KeepSecrets:      req.GetAcceptSecrets(),
 		KeepResources:    req.GetAcceptResources(),
+		KeepByteString:   req.GetAcceptsByteString(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
@@ -1469,6 +1483,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 			KeepSecrets:        true,
 			KeepResources:      true,
 			KeepOutputValues:   true,
+			KeepByteString:     cb.AcceptsByteString,
 			WorkingDirectory:   rm.workingDirectory,
 			ComputeAssetHashes: true,
 		}
@@ -1546,6 +1561,7 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
+			KeepByteString:   cb.AcceptsByteString,
 			WorkingDirectory: rm.workingDirectory,
 		}
 
@@ -1671,6 +1687,7 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
+			KeepByteString:   cb.AcceptsByteString,
 		}
 		if newInputs != nil {
 			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
@@ -1772,6 +1789,7 @@ func (rm *resmon) wrapErrorHookCallback(
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
+			KeepByteString:   cb.AcceptsByteString,
 		}
 		if newInputs != nil {
 			mNewInputs, err = plugin.MarshalProperties(newInputs, mOpts)
@@ -2995,6 +3013,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		KeepUnknowns:     true,
 		KeepSecrets:      req.GetAcceptSecrets(),
 		KeepResources:    req.GetAcceptResources(),
+		KeepByteString:   req.GetAcceptsByteString(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {

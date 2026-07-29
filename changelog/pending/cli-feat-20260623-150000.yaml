@@ -1,6 +1,0 @@
-component: cli
-kind: feat
-body: Add `pulumi neo acp` to run Neo as an Agent Client Protocol agent over stdio for ACP-capable editors, with read-only and plan mode exposed as session config options
-time: 2026-06-23T15:00:00.000000+01:00
-custom:
-    PR: "23886"

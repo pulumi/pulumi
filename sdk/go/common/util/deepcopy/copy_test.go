@@ -125,10 +125,10 @@ func TestDeepCopyStructWithPropertyMap(t *testing.T) {
 		copied, ok := Copy(source).(payload)
 		require.True(t, ok)
 		assert.True(t,
-			property.New(source.Before).Equals(property.New(copied.Before)),
+			source.Before.Equals(copied.Before),
 			"%v != %v", source.Before, copied.Before)
 		assert.True(t,
-			property.New(source.After).Equals(property.New(copied.After)),
+			source.After.Equals(copied.After),
 			"%v != %v", source.After, copied.After)
 	})
 }

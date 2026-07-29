@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 
@@ -361,9 +362,7 @@ func applyConfig(result map[string]plugin.AnalyzerPolicyConfig,
 		if len(givenConfig.Properties) > 0 && properties == nil {
 			properties = make(map[string]any)
 		}
-		for k, v := range givenConfig.Properties {
-			properties[k] = v
-		}
+		maps.Copy(properties, givenConfig.Properties)
 		result[policy] = plugin.AnalyzerPolicyConfig{
 			EnforcementLevel: enforcementLevel,
 			Properties:       properties,

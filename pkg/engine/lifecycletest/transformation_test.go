@@ -73,6 +73,7 @@ func TransformFunction(
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
+			KeepByteString:   true,
 		})
 		if err != nil {
 			return nil, err
@@ -117,6 +118,7 @@ func TransformInvokeFunction(
 			KeepSecrets:      true,
 			KeepResources:    true,
 			KeepOutputValues: true,
+			KeepByteString:   true,
 		})
 		if err != nil {
 			return nil, err
@@ -1138,4 +1140,63 @@ func TestAssetArchiveRoundtrip(t *testing.T) {
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 3)
+}
+
+// Test that strings containing non-UTF8 bytes flow losslessly through remote transforms: the engine
+// sends them to the transform callback with the byte string encoding (because the callback
+// advertises accepts_byte_string) and the transformed values round-trip back into state.
+func TestRemoteTransformByteString(t *testing.T) {
+	t.Parallel()
+
+	const rawBytes = "\x00hello \x80\xfe\xff world\xf0\x28"
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		callback, err := callbacks.Allocate(
+			TransformFunction(func(name, typ string, custom bool, parent string,
+				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				assert.Equal(t, resource.NewProperty(rawBytes), props["foo"])
+				props["bar"] = resource.NewProperty(rawBytes)
+				return props, opts, nil
+			}))
+		require.NoError(t, err)
+
+		err = monitor.RegisterStackTransform(callback)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"foo": resource.NewProperty(rawBytes),
+			},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	require.Len(t, snap.Resources, 2)
+	res := snap.Resources[1]
+	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), res.URN)
+	assert.Equal(t, resource.PropertyMap{
+		"foo": resource.NewProperty(rawBytes),
+		"bar": resource.NewProperty(rawBytes),
+	}, res.Inputs)
 }

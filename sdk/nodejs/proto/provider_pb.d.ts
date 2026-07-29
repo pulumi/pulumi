@@ -46,6 +46,8 @@ export class ProviderHandshakeRequest extends jspb.Message {
     clearResolverTarget(): void;
     getResolverTarget(): string | undefined;
     setResolverTarget(value: string): ProviderHandshakeRequest;
+    getAcceptsByteString(): boolean;
+    setAcceptsByteString(value: boolean): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
@@ -69,6 +71,7 @@ export namespace ProviderHandshakeRequest {
         mapperTarget?: string,
         loaderTarget?: string,
         resolverTarget?: string,
+        acceptsByteString: boolean,
     }
 }
 
@@ -81,6 +84,8 @@ export class ProviderHandshakeResponse extends jspb.Message {
     setAcceptOutputs(value: boolean): ProviderHandshakeResponse;
     getSupportsAutonamingConfiguration(): boolean;
     setSupportsAutonamingConfiguration(value: boolean): ProviderHandshakeResponse;
+    getAcceptsByteString(): boolean;
+    setAcceptsByteString(value: boolean): ProviderHandshakeResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeResponse.AsObject;
@@ -98,6 +103,7 @@ export namespace ProviderHandshakeResponse {
         acceptResources: boolean,
         acceptOutputs: boolean,
         supportsAutonamingConfiguration: boolean,
+        acceptsByteString: boolean,
     }
 }
 

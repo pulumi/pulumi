@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -184,20 +185,26 @@ func (rs *ResourceStatus) marshalState(state *ViewStepState) *pulumirpc.ViewStep
 		return nil
 	}
 
-	inputs, err := plugin.MarshalProperties(state.Inputs, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-	})
+	inputs, err := plugin.MarshalProperties(
+		resource.ToResourcePropertyMap(state.Inputs),
+		plugin.MarshalOptions{
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			KeepResources: true,
+		},
+	)
 	if err != nil {
 		panic(fmt.Errorf("marshaling inputs: %w", err))
 	}
 
-	outputs, err := plugin.MarshalProperties(state.Outputs, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   true,
-		KeepResources: true,
-	})
+	outputs, err := plugin.MarshalProperties(
+		resource.ToResourcePropertyMap(state.Outputs),
+		plugin.MarshalOptions{
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			KeepResources: true,
+		},
+	)
 	if err != nil {
 		panic(fmt.Errorf("marshaling outputs: %w", err))
 	}
@@ -228,6 +235,6 @@ type ViewStepState struct {
 	Name       string
 	ParentType tokens.Type
 	ParentName string
-	Inputs     resource.PropertyMap
-	Outputs    resource.PropertyMap
+	Inputs     property.Map
+	Outputs    property.Map
 }

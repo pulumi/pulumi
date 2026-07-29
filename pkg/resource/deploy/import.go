@@ -19,6 +19,7 @@ import (
 	cryptorand "crypto/rand"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/blang/semver"
@@ -33,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
@@ -87,6 +89,13 @@ type Import struct {
 	// providers (which use ambient stack config via GetPackageConfig), explicit providers
 	// are configured solely from these inputs.
 	ProviderInputs resource.PropertyMap
+
+	// Inputs holds input properties supplied for the resource, if any. When the provider's Read cannot
+	// return a property supplied here (e.g. a write-only attribute), the supplied value is used instead.
+	Inputs resource.PropertyMap
+	// Outputs holds the full output state supplied for the resource, if any. When set, the resource is
+	// imported from these values directly and the provider's Read is skipped entirely.
+	Outputs resource.PropertyMap
 
 	// True if this import should create an empty component resource. ID must not be set if this is used.
 	Component bool
@@ -268,7 +277,7 @@ func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, 
 		IgnoreChanges:           nil,
 		HideDiff:                nil,
 		ReplaceOnChanges:        nil,
-		ReplacementTrigger:      resource.NewNullProperty(),
+		ReplacementTrigger:      property.Value{},
 		RefreshBeforeUpdate:     false,
 		ViewOf:                  "",
 		ResourceHooks:           nil,
@@ -323,7 +332,8 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			return nil, err
 		}
 		req := providers.NewProviderRequest(
-			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
+			pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization,
+		)
 		typ, name := sdkproviders.MakeProviderType(req.Package()), req.DefaultName()
 		urn := i.deployment.generateURN("", typ, name)
 		if state, ok := i.deployment.olds[urn]; ok {
@@ -455,7 +465,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			IgnoreChanges:           nil,
 			HideDiff:                nil,
 			ReplaceOnChanges:        nil,
-			ReplacementTrigger:      resource.NewNullProperty(),
+			ReplacementTrigger:      property.Value{},
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
@@ -477,7 +487,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	for urn := range explicitProvidersByURN {
 		explicitURNs = append(explicitURNs, urn)
 	}
-	sort.Slice(explicitURNs, func(a, b int) bool { return explicitURNs[a] < explicitURNs[b] })
+	slices.Sort(explicitURNs)
 
 	for _, providerURN := range explicitURNs {
 		imp := explicitProvidersByURN[providerURN]
@@ -554,7 +564,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			IgnoreChanges:           nil,
 			HideDiff:                nil,
 			ReplaceOnChanges:        nil,
-			ReplacementTrigger:      resource.NewNullProperty(),
+			ReplacementTrigger:      property.Value{},
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,
@@ -703,7 +713,8 @@ func (i *importer) importResources(ctx context.Context) error {
 				return err
 			}
 			req := providers.NewProviderRequest(
-				pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization)
+				pkg, version, imp.PluginDownloadURL, imp.PluginChecksums, parameterization,
+			)
 			typ, name := sdkproviders.MakeProviderType(req.Package()), req.DefaultName()
 			providerURN = i.deployment.generateURN("", typ, name)
 		}
@@ -715,6 +726,11 @@ func (i *importer) importResources(ctx context.Context) error {
 			contract.Assertf(ok, "provider reference for URN %v not found", providerURN)
 		}
 
+		inputs := imp.Inputs
+		if inputs == nil {
+			inputs = resource.PropertyMap{}
+		}
+
 		// Create the new desired state. Note that the resource is protected. Provider might be "" at this point.
 		new := pkgresource.NewState{
 			Type:                    urn.Type(),
@@ -722,8 +738,8 @@ func (i *importer) importResources(ctx context.Context) error {
 			Custom:                  !imp.Component,
 			Delete:                  false,
 			ID:                      "",
-			Inputs:                  resource.PropertyMap{},
-			Outputs:                 nil,
+			Inputs:                  inputs,
+			Outputs:                 imp.Outputs,
 			Parent:                  parent,
 			Protect:                 imp.Protect,
 			Taint:                   false,
@@ -747,7 +763,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			IgnoreChanges:           nil,
 			ReplaceOnChanges:        nil,
 			HideDiff:                nil,
-			ReplacementTrigger:      resource.NewNullProperty(),
+			ReplacementTrigger:      property.Value{},
 			RefreshBeforeUpdate:     false,
 			ViewOf:                  "",
 			ResourceHooks:           nil,

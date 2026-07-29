@@ -16,8 +16,9 @@ package resource
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -210,9 +211,7 @@ func (props PropertyMap) MapRepl(replk func(string) (string, bool),
 // Copy makes a shallow copy of the map.
 func (props PropertyMap) Copy() PropertyMap {
 	new := make(PropertyMap)
-	for k, v := range props {
-		new[k] = v
-	}
+	maps.Copy(new, props)
 	return new
 }
 
@@ -222,7 +221,7 @@ func (props PropertyMap) StableKeys() []PropertyKey {
 	for k := range props {
 		sorted = append(sorted, k)
 	}
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	slices.Sort(sorted)
 	return sorted
 }
 

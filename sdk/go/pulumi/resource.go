@@ -17,6 +17,7 @@ package pulumi
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"sort"
 	"strings"
@@ -38,9 +39,9 @@ type (
 )
 
 var (
-	resourceStateType         = reflect.TypeOf(ResourceState{})
-	customResourceStateType   = reflect.TypeOf(CustomResourceState{})
-	providerResourceStateType = reflect.TypeOf(ProviderResourceState{})
+	resourceStateType         = reflect.TypeFor[ResourceState]()
+	customResourceStateType   = reflect.TypeFor[CustomResourceState]()
+	providerResourceStateType = reflect.TypeFor[ProviderResourceState]()
 )
 
 // This type alias is a hack to embed the internal.ResourceState type
@@ -1058,9 +1059,7 @@ func ProviderMap(o map[string]ProviderResource) ResourceOption {
 			if ro.Providers == nil {
 				ro.Providers = make(map[string]ProviderResource)
 			}
-			for k, v := range o {
-				ro.Providers[k] = v
-			}
+			maps.Copy(ro.Providers, o)
 		}
 	})
 }
@@ -1195,9 +1194,7 @@ func EnvVarMappings(mappings map[string]string) ResourceOption {
 			if ro.EnvVarMappings == nil {
 				ro.EnvVarMappings = make(map[string]string)
 			}
-			for k, v := range mappings {
-				ro.EnvVarMappings[k] = v
-			}
+			maps.Copy(ro.EnvVarMappings, mappings)
 		}
 	})
 }

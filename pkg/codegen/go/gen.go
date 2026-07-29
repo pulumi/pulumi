@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"go/format"
 	"io"
+	"maps"
 	"net/url"
 	"os"
 	"path"
@@ -853,13 +854,9 @@ func (pkg *pkgContext) contextForExternalReference(t schema.Type) (*pkgContext, 
 		if len(ourPkgGoInfo.PackageImportAliases) > 0 {
 			pkgImportAliases = make(map[string]string)
 			// Copy the external import aliases.
-			for k, v := range goInfo.PackageImportAliases {
-				pkgImportAliases[k] = v
-			}
+			maps.Copy(pkgImportAliases, goInfo.PackageImportAliases)
 			// Copy the local import aliases, overwriting any external aliases.
-			for k, v := range ourPkgGoInfo.PackageImportAliases {
-				pkgImportAliases[k] = v
-			}
+			maps.Copy(pkgImportAliases, ourPkgGoInfo.PackageImportAliases)
 		}
 	}
 
@@ -3927,8 +3924,8 @@ func (pkg *pkgContext) genTypeRegistrations(
 			}
 		}
 		for _, t := range types {
-			if strings.HasSuffix(t, "Input") {
-				fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%s)(nil)).Elem(), %s{})\n", t, strings.TrimSuffix(t, "Input"))
+			if before, ok := strings.CutSuffix(t, "Input"); ok {
+				fmt.Fprintf(w, "\tpulumi.RegisterInputType(reflect.TypeOf((*%s)(nil)).Elem(), %s{})\n", t, before)
 			}
 		}
 	}
@@ -5592,8 +5589,8 @@ func (pkg *pkgContext) GenUtilitiesFile(w io.Writer, packageRegex string) error 
 	subtitutions := map[string]string{
 		`"${packageRegex}"`: fmt.Sprintf("%q", packageRegex),
 	}
-	i := strings.Index(embeddedUtilities, "package utilities")
-	code := embeddedUtilities[i+len("package utilities"):]
+	_, after, _ := strings.Cut(embeddedUtilities, "package utilities")
+	code := after
 	for x, y := range subtitutions {
 		code = strings.ReplaceAll(code, x, y)
 	}

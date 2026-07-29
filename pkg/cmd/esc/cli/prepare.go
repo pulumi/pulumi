@@ -16,18 +16,17 @@ package cli
 
 import (
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strconv"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"golang.org/x/exp/maps"
 )
 
 func getEnvironmentVariables(env *esc.Environment, quote, redact bool) (environ, secrets []string) {
 	vars := env.GetEnvironmentVariables()
-	keys := maps.Keys(vars)
-	sort.Strings(keys)
+	keys := slices.Sorted(maps.Keys(vars))
 
 	for _, k := range keys {
 		v := vars[k]
@@ -70,11 +69,14 @@ func removeTemporaryFiles(fs escFS, paths []string) {
 	}
 }
 
-func createTemporaryFiles(e *esc.Environment, opts PrepareOptions) (paths, environ, secrets []string, err error) {
+func createTemporaryFiles(
+	e *esc.Environment,
+	opts PrepareOptions,
+) (paths, environ, secrets []string, filesByKey map[string]string, err error) {
 	files := e.GetTemporaryFiles()
-	keys := maps.Keys(files)
-	sort.Strings(keys)
+	keys := slices.Sorted(maps.Keys(files))
 
+	filesByKey = make(map[string]string, len(keys))
 	for _, k := range keys {
 		v := files[k]
 		s := v.Value.(string)
@@ -88,16 +90,17 @@ func createTemporaryFiles(e *esc.Environment, opts PrepareOptions) (paths, envir
 			path, err = createTemporaryFile(opts.fs, []byte(s))
 			if err != nil {
 				removeTemporaryFiles(opts.fs, paths)
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 			paths = append(paths, path)
 		}
+		filesByKey[k] = path
 		if opts.Quote {
 			path = strconv.Quote(path)
 		}
 		environ = append(environ, fmt.Sprintf("%v=%v", k, path))
 	}
-	return paths, environ, secrets, nil
+	return paths, environ, secrets, filesByKey, nil
 }
 
 // PrepareOptions contains options for PrepareEnvironment.
@@ -110,8 +113,12 @@ type PrepareOptions struct {
 }
 
 // PrepareEnvironment prepares the envvar and temporary file projections for an environment. Returns the paths to
-// temporary files, environment variable pairs, and secret values.
-func PrepareEnvironment(e *esc.Environment, opts *PrepareOptions) (files, environ, secrets []string, err error) {
+// temporary files, environment variable pairs, secret values, and a map from each temporary file's environment
+// variable name to its projected path.
+func PrepareEnvironment(
+	e *esc.Environment,
+	opts *PrepareOptions,
+) (files, environ, secrets []string, filesByKey map[string]string, err error) {
 	if opts == nil {
 		opts = &PrepareOptions{}
 	}
@@ -121,12 +128,12 @@ func PrepareEnvironment(e *esc.Environment, opts *PrepareOptions) (files, enviro
 
 	envVars, envSecrets := getEnvironmentVariables(e, opts.Quote, opts.Redact)
 
-	filePaths, fileVars, fileSecrets, err := createTemporaryFiles(e, *opts)
+	filePaths, fileVars, fileSecrets, filesByKey, err := createTemporaryFiles(e, *opts)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("creating temporary files: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("creating temporary files: %v", err)
 	}
 
 	environ = append(envVars, fileVars...)
 	secrets = append(envSecrets, fileSecrets...)
-	return filePaths, environ, secrets, nil
+	return filePaths, environ, secrets, filesByKey, nil
 }

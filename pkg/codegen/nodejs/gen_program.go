@@ -829,7 +829,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				}
 				if configVar.Description != "" {
 					g.Fgenf(w, "%s/**\n", g.Indent)
-					for _, line := range strings.Split(configVar.Description, "\n") {
+					for line := range strings.SplitSeq(configVar.Description, "\n") {
 						g.Fgenf(w, "%s * %s\n", g.Indent, line)
 					}
 					g.Fgenf(w, "%s */\n", g.Indent)
@@ -2039,7 +2039,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	}
 
 	if v.Description != "" {
-		for _, line := range strings.Split(v.Description, "\n") {
+		for line := range strings.SplitSeq(v.Description, "\n") {
 			g.Fgenf(w, "%s// %s\n", g.Indent, line)
 		}
 	}

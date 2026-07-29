@@ -182,7 +182,7 @@ func marshalInputsOptions(props Input, opts *marshalOptions) (resource.PropertyM
 		getMappedField := internal.MapStructTypes(pt, rt)
 		// Now, marshal each field in the input.
 		numFields := pt.NumField()
-		for i := 0; i < numFields; i++ {
+		for i := range numFields {
 			destField, _ := getMappedField(reflect.Value{}, i)
 			tag := destField.Tag.Get("pulumi")
 			tag = strings.Split(tag, ",")[0] // tagName,flag => tagName
@@ -712,12 +712,12 @@ func unmarshalPropertyMap(ctx *Context, v resource.PropertyMap) (Map, error) {
 			resRef := v.ResourceReferenceValue()
 			res := ctx.newDependencyResource(URN(resRef.URN))
 
-			output := ctx.newOutput(reflect.TypeOf((*ResourceOutput)(nil)).Elem())
+			output := ctx.newOutput(reflect.TypeFor[ResourceOutput]())
 			internal.ResolveOutput(output, res, true, false, nil /* deps */)
 			return output, nil
 
 		case v.IsComputed():
-			typ := reflect.TypeOf((*any)(nil)).Elem()
+			typ := reflect.TypeFor[any]()
 			typ = getOutputType(typ)
 			output := ctx.newOutput(typ)
 			internal.ResolveOutput(output, nil, false, false, nil /* deps */)

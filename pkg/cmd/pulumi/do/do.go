@@ -411,7 +411,11 @@ Provider configuration can be supplied via:
     set --input to use another format)
 
 Function inputs come from --input-file. YAML is the default; pass --input
-to use another format.`,
+to use another format.
+
+Simple properties can also be set with flags: --<property> <value> takes the
+value as a literal, while --<property>+ <value> parses the value as an
+expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			subcmd, cleanup, err := buildSubcommand(cmd, args)
@@ -458,7 +462,7 @@ to use another format.`,
 	cmd.PersistentFlags().BoolVar(&stateless, "stateless", false,
 		"Run create/patch/delete directly against the provider without persisting state. "+
 			"Required for now: the stateful (engine-driven) implementation is still in development, "+
-			"so create/patch/delete error out unless --stateless is set.")
+			"so patch/delete error out unless --stateless is set.")
 	cmd.PersistentFlags().StringVar(
 		&pkg, "package", "", "The package to load, in the form 'name@version' or "+
 			"a path to a plugin binary or folder. If the package supports "+
@@ -604,17 +608,10 @@ func (pc *packageCommand) isKnownModule(typed string) bool {
 		return mod == name || strings.HasPrefix(mod, name+"/")
 	}
 	resources, functions := pc.memberTokens()
-	for _, tok := range functions {
-		if inModule(tok) {
-			return true
-		}
+	if slices.ContainsFunc(functions, inModule) {
+		return true
 	}
-	for _, tok := range resources {
-		if inModule(tok) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(resources, inModule)
 }
 
 func (pc *packageCommand) moduleToken(token string) string {

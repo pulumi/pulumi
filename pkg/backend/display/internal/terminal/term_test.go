@@ -82,7 +82,7 @@ func TestANSIDecoder(t *testing.T) {
 	t.Parallel()
 
 	// check all key sequences
-	for i := 0; i < 0x7f; i++ {
+	for i := range 0x7f {
 		if i != 0x1b {
 			ansiKeyCase(byte(i)).run(t)
 		}

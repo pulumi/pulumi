@@ -166,7 +166,7 @@ func (m *mockMonitor) GetDeploymentInfo(ctx context.Context, in *emptypb.Empty,
 
 func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRequest,
 	opts ...grpc.CallOption,
-) (*pulumirpc.InvokeResponse, error) {
+) (*pulumirpc.ResourceInvokeResponse, error) {
 	args, err := plugin.UnmarshalProperties(in.GetArgs(), plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
@@ -189,7 +189,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 		if err != nil {
 			return nil, err
 		}
-		return &pulumirpc.InvokeResponse{
+		return &pulumirpc.ResourceInvokeResponse{
 			Return: result,
 		}, nil
 	}
@@ -210,7 +210,7 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRe
 		return nil, err
 	}
 
-	return &pulumirpc.InvokeResponse{
+	return &pulumirpc.ResourceInvokeResponse{
 		Return: result,
 	}, nil
 }
@@ -367,7 +367,7 @@ func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc
 ) (*emptypb.Empty, error) {
 	// Get the concrete type of the mock resource monitor.
 	// This is needed to call the RegisterResourceOutputs method on the mock resource monitor if it exists.
-	if reflect.TypeOf(m.mocks).Implements(reflect.TypeOf((*mockResourceMonitorWithRegisterResourceOutput)(nil)).Elem()) {
+	if reflect.TypeOf(m.mocks).Implements(reflect.TypeFor[mockResourceMonitorWithRegisterResourceOutput]()) {
 		// Call the RegisterResourceOutputs method on the mock resource monitor.
 		if m, ok := m.mocks.(mockResourceMonitorWithRegisterResourceOutput); ok {
 			return m.RegisterResourceOutputs()

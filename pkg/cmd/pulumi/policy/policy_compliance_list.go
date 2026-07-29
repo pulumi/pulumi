@@ -248,10 +248,7 @@ func (c *complianceListCmd) renderTable(
 	scoreCols := len(columns)
 	borders := 3*(scoreCols+1) + 1
 	scoreWidth := 6 * scoreCols
-	entityWidth := cols - borders - scoreWidth
-	if entityWidth < 15 {
-		entityWidth = 15
-	}
+	entityWidth := max(cols-borders-scoreWidth, 15)
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Name: "ENTITY", WidthMax: entityWidth, WidthMaxEnforcer: text.WrapText},
 	})

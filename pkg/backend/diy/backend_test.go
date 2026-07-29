@@ -982,7 +982,7 @@ func TestStackReferenceString_currentProjectChange_race(t *testing.T) {
 
 	projects := make([]*workspace.Project, N)
 	refs := make([]backend.StackReference, N)
-	for i := 0; i < N; i++ {
+	for i := range N {
 		name := fmt.Sprintf("proj%d", i)
 		projects[i] = &workspace.Project{Name: tokens.PackageName(name)}
 		refs[i], err = b.ParseStackReference(fmt.Sprintf("organization/%v/foo", name))
@@ -998,23 +998,19 @@ func TestStackReferenceString_currentProjectChange_race(t *testing.T) {
 	var wg sync.WaitGroup
 	ready := make(chan struct{}) // both goroutines wait on this
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		<-ready
-		for i := 0; i < N; i++ {
+		for i := range N {
 			_ = refs[i].String()
 		}
-	}()
+	})
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		<-ready
-		for i := 0; i < N; i++ {
+		for i := range N {
 			b.SetCurrentProject(projects[i])
 		}
-	}()
+	})
 
 	close(ready) // start racing
 	wg.Wait()
@@ -1521,7 +1517,7 @@ func TestUpgrade_manyFailures(t *testing.T) {
 	bucket, err := fileblob.OpenBucket(tmpDir, nil)
 	require.NoError(t, err)
 	ctx := t.Context()
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackPath := path.Join(".pulumi", "stacks", fmt.Sprintf("stack-%d.json", i))
 		require.NoError(t, bucket.WriteAll(ctx, stackPath, []byte(badStackBody), nil))
 	}
@@ -1535,7 +1531,7 @@ func TestUpgrade_manyFailures(t *testing.T) {
 
 	require.NoError(t, b.Upgrade(ctx, nil /* opts */))
 	out := output.String()
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		assert.Contains(t, out, fmt.Sprintf(`Skipping stack "stack-%d"`, i))
 	}
 }
@@ -1936,7 +1932,7 @@ func TestParallelStackFetch(t *testing.T) {
 	// Create multiple stacks to test parallel fetching
 	numStacks := 10
 	stackRefs := make([]backend.StackReference, numStacks)
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		stackRef, err := b.ParseStackReference(stackName)
 		require.NoError(t, err)
@@ -1960,7 +1956,7 @@ func TestParallelStackFetch(t *testing.T) {
 		stackNames[stack.Name().String()] = true
 	}
 
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
 	}
@@ -1985,7 +1981,7 @@ func TestParallelStackFetchDefaultValue(t *testing.T) {
 	// Create multiple stacks to test parallel fetching with default value
 	numStacks := 5
 	stackRefs := make([]backend.StackReference, numStacks)
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		stackRef, err := b.ParseStackReference(stackName)
 		require.NoError(t, err)
@@ -2009,7 +2005,7 @@ func TestParallelStackFetchDefaultValue(t *testing.T) {
 		stackNames[stack.Name().String()] = true
 	}
 
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		assert.True(t, stackNames[stackName], "Stack %s should be in the results", stackName)
 	}
@@ -2033,7 +2029,7 @@ func TestListStackNames(t *testing.T) {
 	// Create test stacks
 	numStacks := 3
 	expectedStackNames := make([]string, numStacks)
-	for i := 0; i < numStacks; i++ {
+	for i := range numStacks {
 		stackName := fmt.Sprintf("stack%d", i)
 		expectedStackNames[i] = stackName
 		stackRef, err := b.ParseStackReference(stackName)

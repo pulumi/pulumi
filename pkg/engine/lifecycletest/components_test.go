@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -451,10 +452,10 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 						deps := arg.OutputValue().Dependencies
 
 						return plugin.CallResponse{
-							Return: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							Return: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -601,17 +602,10 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 						deps := arg.OutputValue().Dependencies
 
 						return plugin.CallResponse{
-							Return: resource.PropertyMap{
-								"foo": resource.NewProperty(resource.Output{
-									Element:      resource.NewProperty("foo"),
-									Known:        true,
-									Secret:       true,
-									Dependencies: deps,
-								}),
-								"bar": resource.NewProperty(resource.Output{
-									Dependencies: deps,
-								}),
-							},
+							Return: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true).WithDependencies(deps),
+								"bar": property.New(property.Computed).WithDependencies(deps),
+							}),
 							ReturnDependencies: nil, // Left blank on purpose because AcceptsOutputs is true
 						}, nil
 					},
@@ -755,10 +749,10 @@ func TestConstructCallSendDependencies(t *testing.T) {
 						deps := arg.OutputValue().Dependencies
 
 						return plugin.CallResponse{
-							Return: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							Return: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -920,10 +914,10 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 						deps := arg.OutputValue().Dependencies
 
 						return plugin.CallResponse{
-							Return: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							Return: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -1154,9 +1148,9 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 
 				message := fmt.Sprintf("%s, %s!", name, foo)
 				return plugin.CallResponse{
-					Return: resource.PropertyMap{
-						"message": resource.NewProperty(message),
-					},
+					Return: property.NewMap(map[string]property.Value{
+						"message": property.New(message),
+					}),
 				}, nil
 			}
 
@@ -1731,9 +1725,9 @@ func TestCallSelfProvider(t *testing.T) {
 					_ *deploytest.ResourceMonitor,
 				) (plugin.CallResponse, error) {
 					return plugin.CallResponse{
-						Return: resource.PropertyMap{
-							"state": resource.NewProperty(state),
-						},
+						Return: property.NewMap(map[string]property.Value{
+							"state": property.New(state),
+						}),
 					}, nil
 				},
 			}, nil

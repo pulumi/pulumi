@@ -101,6 +101,11 @@ type JournalEntry struct {
 	// Only set for JournalEntryKindExtensionParameterize entries.
 	ExtensionRef *ExtensionRef `json:"extensionRef,omitempty"`
 	Extension    *Extension    `json:"extension,omitempty"`
+
+	// True if serializing this entry's State, Operation, or NewSnapshot encoded strings containing
+	// non-UTF8 bytes. Such strings inside secrets are invisible after encryption, so the fact must be
+	// recorded at serialization time for replay to gate rebuilt deployments on the byteString feature.
+	RequiresByteString bool `json:"requiresByteString,omitempty"`
 }
 
 func (e JournalEntry) String() string {

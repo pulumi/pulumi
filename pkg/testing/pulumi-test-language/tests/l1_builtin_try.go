@@ -15,6 +15,8 @@
 package tests
 
 import (
+	"slices"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
@@ -87,17 +89,11 @@ func init() {
 					if assert.True(l, ok, "expected property outputTryNull") {
 						// Must equal one of the following
 
-						ok := false
-						for _, want := range []resource.PropertyValue{
+						ok := slices.ContainsFunc([]resource.PropertyValue{
 							resource.NewProperty([]resource.PropertyValue{resource.NewNullProperty()}),
 							resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{resource.NewNullProperty()})),
 							resource.NewProperty([]resource.PropertyValue{resource.MakeSecret(resource.NewNullProperty())}),
-						} {
-							if got.DeepEquals(want) {
-								ok = true
-								break
-							}
-						}
+						}, got.DeepEquals)
 
 						if !ok {
 							assert.Fail(l, "expected property outputTryNull to be one of the expected values, was %v", got)

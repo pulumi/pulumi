@@ -23,7 +23,9 @@ import (
 	"sync"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
@@ -366,5 +368,15 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 	}
 	wrapped := plugin.NewProviderWithClient(
 		nil, pulumirpc.NewResourceProviderClient(conn), false)
+	// Handshake with the provider, as a real engine would at plugin spawn time, so that
+	// handshake-negotiated capabilities like byte string are recorded. Providers that don't
+	// implement Handshake fall back to the capabilities they report from Configure.
+	_, err = wrapped.Handshake(context.Background(), plugin.ProviderHandshakeRequest{
+		AcceptsByteString: true,
+	})
+	if err != nil && status.Code(err) != codes.Unimplemented {
+		contract.IgnoreClose(wrapper)
+		return nil, nil, fmt.Errorf("could not handshake with resource provider service: %w", err)
+	}
 	return wrapped, wrapper, nil
 }

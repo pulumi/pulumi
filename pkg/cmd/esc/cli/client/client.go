@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"path"
 	"runtime"
@@ -1768,9 +1769,7 @@ func (pc *client) httpCall(
 	req.Header.Set("Content-Type", "application/json")
 
 	// Set headers from the incoming options.
-	for k, v := range opts.Header {
-		req.Header[k] = v
-	}
+	maps.Copy(req.Header, opts.Header)
 
 	// Add a User-Agent header to allow for the backend to make breaking API changes while preserving
 	// backwards compatibility.

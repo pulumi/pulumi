@@ -536,24 +536,29 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 
 		optionsBag := ""
-		if len(expr.Args) == 3 {
+		invokeOptions, hasOptions := pcl.InvokeOptions(expr)
+		parentSelf := g.isComponent && !pcl.InvokeOptionSet(expr, "parent")
+		if hasOptions || parentSelf {
 			var buf bytes.Buffer
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
-				if isOut {
-					g.Fgen(&buf, ", opts=pulumi.InvokeOutputOptions(")
-				} else {
-					g.Fgen(&buf, ", opts=pulumi.InvokeOptions(")
-				}
-				for i, item := range invokeOptions.Items {
-					last := i == len(invokeOptions.Items)-1
-					key := PyName(pcl.LiteralValueString(item.Key))
-					g.Fgenf(&buf, "%s=%v", key, item.Value)
-					if !last {
-						g.Fgen(&buf, ", ")
-					}
-				}
-				g.Fgen(&buf, ")")
+			if isOut {
+				g.Fgen(&buf, ", opts=pulumi.InvokeOutputOptions(")
+			} else {
+				g.Fgen(&buf, ", opts=pulumi.InvokeOptions(")
 			}
+			args := []string{}
+			if parentSelf {
+				args = append(args, "parent=self")
+			}
+			if hasOptions {
+				for _, item := range invokeOptions.Items {
+					var argBuf bytes.Buffer
+					key := PyName(pcl.LiteralValueString(item.Key))
+					g.Fgenf(&argBuf, "%s=%v", key, item.Value)
+					args = append(args, argBuf.String())
+				}
+			}
+			g.Fgen(&buf, strings.Join(args, ", "))
+			g.Fgen(&buf, ")")
 
 			optionsBag = buf.String()
 		}
@@ -591,7 +596,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			} else {
 				invokeArgs = expr.Args[1].(*model.ObjectConsExpression)
 			}
-			pcl.GenerateMultiArguments(g.Formatter, w, "None", invokeArgs, pcl.SortedFunctionParameters(expr))
+			pcl.GenerateMultiArguments(g.Formatter, w, "None", invokeArgs, pcl.SortedFunctionParameters(expr), false)
 		} else {
 			switch arg := expr.Args[1].(type) {
 			case *model.FunctionCallExpression:

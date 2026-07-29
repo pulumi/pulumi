@@ -31,7 +31,7 @@ class ResourceMonitorStub(object):
         self.Invoke = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/Invoke',
                 request_serializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.SerializeToString,
-                response_deserializer=pulumi_dot_provider__pb2.InvokeResponse.FromString,
+                response_deserializer=pulumi_dot_resource__pb2.ResourceInvokeResponse.FromString,
                 )
         self.Call = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/Call',
@@ -207,7 +207,7 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
             'Invoke': grpc.unary_unary_rpc_method_handler(
                     servicer.Invoke,
                     request_deserializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.FromString,
-                    response_serializer=pulumi_dot_provider__pb2.InvokeResponse.SerializeToString,
+                    response_serializer=pulumi_dot_resource__pb2.ResourceInvokeResponse.SerializeToString,
             ),
             'Call': grpc.unary_unary_rpc_method_handler(
                     servicer.Call,
@@ -317,7 +317,7 @@ class ResourceMonitor(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/Invoke',
             pulumi_dot_resource__pb2.ResourceInvokeRequest.SerializeToString,
-            pulumi_dot_provider__pb2.InvokeResponse.FromString,
+            pulumi_dot_resource__pb2.ResourceInvokeResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

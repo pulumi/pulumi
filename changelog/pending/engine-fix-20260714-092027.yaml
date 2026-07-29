@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Validate snippets before persisting them
-time: 2026-07-14T09:20:27.306103+01:00

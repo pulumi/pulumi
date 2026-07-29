@@ -177,9 +177,9 @@ func parseLogName(name string) (stack, updateID, command string, cliLevel bool) 
 
 	if prefix == "pulumi" {
 		pid := suffix
-		if i := strings.Index(suffix, "-"); i >= 0 {
-			pid = suffix[:i]
-			command = strings.ReplaceAll(suffix[i+1:], "_", " ")
+		if before, after, ok := strings.Cut(suffix, "-"); ok {
+			pid = before
+			command = strings.ReplaceAll(after, "_", " ")
 		}
 		return "", pid, command, true
 	}

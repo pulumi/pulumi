@@ -147,6 +147,14 @@ type (
 	}
 )
 
+// parameterizeArgs returns the arguments used to parameterize a package on install.
+func parameterizeArgs(spec workspace.PackageSpec) []string {
+	if len(spec.Parameters) > 0 {
+		return spec.Parameters
+	}
+	return spec.Extensions
+}
+
 func naivePackageDescriptor(
 	ctx context.Context, spec workspace.PackageSpec,
 ) (workspace.UnresolvedPackageDescriptor, error) {
@@ -163,7 +171,7 @@ func naivePackageDescriptor(
 		version, spec.PluginDownloadURL, spec.Checksums)
 	return workspace.UnresolvedPackageDescriptor{
 		PluginDescriptor:     pluginDesc,
-		ParameterizationArgs: spec.Parameters,
+		ParameterizationArgs: parameterizeArgs(spec),
 	}, err
 }
 
@@ -179,8 +187,9 @@ func naiveResolution(
 		}
 	}
 
-	// If there is no parameters in the spec, then we have fully resolved here.
-	if len(spec.Parameters) == 0 {
+	// With no parameterization args, there is nothing to parameterize, so the
+	// package resolves to its plugin descriptor alone.
+	if len(parameterizeArgs(spec)) == 0 {
 		return PackageResolution{
 			Spec: spec,
 			Pkg: workspace.PackageDescriptor{
@@ -205,10 +214,11 @@ func registryResolution(
 		Source:     path.Join(metadata.Source, metadata.Publisher, metadata.Name),
 		Version:    metadata.Version.String(),
 		Parameters: spec.Parameters,
+		Extensions: spec.Extensions,
 		Checksums:  spec.Checksums,
 	}
 
-	if len(spec.Parameters) > 0 && metadata.Parameterization != nil {
+	if len(parameterizeArgs(spec)) > 0 && metadata.Parameterization != nil {
 		return nil, fmt.Errorf(
 			"unable to resolve package: resolved plugin to %s, which is already parameterized",
 			spec.Source,
@@ -223,12 +233,12 @@ func registryResolution(
 		Checksums:         spec.Checksums,
 	}
 
-	if len(spec.Parameters) > 0 {
+	if len(parameterizeArgs(spec)) > 0 {
 		plugin := PluginResolution{
 			Spec: spec,
 			Pkg: workspace.UnresolvedPackageDescriptor{
 				PluginDescriptor:     pluginDescriptor,
-				ParameterizationArgs: spec.Parameters,
+				ParameterizationArgs: parameterizeArgs(spec),
 			},
 			InstalledInWorkspace: installed,
 		}
@@ -290,7 +300,7 @@ func Resolve(
 	if plugin.IsLocalPluginPath(ctx, spec.Source) {
 		return PathResolution{
 			Path:                 spec.Source,
-			ParameterizationArgs: spec.Parameters,
+			ParameterizationArgs: parameterizeArgs(spec),
 			Spec:                 spec,
 		}, nil
 	}

@@ -197,8 +197,8 @@ func logJSONEvent(encoder *json.Encoder, event engine.StampedEvent, opts Options
 func startEventLogger(
 	events <-chan engine.StampedEvent, done chan<- bool, opts Options,
 ) (<-chan engine.StampedEvent, chan<- bool) {
-	if strings.HasPrefix(opts.EventLogPath, "tcp://") {
-		addr := strings.TrimPrefix(opts.EventLogPath, "tcp://")
+	if after, ok := strings.CutPrefix(opts.EventLogPath, "tcp://"); ok {
+		addr := after
 		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			logging.V(7).Infof("could not connect to event log server: %v", err)

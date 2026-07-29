@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"math/big"
 	"strconv"
 	"strings"
@@ -421,6 +422,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					// interface type strips those methods and breaks use in
 					// pulumi.AssetOrArchiveArray, etc.
 					g.Fgenf(w, "%.v", from)
+				} else if isFromOutput &&
+					model.IsOptionalType(model.ResolveOutputs(fromType)) &&
+					pcl.UnwrapOption(model.ResolveOutputs(fromType)).Equals(to) {
+					// Optional scalar outputs are represented by pointer outputs in Go. When the
+					// destination is the corresponding optional input, the output already implements
+					// that input interface. Wrapping it in the value constructor would not compile.
+					g.Fgenf(w, "%.v", from)
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
 				}
@@ -522,46 +530,46 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.Fgenf(w, "%.v", expr.Args[1])
 		}
 
-		var optionsBag string
-		var buf bytes.Buffer
-		if len(expr.Args) == 3 {
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
-				g.Fgen(&buf, ", ")
-				for i, item := range invokeOptions.Items {
-					last := i == len(invokeOptions.Items)-1
-					switch pcl.LiteralValueString(item.Key) {
-					case "provider":
-						g.Fgenf(&buf, "pulumi.Provider(%v)", item.Value)
-					case "parent":
-						g.Fgenf(&buf, "pulumi.Parent(%v)", item.Value)
-					case "version":
-						g.Fgenf(&buf, "pulumi.Version(%v)", item.Value)
-					case "pluginDownloadUrl":
-						g.Fgenf(&buf, "pulumi.PluginDownloadURL(%v)", item.Value)
-					case "dependsOn":
-						destType := model.NewListType(resourceType)
-						value, temps := g.lowerExpression(item.Value, destType)
-						contract.Assertf(len(temps) == 0, "can not have temporary variables when converting dependsOn option: %v", temps)
-						if isInputty(value.Type()) {
-							g.Fgenf(&buf, "pulumi.DependsOnInputs(%v)", value)
-						} else {
-							g.Fgenf(&buf, "pulumi.DependsOn(%v)", value)
-						}
+		var options []string
+		if g.isComponent && !pcl.InvokeOptionSet(expr, "parent") {
+			options = append(options, "pulumi.Parent(&componentResource)")
+		}
+		if invokeOptions, ok := pcl.InvokeOptions(expr); ok {
+			for _, item := range invokeOptions.Items {
+				var buf bytes.Buffer
+				switch pcl.LiteralValueString(item.Key) {
+				case "provider":
+					g.Fgenf(&buf, "pulumi.Provider(%v)", item.Value)
+				case "parent":
+					g.Fgenf(&buf, "pulumi.Parent(%v)", item.Value)
+				case "version":
+					g.Fgenf(&buf, "pulumi.Version(%v)", item.Value)
+				case "pluginDownloadUrl":
+					g.Fgenf(&buf, "pulumi.PluginDownloadURL(%v)", item.Value)
+				case "dependsOn":
+					destType := model.NewListType(resourceType)
+					value, temps := g.lowerExpression(item.Value, destType)
+					contract.Assertf(len(temps) == 0, "can not have temporary variables when converting dependsOn option: %v", temps)
+					if isInputty(value.Type()) {
+						g.Fgenf(&buf, "pulumi.DependsOnInputs(%v)", value)
+					} else {
+						g.Fgenf(&buf, "pulumi.DependsOn(%v)", value)
 					}
-
-					if !last {
-						g.Fgen(&buf, ", ")
-					}
+				default:
+					continue
 				}
+				options = append(options, buf.String())
 			}
+		}
+		if len(options) > 0 {
+			g.Fgenf(w, ", %s", strings.Join(options, ", "))
 		} else if !expr.Signature.MultiArgumentInputs {
 			// A multi-argument invoke passes its inputs positionally and takes invokeOptions as a
 			// trailing variadic parameter, so when there are no options nothing is emitted. Other
 			// invokes pass a single options argument positionally, defaulting to nil.
-			g.Fgenf(&buf, ", nil")
+			g.Fgen(w, ", nil")
 		}
-		optionsBag = buf.String()
-		g.Fgenf(w, "%v)", optionsBag)
+		g.Fgen(w, ")")
 	case "max":
 		g.Fgen(w, "max(")
 		for i, arg := range expr.Args {
@@ -695,15 +703,11 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 	propTypes := map[string]model.Type{}
 	switch t := argsDestType.(type) {
 	case *model.ObjectType:
-		for name, propType := range t.Properties {
-			propTypes[name] = propType
-		}
+		maps.Copy(propTypes, t.Properties)
 	case *model.UnionType:
 		for _, elemType := range t.ElementTypes {
 			if objType, ok := elemType.(*model.ObjectType); ok {
-				for name, propType := range objType.Properties {
-					propTypes[name] = propType
-				}
+				maps.Copy(propTypes, objType.Properties)
 				break
 			}
 		}
@@ -1464,7 +1468,15 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			return string(*destType)
 		}
 	case *model.ObjectType:
-
+		// If this ObjectType was synthesized from a component's config
+		// variable, we know the generated Go struct name — use it (as a
+		// pointer, matching how values are rendered) rather than falling
+		// back to map[string]interface{}.
+		if !isInput {
+			if md, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](destType); ok {
+				return "*" + md.TypeName
+			}
+		}
 		if isInput {
 			// check for element type uniformity and return appropriate type if so
 			allSameType := true
@@ -1812,8 +1824,8 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		if isMap || isList {
 			typeAssertion = ".(" + deferredOutputCastTypeParameter(then.Signature.ReturnType) + ")"
 		} else {
-			if strings.HasPrefix(retType, "*") {
-				retType = Title(strings.TrimPrefix(retType, "*")) + "Ptr"
+			if after, ok := strings.CutPrefix(retType, "*"); ok {
+				retType = Title(after) + "Ptr"
 			}
 			typeAssertion = fmt.Sprintf(".(%sOutput)", retType)
 			if !strings.Contains(retType, ".") {

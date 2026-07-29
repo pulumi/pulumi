@@ -359,6 +359,75 @@ func TestBuildImportFile_ExistingProvider(t *testing.T) {
 	assert.Equal(t, expected, importFile.Resources[0])
 }
 
+// TestBuildImportFile_RenamedProviderReference tests that if a provider's generated import-file
+// name is renamed after a resource has already referenced it, the resource's Provider field is
+// updated to the provider's new name.
+func TestBuildImportFile_RenamedProviderReference(t *testing.T) {
+	t.Parallel()
+
+	events := make(chan engine.Event)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
+
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeRootStackMetadata(deploy.OpSame),
+	})
+
+	// Occupy the provider's logical name so the provider is initially renamed from "prov" to "provPkg".
+	existingState := makeStateMetadata(t, "prov", "other:index:Existing", true, stateOptions{})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpSame, existingState),
+	})
+
+	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
+		Inputs: resource.NewPropertyMapFromMap(map[string]any{
+			"version": "3.2.1",
+		}),
+	})
+	uuid, err := uuid.NewV4()
+	require.NoError(t, err)
+	providerState.ID = resource.ID(uuid.String())
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpSame, providerState),
+	})
+
+	providerRef, err := providers.NewReference(providerState.URN, providerState.ID)
+	require.NoError(t, err)
+	usesProvider := makeStateMetadata(t, "usesProvider", "pkg:mod:typ", true, stateOptions{
+		Provider: &providerRef,
+	})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, usesProvider),
+	})
+
+	// This resource takes the provider's current generated name, forcing the provider alias to
+	// be renamed again from "provPkg" to "provPkg2".
+	conflictingState := makeStateMetadata(t, "provPkg", "other:index:Conflict", true, stateOptions{})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, conflictingState),
+	})
+
+	close(events)
+	importFile, err := importFilePromise.Result(t.Context())
+	require.NoError(t, err)
+
+	require.Len(t, importFile.NameTable, 1)
+	assert.Equal(t, providerState.URN, importFile.NameTable["provPkg2"])
+
+	require.Len(t, importFile.Resources, 2)
+	assert.Equal(t, importSpec{
+		ID:       "<PLACEHOLDER>",
+		Type:     "pkg:mod:typ",
+		Name:     "usesProvider",
+		Provider: "provPkg2",
+		Version:  "3.2.1",
+	}, importFile.Resources[0])
+	assert.Equal(t, importSpec{
+		ID:   "<PLACEHOLDER>",
+		Type: "other:index:Conflict",
+		Name: "provPkg",
+	}, importFile.Resources[1])
+}
+
 // TestBuildImportFile_NewProvider tests that we can generate an import file for a resource that uses
 // an explicit provider that is also being created in the same deployment (#15453).
 func TestBuildImportFile_NewProvider(t *testing.T) {
@@ -612,4 +681,66 @@ func TestBuildImportFile_regress_15068(t *testing.T) {
 
 	_, err := importFilePromise.Result(t.Context())
 	assert.ErrorContains(t, err, "could not parse provider reference")
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/24056
+// Tests that when multiple existing component resources share the same name,
+// generated import resources still reference the correct distinct parents.
+func TestBuildImportFile_regress_24056(t *testing.T) {
+	t.Parallel()
+
+	events := make(chan engine.Event)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
+
+	// Pretend the root stack already exists.
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeRootStackMetadata(deploy.OpSame),
+	})
+
+	// Two existing components with the same logical name.
+	parentA := makeStateMetadata(t, "bug", "example:components:ComponentResourceA", false, stateOptions{})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpSame, parentA),
+	})
+
+	parentB := makeStateMetadata(t, "bug", "example:components:ComponentResourceB", false, stateOptions{})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpSame, parentB),
+	})
+
+	// Each created resource has one of the existing components as its parent.
+	childA := makeStateMetadata(t, "child-a", "example:components:ChildA", false, stateOptions{Parent: parentA.URN})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, childA),
+	})
+
+	childB := makeStateMetadata(t, "child-b", "example:components:ChildB", false, stateOptions{Parent: parentB.URN})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, childB),
+	})
+
+	close(events)
+
+	importFile, err := importFilePromise.Result(t.Context())
+	require.NoError(t, err)
+	require.Len(t, importFile.Resources, 2)
+
+	parentsByType := map[tokens.Type]string{}
+	for _, spec := range importFile.Resources {
+		parentsByType[spec.Type] = spec.Parent
+	}
+
+	parentAliasA, ok := parentsByType[childA.Type]
+	require.True(t, ok)
+	require.NotEmpty(t, parentAliasA)
+	parentAliasB, ok := parentsByType[childB.Type]
+	require.True(t, ok)
+	require.NotEmpty(t, parentAliasB)
+
+	// The two distinct parents must not collapse to the same alias.
+	assert.NotEqual(t, parentAliasA, parentAliasB)
+
+	// And each alias must resolve to the correct parent URN in the name table.
+	assert.Equal(t, parentA.URN, importFile.NameTable[parentAliasA])
+	assert.Equal(t, parentB.URN, importFile.NameTable[parentAliasB])
 }

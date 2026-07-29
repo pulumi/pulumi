@@ -291,55 +291,107 @@ async function monitorSupportsFeature(monitorClient: resrpc.IResourceMonitorClie
 }
 
 /**
+ * Queries the resource monitor for the set of features it supports via
+ * GetDeploymentInfo.
+ *
+ * Resolves to undefined if the monitor does not implement GetDeploymentInfo.
+ *
+ * @internal
+ */
+function getMonitorSupportedFeatures(
+    monitorClient: resrpc.IResourceMonitorClient,
+): Promise<resproto.ResourceMonitorFeature[] | undefined> {
+    return new Promise((resolve, reject) => {
+        monitorClient.getDeploymentInfo(
+            new emptyproto.Empty(),
+            (err: grpc.ServiceError | null, resp: resproto.DeploymentInfo | undefined) => {
+                if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                    return resolve(undefined);
+                }
+
+                if (err) {
+                    return reject(err);
+                }
+
+                if (resp === undefined) {
+                    return reject(new Error("No response from resource monitor"));
+                }
+
+                return resolve(resp.getSupportedfeaturesList());
+            },
+        );
+    });
+}
+
+// A frozen map of old feature IDs to the new resource monitor features.
+//
+// This map should never be updated.
+const legacyFeatureMapping: Record<string, resproto.ResourceMonitorFeature> = {
+    secrets: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_SECRETS,
+    resourceReferences: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+    outputValues: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES,
+    deletedWith: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+    replaceWith: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+    aliasSpecs: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
+    transforms: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
+    invokeTransforms: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+    parameterization: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+    resourceHooks: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+    errorHooks: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+};
+
+/**
  * Queries the resource monitor for its capabilities and sets the appropriate
- * flags in the store.
+ * flags in the store. Monitor capabilities are advertised as a set via
+ * GetDeploymentInfo. Older monitors don't implement it, in which case we fall
+ * back to probing each feature individually via SupportsFeature.
  *
  * @internal
  **/
 export async function awaitFeatureSupport(): Promise<void> {
     const monitorRef = getMonitor();
-    if (monitorRef !== undefined) {
-        const store = getStore();
-        const [
-            secrets,
-            resourceReferences,
-            outputValues,
-            deletedWith,
-            replaceWith,
-            aliasSpecs,
-            transforms,
-            invokeTransforms,
-            parameterization,
-            resourceHooks,
-            errorHooks,
-        ] = await Promise.all(
-            [
-                "secrets",
-                "resourceReferences",
-                "outputValues",
-                "deletedWith",
-                "replaceWith",
-                "aliasSpecs",
-                "transforms",
-                "invokeTransforms",
-                "parameterization",
-                "resourceHooks",
-                "errorHooks",
-            ].map((feature) => monitorSupportsFeature(monitorRef, feature)),
-        );
-
-        store.supportsSecrets = secrets;
-        store.supportsResourceReferences = resourceReferences;
-        store.supportsOutputValues = outputValues;
-        store.supportsDeletedWith = deletedWith;
-        store.supportsReplaceWith = replaceWith;
-        store.supportsAliasSpecs = aliasSpecs;
-        store.supportsTransforms = transforms;
-        store.supportsInvokeTransforms = invokeTransforms;
-        store.supportsParameterization = parameterization;
-        store.supportsResourceHooks = resourceHooks;
-        store.supportsErrorHooks = errorHooks;
+    if (monitorRef === undefined) {
+        return;
     }
+
+    let features = await getMonitorSupportedFeatures(monitorRef);
+    if (features === undefined) {
+        const probed = await Promise.all(
+            Object.keys(legacyFeatureMapping)
+                .sort()
+                .map(async (id) =>
+                    (await monitorSupportsFeature(monitorRef, id)) ? legacyFeatureMapping[id] : undefined,
+                ),
+        );
+        features = probed.filter((f): f is resproto.ResourceMonitorFeature => f !== undefined);
+    }
+
+    const store = getStore();
+    store.supportsSecrets = features.includes(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_SECRETS);
+    store.supportsResourceReferences = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+    );
+    store.supportsOutputValues = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES,
+    );
+    store.supportsDeletedWith = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+    );
+    store.supportsReplaceWith = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+    );
+    store.supportsAliasSpecs = features.includes(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS);
+    store.supportsTransforms = features.includes(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_TRANSFORMS);
+    store.supportsInvokeTransforms = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+    );
+    store.supportsParameterization = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+    );
+    store.supportsResourceHooks = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+    );
+    store.supportsErrorHooks = features.includes(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS);
 }
 
 /**

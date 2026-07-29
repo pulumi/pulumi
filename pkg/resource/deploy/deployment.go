@@ -18,8 +18,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
@@ -113,6 +115,9 @@ type Options struct {
 	GeneratePlan bool
 	// true if we should continue with the deployment even if a resource operation fails.
 	ContinueOnError bool
+	// true if the deployment should ignore the protect option on resources, allowing protected
+	// resources to be deleted or replaced. The protect option in the state is left unchanged.
+	IgnoreProtect bool
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
 	Autonamer autonaming.Autonamer
 	// true if the engine should display secrets in diagnostic messages.
@@ -173,9 +178,7 @@ func NewUrnTargetsFromUrns(urns []resource.URN) UrnTargets {
 func (t UrnTargets) Clone() UrnTargets {
 	newLiterals := append(make([]resource.URN, 0, len(t.literals)), t.literals...)
 	newGlobs := make(map[string]*regexp.Regexp, len(t.globs))
-	for k, v := range t.globs {
-		newGlobs[k] = v
-	}
+	maps.Copy(newGlobs, t.globs)
 	return UrnTargets{
 		literals: newLiterals,
 		globs:    newGlobs,
@@ -216,10 +219,8 @@ func (t UrnTargets) Contains(urn resource.URN) bool {
 	if !t.IsConstrained() {
 		return true
 	}
-	for _, literal := range t.literals {
-		if literal == urn {
-			return true
-		}
+	if slices.Contains(t.literals, urn) {
+		return true
 	}
 	for glob := range t.globs {
 		if t.getMatcher(glob).MatchString(string(urn)) {
@@ -686,6 +687,13 @@ func (d *Deployment) Prev() *Snapshot                           { return d.prev 
 func (d *Deployment) Olds() map[resource.URN]*pkgresource.State { return d.olds }
 func (d *Deployment) Source() Source                            { return d.source }
 
+// IgnoresProtect returns true if the step's deployment has been configured to ignore the protect
+// resource option (i.e. --ignore-protect was set), allowing protected resources to be deleted.
+func IgnoresProtect(step Step) bool {
+	d := step.Deployment()
+	return d != nil && d.opts != nil && d.opts.IgnoreProtect
+}
+
 // SameProvider configures a provider from state without changes.
 // If fromCheck is true, the provider was loaded during Check/Diff and we can reuse it.
 // If fromCheck is false (e.g., from EnsureProvider), we load fresh and don't touch UnconfiguredID.
@@ -772,8 +780,8 @@ func (d *Deployment) GetOldViews(urn resource.URN) []plugin.View {
 		view := plugin.View{
 			Type:    res.URN.Type(),
 			Name:    res.URN.Name(),
-			Inputs:  res.Inputs,
-			Outputs: res.Outputs,
+			Inputs:  resource.FromResourcePropertyMap(res.Inputs),
+			Outputs: resource.FromResourcePropertyMap(res.Outputs),
 		}
 		if res.Parent != "" && res.Parent != res.ViewOf {
 			view.ParentType = res.Parent.Type()

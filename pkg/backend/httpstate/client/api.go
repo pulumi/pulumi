@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"runtime"
 	"strings"
@@ -488,9 +489,7 @@ func pulumiAPICall(ctx context.Context,
 	req.Header.Set("Content-Type", "application/json")
 
 	// Set headers from the incoming options.
-	for k, v := range opts.Header {
-		req.Header[k] = v
-	}
+	maps.Copy(req.Header, opts.Header)
 
 	// Advertise the API capabilities this CLI supports. See the version-history
 	// table above `currentAPIVersion`.

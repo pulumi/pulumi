@@ -16,26 +16,23 @@
 #             projects, installing also runs npm link to register
 #             this package, so that other projects can depend on it.
 #
-#  - lint: runs relevent linters for the project
+#  - lint: runs relevant linters for the project
 #
 #  - test_fast: runs the fast tests for a project. These are often
-#               go unit tests or javascript unit tests, they should
+#               Go or JavaScript unit tests. They should
 #               complete quickly, as we expect developers to run them
-#               fequently as part of their "inner loop" development.
+#               frequently as part of their "inner loop" development.
 #
-#  - test_all: runs all of test_fast and then runs additional testing,
-#              which may take longer (some times a lot longer!). These
-#              are often integration tests which will use `pulumi` to
-#              deploy example Pulumi projects, creating cloud
-#              resources along the way.
+#  - test_all: runs the complete test suite for a project. This includes
+#              integration tests which will use `pulumi` to deploy example
+#              Pulumi projects, creating cloud resources along the way.
 #
 # In addition, we have a few higher level targets that just depend on
 # these targets:
 #
 #  - only_build: this target runs build and install targets
 #
-#  - only_test: this target runs the list and test_all targets
-#               (test_all itself runs test_fast)
+#  - only_test: this target runs the lint and test_all targets
 #
 #  - default: this is the target that is run by default when no
 #             arguments are passed to make, it runs the build, lint,
@@ -46,8 +43,7 @@
 #          that later). In that case, building `core` target does not
 #          build sub projects.
 #
-#  - all: this target runs build, lint, install and test_all (which
-#         itself runs test_fast).
+#  - all: this target runs build, lint, install and test_all.
 #
 # Before including this makefile, a project may define some values
 # that this makefile understands:
@@ -112,13 +108,15 @@ GO_TEST_RACE            ?= true
 # dead code elimation from being disabled by the compiler, see https://github.com/pulumi/pulumi/pull/22012.
 GO_BUILD_TAGS           ?= grpcnotrace
 
-GO_TEST_FLAGS = -count=1 -cover -tags="${GO_TEST_TAGS}" -timeout 1h \
+GO_TEST_BASE_FLAGS = -tags="${GO_TEST_TAGS}" -timeout 1h \
 	-parallel=${GO_TEST_PARALLELISM} \
-	-shuffle=${GO_TEST_SHUFFLE} \
-	-p=${GO_TEST_PKG_PARALLELISM} \
-	-race=${GO_TEST_RACE} \
-	${GO_TEST_OPTIONS}
-GO_TEST_FAST_FLAGS = -short ${GO_TEST_FLAGS}
+	-p=${GO_TEST_PKG_PARALLELISM}
+
+GO_TEST_FLAGS = ${GO_TEST_BASE_FLAGS} -count=1 -shuffle=${GO_TEST_SHUFFLE} -cover -race=${GO_TEST_RACE} ${GO_TEST_OPTIONS}
+# test_fast runs without race detection or coverage, and passes only cacheable
+# test flags (no -count, no -shuffle) so unchanged packages replay from Go's
+# test cache.
+GO_TEST_FAST_FLAGS = ${GO_TEST_BASE_FLAGS} -short -race=false ${GO_TEST_OPTIONS}
 
 GO_TEST      = $(PYTHON) $(ROOT_DIR)/../scripts/go-test.py $(GO_TEST_FLAGS)
 GO_TEST_FAST = $(PYTHON) $(ROOT_DIR)/../scripts/go-test.py $(GO_TEST_FAST_FLAGS)

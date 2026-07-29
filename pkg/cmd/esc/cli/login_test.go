@@ -190,6 +190,7 @@ func TestAgentModeUsesPulumiAPIAndLoginManagerWhenPulumiCredentialsUnreadable(t 
 	t.Setenv("PULUMI_API", "http://localhost:8080")
 	t.Setenv("PULUMI_HOME", "")
 	t.Setenv("PULUMI_CREDENTIALS_PATH", "")
+	t.Setenv("PULUMI_TEST_AGENT_PULUMI_DIR", t.TempDir())
 
 	login := &provisioningLoginManager{}
 	esc := &escCommand{
