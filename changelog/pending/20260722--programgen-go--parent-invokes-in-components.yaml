@@ -1,0 +1,4 @@
+component: programgen/go
+kind: fix
+body: Parent an invoke written inside a component to that component, lower a component's outputs, and only import `fmt` when a component needs it
+time: 2026-07-22T00:00:00+00:00
