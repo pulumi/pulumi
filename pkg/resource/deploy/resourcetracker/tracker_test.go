@@ -118,11 +118,7 @@ func TestHasUnresolved(t *testing.T) {
 	}
 }
 
-// TestHasUnresolvedAwaitsRegistration covers a component provider that returns from Construct without awaiting the
-// children it registered. Those registrations are still in flight and so have produced nothing, which a tracker that
-// only read what it had been told about would report as "no such resource" -- the very ordering bug callers use this
-// package to avoid. Nothing in the protocol requires a provider to await its children, so the tracker waits for the
-// registrations instead of assuming it.
+// TestHasUnresolvedAwaitsRegistration ensures that HasUnresolved blocks while registrations are in flight.
 func TestHasUnresolvedAwaitsRegistration(t *testing.T) {
 	t.Parallel()
 

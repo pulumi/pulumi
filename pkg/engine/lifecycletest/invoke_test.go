@@ -165,17 +165,10 @@ func previewAwareCreate(_ context.Context, req plugin.CreateRequest) (plugin.Cre
 	return plugin.CreateResponse{ID: "created-id", Properties: resource.PropertyMap{}}, nil
 }
 
-// TestInvokeDependsOnRemoteComponent covers pulumi/pulumi#18299: an output-form
-// invoke that depends on a remote component must not execute during a preview
-// that has not yet created the component's children.
+// TestInvokeDependsOnRemoteComponent checks that an output-form invoke that depends on a MLC does not fire until the
+// component's children have been created.
 //
-// A caller cannot see a remote component's children: they are registered by
-// the component provider directly with the engine. The caller instead declares
-// the dependency on ResourceInvokeRequest and the engine expands it -- the
-// component aggregates every descendant reachable through component ancestors
-// -- and gates the invoke on the created-ness of the expanded resources: the
-// invoke must not reach the provider during the initial preview, and must
-// reach it during up and steady-state previews.
+// Reproduces https://github.com/pulumi/pulumi/issues/18299
 func TestInvokeDependsOnRemoteComponent(t *testing.T) {
 	t.Parallel()
 
