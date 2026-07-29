@@ -1,0 +1,6 @@
+component: cli/env
+kind: feat
+body: Add an optional `--export-env-vars` flag to the `env provider {aws,azure,gcp}-login` commands to also set the standard SDK environment variables referencing the login outputs
+time: 2026-07-23T13:42:31.000000+00:00
+custom:
+    PR: "24055"
