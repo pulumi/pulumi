@@ -49,6 +49,7 @@ func newGenSdkCommand() *cobra.Command {
 	var local bool
 	var parameterArgs []string
 	var asExtension bool
+	var serverURL string
 	cmd := &cobra.Command{
 		Use:   "gen-sdk",
 		Short: "Generate SDK(s) from a package or schema",
@@ -85,7 +86,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 
 			parameters := &plugin.ParameterizeArgs{Args: parameterArgs}
 			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
-				registry, env.Global(), 0 /* unbounded concurrency */, asExtension)
+				registry, env.Global(), 0 /* unbounded concurrency */, asExtension, serverURL)
 			if err != nil {
 				return err
 			}
@@ -149,6 +150,9 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 	cmd.Flags().StringVar(&overlays, "overlays", "", "A folder of extra overlay files to copy to the generated SDK")
 	cmd.Flags().StringVar(&version, "version", "", "The provider plugin version to generate the SDK for")
 	cmd.Flags().BoolVar(&local, "local", false, "Generate an SDK appropriate for local usage")
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
 	packages.AddExtensionFlag(cmd, &parameterArgs, &asExtension)
 	contract.AssertNoErrorf(cmd.Flags().MarkHidden("overlays"), `Could not mark "overlay" as hidden`)
 	return cmd

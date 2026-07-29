@@ -168,7 +168,7 @@ func TestProviderFromSource(t *testing.T) {
 	}
 
 	run := func(
-		t *testing.T, installCtx mockInstallContext, inputSource string,
+		t *testing.T, installCtx mockInstallContext, inputSource, pluginDownloadURL string,
 	) (plugin.Provider, workspace.PackageSpec) {
 		t.Helper()
 		installCtx.t = t
@@ -185,7 +185,7 @@ func TestProviderFromSource(t *testing.T) {
 
 		provider, spec, err := providerFromSource(
 			pctx, inputSource, nil,
-			env.NewEnv(env.MapStore{"PULUMI_EXPERIMENTAL": "true"}), 0, installCtx,
+			env.NewEnv(env.MapStore{"PULUMI_EXPERIMENTAL": "true"}), 0, pluginDownloadURL, installCtx,
 		)
 		require.NoError(t, err)
 		return provider, spec
@@ -194,7 +194,7 @@ func TestProviderFromSource(t *testing.T) {
 	t.Run("no Pulumi.yaml", func(t *testing.T) {
 		t.Parallel()
 
-		provider, spec := run(t, mockInstallContext{}, "test-provider@1.0.0")
+		provider, spec := run(t, mockInstallContext{}, "test-provider@1.0.0", "")
 
 		assert.Equal(t, resolvedSpec, spec)
 		assert.Equal(t, wantProvider, provider)
@@ -214,10 +214,38 @@ func TestProviderFromSource(t *testing.T) {
 			},
 		}
 
-		provider, spec := run(t, installCtx, "local-name")
+		provider, spec := run(t, installCtx, "local-name", "")
 
 		assert.Equal(t, resolvedSpec, spec)
 		assert.Equal(t, wantProvider, provider)
+	})
+
+	t.Run("with pluginDownloadURL adds to remap", func(t *testing.T) {
+		t.Parallel()
+
+		// The project remaps the source "local-name" to the real "test-provider@1.0.0" package.
+		installCtx := mockInstallContext{
+			baseProject: &workspace.Project{
+				Name:    "test-project",
+				Runtime: workspace.NewProjectRuntimeInfo("yaml", nil),
+				Packages: map[string]workspace.PackageSpec{
+					"local-name": {Source: "test-provider", Version: "1.0.0"},
+				},
+			},
+		}
+
+		// And we pass pluginDownloadURL, which should be added to the PackageSpec from the project.
+		provider, spec := run(t, installCtx, "local-name", "https://example.com/plugins")
+
+		expected := resolvedSpec
+		expected.PluginDownloadURL = "https://example.com/plugins"
+
+		assert.Equal(t, expected, spec)
+
+		want := wantProvider
+		want.originalSpec.PluginDownloadURL = "https://example.com/plugins"
+
+		assert.Equal(t, want, provider)
 	})
 }
 
