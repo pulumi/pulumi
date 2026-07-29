@@ -335,19 +335,22 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 	}
 
 	oldInputs, err := UnmarshalProperties(
-		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */))
+		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	oldOutputs, err := UnmarshalProperties(
-		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */))
+		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	newInputs, err := UnmarshalProperties(
-		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */))
+		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -515,19 +518,22 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 	}
 
 	oldInputs, err := UnmarshalProperties(
-		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */))
+		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	oldOutputs, err := UnmarshalProperties(
-		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */))
+		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	newInputs, err := UnmarshalProperties(
-		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */))
+		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -733,25 +739,29 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 	}
 
 	oldOutputs, err := UnmarshalProperties(
-		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */))
+		req.GetOlds(), p.unmarshalOptions("oldOutputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	oldInputs, err := UnmarshalProperties(
-		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */))
+		req.GetOldInputs(), p.unmarshalOptions("oldInputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	newInputs, err := UnmarshalProperties(
-		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */))
+		req.GetNews(), p.unmarshalOptions("newInputs", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	oldViews, err := unmarshalViews(
-		req.GetOldViews(), p.unmarshalOptions("oldViews", false /* keepOutputValues */))
+		req.GetOldViews(), p.unmarshalOptions("oldViews", false /* keepOutputValues */),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -932,7 +942,8 @@ func (p *providerServer) Construct(ctx context.Context,
 	var replacementTrigger resource.PropertyValue
 	if trigger := req.GetReplacementTrigger(); trigger != nil {
 		rt, err := UnmarshalPropertyValue("replacementTrigger", trigger, p.unmarshalOptions(
-			"replacementTrigger", true /* keepOutputValues */))
+			"replacementTrigger", true, /* keepOutputValues */
+		))
 		if err != nil {
 			return nil, err
 		}
@@ -1058,7 +1069,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 
 	result, err := p.provider.Call(ctx, CallRequest{
 		Tok:     tokens.ModuleMember(req.GetTok()),
-		Args:    args,
+		Args:    resource.FromResourcePropertyMap(args),
 		Info:    info,
 		Options: options,
 	})
