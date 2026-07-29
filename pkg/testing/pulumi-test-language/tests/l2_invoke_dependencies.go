@@ -18,6 +18,7 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,12 +38,18 @@ func init() {
 					RequireStackResource(l, err, changes)
 					var first *pkgresource.State
 					var second *pkgresource.State
+					var third *pkgresource.State
+					var fourth *pkgresource.State
 					for _, r := range snap.Resources {
-						if r.URN.Name() == "first" {
+						switch r.URN.Name() {
+						case "first":
 							first = r
-						}
-						if r.URN.Name() == "second" {
+						case "second":
 							second = r
+						case "third":
+							third = r
+						case "fourth":
+							fourth = r
 						}
 					}
 
@@ -55,6 +62,17 @@ func init() {
 					require.Len(l, dependencies, 1, "expected one dependency")
 					require.Equal(l, first.URN, dependencies[0], "expected second to depend on first")
 					require.Equal(l, first.URN, second.Dependencies[0], "expected second to depend on first")
+
+					require.NotNil(l, third, "expected third resource")
+					require.NotNil(l, fourth, "expected fourth resource")
+					require.Empty(l, third.Dependencies, "expected no dependencies")
+					require.Len(l, fourth.Dependencies, 1, "expected one dependency")
+					dependencies, ok = fourth.PropertyDependencies["text"]
+					require.True(l, ok, "expected dependency on property 'text'")
+					require.Len(l, dependencies, 1, "expected one dependency")
+					require.Equal(l, third.URN, dependencies[0], "expected fourth to depend on third")
+					require.Equal(l, third.URN, fourth.Dependencies[0], "expected fourth to depend on third")
+					AssertPropertyMapMember(l, fourth.Inputs, "text", resource.NewProperty("Goodbye world"))
 				},
 			},
 		},
