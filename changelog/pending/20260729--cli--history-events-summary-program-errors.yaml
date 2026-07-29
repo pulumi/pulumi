@@ -1,4 +1,4 @@
 component: cli
 kind: fix
-body: '`pulumi stack history events --summary` now reports the program errors a language host writes to stderr, so a preview that failed before reaching a resource operation no longer summarizes with an empty `diagnostics` list'
+body: Make '`pulumi stack history events --summary` report the program errors  from the language host
 time: 2026-07-29T00:00:00+00:00
