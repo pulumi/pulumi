@@ -46,7 +46,17 @@ STACK="dev"
 # OCI_BUILDER at a local builder.
 BUILDER="${OCI_BUILDER:-desktop-linux}"
 
-WORK="$(mktemp -d)"
+# See run-host-engine.sh: bind-mount sources must be daemon-visible; colima
+# shares only ~ and /tmp/colima, not the mktemp default under /var/folders. For
+# this script that matters to the WORKSPACE mount ($WORK/project into the
+# component container): with an unshared workdir the container sees an empty
+# auto-created directory — harmless to this pack, poison to an asset-reading one.
+if [ -n "${OCI_SMOKE_TMPDIR:-}" ]; then
+  mkdir -p "$OCI_SMOKE_TMPDIR"
+  WORK="$(mktemp -d "$OCI_SMOKE_TMPDIR/oci-smoke.XXXXXX")"
+else
+  WORK="$(mktemp -d)"
+fi
 mkdir -p "$WORK/bin" "$WORK/project" "$WORK/state" "$WORK/pulumi-home"
 
 cleanup() {

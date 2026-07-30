@@ -46,7 +46,14 @@ STACK="dev"
 
 BUILDER="${OCI_BUILDER:-desktop-linux}"
 
-WORK="$(mktemp -d)"
+# See run-host-engine.sh: bind-mount sources must be daemon-visible; colima
+# shares only ~ and /tmp/colima, not the mktemp default under /var/folders.
+if [ -n "${OCI_SMOKE_TMPDIR:-}" ]; then
+  mkdir -p "$OCI_SMOKE_TMPDIR"
+  WORK="$(mktemp -d "$OCI_SMOKE_TMPDIR/oci-smoke.XXXXXX")"
+else
+  WORK="$(mktemp -d)"
+fi
 mkdir -p "$WORK/bin" "$WORK/project" "$WORK/state" "$WORK/pulumi-home"
 
 cleanup() {

@@ -47,7 +47,20 @@ POD_LABEL="com.pulumi.pod=$POD_ID"
 PROXY_NAME="pulumi-pod-$POD_ID-registry"
 STACK="dev"
 
-WORK="$(mktemp -d)"
+# The workdir holds files the run bind-mounts into containers (the proxy binary,
+# the shim), so it must live where the DAEMON's filesystem can see it. Docker
+# Desktop shares /var/folders (the mktemp default); colima shares only ~ and
+# /tmp/colima — a mount whose source the VM cannot see is silently auto-created
+# as an empty DIRECTORY, and the failure reads as a red herring ("Permission
+# denied" is exec-of-a-directory). Point OCI_SMOKE_TMPDIR at a shared path
+# (e.g. ~/.cache/oci-smoke-tmp) when the daemon runs in a VM that doesn't share
+# the system temp dir.
+if [ -n "${OCI_SMOKE_TMPDIR:-}" ]; then
+  mkdir -p "$OCI_SMOKE_TMPDIR"
+  WORK="$(mktemp -d "$OCI_SMOKE_TMPDIR/oci-smoke.XXXXXX")"
+else
+  WORK="$(mktemp -d)"
+fi
 mkdir -p "$WORK/bin" "$WORK/project" "$WORK/state" "$WORK/pulumi-home"
 
 cleanup() {
