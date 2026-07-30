@@ -1013,6 +1013,7 @@ type RegisterResourceResponse struct {
 	Stables              []string                                                  `protobuf:"bytes,5,rep,name=stables,proto3" json:"stables,omitempty"`                                                                                                     // an optional list of guaranteed-stable properties.
 	PropertyDependencies map[string]*RegisterResourceResponse_PropertyDependencies `protobuf:"bytes,6,rep,name=propertyDependencies,proto3" json:"propertyDependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // a map from property keys to the dependencies of the property.
 	Result               Result                                                    `protobuf:"varint,7,opt,name=result,proto3,enum=pulumirpc.Result" json:"result,omitempty"`                                                                                // the reason, whether the resource registration was successful, failed, or skipped.
+	Unknown              bool                                                      `protobuf:"varint,8,opt,name=unknown,proto3" json:"unknown,omitempty"`                                                                                                    // true if the result of the registration is unknown, e.g. because the create was elided by a targeted update or a destroy run; result is still SUCCESS and SDKs should resolve outputs as unknown.
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -1094,6 +1095,13 @@ func (x *RegisterResourceResponse) GetResult() Result {
 		return x.Result
 	}
 	return Result_SUCCESS
+}
+
+func (x *RegisterResourceResponse) GetUnknown() bool {
+	if x != nil {
+		return x.Unknown
+	}
+	return false
 }
 
 // RegisterResourceOutputsRequest adds extra resource outputs created by the program after registration has occurred.
@@ -3314,7 +3322,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\n" +
 	"\b_protectB\x11\n" +
 	"\x0f_retainOnDeleteB\b\n" +
-	"\x06_hooks\"\xed\x03\n" +
+	"\x06_hooks\"\x87\x04\n" +
 	"\x18RegisterResourceResponse\x12\x10\n" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12/\n" +
@@ -3322,7 +3330,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x06stable\x18\x04 \x01(\bR\x06stable\x12\x18\n" +
 	"\astables\x18\x05 \x03(\tR\astables\x12q\n" +
 	"\x14propertyDependencies\x18\x06 \x03(\v2=.pulumirpc.RegisterResourceResponse.PropertyDependenciesEntryR\x14propertyDependencies\x12)\n" +
-	"\x06result\x18\a \x01(\x0e2\x11.pulumirpc.ResultR\x06result\x1a*\n" +
+	"\x06result\x18\a \x01(\x0e2\x11.pulumirpc.ResultR\x06result\x12\x18\n" +
+	"\aunknown\x18\b \x01(\bR\aunknown\x1a*\n" +
 	"\x14PropertyDependencies\x12\x12\n" +
 	"\x04urns\x18\x01 \x03(\tR\x04urns\x1a\x81\x01\n" +
 	"\x19PropertyDependenciesEntry\x12\x10\n" +

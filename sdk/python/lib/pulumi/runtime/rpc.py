@@ -1459,6 +1459,7 @@ def resolve_outputs(
     custom: bool,
     transform_using_type_metadata: bool = False,
     keep_unknowns: bool = False,
+    resolve_missing_as_unknown: bool = False,
 ):
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
@@ -1522,7 +1523,9 @@ def resolve_outputs(
                     return_none_on_dict_type_mismatch=True,
                 )
 
-    resolve_properties(resolvers, all_properties, translated_deps, custom)
+    resolve_properties(
+        resolvers, all_properties, translated_deps, custom, resolve_missing_as_unknown
+    )
 
 
 def resolve_properties(
@@ -1530,6 +1533,7 @@ def resolve_properties(
     all_properties: dict[str, Any],
     deps: Mapping[str, set["Resource"]],
     custom: bool,
+    resolve_missing_as_unknown: bool = False,
 ):
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
@@ -1583,10 +1587,11 @@ def resolve_properties(
 
     # `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
     # We will resolve all of these values as `None`, and will mark the value as known if we are not running a
-    # preview.
+    # preview and the resource wasn't a skipped create.
     for key, resolve in resolvers.items():
         if key not in all_properties:
-            resolve(None, not settings.is_dry_run(), False, deps.get(key), None)
+            known = not settings.is_dry_run() and not resolve_missing_as_unknown
+            resolve(None, known, False, deps.get(key), None)
 
 
 def resolve_outputs_due_to_exception(resolvers: dict[str, Resolver], exn: Exception):

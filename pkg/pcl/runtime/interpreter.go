@@ -1973,9 +1973,12 @@ func (i *Interpreter) registerResourceWith(
 		return cty.NilVal, err
 	}
 
-	// During previews a created resource has no ID yet; represent it as unknown
-	// rather than a known empty string so it can't be observed as a real value.
-	if id := resp.GetId(); id == "" && i.info.DryRun {
+	unknown := custom && !i.info.DryRun && resp.GetUnknown()
+
+	// During previews a created resource has no ID yet, and a skipped create never gets
+	// one; represent it as unknown rather than a known empty string so it can't be
+	// observed as a real value.
+	if id := resp.GetId(); id == "" && (i.info.DryRun || unknown) {
 		outputs["id"] = resource.MakeComputed(resource.NewProperty(""))
 	} else {
 		outputs["id"] = resource.NewProperty(id)
@@ -1987,10 +1990,10 @@ func (i *Interpreter) registerResourceWith(
 	// Ensure every schema-declared output property is present, recursing into nested object
 	// types so that programs which traverse into an optional inner field see a typed null
 	// rather than triggering an HCL "unsupported attribute" error.
-	// - preview: unknown/computed
+	// - preview or skipped create: unknown/computed
 	// - update: explicit null
 	if schemaResource != nil {
-		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun)
+		fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || unknown)
 	}
 
 	result := resource.NewProperty(resource.Output{
