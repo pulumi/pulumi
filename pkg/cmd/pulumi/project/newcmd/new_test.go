@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -43,9 +44,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 //nolint:paralleltest // changes directory for process
@@ -1442,6 +1447,74 @@ func TestNewCmdYesRejectsInvalidExplicitName(t *testing.T) {
 	require.ErrorContains(t, err, "'my project' is not a valid project name")
 	_, statErr := os.Stat(filepath.Join(dir, "Pulumi.yaml"))
 	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+// requiredPackagesRecorder is an in-process language runtime, attached via
+// PULUMI_DEBUG_LANGUAGES, that records the GetRequiredPackages call it receives.
+type requiredPackagesRecorder struct {
+	pulumirpc.UnimplementedLanguageRuntimeServer
+
+	programDirectory atomic.Value
+}
+
+func (s *requiredPackagesRecorder) Handshake(
+	context.Context, *pulumirpc.LanguageHandshakeRequest,
+) (*pulumirpc.LanguageHandshakeResponse, error) {
+	return &pulumirpc.LanguageHandshakeResponse{}, nil
+}
+
+func (s *requiredPackagesRecorder) GetPluginInfo(context.Context, *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
+	return &pulumirpc.PluginInfo{Version: "1.0.0"}, nil
+}
+
+func (s *requiredPackagesRecorder) InstallDependencies(
+	*pulumirpc.InstallDependenciesRequest, pulumirpc.LanguageRuntime_InstallDependenciesServer,
+) error {
+	return nil
+}
+
+func (s *requiredPackagesRecorder) GetRequiredPackages(
+	_ context.Context, req *pulumirpc.GetRequiredPackagesRequest,
+) (*pulumirpc.GetRequiredPackagesResponse, error) {
+	s.programDirectory.Store(req.Info.ProgramDirectory)
+	return &pulumirpc.GetRequiredPackagesResponse{}, nil
+}
+
+// TestNewInstallsRequiredPackages ensures that `pulumi new` resolves & installs required packages.
+func TestNewInstallsRequiredPackages(t *testing.T) {
+	useTempFilestateBackend(t)
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	lang := &requiredPackagesRecorder{}
+	cancel := make(chan bool)
+	t.Cleanup(func() { close(cancel) })
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: cancel,
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterLanguageRuntimeServer(srv, lang)
+			return nil
+		},
+	})
+	require.NoError(t, err)
+	t.Setenv("PULUMI_DEBUG_LANGUAGES", fmt.Sprintf("testlang:%d", handle.Port))
+
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+	template := writeLocalTemplate(t, t.TempDir(), "testlang-template",
+		"name: ${PROJECT}\ndescription: ${DESCRIPTION}\nruntime: testlang\n")
+
+	args := newArgs{
+		interactive:       false,
+		yes:               true,
+		prompt:            ui.PromptForValue,
+		secretsProvider:   "default",
+		stack:             stackName,
+		templateNameOrURL: template,
+		languageTemplate:  languageTemplateMock,
+	}
+	require.NoError(t, runNew(t.Context(), args))
+
+	assert.Equal(t, tempdir, lang.programDirectory.Load())
 }
 
 //nolint:paralleltest

@@ -1,0 +1,5 @@
+component: cli/new
+kind: fix
+body: Resolve and install packages required by the program during `pulumi new`, as
+  `pulumi install` does
+time: 2026-07-30T11:00:00+02:00
