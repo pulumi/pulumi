@@ -5,10 +5,14 @@
 # Cross-compiled demo programs (run-pod-*.sh build these before the image build).
 program-linux
 
-# This branch's Node SDK, staged into program build contexts by run-pod-node-transform.sh
-# and run-pod-dynamic.sh.
+# This branch's Node SDK, staged into program build contexts by run-pod-node-transform.sh,
+# run-pod-dynamic.sh, run-pod-policy.sh, and run-host-engine-mlc.sh.
 program-node-transform/sdk-bin/
 program-node-dynamic/sdk-bin/
+component-greeter/sdk-bin/
+
+# The bind-contract @pulumi/policy, staged by run-pod-policy.sh from a pulumi-policy clone.
+policy-pack-node/policy-sdk-bin/
 
 # This branch's Python SDK + the CLI's exec shim, staged by run-pod-python-transform.sh.
 program-python-transform/sdk-lib/

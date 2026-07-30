@@ -1,0 +1,9 @@
+# The Mode 1 MLC smoke project: a plain host-run Go program consuming a CONTAINERIZED
+# Node component by its oci:// pin. The component's Construct dials the monitor back at
+# the advertise host (host.docker.internal) — the reverse-direction proof — and its
+# child RandomPet resolves UNPINNED, so the nested random provider takes the stock
+# binary path on the host: containerized component, stock child, one engine. That mix
+# is the gradual onramp's normal condition, not an edge case.
+name: oci-smoketest-host-engine-mlc
+runtime: go
+description: Host engine consuming a containerized MLC whose Construct dials back (Mode 1)

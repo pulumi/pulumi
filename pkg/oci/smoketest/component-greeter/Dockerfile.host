@@ -1,0 +1,16 @@
+# Host-mode variant of the greeter MLC image (see Dockerfile for the component's
+# shape). Host mode is address mode by construction — the engine is a host process
+# with no netns to share — so provider.main must honor PULUMI_PLUGIN_LISTEN_ADDRESS,
+# which the stock npm @pulumi/pulumi predates. Overlay the branch SDK on top of the
+# stock install (install-then-overwrite — never a second nested copy, which
+# @pulumi/random's semver range would otherwise resolve around the prerelease). The
+# smoke script stages sdk-bin/ from a fresh branch build; this file is separate from
+# Dockerfile so the package-build test's context needs no staging.
+FROM node:20-alpine
+WORKDIR /plugin
+COPY package.json ./
+RUN npm install --omit=dev
+COPY sdk-bin/ /plugin/node_modules/@pulumi/pulumi/
+RUN cd /plugin/node_modules/@pulumi/pulumi && npm install --omit=dev --no-package-lock
+COPY mlc.js ./
+ENTRYPOINT ["node", "/plugin/mlc.js"]
