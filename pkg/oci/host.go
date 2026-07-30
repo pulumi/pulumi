@@ -881,7 +881,8 @@ func (h *containerHost) prefetchNow(ctx context.Context) {
 // PulumiPolicy.yaml is the analyzer analogue of Pulumi.yaml — so a pack that
 // declares `runtime: oci` (with an `image` option) is built and run exactly like a
 // program or MLC, and the engine drives its Analyzer gRPC surface
-// (GetAnalyzerInfo/Analyze/AnalyzeStack) over the shared loopback. This reuses the
+// (GetAnalyzerInfo/Analyze/AnalyzeStack) over the shared loopback — or by container
+// DNS address in address mode, as for a provider. This reuses the
 // same build-and-run-from-image mechanism as MLCs; the one genuinely new bit is the
 // analyzer protocol, which the engine speaks to a *server* (the pack binds
 // 127.0.0.1, prints its port, raises its own message-size limit), so unlike a
@@ -927,14 +928,17 @@ func (h *containerHost) PolicyAnalyzer(
 }
 
 // runPolicyPackContainer starts the resolved policy-pack image as an analyzer
-// container on the engine netns and attaches to it — the shared tail of both
-// PolicyAnalyzer resolution paths (pinned ref and path/manifest).
+// container and attaches to it — the shared tail of both PolicyAnalyzer
+// resolution paths (pinned ref and path/manifest). The pack joins the network
+// providerNetwork selects, exactly as a provider does: the engine's netns, where
+// it binds 127.0.0.1 and is reached over the shared loopback, or (address mode)
+// its own container on the pod network, asked to serve the well-known plugin port.
 func (h *containerHost) runPolicyPackContainer(
 	ctx *plugin.Context, name tokens.QName, path, image string,
 ) (plugin.Analyzer, error) {
 	cfg := ContainerConfig{
 		Name:    uniqueContainerName("policy-" + sanitizeContainerName(filepath.Base(path))),
-		Network: "container:" + h.engineHost,
+		Network: h.providerNetwork(),
 		Image:   image,
 		// Project the engine's environment (credentials and so on), as for any pod
 		// member; a policy that performs provider invokes needs them just like a
@@ -943,9 +947,17 @@ func (h *containerHost) runPolicyPackContainer(
 	}
 	cfg.Env[roleEnvVar] = rolePolicyPack
 	// Hand the pack the engine address it would normally receive as argv. The pack
-	// is a server the engine calls, but it may dial back for invokes/logging; it
-	// shares the engine netns, so the engine's own ServerAddr is reachable.
+	// is a server the engine calls, but it may dial back for invokes/logging;
+	// ServerAddr is reachable in both modes (the shared netns's loopback, or the
+	// engine's advertised DNS name — ServerAddr rewrites itself in address mode).
 	cfg.Env["PULUMI_ENGINE"] = h.ServerAddr()
+	// In address mode, ask the pack itself to bind the well-known port on all
+	// interfaces — the same bind contract as a provider, honored by policy SDKs
+	// with the contract. Never set in netns mode: there the pack shares the
+	// engine's netns, and the second bind of a fixed port is fatal.
+	if podAddressMode() {
+		cfg.Env["PULUMI_PLUGIN_LISTEN_ADDRESS"] = fmt.Sprintf("0.0.0.0:%d", pluginListenPort)
+	}
 
 	c, err := h.pod.RunContainer(ctx.Base(), cfg)
 	if err != nil {
@@ -958,10 +970,28 @@ func (h *containerHost) runPolicyPackContainer(
 		return nil, fmt.Errorf("oci: discovering port for policy pack %s: %w", name, err)
 	}
 
-	fmt.Fprintf(os.Stderr, "oci: policy pack %s running as container %s, attaching at 127.0.0.1:%d\n",
-		name, c.Name, port)
+	// The same handshake honesty check as a provider's: in address mode a pack that
+	// announces any port but the requested one ignored PULUMI_PLUGIN_LISTEN_ADDRESS
+	// and bound an ephemeral loopback port inside its own netns — dialing it would
+	// fail as a bare connection error after a retry window. Name the diagnosis now.
+	if podAddressMode() && port != pluginListenPort {
+		_ = h.pod.StopContainer(context.Background(), c)
+		return nil, fmt.Errorf(
+			"oci: policy pack %s announced port %d instead of the requested listen port %d: the pack "+
+				"ignored PULUMI_PLUGIN_LISTEN_ADDRESS (built against a policy SDK without the bind "+
+				"contract), so it is serving loopback inside its own container where the engine cannot "+
+				"reach it. Rebuild the pack against a newer policy SDK, or unset PULUMI_POD_ADDRESS_MODE",
+			name, port, pluginListenPort)
+	}
 
-	client, err := dialAnalyzer(ctx.Base(), port)
+	attachAddr := "127.0.0.1:" + strconv.Itoa(port)
+	if podAddressMode() {
+		attachAddr = c.Address(port) // reach the pack's own container by DNS name
+	}
+	fmt.Fprintf(os.Stderr, "oci: policy pack %s running as container %s, attaching at %s\n",
+		name, c.Name, attachAddr)
+
+	client, err := dialAnalyzer(ctx.Base(), attachAddr)
 	if err != nil {
 		_ = h.pod.StopContainer(context.Background(), c)
 		return nil, fmt.Errorf("oci: attaching to policy pack %s: %w", name, err)
@@ -1013,15 +1043,16 @@ func policyPackImage(path string) (image string, ok bool, err error) {
 	return image, true, nil
 }
 
-// dialAnalyzer connects to a policy pack's analyzer server on the shared loopback
-// and returns a client. It raises the gRPC message-size limit to match the engine's
-// other plugin connections (rpcutil.GrpcChannelOptions) — AnalyzeStack ships the
-// whole resource set, so the 4 MB default is far too small. The pack already printed
-// its port, meaning it is bound and serving, so we just wait for the connection to
-// report ready before handing the client to the engine.
-func dialAnalyzer(ctx context.Context, port int) (pulumirpc.AnalyzerClient, error) {
+// dialAnalyzer connects to a policy pack's analyzer server — over the shared
+// loopback, or by container DNS address in address mode — and returns a client. It
+// raises the gRPC message-size limit to match the engine's other plugin connections
+// (rpcutil.GrpcChannelOptions) — AnalyzeStack ships the whole resource set, so the
+// 4 MB default is far too small. The pack already printed its port, meaning it is
+// bound and serving, so we just wait for the connection to report ready before
+// handing the client to the engine.
+func dialAnalyzer(ctx context.Context, addr string) (pulumirpc.AnalyzerClient, error) {
 	conn, err := grpc.NewClient(
-		fmt.Sprintf("127.0.0.1:%d", port),
+		addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		rpcutil.GrpcChannelOptions(),
 	)

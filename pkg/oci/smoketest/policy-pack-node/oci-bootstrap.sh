@@ -5,8 +5,10 @@
 # resolving it ambiently the same way the stock pulumi-analyzer-policy shim does, so
 # we inherit the SDK's own module resolution. run-policy-pack takes
 # <engine-address> <program-dir>; the pack's code is at /policy. The pack's analyzer
-# binds loopback and prints its port; the engine, sharing this netns, scrapes it and
-# attaches. ts-node (a dependency of @pulumi/pulumi) compiles the TypeScript pack at
+# binds loopback by default, or the address the engine requests via
+# PULUMI_PLUGIN_LISTEN_ADDRESS (address mode), and prints the bound port either way;
+# the engine scrapes it and attaches over the shared netns or by container DNS.
+# ts-node (a dependency of @pulumi/pulumi) compiles the TypeScript pack at
 # run time — the toolchain that lives in this image and not the engine's.
 set -e
 

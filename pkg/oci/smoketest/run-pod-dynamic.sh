@@ -126,6 +126,11 @@ if [ -n "$ADDRESS_MODE" ]; then
   fi
   echo "    program image carries no /plugin/shim — reachability must come from the SDK bind contract"
   export PULUMI_POD_ADDRESS_MODE=1 # forwarded host->engine by the wrapper's env projection
+else
+  # The wrapper defaults address mode ON; the netns run must pin the legacy mode
+  # explicitly (empty = netns, per the wrapper contract) or it silently tests the
+  # wrong topology.
+  export PULUMI_POD_ADDRESS_MODE=
 fi
 
 cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"

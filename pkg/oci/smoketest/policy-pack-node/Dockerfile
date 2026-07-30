@@ -10,6 +10,12 @@ FROM node:20-alpine
 WORKDIR /policy
 COPY package.json tsconfig.json ./
 RUN npm install
+# Overlay the bind-contract @pulumi/policy compiled output on top of the stock
+# install (install-then-overwrite — never a second nested copy). The smoke script
+# stages it from a pulumi-policy clone; an empty dir (no clone, netns mode) is a
+# no-op and the stock SDK serves. The stock package.json is deliberately kept:
+# the overlay is code, not identity.
+COPY policy-sdk-bin/ ./node_modules/@pulumi/policy/
 COPY index.ts oci-bootstrap.sh ./
 RUN chmod +x oci-bootstrap.sh
 RUN echo "oci-policy-ran-from-its-own-image" > /policy-marker
