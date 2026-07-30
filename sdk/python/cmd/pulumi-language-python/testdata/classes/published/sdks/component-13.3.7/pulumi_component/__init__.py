@@ -9,6 +9,7 @@ import typing
 from .component_callable import *
 from .component_custom_ref_input_output import *
 from .component_custom_ref_output import *
+from .component_foreign_child import *
 from .custom import *
 from .provider import *
 _utilities.register(
@@ -22,6 +23,7 @@ _utilities.register(
    "component:index:ComponentCallable": "ComponentCallable",
    "component:index:ComponentCustomRefInputOutput": "ComponentCustomRefInputOutput",
    "component:index:ComponentCustomRefOutput": "ComponentCustomRefOutput",
+   "component:index:ComponentForeignChild": "ComponentForeignChild",
    "component:index:Custom": "Custom"
   }
  }

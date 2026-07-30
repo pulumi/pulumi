@@ -22,6 +22,7 @@
         "componentCallable.ts",
         "componentCustomRefInputOutput.ts",
         "componentCustomRefOutput.ts",
+        "componentForeignChild.ts",
         "custom.ts",
         "index.ts",
         "provider.ts",

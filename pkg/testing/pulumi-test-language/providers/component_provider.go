@@ -151,6 +151,17 @@ func (p *ComponentProvider) GetSchema(context.Context, plugin.GetSchemaRequest) 
 		},
 	)
 
+	pkg.Resources["component:index:ComponentForeignChild"] = componentResource(
+		"A component resource that creates a child custom resource from another package (simple), "+
+			"using the provider passed for that package in the component's providers map.",
+		map[string]schema.PropertySpec{
+			"value": primitiveType("boolean"),
+		},
+		map[string]schema.PropertySpec{
+			"value": primitiveType("boolean"),
+		},
+	)
+
 	callableResource := componentResource(
 		"A component resource that has callable methods.",
 		map[string]schema.PropertySpec{
@@ -345,16 +356,15 @@ func (p *ComponentProvider) Construct(
 
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 
-	if req.Type == "component:index:ComponentCustomRefOutput" {
+	switch req.Type {
+	case "component:index:ComponentCustomRefOutput":
 		return p.constructComponentCustomRefOutput(ctx, req, monitor)
-	}
-
-	if req.Type == "component:index:ComponentCustomRefInputOutput" {
+	case "component:index:ComponentCustomRefInputOutput":
 		return p.constructComponentCustomRefInputOutput(ctx, req, monitor)
-	}
-
-	if req.Type == "component:index:ComponentCallable" {
+	case "component:index:ComponentCallable":
 		return p.constructComponentCallable(ctx, req, monitor)
+	case "component:index:ComponentForeignChild":
+		return p.constructComponentForeignChild(ctx, req, monitor)
 	}
 
 	return plugin.ConstructResponse{}, fmt.Errorf("unknown type %v", req.Type)
@@ -574,6 +584,63 @@ func (p *ComponentProvider) constructComponentCallable(
 		Outputs: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"value": structpb.NewStringValue(value),
+			},
+		},
+	})
+	if err != nil {
+		return plugin.ConstructResponse{}, fmt.Errorf("register resource outputs: %w", err)
+	}
+
+	return plugin.ConstructResponse{
+		URN: resource.URN(parent.Urn),
+		Outputs: resource.NewPropertyMapFromMap(map[string]any{
+			"value": value,
+		}),
+	}, nil
+}
+
+func (p *ComponentProvider) constructComponentForeignChild(
+	ctx context.Context,
+	req plugin.ConstructRequest,
+	monitor pulumirpc.ResourceMonitorClient,
+) (plugin.ConstructResponse, error) {
+	// Register the parent component, propagating the parent we were constructed with, as real MLC SDKs do.
+	parent, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:     "component:index:ComponentForeignChild",
+		Name:     req.Name,
+		Parent:   string(req.Parent),
+		Provider: req.Options.Providers["component"],
+	})
+	if err != nil {
+		return plugin.ConstructResponse{}, fmt.Errorf("register parent component: %w", err)
+	}
+
+	// Register a child resource from the "simple" package, parented to the component we just created and using the
+	// provider passed for that package in the providers map, if any.
+	child, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:     "simple:index:Resource",
+		Custom:   true,
+		Name:     req.Name + "-child",
+		Parent:   parent.Urn,
+		Version:  "2.0.0",
+		Provider: req.Options.Providers["simple"],
+		Object: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"value": structpb.NewBoolValue(req.Inputs["value"].BoolValue()),
+			},
+		},
+	})
+	if err != nil {
+		return plugin.ConstructResponse{}, fmt.Errorf("register child resource: %w", err)
+	}
+
+	// Register the component's outputs and finish up.
+	value := child.Object.Fields["value"].GetBoolValue()
+	_, err = monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
+		Urn: parent.Urn,
+		Outputs: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"value": structpb.NewBoolValue(value),
 			},
 		},
 	})
