@@ -522,18 +522,6 @@ enabled = true
 func TestDoCmdResourceMissingResourceNotFound(t *testing.T) {
 	t.Parallel()
 
-	notFoundResponses := map[string]plugin.ReadResponse{
-		"nil outputs": {},
-		"empty outputs": {ReadResult: plugin.ReadResult{
-			Inputs:  resource.PropertyMap{},
-			Outputs: resource.PropertyMap{},
-		}},
-		"blank id": {ReadResult: plugin.ReadResult{
-			Inputs:  resource.PropertyMap{"name": resource.NewProperty("stale")},
-			Outputs: resource.PropertyMap{"name": resource.NewProperty("stale")},
-		}},
-	}
-
 	t.Run("delete empty outputs with id", func(t *testing.T) {
 		t.Parallel()
 		var deleted bool
@@ -558,6 +546,18 @@ func TestDoCmdResourceMissingResourceNotFound(t *testing.T) {
 		require.NoError(t, cmd.Execute())
 		assert.True(t, deleted)
 	})
+
+	notFoundResponses := map[string]plugin.ReadResponse{
+		"nil outputs": {},
+		"empty outputs": {ReadResult: plugin.ReadResult{
+			Inputs:  resource.PropertyMap{},
+			Outputs: resource.PropertyMap{},
+		}},
+		"blank id": {ReadResult: plugin.ReadResult{
+			Inputs:  resource.PropertyMap{"name": resource.NewProperty("stale")},
+			Outputs: resource.PropertyMap{"name": resource.NewProperty("stale")},
+		}},
+	}
 
 	for shape, response := range notFoundResponses {
 		t.Run("delete "+shape, func(t *testing.T) {
