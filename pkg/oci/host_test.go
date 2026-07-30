@@ -300,6 +300,49 @@ func TestProviderContainerListenAddress(t *testing.T) {
 	require.Equal(t, "0.0.0.0:7777", cfg.Env["PULUMI_PLUGIN_LISTEN_ADDRESS"])
 }
 
+// The monitor address handed to Construct/Call names the engine's loopback listener,
+// which a component container in its own netns cannot reach; the wrapper rewrites its
+// host to the engine's advertised DNS name, keeping the port. The Construct-side
+// analogue of ServerAddr().
+func TestMonitorRewriteProvider(t *testing.T) {
+	t.Parallel()
+	inner := &monitorCapturingProvider{}
+	p := &monitorRewriteProvider{Provider: inner, engineHost: "pod-engine"}
+
+	_, err := p.Construct(t.Context(), plugin.ConstructRequest{
+		Info: plugin.ConstructInfo{MonitorAddress: "127.0.0.1:36469"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "pod-engine:36469", inner.constructMonitor)
+
+	_, err = p.Call(t.Context(), plugin.CallRequest{
+		Info: plugin.CallInfo{MonitorAddress: "127.0.0.1:41000"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "pod-engine:41000", inner.callMonitor)
+}
+
+// monitorCapturingProvider records the monitor addresses Construct/Call receive.
+type monitorCapturingProvider struct {
+	plugin.UnimplementedProvider
+	constructMonitor string
+	callMonitor      string
+}
+
+func (m *monitorCapturingProvider) Construct(
+	_ context.Context, req plugin.ConstructRequest,
+) (plugin.ConstructResponse, error) {
+	m.constructMonitor = req.Info.MonitorAddress
+	return plugin.ConstructResponse{}, nil
+}
+
+func (m *monitorCapturingProvider) Call(
+	_ context.Context, req plugin.CallRequest,
+) (plugin.CallResponse, error) {
+	m.callMonitor = req.Info.MonitorAddress
+	return plugin.CallResponse{}, nil
+}
+
 // Without a program image there is nothing to run the dynamic provider from, so it
 // fails with an actionable message rather than a cryptic downstream docker error.
 func TestProviderContainerDynamicRequiresProgramImage(t *testing.T) {

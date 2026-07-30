@@ -589,7 +589,38 @@ func (h *containerHost) Provider(
 	// the provider is attached directly, not booted through defaultHost.Provider. See
 	// ReleaseContext and SignalCancellation.
 	h.trackPlugin(ctx, c, prov.SignalCancellation)
+	if podAddressMode() {
+		// A component provider's Construct/Call receives the resource monitor's address and
+		// dials it back to register children. The engine builds that address from the
+		// monitor's own loopback listener, which a provider in its own netns cannot reach —
+		// the outbound mirror of the attach problem the bind contract solves. Hand it the
+		// engine's advertised DNS name instead. In netns mode the loopback address is
+		// correct as-is.
+		return &monitorRewriteProvider{Provider: prov, engineHost: h.engineHost}, nil
+	}
 	return prov, nil
+}
+
+// monitorRewriteProvider rewrites the monitor address handed to a pod provider's
+// Construct/Call so it is reachable from the provider's own network namespace — the
+// Construct-side analogue of ServerAddr(). Every other method delegates unchanged.
+type monitorRewriteProvider struct {
+	plugin.Provider
+	engineHost string
+}
+
+func (p *monitorRewriteProvider) Construct(
+	ctx context.Context, req plugin.ConstructRequest,
+) (plugin.ConstructResponse, error) {
+	req.Info.MonitorAddress = rewriteHostPort(req.Info.MonitorAddress, p.engineHost)
+	return p.Provider.Construct(ctx, req)
+}
+
+func (p *monitorRewriteProvider) Call(
+	ctx context.Context, req plugin.CallRequest,
+) (plugin.CallResponse, error) {
+	req.Info.MonitorAddress = rewriteHostPort(req.Info.MonitorAddress, p.engineHost)
+	return p.Provider.Call(ctx, req)
 }
 
 // providerContainer builds the spec for a provider container, joined to the network
