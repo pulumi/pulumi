@@ -1075,15 +1075,22 @@ func dialAnalyzer(ctx context.Context, addr string) (pulumirpc.AnalyzerClient, e
 	}
 }
 
-// sanitizeContainerName maps an arbitrary string to a Docker-safe container-name
-// fragment (alphanumerics, dash, underscore, dot). A policy pack is identified to
-// the engine by its filesystem path, which is not a legal container name.
+// sanitizeContainerName maps an arbitrary string (a policy pack's path, an image
+// ref) to a container-name fragment that is also a legal DNS label: lowercase
+// alphanumerics and dashes only. Docker permits more in a name (dots,
+// underscores, case), but in address mode the name doubles as the container's
+// DNS name, and Docker's embedded DNS does not resolve a dotted name (it reads
+// as an FQDN and is forwarded upstream) — so the sanitizer emits only the
+// alphabet every consumer accepts. Callers must keep the full name (with the
+// pod-manager prefix) within the 63-character DNS label limit; prefer short
+// bases over embedding whole refs.
 func sanitizeContainerName(s string) string {
 	return strings.Map(func(r rune) rune {
 		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9',
-			r == '-', r == '_', r == '.':
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-':
 			return r
+		case r >= 'A' && r <= 'Z':
+			return r + ('a' - 'A')
 		default:
 			return '-'
 		}

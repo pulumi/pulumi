@@ -30,7 +30,15 @@
 # pin resolved verbatim — no registry knob involved. The image pull rides the mounted docker
 # socket to the host daemon, which resolves localhost:5005 (the proxy's published port).
 #
-# Usage: run-pod-package-add.sh
+# ADDRESS MODE (OCI_ADDRESS_MODE=1) runs the same phases over the address model: the
+# schema container runs in its OWN netns on the pod network and the engine attaches by
+# container DNS at the well-known port :7777. The released provider binary predates the
+# SDK bind contract, so reachability comes from the proxy's shim synthesis
+# (PULUMI_POD_SHIM_BIN): the synthesized image wraps the binary in the forwarder shim,
+# exactly as the wrapper's shared proxy does in its default mode.
+#
+# Usage: run-pod-package-add.sh                    # netns default (shared loopback)
+#        OCI_ADDRESS_MODE=1 run-pod-package-add.sh # address mode (own netns, DNS:7777)
 # Requires a running Docker daemon and the repo Go toolchain (to cross-compile).
 set -euo pipefail
 
@@ -63,6 +71,12 @@ REGISTRY_HOST="localhost:$REGISTRY_PORT"
 PROXY_NAME="$NET-registry"
 IMAGE_REF="$REGISTRY_HOST/pulumi/pulumi-provider-$PROVIDER_PKG:v$PROVIDER_VERSION"
 OCI_SOURCE="oci://$IMAGE_REF"
+
+ADDRESS_MODE="${OCI_ADDRESS_MODE:-}"
+MODE_LABEL="netns (schema container shares the engine netns, dialed over 127.0.0.1)"
+if [ -n "$ADDRESS_MODE" ]; then
+  MODE_LABEL="address (schema container in its own netns, attached by DNS at :7777 via the proxy-synthesized shim)"
+fi
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
@@ -102,13 +116,30 @@ echo "==> cross-compiling the registry-proxy (linux/$GOARCH)"
 ( cd "$PROXY_DIR" && GOWORK=off GOOS=linux GOARCH="$GOARCH" CGO_ENABLED=0 \
     go build -o "$WORK/registry-proxy-linux" . )
 
+# In address mode the proxy embeds the forwarder shim into every synthesized image —
+# the released provider binary predates the bind contract, so the shim is what serves
+# the well-known port. Same knob the wrapper's shared proxy uses.
+SHIM_ARGS=()
+if [ -n "$ADDRESS_MODE" ]; then
+  echo "==> cross-compiling the forwarder shim (linux/$GOARCH) for proxy synthesis"
+  ( cd "$PKG_DIR/cmd/pulumi-pod-shim" && GOWORK=off GOOS=linux GOARCH="$GOARCH" CGO_ENABLED=0 \
+      go build -o "$WORK/pulumi-pod-shim-linux" . )
+  SHIM_ARGS=(-v "$WORK/pulumi-pod-shim-linux":/pulumi-pod-shim:ro -e PULUMI_POD_SHIM_BIN=/pulumi-pod-shim)
+fi
+
 echo "==> creating pod network $NET"
 docker network create "$NET" >/dev/null
+
+# A synthesized image cached from an earlier run does not encode whether the shim was
+# embedded (refs don't carry the mode), so a stale one would silently satisfy the pull
+# with the wrong topology. Clear it up front, as the wrapper does on mode switches.
+docker image rm -f "$IMAGE_REF" >/dev/null 2>&1 || true
 
 echo "==> starting registry-proxy $PROXY_NAME on $REGISTRY_HOST (synthesizes provider images on pull)"
 docker run -d --name "$PROXY_NAME" --label "$POD_LABEL" -p "$REGISTRY_PORT:5000" \
   -e PROXY_TARGET_ARCH="$GOARCH" \
   -v "$WORK/registry-proxy-linux":/registry-proxy:ro \
+  ${SHIM_ARGS[@]+"${SHIM_ARGS[@]}"} \
   alpine sh -c 'apk add --no-cache ca-certificates >/dev/null 2>&1 && exec /registry-proxy' >/dev/null
 for _ in $(seq 1 30); do
   curl -sf "http://$REGISTRY_HOST/v2/" >/dev/null 2>&1 && break
@@ -141,6 +172,7 @@ engine_run() {
     -e PULUMI_POD_NETWORK="$NET" \
     -e PULUMI_POD_ADVERTISE_HOST="$ENGINE_NAME" \
     -e PULUMI_POD_ID="$POD_ID" \
+    -e PULUMI_POD_ADDRESS_MODE="$ADDRESS_MODE" \
     -e PULUMI_BACKEND_URL=file:///state \
     -e PULUMI_CONFIG_PASSPHRASE="$PULUMI_CONFIG_PASSPHRASE" \
     --entrypoint sh \
@@ -173,6 +205,25 @@ if ! grep -qE 'Random(String|Uuid|Pet|Id|Integer)' "$WORK/get-schema.log"; then
   exit 1
 fi
 echo "    schema-from-image works: random's schema came out of the running container"
+
+echo "==> asserting how the engine attached the schema container [$MODE_LABEL]"
+ATTACH_LINE="$(grep 'oci: provider image .* running as container' "$WORK/get-schema.log" | head -1)"
+echo "    $ATTACH_LINE"
+if [ -n "$ADDRESS_MODE" ]; then
+  if ! echo "$ATTACH_LINE" | grep -qE 'attaching at [^ ]*schema-[^ ]*:7777'; then
+    echo "!! expected the engine to attach by container DNS name at the well-known port :7777"
+    exit 1
+  fi
+  if echo "$ATTACH_LINE" | grep -q '127.0.0.1'; then
+    echo "!! the engine attached over loopback — address mode did not take effect"
+    exit 1
+  fi
+else
+  if ! echo "$ATTACH_LINE" | grep -q 'attaching at 127.0.0.1:'; then
+    echo "!! expected the netns default: engine attaching over the shared loopback"
+    exit 1
+  fi
+fi
 
 # The schema fetch stops ONLY its own container (StopContainer), never the whole pod —
 # the engine/proxy must outlive it. Assert the schema container is gone (the cleanup trap

@@ -516,11 +516,14 @@ func TestPolicyPackImageOCIRequiresImage(t *testing.T) {
 	require.Contains(t, err.Error(), "no image option")
 }
 
-// Container names derive from a policy pack's filesystem path, which is not a legal
-// Docker name; sanitizeContainerName maps the illegal characters to dashes.
+// Container names derive from arbitrary input (a policy pack's path, an image ref)
+// and double as DNS names in address mode, so sanitizeContainerName emits only
+// DNS-label-safe characters: dots and underscores map to dashes (Docker's embedded
+// DNS does not resolve dotted names) and uppercase folds to lowercase.
 func TestSanitizeContainerName(t *testing.T) {
 	t.Parallel()
 	require.Equal(t, "policy", sanitizeContainerName("policy"))
-	require.Equal(t, "my-pack_v1.2", sanitizeContainerName("my-pack_v1.2"))
+	require.Equal(t, "my-pack-v1-2", sanitizeContainerName("my-pack_v1.2"))
 	require.Equal(t, "a-b-c", sanitizeContainerName("a/b:c"))
+	require.Equal(t, "mixedcase", sanitizeContainerName("MixedCase"))
 }
