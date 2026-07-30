@@ -261,8 +261,6 @@ func TestRunNewYesWithTemplate(t *testing.T) {
 	require.Equal(t, "yaml", proj.Runtime.Name())
 }
 
-// pulumi new --ai "<prompt>" / --language <language> are retired; both flags now error
-// immediately instead of driving a Pulumi AI session.
 func TestRunNewErrorsOnRetiredAIFlags(t *testing.T) {
 	t.Parallel()
 

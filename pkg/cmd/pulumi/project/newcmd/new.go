@@ -69,8 +69,6 @@ type runtimeOptionsFunc func(ctx *plugin.Context, language plugin.LanguageRuntim
 type languageTemplateFunc func(ctx context.Context, language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
 	projectName tokens.PackageName) error
 
-// aiRetiredMessage is returned when a caller still passes the retired --ai or --language flags.
-// The backing Pulumi AI service has been shut down; see https://www.pulumi.com/product/neo/ instead.
 const aiRetiredMessage = "Pulumi AI project generation has been retired. Run 'pulumi new' to choose a template, " +
 	"or try Pulumi Neo (https://www.pulumi.com/product/neo/)."
 
@@ -93,16 +91,13 @@ type newArgs struct {
 	templateNameOrURL    string
 	yes                  bool
 	listTemplates        bool
-	// aiPrompt, aiLanguage, and templateMode back the retired/deprecated --ai, --language,
-	// and --template-mode flags. The flags stay registered (hidden) so scripts using them
-	// get a clear error/no-op instead of "unknown flag".
-	aiPrompt          string
-	aiLanguage        string
-	templateMode      bool
-	runtimeOptions    []string
-	remoteStackConfig bool
-	stdout            io.Writer
-	stderr            io.Writer
+	aiPrompt             string
+	aiLanguage           string
+	templateMode         bool
+	runtimeOptions       []string
+	remoteStackConfig    bool
+	stdout               io.Writer
+	stderr               io.Writer
 }
 
 func runNew(ctx context.Context, args newArgs) error {
@@ -690,11 +685,11 @@ func NewNewCmd() *cobra.Command {
 		"List locally installed templates and exit",
 	)
 	cmd.PersistentFlags().StringVar(
-		&args.aiPrompt, "ai", "", "Retired: Pulumi AI project generation has been retired and this flag now errors",
+		&args.aiPrompt, "ai", "", "Retired: use 'pulumi neo' instead.",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("ai")
 	cmd.PersistentFlags().StringVar(
-		&args.aiLanguage, "language", "", "Retired: Pulumi AI project generation has been retired and this flag now errors",
+		&args.aiLanguage, "language", "", "Retired: use 'pulumi neo' instead.",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("language")
 	cmd.PersistentFlags().BoolVarP(
