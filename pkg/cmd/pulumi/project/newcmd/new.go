@@ -687,11 +687,11 @@ func NewNewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&args.aiPrompt, "ai", "", "Retired: use 'pulumi neo -p \"prompt\"' instead.",
 	)
-	_ = cmd.PersistentFlags().MarkHidden("ai")
+	_ = cmd.PersistentFlags().MarkDeprecated("ai", "use 'pulumi neo -p \"prompt\"' instead")
 	cmd.PersistentFlags().StringVar(
 		&args.aiLanguage, "language", "", "Retired: use 'pulumi neo -p \"prompt\"' instead.",
 	)
-	_ = cmd.PersistentFlags().MarkHidden("language")
+	_ = cmd.PersistentFlags().MarkDeprecated("language", "use 'pulumi neo -p \"prompt\"' instead")
 	cmd.PersistentFlags().BoolVarP(
 		&args.templateMode, "template-mode", "t", false,
 		"Deprecated: template mode is now the only mode; this flag is a no-op",
