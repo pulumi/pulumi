@@ -97,8 +97,7 @@ func (p *ConfigurerProvider) GetSchema(
 		}
 	}
 
-	providerResource := resourceSpec(
-		false,
+	providerResource := resourceSpec(false,
 		"The configurer provider. Its `config` setting is echoed onto each Custom resource it creates.",
 		map[string]schema.PropertySpec{"config": primitive("string")},
 		map[string]schema.PropertySpec{"config": primitive("string")},
@@ -111,8 +110,7 @@ func (p *ConfigurerProvider) GetSchema(
 		Provider:  &providerResource,
 	}
 
-	pkg.Resources["configurer:index:Custom"] = resourceSpec(
-		false,
+	pkg.Resources["configurer:index:Custom"] = resourceSpec(false,
 		"A custom resource whose outputs echo its configured provider's `config` setting.",
 		map[string]schema.PropertySpec{
 			"value": primitive("string"),
@@ -123,8 +121,7 @@ func (p *ConfigurerProvider) GetSchema(
 		},
 	)
 
-	configurer := resourceSpec(
-		true,
+	configurer := resourceSpec(true,
 		"A component that internally constructs a Provider configured with `providerConfig` and exposes it via methods.",
 		map[string]schema.PropertySpec{
 			"providerConfig": primitive("string"),
@@ -343,12 +340,10 @@ func (p *ConfigurerProvider) Construct(
 
 	// Store the inner provider reference on the component so methods can retrieve it later.
 	innerRef := resource.MakeCustomResourceReference(
-		resource.URN(innerProv.Urn), resource.ID(innerProv.Id), "",
-	)
+		resource.URN(innerProv.Urn), resource.ID(innerProv.Id), "")
 	innerRefStruct, err := plugin.MarshalPropertyValue(
 		"innerProviderRef", innerRef,
-		plugin.MarshalOptions{KeepResources: true, KeepSecrets: true},
-	)
+		plugin.MarshalOptions{KeepResources: true, KeepSecrets: true})
 	if err != nil {
 		return plugin.ConstructResponse{}, fmt.Errorf("marshal inner provider ref: %w", err)
 	}
@@ -408,8 +403,7 @@ func (p *ConfigurerProvider) Call(
 	innerRefValue, err := plugin.UnmarshalPropertyValue(
 		"innerProviderRef",
 		self.Return.Fields["state"].GetStructValue().Fields["innerProviderRef"],
-		plugin.MarshalOptions{KeepResources: true, KeepSecrets: true},
-	)
+		plugin.MarshalOptions{KeepResources: true, KeepSecrets: true})
 	if err != nil {
 		return plugin.CallResponse{}, fmt.Errorf("unmarshal inner provider ref: %w", err)
 	}

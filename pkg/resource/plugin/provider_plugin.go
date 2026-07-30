@@ -61,8 +61,7 @@ import (
 // TODO[pulumi/pulumi#19620]: Remove this temporary envvar when we no longer want to provide a way to disable it.
 // Temporary feature flag to disable support for refresh before update.
 var supportsRefreshBeforeUpdate bool = !cmdutil.IsTruthy(
-	os.Getenv("PULUMI_DISABLE_REFRESH_BEFORE_UPDATE"),
-)
+	os.Getenv("PULUMI_DISABLE_REFRESH_BEFORE_UPDATE"))
 
 // The package name for the NodeJS dynamic provider.
 const nodejsDynamicProviderPackage = "pulumi-nodejs"

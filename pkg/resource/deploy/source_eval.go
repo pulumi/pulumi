@@ -240,8 +240,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 	// Also start up a schema loader and a provider mapper for the language runtime to use to fetch
 	// schema and mapping information.
 	loaderRegistration := schema.LoaderRegistration(
-		schema.NewLoaderServer(schema.NewPluginLoader(src.plugctx)),
-	)
+		schema.NewLoaderServer(schema.NewPluginLoader(src.plugctx)))
 
 	mapper, err := newRunMapper(ctx, src.plugctx)
 	if err != nil {
@@ -970,8 +969,7 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	if rm.supportsFeatureID("sendsOptionsToHooks") {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS)
 	}
-	return append(
-		features,
+	return append(features,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_PARENT,
 	)
