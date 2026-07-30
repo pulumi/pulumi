@@ -38,9 +38,10 @@ import (
 // Source is responsible for cleaning up old templates, and should always be [Close]d when
 // created.
 type Source struct {
-	templates    []Template
-	errorOnEmpty []error
-	errors       []error
+	templates     []Template
+	errorOnEmpty  []error
+	projectErrors []error
+	cloudErrors   []error
 
 	// cancel holds the function to cancel the context passed into the [New] that created the source.
 	cancel context.CancelFunc
@@ -49,8 +50,12 @@ type Source struct {
 	closed  bool
 
 	// m should be held whenever Source is mutated.
-	m  sync.Mutex
-	wg sync.WaitGroup
+	m sync.Mutex
+	// wgProject tracks the project fetcher (local disk and the curated template set); wgCloud
+	// tracks the registry/org fetcher, which is typically much slower. Splitting them lets
+	// [Source.ProjectTemplates] return without waiting on the cloud.
+	wgProject sync.WaitGroup
+	wgCloud   sync.WaitGroup
 }
 
 // Templates lists the templates available to the [Source].
@@ -58,17 +63,39 @@ type Source struct {
 // Templates *does not* produce a sorted list. If templates need to be sorted, then the
 // caller is responsible for sorting them.
 func (s *Source) Templates() ([]Template, error) {
-	s.wg.Wait() // Wait to ensure that all templates have been fetched before returning the template list.
+	// Wait to ensure that all templates have been fetched before returning the template list.
+	s.wgProject.Wait()
+	s.wgCloud.Wait()
 
 	s.lockOpen("read templates")
 	defer s.m.Unlock()
-	if err := errors.Join(s.errors...); err != nil {
+	if err := errors.Join(errors.Join(s.projectErrors...), errors.Join(s.cloudErrors...)); err != nil {
 		return nil, err
 	}
 	if len(s.templates) == 0 {
 		return nil, errors.Join(s.errorOnEmpty...)
 	}
 	return s.templates, nil
+}
+
+// ProjectTemplates lists only the templates found by the project fetcher (local disk and the
+// curated template set), without waiting for the much slower cloud/registry fetch, which keeps
+// running in the background. Use [Source.Templates] for the complete set.
+func (s *Source) ProjectTemplates() ([]Template, error) {
+	s.wgProject.Wait()
+
+	s.lockOpen("read project templates")
+	defer s.m.Unlock()
+	if err := errors.Join(s.projectErrors...); err != nil {
+		return nil, err
+	}
+	var templates []Template
+	for _, t := range s.templates {
+		if _, fromRegistry := t.Publisher(); !fromRegistry {
+			templates = append(templates, t)
+		}
+	}
+	return templates, nil
 }
 
 func (s *Source) addTemplate(t Template) {
@@ -84,9 +111,15 @@ func (s *Source) addCloser(f func() error) {
 	s.m.Unlock()
 }
 
-func (s *Source) addError(err error) {
-	s.lockOpen("add error")
-	s.errors = append(s.errors, err)
+func (s *Source) addProjectError(err error) {
+	s.lockOpen("add project error")
+	s.projectErrors = append(s.projectErrors, err)
+	s.m.Unlock()
+}
+
+func (s *Source) addCloudError(err error) {
+	s.lockOpen("add cloud error")
+	s.cloudErrors = append(s.cloudErrors, err)
 	s.m.Unlock()
 }
 
@@ -107,7 +140,9 @@ func (s *Source) lockOpen(action string) {
 func (s *Source) Close() error {
 	s.cancel()
 
-	s.wg.Wait() // Wait to ensure that all templates have been fetched so all closers are visible.
+	// Wait to ensure that all templates have been fetched so all closers are visible.
+	s.wgProject.Wait()
+	s.wgCloud.Wait()
 
 	s.lockOpen("close")
 	defer s.m.Unlock()
@@ -170,14 +205,14 @@ func newImpl(
 	source.cancel = cancel
 
 	if scope == ScopeAll || scope == ScopeLocal {
-		source.wg.Go(func() {
+		source.wgProject.Go(func() {
 			source.getProjectTemplates(ctx, templateNamePathOrURL, scope, templateKind, getProjectTemplates)
 		})
 	}
 
 	if scope == ScopeAll && templateKind == TemplateKindPulumiProject && isTemplateName(templateNamePathOrURL) {
-		source.wg.Go(func() {
-			source.getCloudTemplates(ctx, templateNamePathOrURL, &source.wg, e)
+		source.wgCloud.Go(func() {
+			source.getCloudTemplates(ctx, templateNamePathOrURL, &source.wgCloud, e)
 		})
 	}
 

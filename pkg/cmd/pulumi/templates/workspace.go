@@ -40,7 +40,7 @@ func (s *Source) getProjectTemplates(
 		}
 		// Bail on all errors unless its a 401 from a Pulumi Cloud backend...
 		if !errors.Is(err, ErrPulumiCloudUnauthorized) {
-			s.addError(err)
+			s.addProjectError(err)
 			return
 		}
 
@@ -48,14 +48,14 @@ func (s *Source) getProjectTemplates(
 		// attempt to retrieve the template using the user's Pulumi Cloud credentials.
 		repo, err = retrievePrivatePulumiCloudTemplate(templateNamePathOrURL)
 		if err != nil {
-			s.addError(err)
+			s.addProjectError(err)
 			return
 		}
 	}
 	s.addCloser(repo.Delete)
 	projectTemplates, err := repo.Templates()
 	if err != nil {
-		s.addError(fmt.Errorf("could not get template from workspace: %w", err))
+		s.addProjectError(fmt.Errorf("could not get template from workspace: %w", err))
 		return
 	}
 

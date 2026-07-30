@@ -141,7 +141,7 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 
 	urlInfo, err := parseTemplateURL(templateName)
 	if err != nil {
-		s.addError(err)
+		s.addCloudError(err)
 		return
 	}
 
@@ -153,7 +153,7 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 	matches := NewTemplateMatcher(urlInfo, templateName)
 	for template, err := range r.ListTemplates(ctx, registry.ListTemplatesOptions{}) {
 		if err != nil {
-			s.addError(fmt.Errorf("could not get template: %w", err))
+			s.addCloudError(fmt.Errorf("could not get template: %w", err))
 			return
 		}
 
@@ -192,16 +192,16 @@ func (s *Source) getRegistryTemplateByVersion(
 
 	if err != nil {
 		if errors.Is(err, registry.ErrNotFound) {
-			s.addError(fmt.Errorf("template '%s' version '%s' not found",
+			s.addCloudError(fmt.Errorf("template '%s' version '%s' not found",
 				displayName, version.String()))
 			return
 		}
-		s.addError(fmt.Errorf("could not resolve template: %w", err))
+		s.addCloudError(fmt.Errorf("could not resolve template: %w", err))
 		return
 	}
 
 	if template.Source == "github" && strings.HasPrefix(template.Name, "pulumi/templates/") {
-		s.addError(fmt.Errorf(
+		s.addCloudError(fmt.Errorf(
 			"template '%s' is VCS-backed and does not support specific versions",
 			displayName,
 		))
@@ -311,27 +311,27 @@ func (s *Source) getOrgTemplates(
 ) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		s.addError(fmt.Errorf("getting current working directory: %w", err))
+		s.addCloudError(fmt.Errorf("getting current working directory: %w", err))
 		return
 	}
 
 	ws := pkgWorkspace.Instance
 	project, _, err := ws.ReadProject(cwd)
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		s.addError(fmt.Errorf("could not read the current project: %w", err))
+		s.addCloudError(fmt.Errorf("could not read the current project: %w", err))
 		return
 	}
 
 	url, err := pkgWorkspace.GetCurrentCloudURL(ws, e, project)
 	if err != nil {
-		s.addError(fmt.Errorf("could not get current cloud url: %w", err))
+		s.addCloudError(fmt.Errorf("could not get current cloud url: %w", err))
 		return
 	}
 
 	b, err := cmdBackend.DefaultLoginManager.Current(ctx, ws, cmdutil.Diag(), url, project, false)
 	if err != nil {
 		if !errors.Is(err, backenderr.MissingEnvVarForNonInteractiveError{}) {
-			s.addError(fmt.Errorf("could not get the current backend: %w", err))
+			s.addCloudError(fmt.Errorf("could not get the current backend: %w", err))
 		}
 		slog.InfoContext(ctx, "could not get a backend for org templates")
 		return
@@ -346,7 +346,7 @@ func (s *Source) getOrgTemplates(
 			slog.InfoContext(ctx, "user is not logged in")
 			return // No current user - so don't proceed
 		}
-		s.addError(fmt.Errorf("could not get the current user for %s: %s", url, err))
+		s.addCloudError(fmt.Errorf("could not get the current user for %s: %s", url, err))
 		return
 	}
 
@@ -358,7 +358,7 @@ func (s *Source) getOrgTemplates(
 	slog.InfoContext(ctx, "Listing Org Templates from the cloud")
 	user, orgs, _, err := b.CurrentUser()
 	if err != nil {
-		s.addError(fmt.Errorf("could not get the current user: %w", err))
+		s.addCloudError(fmt.Errorf("could not get the current user: %w", err))
 		return
 	} else if user == "" {
 		return // No current user - so don't proceed.
@@ -377,7 +377,7 @@ func (s *Source) getOrgTemplates(
 				return
 			}
 		} else if err != nil {
-			s.addError(fmt.Errorf("list templates: %w", err))
+			s.addCloudError(fmt.Errorf("list templates: %w", err))
 			slog.WarnContext(ctx, "Failed to get templates", "org", org, "err", err.Error())
 			return
 		} else if orgTemplates.HasAccessError {
