@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -42,12 +41,18 @@ import (
 // the returned provider. Crucially this stops only that one container, not the whole pod —
 // the engine's own pod must outlive a package-time schema fetch.
 func ProviderFromImage(ctx *plugin.Context, ref string) (plugin.Provider, func() error, error) {
-	if os.Getenv("PULUMI_POD_MODE") != "true" {
+	var host plugin.Host
+	var err error
+	switch os.Getenv("PULUMI_POD_MODE") {
+	case "true":
+		host, err = NewContainerHostFromEnv(ctx.Host)
+	case "host":
+		host, err = NewHostEngineHostFromEnv(ctx.Host)
+	default:
 		return nil, nil, fmt.Errorf(
-			"oci: oci:// package sources require pod mode (run inside the engine container); "+
-				"PULUMI_POD_MODE is not set for %q", ref)
+			"oci: oci:// package sources require pod mode (run inside the engine container, "+
+				"or PULUMI_POD_MODE=host for a host engine); PULUMI_POD_MODE is not set for %q", ref)
 	}
-	host, err := NewContainerHostFromEnv(ctx.Host)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -88,8 +93,8 @@ func (h *containerHost) providerFromImage(
 	// container serves the well-known port in its own netns (a shim-wrapped image
 	// does the same by proxy); never set in netns mode, where a second bind of a
 	// fixed port on the shared netns is fatal.
-	if podAddressMode() {
-		cfg.Env["PULUMI_PLUGIN_LISTEN_ADDRESS"] = fmt.Sprintf("0.0.0.0:%d", pluginListenPort)
+	if h.addressMode() {
+		h.requestWellKnownBind(&cfg)
 	}
 
 	c, err := h.pod.RunContainer(ctx.Base(), cfg)
@@ -107,7 +112,7 @@ func (h *containerHost) providerFromImage(
 	// The handshake honesty check, as in Provider(): a schema container announcing
 	// any port but the requested one ignored the bind contract and is serving
 	// loopback where the engine cannot reach it — name the diagnosis now.
-	if podAddressMode() && port != pluginListenPort {
+	if h.addressMode() && port != pluginListenPort {
 		return nil, nil, errStop(stop, fmt.Errorf(
 			"oci: provider image %q announced port %d instead of the requested listen port %d: the "+
 				"plugin ignored PULUMI_PLUGIN_LISTEN_ADDRESS (built against an SDK without the bind "+
@@ -117,10 +122,7 @@ func (h *containerHost) providerFromImage(
 			ref, port, pluginListenPort))
 	}
 
-	attachAddr := "127.0.0.1:" + strconv.Itoa(port)
-	if podAddressMode() {
-		attachAddr = c.Address(port) // reach the schema container by DNS name
-	}
+	attachAddr := h.attachAddress(c, port)
 	fmt.Fprintf(os.Stderr, "oci: provider image %q running as container %s, attaching at %s\n",
 		ref, c.Name, attachAddr)
 

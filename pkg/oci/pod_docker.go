@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"runtime"
@@ -155,6 +156,10 @@ func (m *dockerPodManager) RunContainer(ctx context.Context, cfg ContainerConfig
 	for _, v := range cfg.Volumes {
 		args = append(args, "-v", v.mountSpec())
 	}
+	if cfg.PublishLoopback > 0 {
+		// The explicit 127.0.0.1 host address is load-bearing; see PublishLoopback.
+		args = append(args, "-p", fmt.Sprintf("127.0.0.1::%d", cfg.PublishLoopback))
+	}
 
 	// docker --entrypoint takes a single executable; any remaining entrypoint
 	// tokens become the leading arguments, ahead of Cmd.
@@ -171,8 +176,35 @@ func (m *dockerPodManager) RunContainer(ctx context.Context, cfg ContainerConfig
 		return Container{}, err
 	}
 	c := Container{ID: id, Name: name}
+	if cfg.PublishLoopback > 0 {
+		port, err := m.publishedPort(ctx, name, cfg.PublishLoopback)
+		if err != nil {
+			return Container{}, err
+		}
+		c.HostPort = port
+	}
 	m.track(func() { m.containers = append(m.containers, c) })
 	return c, nil
+}
+
+// publishedPort resolves the ephemeral host port an -p publish mapped a container
+// port to. `docker port` may print one line per address family; the port is the
+// same mapping, so the first line answers.
+func (m *dockerPodManager) publishedPort(ctx context.Context, name string, containerPort int) (int, error) {
+	out, err := m.docker(ctx, "port", name, fmt.Sprintf("%d/tcp", containerPort))
+	if err != nil {
+		return 0, fmt.Errorf("resolving published port for %s: %w", name, err)
+	}
+	line, _, _ := strings.Cut(strings.TrimSpace(out), "\n")
+	_, portStr, err := net.SplitHostPort(strings.TrimSpace(line))
+	if err != nil {
+		return 0, fmt.Errorf("parsing published port for %s from %q: %w", name, line, err)
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return 0, fmt.Errorf("parsing published port for %s from %q: %w", name, line, err)
+	}
+	return port, nil
 }
 
 // runToCompletionArgs builds the `docker run` argv for a one-shot, attached

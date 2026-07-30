@@ -201,6 +201,10 @@ type Container struct {
 	// network. Wire this (via Address) into PULUMI_MONITOR/PULUMI_ENGINE and the
 	// like rather than hard-coding a fixed name, so concurrent pods don't collide.
 	Name string
+	// HostPort is the host-loopback port a PublishLoopback request mapped to,
+	// zero when nothing was published. A host engine dials 127.0.0.1:HostPort
+	// where a pod engine would dial Address(port).
+	HostPort int
 }
 
 // Address returns "name:port" for reaching a service in this container from
@@ -261,4 +265,12 @@ type ContainerConfig struct {
 	// docker-out-of-docker boundary, since the language host only knows the
 	// engine-internal path, not the host path the daemon would need for a bind.
 	VolumesFrom []string
+	// PublishLoopback publishes the named container port on the HOST's loopback
+	// interface at an ephemeral port (docker -p 127.0.0.1::<port>); the mapped
+	// host port is reported on the returned Container.HostPort. The explicit
+	// loopback bind is load-bearing: it keeps the published port off the local
+	// network regardless of the daemon's default port-binding behavior. Used by
+	// the host-engine mode, where the engine is a host process that can reach
+	// neither the pod network's DNS nor container IPs (the VM wall on macOS).
+	PublishLoopback int
 }

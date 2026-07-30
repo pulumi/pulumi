@@ -49,9 +49,14 @@ func DefaultHostFactory(reg registry.Registry) engine.HostFactory {
 		}
 		// In pod mode the engine runs in a container and providers run as sibling
 		// containers; wrap the standard host so Provider() starts and attaches to
-		// them instead of spawning binaries.
-		if os.Getenv("PULUMI_POD_MODE") == "true" {
+		// them instead of spawning binaries. In host mode (Mode 1, the gradual
+		// onramp) the engine stays a host process and only oci://-pinned packages
+		// run as containers, reached through host-loopback published ports.
+		switch os.Getenv("PULUMI_POD_MODE") {
+		case "true":
 			return oci.NewContainerHostFromEnv(host)
+		case "host":
+			return oci.NewHostEngineHostFromEnv(host)
 		}
 		return host, nil
 	}

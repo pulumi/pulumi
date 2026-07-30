@@ -61,6 +61,16 @@ type containerHost struct {
 	publicRegistry string                                  // public source host; unpinned convention refs resolve here
 	imageFor       func(workspace.PluginDescriptor) string // provider descriptor -> image ref
 
+	// hostEngine marks the Mode 1 flavor: the engine is a normal HOST process and
+	// containerized plugins are the per-package exception (an oci:// pin is the
+	// opt-in), reached through host-loopback published ports — the engine can use
+	// neither a shared netns (it is not a container) nor pod DNS (the embedded DNS
+	// serves only containers). Everything else — unpinned packages and the
+	// program-coupled archetypes — takes the base host's stock spawn path, which is
+	// the gradual-onramp asymmetry: plugins follow their program, and the program
+	// lives on the host here.
+	hostEngine bool
+
 	// startedMu guards started, which records the provider and policy-pack containers this
 	// host started for each booting context. ReleaseContext stops a context's containers when
 	// the engine releases it, and SignalCancellation forwards a graceful cancel to all of
@@ -157,6 +167,14 @@ var _ plugin.Host = (*containerHost)(nil)
 func NewContainerHost(
 	base plugin.Host, pod PodManager, engineHost, programImage, podID, publicRegistry string,
 ) plugin.Host {
+	return newContainerHost(base, pod, engineHost, programImage, podID, publicRegistry)
+}
+
+// newContainerHost is NewContainerHost returning the concrete type, so flavor
+// constructors (NewHostEngineHostFromEnv) can set fields before handing it out.
+func newContainerHost(
+	base plugin.Host, pod PodManager, engineHost, programImage, podID, publicRegistry string,
+) *containerHost {
 	h := &containerHost{
 		Host:           base,
 		pod:            pod,
@@ -208,6 +226,33 @@ func NewContainerHostFromEnv(base plugin.Host) (plugin.Host, error) {
 	return NewContainerHost(base, NewPodManager(podID), engineHost, programImage, podID, PublicRegistry()), nil
 }
 
+// NewHostEngineHostFromEnv builds the host-engine (Mode 1) container host: the
+// engine runs as a normal host process, and only oci://-pinned packages run as
+// containers — the pin, recorded by `package add oci://`, is the per-package
+// opt-in that makes the onramp gradual. Pinned plugins are asked to serve the
+// well-known port (the bind contract) and published on the host loopback; the
+// engine dials 127.0.0.1:<mapped>. Containers dial the engine back at the
+// advertise host: PULUMI_POD_ADVERTISE_HOST, defaulting to host.docker.internal,
+// which reaches the engine's stock loopback binds on Docker Desktop (and is
+// aliased via host-gateway on native Linux — where loopback binds are NOT
+// reachable through it, so a Linux host engine must advertise and bind an
+// address containers can route to; the bridge gateway is the natural choice).
+// There is no program image: the program runs on the host, and program-coupled
+// plugins run wherever it does.
+func NewHostEngineHostFromEnv(base plugin.Host) (plugin.Host, error) {
+	engineHost := os.Getenv("PULUMI_POD_ADVERTISE_HOST")
+	if engineHost == "" {
+		engineHost = "host.docker.internal"
+	}
+	podID := os.Getenv("PULUMI_POD_ID")
+	if podID == "" {
+		podID = fmt.Sprintf("host-%d", os.Getpid())
+	}
+	h := newContainerHost(base, NewPodManager(podID), engineHost, "", podID, PublicRegistry())
+	h.hostEngine = true
+	return h, nil
+}
+
 // podAddressMode reports whether providers run as their own containers on the pod network and
 // are attached by container DNS address, rather than sharing the engine's netns and being
 // reached over 127.0.0.1. A provider becomes reachable at the well-known port one of two ways:
@@ -241,14 +286,53 @@ func rewriteHostPort(addr, newHost string) string {
 	return net.JoinHostPort(newHost, port)
 }
 
+// addressMode reports whether plugins are asked to serve the well-known port and
+// reached by address rather than over a shared netns. The host-engine flavor has
+// no netns to share (the engine is not a container), so it is address mode by
+// construction; a pod engine keeps the env gate.
+func (h *containerHost) addressMode() bool {
+	return h.hostEngine || podAddressMode()
+}
+
 // providerNetwork is the container network a provider joins. In address mode each provider is
 // its own container on the pod network (reached by DNS); otherwise it shares the engine's netns
-// so a loopback-binding provider is reachable over 127.0.0.1.
+// so a loopback-binding provider is reachable over 127.0.0.1. A host engine has no pod
+// network by default — an empty result means the runtime's default network, which is fine
+// because the engine reaches the container through a published port, not by name.
 func (h *containerHost) providerNetwork() string {
-	if podAddressMode() {
+	if h.addressMode() {
 		return podNetwork()
 	}
 	return "container:" + h.engineHost
+}
+
+// requestWellKnownBind asks the container's plugin to serve the well-known port on
+// all interfaces (the bind contract; a shim-wrapped image does the same by proxy),
+// and — host-engine flavor — publishes that port on the host loopback and grants
+// the container the host-gateway alias so its dial-back host resolves on native
+// Linux too. Never called in netns mode, where a second bind of a fixed port on
+// the shared netns is fatal.
+func (h *containerHost) requestWellKnownBind(cfg *ContainerConfig) {
+	cfg.Env["PULUMI_PLUGIN_LISTEN_ADDRESS"] = fmt.Sprintf("0.0.0.0:%d", pluginListenPort)
+	if h.hostEngine {
+		cfg.PublishLoopback = pluginListenPort
+		cfg.HostGateway = true
+	}
+}
+
+// attachAddress is where the engine dials a plugin container it started: the
+// host-loopback published port for a host engine, the container's DNS name in a
+// pod engine's address mode, and the scraped port over the shared loopback in the
+// netns default.
+func (h *containerHost) attachAddress(c Container, port int) string {
+	switch {
+	case h.hostEngine:
+		return "127.0.0.1:" + strconv.Itoa(c.HostPort)
+	case h.addressMode():
+		return c.Address(port)
+	default:
+		return "127.0.0.1:" + strconv.Itoa(port)
+	}
 }
 
 // ServerAddr returns the engine's gRPC address for plugins to dial back on. In address mode it
@@ -257,7 +341,7 @@ func (h *containerHost) providerNetwork() string {
 // reachable over the shared netns, unchanged.
 func (h *containerHost) ServerAddr() string {
 	addr := h.Host.ServerAddr()
-	if podAddressMode() {
+	if h.addressMode() {
 		addr = rewriteHostPort(addr, h.engineHost)
 	}
 	return addr
@@ -538,9 +622,21 @@ func (h *containerHost) trackPlugin(ctx *plugin.Context, c Container, signalCanc
 // run-from-program-image providers run from the program image with their binary injected
 // (see providerContainer).
 func (h *containerHost) Provider(
-	ctx *plugin.Context, descriptor workspace.PluginDescriptor, _ env.Env,
+	ctx *plugin.Context, descriptor workspace.PluginDescriptor, opts env.Env,
 ) (plugin.Provider, error) {
-	cfg, err := h.providerContainer(ctx.Base(), descriptor)
+	// Host-engine flavor: only an oci://-pinned package runs as a container — the
+	// pin is the per-package opt-in that makes the onramp gradual — and the
+	// program-coupled archetypes (dynamic providers, run-from-program-image) run
+	// wherever the program does, which here is the host. Everything else takes
+	// the base host's stock spawn path, byte-for-byte.
+	if h.hostEngine {
+		_, pinned := pinnedImageRef(descriptor)
+		if !pinned || isDynamicProvider(descriptor.Name) || runsFromProgramImage(descriptor.Name) {
+			return h.Host.Provider(ctx, descriptor, opts)
+		}
+	}
+
+	cfg, err := h.providerContainer(ctx.Base(), ctx.Pwd, descriptor)
 	if err != nil {
 		return nil, err
 	}
@@ -562,7 +658,7 @@ func (h *containerHost) Provider(
 	// loopback port inside its own netns — the attach below would dial a port nothing
 	// reachable is serving, and fail as a bare connection error after a retry window. Turn
 	// that into an immediate, named diagnosis instead.
-	if podAddressMode() && port != pluginListenPort {
+	if h.addressMode() && port != pluginListenPort {
 		_ = h.pod.StopContainer(context.Background(), c)
 		return nil, fmt.Errorf(
 			"oci: provider %s announced port %d instead of the requested listen port %d: the plugin "+
@@ -573,10 +669,7 @@ func (h *containerHost) Provider(
 			descriptor.Name, port, pluginListenPort)
 	}
 
-	attachAddr := "127.0.0.1:" + strconv.Itoa(port)
-	if podAddressMode() {
-		attachAddr = c.Address(port) // reach the provider's own container by DNS name
-	}
+	attachAddr := h.attachAddress(c, port)
 	fmt.Fprintf(os.Stderr, "oci: provider %s running as container %s, attaching at %s\n",
 		descriptor.Name, c.Name, attachAddr)
 	prov, err := plugin.NewProviderAttached(h, ctx, descriptor, attachAddr, ctx.DisableProviderPreview())
@@ -590,12 +683,13 @@ func (h *containerHost) Provider(
 	// the provider is attached directly, not booted through defaultHost.Provider. See
 	// ReleaseContext and SignalCancellation.
 	h.trackPlugin(ctx, c, prov.SignalCancellation)
-	if podAddressMode() {
+	if h.addressMode() {
 		// A component provider's Construct/Call receives the resource monitor's address and
 		// dials it back to register children. The engine builds that address from the
 		// monitor's own loopback listener, which a provider in its own netns cannot reach —
 		// the outbound mirror of the attach problem the bind contract solves. Hand it the
-		// engine's advertised DNS name instead. In netns mode the loopback address is
+		// engine's advertised host instead (the engine's DNS name in a pod, the
+		// host-gateway alias for a host engine). In netns mode the loopback address is
 		// correct as-is.
 		return &monitorRewriteProvider{Provider: prov, engineHost: h.engineHost}, nil
 	}
@@ -633,7 +727,7 @@ func (p *monitorRewriteProvider) Call(
 // from the provider image via an ephemeral, pod-scoped volume. See the design
 // doc's "execution as one primitive" section.
 func (h *containerHost) providerContainer(
-	ctx context.Context, descriptor workspace.PluginDescriptor,
+	ctx context.Context, pwd string, descriptor workspace.PluginDescriptor,
 ) (ContainerConfig, error) {
 	cfg := ContainerConfig{
 		Name:    uniqueContainerName("provider-" + descriptor.Name),
@@ -655,6 +749,12 @@ func (h *containerHost) providerContainer(
 		// provider's credentials reach it; see projectedProviderEnv.
 		Env: projectedProviderEnv(),
 	}
+	// A host engine's program lives on the host, so its workspace is the program
+	// directory itself, bind-mounted — there is no program container to seed a
+	// volume. Same path, same CWD, so relative asset paths still agree.
+	if h.hostEngine && pwd != "" {
+		cfg.Volumes = []VolumeMount{{Source: pwd, Target: WorkspaceMountPath}}
+	}
 
 	// In address mode, ask the plugin itself to bind the well-known port on all interfaces
 	// (the bind contract) — every archetype, dynamic providers included, since they all
@@ -663,8 +763,8 @@ func (h *containerHost) providerContainer(
 	// image wraps it in the forwarder shim, which strips this variable and does the same
 	// job by proxy. Never set in netns mode: there every provider shares the engine's
 	// netns, and the second bind of a fixed port is fatal.
-	if podAddressMode() {
-		cfg.Env["PULUMI_PLUGIN_LISTEN_ADDRESS"] = fmt.Sprintf("0.0.0.0:%d", pluginListenPort)
+	if h.addressMode() {
+		h.requestWellKnownBind(&cfg)
 	}
 
 	// Dynamic providers are native to the program image: the SDK's dynamic-provider
@@ -740,7 +840,7 @@ func (h *containerHost) providerContainer(
 		cfg.Image = programImage
 		cfg.Volumes = append(cfg.Volumes, VolumeMount{Source: vol.Name, Target: injectedBinDir})
 		cfg.Entrypoint = []string{injectedBinPath}
-		if podAddressMode() {
+		if h.addressMode() {
 			// The /plugin copy above carries the forwarder shim whenever the provider
 			// image was synthesized for address mode; boot through it so a stock binary
 			// (which ignores PULUMI_PLUGIN_LISTEN_ADDRESS) is still reachable at the
@@ -974,8 +1074,8 @@ func (h *containerHost) runPolicyPackContainer(
 	// interfaces — the same bind contract as a provider, honored by policy SDKs
 	// with the contract. Never set in netns mode: there the pack shares the
 	// engine's netns, and the second bind of a fixed port is fatal.
-	if podAddressMode() {
-		cfg.Env["PULUMI_PLUGIN_LISTEN_ADDRESS"] = fmt.Sprintf("0.0.0.0:%d", pluginListenPort)
+	if h.addressMode() {
+		h.requestWellKnownBind(&cfg)
 	}
 
 	c, err := h.pod.RunContainer(ctx.Base(), cfg)
@@ -993,7 +1093,7 @@ func (h *containerHost) runPolicyPackContainer(
 	// announces any port but the requested one ignored PULUMI_PLUGIN_LISTEN_ADDRESS
 	// and bound an ephemeral loopback port inside its own netns — dialing it would
 	// fail as a bare connection error after a retry window. Name the diagnosis now.
-	if podAddressMode() && port != pluginListenPort {
+	if h.addressMode() && port != pluginListenPort {
 		_ = h.pod.StopContainer(context.Background(), c)
 		return nil, fmt.Errorf(
 			"oci: policy pack %s announced port %d instead of the requested listen port %d: the pack "+
@@ -1003,10 +1103,7 @@ func (h *containerHost) runPolicyPackContainer(
 			name, port, pluginListenPort)
 	}
 
-	attachAddr := "127.0.0.1:" + strconv.Itoa(port)
-	if podAddressMode() {
-		attachAddr = c.Address(port) // reach the pack's own container by DNS name
-	}
+	attachAddr := h.attachAddress(c, port)
 	fmt.Fprintf(os.Stderr, "oci: policy pack %s running as container %s, attaching at %s\n",
 		name, c.Name, attachAddr)
 

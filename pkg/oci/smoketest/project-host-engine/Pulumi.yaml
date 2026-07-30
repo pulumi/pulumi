@@ -1,0 +1,9 @@
+# The Mode 1 (host-engine) smoke project: a PLAIN Go program, run by the stock go
+# language host on the HOST — runtime `go`, not `oci`. Nothing about this project
+# says containers; the one containerized thing is the pinned random provider, and
+# the pin (in main.go, the oci:// plugin download URL) is what opts it in. This is
+# the gradual onramp's shape: an uncontainerized program consuming a containerized
+# leaf plugin.
+name: oci-smoketest-host-engine
+runtime: go
+description: Host engine consuming a containerized provider (Mode 1)

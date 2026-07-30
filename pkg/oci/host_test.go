@@ -216,7 +216,7 @@ func TestProviderContainerDynamicRunsFromProgramImage(t *testing.T) {
 		engineHost:   "engine",
 		programImage: "my-program:v1",
 	}
-	cfg, err := h.providerContainer(t.Context(), workspace.PluginDescriptor{Name: "pulumi-nodejs"})
+	cfg, err := h.providerContainer(t.Context(), "", workspace.PluginDescriptor{Name: "pulumi-nodejs"})
 	require.NoError(t, err)
 	require.Equal(t, "my-program:v1", cfg.Image)
 	require.Equal(t, "container:engine", cfg.Network)
@@ -256,7 +256,7 @@ func TestProviderContainerStatelessMountsWorkspaceAtWorkingDir(t *testing.T) {
 		podID:      "testpod",
 		imageFor:   func(workspace.PluginDescriptor) string { return "pulumi-provider-random:v4.21.0" },
 	}
-	cfg, err := h.providerContainer(t.Context(), workspace.PluginDescriptor{Name: "random"})
+	cfg, err := h.providerContainer(t.Context(), "", workspace.PluginDescriptor{Name: "random"})
 	require.NoError(t, err)
 	require.Equal(t, "pulumi-provider-random:v4.21.0", cfg.Image, "a stateless provider runs from its own image")
 	require.Equal(t, WorkspaceMountPath, cfg.WorkingDir, "its working directory is the shared workspace path")
@@ -281,21 +281,21 @@ func TestProviderContainerListenAddress(t *testing.T) {
 		imageFor:     func(workspace.PluginDescriptor) string { return "pulumi-provider-random:v4.21.0" },
 	}
 
-	cfg, err := h.providerContainer(t.Context(), workspace.PluginDescriptor{Name: "random"})
+	cfg, err := h.providerContainer(t.Context(), "", workspace.PluginDescriptor{Name: "random"})
 	require.NoError(t, err)
 	require.NotContains(t, cfg.Env, "PULUMI_PLUGIN_LISTEN_ADDRESS",
 		"netns mode must not request a fixed listen port — providers share one netns")
 
 	t.Setenv("PULUMI_POD_ADDRESS_MODE", "1")
 	t.Setenv("PULUMI_POD_NETWORK", "podnet")
-	cfg, err = h.providerContainer(t.Context(), workspace.PluginDescriptor{Name: "random"})
+	cfg, err = h.providerContainer(t.Context(), "", workspace.PluginDescriptor{Name: "random"})
 	require.NoError(t, err)
 	require.Equal(t, "0.0.0.0:7777", cfg.Env["PULUMI_PLUGIN_LISTEN_ADDRESS"])
 	require.Equal(t, "podnet", cfg.Network, "address mode puts the provider on the pod network")
 
 	// The dynamic path gets the same request — it is the archetype that has no shim
 	// available, so the SDK honoring this variable is its only route to reachability.
-	cfg, err = h.providerContainer(t.Context(), workspace.PluginDescriptor{Name: "pulumi-nodejs"})
+	cfg, err = h.providerContainer(t.Context(), "", workspace.PluginDescriptor{Name: "pulumi-nodejs"})
 	require.NoError(t, err)
 	require.Equal(t, "0.0.0.0:7777", cfg.Env["PULUMI_PLUGIN_LISTEN_ADDRESS"])
 }
@@ -348,7 +348,7 @@ func (m *monitorCapturingProvider) Call(
 func TestProviderContainerDynamicRequiresProgramImage(t *testing.T) {
 	t.Parallel()
 	h := &containerHost{pod: fakePod{}, engineHost: "engine"}
-	_, err := h.providerContainer(t.Context(), workspace.PluginDescriptor{Name: "pulumi-python"})
+	_, err := h.providerContainer(t.Context(), "", workspace.PluginDescriptor{Name: "pulumi-python"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "PULUMI_POD_PROGRAM_IMAGE")
 }
@@ -374,9 +374,9 @@ func TestProviderContainerNamesAreUnique(t *testing.T) {
 	t.Parallel()
 	h := &containerHost{pod: fakePod{}, engineHost: "engine", programImage: "my-program:v1"}
 	desc := workspace.PluginDescriptor{Name: "pulumi-nodejs"}
-	first, err := h.providerContainer(t.Context(), desc)
+	first, err := h.providerContainer(t.Context(), "", desc)
 	require.NoError(t, err)
-	second, err := h.providerContainer(t.Context(), desc)
+	second, err := h.providerContainer(t.Context(), "", desc)
 	require.NoError(t, err)
 	require.NotEqual(t, first.Name, second.Name,
 		"two starts of the same provider must get distinct container names")
