@@ -186,6 +186,52 @@ size = 2
 	_ = stderr
 }
 
+// TestDoCmdResourceUpsertBareProviderReference verifies that supplying --provider (without any
+// provider overrides) makes the resource snippet reference the given provider URN via its
+// References map and injects an options { provider = provider } block into its code, without
+// producing an inline provider snippet.
+//
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceUpsertBareProviderReference(t *testing.T) {
+	// Existing provider resource in the snapshot for the URN we point at with --provider.
+	providerURN := "urn:pulumi:dev::proj::pulumi:providers:azure::existing"
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{
+		Resources: []*pkgresource.State{{
+			URN:    resource.URN(providerURN),
+			Type:   tokens.Type("pulumi:providers:azure"),
+			Inputs: resource.PropertyMap{"region": resource.NewProperty("us-east-1")},
+		}},
+	})
+
+	var got StatefulUpdateRequest
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		got = req
+		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "upsert.pcl", `name = "example"`+"\n")
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "upsert", "myres", "--yes",
+		"--provider", providerURN,
+		"--input", "pcl", "--input-file", inputFile,
+	})
+	require.NoError(t, cmd.Execute())
+
+	assert.Equal(t, providerURN, got.Snippet.References["provider"])
+	assert.Contains(t, got.Snippet.Code, "options {")
+	assert.Contains(t, got.Snippet.Code, "provider = provider")
+	_ = stdout
+	_ = stderr
+}
+
 //nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
 func TestDoCmdResourceUpsertConstructsSnippetWithReferences(t *testing.T) {
 	referencedURN := resource.URN("urn:pulumi:dev::proj::azure:index:myResource::source")
@@ -727,8 +773,6 @@ func TestDoCmdResourceStatefulCreateConstructsSnippetWithReferences(t *testing.T
 	require.NoError(t, cmd.Execute())
 
 	assert.Equal(t, map[string]string{"source": string(referencedURN)}, got.Snippet.References)
-	_ = stdout
-	_ = stderr
 }
 
 func TestReadResourceReferences(t *testing.T) {

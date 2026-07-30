@@ -236,7 +236,7 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	// the user typed on the command line. If no file was provided, the flags become the snippet
 	// body by themselves.
 	inputFlags := collectInputFlags(cmd, "input", args.res.InputProperties)
-	code, _, resourceNames, err := parseFile(
+	code, resourceFilename, resourceNames, err := parseFile(
 		ctx, args.inputFile, "input", args.inputFormat, args.res.Token,
 		pc.converter, pc.loaderTarget, pc.packageDescriptor, inputFlags, resourceInfos,
 	)
@@ -259,6 +259,28 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 		return fmt.Errorf("resource %s %q already exists in stack %s; use `upsert` to replace it",
 			args.res.Token, args.name, stack.Ref())
 	}
+	// Handle bare --provider: reference the given provider URN from the resource snippet and
+	// inject an options { provider = provider } block into its PCL.
+	if pc.providerURN != "" {
+		// Pick an identifier for the injected provider reference that doesn't collide with a
+		// user-supplied resource reference of the same name.
+		providerRefName := "provider"
+		for i := 2; ; i++ {
+			if _, taken := references[providerRefName]; !taken {
+				break
+			}
+			providerRefName = fmt.Sprintf("provider%d", i)
+		}
+		if references == nil {
+			references = map[string]string{}
+		}
+		references[providerRefName] = pc.providerURN
+		code, err = injectProviderOptionInPCL(code, resourceFilename, providerRefName)
+		if err != nil {
+			return fmt.Errorf("inject provider option: %w", err)
+		}
+	}
+
 	snippet := resource.Snippet{
 		UUID:       snippetUUID,
 		Name:       args.name,

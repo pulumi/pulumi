@@ -1258,3 +1258,35 @@ options {
 		})
 	}
 }
+
+func TestInjectProviderOptionInPCL(t *testing.T) {
+	t.Parallel()
+
+	// No existing options block: a fresh one is appended.
+	got, err := injectProviderOptionInPCL([]byte(`name = "example"`+"\n"), "res.pcl", "provider")
+	require.NoError(t, err)
+	assert.Contains(t, string(got), `name = "example"`)
+	assert.Contains(t, string(got), "options {")
+	assert.Contains(t, string(got), "provider = provider")
+
+	// Existing options block without provider: provider is added inside it.
+	got, err = injectProviderOptionInPCL([]byte(`name = "example"
+options {
+  protect = true
+}
+`), "res.pcl", "provider")
+	require.NoError(t, err)
+	assert.Contains(t, string(got), "protect  = true")
+	assert.Contains(t, string(got), "provider = provider")
+
+	// Existing options block with provider already set: idempotent.
+	src := `name = "example"
+options {
+  provider = other
+}
+`
+	got, err = injectProviderOptionInPCL([]byte(src), "res.pcl", "provider")
+	require.NoError(t, err)
+	assert.Contains(t, string(got), "provider = other")
+	assert.NotContains(t, string(got), "provider = provider")
+}
