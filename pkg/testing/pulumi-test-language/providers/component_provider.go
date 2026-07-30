@@ -356,6 +356,7 @@ func (p *ComponentProvider) Construct(
 
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 
+	//exhaustive:ignore // the default branch handles the remaining cases
 	switch req.Type {
 	case "component:index:ComponentCustomRefOutput":
 		return p.constructComponentCustomRefOutput(ctx, req, monitor)
@@ -365,9 +366,9 @@ func (p *ComponentProvider) Construct(
 		return p.constructComponentCallable(ctx, req, monitor)
 	case "component:index:ComponentForeignChild":
 		return p.constructComponentForeignChild(ctx, req, monitor)
+	default:
+		return plugin.ConstructResponse{}, fmt.Errorf("unknown type %v", req.Type)
 	}
-
-	return plugin.ConstructResponse{}, fmt.Errorf("unknown type %v", req.Type)
 }
 
 func (p *ComponentProvider) constructComponentCustomRefOutput(
