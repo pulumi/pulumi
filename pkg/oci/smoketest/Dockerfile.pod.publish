@@ -26,4 +26,8 @@ COPY pulumi-language-go-linux-$TARGETARCH /usr/local/bin/pulumi-language-go
 COPY pulumi-language-nodejs-linux-$TARGETARCH /usr/local/bin/pulumi-language-nodejs
 COPY pulumi-language-python-linux-$TARGETARCH /usr/local/bin/pulumi-language-python
 COPY registry-proxy-linux-$TARGETARCH /usr/local/bin/registry-proxy
+# The forwarder shim: the proxy embeds it into the provider images it synthesizes
+# (PULUMI_POD_SHIM_BIN names this path), adapting plugins that predate the SDK bind
+# contract to the well-known plugin port that address mode attaches to.
+COPY pulumi-pod-shim-linux-$TARGETARCH /usr/local/bin/pulumi-pod-shim
 ENTRYPOINT ["pulumi"]
