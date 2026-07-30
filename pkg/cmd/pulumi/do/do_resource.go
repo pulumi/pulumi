@@ -270,7 +270,7 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 				if err != nil {
 					return nil, err
 				}
-				if response.Outputs == nil {
+				if readNotFound(response) {
 					return nil, fmt.Errorf("resource %q was not found", args[0])
 				}
 				if response.ID != "" {
@@ -314,7 +314,7 @@ func (pc *packageCommand) newResourcePatchCommand(res *schema.Resource) *cobra.C
 			if err != nil {
 				return err
 			}
-			if read.Outputs == nil {
+			if readNotFound(read) {
 				return fmt.Errorf("resource %q was not found", args[0])
 			}
 			// AllowMissingProperties because a patch typically only specifies the fields being changed; the binder
@@ -431,7 +431,7 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 			if err != nil {
 				return err
 			}
-			if response.Outputs == nil {
+			if readNotFound(response) {
 				return fmt.Errorf("resource %q was not found", args[0])
 			}
 			id := response.ID
@@ -591,6 +591,10 @@ func (pc *packageCommand) checkResourceInputs(
 		return nil, fmt.Errorf("%s", b.String())
 	}
 	return checked.Properties, nil
+}
+
+func readNotFound(read plugin.ReadResponse) bool {
+	return read.Outputs == nil || read.ID == ""
 }
 
 func resultOutputs(id resource.ID, outputs resource.PropertyMap, res *schema.Resource) resource.PropertyMap {
