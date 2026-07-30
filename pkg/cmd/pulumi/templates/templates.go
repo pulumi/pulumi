@@ -125,12 +125,10 @@ type Template interface {
 	DisplayName() string
 	Description() string
 	Error() error
-	// FromRegistry reports whether this template comes from the registry (a published or org
-	// template) rather than the curated pulumi/templates set.
-	FromRegistry() bool
-	// Publisher returns the organization that published this template, or "" when the template
-	// has no publisher (the curated set, local templates).
-	Publisher() string
+	// Publisher returns the organization that published this template, and whether the template
+	// comes from the registry (a published or org template) rather than the curated
+	// pulumi/templates set. Registry templates may still have an empty publisher name.
+	Publisher() (name string, fromRegistry bool)
 	// Download the template and return an instantiable [ProjectTemplate] for this template.
 	Download(ctx context.Context) (ProjectTemplate, error)
 }

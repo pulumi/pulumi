@@ -112,12 +112,11 @@ type projectTemplate struct {
 	t ProjectTemplate
 }
 
-func (t projectTemplate) Name() string        { return t.t.Name }
-func (t projectTemplate) DisplayName() string { return t.t.Name }
-func (t projectTemplate) Description() string { return t.t.Description }
-func (t projectTemplate) Error() error        { return t.t.Error }
-func (t projectTemplate) FromRegistry() bool  { return false }
-func (t projectTemplate) Publisher() string   { return "" }
+func (t projectTemplate) Name() string              { return t.t.Name }
+func (t projectTemplate) DisplayName() string       { return t.t.Name }
+func (t projectTemplate) Description() string       { return t.t.Description }
+func (t projectTemplate) Error() error              { return t.t.Error }
+func (t projectTemplate) Publisher() (string, bool) { return "", false }
 func (t projectTemplate) Download(ctx context.Context) (ProjectTemplate, error) {
 	return t.t, nil
 }

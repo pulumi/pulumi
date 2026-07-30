@@ -103,9 +103,9 @@ func TestGuidedChooserFallsBackToFlatWhenNothingIsCurated(t *testing.T) {
 		flatCalled = true
 		return fakeTemplate{name: "flat"}, nil
 	}
-	sel := func(string, []string, display.Options) (string, error) {
+	sel := func(string, []string, display.Options) (int, error) {
 		t.Error("no prompt may be shown when the catalog is empty")
-		return "", nil
+		return 0, nil
 	}
 
 	// A name the catalog can't decompose yields no providers, so guided must defer to the flat list.
@@ -144,8 +144,8 @@ func TestGuidedChooserMapsInterruptToNoTemplateSelected(t *testing.T) {
 		t.Error("flat chooser must not run when the user cancels the guided flow")
 		return nil, nil
 	}
-	sel := func(string, []string, display.Options) (string, error) {
-		return "", terminal.InterruptErr
+	sel := func(string, []string, display.Options) (int, error) {
+		return 0, terminal.InterruptErr
 	}
 
 	got, err := guidedChooser(sel, flat)(
@@ -180,23 +180,23 @@ func TestGuidedChooserPropagatesErrors(t *testing.T) {
 		t.Error("flat chooser must not run when guided errors")
 		return nil, nil
 	}
-	sel := func(string, []string, display.Options) (string, error) {
-		return "", errors.New("no template selected")
+	sel := func(string, []string, display.Options) (int, error) {
+		return 0, errors.New("boom")
 	}
 
 	_, err := guidedChooser(sel, flat)(
 		[]cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}},
 		display.Options{IsInteractive: true},
 	)
-	assert.ErrorContains(t, err, "no template selected")
+	assert.ErrorContains(t, err, "boom")
 }
 
 func TestGuidedChooserNonInteractiveReturnsNil(t *testing.T) {
 	t.Parallel()
 
-	sel := func(string, []string, display.Options) (string, error) {
+	sel := func(string, []string, display.Options) (int, error) {
 		t.Error("no prompt may be shown when non-interactive")
-		return "", nil
+		return 0, nil
 	}
 
 	got, err := guidedChooser(sel, ChooseTemplate)(

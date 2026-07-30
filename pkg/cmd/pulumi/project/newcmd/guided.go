@@ -33,23 +33,21 @@ const (
 	optionBrowseAll = "Browse all templates"
 )
 
-type selectFunc func(message string, options []string, opts display.Options) (string, error)
+type selectFunc func(message string, options []string, opts display.Options) (int, error)
 
 var errFallBackToFlatList = errors.New("fall back to the flat template list")
 
-func surveySelect(message string, options []string, opts display.Options) (string, error) {
-	return ui.PromptUserErr("\r"+message+"\n", options, "", opts.Color,
+func surveySelect(message string, options []string, opts display.Options) (int, error) {
+	return ui.PromptUserIndexErr("\r"+message+"\n", options, opts.Color,
 		survey.WithPageSize(cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)})))
 }
 
-// pick prompts for one of items. Duplicate display names are suffixed so the label-to-item lookup
-// stays unambiguous.
+// pick prompts for one of items. Duplicate display names are suffixed so identical rows stay
+// visually distinct; selection is by index, so labels never round-trip back to items.
 func pick[T any](
 	sel selectFunc, message string, opts display.Options, items []T, name func(T) string,
 ) (T, error) {
-	var zero T
 	options := make([]string, len(items))
-	byLabel := make(map[string]T, len(items))
 	counts := make(map[string]int, len(items))
 	for i, item := range items {
 		label := name(item)
@@ -58,17 +56,13 @@ func pick[T any](
 			label = fmt.Sprintf("%s (%d)", label, n)
 		}
 		options[i] = label
-		byLabel[label] = item
 	}
-	answer, err := sel(message, options, opts)
+	i, err := sel(message, options, opts)
 	if err != nil {
+		var zero T
 		return zero, err
 	}
-	chosen, ok := byLabel[answer]
-	if !ok {
-		return zero, fmt.Errorf("no such option: %q", answer)
-	}
-	return chosen, nil
+	return items[i], nil
 }
 
 func chooseGuided(
@@ -82,7 +76,7 @@ func chooseGuided(
 		if t.Error() != nil {
 			continue
 		}
-		if t.FromRegistry() {
+		if _, fromRegistry := t.Publisher(); fromRegistry {
 			registryTemplates = append(registryTemplates, t)
 		} else {
 			byName[t.Name()] = t
@@ -92,7 +86,6 @@ func chooseGuided(
 
 	cat := catalog.New(curatedNames)
 	if cat.Empty() && len(registryTemplates) == 0 {
-		fmt.Fprintln(opts.Stdout, "Falling back to the full template list.")
 		return nil, errFallBackToFlatList
 	}
 
@@ -176,7 +169,8 @@ func cloudRows(cat *catalog.Catalog, registryTemplates, all []cmdTemplates.Templ
 func registryRows(registryTemplates []cmdTemplates.Template) []cloudRow {
 	byPublisher := map[string][]cmdTemplates.Template{}
 	for _, t := range registryTemplates {
-		byPublisher[t.Publisher()] = append(byPublisher[t.Publisher()], t)
+		publisher, _ := t.Publisher()
+		byPublisher[publisher] = append(byPublisher[publisher], t)
 	}
 	publishers := make([]string, 0, len(byPublisher))
 	for publisher := range byPublisher {

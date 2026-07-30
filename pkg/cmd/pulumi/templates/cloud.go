@@ -272,9 +272,7 @@ func (r registryTemplate) Description() string {
 
 func (r registryTemplate) Error() error { return nil }
 
-func (r registryTemplate) FromRegistry() bool { return true }
-
-func (r registryTemplate) Publisher() string { return r.GetPublisher() }
+func (r registryTemplate) Publisher() (string, bool) { return r.GetPublisher(), true }
 
 func (r registryTemplate) Download(ctx context.Context) (ProjectTemplate, error) {
 	templateBytes, err := r.registry.DownloadTemplate(ctx, r.t.DownloadURL)
@@ -446,12 +444,11 @@ type orgTemplate struct {
 
 var _ Template = (*orgTemplate)(nil)
 
-func (t orgTemplate) Name() string        { return t.t.Name }
-func (t orgTemplate) DisplayName() string { return t.t.Name }
-func (t orgTemplate) Description() string { return t.t.Description }
-func (t orgTemplate) Error() error        { return nil }
-func (t orgTemplate) FromRegistry() bool  { return true }
-func (t orgTemplate) Publisher() string   { return t.org }
+func (t orgTemplate) Name() string              { return t.t.Name }
+func (t orgTemplate) DisplayName() string       { return t.t.Name }
+func (t orgTemplate) Description() string       { return t.t.Description }
+func (t orgTemplate) Error() error              { return nil }
+func (t orgTemplate) Publisher() (string, bool) { return t.org, true }
 func (t orgTemplate) Download(ctx context.Context) (ProjectTemplate, error) {
 	templateDir, err := os.MkdirTemp("", "pulumi-template-")
 	if err != nil {

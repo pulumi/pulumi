@@ -138,8 +138,7 @@ func TestOthersAreAlphabeticalAndNotFeatured(t *testing.T) {
 		assert.NotContains(t, featuredIDs, p.ID, "%s should not be featured", p.ID)
 		names[i] = p.DisplayName
 	}
-	assert.True(t, sort.StringsAreSorted(names),
-		"Others() not sorted by DisplayName; keep the otherProviders declaration alphabetical: %v", names)
+	assert.True(t, sort.StringsAreSorted(names), "Others() must sort by DisplayName: %v", names)
 }
 
 func TestLanguageOrderByUsage(t *testing.T) {

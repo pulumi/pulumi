@@ -71,7 +71,7 @@ var featuredProviders = []vocab{
 
 var none = vocab{noneProvider, "None"}
 
-// otherProviders appear under "Other" in this order (alphabetical by display name).
+// otherProviders appear under "Other", sorted by display name.
 var otherProviders = []vocab{
 	{"aiven", "Aiven"},
 	{"alicloud", "Alibaba Cloud"},
@@ -162,6 +162,7 @@ func (c *Catalog) Others() []Provider {
 			providers = append(providers, c.provider(p.id))
 		}
 	}
+	slices.SortFunc(providers, func(a, b Provider) int { return strings.Compare(a.DisplayName, b.DisplayName) })
 	return providers
 }
 

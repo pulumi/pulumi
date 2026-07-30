@@ -31,6 +31,8 @@ const (
 	BrokenTemplateDescription = "(This template is currently broken)"
 )
 
+var errNoTemplateSelected = errors.New("no template selected; please use `pulumi new` to choose one")
+
 // ChooseTemplate will prompt the user to choose amongst the available templates.
 func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error) {
 	if !opts.IsInteractive {
@@ -39,7 +41,7 @@ func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cm
 
 	template, err := chooseTemplateFromList(sortedForDisplay(templates), opts, surveySelect)
 	if err != nil {
-		return nil, errors.New("no template selected; please use `pulumi new` to choose one")
+		return nil, errNoTemplateSelected
 	}
 	return template, nil
 }
@@ -69,9 +71,10 @@ func guidedChooser(sel selectFunc, flat chooseTemplateFunc) chooseTemplateFunc {
 		template, err := chooseGuided(templates, opts, sel)
 		switch {
 		case errors.Is(err, errFallBackToFlatList):
+			fmt.Fprintln(opts.Stdout, "Falling back to the full template list.")
 			return flat(templates, opts)
 		case errors.Is(err, terminal.InterruptErr):
-			return nil, errors.New("no template selected")
+			return nil, errNoTemplateSelected
 		case err != nil:
 			return nil, err
 		}

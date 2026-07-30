@@ -17,7 +17,7 @@ package newcmd
 import (
 	"context"
 	"errors"
-	"io"
+	"slices"
 	"testing"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -34,12 +34,11 @@ type fakeTemplate struct {
 	err  error
 }
 
-func (f fakeTemplate) Name() string        { return f.name }
-func (f fakeTemplate) DisplayName() string { return f.name }
-func (f fakeTemplate) Description() string { return f.desc }
-func (f fakeTemplate) Error() error        { return f.err }
-func (f fakeTemplate) FromRegistry() bool  { return false }
-func (f fakeTemplate) Publisher() string   { return "" }
+func (f fakeTemplate) Name() string              { return f.name }
+func (f fakeTemplate) DisplayName() string       { return f.name }
+func (f fakeTemplate) Description() string       { return f.desc }
+func (f fakeTemplate) Error() error              { return f.err }
+func (f fakeTemplate) Publisher() (string, bool) { return "", false }
 func (f fakeTemplate) Download(ctx context.Context) (cmdTemplates.ProjectTemplate, error) {
 	return cmdTemplates.ProjectTemplate{}, nil
 }
@@ -49,8 +48,7 @@ type fakeRegistryTemplate struct {
 	publisher string
 }
 
-func (f fakeRegistryTemplate) FromRegistry() bool { return true }
-func (f fakeRegistryTemplate) Publisher() string  { return f.publisher }
+func (f fakeRegistryTemplate) Publisher() (string, bool) { return f.publisher, true }
 
 // scriptedSelect answers each prompt in order, asserting the option offered is present. An error
 // entry is returned from the prompt as-is.
@@ -58,16 +56,17 @@ func scriptedSelect(t *testing.T, answers ...any) (selectFunc, *[]([]string)) {
 	t.Helper()
 	var offered [][]string
 	i := 0
-	return func(message string, options []string, opts display.Options) (string, error) {
+	return func(message string, options []string, opts display.Options) (int, error) {
 		offered = append(offered, options)
 		require.Less(t, i, len(answers), "unexpected extra prompt: %q with %v", message, options)
 		answer := answers[i]
 		i++
 		if err, ok := answer.(error); ok {
-			return "", err
+			return 0, err
 		}
-		require.Contains(t, options, answer, "scripted answer %q not offered in %v", answer, options)
-		return answer.(string), nil
+		idx := slices.Index(options, answer.(string))
+		require.GreaterOrEqual(t, idx, 0, "scripted answer %q not offered in %v", answer, options)
+		return idx, nil
 	}, &offered
 }
 
@@ -237,12 +236,12 @@ func TestGuidedFallsBackWhenEverythingIsBroken(t *testing.T) {
 		fakeTemplate{name: "aws-typescript", err: errors.New("boom")},
 		fakeRegistryTemplate{fakeTemplate{name: "vpc", err: errors.New("boom")}, "acme"},
 	}
-	sel := func(string, []string, display.Options) (string, error) {
+	sel := func(string, []string, display.Options) (int, error) {
 		t.Error("no prompt may be shown when every template is broken")
-		return "", nil
+		return 0, nil
 	}
 
-	got, err := chooseGuided(templates, display.Options{Stdout: io.Discard}, sel)
+	got, err := chooseGuided(templates, display.Options{}, sel)
 	assert.Nil(t, got)
 	assert.ErrorIs(t, err, errFallBackToFlatList, "the flat chooser is the only surface that marks broken templates")
 }
@@ -266,8 +265,8 @@ func TestGuidedInterruptAtFirstStepPropagates(t *testing.T) {
 	t.Parallel()
 
 	templates := []cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}}
-	sel := func(string, []string, display.Options) (string, error) {
-		return "", terminal.InterruptErr
+	sel := func(string, []string, display.Options) (int, error) {
+		return 0, terminal.InterruptErr
 	}
 
 	got, err := chooseGuided(templates, display.Options{}, sel)
@@ -369,9 +368,9 @@ func TestChooseTemplateFromListDisambiguatesDuplicateNames(t *testing.T) {
 	first := fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}
 	second := fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}
 	var offered []string
-	sel := func(message string, options []string, opts display.Options) (string, error) {
+	sel := func(message string, options []string, opts display.Options) (int, error) {
 		offered = options
-		return options[1], nil
+		return 1, nil
 	}
 
 	got, err := chooseTemplateFromList(
@@ -381,24 +380,8 @@ func TestChooseTemplateFromListDisambiguatesDuplicateNames(t *testing.T) {
 	assert.Equal(t, "vpc", got.Name())
 
 	require.Len(t, offered, 2)
-	assert.NotEqual(t, offered[0], offered[1], "identical labels must be suffixed so both are selectable")
+	assert.NotEqual(t, offered[0], offered[1], "identical labels must be suffixed so the rows stay distinct")
 	assert.Contains(t, offered[1], "(2)")
-}
-
-func TestChooseTemplateFromListErrorsOnUnknownAnswer(t *testing.T) {
-	t.Parallel()
-
-	sel := func(string, []string, display.Options) (string, error) {
-		return "not-a-template", nil
-	}
-
-	got, err := chooseTemplateFromList(
-		[]cmdTemplates.Template{fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}},
-		display.Options{},
-		sel,
-	)
-	assert.Nil(t, got)
-	assert.ErrorContains(t, err, "no such option")
 }
 
 func TestGuidedFallsBackWhenNothingIsCurated(t *testing.T) {
@@ -406,12 +389,12 @@ func TestGuidedFallsBackWhenNothingIsCurated(t *testing.T) {
 
 	// A name the catalog can't decompose yields an empty catalog, so guided defers to the flat list.
 	templates := []cmdTemplates.Template{fakeTemplate{name: "unparseable"}}
-	sel := func(string, []string, display.Options) (string, error) {
+	sel := func(string, []string, display.Options) (int, error) {
 		t.Error("no prompt may be shown when the catalog is empty")
-		return "", nil
+		return 0, nil
 	}
 
-	got, err := chooseGuided(templates, display.Options{Stdout: io.Discard}, sel)
+	got, err := chooseGuided(templates, display.Options{}, sel)
 	assert.Nil(t, got)
 	assert.ErrorIs(t, err, errFallBackToFlatList)
 }
