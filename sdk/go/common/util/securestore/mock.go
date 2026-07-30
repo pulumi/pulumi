@@ -75,9 +75,9 @@ func (g *gatedStore) available() error {
 	return g.inner.available()
 }
 
-func (g *gatedStore) get() (string, error) { return g.inner.get() }
+func (g *gatedStore) get() (string, error)   { return g.inner.get() }
 func (g *gatedStore) set(value string) error { return g.inner.set(value) }
-func (g *gatedStore) delete() error        { return g.inner.delete() }
+func (g *gatedStore) delete() error          { return g.inner.delete() }
 
 // MockInit replaces platform backend resolution with a single in-memory
 // backend for the duration of a test. Tests that touch the secure store MUST
