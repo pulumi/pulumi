@@ -80,9 +80,6 @@ func buildImportFile(
 		importSet := map[resource.URN]struct{}{}
 		// All providers that we've seen so far, used to build Version and PluginDownloadURL.
 		providerInputs := map[resource.URN]resource.PropertyMap{}
-		// Full (unfiltered) provider inputs from the resource State, used to serialize into the
-		// import file for explicit providers that need creation.
-		providerFullInputs := map[resource.URN]resource.PropertyMap{}
 
 		imports := importFile{
 			NameTable: map[string]resource.URN{},
@@ -165,9 +162,6 @@ func buildImportFile(
 			// any resources that use it.
 			if sdkproviders.IsProviderType(urn.Type()) {
 				providerInputs[urn] = preEvent.Metadata.Res.Inputs
-				contract.Assertf(preEvent.Metadata.Res.State != nil,
-					"%s: expected State to be non-nil for provider", urn)
-				providerFullInputs[urn] = preEvent.Metadata.Res.State.Inputs
 			}
 
 			// Only interested in creates
@@ -183,9 +177,37 @@ func buildImportFile(
 			importSet[urn] = struct{}{}
 
 			// Provider resources are not imported with an ID like regular resources. Instead,
-			// their inputs are serialized into the import file's providerInputs section so the
-			// import system can create them with the correct configuration.
+			// explicit providers are declared in the import file's resources with their full
+			// inputs so the import system can create them with the correct configuration.
+			// Default providers are created by the import system from ambient config.
 			if sdkproviders.IsProviderType(urn.Type()) {
+				if sdkproviders.IsDefaultProvider(urn) {
+					continue
+				}
+				contract.Assertf(preEvent.Metadata.Res.State != nil,
+					"%s: expected State to be non-nil for provider", urn)
+
+				var inputs map[string]any
+				if fullInputs := preEvent.Metadata.Res.State.Inputs; len(fullInputs) > 0 {
+					var serErr error
+					inputs, serErr = stack.SerializeProperties(ctx, fullInputs, enc, false)
+					if serErr != nil {
+						return importFile{}, fmt.Errorf(
+							"could not serialize provider inputs for %s: %w", urn, serErr)
+					}
+				}
+
+				var logicalName string
+				if name != urn.Name() {
+					logicalName = urn.Name()
+				}
+
+				imports.Resources = append(imports.Resources, importSpec{
+					Type:        urn.Type(),
+					Name:        name,
+					Inputs:      inputs,
+					LogicalName: logicalName,
+				})
 				continue
 			}
 
@@ -213,30 +235,15 @@ func buildImportFile(
 					return importFile{}, fmt.Errorf("could not parse provider reference: %w", err)
 				}
 
-				// Providers are not imported as resources (we skip them above), but resources
-				// that use a new explicit provider can still be in the import file. We serialize
-				// the provider's full inputs so the import system can create it.
 				if !sdkproviders.IsDefaultProvider(ref.URN()) {
 					var has bool
 					provider, has = fullNameTable[ref.URN()]
 					contract.Assertf(has, "expected provider %q to be in full name table", new.Provider)
 
-					imports.NameTable[provider] = ref.URN()
-
-					// If this provider is being created in this deployment, serialize its full inputs
-					// so the import system can recreate it with the correct configuration.
-					if _, inImportSet := importSet[ref.URN()]; inImportSet {
-						if fullInputs, ok := providerFullInputs[ref.URN()]; ok {
-							serialized, serErr := stack.SerializeProperties(ctx, fullInputs, enc, false)
-							if serErr != nil {
-								return importFile{}, fmt.Errorf(
-									"could not serialize provider inputs for %s: %w", ref.URN(), serErr)
-							}
-							if imports.ProviderInputs == nil {
-								imports.ProviderInputs = map[string]map[string]any{}
-							}
-							imports.ProviderInputs[provider] = serialized
-						}
+					// Don't add to the import NameTable if we're creating the provider in the same
+					// deployment; it is declared in the resources list instead.
+					if _, inImportSet := importSet[ref.URN()]; !inImportSet {
+						imports.NameTable[provider] = ref.URN()
 					}
 				}
 

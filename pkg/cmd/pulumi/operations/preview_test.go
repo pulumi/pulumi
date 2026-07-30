@@ -469,26 +469,30 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 	importFile, err := importFilePromise.Result(t.Context())
 	require.NoError(t, err)
 
-	// NameTable should include the provider so the resource can reference it
-	require.Len(t, importFile.NameTable, 1)
-	assert.Equal(t, providerState.URN, importFile.NameTable["prov"])
+	// The provider is declared in the resources list, so it doesn't need a nameTable entry
+	require.Len(t, importFile.NameTable, 0)
 
-	// Resource should be in the import file with the provider reference
-	require.Len(t, importFile.Resources, 1)
-	expected := importSpec{
+	// The provider should be declared with its full inputs, followed by the resource that
+	// references it
+	require.Len(t, importFile.Resources, 2)
+	assert.Equal(t, importSpec{
+		Type: "pulumi:providers:pkg",
+		Name: "prov",
+		Inputs: map[string]any{
+			"version": "1.2.3",
+			"region":  "eu-west-1",
+		},
+	}, importFile.Resources[0])
+	assert.Equal(t, importSpec{
 		ID:       "<PLACEHOLDER>",
 		Type:     "pkg:mod:typ",
 		Name:     "res",
 		Provider: "prov",
 		Version:  "1.2.3",
-	}
-	assert.Equal(t, expected, importFile.Resources[0])
+	}, importFile.Resources[1])
 
-	// ProviderInputs should contain the serialized provider inputs including region
-	require.Contains(t, importFile.ProviderInputs, "prov")
-	provInputs := importFile.ProviderInputs["prov"]
-	assert.Equal(t, "eu-west-1", provInputs["region"])
-	assert.Equal(t, "1.2.3", provInputs["version"])
+	// The deprecated providerInputs section should not be generated
+	assert.Nil(t, importFile.ProviderInputs)
 }
 
 // TestBuildImportFile_DuplicateNames test that if we try to import resources with the same name we add a
