@@ -70,7 +70,7 @@ type languageTemplateFunc func(ctx context.Context, language plugin.LanguageRunt
 	projectName tokens.PackageName) error
 
 const aiRetiredMessage = "Pulumi AI project generation has been retired. Run 'pulumi new' to choose a template, " +
-	"or try Pulumi Neo (https://www.pulumi.com/product/neo/)."
+	"or 'pulumi neo -p \"prompt\"'."
 
 type newArgs struct {
 	configArray          []string
@@ -685,11 +685,11 @@ func NewNewCmd() *cobra.Command {
 		"List locally installed templates and exit",
 	)
 	cmd.PersistentFlags().StringVar(
-		&args.aiPrompt, "ai", "", "Retired: use 'pulumi neo' instead.",
+		&args.aiPrompt, "ai", "", "Retired: use 'pulumi neo -p \"prompt\"' instead.",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("ai")
 	cmd.PersistentFlags().StringVar(
-		&args.aiLanguage, "language", "", "Retired: use 'pulumi neo' instead.",
+		&args.aiLanguage, "language", "", "Retired: use 'pulumi neo -p \"prompt\"' instead.",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("language")
 	cmd.PersistentFlags().BoolVarP(
