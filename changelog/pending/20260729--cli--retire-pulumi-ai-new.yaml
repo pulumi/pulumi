@@ -1,4 +1,4 @@
 component: cli
 kind: chore
 body: Retire the Pulumi AI mode of `pulumi new` (interactive choice and `--ai`/`--language`
-    flags). The backing service has been shut down; use `pulumi neo -p` instead.
+    flags). The backing service has been shut down; use `pulumi neo` instead.
