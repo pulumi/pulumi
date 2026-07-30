@@ -362,17 +362,6 @@ func NewPreviewCmd() *cobra.Command {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
-				return err
-			}
-
-			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
-				return err
-			}
-
-			meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
-
 			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
 				return err
 			}
@@ -441,6 +430,17 @@ func NewPreviewCmd() *cobra.Command {
 
 				return deployment.RunDeployment(ctx, ws, cmd, displayOpts, apitype.Preview, stackName, url, remoteArgs)
 			}
+
+			proj, root, err := readProjectForUpdate(ws, client)
+			if err != nil {
+				return err
+			}
+
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+				return err
+			}
+
+			meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
 
 			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, displayOpts)
 			if err != nil {

@@ -114,15 +114,6 @@ func NewRefreshCmd() *cobra.Command {
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
-				return err
-			}
-
-			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
-				return err
-			}
-
 			// Remote implies we're skipping previews.
 			if remoteArgs.Remote {
 				skipPreview = true
@@ -198,6 +189,15 @@ func NewRefreshCmd() *cobra.Command {
 				}
 
 				return deployment.RunDeployment(ctx, ws, cmd, opts.Display, apitype.Refresh, stackName, url, remoteArgs)
+			}
+
+			proj, root, err := readProjectForUpdate(ws, client)
+			if err != nil {
+				return err
+			}
+
+			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+				return err
 			}
 
 			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
