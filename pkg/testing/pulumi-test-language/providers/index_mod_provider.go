@@ -304,7 +304,7 @@ func (p *IndexModProvider) Call(
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 	switch req.Tok {
 	case "index-mod:indexMine:Resource/call", "index-mod:indexMine/nested:Resource/call":
-		value, ok := req.Args["input"]
+		value, ok := req.Args.GetOk("input")
 		if !ok {
 			return plugin.CallResponse{
 				Failures: makeCheckFailure("input", "missing input"),
@@ -323,7 +323,7 @@ func (p *IndexModProvider) Call(
 			}, nil
 		}
 
-		selfRef := req.Args["__self__"].ResourceReferenceValue()
+		selfRef := req.Args.Get("__self__").AsResourceReference()
 
 		selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 			Tok: "pulumi:pulumi:getResource",
@@ -342,7 +342,7 @@ func (p *IndexModProvider) Call(
 
 		return plugin.CallResponse{
 			Return: property.NewMap(map[string]property.Value{
-				"output": property.New(float64(len(value.StringValue()) + len(text.GetStringValue()))),
+				"output": property.New(float64(len(value.AsString()) + len(text.GetStringValue()))),
 			}),
 		}, nil
 	}

@@ -1316,7 +1316,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	)
 	ret, err := prov.Call(ctx, plugin.CallRequest{
 		Tok:     tok,
-		Args:    args,
+		Args:    resource.FromResourcePropertyMap(args),
 		Info:    info,
 		Options: options,
 	})

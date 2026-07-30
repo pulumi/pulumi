@@ -474,7 +474,7 @@ type InvokeResponse struct {
 
 type CallRequest struct {
 	Tok     tokens.ModuleMember
-	Args    resource.PropertyMap
+	Args    property.Map
 	Info    CallInfo
 	Options CallOptions
 }

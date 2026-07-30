@@ -2353,8 +2353,9 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 					assert.Equal(t, []resource.URN{"urn:pulumi:test::test::pkgA:m:typB::resB"}, req.Options.ArgDependencies["name"])
 
 					ret := "unexpected"
-					if req.Args["name"].IsString() {
-						ret = "Hello, " + req.Args["name"].StringValue() + "!"
+					name := req.Args.Get("name")
+					if name.IsString() {
+						ret = "Hello, " + name.AsString() + "!"
 					}
 
 					return plugin.CallResponse{
@@ -4216,7 +4217,7 @@ func TestSourcePositions(t *testing.T) {
 				) (plugin.CallResponse, error) {
 					_, _, err := monitor.ReadResource(
 						"pkgA:m:typA",
-						req.Args["name"].StringValue()+"/resB",
+						req.Args.Get("name").AsString()+"/resB",
 						"id",
 						"",
 						inputs,

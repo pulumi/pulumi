@@ -385,7 +385,7 @@ func (p *ModuleFormatProvider) Call(
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 	switch req.Tok {
 	case "module-format:index_Resource:Resource/call", "module-format:mod_Resource:Resource/call", "module-format:mod/nested_Resource:Resource/call": //nolint:lll
-		value, ok := req.Args["input"]
+		value, ok := req.Args.GetOk("input")
 		if !ok {
 			return plugin.CallResponse{
 				Failures: makeCheckFailure("input", "missing input"),
@@ -407,7 +407,7 @@ func (p *ModuleFormatProvider) Call(
 			}, nil
 		}
 
-		selfRef := req.Args["__self__"].ResourceReferenceValue()
+		selfRef := req.Args.Get("__self__").AsResourceReference()
 
 		selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 			Tok: "pulumi:pulumi:getResource",
@@ -426,7 +426,7 @@ func (p *ModuleFormatProvider) Call(
 
 		return plugin.CallResponse{
 			Return: property.NewMap(map[string]property.Value{
-				"output": property.New(float64(len(value.StringValue()) + len(text.GetStringValue()))),
+				"output": property.New(float64(len(value.AsString()) + len(text.GetStringValue()))),
 			}),
 		}, nil
 	}

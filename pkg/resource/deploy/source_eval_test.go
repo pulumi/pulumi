@@ -3230,9 +3230,9 @@ func TestCall(t *testing.T) {
 					_ *deploytest.ResourceMonitor,
 				) (plugin.CallResponse, error) {
 					assert.Equal(t,
-						resource.PropertyMap{
-							"test": resource.NewProperty("test-value"),
-						},
+						property.NewMap(map[string]property.Value{
+							"test": property.New("test-value"),
+						}),
 						req.Args)
 					require.Len(t, req.Options.ArgDependencies, 1)
 					assert.ElementsMatch(t,
