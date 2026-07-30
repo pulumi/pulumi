@@ -308,39 +308,142 @@ func (u *uv) ListPackages(_ context.Context, transitive bool) ([]plugin.Dependen
 	if err != nil {
 		return nil, fmt.Errorf("could not read %s: %w", lockFilePath, err)
 	}
-	virtual, err := uvVirtualPackages(content)
-	if err != nil {
-		return nil, fmt.Errorf("could not identify virtual packages in %s: %w", lockFilePath, err)
+
+	var lock uvLockFile
+	if _, err := toml.Decode(string(content), &lock); err != nil {
+		return nil, fmt.Errorf("could not parse %s: %w", lockFilePath, err)
 	}
-	return listPackagesFromLockFile(lockFilePath, transitive, virtual)
+
+	// In a uv workspace `uv.lock` contains the dependencies of *all* workspace members, but `uv sync`
+	// only installs the current member's dependencies. Walk the lock's dependency graph so we only
+	// report its transitive dependencies.
+	if packages, ok := lock.scopeToMember(lockDir, u.root, transitive); ok {
+		return packages, nil
+	}
+
+	// Fall back to reading the whole lock file if we couldn't locate the current project within it
+	logging.V(5).Infof("could not locate %s within %s, reporting all locked packages", u.root, lockFilePath)
+	return listPackagesFromLockFile(lockFilePath, transitive, lock.virtualPackages())
 }
 
-// uvLockFile is a minimal representation of uv.lock for identifying virtual packages.
+// uvLockFile is a representation of uv.lock sufficient to walk its dependency graph and identify
+// workspace members.
 type uvLockFile struct {
 	Package []uvLockPackage `toml:"package"`
 }
 
-type uvLockPackage struct {
-	Name   string `toml:"name"`
-	Source struct {
-		Virtual string `toml:"virtual"`
-	} `toml:"source"`
+type uvLockDependency struct {
+	Name string `toml:"name"`
 }
 
-// uvVirtualPackages returns the names of packages that are virtual (i.e. the project root or workspace members) in a
-// uv.lock file. Virtual packages have source = { virtual = "..." } and are not real installable packages.
-func uvVirtualPackages(content []byte) (map[string]bool, error) {
-	var lock uvLockFile
-	if _, err := toml.Decode(string(content), &lock); err != nil {
-		return nil, err
+type uvLockPackage struct {
+	Name    string `toml:"name"`
+	Version string `toml:"version"`
+	Source  struct {
+		Virtual  string `toml:"virtual"`
+		Editable string `toml:"editable"`
+	} `toml:"source"`
+	Dependencies    []uvLockDependency            `toml:"dependencies"`
+	DevDependencies map[string][]uvLockDependency `toml:"dev-dependencies"`
+}
+
+// isMember reports whether the package is the project root or a workspace member rather than an installable
+// dependency.
+func (p *uvLockPackage) isMember() bool {
+	return p.Source.Virtual != "" || p.Source.Editable != ""
+}
+
+// memberPath returns the workspace-relative path recorded for the project root or a workspace member.
+func (p *uvLockPackage) memberPath() string {
+	if p.Source.Virtual != "" {
+		return p.Source.Virtual
 	}
+	return p.Source.Editable
+}
+
+// virtualPackages returns the names of packages that are virtual (i.e. the project root or workspace
+// members) in the lock file. These are not real installable packages.
+func (l *uvLockFile) virtualPackages() map[string]bool {
 	virtual := make(map[string]bool)
-	for _, pkg := range lock.Package {
+	for _, pkg := range l.Package {
 		if pkg.Source.Virtual != "" {
 			virtual[normalizePythonPackageName(pkg.Name)] = true
 		}
 	}
-	return virtual, nil
+	return virtual
+}
+
+// scopeToMember walks the lock's dependency graph starting from the workspace member located at root and
+// returns its (transitive) dependencies. The boolean result is false if the member could not be located in
+// the lock, in which case the caller should fall back to reporting all locked packages.
+func (l *uvLockFile) scopeToMember(lockDir, root string, transitive bool) ([]plugin.DependencyInfo, bool) {
+	// uv records member paths relative to the lock file directory, using forward slashes. The project root
+	// itself is recorded as ".".
+	rel, err := filepath.Rel(lockDir, root)
+	if err != nil {
+		return nil, false
+	}
+	rel = filepath.ToSlash(rel)
+
+	byName := make(map[string]*uvLockPackage, len(l.Package))
+	var current *uvLockPackage
+	for i := range l.Package {
+		pkg := &l.Package[i]
+		byName[normalizePythonPackageName(pkg.Name)] = pkg
+		if pkg.isMember() && pkg.memberPath() == rel {
+			current = pkg
+		}
+	}
+	if current == nil {
+		return nil, false
+	}
+
+	// Breadth-first walk from the current member. The member's own dependencies and dependency-group
+	// dependencies seed the queue; from there we follow runtime dependencies only, matching what gets
+	// installed into the virtualenv.
+	queue := make([]string, 0, len(current.Dependencies))
+	for _, dep := range current.Dependencies {
+		queue = append(queue, normalizePythonPackageName(dep.Name))
+	}
+	for _, group := range current.DevDependencies {
+		for _, dep := range group {
+			queue = append(queue, normalizePythonPackageName(dep.Name))
+		}
+	}
+
+	seen := make(map[string]bool)
+	var packages []plugin.DependencyInfo
+	for len(queue) > 0 {
+		name := queue[0]
+		queue = queue[1:]
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+
+		pkg, ok := byName[name]
+		if !ok {
+			continue
+		}
+		for _, dep := range pkg.Dependencies {
+			queue = append(queue, normalizePythonPackageName(dep.Name))
+		}
+		// Workspace members (including the current one, if it appears as a dependency) are not installable
+		// packages, so leave them out of the reported set.
+		if pkg.isMember() {
+			continue
+		}
+		packages = append(packages, plugin.DependencyInfo{Name: name, Version: pkg.Version})
+	}
+
+	if transitive {
+		return packages, true
+	}
+	direct, err := filterDirectPythonDependencies(root, packages)
+	if err != nil {
+		return nil, false
+	}
+	return direct, true
 }
 
 func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
