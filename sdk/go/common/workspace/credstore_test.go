@@ -377,3 +377,60 @@ func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
 	require.Error(t, err, "agent fallback must not swallow the undecryptable error")
 	assert.True(t, IsUndecryptableCredentials(err))
 }
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestWriteUpgradesToStrongerBackend(t *testing.T) {
+	// The upgrade story behind shipping now and strengthening later: data
+	// encrypted under one backend must be silently re-encrypted under a
+	// stronger backend once it becomes available (a signed binary unlocking
+	// the native macOS keychain, a TPM appearing) on the next write, while
+	// staying readable throughout via the envelope's recorded backend.
+	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
+	promote := securestore.MockInitDual(t)
+	resetWriteStoreForTesting()
+	t.Cleanup(resetWriteStoreForTesting)
+
+	// Phase 1: only the weaker backend is available.
+	require.NoError(t, StoreCredentials(testCreds()))
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	raw, err := os.ReadFile(credsFile)
+	require.NoError(t, err)
+	backend, err := securestore.EnvelopeBackend(raw)
+	require.NoError(t, err)
+	require.Equal(t, securestore.BackendMock, backend)
+
+	// Phase 2: the stronger backend becomes available (new release).
+	promote()
+	resetWriteStoreForTesting()
+
+	// Reads still work through the recorded (weaker) backend.
+	creds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, "pul-secret-token", creds.AccessTokens["https://api.pulumi.com"])
+
+	// The next write upgrades: re-encrypted under the stronger backend with
+	// all data preserved, no user action required.
+	creds.AccessTokens["https://api.other.com"] = "pul-second-token"
+	require.NoError(t, StoreCredentials(creds))
+
+	raw, err = os.ReadFile(credsFile)
+	require.NoError(t, err)
+	backend, err = securestore.EnvelopeBackend(raw)
+	require.NoError(t, err)
+	assert.Equal(t, securestore.BackendMockStrong, backend, "write must upgrade to the stronger backend")
+	assert.False(t, bytes.Contains(raw, []byte("pul-second-token")))
+
+	upgraded, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, "pul-secret-token", upgraded.AccessTokens["https://api.pulumi.com"], "existing data preserved")
+	assert.Equal(t, "pul-second-token", upgraded.AccessTokens["https://api.other.com"])
+
+	// The weaker backend's key is deliberately left in place: the shared
+	// agent credentials file may still be encrypted under it.
+	weak, err := securestore.ForBackend(securestore.BackendMock)
+	require.NoError(t, err)
+	_, err = weak.GetKey()
+	require.NoError(t, err)
+}

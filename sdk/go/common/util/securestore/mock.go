@@ -15,6 +15,7 @@
 package securestore
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 )
@@ -55,6 +56,29 @@ func (m *memStore) delete() error {
 // tests.
 const BackendMock Backend = "mock"
 
+// BackendMockStrong is the preferred backend installed by MockInitDual; it
+// never resolves outside tests.
+const BackendMockStrong Backend = "mock-strong"
+
+// gatedStore wraps an itemStore whose availability can be toggled, letting
+// tests simulate a platform gaining a stronger protection tier over time
+// (e.g. a binary becoming signed, or a TPM becoming usable).
+type gatedStore struct {
+	inner   itemStore
+	enabled *bool
+}
+
+func (g *gatedStore) available() error {
+	if !*g.enabled {
+		return fmt.Errorf("%w: mock backend not yet enabled", ErrUnavailable)
+	}
+	return g.inner.available()
+}
+
+func (g *gatedStore) get() (string, error) { return g.inner.get() }
+func (g *gatedStore) set(value string) error { return g.inner.set(value) }
+func (g *gatedStore) delete() error        { return g.inner.delete() }
+
 // MockInit replaces platform backend resolution with a single in-memory
 // backend for the duration of a test. Tests that touch the secure store MUST
 // call this to avoid writing to the developer's real keychain/TPM.
@@ -65,4 +89,24 @@ func MockInit(t *testing.T) {
 		return []backendImpl{{id: BackendMock, store: mem, wrap: rawWrapper{}}}
 	}
 	t.Cleanup(func() { mockResolver = nil })
+}
+
+// MockInitDual installs two in-memory backends: BackendMockStrong (preferred
+// by Resolve but initially unavailable) and BackendMock (always available).
+// The returned promote function makes the strong backend available,
+// simulating a platform gaining a better protection tier — such as a signed
+// binary unlocking the native macOS keychain, or a TPM becoming usable — so
+// tests can exercise the cross-backend upgrade of encrypted data.
+func MockInitDual(t *testing.T) (promote func()) {
+	t.Helper()
+	enabled := false
+	weak, strong := &memStore{}, &memStore{}
+	mockResolver = func() []backendImpl {
+		return []backendImpl{
+			{id: BackendMockStrong, store: &gatedStore{inner: strong, enabled: &enabled}, wrap: rawWrapper{}},
+			{id: BackendMock, store: weak, wrap: rawWrapper{}},
+		}
+	}
+	t.Cleanup(func() { mockResolver = nil })
+	return func() { enabled = true }
 }
