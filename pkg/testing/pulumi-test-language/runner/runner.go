@@ -1228,6 +1228,15 @@ func runLanguageTests(
 		}
 		programPackages := program.PackageReferences()
 
+		// Extensions carry their base provider; a declarative language derives that base
+		// at runtime instead of declaring it.
+		derivableBases := map[string]bool{}
+		for _, pkg := range packages {
+			if pkg.ExtensionParameterization != nil {
+				derivableBases[pkg.ExtensionParameterization.BaseProvider.Name] = true
+			}
+		}
+
 		if i == 0 || !test.RunsShareSource {
 			// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
 			var diagnostics hcl.Diagnostics
@@ -1265,9 +1274,19 @@ func runLanguageTests(
 					return nil, fmt.Errorf("copy override testdata: %w", err)
 				}
 			} else {
+				// Don't hand YAML a derivable base; mirrors `pulumi package add --extension`.
+				genDependencies := localDependencies
+				if token.LanguagePluginName == "yaml" && len(derivableBases) > 0 {
+					genDependencies = map[string]string{}
+					for name, dep := range localDependencies {
+						if !derivableBases[name] {
+							genDependencies[name] = dep
+						}
+					}
+				}
 				diagnostics, err = languageClient.GenerateProject(
 					ctx,
-					sourceDir, projectDir, projectJSON, true, pctx.LoaderAddr(), localDependencies)
+					sourceDir, projectDir, projectJSON, true, pctx.LoaderAddr(), genDependencies)
 				if err != nil {
 					return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
 				}
@@ -1402,6 +1421,9 @@ func runLanguageTests(
 			}
 
 			if found == nil {
+				if derivableBases[expectedDependency.Name] {
+					continue
+				}
 				return makeTestResponse("missing expected dependency " + expectedDependency.Name), nil
 			} else if !versionsMatch(expectedDependency.Version, *found) {
 				return makeTestResponse(fmt.Sprintf("dependency %s has unexpected version %s, expected %s",
@@ -1527,6 +1549,9 @@ func runLanguageTests(
 				}
 
 				if !found {
+					if derivableBases[expectedPackage.Name] {
+						continue
+					}
 					return makeTestResponse(fmt.Sprintf("missing expected package %v", expectedPackage)), nil
 				}
 			}
