@@ -555,7 +555,10 @@ func pulumiAPICall(ctx context.Context,
 		return "", nil, backenderr.ErrLoginRequired
 	}
 
-	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)
+	// Provide a better error if rate-limit is exceeded (429: Too Many Requests). By this
+	// point the transport layer has already retried with backoff, honoring any Retry-After
+	// the server sent (httputil retries 429s for every method and retry policy), so this is
+	// a persistent rate limit rather than a transient blip.
 	if resp.StatusCode == 429 {
 		return "", nil, errors.New("pulumi service: request rate-limit exceeded")
 	}

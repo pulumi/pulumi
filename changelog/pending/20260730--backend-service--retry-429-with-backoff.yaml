@@ -1,0 +1,7 @@
+component: backend/service
+kind: fix
+body: Retry API requests that fail with HTTP 429 Too Many Requests instead of failing
+  immediately, with exponential backoff and honoring the server's Retry-After header
+  (capped at 30 seconds). Rate-limited requests were never processed by the server,
+  so they are retried for all HTTP methods.
+time: 2026-07-30T00:00:00+00:00

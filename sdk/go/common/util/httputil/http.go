@@ -17,12 +17,41 @@ package httputil
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 )
+
+// maxRetryAfterDelay caps how long we are willing to honor a server-provided Retry-After
+// header between retries. Rate-limiting layers can send very large values (AWS WAF in front
+// of the Pulumi Service sends 3000 seconds); sleeping that long in a CLI is worse than
+// retrying sooner and, if still rate limited, surfacing the failure.
+const maxRetryAfterDelay = 30 * time.Second
+
+// retryAfterDelay returns the delay requested by a response's Retry-After header, capped at
+// maxRetryAfterDelay, or 0 if the header is absent, unparseable, or non-positive. Both forms
+// from RFC 9110 are supported: delay-seconds and HTTP-date.
+func retryAfterDelay(res *http.Response, now time.Time) time.Duration {
+	header := res.Header.Get("Retry-After")
+	if header == "" {
+		return 0
+	}
+	var delay time.Duration
+	if seconds, err := strconv.Atoi(header); err == nil {
+		delay = time.Duration(seconds) * time.Second
+	} else if date, err := http.ParseTime(header); err == nil {
+		delay = date.Sub(now)
+	} else {
+		return 0
+	}
+	if delay <= 0 {
+		return 0
+	}
+	return min(delay, maxRetryAfterDelay)
+}
 
 // RetryOpts defines options to configure the retry behavior.
 // Leave nil for defaults.
@@ -82,6 +111,25 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 			}
 
 			res, resErr := client.Do(req)
+
+			// HTTP 429 Too Many Requests is retried for every request and retry policy,
+			// including HandshakeTimeoutsOnly: a rate-limited request was refused before any
+			// processing, so retrying cannot duplicate work even for non-idempotent methods.
+			// When the server supplies a Retry-After delay, honor it (capped) before the
+			// next attempt; the regular backoff delay between tries still applies as well.
+			if resErr == nil && res.StatusCode == http.StatusTooManyRequests && try < maxRetryCount-1 {
+				delay := retryAfterDelay(res, time.Now())
+				contract.IgnoreError(res.Body.Close())
+				if delay > 0 {
+					select {
+					case <-req.Context().Done():
+						return false, nil, req.Context().Err()
+					case <-time.After(delay):
+					}
+				}
+				return false, nil, nil
+			}
+
 			if opts.HandshakeTimeoutsOnly {
 				if resErr != nil && strings.Contains(resErr.Error(), "net/http: TLS handshake timeout") {
 					// If we have a handshake timeout, we can retry the request.
