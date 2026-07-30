@@ -30,4 +30,8 @@ COPY registry-proxy-linux-$TARGETARCH /usr/local/bin/registry-proxy
 # (PULUMI_POD_SHIM_BIN names this path), adapting plugins that predate the SDK bind
 # contract to the well-known plugin port that address mode attaches to.
 COPY pulumi-pod-shim-linux-$TARGETARCH /usr/local/bin/pulumi-pod-shim
+# This branch's language SDKs, for program images to borrow (COPY --from this image)
+# until released SDKs carry the bind/advertise contracts. Arch-independent.
+COPY sdk-nodejs/ /opt/pulumi-sdk/nodejs/
+COPY sdk-python/ /opt/pulumi-sdk/python/
 ENTRYPOINT ["pulumi"]

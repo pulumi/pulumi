@@ -97,6 +97,15 @@ echo "==> cross-compiling pulumi-pod-shim (linux/amd64, linux/arm64)"
 ( cd "\$PKG_DIR" && GOWORK=off GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o "\$WORK/pulumi-pod-shim-linux-amd64" ./cmd/pulumi-pod-shim )
 ( cd "\$PKG_DIR" && GOWORK=off GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o "\$WORK/pulumi-pod-shim-linux-arm64" ./cmd/pulumi-pod-shim )
 
+echo "==> building + staging this branch's language SDKs (for program images to borrow via COPY --from)"
+# Built fresh on every publish, never reused: a stale bin/ would ship an SDK without the
+# bind/advertise contracts, and everything that borrows it would fail in ways that read
+# like example bugs. Python needs no build (lib/pulumi is the shipped package).
+( cd "\$ROOT_DIR/sdk/nodejs" && mise exec -- make build_package >/dev/null )
+cp -R "\$ROOT_DIR/sdk/nodejs/bin" "\$WORK/sdk-nodejs"
+cp -R "\$ROOT_DIR/sdk/python/lib/pulumi" "\$WORK/sdk-python"
+find "\$WORK/sdk-python" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+
 echo "==> ensuring a multi-arch buildx builder (docker-container driver)"
 docker buildx inspect pulumi-pod-publish >/dev/null 2>&1 || docker buildx create --name pulumi-pod-publish --driver docker-container --bootstrap
 

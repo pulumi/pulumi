@@ -28,4 +28,8 @@ COPY pulumi-language-nodejs-linux /usr/local/bin/pulumi-language-nodejs
 COPY pulumi-language-python-linux /usr/local/bin/pulumi-language-python
 COPY registry-proxy-linux /usr/local/bin/registry-proxy
 COPY pulumi-pod-shim-linux /usr/local/bin/pulumi-pod-shim
+# This branch's language SDKs, for program images to borrow (COPY --from this image)
+# until released SDKs carry the bind/advertise contracts. Arch-independent.
+COPY sdk-nodejs/ /opt/pulumi-sdk/nodejs/
+COPY sdk-python/ /opt/pulumi-sdk/python/
 ENTRYPOINT ["pulumi"]

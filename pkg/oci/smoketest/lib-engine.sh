@@ -55,6 +55,21 @@ build_engine_image() {
         go build -o "$WORK/cli/$bin-linux" . )
   done
 
+  # This branch's language SDKs, baked at /opt/pulumi-sdk so program images can borrow
+  # them (COPY --from the engine image) until released SDKs carry the bind/advertise
+  # contracts. The Node bin/ is a build output: reused when present to keep smoke runs
+  # fast — after editing sdk/nodejs, `make build_package` there yourself.
+  if [ ! -f "$root/sdk/nodejs/bin/package.json" ]; then
+    echo "==> building the Node SDK (sdk/nodejs -> bin/)"
+    ( cd "$root/sdk/nodejs" && mise exec -- make build_package >/dev/null )
+  else
+    echo "==> staging existing sdk/nodejs/bin (rebuild with 'make build_package' after SDK edits)"
+  fi
+  rm -rf "$WORK/cli/sdk-nodejs" "$WORK/cli/sdk-python"
+  cp -R "$root/sdk/nodejs/bin" "$WORK/cli/sdk-nodejs"
+  cp -R "$root/sdk/python/lib/pulumi" "$WORK/cli/sdk-python"
+  find "$WORK/cli/sdk-python" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+
   echo "==> building engine image $ENGINE_IMAGE"
   docker buildx build --builder "$BUILDER" --load \
     -t "$ENGINE_IMAGE" -f "$SMOKE_DIR/Dockerfile.cli" "$WORK/cli"
