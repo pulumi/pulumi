@@ -802,6 +802,8 @@ func TestResolvePackage(t *testing.T) {
 				resolvedSpec = result.Spec
 			case PackageResolution:
 				resolvedSpec = result.Spec
+			case OCIResolution:
+				resolvedSpec = result.Spec
 			default:
 				require.Failf(t, "invalid Resolution type", "type %T", result)
 			}
@@ -810,6 +812,22 @@ func TestResolvePackage(t *testing.T) {
 			assert.Equal(t, tt.expected, resolution, "second resolution should be the same")
 		})
 	}
+}
+
+// An oci:// source is a pin: Resolve recognizes it before any other interpretation —
+// registry-identifier parsing rejects it as "invalid identifier", which is exactly what
+// `pulumi install` used to hit replaying a pin `package add oci://` had recorded — and
+// returns it verbatim, so resolution is trivially idempotent.
+func TestResolveOCIPin(t *testing.T) {
+	t.Parallel()
+	spec := workspace.PackageSpec{Source: "oci://localhost:5006/pulumi/pulumi-provider-greeting:v0.1.0"}
+	res, err := Resolve(t.Context(), nil, nil, spec, Options{})
+	require.NoError(t, err)
+	require.Equal(t, OCIResolution{Spec: spec}, res)
+
+	again, err := Resolve(t.Context(), nil, nil, spec, Options{ResolveWithRegistry: true})
+	require.NoError(t, err)
+	require.Equal(t, res, again, "the pin resolves the same regardless of registry options")
 }
 
 func TestVCSURLHint(t *testing.T) {

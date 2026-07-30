@@ -375,6 +375,14 @@ func hashLocalPath(path string) pluginHash {
 	return pluginHash(h.Sum64())
 }
 
+func hashOCIRef(ref string) pluginHash {
+	var h maphash.Hash
+	h.SetSeed(mapHashSeed)
+	h.WriteString("oci!")
+	h.WriteString(ref)
+	return pluginHash(h.Sum64())
+}
+
 // runBundle represents the information necessary to actually run a package.
 //
 // Each in-flight package owns its own runBundle. The plugin-level info field is
@@ -851,6 +859,25 @@ func (step resolveStep) run(ctx context.Context, p state) error {
 	}
 
 	switch result := result.(type) {
+	// An oci:// pin: there is no plugin binary to download or install — the engine pulls
+	// and runs the IMAGE at deploy time. The only install-time work is SDK generation,
+	// which the generateLocalSDKStep already queued for this spec performs by running the
+	// image as a container: recording the ref as the "plugin path" is what routes
+	// RunPackage onto its oci branch (see packageworkspace.RunPackage).
+	case packageresolution.OCIResolution:
+		*step.resolvedSpec = result.Spec
+		_, ready, isDuplicate, err := newSpecNode(hashOCIRef(result.Spec.Source),
+			workspace.PluginDescriptor{Name: result.Spec.Source}, step.runBundleOut, p, step.parent)
+		if err != nil {
+			return err
+		}
+		if isDuplicate {
+			return nil
+		}
+		defer ready()
+		step.runBundleOut.info.pluginPath = result.Spec.Source
+		return nil
+
 	// Just check that the project is there, and install any dependencies if there is
 	// a PulumiPlugin file found.
 	case packageresolution.PathResolution:

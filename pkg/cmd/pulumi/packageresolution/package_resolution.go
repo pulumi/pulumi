@@ -98,7 +98,7 @@ type Options struct {
 
 // The result of running [Resolve].
 //
-// Resolution will be one of 3 types:
+// Resolution will be one of 4 types:
 //
 // - [PackageResolution]: The spec was resolved to a specific Pulumi package.
 //
@@ -106,6 +106,8 @@ type Options struct {
 // parameterization makes resolving to a full package impossible.
 //
 // - [PathResolution]: The spec was resolved to a local plugin path on disk.
+//
+// - [OCIResolution]: The spec is pinned to a provider image by an oci:// ref.
 type Resolution interface {
 	isResolution()
 }
@@ -113,6 +115,7 @@ type Resolution interface {
 func (PackageResolution) isResolution() {}
 func (PluginResolution) isResolution()  {}
 func (PathResolution) isResolution()    {}
+func (OCIResolution) isResolution()     {}
 
 type (
 	// A fully resolved package.
@@ -144,6 +147,14 @@ type (
 		// The path to the plugin on disk.
 		Path                 string
 		ParameterizationArgs []string
+	}
+	// A package pinned to a provider *image* by an oci:// ref, as `package add
+	// oci://<ref>` records in Pulumi.yaml. There is no plugin binary to download —
+	// the engine pulls and runs the image at deploy time, and dev-time schema needs
+	// (SDK generation) run it as a container too — so the ref, used verbatim, is the
+	// package's identity and its location in one.
+	OCIResolution struct {
+		Spec workspace.PackageSpec
 	}
 )
 
@@ -287,6 +298,13 @@ func Resolve(
 	options Options,
 ) (Resolution, error) {
 	logging.V(3).Infof("Resolving package from %#v\n", spec)
+	// An oci:// source is a pin: it names the provider image AND where it lives, so there
+	// is nothing to look up — not a registry identifier, not a downloadable URL, not a
+	// path. Recognize it before every other interpretation, or it falls through to
+	// registry-identifier parsing and fails as an "invalid identifier".
+	if strings.HasPrefix(spec.Source, "oci://") {
+		return OCIResolution{Spec: spec}, nil
+	}
 	if plugin.IsLocalPluginPath(ctx, spec.Source) {
 		return PathResolution{
 			Path:                 spec.Source,
