@@ -1,6 +1,6 @@
 component: cli/import
 kind: fix
-body: Generate explicit providers in the import file's resources list instead of the deprecated providerInputs section when creating import files from preview
+body: Generate explicit providers in the import file `resources` instead of the deprecated `providerInputs` section when creating import files from preview
 time: 2026-07-30T17:10:14.460366+02:00
 custom:
     PR: "24135"
