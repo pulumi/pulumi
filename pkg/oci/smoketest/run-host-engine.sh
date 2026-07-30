@@ -151,6 +151,25 @@ if [ -z "$PET" ]; then
   exit 1
 fi
 
+echo "==> PHASE: pulumi package get-schema oci://$IMAGE_REF (host-mode schema fetch)"
+pulumi package get-schema "oci://$IMAGE_REF" >"$WORK/schema.json" 2>"$WORK/schema.err" ||
+  { cat "$WORK/schema.err"; exit 1; }
+if ! grep -q '"name": "random"' "$WORK/schema.json"; then
+  echo "!! get-schema did not return the random provider's schema"
+  exit 1
+fi
+SCHEMA_ATTACH="$(grep 'oci: provider image .* running as container' "$WORK/schema.err" | head -1)"
+echo "    $SCHEMA_ATTACH"
+if ! echo "$SCHEMA_ATTACH" | grep -qE 'attaching at 127\.0\.0\.1:[0-9]+'; then
+  echo "!! expected the host engine to attach the schema container at 127.0.0.1:<published port>"
+  exit 1
+fi
+if docker ps --filter "label=$POD_LABEL" --format '{{.Names}}' | grep -q -- '-schema-'; then
+  echo "!! a schema container is still running — the per-container stop leaked it"
+  exit 1
+fi
+echo "    host-mode schema fetch works: schema read through a published port, container reaped"
+
 echo "==> pulumi destroy (a second host-engine process; the provider container starts fresh)"
 pulumi destroy --yes --skip-preview 2>&1 | tee "$WORK/destroy.log"
 if ! grep -qE 'deleted' "$WORK/destroy.log"; then

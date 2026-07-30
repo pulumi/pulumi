@@ -48,6 +48,21 @@ const flagDynamic: ResourceValidationPolicy = {
     },
 };
 
+// The host-mode (Mode 1) smoke's companion program is Go, which has no dynamic
+// providers, so it registers a RandomPet instead; flag that too, with the same
+// baked-marker proof. Inert for the pod test, whose program creates no RandomPet.
+const flagRandomPet: ResourceValidationPolicy = {
+    name: "oci-policy-smoke-flag-random-pet",
+    description: "Flags the host-mode smoke test's RandomPet to prove the analyzer ran from its image.",
+    enforcementLevel: "advisory",
+    validateResource: (args, reportViolation) => {
+        if (args.type === "random:index/randomPet:RandomPet") {
+            const marker = fs.readFileSync("/policy-marker", "utf8").trim();
+            reportViolation(`oci policy ran from its image: marker=${marker}`);
+        }
+    },
+};
+
 new PolicyPack("oci-policy-smoke", {
-    policies: [flagDynamic],
+    policies: [flagDynamic, flagRandomPet],
 });
