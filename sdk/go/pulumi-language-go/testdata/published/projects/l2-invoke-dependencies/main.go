@@ -20,9 +20,7 @@ func main() {
 			Value: simpleinvoke.SecretInvokeOutput(ctx, simpleinvoke.SecretInvokeOutputArgs{
 				Value:          pulumi.String("hello"),
 				SecretResponse: first.Value,
-			}, nil).ApplyT(func(invoke simpleinvoke.SecretInvokeResult) (bool, error) {
-				return invoke.Secret, nil
-			}).(pulumi.BoolOutput),
+			}, nil).Secret(),
 		})
 		if err != nil {
 			return err

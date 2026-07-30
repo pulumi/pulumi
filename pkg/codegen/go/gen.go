@@ -1814,6 +1814,56 @@ func (pkg *pkgContext) fieldName(r *schema.Resource, field *schema.Property) str
 	return res
 }
 
+type outputPropertyAccessorReceiver int
+
+const (
+	// regularOutputReceiver selects accessors generated on TOutput.
+	regularOutputReceiver outputPropertyAccessorReceiver = iota
+	// pointerOutputReceiver selects accessors generated on TPtrOutput.
+	pointerOutputReceiver
+)
+
+// outputPropertyAccessorName returns the generated accessor name for a property on the given output receiver.
+func outputPropertyAccessorName(propertyName string, receiver outputPropertyAccessorReceiver) string {
+	name := Title(propertyName)
+	if receiver == pointerOutputReceiver {
+		switch name {
+		case "IsSecret", "ElementType":
+			name += "Prop"
+		}
+		return name
+	}
+
+	if isReservedResourceField("", name) {
+		name += "_"
+	}
+	switch strings.ToLower(propertyName) {
+	case "elementtype", "issecret":
+		name = "Get" + name
+	}
+	return name
+}
+
+// supportsOutputPropertyAccessors reports whether an object type has generated property accessors on the given receiver.
+func (pkg *pkgContext) supportsOutputPropertyAccessors(
+	objectType *schema.ObjectType,
+	receiver outputPropertyAccessorReceiver,
+) bool {
+	if objectType.IsOverlay || objectType.IsInputShape() {
+		return false
+	}
+
+	details, ok := pkg.typeDetails[objectType]
+	if !ok {
+		return false
+	}
+
+	if receiver == pointerOutputReceiver {
+		return details.ptrOutput && goPackageInfo(pkg.pkg).Generics != GenericsSettingGenericsOnly
+	}
+	return details.output
+}
+
 func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessage string,
 	properties []*schema.Property,
 ) error {
@@ -2071,11 +2121,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) e
 				outputType = pkg.genericOutputType(p.Type)
 			}
 
-			propName := pkg.fieldName(nil, p)
-			switch strings.ToLower(p.Name) {
-			case "elementtype", "issecret":
-				propName = "Get" + propName
-			}
+			propName := outputPropertyAccessorName(p.Name, regularOutputReceiver)
 			fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, propName, outputType)
 			if !genArgs.usingGenericTypes {
 				fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n",
@@ -2113,12 +2159,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) e
 				deref = "&"
 			}
 
-			funcName := Title(p.Name)
-			// Avoid conflicts with Output interface for lifted attributes.
-			switch funcName {
-			case "IsSecret", "ElementType":
-				funcName = funcName + "Prop"
-			}
+			funcName := outputPropertyAccessorName(p.Name, pointerOutputReceiver)
 
 			fmt.Fprintf(w, "func (o %sPtrOutput) %s() %s {\n", name, funcName, outputType)
 			fmt.Fprintf(w, "\treturn o.ApplyT(func (v *%s) %s {\n", name, applyType)
