@@ -41,17 +41,17 @@ func main() {
 		if err != nil {
 			return err
 		}
-		idMap := map[string]interface{}{
+		idMap := map[string]pulumi.String{
 			"source1Token": source1.ID(),
 			"source2Token": source2.ID(),
 		}
 		_, err = primitive.NewResource(ctx, "sink1", &primitive.ResourceArgs{
 			Boolean: pulumi.Bool(false),
-			Float:   idMap["source1Token"].(string),
-			Integer: idMap["source1Token"].(string),
-			String:  idMap["source1Token"].(string),
+			Float:   idMap["source1Token"],
+			Integer: idMap["source1Token"],
+			String:  idMap["source1Token"],
 			NumberArray: pulumi.Float64Array{
-				idMap["source1Token"].(string),
+				idMap["source1Token"],
 			},
 			BooleanMap: pulumi.BoolMap{
 				"sink": pulumi.Bool(false),
@@ -61,7 +61,7 @@ func main() {
 			return err
 		}
 		sink2, err := primitive.NewResource(ctx, "sink2", &primitive.ResourceArgs{
-			Boolean: idMap["source2Token"].(string),
+			Boolean: idMap["source2Token"],
 			Float:   pulumi.Float64(1),
 			Integer: pulumi.Int(2),
 			String:  pulumi.String("abc"),
@@ -69,7 +69,7 @@ func main() {
 				pulumi.Float64(3),
 			},
 			BooleanMap: pulumi.BoolMap{
-				"sink": idMap["source2Token"].(string),
+				"sink": idMap["source2Token"],
 			},
 		})
 		if err != nil {

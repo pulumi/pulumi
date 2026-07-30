@@ -16,7 +16,7 @@ func main() {
 		}
 		main, err := unknown.NewMain(ctx, "main", &unknown.MainArgs{
 			First: "hello",
-			Second: map[string]interface{}{
+			Second: map[string]string{
 				"foo": "bar",
 			},
 		})

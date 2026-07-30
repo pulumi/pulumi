@@ -32,7 +32,7 @@ func main() {
 				0,
 				1,
 			},
-			CidrBlocks: map[string]interface{}{
+			CidrBlocks: map[string]string{
 				"one": "uno",
 				"two": "dos",
 			},
@@ -49,7 +49,7 @@ func main() {
 					Name: "Second",
 				},
 			},
-			DeploymentZones: map[string]interface{}{
+			DeploymentZones: map[string]*DeploymentZonesArgs{
 				"first": &DeploymentZonesArgs{
 					Zone: "First zone",
 				},
