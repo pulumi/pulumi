@@ -199,7 +199,7 @@ func TestRetry429ContextCanceledDuringWait(t *testing.T) {
 	}))
 	defer server.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "POST", server.URL, strings.NewReader("hello, server"))
 	require.NoError(t, err)

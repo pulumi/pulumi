@@ -119,7 +119,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 			// next attempt; the regular backoff delay between tries still applies as well.
 			if resErr == nil && res.StatusCode == http.StatusTooManyRequests && try < maxRetryCount-1 {
 				delay := retryAfterDelay(res, time.Now())
-				contract.IgnoreError(res.Body.Close())
+				contract.IgnoreClose(res.Body)
 				if delay > 0 {
 					select {
 					case <-req.Context().Done():
