@@ -360,6 +360,7 @@ const (
 	providerBinDir   = "/plugin"
 	injectedBinDir   = "/plugins"
 	injectedBinPath  = injectedBinDir + "/provider"
+	injectedShimPath = injectedBinDir + "/shim"
 	pluginVolumePrfx = "plugin-"
 )
 
@@ -739,6 +740,24 @@ func (h *containerHost) providerContainer(
 		cfg.Image = programImage
 		cfg.Volumes = append(cfg.Volumes, VolumeMount{Source: vol.Name, Target: injectedBinDir})
 		cfg.Entrypoint = []string{injectedBinPath}
+		if podAddressMode() {
+			// The /plugin copy above carries the forwarder shim whenever the provider
+			// image was synthesized for address mode; boot through it so a stock binary
+			// (which ignores PULUMI_PLUGIN_LISTEN_ADDRESS) is still reachable at the
+			// well-known port. A contract-SDK binary ships no shim and needs none, so
+			// the choice is made where the file is visible — the engine cannot cheaply
+			// see inside the volume, and the program image has a shell by construction
+			// (this archetype exists to exec the program's toolchain). Absent both shim
+			// and contract, Provider()'s handshake honesty check names the failure.
+			cfg.Entrypoint = []string{"sh", "-c", fmt.Sprintf(
+				"if [ -x %[1]s ]; then exec %[1]s %[2]s; else exec %[2]s; fi",
+				injectedShimPath, injectedBinPath)}
+			// The shim reads its ingress port from the environment. A synthesized
+			// provider image bakes this var into its own config, but here the shim
+			// runs from the PROGRAM image, which carries no such env — so the engine
+			// supplies it, from the same constant the listen address above names.
+			cfg.Env["PULUMI_POD_SHIM_PORT"] = strconv.Itoa(pluginListenPort)
+		}
 	} else {
 		// Every other provider runs from its own image (carrying its own tooling), with
 		// the shared workspace already mounted above — nothing to inject. This is the
