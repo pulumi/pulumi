@@ -107,12 +107,21 @@ func runNew(ctx context.Context, args newArgs) error {
 		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
-	// Default to discarding output when callers (e.g. tests) don't provide writers.
+	// Default to discarding output and the flat chooser when callers (e.g. tests) don't provide them.
 	if args.stdout == nil {
 		args.stdout = io.Discard
 	}
 	if args.stderr == nil {
 		args.stderr = io.Discard
+	}
+	if args.chooseTemplateGuided == nil {
+		args.chooseTemplateGuided = args.chooseTemplate
+	}
+	if args.promptForAIProjectURL == nil {
+		args.promptForAIProjectURL = func(context.Context, pkgWorkspace.Context, newArgs, display.Options,
+		) (string, error) {
+			return "", nil
+		}
 	}
 
 	// Prepare options.
@@ -183,7 +192,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
-	if args.templateNameOrURL == "" && args.promptForAIProjectURL != nil {
+	if args.templateNameOrURL == "" && wantsAI(args) {
 		aiURL, err := args.promptForAIProjectURL(ctx, ws, args, opts)
 		if err != nil {
 			return err
@@ -535,7 +544,7 @@ func runNew(ctx context.Context, args newArgs) error {
 // templateChooser picks the guided provider/language flow only when the user named no template at all.
 // Any named template or URL already narrows the choice, so those disambiguate against the flat list.
 func (args newArgs) templateChooser() chooseTemplateFunc {
-	if args.templateNameOrURL == "" && args.chooseTemplateGuided != nil {
+	if args.templateNameOrURL == "" {
 		return args.chooseTemplateGuided
 	}
 	return args.chooseTemplate
@@ -637,11 +646,12 @@ func NewNewCmd() *cobra.Command {
 					slog.WarnContext(ctx, "could not list templates", "err", err)
 					return err
 				}
-				available, _ := templatesToOptionArrayAndMap(templates)
+				sorted := sortedForDisplay(templates)
+				label := templateLabeler(sorted)
 				fmt.Fprintln(cmd.OutOrStdout())
 				fmt.Fprintln(cmd.OutOrStdout(), "Available Templates:")
-				for _, t := range available {
-					fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", t)
+				for _, t := range sorted {
+					fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", label(t))
 				}
 				return nil
 			}
@@ -713,8 +723,8 @@ func NewNewCmd() *cobra.Command {
 		&args.aiLanguage, "language", "Language to use for Pulumi AI "+
 			fmt.Sprintf("(must be one of %s)", httpstate.PulumiAILanguagesClause),
 	)
-	cmd.PersistentFlags().BoolP("template-mode", "t", false, "Deprecated: no longer has any effect")
-	_ = cmd.PersistentFlags().MarkHidden("template-mode")
+	cmd.PersistentFlags().BoolP("template-mode", "t", false, "No longer has any effect")
+	_ = cmd.PersistentFlags().MarkDeprecated("template-mode", "it no longer has any effect")
 	cmd.PersistentFlags().StringSliceVar(
 		&args.runtimeOptions, "runtime-options", []string{},
 		"Additional options for the language runtime (format: key1=value1,key2=value2)",
@@ -858,10 +868,6 @@ func promptRuntimeOptions(ctx *plugin.Context, language plugin.LanguageRuntime, 
 func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args newArgs,
 	opts display.Options,
 ) (string, error) {
-	if !wantsAI(args) {
-		return "", nil
-	}
-
 	// Try to read the current project
 	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {

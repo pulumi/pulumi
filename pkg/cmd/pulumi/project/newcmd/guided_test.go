@@ -17,6 +17,7 @@ package newcmd
 import (
 	"context"
 	"errors"
+	"io"
 	"testing"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -51,8 +52,9 @@ type fakeRegistryTemplate struct {
 func (f fakeRegistryTemplate) FromRegistry() bool { return true }
 func (f fakeRegistryTemplate) Publisher() string  { return f.publisher }
 
-// scriptedSelect answers each prompt in order, asserting the option offered is present.
-func scriptedSelect(t *testing.T, answers ...string) (selectFunc, *[]([]string)) {
+// scriptedSelect answers each prompt in order, asserting the option offered is present. An error
+// entry is returned from the prompt as-is.
+func scriptedSelect(t *testing.T, answers ...any) (selectFunc, *[]([]string)) {
 	t.Helper()
 	var offered [][]string
 	i := 0
@@ -61,16 +63,12 @@ func scriptedSelect(t *testing.T, answers ...string) (selectFunc, *[]([]string))
 		require.Less(t, i, len(answers), "unexpected extra prompt: %q with %v", message, options)
 		answer := answers[i]
 		i++
+		if err, ok := answer.(error); ok {
+			return "", err
+		}
 		require.Contains(t, options, answer, "scripted answer %q not offered in %v", answer, options)
-		return answer, nil
+		return answer.(string), nil
 	}, &offered
-}
-
-func TestFromRegistry(t *testing.T) {
-	t.Parallel()
-
-	assert.False(t, fakeTemplate{name: "aws-typescript"}.FromRegistry())
-	assert.True(t, fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}.FromRegistry())
 }
 
 func TestGuidedResolvesFeaturedProvider(t *testing.T) {
@@ -98,7 +96,8 @@ func TestGuidedShowsNoRegistryRowsWithoutRegistryTemplates(t *testing.T) {
 	_, err := chooseGuided(templates, display.Options{}, sel)
 	require.NoError(t, err)
 	require.Len(t, *offered, 2, "expected exactly cloud + language prompts")
-	assert.Equal(t, []string{"AWS", optionOther, optionBrowseAll}, (*offered)[0])
+	assert.Equal(t, []string{"AWS", optionBrowseAll}, (*offered)[0],
+		"no Other row when every available provider is featured")
 }
 
 func TestGuidedOtherExpandsToSecondProviderList(t *testing.T) {
@@ -142,24 +141,46 @@ func TestGuidedNonePositionInCloudPrompt(t *testing.T) {
 		fakeTemplate{name: "aws-typescript"},
 		fakeTemplate{name: "azure-typescript"},
 		fakeTemplate{name: "gcp-typescript"},
+		fakeTemplate{name: "linode-go"},
 		fakeTemplate{name: "typescript"},
 	}
 	sel, offered := scriptedSelect(t, "None", "TypeScript")
 
 	_, err := chooseGuided(templates, display.Options{}, sel)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"AWS", "Azure", "GCP", "None", optionOther, optionBrowseAll}, (*offered)[0])
+	assert.Equal(t, []string{"AWS", "Azure", "GCP", optionOther, "None", optionBrowseAll}, (*offered)[0],
+		"None sits below Other so the curated providers stay adjacent")
 }
 
-func TestGuidedBrowseAllFallsBackToFlatList(t *testing.T) {
+func TestGuidedBrowseAllListsEveryTemplateInline(t *testing.T) {
+	t.Parallel()
+
+	templates := []cmdTemplates.Template{
+		fakeTemplate{name: "aws-typescript"},
+		fakeTemplate{name: "broken", err: errors.New("boom")},
+	}
+	sel, offered := scriptedSelect(t, optionBrowseAll, "aws-typescript    ")
+
+	got, err := chooseGuided(templates, display.Options{}, sel)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "aws-typescript", got.Name())
+
+	require.Len(t, *offered, 2)
+	require.Len(t, (*offered)[1], 2, "browse all must list every template, including broken ones")
+	assert.Contains(t, (*offered)[1][1], BrokenTemplateDescription, "broken templates sort last and are marked")
+}
+
+func TestGuidedInterruptInBrowseAllGoesBackToCloudPrompt(t *testing.T) {
 	t.Parallel()
 
 	templates := []cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}}
-	sel, _ := scriptedSelect(t, optionBrowseAll)
+	sel, _ := scriptedSelect(t, optionBrowseAll, terminal.InterruptErr, "AWS", "TypeScript")
 
 	got, err := chooseGuided(templates, display.Options{}, sel)
-	assert.Nil(t, got)
-	assert.ErrorIs(t, err, errFallBackToFlatList)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "aws-typescript", got.Name(), "interrupt in the browse-all list must return to the cloud prompt")
 }
 
 func TestGuidedNoneJavaIsSplitByBuildSystem(t *testing.T) {
@@ -221,7 +242,7 @@ func TestGuidedFallsBackWhenEverythingIsBroken(t *testing.T) {
 		return "", nil
 	}
 
-	got, err := chooseGuided(templates, display.Options{}, sel)
+	got, err := chooseGuided(templates, display.Options{Stdout: io.Discard}, sel)
 	assert.Nil(t, got)
 	assert.ErrorIs(t, err, errFallBackToFlatList, "the flat chooser is the only surface that marks broken templates")
 }
@@ -233,18 +254,7 @@ func TestGuidedInterruptGoesBackToPreviousStep(t *testing.T) {
 		fakeTemplate{name: "aws-typescript"},
 		fakeTemplate{name: "gcp-go"},
 	}
-	responses := []any{"AWS", terminal.InterruptErr, "GCP", "Go"}
-	i := 0
-	sel := func(message string, options []string, opts display.Options) (string, error) {
-		require.Less(t, i, len(responses), "unexpected extra prompt: %q", message)
-		r := responses[i]
-		i++
-		if err, ok := r.(error); ok {
-			return "", err
-		}
-		require.Contains(t, options, r.(string))
-		return r.(string), nil
-	}
+	sel, _ := scriptedSelect(t, "AWS", terminal.InterruptErr, "GCP", "Go")
 
 	got, err := chooseGuided(templates, display.Options{}, sel)
 	require.NoError(t, err)
@@ -278,8 +288,8 @@ func TestGuidedOrgRowOpensRegistryTemplatesAndSkipsLanguage(t *testing.T) {
 	assert.Equal(t, "vpc-baseline", got.Name())
 
 	require.Len(t, *offered, 2, "org path should be cloud prompt + template list, no language prompt")
-	assert.Equal(t, []string{"AWS", optionOther, "acme templates (1)", optionBrowseAll}, (*offered)[0],
-		"org rows sit between Other and Browse all")
+	assert.Equal(t, []string{"AWS", "acme templates (1)", optionBrowseAll}, (*offered)[0],
+		"org rows sit between the providers and Browse all")
 }
 
 func TestGuidedGroupsRegistryRowsByPublisher(t *testing.T) {
@@ -300,9 +310,26 @@ func TestGuidedGroupsRegistryRowsByPublisher(t *testing.T) {
 	assert.Equal(t, "eks", got.Name())
 
 	assert.Equal(t, []string{
-		"AWS", optionOther, "Registry templates (1)", "acme templates (2)", "globex templates (1)", optionBrowseAll,
+		"AWS", "Registry templates (1)", "acme templates (2)", "globex templates (1)", optionBrowseAll,
 	}, (*offered)[0], "one row per publisher, sorted, unpublished group labeled generically")
 	assert.Equal(t, []string{"eks    ", "gke    "}, (*offered)[1], "org row lists only that org's templates")
+}
+
+func TestGuidedRegistryOnlyOffersPublisherRowsAndBrowseAll(t *testing.T) {
+	t.Parallel()
+
+	templates := []cmdTemplates.Template{
+		fakeRegistryTemplate{fakeTemplate{name: "vpc", desc: "A VPC"}, "acme"},
+	}
+	sel, offered := scriptedSelect(t, "acme templates (1)", "vpc    A VPC")
+
+	got, err := chooseGuided(templates, display.Options{}, sel)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "vpc", got.Name())
+
+	assert.Equal(t, []string{"acme templates (1)", optionBrowseAll}, (*offered)[0],
+		"an empty catalog still goes through the cloud prompt so Browse all stays reachable")
 }
 
 func TestGuidedInterruptInRegistryListGoesBackToCloudPrompt(t *testing.T) {
@@ -312,18 +339,7 @@ func TestGuidedInterruptInRegistryListGoesBackToCloudPrompt(t *testing.T) {
 		fakeTemplate{name: "aws-typescript"},
 		fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"},
 	}
-	responses := []any{"acme templates (1)", terminal.InterruptErr, "AWS", "TypeScript"}
-	i := 0
-	sel := func(message string, options []string, opts display.Options) (string, error) {
-		require.Less(t, i, len(responses), "unexpected extra prompt: %q", message)
-		r := responses[i]
-		i++
-		if err, ok := r.(error); ok {
-			return "", err
-		}
-		require.Contains(t, options, r.(string))
-		return r.(string), nil
-	}
+	sel, _ := scriptedSelect(t, "acme templates (1)", terminal.InterruptErr, "AWS", "TypeScript")
 
 	got, err := chooseGuided(templates, display.Options{}, sel)
 	require.NoError(t, err)
@@ -331,14 +347,14 @@ func TestGuidedInterruptInRegistryListGoesBackToCloudPrompt(t *testing.T) {
 	assert.Equal(t, "aws-typescript", got.Name(), "interrupt in the registry list must return to the cloud prompt")
 }
 
-func TestChooseRegistryTemplateLabelsIncludeDescription(t *testing.T) {
+func TestChooseTemplateFromListLabelsIncludeDescription(t *testing.T) {
 	t.Parallel()
 
 	first := fakeRegistryTemplate{fakeTemplate{name: "vpc", desc: "A VPC by acme"}, "acme"}
 	second := fakeRegistryTemplate{fakeTemplate{name: "vpc", desc: "A VPC by globex"}, "globex"}
 	sel, offered := scriptedSelect(t, "vpc    A VPC by globex")
 
-	got, err := chooseRegistryTemplate(
+	got, err := chooseTemplateFromList(
 		[]cmdTemplates.Template{first, second}, display.Options{}, sel)
 	require.NoError(t, err)
 	assert.Equal(t, second, got, "descriptions must disambiguate same-named templates")
@@ -347,7 +363,7 @@ func TestChooseRegistryTemplateLabelsIncludeDescription(t *testing.T) {
 	assert.Contains(t, (*offered)[0], "vpc    A VPC by acme")
 }
 
-func TestChooseRegistryTemplateDisambiguatesDuplicateNames(t *testing.T) {
+func TestChooseTemplateFromListDisambiguatesDuplicateNames(t *testing.T) {
 	t.Parallel()
 
 	first := fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}
@@ -358,7 +374,7 @@ func TestChooseRegistryTemplateDisambiguatesDuplicateNames(t *testing.T) {
 		return options[1], nil
 	}
 
-	got, err := chooseRegistryTemplate(
+	got, err := chooseTemplateFromList(
 		[]cmdTemplates.Template{first, second}, display.Options{}, sel)
 	require.NoError(t, err)
 	require.NotNil(t, got)
@@ -369,14 +385,14 @@ func TestChooseRegistryTemplateDisambiguatesDuplicateNames(t *testing.T) {
 	assert.Contains(t, offered[1], "(2)")
 }
 
-func TestChooseRegistryTemplateErrorsOnUnknownAnswer(t *testing.T) {
+func TestChooseTemplateFromListErrorsOnUnknownAnswer(t *testing.T) {
 	t.Parallel()
 
 	sel := func(string, []string, display.Options) (string, error) {
 		return "not-a-template", nil
 	}
 
-	got, err := chooseRegistryTemplate(
+	got, err := chooseTemplateFromList(
 		[]cmdTemplates.Template{fakeRegistryTemplate{fakeTemplate{name: "vpc"}, "acme"}},
 		display.Options{},
 		sel,
@@ -395,7 +411,7 @@ func TestGuidedFallsBackWhenNothingIsCurated(t *testing.T) {
 		return "", nil
 	}
 
-	got, err := chooseGuided(templates, display.Options{}, sel)
+	got, err := chooseGuided(templates, display.Options{Stdout: io.Discard}, sel)
 	assert.Nil(t, got)
 	assert.ErrorIs(t, err, errFallBackToFlatList)
 }

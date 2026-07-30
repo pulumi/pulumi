@@ -120,20 +120,21 @@ func TestGuidedChooserFallsBackToFlatWhenNothingIsCurated(t *testing.T) {
 	assert.Contains(t, notice.String(), "Falling back to the full template list.")
 }
 
-func TestGuidedChooserBrowseAllRunsFlat(t *testing.T) {
+func TestGuidedChooserBrowseAllListsInline(t *testing.T) {
 	t.Parallel()
 
 	flat := func([]cmdTemplates.Template, display.Options) (cmdTemplates.Template, error) {
-		return fakeTemplate{name: "flat"}, nil
+		t.Error("flat chooser must not run for Browse all; the guided flow lists templates itself")
+		return nil, nil
 	}
-	sel, _ := scriptedSelect(t, optionBrowseAll)
+	sel, _ := scriptedSelect(t, optionBrowseAll, "aws-typescript    ")
 
 	got, err := guidedChooser(sel, flat)(
 		[]cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}},
 		display.Options{IsInteractive: true},
 	)
 	require.NoError(t, err)
-	assert.Equal(t, "flat", got.Name())
+	assert.Equal(t, "aws-typescript", got.Name())
 }
 
 func TestGuidedChooserMapsInterruptToNoTemplateSelected(t *testing.T) {
@@ -206,19 +207,17 @@ func TestGuidedChooserNonInteractiveReturnsNil(t *testing.T) {
 	assert.Nil(t, got)
 }
 
-func TestTemplatesToOptionArrayAndMapSortsAndMarksBroken(t *testing.T) {
+func TestSortedForDisplaySortsAndMarksBroken(t *testing.T) {
 	t.Parallel()
 
-	options, byOption := templatesToOptionArrayAndMap([]cmdTemplates.Template{
+	sorted := sortedForDisplay([]cmdTemplates.Template{
 		fakeTemplate{name: "zeta"},
 		fakeTemplate{name: "broken", err: errors.New("boom")},
 		fakeTemplate{name: "alpha"},
 	})
-	require.Len(t, options, 3)
-	assert.Contains(t, options[0], "alpha")
-	assert.Contains(t, options[1], "zeta")
-	assert.Equal(t, "alpha", byOption[options[0]].Name())
-
-	assert.Contains(t, options[2], "broken", "broken templates sort to the end")
-	assert.Contains(t, options[2], BrokenTemplateDescription)
+	require.Len(t, sorted, 3)
+	assert.Equal(t, "alpha", sorted[0].Name())
+	assert.Equal(t, "zeta", sorted[1].Name())
+	assert.Equal(t, "broken", sorted[2].Name(), "broken templates sort to the end")
+	assert.Contains(t, templateLabeler(sorted)(sorted[2]), BrokenTemplateDescription)
 }

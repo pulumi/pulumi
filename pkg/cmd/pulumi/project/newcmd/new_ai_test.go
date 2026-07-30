@@ -108,6 +108,7 @@ func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
 	args := newArgs{
 		generateOnly: true,
 		interactive:  true,
+		aiPrompt:     "an s3 bucket",
 		prompt:       promptMock(projectName, ""),
 		promptForAIProjectURL: func(ctx context.Context, ws pkgWorkspace.Context,
 			args newArgs, opts display.Options,

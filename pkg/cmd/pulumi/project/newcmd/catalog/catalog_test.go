@@ -36,18 +36,37 @@ var testTemplateNames = []string{
 
 func testCatalog() *Catalog { return New(testTemplateNames) }
 
+func languageNames(t *testing.T, cat *Catalog, providerID string) []string {
+	t.Helper()
+	require.Contains(t, cat.templateNames, providerID)
+	p := cat.provider(providerID)
+	names := make([]string, len(p.Languages))
+	for i, l := range p.Languages {
+		names[i] = l.DisplayName
+	}
+	return names
+}
+
 func TestFeaturedOrder(t *testing.T) {
 	t.Parallel()
 
 	featured := testCatalog().Featured()
-	require.Len(t, featured, 4)
+	require.Len(t, featured, 3)
 	assert.Equal(t, "aws", featured[0].ID)
 	assert.Equal(t, "azure", featured[1].ID)
 	assert.Equal(t, "gcp", featured[2].ID)
-	assert.Equal(t, "none", featured[3].ID)
-	for _, p := range featured {
-		assert.True(t, p.Featured, "%s should be featured", p.ID)
-	}
+}
+
+func TestNoneIsItsOwnPseudoProvider(t *testing.T) {
+	t.Parallel()
+
+	none, ok := testCatalog().None()
+	require.True(t, ok)
+	assert.Equal(t, "none", none.ID)
+	assert.Equal(t, "None", none.DisplayName)
+
+	_, ok = New([]string{"aws-typescript"}).None()
+	assert.False(t, ok, "None must be absent when there are no bare templates")
 }
 
 func TestNoneIsNotInOthers(t *testing.T) {
@@ -83,22 +102,13 @@ func TestJavaDisplayNameIsSplitOnlyUnderNone(t *testing.T) {
 	t.Parallel()
 
 	cat := testCatalog()
-	displayNames := func(id string) []string {
-		p, ok := cat.get(id)
-		require.True(t, ok)
-		names := make([]string, len(p.Languages))
-		for i, l := range p.Languages {
-			names[i] = l.DisplayName
-		}
-		return names
-	}
 
-	none := displayNames("none")
+	none := languageNames(t, cat, "none")
 	assert.Contains(t, none, "Java (Maven)")
 	assert.Contains(t, none, "Java (Gradle)")
 	assert.NotContains(t, none, "Java")
 
-	aws := displayNames("aws")
+	aws := languageNames(t, cat, "aws")
 	assert.Contains(t, aws, "Java")
 	assert.NotContains(t, aws, "Java (Maven)")
 }
@@ -106,13 +116,7 @@ func TestJavaDisplayNameIsSplitOnlyUnderNone(t *testing.T) {
 func TestNoneLanguageOrder(t *testing.T) {
 	t.Parallel()
 
-	none, ok := testCatalog().get("none")
-	require.True(t, ok)
-
-	displayNames := make([]string, len(none.Languages))
-	for i, l := range none.Languages {
-		displayNames[i] = l.DisplayName
-	}
+	displayNames := languageNames(t, testCatalog(), "none")
 	assert.Equal(t, []string{
 		"TypeScript", "Python", "Go", "C#", "YAML", "Java (Maven)",
 		"Java (Gradle)", "JavaScript", "Bun", "F#", "Visual Basic", "HCL",
@@ -125,33 +129,26 @@ func TestOthersAreAlphabeticalAndNotFeatured(t *testing.T) {
 	others := testCatalog().Others()
 	require.NotEmpty(t, others)
 
+	featuredIDs := make([]string, len(featuredProviders))
+	for i, p := range featuredProviders {
+		featuredIDs[i] = p.id
+	}
 	names := make([]string, len(others))
 	for i, p := range others {
-		assert.False(t, p.Featured, "%s should not be featured", p.ID)
+		assert.NotContains(t, featuredIDs, p.ID, "%s should not be featured", p.ID)
 		names[i] = p.DisplayName
 	}
-	assert.True(t, sort.StringsAreSorted(names), "Others() not sorted by DisplayName: %v", names)
+	assert.True(t, sort.StringsAreSorted(names),
+		"Others() not sorted by DisplayName; keep the otherProviders declaration alphabetical: %v", names)
 }
 
 func TestLanguageOrderByUsage(t *testing.T) {
 	t.Parallel()
 
-	aws, ok := testCatalog().get("aws")
-	require.True(t, ok)
-
-	displayNames := make([]string, len(aws.Languages))
-	for i, l := range aws.Languages {
-		displayNames[i] = l.DisplayName
-	}
+	displayNames := languageNames(t, testCatalog(), "aws")
 	assert.Equal(t, []string{
 		"TypeScript", "Python", "Go", "C#", "YAML", "Java", "Bun", "F#", "Scala", "Visual Basic", "HCL",
 	}, displayNames)
-
-	ranks := make([]int, len(aws.Languages))
-	for i, l := range aws.Languages {
-		ranks[i] = languageOrder(l.ID)
-	}
-	assert.True(t, sort.IntsAreSorted(ranks), "languages not in non-decreasing usage rank: %v", ranks)
 }
 
 func TestLanguagesAreFilteredPerProvider(t *testing.T) {
@@ -256,11 +253,8 @@ func TestCompoundTemplateNamesStayOutOfCatalog(t *testing.T) {
 	})
 
 	for _, id := range []string{"container-aws", "kubernetes-aws", "esc-connector-lambda", "vm-gcp"} {
-		_, ok := cat.get(id)
-		assert.False(t, ok, "%s must not be minted as a provider", id)
+		assert.NotContains(t, cat.templateNames, id, "%s must not be minted as a provider", id)
 	}
-	_, ok := cat.get("aws")
-	assert.True(t, ok)
-	_, ok = cat.get("kubernetes")
-	assert.True(t, ok, "plain kubernetes is curated and must stay")
+	assert.Contains(t, cat.templateNames, "aws")
+	assert.Contains(t, cat.templateNames, "kubernetes", "plain kubernetes is curated and must stay")
 }

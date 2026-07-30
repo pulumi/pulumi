@@ -35,8 +35,6 @@ const (
 
 type selectFunc func(message string, options []string, opts display.Options) (string, error)
 
-// errFallBackToFlatList signals that the guided flow cannot structure the available templates and
-// the caller should run the flat chooser instead.
 var errFallBackToFlatList = errors.New("fall back to the flat template list")
 
 func surveySelect(message string, options []string, opts display.Options) (string, error) {
@@ -44,9 +42,8 @@ func surveySelect(message string, options []string, opts display.Options) (strin
 		survey.WithPageSize(cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)})))
 }
 
-// pick prompts for one of items, presenting each by its display name, and returns the chosen item.
-// Duplicate display names (possible for registry/org templates) are suffixed so every option is
-// distinct: showing two identical rows would be ambiguous both to the user and to the reverse lookup.
+// pick prompts for one of items. Duplicate display names are suffixed so the label-to-item lookup
+// stays unambiguous.
 func pick[T any](
 	sel selectFunc, message string, opts display.Options, items []T, name func(T) string,
 ) (T, error) {
@@ -81,42 +78,39 @@ func chooseGuided(
 	var registryTemplates []cmdTemplates.Template
 	curatedNames := make([]string, 0, len(templates))
 	for _, t := range templates {
-		byName[t.Name()] = t
-		// The flat chooser is the only surface that can mark a template broken, so guided never
-		// offers one.
+		// Broken templates are only offered by the flat chooser.
 		if t.Error() != nil {
 			continue
 		}
 		if t.FromRegistry() {
 			registryTemplates = append(registryTemplates, t)
 		} else {
+			byName[t.Name()] = t
 			curatedNames = append(curatedNames, t.Name())
 		}
 	}
 
 	cat := catalog.New(curatedNames)
 	if cat.Empty() && len(registryTemplates) == 0 {
-		if opts.Stdout != nil {
-			fmt.Fprintln(opts.Stdout, "Falling back to the full template list.")
-		}
+		fmt.Fprintln(opts.Stdout, "Falling back to the full template list.")
 		return nil, errFallBackToFlatList
 	}
-	if cat.Empty() {
-		return chooseRegistryTemplate(registryTemplates, opts, sel)
-	}
 
+	rows := cloudRows(cat, registryTemplates, templates)
 	var choice guidedChoice
 	var language string
 	if err := ui.SurveyStack(
 		func() (err error) {
-			choice, err = chooseCloud(cat, registryTemplates, opts, sel)
+			choice, err = chooseCloud(rows, opts, sel)
 			return err
 		},
 		func() (err error) {
 			if choice.template != nil {
 				return nil
 			}
-			language, err = chooseLanguage(choice.provider, opts, sel)
+			l, err := pick(sel, "Which language would you like to use?", opts,
+				choice.provider.Languages, func(l catalog.Language) string { return l.DisplayName })
+			language = l.ID
 			return err
 		},
 	); err != nil {
@@ -126,9 +120,7 @@ func chooseGuided(
 		return choice.template, nil
 	}
 
-	// Past this point the user has answered the provider and language prompts, so a miss is a broken
-	// invariant (the prompts only offer values the catalog can resolve), not a reason to silently fall
-	// back to the flat list after having already prompted. Surface it instead.
+	// The prompts only offer values the catalog can resolve, so a miss here is a broken invariant.
 	name, ok := cat.Resolve(choice.provider.ID, language)
 	if !ok {
 		return nil, fmt.Errorf("no template for provider %q and language %q", choice.provider.ID, language)
@@ -140,34 +132,47 @@ func chooseGuided(
 	return template, nil
 }
 
-// guidedChoice is the outcome of the cloud prompt: either a provider that still needs a language, or
-// a registry template chosen directly.
+// guidedChoice is either a provider that still needs a language, or a registry template chosen
+// directly.
 type guidedChoice struct {
 	provider catalog.Provider
 	template cmdTemplates.Template
 }
 
-// cloudRow is one option in the cloud prompt: a featured provider, the Other expansion, a publishing
-// organization's registry templates, or the Browse-all fallback.
+type rowKind int
+
+const (
+	rowProvider rowKind = iota
+	rowRegistry
+	rowOther
+	rowBrowseAll
+)
+
 type cloudRow struct {
-	label    string
-	provider catalog.Provider
-	registry []cmdTemplates.Template
+	kind      rowKind
+	label     string
+	provider  catalog.Provider        // rowProvider
+	providers []catalog.Provider      // rowOther
+	templates []cmdTemplates.Template // rowRegistry and rowBrowseAll
 }
 
-func cloudRows(cat *catalog.Catalog, registryTemplates []cmdTemplates.Template) []cloudRow {
+func cloudRows(cat *catalog.Catalog, registryTemplates, all []cmdTemplates.Template) []cloudRow {
 	featured := cat.Featured()
 	rows := make([]cloudRow, 0, len(featured)+3)
 	for _, p := range featured {
-		rows = append(rows, cloudRow{label: p.DisplayName, provider: p})
+		rows = append(rows, cloudRow{kind: rowProvider, label: p.DisplayName, provider: p})
 	}
-	rows = append(rows, cloudRow{label: optionOther})
+	if others := cat.Others(); len(others) > 0 {
+		rows = append(rows, cloudRow{kind: rowOther, label: optionOther, providers: others})
+	}
+	if none, ok := cat.None(); ok {
+		rows = append(rows, cloudRow{kind: rowProvider, label: none.DisplayName, provider: none})
+	}
 	rows = append(rows, registryRows(registryTemplates)...)
-	rows = append(rows, cloudRow{label: optionBrowseAll})
+	rows = append(rows, cloudRow{kind: rowBrowseAll, label: optionBrowseAll, templates: sortedForDisplay(all)})
 	return rows
 }
 
-// registryRows buckets registry templates by publishing organization, one row per org.
 func registryRows(registryTemplates []cmdTemplates.Template) []cloudRow {
 	byPublisher := map[string][]cmdTemplates.Template{}
 	for _, t := range registryTemplates {
@@ -186,38 +191,35 @@ func registryRows(registryTemplates []cmdTemplates.Template) []cloudRow {
 		if publisher == "" {
 			label = fmt.Sprintf("Registry templates (%d)", len(group))
 		}
-		rows = append(rows, cloudRow{label: label, registry: group})
+		rows = append(rows, cloudRow{kind: rowRegistry, label: label, templates: group})
 	}
 	return rows
 }
 
-// chooseCloud prompts for a featured cloud, expanding "Other" into the full provider list, an org row
-// into that org's registry templates, and "Browse all templates" into the flat-list fallback.
-func chooseCloud(
-	cat *catalog.Catalog, registryTemplates []cmdTemplates.Template, opts display.Options, sel selectFunc,
-) (guidedChoice, error) {
-	rows := cloudRows(cat, registryTemplates)
+// chooseCloud runs the cloud prompt and its dispatch in a SurveyStack of their own, nested inside
+// chooseGuided's outer stack: an interrupt in a dispatch sub-prompt (a template list, the Other
+// providers) steps back to the cloud prompt here, while an interrupt at the language step lands on
+// this whole function, skipping over the non-prompting dispatch step that would otherwise bounce
+// the interrupt around.
+func chooseCloud(rows []cloudRow, opts display.Options, sel selectFunc) (guidedChoice, error) {
 	var row cloudRow
 	var choice guidedChoice
 	err := ui.SurveyStack(
 		func() (err error) {
 			row, err = pick(sel, "Which cloud would you like to use?", opts, rows,
 				func(r cloudRow) string { return r.label })
-			if err == nil && row.label == optionBrowseAll {
-				return errFallBackToFlatList
-			}
 			return err
 		},
 		func() (err error) {
 			choice = guidedChoice{}
-			switch {
-			case row.registry != nil:
-				choice.template, err = chooseRegistryTemplate(row.registry, opts, sel)
-			case row.label == optionOther:
-				choice.provider, err = pick(sel, "Which provider would you like to use?", opts, cat.Others(),
-					func(p catalog.Provider) string { return p.DisplayName })
-			default:
+			switch row.kind {
+			case rowProvider:
 				choice.provider = row.provider
+			case rowOther:
+				choice.provider, err = pick(sel, "Which provider would you like to use?", opts, row.providers,
+					func(p catalog.Provider) string { return p.DisplayName })
+			case rowRegistry, rowBrowseAll:
+				choice.template, err = chooseTemplateFromList(row.templates, opts, sel)
 			}
 			return err
 		},
@@ -225,19 +227,9 @@ func chooseCloud(
 	return choice, err
 }
 
-func chooseLanguage(provider catalog.Provider, opts display.Options, sel selectFunc) (string, error) {
-	language, err := pick(
-		sel, "Which language would you like to use?", opts,
-		provider.Languages, func(l catalog.Language) string { return l.DisplayName })
-	if err != nil {
-		return "", err
-	}
-	return language.ID, nil
-}
-
-func chooseRegistryTemplate(
-	registryTemplates []cmdTemplates.Template, opts display.Options, sel selectFunc,
+func chooseTemplateFromList(
+	templates []cmdTemplates.Template, opts display.Options, sel selectFunc,
 ) (cmdTemplates.Template, error) {
-	message := fmt.Sprintf("Please choose a template (%d total):", len(registryTemplates))
-	return pick(sel, message, opts, registryTemplates, templateLabeler(registryTemplates))
+	message := fmt.Sprintf("Please choose a template (%d total):", len(templates))
+	return pick(sel, message, opts, templates, templateLabeler(templates))
 }

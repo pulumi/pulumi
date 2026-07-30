@@ -18,7 +18,8 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"sort"
+	"slices"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2/terminal"
 
@@ -36,11 +37,29 @@ func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cm
 		return nil, nil
 	}
 
-	return chooseTemplateFlat(templates, opts)
+	template, err := chooseTemplateFromList(sortedForDisplay(templates), opts, surveySelect)
+	if err != nil {
+		return nil, errors.New("no template selected; please use `pulumi new` to choose one")
+	}
+	return template, nil
 }
 
-// guidedChooser walks the user from provider to language to a starter template, falling back to flat
-// when the guided flow cannot structure the available templates.
+// sortedForDisplay orders templates by display name, broken templates last.
+func sortedForDisplay(templates []cmdTemplates.Template) []cmdTemplates.Template {
+	sorted := slices.Clone(templates)
+	slices.SortStableFunc(sorted, func(a, b cmdTemplates.Template) int {
+		aBroken, bBroken := a.Error() != nil, b.Error() != nil
+		if aBroken != bBroken {
+			if aBroken {
+				return 1
+			}
+			return -1
+		}
+		return strings.Compare(a.DisplayName(), b.DisplayName())
+	})
+	return sorted
+}
+
 func guidedChooser(sel selectFunc, flat chooseTemplateFunc) chooseTemplateFunc {
 	return func(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error) {
 		if !opts.IsInteractive {
@@ -60,20 +79,6 @@ func guidedChooser(sel selectFunc, flat chooseTemplateFunc) chooseTemplateFunc {
 	}
 }
 
-func chooseTemplateFlat(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error) {
-	options, optionToTemplateMap := templatesToOptionArrayAndMap(templates)
-	message := fmt.Sprintf("Please choose a template (%d total):", len(options))
-
-	option, err := surveySelect(message, options, opts)
-	if err != nil {
-		return nil, errors.New("no template selected; please use `pulumi new` to choose one")
-	}
-
-	return optionToTemplateMap[option], nil
-}
-
-// templateLabeler formats each template in the set as its display name padded to the longest name,
-// followed by its description (or a broken marker).
 func templateLabeler(templates []cmdTemplates.Template) func(cmdTemplates.Template) string {
 	maxNameLength := 0
 	for _, template := range templates {
@@ -84,32 +89,8 @@ func templateLabeler(templates []cmdTemplates.Template) func(cmdTemplates.Templa
 		if template.Error() != nil {
 			desc = BrokenTemplateDescription
 		}
-		return fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.DisplayName(), desc)
+		return fmt.Sprintf("%-*s    %s", maxNameLength, template.DisplayName(), desc)
 	}
-}
-
-// templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.
-// Each option string is made up of the template name and description with some padding in between.
-func templatesToOptionArrayAndMap(templates []cmdTemplates.Template) ([]string, map[string]cmdTemplates.Template) {
-	label := templateLabeler(templates)
-
-	var options []string
-	var brokenOptions []string
-	nameToTemplateMap := make(map[string]cmdTemplates.Template)
-	for _, template := range templates {
-		option := label(template)
-		nameToTemplateMap[option] = template
-		if template.Error() != nil {
-			brokenOptions = append(brokenOptions, option)
-		} else {
-			options = append(options, option)
-		}
-	}
-	// After sorting the options, add the broken templates to the end
-	sort.Strings(options)
-	options = append(options, brokenOptions...)
-
-	return options, nameToTemplateMap
 }
 
 // sanitizeTemplate strips sensitive data such as credentials and query strings from a template URL.

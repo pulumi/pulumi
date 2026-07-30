@@ -274,7 +274,7 @@ func (r registryTemplate) Error() error { return nil }
 
 func (r registryTemplate) FromRegistry() bool { return true }
 
-func (r registryTemplate) Publisher() string { return r.t.Publisher }
+func (r registryTemplate) Publisher() string { return r.GetPublisher() }
 
 func (r registryTemplate) Download(ctx context.Context) (ProjectTemplate, error) {
 	templateBytes, err := r.registry.DownloadTemplate(ctx, r.t.DownloadURL)
