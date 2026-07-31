@@ -24,6 +24,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+// Keep this set in sync with the non-private members of Output in sdk/python/lib/pulumi/output.py.
+// Output.__getattr__ cannot project properties whose names are already defined by Output.
 var outputMemberNames = codegen.NewStringSet(
 	"all",
 	"apply",

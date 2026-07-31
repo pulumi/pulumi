@@ -85,6 +85,9 @@ class Output(Generic[T_co]):
     dependency graph' to be created, which properly tracks the relationship between resources.
     """
 
+    # Keep non-private members in sync with outputMemberNames in
+    # pkg/codegen/python/gen_program_lower.go so programgen does not lift conflicting properties.
+
     _data: asyncio.Future[_OutputData[T_co]]
     """
     Single future that resolves to all Output state at once: the value, whether it is known,
