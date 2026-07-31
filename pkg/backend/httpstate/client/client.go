@@ -259,6 +259,7 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 		apiURL:   apiURL,
 		apiToken: apiAccessToken(apiToken),
 		diag:     d,
+		insecure: insecure,
 		restClient: &defaultRESTClient{
 			client: &defaultHTTPClient{
 				client: httpClient,

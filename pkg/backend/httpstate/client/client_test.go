@@ -2158,3 +2158,12 @@ func TestClient_WithRefresh(t *testing.T) {
 		assert.Panics(t, func() { pc.WithRefresh("some-refresh", nil) })
 	})
 }
+
+func TestClientInsecure(t *testing.T) {
+	t.Parallel()
+
+	// Consumers such as the service secrets manager persist Insecure() into stack state and
+	// later rebuild a client from it, so the flag must survive construction.
+	assert.True(t, NewClient("https://api.example.com", "tok", true, nil).Insecure())
+	assert.False(t, NewClient("https://api.example.com", "tok", false, nil).Insecure())
+}
