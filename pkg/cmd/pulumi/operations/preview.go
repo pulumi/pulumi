@@ -59,6 +59,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // buildImportFile takes an event stream from the engine and builds an import file from it for every create.
@@ -362,6 +363,23 @@ func NewPreviewCmd() *cobra.Command {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 
+			var proj *workspace.Project
+			var root string
+			var meta *promise.Promise[map[string]string]
+			if !remoteArgs.Remote {
+				var err error
+				proj, root, err = readProjectForUpdate(ws, client)
+				if err != nil {
+					return err
+				}
+
+				if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+					return err
+				}
+
+				meta = metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
+			}
+
 			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
 				return err
 			}
@@ -430,17 +448,6 @@ func NewPreviewCmd() *cobra.Command {
 
 				return deployment.RunDeployment(ctx, ws, cmd, displayOpts, apitype.Preview, stackName, url, remoteArgs)
 			}
-
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
-				return err
-			}
-
-			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
-				return err
-			}
-
-			meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
 
 			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, displayOpts)
 			if err != nil {
