@@ -89,13 +89,17 @@ echo "==> building python program image $PROGRAM_IMAGE"
 docker buildx build --builder "$BUILDER" --load -q \
   -t "$PROGRAM_IMAGE" -f "$PROGRAM_DIR/Dockerfile" "$PROGRAM_DIR" >/dev/null
 
-echo "==> downloading stock $PROVIDER_PKG provider v$PROVIDER_VERSION (linux/$GOARCH)"
+echo "==> downloading stock $PROVIDER_PKG provider v$PROVIDER_VERSION (linux/$GOARCH) and wrapping it WITH the shim"
 PROVIDER_URL="https://get.pulumi.com/releases/plugins/pulumi-resource-$PROVIDER_PKG-v$PROVIDER_VERSION-linux-$GOARCH.tar.gz"
 curl -fsSL "$PROVIDER_URL" -o "$WORK/provider.tar.gz"
 tar -xzf "$WORK/provider.tar.gz" -C "$WORK/provctx" "pulumi-resource-$PROVIDER_PKG"
 mv "$WORK/provctx/pulumi-resource-$PROVIDER_PKG" "$WORK/provctx/provider-bin"
+# The shim makes the released (contract-less) binary reachable at the well-known
+# port — the thing under test here is the PROGRAM's callback half, so the provider
+# side rides the standard shim wrapping, as run-pod-provider-address.sh does.
+cp "$WORK/cli/pulumi-pod-shim-linux" "$WORK/provctx/pulumi-pod-shim"
 docker buildx build --builder "$BUILDER" --load -q \
-  -t "$PROVIDER_IMAGE" -f "$SMOKE_DIR/Dockerfile.provider" "$WORK/provctx" >/dev/null
+  -t "$PROVIDER_IMAGE" -f "$SMOKE_DIR/Dockerfile.provider-shim" "$WORK/provctx" >/dev/null
 
 echo "==> creating pod network $NET"
 docker network create "$NET" >/dev/null
