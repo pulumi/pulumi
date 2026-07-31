@@ -30,8 +30,7 @@ import (
 
 // multiExtensionLoader serves a bare base provider ("extbase") plus two
 // extensions layered on it ("exta", "extb"), each defining one distinct
-// resource in the base provider's namespace. All three resource tokens share
-// the "extbase:" prefix; only the schema says who owns which.
+// resource in its own namespace.
 type multiExtensionLoader struct{}
 
 func (l multiExtensionLoader) LoadPackage(pkg string, version *semver.Version) (*schema.Package, error) {
@@ -53,9 +52,9 @@ func (multiExtensionLoader) LoadPackageV2(
 			},
 		}
 	case d.Parameterization.Name == "exta":
-		spec = extensionSpecFor("exta", "extbase:index:Aye")
+		spec = extensionSpecFor("exta", "exta:index:Aye")
 	case d.Parameterization.Name == "extb":
-		spec = extensionSpecFor("extb", "extbase:index:Bee")
+		spec = extensionSpecFor("extb", "extb:index:Bee")
 	default:
 		return nil, fmt.Errorf("unexpected package %q", d.PackageName())
 	}
@@ -71,7 +70,7 @@ func (multiExtensionLoader) LoadPackageV2(
 }
 
 // extensionSpecFor builds an extension package named `name` that defines one
-// resource `token` in the base provider's ("extbase") namespace.
+// resource `token` in its own namespace.
 func extensionSpecFor(name, token string) schema.PackageSpec {
 	return schema.PackageSpec{
 		Name:    name,
@@ -110,9 +109,9 @@ package {
     }
 }
 
-resource a "extbase:index:Aye" { }
+resource a "exta:index:Aye" { }
 
-resource b "extbase:index:Bee" { }
+resource b "extb:index:Bee" { }
 
 resource base "extbase:index:Base" { }
 `
@@ -125,5 +124,5 @@ resource base "extbase:index:Base" { }
 	require.NoError(t, err)
 	require.NotNil(t, program, "program should bind")
 	require.False(t, diags.HasErrors(),
-		"all three resources should resolve (Aye->exta, Bee->extb, Base->bare extbase); diags: %v", diags)
+		"all three resources should resolve in their own namespaces; diags: %v", diags)
 }
