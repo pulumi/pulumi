@@ -605,16 +605,19 @@ func NewUpCmd() *cobra.Command {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
-				return err
-			}
+			var meta *promise.Promise[map[string]string]
+			if !remoteArgs.Remote {
+				proj, root, err := readProjectForUpdate(ws, client)
+				if err != nil {
+					return err
+				}
 
-			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
-				return err
-			}
+				if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+					return err
+				}
 
-			meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
+				meta = metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
+			}
 
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
