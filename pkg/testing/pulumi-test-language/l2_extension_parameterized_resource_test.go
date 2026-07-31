@@ -75,6 +75,15 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) GenerateProject(
 	if project.Name != "l2-extension-parameterized-resource" {
 		return nil, fmt.Errorf("unexpected project name %s", project.Name)
 	}
+	// Assert that only the extension package is listed in the project dependencies
+	for name := range req.LocalDependencies {
+		if name == "pulumi" {
+			continue
+		}
+		if name != "myext" {
+			return nil, fmt.Errorf("unexpected local dependency %s", name)
+		}
+	}
 	project.Runtime = workspace.NewProjectRuntimeInfo("mock", nil)
 	projectYaml, err := yaml.Marshal(project)
 	if err != nil {
