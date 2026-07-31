@@ -81,11 +81,7 @@ type Interpreter struct {
 	// the resource is registered as "myComp-res". Nested components accumulate the prefix.
 	namePrefix string
 
-	// packageRefs maps a fully-qualified token (resource, function, or
-	// pulumi:providers:<pkg>) to the package reference RegisterPackage returned.
-	// Keying on the exact token, not package name, keeps extensions that share the
-	// base provider's namespace distinct. A miss resolves to the empty ref, and so
-	// to the default provider.
+	// packageRefs are package references returned by RegisterPackage keyed by package name.
 	packageRefs map[string]string
 
 	// callbacks is the server that handles resource hook callbacks.
@@ -716,28 +712,23 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		pkgName = typ
 	}
 
-	var loadErr error
-	for _, descriptor := range i.lookupPackageDescriptors(pkgName) {
-		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
-		if err != nil {
-			loadErr = errors.Join(loadErr, fmt.Errorf("load package for token %s: %w", token, err))
-			continue
-		}
-		if pkg == "pulumi" && mod == "providers" {
-			return pkgref.Provider()
-		}
-		schemaResource, ok, err := pkgref.Resources().Get(token)
-		if err != nil {
-			return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
-		}
-		if ok {
-			return schemaResource, nil
-		}
+	descriptor := i.lookupPackageDescriptor(pkgName)
+	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+	if err != nil {
+		return nil, fmt.Errorf("load package for token %s: %w", token, err)
 	}
-	if loadErr != nil {
-		return nil, loadErr
+	if pkg == "pulumi" && mod == "providers" {
+		return pkgref.Provider()
 	}
-	return nil, fmt.Errorf("get resource from package for token %s", token)
+	resources := pkgref.Resources()
+	schemaResource, ok, err := resources.Get(token)
+	if err != nil {
+		return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
+	}
+	if !ok {
+		return nil, fmt.Errorf("get resource from package for token %s", token)
+	}
+	return schemaResource, nil
 }
 
 func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema.Function, error) {
@@ -746,42 +737,27 @@ func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema
 
 	token = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
 
-	var loadErr error
-	for _, descriptor := range i.lookupPackageDescriptors(pkg) {
-		pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
-		if err != nil {
-			loadErr = errors.Join(loadErr, fmt.Errorf("load package for token %s: %w", token, err))
-			continue
-		}
-		schemaFunction, ok, err := pkgref.Functions().Get(token)
-		if err != nil {
-			return nil, fmt.Errorf("get function from package for token %s: %w", token, err)
-		}
-		if ok {
-			return schemaFunction, nil
-		}
+	descriptor := i.lookupPackageDescriptor(pkg)
+	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+	if err != nil {
+		return nil, fmt.Errorf("load package for token %s: %w", token, err)
 	}
-	if loadErr != nil {
-		return nil, loadErr
+	functions := pkgref.Functions()
+	schemaFunction, ok, err := functions.Get(token)
+	if err != nil {
+		return nil, fmt.Errorf("get function from package for token %s: %w", token, err)
 	}
-	return nil, fmt.Errorf("get function from package for token %s", token)
+	if !ok {
+		return nil, fmt.Errorf("get function from package for token %s", token)
+	}
+	return schemaFunction, nil
 }
 
-// lookupPackageDescriptors returns the packages a pkgName-namespaced token could
-// resolve to: pkgName itself plus every extension layered on it.
-func (i *Interpreter) lookupPackageDescriptors(pkgName string) []*schema.PackageDescriptor {
-	var candidates []*schema.PackageDescriptor
+func (i *Interpreter) lookupPackageDescriptor(pkgName string) *schema.PackageDescriptor {
 	if descriptor, ok := i.info.PackageDescriptors[pkgName]; ok && descriptor != nil {
-		candidates = append(candidates, descriptor)
-	} else {
-		candidates = append(candidates, &schema.PackageDescriptor{Name: pkgName})
+		return descriptor
 	}
-	for _, descriptor := range i.info.PackageDescriptors {
-		if descriptor != nil && descriptor.Parameterization != nil && descriptor.Name == pkgName {
-			candidates = append(candidates, descriptor)
-		}
-	}
-	return candidates
+	return &schema.PackageDescriptor{Name: pkgName}
 }
 
 func PackageNameFromToken(token string) (string, error) {
@@ -798,7 +774,11 @@ func PackageNameFromToken(token string) (string, error) {
 	return pkg, nil
 }
 
-func (i *Interpreter) getPackageRefFromToken(token string) string { return i.packageRefs[token] }
+func (i *Interpreter) getPackageRefFromToken(token string) string {
+	pkgName, err := PackageNameFromToken(token)
+	contract.AssertNoErrorf(err, "invalid token %q", token)
+	return i.packageRefs[pkgName]
+}
 
 func (i *Interpreter) registerPackages(ctx context.Context) error {
 	if i.monitor == nil {
@@ -855,15 +835,8 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 			return fmt.Errorf("register package %q returned empty reference", key)
 		}
 
-		// Index every token the package defines, plus its provider ref (see packageRefs).
-		ref := resp.GetRef()
-		i.packageRefs["pulumi:providers:"+descriptor.PackageName()] = ref
-		for _, r := range def.Resources {
-			i.packageRefs[r.Token] = ref
-		}
-		for _, f := range def.Functions {
-			i.packageRefs[f.Token] = ref
-		}
+		i.packageRefs[key] = resp.GetRef()
+		i.packageRefs[descriptor.PackageName()] = resp.GetRef()
 	}
 
 	return nil
