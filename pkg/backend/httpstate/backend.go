@@ -2788,6 +2788,19 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 		token = logs.NextToken
 	}
 
+	return b.checkDeploymentResult(ctx, stackID, id)
+}
+
+func (b *cloudBackend) checkDeploymentResult(
+	ctx context.Context, stackID client.StackIdentifier, id string,
+) error {
+	deployment, err := b.client.GetDeployment(ctx, stackID, id)
+	if err != nil {
+		return err
+	}
+	if deployment.Status == "failed" {
+		return errors.New("deployment failed")
+	}
 	return nil
 }
 
@@ -2835,6 +2848,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	// The UpdateEvents API returns a continuation token to only get events after the previous call.
 	var continuationToken *string
 	var lastEvent engine.Event
+	var opResult apitype.OperationResult
 	for {
 		resp, err := b.client.GetUpdateEngineEvents(ctx, update, client.GetUpdateEngineEventsOptions{
 			ContinuationToken: continuationToken,
@@ -2843,6 +2857,9 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 			return err
 		}
 		for _, jsonEvent := range resp.Events {
+			if jsonEvent.SummaryEvent != nil {
+				opResult = jsonEvent.SummaryEvent.Result
+			}
 			event, err := display.ConvertJSONEvent(jsonEvent)
 			if err != nil {
 				return err
@@ -2861,6 +2878,13 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 
 			close(events)
 			<-done
+			switch opResult {
+			case apitype.OperationResultFailed:
+				return errors.New("deployment failed")
+			case apitype.OperationResultCanceled:
+				return backenderr.CancelledError{Operation: string(kind)}
+			case apitype.OperationResultSucceeded:
+			}
 			return nil
 		}
 
