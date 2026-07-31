@@ -7,4 +7,4 @@ export const parameterValue = greeting.parameterValue;
 export const parameterValueFromComponent = greetingComp.parameterValue;
 export const invokeGreeting = myext.greetOutput({
     name: "Pulumi",
-}).apply(invoke => invoke.greeting);
+}).greeting;

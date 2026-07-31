@@ -14,4 +14,4 @@ const third = new snake_names.cool_module.Another_resource("third", {the_input: 
     nested: [{
         value: "fuzz",
     }],
-}).apply(invoke => invoke.nested_output[0].key.value)});
+}).nested_output[0].key.value});

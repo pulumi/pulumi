@@ -8,7 +8,7 @@ const first = new simple.Resource("first", {value: false});
 const second = new simple.Resource("second", {value: simple_invoke.secretInvokeOutput({
     value: "hello",
     secretResponse: first.value,
-}).apply(invoke => invoke.secret)});
+}).secret});
 const third = new simple_invoke.StringResource("third", {text: "third"});
 // third.text is known during preview, but third does not exist yet. SDKs must
 // infer the dependency on third from the invoke's arguments and skip the
