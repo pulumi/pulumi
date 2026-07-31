@@ -9,6 +9,13 @@ FROM python:3.12-slim
 WORKDIR /workspace
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Replace the index copy's contents with this branch's source (install-then-
+# overwrite; see program-python-transform/Dockerfile for the full reasoning). The
+# dynamic-provider entrypoint this image serves must honor the bind contract
+# (PULUMI_PLUGIN_LISTEN_ADDRESS), which no released pulumi package carries.
+COPY sdk-lib/ /usr/local/lib/python3.12/site-packages/pulumi/
+
 COPY __main__.py oci-bootstrap.sh pulumi-language-python-exec ./
 RUN chmod +x oci-bootstrap.sh pulumi-language-python-exec
 RUN echo "oci-dynamic-welded-to-python-image" > /program-marker
