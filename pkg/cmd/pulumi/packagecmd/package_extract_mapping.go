@@ -37,6 +37,7 @@ import (
 
 func newExtractMappingCommand() *cobra.Command {
 	var out string
+	var serverURL string
 
 	cmd := &cobra.Command{
 		Use:   "get-mapping",
@@ -80,7 +81,8 @@ empty string.`,
 			defer contract.IgnoreClose(pctx)
 
 			p, _, err := packages.ProviderFromSource(
-				pkgWorkspace.Instance, pctx, source, registry, env.Global(), 0 /* unbounded concurrency */)
+				pkgWorkspace.Instance, pctx, source, registry, env.Global(),
+				0 /* unbounded concurrency */, serverURL)
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}
@@ -145,6 +147,9 @@ empty string.`,
 	cmd.Use = "get-mapping <key> <schema-source> [provider-key] [flags] [--] [provider-parameter]..."
 
 	cmd.Flags().StringVarP(&out, "out", "o", "", "The file to write the mapping data to")
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
 
 	return cmd
 }

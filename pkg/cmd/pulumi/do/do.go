@@ -68,7 +68,8 @@ func NewDoCmd(
 			pctx *plugin.Context, wd, source string,
 		) (plugin.Provider, error) {
 			registry := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, pctx.Diag, env.Global())
-			p, _, err := packages.ProviderFromSource(ws, pctx, source, registry, env.Global(), 0 /* unbounded concurrency */)
+			p, _, err := packages.ProviderFromSource(
+				ws, pctx, source, registry, env.Global(), 0 /* unbounded concurrency */, "" /* pluginDownloadURL */)
 			return p, err
 		}
 	}

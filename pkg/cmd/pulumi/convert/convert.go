@@ -616,6 +616,7 @@ func generateAndLinkSdksForPackages(
 			env.Global(),
 			0,     /* unbounded concurrency */
 			false, /* asExtension */
+			"",    /* pluginDownloadURL */
 		)
 		if err != nil {
 			return fmt.Errorf("creating package schema: %w", err)

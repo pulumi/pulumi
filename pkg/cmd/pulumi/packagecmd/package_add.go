@@ -48,6 +48,7 @@ func newPackageAddCmd() *cobra.Command {
 	var language string
 	var parameterArgs []string
 	var asExtension bool
+	var serverURL string
 	cmd := &cobra.Command{
 		Use:   "add",
 		Short: "Add a package to your Pulumi project, plugin, or current directory.",
@@ -173,6 +174,7 @@ quoted as a single shell-style string:
 				env.Global(),
 				0,           /* unbounded concurrency */
 				asExtension, /* asExtension */
+				serverURL,   /* pluginDownloadURL */
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
@@ -266,6 +268,9 @@ quoted as a single shell-style string:
 
 	cmd.Flags().StringVar(&language, "language", "",
 		"Run outside a Pulumi project or plugin: [nodejs|python|go|dotnet|java]")
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
 	packages.AddExtensionFlag(cmd, &parameterArgs, &asExtension)
 
 	return cmd
