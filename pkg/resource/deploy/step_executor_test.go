@@ -16,6 +16,8 @@ package deploy
 
 import (
 	"errors"
+	"runtime"
+	"sync"
 	"testing"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -40,6 +42,163 @@ func TestRegisterResourceErrorsOnMissingPendingNew(t *testing.T) {
 	})
 	// Should error, but not panic since the resource is being registered twice.
 	assert.Error(t, err)
+}
+
+type stepGate struct {
+	entered chan struct{}
+	finish  chan struct{}
+}
+
+func newStepGate() *stepGate {
+	return &stepGate{entered: make(chan struct{}), finish: make(chan struct{})}
+}
+
+func (g *stepGate) enter() {
+	close(g.entered)
+	<-g.finish
+}
+
+func (g *stepGate) waitUntilEntered() { <-g.entered }
+
+func (g *stepGate) release() { close(g.finish) }
+
+type pendingWriter struct {
+	lock     *sync.RWMutex
+	acquired chan struct{}
+	release  chan struct{}
+	done     chan struct{}
+}
+
+func (w *pendingWriter) start() {
+	w.acquired = make(chan struct{})
+	w.release = make(chan struct{})
+	w.done = make(chan struct{})
+	go func() {
+		w.lock.Lock()
+		close(w.acquired)
+		<-w.release
+		w.lock.Unlock()
+		close(w.done)
+	}()
+}
+
+func (w *pendingWriter) waitUntilPending() {
+	// Go's RWMutex blocks new readers once a writer is waiting. TryRLock therefore
+	// distinguishes a pending writer from the reader already held by the chain.
+	for w.lock.TryRLock() {
+		w.lock.RUnlock()
+		runtime.Gosched()
+	}
+}
+
+func (w *pendingWriter) assertNotAcquired(t *testing.T) {
+	t.Helper()
+
+	select {
+	case <-w.acquired:
+		t.Fatal("writer unexpectedly acquired the executor lock")
+	default:
+	}
+}
+
+func (w *pendingWriter) finish(t *testing.T) {
+	t.Helper()
+
+	<-w.acquired
+	close(w.release)
+	<-w.done
+}
+
+func TestStepExecutorWriterCannotOvertakeQueuedChain(t *testing.T) {
+	t.Parallel()
+
+	executor := &stepExecutor{
+		incomingChains: make(chan incomingChain, 1),
+		ctx:            t.Context(),
+	}
+
+	// The chain has been accepted but no worker has picked it up.
+	executor.ExecuteSerial(chain{})
+	<-executor.incomingChains
+
+	if executor.workerLock.TryLock() {
+		executor.workerLock.Unlock()
+		t.Fatal("writer overtook a queued chain")
+	}
+	// No worker exists in this test, so release the reservation it would own.
+	executor.workerLock.RUnlock()
+}
+
+func TestStepExecutorReservationSpansStepsWithinChain(t *testing.T) {
+	t.Parallel()
+
+	firstURN := resource.URN("urn:pulumi:stack::project::test:index:Resource::first")
+	secondURN := resource.URN("urn:pulumi:stack::project::test:index:Resource::second")
+	first, second := newStepGate(), newStepGate()
+	gates := map[resource.URN]*stepGate{
+		firstURN:  first,
+		secondURN: second,
+	}
+	deployment := &Deployment{
+		opts: &Options{},
+		events: &mockEvents{
+			OnResourceStepPreF: func(step Step) (any, error) {
+				gates[step.URN()].enter()
+				return nil, nil
+			},
+			OnResourceStepPostF: func(any, Step, resource.Status, error) error {
+				return nil
+			},
+		},
+		news: &gsync.Map[resource.URN, *pkgresource.State]{},
+	}
+	executor := &stepExecutor{
+		deployment:     deployment,
+		incomingChains: make(chan incomingChain, 1),
+		ctx:            t.Context(),
+	}
+
+	newSameStep := func(urn resource.URN) Step {
+		return &SameStep{
+			deployment: deployment,
+			old:        &pkgresource.State{URN: urn},
+			new:        &pkgresource.State{URN: urn},
+		}
+	}
+
+	token := executor.ExecuteSerial(chain{
+		newSameStep(firstURN),
+		newSameStep(secondURN),
+	})
+	request := <-executor.incomingChains
+
+	go func() {
+		executor.executeChain(0, request.Chain)
+		close(request.CompletionChan)
+	}()
+
+	// Step 1 is running with the chain reservation.
+	first.waitUntilEntered()
+
+	// Queue an exclusive writer while step 1 is still blocked.
+	writer := &pendingWriter{lock: &executor.workerLock}
+	writer.start()
+	writer.waitUntilPending()
+
+	// Let step 1 finish. Since the lock is for the whole chain, the writer should not acquire it.
+	first.release()
+
+	select {
+	case <-second.entered:
+		writer.assertNotAcquired(t)
+	case <-writer.acquired:
+		writer.finish(t)
+		t.Fatal("writer acquired the executor lock between steps in the same chain")
+	}
+	second.release()
+
+	token.Wait(t.Context())
+	writer.finish(t)
 }
 
 type mockRegisterResourceOutputsEvent struct {
