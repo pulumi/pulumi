@@ -572,6 +572,45 @@ func mergeAttributeLiteralsIntoPCL(
 	return out, nil
 }
 
+// injectProviderOptionInPCL rewrites a resource snippet's PCL to reference the (external) provider
+// snippet's URN via the given identifier (declared by the snippet's References map). If the
+// source already has a top-level `options` block, `provider = <name>` is added inside it (unless
+// a provider attribute is already present); otherwise a fresh `options { provider = <name> }`
+// block is appended.
+func injectProviderOptionInPCL(source []byte, filename, name string) ([]byte, error) {
+	if len(source) > 0 && source[len(source)-1] != '\n' {
+		source = append(append([]byte{}, source...), '\n')
+	}
+	file, diags := hclwrite.ParseConfig(source, filename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	body := file.Body()
+	overlay, diags := hclwrite.ParseConfig(
+		fmt.Appendf(nil, "provider = %s\n", name), "<options.provider>", hcl.Pos{Line: 1, Column: 1},
+	)
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	providerAttr := overlay.Body().GetAttribute("provider")
+	if providerAttr == nil {
+		return nil, errors.New("failed to construct provider option tokens")
+	}
+	providerTokens := providerAttr.Expr().BuildTokens(nil)
+	for _, block := range body.Blocks() {
+		if block.Type() != "options" {
+			continue
+		}
+		if block.Body().GetAttribute("provider") == nil {
+			block.Body().SetAttributeRaw("provider", providerTokens)
+		}
+		return file.Bytes(), nil
+	}
+	newBlock := body.AppendNewBlock("options", nil)
+	newBlock.Body().SetAttributeRaw("provider", providerTokens)
+	return file.Bytes(), nil
+}
+
 func pclLiteral(flag inputFlagValue) (string, error) {
 	switch flag.typ {
 	case schema.StringType:
