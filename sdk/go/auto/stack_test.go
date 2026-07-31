@@ -491,3 +491,22 @@ func TestPreviewImportResources(t *testing.T) {
 	assert.Contains(t, result.StdOut, "Previewing")
 	assert.NotContains(t, result.StdOut, "Importing")
 }
+
+func TestRunPulumiCmdSyncStackFlagBeforeSeparator(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	m := mockPulumiCommand{}
+	ws, err := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "test", "testproj")), Pulumi(&m))
+	require.NoError(t, err)
+	s, err := NewStack(ctx, "organization/testproj/teststack", ws)
+	require.NoError(t, err)
+
+	_, _, _, err = s.runPulumiCmdSync(ctx, nil, nil, "import", "--from", "converter", "--", "state.json")
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"import", "--from", "converter",
+		"--stack", "organization/testproj/teststack",
+		"--", "state.json",
+	}, m.capturedArgs)
+}
