@@ -15,16 +15,21 @@
 package newcmd
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"iter"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -1450,11 +1455,13 @@ func TestNewCmdYesRejectsInvalidExplicitName(t *testing.T) {
 }
 
 // requiredPackagesRecorder is an in-process language runtime, attached via
-// PULUMI_DEBUG_LANGUAGES, that records the GetRequiredPackages call it receives.
+// PULUMI_DEBUG_LANGUAGES, that records the GetRequiredPackages call it receives and
+// reports a single required package.
 type requiredPackagesRecorder struct {
 	pulumirpc.UnimplementedLanguageRuntimeServer
 
 	programDirectory atomic.Value
+	requiredPackage  *pulumirpc.PackageDependency
 }
 
 func (s *requiredPackagesRecorder) Handshake(
@@ -1477,15 +1484,61 @@ func (s *requiredPackagesRecorder) GetRequiredPackages(
 	_ context.Context, req *pulumirpc.GetRequiredPackagesRequest,
 ) (*pulumirpc.GetRequiredPackagesResponse, error) {
 	s.programDirectory.Store(req.Info.ProgramDirectory)
-	return &pulumirpc.GetRequiredPackagesResponse{}, nil
+	return &pulumirpc.GetRequiredPackagesResponse{
+		Packages: []*pulumirpc.PackageDependency{s.requiredPackage},
+	}, nil
+}
+
+func pluginBinaryName(name string) string {
+	binary := "pulumi-resource-" + name
+	if goruntime.GOOS == "windows" {
+		binary += ".exe"
+	}
+	return binary
+}
+
+// fakePluginServer serves a plugin tarball containing a stub pulumi-resource-<name>
+// binary, in the layout the plugin download machinery expects.
+func fakePluginServer(t *testing.T, name string) *httptest.Server {
+	t.Helper()
+
+	var tarball bytes.Buffer
+	gzw := gzip.NewWriter(&tarball)
+	tw := tar.NewWriter(gzw)
+	binary := []byte("#!/bin/sh\nexit 0\n")
+	require.NoError(t, tw.WriteHeader(&tar.Header{
+		Name: pluginBinaryName(name),
+		Mode: 0o755,
+		Size: int64(len(binary)),
+	}))
+	_, err := tw.Write(binary)
+	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+	require.NoError(t, gzw.Close())
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write(tarball.Bytes())
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+	return server
 }
 
 // TestNewInstallsRequiredPackages ensures that `pulumi new` resolves & installs required packages.
 func TestNewInstallsRequiredPackages(t *testing.T) {
 	useTempFilestateBackend(t)
-	t.Setenv("PULUMI_HOME", t.TempDir())
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
 
-	lang := &requiredPackagesRecorder{}
+	pluginServer := fakePluginServer(t, "testpkg")
+	lang := &requiredPackagesRecorder{
+		requiredPackage: &pulumirpc.PackageDependency{
+			Name:    "testpkg",
+			Kind:    "resource",
+			Version: "1.2.3",
+			Server:  pluginServer.URL,
+		},
+	}
 	cancel := make(chan bool)
 	t.Cleanup(func() { close(cancel) })
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
@@ -1515,6 +1568,8 @@ func TestNewInstallsRequiredPackages(t *testing.T) {
 	require.NoError(t, runNew(t.Context(), args))
 
 	assert.Equal(t, tempdir, lang.programDirectory.Load())
+	assert.FileExists(t,
+		filepath.Join(pulumiHome, "plugins", "resource-testpkg-v1.2.3", pluginBinaryName("testpkg")))
 }
 
 //nolint:paralleltest
