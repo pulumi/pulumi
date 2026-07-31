@@ -614,9 +614,12 @@ func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (
 		return res, fmt.Errorf("failed to import resources: %w", err)
 	}
 
-	generatedCode, err := os.ReadFile(generatedCodePath)
-	if err != nil {
-		return res, fmt.Errorf("failed to read generated code: %w", err)
+	var generatedCode []byte
+	if importOpts.GenerateCode == nil || *importOpts.GenerateCode {
+		generatedCode, err = os.ReadFile(generatedCodePath)
+		if err != nil {
+			return res, fmt.Errorf("failed to read generated code: %w", err)
+		}
 	}
 
 	var summary UpdateSummary
