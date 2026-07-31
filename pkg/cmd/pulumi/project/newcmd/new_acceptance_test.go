@@ -261,30 +261,24 @@ func TestRunNewYesWithTemplate(t *testing.T) {
 	require.Equal(t, "yaml", proj.Runtime.Name())
 }
 
-// pulumi new --language yaml --yes --non-interactive
-//
-//nolint:paralleltest // changes directory for process
-func TestRunNewYesWithAILanguage(t *testing.T) {
-	tempdir := tempProjectDir(t)
-	t.Chdir(tempdir)
+func TestRunNewErrorsOnRetiredAIFlags(t *testing.T) {
+	t.Parallel()
 
-	args := newArgs{
-		yes:                   true,
-		interactive:           false,
-		aiLanguage:            "yaml",
-		aiPrompt:              "", // empty
-		prompt:                ui.PromptForValue,
-		chooseTemplate:        ChooseTemplate,
-		secretsProvider:       "default",
-		stack:                 stackName,
-		generateOnly:          true,
-		promptForAIProjectURL: promptForAIProjectURL,
-		languageTemplate:      languageTemplateMock,
+	tests := []struct {
+		name string
+		args newArgs
+	}{
+		{name: "ai prompt only", args: newArgs{aiPrompt: "an s3 bucket"}},
+		{name: "language only", args: newArgs{aiLanguage: "yaml"}},
+		{name: "both flags", args: newArgs{aiPrompt: "an s3 bucket", aiLanguage: "yaml"}},
 	}
-
-	err := runNew(t.Context(), args)
-	require.ErrorContains(t, err,
-		"the --ai <prompt> flag is required when running in non-interactive mode with the --language flag")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := runNew(t.Context(), tt.args)
+			require.EqualError(t, err, aiRetiredMessage)
+		})
+	}
 }
 
 const (

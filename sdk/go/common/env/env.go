@@ -195,11 +195,6 @@ var (
 		"Number of parallel operations when fetching stacks and resources from the DIY backend.")
 )
 
-// Environment variables which affect Pulumi AI integrations
-var (
-	AIServiceEndpoint = env.String("AI_SERVICE_ENDPOINT", "Endpoint for Pulumi AI service")
-)
-
 var DisableValidation = env.Bool(
 	"DISABLE_VALIDATION",
 	`Disables format validation of system inputs.

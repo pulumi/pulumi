@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -70,39 +69,42 @@ type runtimeOptionsFunc func(ctx *plugin.Context, language plugin.LanguageRuntim
 type languageTemplateFunc func(ctx context.Context, language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
 	projectName tokens.PackageName) error
 
-type promptForAIProjectURLFunc func(ctx context.Context,
-	ws pkgWorkspace.Context, args newArgs, opts display.Options) (string, error)
+const aiRetiredMessage = "Pulumi AI project generation has been retired. Run 'pulumi new' to choose a template, " +
+	"or 'pulumi neo -p \"prompt\"'."
 
 type newArgs struct {
-	configArray           []string
-	configPath            bool
-	description           string
-	dir                   string
-	force                 bool
-	generateOnly          bool
-	interactive           bool
-	name                  string
-	offline               bool
-	prompt                promptForValueFunc
-	promptRuntimeOptions  runtimeOptionsFunc
-	languageTemplate      languageTemplateFunc
-	promptForAIProjectURL promptForAIProjectURLFunc
-	chooseTemplate        chooseTemplateFunc
-	secretsProvider       string
-	stack                 string
-	templateNameOrURL     string
-	yes                   bool
-	listTemplates         bool
-	aiPrompt              string
-	aiLanguage            httpstate.PulumiAILanguage
-	templateMode          bool
-	runtimeOptions        []string
-	remoteStackConfig     bool
-	stdout                io.Writer
-	stderr                io.Writer
+	configArray          []string
+	configPath           bool
+	description          string
+	dir                  string
+	force                bool
+	generateOnly         bool
+	interactive          bool
+	name                 string
+	offline              bool
+	prompt               promptForValueFunc
+	promptRuntimeOptions runtimeOptionsFunc
+	languageTemplate     languageTemplateFunc
+	chooseTemplate       chooseTemplateFunc
+	secretsProvider      string
+	stack                string
+	templateNameOrURL    string
+	yes                  bool
+	listTemplates        bool
+	aiPrompt             string
+	aiLanguage           string
+	templateMode         bool
+	runtimeOptions       []string
+	remoteStackConfig    bool
+	stdout               io.Writer
+	stderr               io.Writer
 }
 
 func runNew(ctx context.Context, args newArgs) error {
+	if args.aiPrompt != "" || args.aiLanguage != "" {
+		return errors.New(aiRetiredMessage)
+	}
+
 	if !args.interactive && !args.yes {
 		return backenderr.ErrNonInteractiveRequiresYes
 	}
@@ -180,14 +182,6 @@ func runNew(ctx context.Context, args newArgs) error {
 		if err := validateProjectName(ctx, b, "" /* orgName */, args.name, args.generateOnly, opts); err != nil {
 			return err
 		}
-	}
-
-	if args.templateNameOrURL == "" && args.promptForAIProjectURL != nil {
-		aiURL, err := args.promptForAIProjectURL(ctx, ws, args, opts)
-		if err != nil {
-			return err
-		}
-		args.templateNameOrURL = aiURL
 	}
 
 	// Retrieve the template repo.
@@ -548,7 +542,6 @@ func NewNewCmd() *cobra.Command {
 		) error {
 			return language.Template(ctx, programInfo, projectName)
 		},
-		promptForAIProjectURL: promptForAIProjectURL,
 	}
 
 	getTemplates := func(ctx context.Context) ([]cmdTemplates.Template, io.Closer, error) {
@@ -609,11 +602,6 @@ func NewNewCmd() *cobra.Command {
 			"* `pulumi new https://<user>:<password>@<hostname>/<project>/<repo>`\n" +
 			"* `pulumi new <user>@<hostname>:<project>/<repo>`\n" +
 			"* `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`\n" +
-			"To create a project using Pulumi AI, either select `ai` from the first selection, " +
-			"or provide any of the following:\n" +
-			"* `pulumi new --ai \"<prompt>\"`\n" +
-			"* `pulumi new --language <language>`\n" +
-			"* `pulumi new --ai \"<prompt>\" --language <language>`\n" +
 			"Any missing but required information will be prompted for.\n",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
@@ -697,16 +685,19 @@ func NewNewCmd() *cobra.Command {
 		"List locally installed templates and exit",
 	)
 	cmd.PersistentFlags().StringVar(
-		&args.aiPrompt, "ai", "", "Prompt to use for Pulumi AI",
+		&args.aiPrompt, "ai", "", "Retired: use 'pulumi neo -p \"prompt\"' instead.",
 	)
-	cmd.PersistentFlags().Var(
-		&args.aiLanguage, "language", "Language to use for Pulumi AI "+
-			fmt.Sprintf("(must be one of %s)", httpstate.PulumiAILanguagesClause),
+	_ = cmd.PersistentFlags().MarkDeprecated("ai", "use 'pulumi neo -p \"prompt\"' instead")
+	cmd.PersistentFlags().StringVar(
+		&args.aiLanguage, "language", "", "Retired: use 'pulumi neo -p \"prompt\"' instead.",
 	)
+	_ = cmd.PersistentFlags().MarkDeprecated("language", "use 'pulumi neo -p \"prompt\"' instead")
 	cmd.PersistentFlags().BoolVarP(
 		&args.templateMode, "template-mode", "t", false,
-		"Run in template mode, which will skip prompting for AI or Template functionality",
+		"Deprecated: template mode is now the only mode; this flag is a no-op",
 	)
+	_ = cmd.PersistentFlags().MarkDeprecated("template-mode",
+		"template mode is now the only mode; this flag is a no-op")
 	cmd.PersistentFlags().StringSliceVar(
 		&args.runtimeOptions, "runtime-options", []string{},
 		"Additional options for the language runtime (format: key1=value1,key2=value2)",
@@ -845,54 +836,6 @@ func promptRuntimeOptions(ctx *plugin.Context, language plugin.LanguageRuntime, 
 	}
 
 	return options, nil
-}
-
-func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args newArgs,
-	opts display.Options,
-) (string, error) {
-	// Try to read the current project
-	project, _, err := ws.ReadProject("")
-	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-		return "", err
-	}
-
-	b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
-	if err != nil {
-		return "", err
-	}
-
-	var aiOrTemplate string
-	if shouldPromptForAIOrTemplate(args, b) {
-		aiOrTemplate, err = chooseWithAIOrTemplate(opts)
-	} else {
-		aiOrTemplate = deriveAIOrTemplate(args)
-	}
-	if err != nil {
-		return "", err
-	}
-	if aiOrTemplate != "ai" {
-		return "", nil
-	}
-
-	if args.aiPrompt == "" && !opts.IsInteractive {
-		return "", errors.New(
-			"the --ai <prompt> flag is required when running in non-interactive mode with the --language flag",
-		)
-	}
-
-	checkedBackend, ok := b.(httpstate.Backend)
-	if !ok {
-		if args.aiLanguage != "" && args.aiPrompt == "" {
-			return "", errors.New(
-				"--language is used to generate a template with Pulumi AI. " +
-					"Please log in to Pulumi Cloud to use Pulumi AI.\n" +
-					"Use --template to create a project from a template, " +
-					"or no flags to choose one interactively.",
-			)
-		}
-		return "", errors.New("please log in to Pulumi Cloud to use Pulumi AI")
-	}
-	return runAINew(ctx, args, opts, checkedBackend)
 }
 
 func makePromptValidator(prompt plugin.RuntimeOptionPrompt) func(string) error {
