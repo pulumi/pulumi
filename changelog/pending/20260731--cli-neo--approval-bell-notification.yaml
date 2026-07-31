@@ -1,0 +1,4 @@
+component: cli/neo
+kind: improvement
+body: Emit a terminal bell when a neo task requires user input and the terminal window does not have focus
+time: 2026-07-31T00:00:00+00:00

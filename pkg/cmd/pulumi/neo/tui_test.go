@@ -106,6 +106,42 @@ func runFirstFlushTick(t *testing.T, cmd tea.Cmd) tea.Msg {
 	return nil
 }
 
+// collectRaw walks a tea.Cmd (potentially a Batch) and returns the concatenated
+// content of every tea.Raw-produced message inside. tea.Raw builds an unexported
+// rawMsg value; we identify it by type name and read its bytes via reflection.
+func collectRaw(cmd tea.Cmd) []byte {
+	if cmd == nil {
+		return nil
+	}
+	msg, ok := runCmd(cmd)
+	if !ok {
+		return nil
+	}
+	if batch, ok := msg.(tea.BatchMsg); ok {
+		var out []byte
+		for _, c := range batch {
+			out = append(out, collectRaw(c)...)
+		}
+		return out
+	}
+	v := reflect.ValueOf(msg)
+	// tea.Sequence yields an unexported sequenceMsg ([]Cmd); walk it like a batch.
+	if v.Kind() == reflect.Slice && v.Type().Name() == "sequenceMsg" {
+		var out []byte
+		for i := 0; i < v.Len(); i++ {
+			if c, ok := v.Index(i).Interface().(tea.Cmd); ok {
+				out = append(out, collectRaw(c)...)
+			}
+		}
+		return out
+	}
+	// tea.RawMsg is an alias for []byte.
+	if raw, ok := msg.(tea.RawMsg); ok {
+		return []byte(raw)
+	}
+	return nil
+}
+
 // runCmd invokes cmd in a goroutine and returns its result if it produces one
 // within a short window. waitForEvent and similar blocking cmds time out and
 // are reported as "no message" — collectPrintln then ignores them.
@@ -1695,6 +1731,64 @@ func TestModel_Update_UIApprovalRequest_General_UsesExistingApprovalRendering(t 
 	assert.Contains(t, um.blocks[idx].rendered, "Approval required")
 	assert.Contains(t, um.approvalPromptText, "Approve?")
 	assert.NotContains(t, um.approvalPromptText, "plan")
+}
+
+func TestModel_Update_UIApprovalRequest_EmitsBellWhenTerminalUnfocused(t *testing.T) {
+	t.Parallel()
+
+	// When the terminal doesn't have focus (the user is in another window) and
+	// an approval request arrives, the TUI must emit a terminal bell ("\a") so
+	// the terminal emulator can surface a visual or audible alert. The bell
+	// must not appear when the terminal is focused — the approval block itself
+	// is already visible on screen.
+	ch := make(chan UIEvent, 4)
+
+	t.Run("unfocused_emits_bell", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{EventCh: ch})
+		// Simulate a BlurMsg arriving before the approval (user switched windows).
+		updated0, _ := m.Update(tea.BlurMsg{})
+		m = updated0.(Model)
+		require.False(t, m.terminalFocused, "BlurMsg must clear terminalFocused")
+
+		_, cmd := m.Update(UIApprovalRequest{
+			ApprovalID: "appr_bell",
+			Message:    "Run pulumi up?",
+		})
+		raw := collectRaw(cmd)
+		assert.Contains(t, string(raw), "\a", "unfocused approval must emit a terminal bell")
+	})
+
+	t.Run("focused_no_bell", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{EventCh: ch})
+		// NewModel starts with terminalFocused=true; no BlurMsg needed.
+		require.True(t, m.terminalFocused, "NewModel must start focused")
+
+		_, cmd := m.Update(UIApprovalRequest{
+			ApprovalID: "appr_no_bell",
+			Message:    "Run pulumi up?",
+		})
+		raw := collectRaw(cmd)
+		assert.NotContains(t, string(raw), "\a", "focused approval must not emit a terminal bell")
+	})
+}
+
+func TestModel_Update_FocusBlur_TracksTerminalFocus(t *testing.T) {
+	t.Parallel()
+
+	// FocusMsg / BlurMsg from the terminal emulator update terminalFocused.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	require.True(t, m.terminalFocused, "model starts focused")
+
+	updated, _ := m.Update(tea.BlurMsg{})
+	m = updated.(Model)
+	assert.False(t, m.terminalFocused, "BlurMsg must clear focus")
+
+	updated, _ = m.Update(tea.FocusMsg{})
+	m = updated.(Model)
+	assert.True(t, m.terminalFocused, "FocusMsg must restore focus")
 }
 
 func TestModel_Update_ApprovePlan_ClearsPlanMode(t *testing.T) {

@@ -349,6 +349,12 @@ type Model struct {
 	// begins, so pressing Down past the newest entry restores what the user
 	// had typed rather than leaving a recalled prompt behind.
 	historyDraft string
+	// terminalFocused tracks whether the terminal window has focus as reported
+	// by the terminal's FocusMsg / BlurMsg events. Starts true (we assume the
+	// user just opened the TUI). When a UIApprovalRequest arrives while this
+	// is false the TUI emits a terminal bell so the user knows their attention
+	// is required even though they are not currently looking at this window.
+	terminalFocused bool
 }
 
 var (
@@ -590,6 +596,8 @@ func NewModel(cfg ModelConfig) Model {
 		approvalMode:      cfg.InitialApprovalMode,
 		permissionMode:    cfg.InitialPermissionMode,
 		overlay:           newOverlayModel(initialWidth, initialHeight),
+		// Assume focused on startup: the user just opened the TUI.
+		terminalFocused: true,
 	}
 	m.textInput.SetWidth(max(m.liveWidth(), 3))
 	if cfg.InitialPrompt != "" {
@@ -681,6 +689,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// the print.
 		m.hasEmittedScrollback = false
 		return m, tea.Sequence(tea.ClearScreen, m.printlnBlock(m.committedScrollback()))
+
+	case tea.FocusMsg:
+		m.terminalFocused = true
+
+	case tea.BlurMsg:
+		m.terminalFocused = false
 
 	case ctrlCDisarmMsg:
 		// Stale tick: the user already pressed another key (gen still
@@ -1208,6 +1222,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		default:
 			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalGeneral, raw: msg.Message}))
 			m.approvalPromptText = warningStyle.Render("Approve? [y to approve / reason to deny]:")
+		}
+		// If the terminal doesn't have focus the user may be looking at
+		// another window and won't notice the approval prompt. Emit a
+		// terminal bell so the terminal emulator can surface a visual or
+		// audible alert to draw them back.
+		if !m.terminalFocused {
+			cmds = append(cmds, tea.Raw("\a"))
 		}
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
