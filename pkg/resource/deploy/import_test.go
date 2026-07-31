@@ -257,7 +257,7 @@ func TestImporter(t *testing.T) {
 						{
 							Type: "pulumi:providers:foo",
 							Name: "my-provider",
-							ProviderInputs: resource.PropertyMap{
+							Inputs: resource.PropertyMap{
 								"region": resource.NewProperty("eu-west-1"),
 							},
 						},
@@ -643,7 +643,7 @@ func TestImporterParameterizedDeclaredProvider(t *testing.T) {
 					Version: &version,
 					Type:    "pulumi:providers:ParameterizationName",
 					Name:    "my-provider",
-					ProviderInputs: resource.PropertyMap{
+					Inputs: resource.PropertyMap{
 						"region": resource.NewProperty("eu-west-1"),
 					},
 					Parameterization: &Parameterization{
