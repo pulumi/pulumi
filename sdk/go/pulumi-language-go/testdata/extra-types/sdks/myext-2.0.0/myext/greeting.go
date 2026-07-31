@@ -30,7 +30,7 @@ func NewGreeting(ctx *pulumi.Context,
 		return nil, err
 	}
 	var resource Greeting
-	err = ctx.RegisterPackageResource("extbase:index:Greeting", name, args, &resource, ref, opts...)
+	err = ctx.RegisterPackageResource("myext:index:Greeting", name, args, &resource, ref, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func GetGreeting(ctx *pulumi.Context,
 	if err != nil {
 		return nil, err
 	}
-	err = ctx.ReadPackageResource("extbase:index:Greeting", name, id, state, &resource, ref, opts...)
+	err = ctx.ReadPackageResource("myext:index:Greeting", name, id, state, &resource, ref, opts...)
 	if err != nil {
 		return nil, err
 	}

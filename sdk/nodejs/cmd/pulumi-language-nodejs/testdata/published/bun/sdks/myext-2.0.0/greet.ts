@@ -6,7 +6,7 @@ import * as utilities from "./utilities";
 
 export function greet(args: GreetArgs, opts?: pulumi.InvokeOptions): Promise<GreetResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
-    return pulumi.runtime.invoke("extbase:index:greet", {
+    return pulumi.runtime.invoke("myext:index:greet", {
         "name": args.name,
     }, opts, utilities.getPackage());
 }
@@ -20,7 +20,7 @@ export interface GreetResult {
 }
 export function greetOutput(args: GreetOutputArgs, opts?: pulumi.InvokeOutputOptions): pulumi.Output<GreetResult> {
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
-    return pulumi.runtime.invokeOutput("extbase:index:greet", {
+    return pulumi.runtime.invokeOutput("myext:index:greet", {
         "name": args.name,
     }, opts, utilities.getPackage());
 }

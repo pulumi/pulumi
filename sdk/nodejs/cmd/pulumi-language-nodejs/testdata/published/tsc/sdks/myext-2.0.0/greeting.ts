@@ -18,7 +18,7 @@ export class Greeting extends pulumi.CustomResource {
     }
 
     /** @internal */
-    public static readonly __pulumiType = 'extbase:index:Greeting';
+    public static readonly __pulumiType = 'myext:index:Greeting';
 
     /**
      * Returns true if the given object is an instance of Greeting.  This is designed to work even
