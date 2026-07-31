@@ -329,7 +329,10 @@ func currentUser(t *testing.T) string {
 func loadStackName(t *testing.T) string {
 	w, err := pkgWorkspace.Instance.New("")
 	require.NoError(t, err)
-	return w.Settings().Stack
+	backendURL, err := pkgWorkspace.GetCurrentCloudURL(pkgWorkspace.Instance, env.Global(), nil)
+	require.NoError(t, err)
+	name, _ := w.Settings().StackForBackend(backendURL)
+	return name
 }
 
 func removeStack(t *testing.T, dir, name string) {

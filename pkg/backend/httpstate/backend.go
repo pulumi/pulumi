@@ -922,25 +922,18 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	return &account, nil
 }
 
-// WelcomeUser prints a Welcome to Pulumi message.
-func WelcomeUser(opts display.Options) {
-	fmt.Printf(`
-
-  %s
-
-  Pulumi helps you create, deploy, and manage infrastructure on any cloud using
-  your favorite language. You can get started today with Pulumi at:
-
-      https://www.pulumi.com/docs/get-started/
-
-  %s Resources you create with Pulumi are given unique names (a randomly
-  generated suffix) by default. To learn more about auto-naming or customizing resource
-  names see https://www.pulumi.com/docs/intro/concepts/resources/#autonaming.
-
-
-`,
-		opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset),
-		opts.Color.Colorize(colors.SpecSubHeadline+"Tip:"+colors.Reset))
+// WelcomeUser prints a Welcome to Pulumi message. consoleURL may be empty, in which case the
+// console line is omitted.
+func WelcomeUser(opts display.Options, consoleURL string) {
+	fmt.Printf("\n\n  %s\n\n", opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset))
+	if consoleURL != "" {
+		fmt.Printf("  Your stacks, state, and deployment history live at %s\n\n",
+			opts.Color.Colorize(colors.BrightBlue+colors.Underline+consoleURL+colors.Reset))
+	}
+	fmt.Printf("  See what's new: %s\n\n",
+		opts.Color.Colorize(colors.BrightBlue+colors.Underline+"https://www.pulumi.com/releases/changelog/"+colors.Reset))
+	fmt.Printf("  %s Create your first project with `pulumi new`.\n\n\n",
+		opts.Color.Colorize(colors.SpecSubHeadline+"New to Pulumi?"+colors.Reset))
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {

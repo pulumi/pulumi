@@ -530,6 +530,8 @@ export class RegisterResourceResponse extends jspb.Message {
     clearPropertydependenciesMap(): void;
     getResult(): Result;
     setResult(value: Result): RegisterResourceResponse;
+    getUnknown(): boolean;
+    setUnknown(value: boolean): RegisterResourceResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceResponse.AsObject;
@@ -551,6 +553,7 @@ export namespace RegisterResourceResponse {
 
         propertydependenciesMap: Array<[string, RegisterResourceResponse.PropertyDependencies.AsObject]>,
         result: Result,
+        unknown: boolean,
     }
 
 
@@ -639,6 +642,10 @@ export class ResourceInvokeRequest extends jspb.Message {
     setPackageref(value: string): ResourceInvokeRequest;
     getAcceptsByteString(): boolean;
     setAcceptsByteString(value: boolean): ResourceInvokeRequest;
+    clearDependsonList(): void;
+    getDependsonList(): Array<string>;
+    setDependsonList(value: Array<string>): ResourceInvokeRequest;
+    addDependson(value: string, index?: number): string;
     getParent(): string;
     setParent(value: string): ResourceInvokeRequest;
 
@@ -667,7 +674,39 @@ export namespace ResourceInvokeRequest {
         parentstacktracehandle: string,
         packageref: string,
         acceptsByteString: boolean,
+        dependsonList: Array<string>,
         parent: string,
+    }
+}
+
+export class ResourceInvokeResponse extends jspb.Message { 
+
+    hasReturn(): boolean;
+    clearReturn(): void;
+    getReturn(): google_protobuf_struct_pb.Struct | undefined;
+    setReturn(value?: google_protobuf_struct_pb.Struct): ResourceInvokeResponse;
+    clearFailuresList(): void;
+    getFailuresList(): Array<pulumi_provider_pb.CheckFailure>;
+    setFailuresList(value: Array<pulumi_provider_pb.CheckFailure>): ResourceInvokeResponse;
+    addFailures(value?: pulumi_provider_pb.CheckFailure, index?: number): pulumi_provider_pb.CheckFailure;
+    getUnknown(): boolean;
+    setUnknown(value: boolean): ResourceInvokeResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ResourceInvokeResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ResourceInvokeResponse): ResourceInvokeResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ResourceInvokeResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResourceInvokeResponse;
+    static deserializeBinaryFromReader(message: ResourceInvokeResponse, reader: jspb.BinaryReader): ResourceInvokeResponse;
+}
+
+export namespace ResourceInvokeResponse {
+    export type AsObject = {
+        pb_return?: google_protobuf_struct_pb.Struct.AsObject,
+        failuresList: Array<pulumi_provider_pb.CheckFailure.AsObject>,
+        unknown: boolean,
     }
 }
 
@@ -1491,6 +1530,7 @@ export enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_ERROR_HOOKS = 11,
     RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS = 12,
     RESOURCE_MONITOR_FEATURE_BYTE_STRING = 13,
+    RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON = 14,
     RESOURCE_MONITOR_FEATURE_INVOKE_PARENT = 15,
 }
 

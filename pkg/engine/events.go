@@ -436,7 +436,7 @@ func makeEventEmitter(events chan<- Event, update UpdateInfo) (eventEmitter, err
 		}
 	}
 
-	logging.AddGlobalFilter(logging.CreateFilter(secrets, "[secret]"))
+	logging.AddGlobalSecretFilter(secrets, "[secret]")
 
 	buffer, done := make(chan Event), make(chan bool)
 	go queueEvents(events, buffer, done)

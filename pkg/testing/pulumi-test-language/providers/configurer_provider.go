@@ -386,7 +386,7 @@ func (p *ConfigurerProvider) Call(
 	defer conn.Close()
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 
-	selfRef := req.Args["__self__"].ResourceReferenceValue()
+	selfRef := req.Args.Get("__self__").AsResourceReference()
 	self, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok: "pulumi:pulumi:getResource",
 		Args: &structpb.Struct{

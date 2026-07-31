@@ -122,6 +122,7 @@ var expectedFailures = map[string]string{
 	"l3-range":                            "list(string) and map(string) config values decoded as raw JSON strings by cfg.Require; cannot range over string as list/map", //nolint:lll
 	"l3-range-resource-output-traversal":  "pulumi#21678: cannot range over an ArrayOutput",
 	"l3-range-invoke-output-traversal":    "pulumi#21678: len() of an invoke's ArrayOutput does not compile",
+	"l2-invoke-dependencies":              "pulumi#18298: output invokes cannot infer resource dependencies from arguments, so they are not skipped during preview", //nolint:lll
 	"l3-for":                              "syntax errors",
 	"l3-for-resource":                     "syntax errors",
 	"l3-component-nested":                 "./main.go:10:11: cannot use true (constant of type bool) as pulumi.BoolInput",
@@ -134,8 +135,7 @@ var expectedFailures = map[string]string{
 	"l3-component-config-objects":        "does not compile; missing necessary casts for pulumi inputs",
 	"l3-component-provider":              "does not compile; missing necessary casts for pulumi inputs and untyped component outputs", //nolint:lll
 	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",   //nolint:lll
-	"l3-component-invoke":                "invokes in a component are not parented to it, so they miss its providers",
-	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
+	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",   //nolint:lll
 
 	"l3-range-list-ref": "fails with syntax errors: undefined: err",
 	"l3-range-map-ref":  "fails with syntax errors: mapResource.K1 undefined (type []*nestedobject.Target has no field or method K1)", //nolint:lll

@@ -2,7 +2,7 @@ run: |
   esc env init default/test
   esc env provider aws-login static default/test AKIAEXAMPLE shhhhhh && esc env get default/test --definition
   esc env provider aws-login static default/test AKIAEXAMPLE shhhhhh --session-token toktok && esc env get default/test --definition
-  esc env provider aws-login static default/test AKIANEW newshhh --path other.creds && esc env get default/test --definition
+  esc env provider aws-login static default/test AKIANEW newshhh --path other.creds --export-env-vars && esc env get default/test --definition
 
 ---
 > esc env init default/test
@@ -34,7 +34,7 @@ values:
           sessionToken:
             fn::secret:
               ciphertext: ZXNjeAAAAAH07+v07+saq0zU
-> esc env provider aws-login static default/test AKIANEW newshhh --path other.creds
+> esc env provider aws-login static default/test AKIANEW newshhh --path other.creds --export-env-vars
 Provider updated. (revision 4)
 > esc env get default/test --definition
 values:
@@ -57,6 +57,10 @@ values:
           secretAccessKey:
             fn::secret:
               ciphertext: ZXNjeAAAAAHu5ffz6Ojoieff3A==
+  environmentVariables:
+    AWS_ACCESS_KEY_ID: ${other.creds.accessKeyId}
+    AWS_SECRET_ACCESS_KEY: ${other.creds.secretAccessKey}
+    AWS_SESSION_TOKEN: ${other.creds.sessionToken}
 
 ---
 > esc env init default/test
@@ -64,5 +68,5 @@ values:
 > esc env get default/test --definition
 > esc env provider aws-login static default/test AKIAEXAMPLE shhhhhh --session-token toktok
 > esc env get default/test --definition
-> esc env provider aws-login static default/test AKIANEW newshhh --path other.creds
+> esc env provider aws-login static default/test AKIANEW newshhh --path other.creds --export-env-vars
 > esc env get default/test --definition

@@ -66,9 +66,7 @@ type StatefulUpdateRequest struct {
 	Sink        diag.Sink
 }
 
-// StatefulUpdateResult carries whatever the caller wants to render after the update. For the first
-// cut we only echo the snippet identity — the resource's post-update outputs will be plumbed
-// through once we're reading them out of the returned snapshot.
+// StatefulUpdateResult carries whatever the caller wants to render after the update.
 type StatefulUpdateResult struct {
 	SnippetUUID string
 }
@@ -158,7 +156,7 @@ func (pc *packageCommand) newStatelessResourceUpsertCommand(res *schema.Resource
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
 			}
-			if read.Outputs == nil {
+			if readNotFound(read) {
 				return pc.runStatelessCreate(cmd, res, yes, func() (resource.PropertyMap, error) {
 					return inputs, nil
 				})
@@ -566,8 +564,10 @@ func DefaultRunStatefulUpdate(
 		return nil, errors.New("stateful update requires a loaded stack")
 	}
 	displayOpts := display.Options{
-		Color:       cmdutil.GetGlobalColorization(),
-		ShowSecrets: req.ShowSecrets,
+		Color:         cmdutil.GetGlobalColorization(),
+		ShowSecrets:   req.ShowSecrets,
+		IsInteractive: cmdutil.Interactive(),
+		ShowDiff:      true,
 	}
 
 	ssml := cmdStack.SecretsManagerLoader{FallbackToState: true}
@@ -609,7 +609,10 @@ func DefaultRunStatefulUpdate(
 	}
 
 	if req.DryRun {
-		_, _, err = backend.PreviewStack(ctx, req.Stack, op, nil /* events */)
+		err = backend.RunCollectingDiff(op.Opts.Display, nil, func(events chan<- engine.Event) error {
+			_, _, e := backend.PreviewStack(ctx, req.Stack, op, events)
+			return e
+		})
 	} else {
 		_, err = backend.UpdateStack(ctx, req.Stack, op, nil /* events */)
 	}

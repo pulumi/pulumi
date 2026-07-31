@@ -325,7 +325,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 
 	// If setCurrent is true, we'll persist this choice so it'll be used for future CLI operations.
 	if lopt.SetCurrent() {
-		if err = state.SetCurrentStack(ws, stackRef.FullyQualifiedName().String()); err != nil {
+		if err = state.SetCurrentStack(ws, state.BackendURLKey(b), stackRef.FullyQualifiedName().String()); err != nil {
 			return nil, err
 		}
 	}
@@ -433,7 +433,7 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	}
 
 	if setCurrent {
-		if err = state.SetCurrentStack(ws, stack.Ref().FullyQualifiedName().String()); err != nil {
+		if err = state.SetCurrentStack(ws, state.BackendURLKey(b), stack.Ref().FullyQualifiedName().String()); err != nil {
 			return nil, err
 		}
 	}

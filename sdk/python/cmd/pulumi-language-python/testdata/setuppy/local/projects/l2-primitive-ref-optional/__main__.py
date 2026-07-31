@@ -1,24 +1,28 @@
 import pulumi
 import pulumi_optional_primitive_ref as optional_primitive_ref
 
-set_res = optional_primitive_ref.Resource("setRes", data={
-    "boolean": True,
-    "float": 3.14,
-    "integer": 42,
-    "string": "hello",
-    "number_array": [
-        float(-1),
-        float(0),
-        float(1),
-    ],
-    "boolean_map": {
-        "t": True,
-        "f": False,
+set_res = optional_primitive_ref.Resource("setRes",
+    data={
+        "boolean": True,
+        "float": 3.14,
+        "integer": 42,
+        "string": "hello",
+        "number_array": [
+            float(-1),
+            float(0),
+            float(1),
+        ],
+        "boolean_map": {
+            "t": True,
+            "f": False,
+        },
     },
-})
+    optional_data={
+        "string": "optional parent",
+    })
 unset_res = optional_primitive_ref.Resource("unsetRes", data={})
 from_nested_optional = optional_primitive_ref.Resource("fromNestedOptional", data={
-    "string": set_res.data.string,
+    "string": set_res.optional_data.string,
 })
 pulumi.export("setBoolean", set_res.data.boolean)
 pulumi.export("setFloat", set_res.data.float)

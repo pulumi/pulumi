@@ -419,6 +419,10 @@ type UpdateOptions struct {
 	// ContinueOnError is true if the engine should continue processing resources after an error is encountered.
 	ContinueOnError bool
 
+	// IgnoreProtect is true if the engine should ignore the protect option on resources, allowing
+	// protected resources to be deleted or replaced by this operation.
+	IgnoreProtect bool
+
 	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
 	AttachDebugger []string
 
@@ -776,7 +780,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 					policyOpts.AdditionalEnv = resolved.EnvironmentVariables
 				}
 				if len(resolved.Secrets) > 0 {
-					logging.AddGlobalFilter(logging.CreateFilter(resolved.Secrets, "[secret]"))
+					logging.AddGlobalSecretFilter(resolved.Secrets, "[secret]")
 				}
 			}
 
@@ -880,7 +884,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 						policyOpts.AdditionalEnv = resolved.EnvironmentVariables
 					}
 					if len(resolved.Secrets) > 0 {
-						logging.AddGlobalFilter(logging.CreateFilter(resolved.Secrets, "[secret]"))
+						logging.AddGlobalSecretFilter(resolved.Secrets, "[secret]")
 					}
 				}
 			}

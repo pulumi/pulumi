@@ -392,7 +392,7 @@ func readCredentialsFile(credsFile string) (Credentials, error) {
 		}
 	}
 
-	logging.AddGlobalFilter(logging.CreateFilter(secrets, "[credential]"))
+	logging.AddGlobalSecretFilter(secrets, "[credential]")
 
 	return creds, nil
 }

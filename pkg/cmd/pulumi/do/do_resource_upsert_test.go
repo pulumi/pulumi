@@ -613,6 +613,49 @@ size = 2
 		assert.Equal(t, []string{"read", "check", "create"}, calls)
 		assert.JSONEq(t, `{"id":"res-2","name":"new","size":2}`, stdout.String())
 	})
+
+	t.Run("creates a missing resource read back as emptied state", func(t *testing.T) {
+		t.Parallel()
+		var calls []string
+		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(false),
+			MockProvider: plugin.MockProvider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					calls = append(calls, "read")
+					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+						Inputs:  resource.PropertyMap{},
+						Outputs: resource.PropertyMap{},
+					}}, nil
+				},
+				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					calls = append(calls, "check")
+					return plugin.CheckResponse{Properties: req.News}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					calls = append(calls, "create")
+					return plugin.CreateResponse{
+						ID: "res-2",
+						Properties: resource.PropertyMap{
+							"name": resource.NewProperty("new"),
+						},
+					}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					require.Fail(t, "Update should not be called for a missing resource")
+					return plugin.UpdateResponse{}, nil
+				},
+			},
+		})
+
+		inputFile := writeHCLFile(t, "upsert.pcl", `name = "new"`)
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "upsert", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile, "--output", "json",
+		})
+		require.NoError(t, cmd.Execute())
+		assert.Equal(t, []string{"read", "check", "create"}, calls)
+		assert.JSONEq(t, `{"id":"res-2","name":"new"}`, stdout.String())
+	})
 }
 
 // TestDoCmdResourceStatefulCreateConstructsSnippet mirrors the upsert-constructs-snippet test but

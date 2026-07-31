@@ -30,7 +30,6 @@ const langrpc = require("../../../proto/language_grpc_pb.js");
 const langproto = require("../../../proto/language_pb.js");
 const resrpc = require("../../../proto/resource_grpc_pb.js");
 const resproto = require("../../../proto/resource_pb.js");
-const providerproto = require("../../../proto/provider_pb.js");
 
 interface RunCase {
     only?: boolean;
@@ -1785,7 +1784,7 @@ describe("rpc", () => {
                     opts,
                     // Invoke callback
                     (call: any, callback: any) => {
-                        const resp = new providerproto.InvokeResponse();
+                        const resp = new resproto.ResourceInvokeResponse();
                         if (opts.invoke) {
                             const req: any = call.request;
                             const args: any = req.getArgs().toJavaScript();

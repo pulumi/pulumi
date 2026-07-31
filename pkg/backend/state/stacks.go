@@ -24,6 +24,18 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
+// BackendURLKey returns the stable URL used to scope workspace stack selection.
+// For Pulumi Cloud backends this is the API URL (e.g. https://api.pulumi.com), matching
+// GetCurrentCloudURL / credentials.Current. Backend.URL() is wrong here: for the cloud
+// backend it returns a console URL that may include the current user.
+func BackendURLKey(b backend.Backend) string {
+	type cloudURLer interface{ CloudURL() string }
+	if c, ok := b.(cloudURLer); ok {
+		return c.CloudURL()
+	}
+	return b.URL()
+}
+
 // CurrentStack reads the current stack and returns an instance connected to its backend provider.
 func CurrentStack(ctx context.Context, ws pkgWorkspace.Context, b backend.Backend) (backend.Stack, error) {
 	return CurrentStackAt(ctx, ws, b, "")
@@ -35,7 +47,7 @@ func CurrentStack(ctx context.Context, ws pkgWorkspace.Context, b backend.Backen
 func CurrentStackAt(
 	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, dir string,
 ) (backend.Stack, error) {
-	stackName, err := getCurrentStackName(ws, dir)
+	stackName, fromLegacy, err := getCurrentStackName(ws, dir, b)
 	if err != nil {
 		return nil, err
 	} else if stackName == "" {
@@ -49,25 +61,42 @@ func CurrentStackAt(
 
 	ref, err := b.ParseStackReference(qualifiedStackName)
 	if err != nil {
+		// A legacy unscoped workspace selection may belong to a different backend
+		// (for example a cloud FQN after `pulumi login --local`). Treat that as
+		// unset for this backend. Explicit per-backend selections and PULUMI_STACK
+		// still surface parse errors.
+		if fromLegacy {
+			return nil, nil
+		}
 		return nil, err
 	}
 
 	return b.GetStack(ctx, ref)
 }
 
-func getCurrentStackName(ws pkgWorkspace.Context, dir string) (string, error) {
+func getCurrentStackName(
+	ws pkgWorkspace.Context, dir string, b backend.Backend,
+) (name string, fromLegacy bool, err error) {
 	// PULUMI_STACK environment variable overrides any stack name in the workspace settings
 	if stackName, ok := os.LookupEnv("PULUMI_STACK"); ok {
-		return stackName, nil
+		return stackName, false, nil
 	}
 
 	// An empty dir resolves to the process working directory inside ws.New.
 	w, err := ws.New(dir)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 
-	return w.Settings().Stack, nil
+	settings := w.Settings()
+	// Legacy workspace.json files only have Stack. Skip BackendURLKey until a
+	// per-backend map exists so callers (and tests) without URL() still work.
+	if len(settings.Stacks) == 0 {
+		name, fromLegacy = settings.StackForBackend("")
+		return name, fromLegacy, nil
+	}
+	name, fromLegacy = settings.StackForBackend(BackendURLKey(b))
+	return name, fromLegacy, nil
 }
 
 // Potentially qualifies a stack name with the username as the org, if orgs are supported by the backend.
@@ -91,8 +120,8 @@ func getStackNameWithLegacyOrgNameIfNeeded(b backend.Backend, stackName string) 
 	return stackName, nil
 }
 
-// SetCurrentStack changes the current stack to the given stack name.
-func SetCurrentStack(ws pkgWorkspace.Context, name string) error {
+// SetCurrentStack changes the current stack for the given backend URL.
+func SetCurrentStack(ws pkgWorkspace.Context, backendURL, name string) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("getting current working directory: %w", err)
@@ -104,6 +133,6 @@ func SetCurrentStack(ws pkgWorkspace.Context, name string) error {
 		return err
 	}
 
-	w.Settings().Stack = name
+	w.Settings().SetStackForBackend(backendURL, name)
 	return w.Save()
 }

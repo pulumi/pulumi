@@ -23,6 +23,9 @@ func main() {
 					"f": pulumi.Bool(false),
 				},
 			},
+			OptionalData: &optionalprimitiveref.DataArgs{
+				String: pulumi.String("optional parent"),
+			},
 		})
 		if err != nil {
 			return err
@@ -35,32 +38,18 @@ func main() {
 		}
 		_, err = optionalprimitiveref.NewResource(ctx, "fromNestedOptional", &optionalprimitiveref.ResourceArgs{
 			Data: &optionalprimitiveref.DataArgs{
-				String: setRes.Data.ApplyT(func(data optionalprimitiveref.Data) (*string, error) {
-					return data.String, nil
-				}).(pulumi.StringPtrOutput),
+				String: setRes.OptionalData.String(),
 			},
 		})
 		if err != nil {
 			return err
 		}
-		ctx.Export("setBoolean", setRes.Data.ApplyT(func(data optionalprimitiveref.Data) (*bool, error) {
-			return data.Boolean, nil
-		}).(pulumi.BoolPtrOutput))
-		ctx.Export("setFloat", setRes.Data.ApplyT(func(data optionalprimitiveref.Data) (*float64, error) {
-			return data.Float, nil
-		}).(pulumi.Float64PtrOutput))
-		ctx.Export("setInteger", setRes.Data.ApplyT(func(data optionalprimitiveref.Data) (*int, error) {
-			return data.Integer, nil
-		}).(pulumi.IntPtrOutput))
-		ctx.Export("setString", setRes.Data.ApplyT(func(data optionalprimitiveref.Data) (*string, error) {
-			return data.String, nil
-		}).(pulumi.StringPtrOutput))
-		ctx.Export("setNumberArray", setRes.Data.ApplyT(func(data optionalprimitiveref.Data) ([]float64, error) {
-			return data.NumberArray, nil
-		}).(pulumi.Float64ArrayOutput))
-		ctx.Export("setBooleanMap", setRes.Data.ApplyT(func(data optionalprimitiveref.Data) (map[string]bool, error) {
-			return data.BooleanMap, nil
-		}).(pulumi.BoolMapOutput))
+		ctx.Export("setBoolean", setRes.Data.Boolean())
+		ctx.Export("setFloat", setRes.Data.Float())
+		ctx.Export("setInteger", setRes.Data.Integer())
+		ctx.Export("setString", setRes.Data.String())
+		ctx.Export("setNumberArray", setRes.Data.NumberArray())
+		ctx.Export("setBooleanMap", setRes.Data.BooleanMap())
 		ctx.Export("unsetBoolean", unsetRes.Data.ApplyT(func(data optionalprimitiveref.Data) (string, error) {
 			var tmp0 string
 			if data.Boolean == nil {

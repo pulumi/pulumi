@@ -1,7 +1,7 @@
 run: |
   esc env init default/test
   esc env provider gcp-login static default/test 123456789 ya29.token && esc env get default/test --definition
-  esc env provider gcp-login static default/test 123456789 ya29.token --service-account sa@proj.iam.gserviceaccount.com --token-lifetime 1h && esc env get default/test --definition
+  esc env provider gcp-login static default/test 123456789 ya29.token --service-account sa@proj.iam.gserviceaccount.com --token-lifetime 1h --export-env-vars && esc env get default/test --definition
 
 ---
 > esc env init default/test
@@ -18,7 +18,7 @@ values:
           accessToken:
             fn::secret:
               ciphertext: ZXNjeAAAAAH54bK5rvTv6+Xuek7KOw==
-> esc env provider gcp-login static default/test 123456789 ya29.token --service-account sa@proj.iam.gserviceaccount.com --token-lifetime 1h
+> esc env provider gcp-login static default/test 123456789 ya29.token --service-account sa@proj.iam.gserviceaccount.com --token-lifetime 1h --export-env-vars
 Provider updated. (revision 3)
 > esc env get default/test --definition
 values:
@@ -32,10 +32,14 @@ values:
               ciphertext: ZXNjeAAAAAH54bK5rvTv6+Xuek7KOw==
           serviceAccount: sa@proj.iam.gserviceaccount.com
           tokenLifetime: 1h
+  environmentVariables:
+    GOOGLE_PROJECT: ${gcp.login.project}
+    GOOGLE_OAUTH_ACCESS_TOKEN: ${gcp.login.accessToken}
+    CLOUDSDK_AUTH_ACCESS_TOKEN: ${gcp.login.accessToken}
 
 ---
 > esc env init default/test
 > esc env provider gcp-login static default/test 123456789 ya29.token
 > esc env get default/test --definition
-> esc env provider gcp-login static default/test 123456789 ya29.token --service-account sa@proj.iam.gserviceaccount.com --token-lifetime 1h
+> esc env provider gcp-login static default/test 123456789 ya29.token --service-account sa@proj.iam.gserviceaccount.com --token-lifetime 1h --export-env-vars
 > esc env get default/test --definition

@@ -619,7 +619,7 @@ func (p *ComponentProvider) callComponentCallableIdentity(
 	req plugin.CallRequest,
 	monitor pulumirpc.ResourceMonitorClient,
 ) (plugin.CallResponse, error) {
-	selfRef := req.Args["__self__"].ResourceReferenceValue()
+	selfRef := req.Args.Get("__self__").AsResourceReference()
 
 	selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok: "pulumi:pulumi:getResource",
@@ -649,7 +649,7 @@ func (p *ComponentProvider) callComponentCallablePrefixed(
 	req plugin.CallRequest,
 	monitor pulumirpc.ResourceMonitorClient,
 ) (plugin.CallResponse, error) {
-	prefix, ok := req.Args["prefix"]
+	prefix, ok := req.Args.GetOk("prefix")
 	if !ok {
 		return plugin.CallResponse{
 			Failures: makeCheckFailure("prefix", "missing prefix"),
@@ -662,7 +662,7 @@ func (p *ComponentProvider) callComponentCallablePrefixed(
 		}, nil
 	}
 
-	selfRef := req.Args["__self__"].ResourceReferenceValue()
+	selfRef := req.Args.Get("__self__").AsResourceReference()
 
 	selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok: "pulumi:pulumi:getResource",
@@ -678,7 +678,7 @@ func (p *ComponentProvider) callComponentCallablePrefixed(
 	}
 
 	value := selfRes.Return.Fields["state"].GetStructValue().Fields["value"]
-	result := prefix.StringValue() + value.GetStringValue()
+	result := prefix.AsString() + value.GetStringValue()
 
 	return plugin.CallResponse{
 		Return: property.NewMap(map[string]property.Value{

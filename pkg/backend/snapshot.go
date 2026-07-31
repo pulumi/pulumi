@@ -523,7 +523,8 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 			contract.Assertf(
 				!step.Old().Protect ||
 					step.Op() == deploy.OpDiscardReplaced ||
-					step.Op() == deploy.OpDeleteReplaced,
+					step.Op() == deploy.OpDeleteReplaced ||
+					deploy.IgnoresProtect(step),
 				"Old must be unprotected (got %v) or the operation must be a replace (got %q)",
 				step.Old().Protect, step.Op(),
 			)

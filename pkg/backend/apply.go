@@ -103,14 +103,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	go func() {
 		// Pull out relevant events we will want to display in the confirmation below.
 		for e := range eventsChannel {
-			// Don't include internal events in the confirmation stats.
-			if e.Internal() {
-				continue
-			}
-			if e.Type == engine.ResourcePreEvent ||
-				e.Type == engine.ResourceOutputsEvent ||
-				e.Type == engine.PolicyRemediationEvent ||
-				e.Type == engine.SummaryEvent {
+			if diffEvent(e) {
 				events = append(events, e)
 			}
 		}
@@ -129,6 +122,12 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	if err != nil {
 		close(eventsChannel)
 		return plan, changes, err
+	}
+
+	if op.Opts.Display.ShowDiff {
+		diffOpts := op.Opts.Display
+		diffOpts.Type = display.DisplayDiff
+		contract.IgnoreError(printDiff(events, diffOpts))
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
@@ -171,6 +170,20 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	return plan, changes, err
 }
 
+func printDiff(events []engine.Event, displayOpts display.Options) error {
+	displayOpts.TruncateOutput = false // We want to always show the full details
+	diff, err := display.CreateDiff(events, displayOpts)
+	if err != nil {
+		return err
+	}
+	stdout := displayOpts.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	_, err = fmt.Fprintln(stdout, diff)
+	return err
+}
+
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
 func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRef StackReference, op UpdateOperation,
 	events []engine.Event, plan *deploy.Plan, explainer Explainer,
@@ -187,7 +200,9 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 
 		// For non-previews, we can also offer a detailed summary.
 		if !opts.SkipPreview {
-			choices = append(choices, string(details))
+			if !opts.Display.ShowDiff {
+				choices = append(choices, string(details))
+			}
 
 			// If we have an explainer (pulumi-cloud) we can offer to explain the changes.
 			if explainer != nil && explainer.IsExplainPreviewEnabled(ctx, opts.Display) {
@@ -226,14 +241,9 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 		}
 
 		if response == string(details) {
-			displayOpts := opts.Display
-			displayOpts.TruncateOutput = false // We want to always show the full details
-			diff, err := display.CreateDiff(events, displayOpts)
-			if err != nil {
+			if err := printDiff(events, opts.Display); err != nil {
 				return nil, err
 			}
-			_, err = os.Stdout.WriteString(diff + "\n")
-			contract.IgnoreError(err)
 			continue
 		}
 
@@ -300,8 +310,57 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	// No need to generate a plan at this stage, there's no way for the system or user to extract the plan
 	// after here.
 	op.Opts.Engine.GeneratePlan = false
-	_, changes, res := apply(ctx, kind, stack, op, opts, events)
-	return changes, res
+
+	var changes sdkDisplay.ResourceChanges
+	err := RunCollectingDiff(op.Opts.Display, events, func(ev chan<- engine.Event) error {
+		var res error
+		_, changes, res = apply(ctx, kind, stack, op, opts, ev)
+		return res
+	})
+	return changes, err
+}
+
+// diffEvent reports whether e is one of the resource step events CreateDiff renders — the set both
+// the pre-confirmation preview diff and the post-operation diff collect.
+func diffEvent(e engine.Event) bool {
+	return !e.Internal() && (e.Type == engine.ResourcePreEvent ||
+		e.Type == engine.ResourceOutputsEvent ||
+		e.Type == engine.PolicyRemediationEvent ||
+		e.Type == engine.SummaryEvent)
+}
+
+// RunCollectingDiff runs an apply or preview operation and, when ShowDiff is set, prints the diff
+// afterwards from the events it emitted. Events are forwarded to callerEvents when it is non-nil.
+func RunCollectingDiff(displayOpts display.Options, callerEvents chan<- engine.Event,
+	run func(events chan<- engine.Event) error,
+) error {
+	if !displayOpts.ShowDiff {
+		return run(callerEvents)
+	}
+
+	collected := make(chan engine.Event)
+	var events []engine.Event
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for e := range collected {
+			if diffEvent(e) {
+				events = append(events, e)
+			}
+			if callerEvents != nil {
+				callerEvents <- e
+			}
+		}
+	}()
+	err := run(collected)
+	close(collected)
+	<-done
+	if err == nil {
+		diffOpts := displayOpts
+		diffOpts.Type = display.DisplayDiff
+		contract.IgnoreError(printDiff(events, diffOpts))
+	}
+	return err
 }
 
 type updateStats struct {

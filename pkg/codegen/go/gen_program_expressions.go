@@ -530,46 +530,46 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.Fgenf(w, "%.v", expr.Args[1])
 		}
 
-		var optionsBag string
-		var buf bytes.Buffer
-		if len(expr.Args) == 3 {
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
-				g.Fgen(&buf, ", ")
-				for i, item := range invokeOptions.Items {
-					last := i == len(invokeOptions.Items)-1
-					switch pcl.LiteralValueString(item.Key) {
-					case "provider":
-						g.Fgenf(&buf, "pulumi.Provider(%v)", item.Value)
-					case "parent":
-						g.Fgenf(&buf, "pulumi.Parent(%v)", item.Value)
-					case "version":
-						g.Fgenf(&buf, "pulumi.Version(%v)", item.Value)
-					case "pluginDownloadUrl":
-						g.Fgenf(&buf, "pulumi.PluginDownloadURL(%v)", item.Value)
-					case "dependsOn":
-						destType := model.NewListType(resourceType)
-						value, temps := g.lowerExpression(item.Value, destType)
-						contract.Assertf(len(temps) == 0, "can not have temporary variables when converting dependsOn option: %v", temps)
-						if isInputty(value.Type()) {
-							g.Fgenf(&buf, "pulumi.DependsOnInputs(%v)", value)
-						} else {
-							g.Fgenf(&buf, "pulumi.DependsOn(%v)", value)
-						}
+		var options []string
+		if g.isComponent && !pcl.InvokeOptionSet(expr, "parent") {
+			options = append(options, "pulumi.Parent(&componentResource)")
+		}
+		if invokeOptions, ok := pcl.InvokeOptions(expr); ok {
+			for _, item := range invokeOptions.Items {
+				var buf bytes.Buffer
+				switch pcl.LiteralValueString(item.Key) {
+				case "provider":
+					g.Fgenf(&buf, "pulumi.Provider(%v)", item.Value)
+				case "parent":
+					g.Fgenf(&buf, "pulumi.Parent(%v)", item.Value)
+				case "version":
+					g.Fgenf(&buf, "pulumi.Version(%v)", item.Value)
+				case "pluginDownloadUrl":
+					g.Fgenf(&buf, "pulumi.PluginDownloadURL(%v)", item.Value)
+				case "dependsOn":
+					destType := model.NewListType(resourceType)
+					value, temps := g.lowerExpression(item.Value, destType)
+					contract.Assertf(len(temps) == 0, "can not have temporary variables when converting dependsOn option: %v", temps)
+					if isInputty(value.Type()) {
+						g.Fgenf(&buf, "pulumi.DependsOnInputs(%v)", value)
+					} else {
+						g.Fgenf(&buf, "pulumi.DependsOn(%v)", value)
 					}
-
-					if !last {
-						g.Fgen(&buf, ", ")
-					}
+				default:
+					continue
 				}
+				options = append(options, buf.String())
 			}
+		}
+		if len(options) > 0 {
+			g.Fgenf(w, ", %s", strings.Join(options, ", "))
 		} else if !expr.Signature.MultiArgumentInputs {
 			// A multi-argument invoke passes its inputs positionally and takes invokeOptions as a
 			// trailing variadic parameter, so when there are no options nothing is emitted. Other
 			// invokes pass a single options argument positionally, defaulting to nil.
-			g.Fgenf(&buf, ", nil")
+			g.Fgen(w, ", nil")
 		}
-		optionsBag = buf.String()
-		g.Fgenf(w, "%v)", optionsBag)
+		g.Fgen(w, ")")
 	case "max":
 		g.Fgen(w, "max(")
 		for i, arg := range expr.Args {
@@ -1468,7 +1468,15 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			return string(*destType)
 		}
 	case *model.ObjectType:
-
+		// If this ObjectType was synthesized from a component's config
+		// variable, we know the generated Go struct name — use it (as a
+		// pointer, matching how values are rendered) rather than falling
+		// back to map[string]interface{}.
+		if !isInput {
+			if md, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](destType); ok {
+				return "*" + md.TypeName
+			}
+		}
 		if isInput {
 			// check for element type uniformity and return appropriate type if so
 			allSameType := true
@@ -1796,6 +1804,10 @@ func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
 	applyArgs, then := pcl.ParseApplyCall(expr)
+	if source, accessor, ok := g.outputPropertyProjection(applyArgs, then); ok {
+		g.Fgenf(w, "%.v.%s()", source, accessor)
+		return
+	}
 	isInput := false
 	retType := g.argumentTypeName(then.Signature.ReturnType, isInput)
 	// TODO account for outputs in other namespaces like aws
@@ -1840,6 +1852,87 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		g.genAnonymousFunctionExpression(w, allApplyThen, typeConvDecls, true)
 		g.Fgenf(w, ")%s", typeAssertion)
 	}
+}
+
+// outputPropertyProjection recognizes applies that only project a single property from an object output and returns the
+// generated Go SDK accessor for that property, if one exists. For example, it replaces
+//
+//	output.ApplyT(func(v T) (U, error) { return v.Property, nil }).(UOutput)
+//
+// with output.Property().
+func (g *generator) outputPropertyProjection(
+	applyArgs []model.Expression,
+	then *model.AnonymousFunctionExpression,
+) (model.Expression, string, bool) {
+	if len(applyArgs) != 1 || len(then.Parameters) != 1 {
+		return nil, "", false
+	}
+	if _, ok := applyArgs[0].Type().(*model.OutputType); !ok {
+		return nil, "", false
+	}
+
+	var rel hcl.Traversal
+	switch body := then.Body.(type) {
+	case *model.ScopeTraversalExpression:
+		if len(body.Parts) != 2 || body.Parts[0] != then.Parameters[0] {
+			return nil, "", false
+		}
+		rel = body.Traversal.SimpleSplit().Rel
+	case *model.RelativeTraversalExpression:
+		// Output-producing invokes use the callback parameter as the source of a relative traversal.
+		source, ok := body.Source.(*model.ScopeTraversalExpression)
+		if !ok || len(source.Parts) != 1 || source.Parts[0] != then.Parameters[0] || len(body.Parts) != 2 {
+			return nil, "", false
+		}
+		rel = body.Traversal
+	default:
+		return nil, "", false
+	}
+	if len(rel) != 1 {
+		return nil, "", false
+	}
+	attr, ok := rel[0].(hcl.TraverseAttr)
+	if !ok {
+		return nil, "", false
+	}
+
+	argType := model.ResolveOutputs(applyArgs[0].Type())
+	optionalObjectOutput := model.IsOptionalType(argType)
+	argType = pcl.UnwrapOption(argType)
+	objectType, ok := argType.(*model.ObjectType)
+	if !ok {
+		return nil, "", false
+	}
+	schemaType, ok := pcl.GetSchemaForType(objectType)
+	if !ok {
+		return nil, "", false
+	}
+	schemaObject, ok := schemaType.(*schema.ObjectType)
+	if !ok {
+		return nil, "", false
+	}
+	if _, ok := schemaObject.Property(attr.Name); !ok {
+		return nil, "", false
+	}
+
+	owner := schemaObject.PackageReference
+	if owner == nil {
+		return nil, "", false
+	}
+	goInfo := goPackageInfo(owner)
+	mod := tokenToPackage(owner, goInfo.ModuleToPackage, schemaObject.Token)
+	pkg, ok := g.contexts[owner.Name()][mod]
+	if !ok {
+		return nil, "", false
+	}
+	receiver := regularOutputReceiver
+	if optionalObjectOutput {
+		receiver = pointerOutputReceiver
+	}
+	if !pkg.supportsOutputPropertyAccessors(schemaObject, receiver) {
+		return nil, "", false
+	}
+	return applyArgs[0], outputPropertyAccessorName(attr.Name, receiver), true
 }
 
 // rewriteThenForAllApply rewrites an apply func after a .All replacing params with []interface{}

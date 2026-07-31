@@ -64,7 +64,7 @@ type mockResmon struct {
 	CancelF func(ctx context.Context) error
 
 	InvokeF func(ctx context.Context,
-		req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
+		req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error)
 
 	CallF func(ctx context.Context,
 		req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
@@ -106,7 +106,7 @@ func (rm *mockResmon) Cancel(ctx context.Context) error {
 
 func (rm *mockResmon) Invoke(ctx context.Context,
 	req *pulumirpc.ResourceInvokeRequest,
-) (*pulumirpc.InvokeResponse, error) {
+) (*pulumirpc.ResourceInvokeResponse, error) {
 	if rm.InvokeF != nil {
 		return rm.InvokeF(ctx, req)
 	}
@@ -2814,6 +2814,7 @@ func TestGetDeploymentInfo(t *testing.T) {
 	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SECRETS)
 	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES)
 	assert.NotContains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES)
+	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON)
 }
 
 func TestSourceEvalServeOptions(t *testing.T) {
@@ -3229,9 +3230,9 @@ func TestCall(t *testing.T) {
 					_ *deploytest.ResourceMonitor,
 				) (plugin.CallResponse, error) {
 					assert.Equal(t,
-						resource.PropertyMap{
-							"test": resource.NewProperty("test-value"),
-						},
+						property.NewMap(map[string]property.Value{
+							"test": property.New("test-value"),
+						}),
 						req.Args)
 					require.Len(t, req.Options.ArgDependencies, 1)
 					assert.ElementsMatch(t,

@@ -16,9 +16,7 @@ func main() {
 		}
 		ctx.Export("inv", simpleinvoke.MyInvokeOutput(ctx, simpleinvoke.MyInvokeOutputArgs{
 			Value: pulumi.String("test"),
-		}, nil).ApplyT(func(invoke simpleinvoke.MyInvokeResult) (string, error) {
-			return invoke.Result, nil
-		}).(pulumi.StringOutput))
+		}, nil).Result())
 		return nil
 	})
 }

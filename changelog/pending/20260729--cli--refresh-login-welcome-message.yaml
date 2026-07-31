@@ -1,0 +1,6 @@
+component: cli
+kind: improvement
+body: Refresh the first-login welcome message to link your Pulumi Cloud console and the Pulumi changelog
+time: 2026-07-29T00:00:00+00:00
+custom:
+  PR: "24122"

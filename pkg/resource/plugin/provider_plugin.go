@@ -2295,7 +2295,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	contract.Assertf(req.Tok != "", "Call requires a token")
 
 	label := fmt.Sprintf("%s.Call(%s)", p.label(), req.Tok)
-	logging.V(7).Infof("%s executing (#args=%d)", label, len(req.Args))
+	logging.V(7).Infof("%s executing (#args=%d)", label, req.Args.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -2309,7 +2309,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		return CallResult{}, nil
 	}
 
-	margs, err := MarshalProperties(req.Args, MarshalOptions{
+	margs, err := MarshalProperties(resource.ToResourcePropertyMap(req.Args), MarshalOptions{
 		Label:          label + ".args",
 		KeepUnknowns:   true,
 		KeepSecrets:    true,

@@ -314,7 +314,8 @@ export function resolveProperties(
 
     // `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
     // We will resolve all of these values as `undefined`, and will mark the value as known if we are not running a
-    // preview.  For updates when the update of the resource was either skipped or failed we'll mark them as `unknown`.
+    // preview.  For updates when the resource failed, was skipped, or was a skipped create we'll mark them as
+    // `unknown`.
     for (const k of Object.keys(resolvers)) {
         if (!allProps.hasOwnProperty(k)) {
             const resolve = resolvers[k];

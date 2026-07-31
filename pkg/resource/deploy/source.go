@@ -71,7 +71,7 @@ type SourceResourceMonitor interface {
 	Address() string
 	Cancel(ctx context.Context) error
 	AbortChan() <-chan bool
-	Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
+	Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error)
 	Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 	ReadResource(ctx context.Context,
 		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
@@ -105,8 +105,9 @@ type RegisterResourceEvent interface {
 
 // RegisterResult is the state of the resource after it has been registered.
 type RegisterResult struct {
-	State  *pkgresource.State // the resource state.
-	Result ResultState        // the result of the registration.
+	State   *pkgresource.State // the resource state.
+	Result  ResultState        // the result of the registration.
+	Unknown bool               // true if the result is unknown, e.g. because the create was elided.
 }
 
 // RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.

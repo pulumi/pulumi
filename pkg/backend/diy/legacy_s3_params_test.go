@@ -37,15 +37,30 @@ func TestTranslateLegacyS3Params(t *testing.T) {
 			give: "s3://bucket",
 		},
 		{
-			name: "v2 params untouched",
+			name: "v2 params without endpoint untouched",
+			give: "s3://bucket?s3ForcePathStyle=true&awssdk=v2",
+		},
+		{
+			name: "endpoint defaults request_checksum_calculation",
 			give: "s3://bucket?endpoint=https://example.com&s3ForcePathStyle=true&awssdk=v2",
+			wantQuery: url.Values{
+				"endpoint":                     {"https://example.com"},
+				"s3ForcePathStyle":             {"true"},
+				"awssdk":                       {"v2"},
+				"request_checksum_calculation": {"when_required"},
+			},
+		},
+		{
+			name: "explicit request_checksum_calculation untouched",
+			give: "s3://bucket?endpoint=https://example.com&request_checksum_calculation=when_supported",
 		},
 		{
 			name: "disableSSL translated",
 			give: "s3://bucket?endpoint=https://minio:9000&disableSSL=true",
 			wantQuery: url.Values{
-				"endpoint":      {"https://minio:9000"},
-				"disable_https": {"true"},
+				"endpoint":                     {"https://minio:9000"},
+				"disable_https":                {"true"},
+				"request_checksum_calculation": {"when_required"},
 			},
 		},
 		{
@@ -59,16 +74,18 @@ func TestTranslateLegacyS3Params(t *testing.T) {
 			name: "bare endpoint gets https scheme",
 			give: "s3://bucket?endpoint=minio:9000",
 			wantQuery: url.Values{
-				"endpoint": {"https://minio:9000"},
+				"endpoint":                     {"https://minio:9000"},
+				"request_checksum_calculation": {"when_required"},
 			},
 		},
 		{
 			name: "bare endpoint with disableSSL gets http scheme",
 			give: "s3://bucket?endpoint=minio:9000&disableSSL=true&s3ForcePathStyle=true",
 			wantQuery: url.Values{
-				"endpoint":         {"http://minio:9000"},
-				"disable_https":    {"true"},
-				"s3ForcePathStyle": {"true"},
+				"endpoint":                     {"http://minio:9000"},
+				"disable_https":                {"true"},
+				"s3ForcePathStyle":             {"true"},
+				"request_checksum_calculation": {"when_required"},
 			},
 		},
 	}
@@ -97,4 +114,13 @@ func TestTranslateLegacyS3Params(t *testing.T) {
 		_, err := translateLegacyS3Params("s3://bucket?disableSSL=banana")
 		assert.ErrorContains(t, err, `invalid value for query parameter "disableSSL"`)
 	})
+}
+
+func TestTranslateLegacyS3ParamsChecksumEnvVar(t *testing.T) { //nolint:paralleltest // uses t.Setenv
+	t.Setenv("AWS_REQUEST_CHECKSUM_CALCULATION", "when_supported")
+
+	give := "s3://bucket?endpoint=https://example.com"
+	got, err := translateLegacyS3Params(give)
+	require.NoError(t, err)
+	assert.Equal(t, give, got)
 }

@@ -341,15 +341,13 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 					_ *deploytest.ResourceMonitor,
 				) (plugin.CallResponse, error) {
 					// Assert that "foo" is secret and "bar" is unknown
-					foo := req.Args["foo"]
-					assert.True(t, foo.IsOutput())
-					assert.True(t, foo.OutputValue().Known)
-					assert.True(t, foo.OutputValue().Secret)
+					foo := req.Args.Get("foo")
+					assert.False(t, foo.IsComputed())
+					assert.True(t, foo.Secret())
 
-					bar := req.Args["bar"]
-					assert.True(t, bar.IsOutput())
-					assert.False(t, bar.OutputValue().Known)
-					assert.False(t, bar.OutputValue().Secret)
+					bar := req.Args.Get("bar")
+					assert.True(t, bar.IsComputed())
+					assert.False(t, bar.Secret())
 
 					return plugin.CallResponse{}, nil
 				},
@@ -448,8 +446,8 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 							req.Options.ArgDependencies["arg"])
 
 						// Assume a single output arg that this call depends on
-						arg := req.Args["arg"]
-						deps := arg.OutputValue().Dependencies
+						arg := req.Args.Get("arg")
+						deps := arg.Dependencies()
 
 						return plugin.CallResponse{
 							Return: property.NewMap(map[string]property.Value{
@@ -598,8 +596,8 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 							req.Options.ArgDependencies["arg"])
 
 						// Assume a single output arg that this call depends on
-						arg := req.Args["arg"]
-						deps := arg.OutputValue().Dependencies
+						arg := req.Args.Get("arg")
+						deps := arg.Dependencies()
 
 						return plugin.CallResponse{
 							Return: property.NewMap(map[string]property.Value{
@@ -745,8 +743,8 @@ func TestConstructCallSendDependencies(t *testing.T) {
 							req.Options.ArgDependencies["arg"])
 
 						// Assume a single output arg that this call depends on
-						arg := req.Args["arg"]
-						deps := arg.OutputValue().Dependencies
+						arg := req.Args.Get("arg")
+						deps := arg.Dependencies()
 
 						return plugin.CallResponse{
 							Return: property.NewMap(map[string]property.Value{
@@ -910,8 +908,8 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 							req.Options.ArgDependencies["arg"])
 
 						// Assume a single output arg that this call depends on
-						arg := req.Args["arg"]
-						deps := arg.OutputValue().Dependencies
+						arg := req.Args.Get("arg")
+						deps := arg.Dependencies()
 
 						return plugin.CallResponse{
 							Return: property.NewMap(map[string]property.Value{
@@ -1134,10 +1132,10 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 				req plugin.CallRequest,
 				monitor *deploytest.ResourceMonitor,
 			) (plugin.CallResponse, error) {
-				assert.Equal(t, resource.PropertyMap{
-					"name": resource.NewProperty("Alice"),
-				}, req.Args)
-				name := req.Args["name"].StringValue()
+				assert.Equal(t, property.NewMap(map[string]property.Value{
+					"name": property.New("Alice"),
+				}), req.Args)
+				name := req.Args.Get("name").AsString()
 
 				result, _, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
 					"urn": resource.NewProperty(string(urn)),

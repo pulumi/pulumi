@@ -24,6 +24,7 @@ import (
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
@@ -154,6 +155,401 @@ func TestInvokeParentResolvesComponentProviders(t *testing.T) {
 	}
 	_, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
+}
+
+// TestInvokeDependsOnRemoteComponent checks that an output-form invoke that depends on a MLC does not fire until the
+// component's children have been created.
+//
+// Reproduces https://github.com/pulumi/pulumi/issues/18299
+func TestInvokeDependsOnRemoteComponent(t *testing.T) {
+	t.Parallel()
+
+	invoked := false
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(
+					_ context.Context, req plugin.ConstructRequest, monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+						Parent: req.Parent,
+					})
+					require.NoError(t, err)
+
+					_, err = monitor.RegisterResource("pkgA:m:typChild", req.Name+"-child", true, deploytest.ResourceOptions{
+						Parent: resp.URN,
+					})
+					require.NoError(t, err)
+
+					return plugin.ConstructResponse{URN: resp.URN}, nil
+				},
+				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					invoked = true
+					return plugin.InvokeResponse{Properties: resource.PropertyMap{
+						"result": resource.NewProperty("read"),
+					}}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// Register the remote component. The engine calls Construct, which
+		// registers the child, before this returns.
+		comp, err := monitor.RegisterResource("pkgA:m:typComponent", "comp", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.NoError(t, err)
+
+		// An invoke that depends on the component. The caller cannot see the
+		// component's children, so it sends the component's URN and the engine
+		// expands it.
+		result, err := monitor.InvokeWithResult("pkgA:index:readChild", nil, "", "", "", deploytest.InvokeOptions{
+			DependsOn: []resource.URN{comp.URN},
+		})
+		require.NoError(t, err)
+		require.Empty(t, result.Failures)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	project := p.GetProject()
+
+	// Initial preview: the child's creation is still pending, so the invoke
+	// must not reach the provider.
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.False(t, invoked, "invoke must not execute while the remote component's child is pending creation")
+
+	// Up: Construct returns only after the child is created, so the invoke
+	// runs after it.
+	invoked = false
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	assert.True(t, invoked, "invoke must execute during up")
+
+	// Steady-state preview: every dependency already exists, so the invoke
+	// must run to keep the preview accurate. This is why a client cannot
+	// simply always defer on remote components.
+	invoked = false
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	assert.True(t, invoked, "invoke must execute during a steady-state preview")
+}
+
+// TestInvokeDependsOnNestedRemoteComponent covers a remote component nested inside a local one, with the dependency
+// declared on the outer component. The expansion has to descend through the remote component to reach the child the
+// component provider registered, which it can only do if the engine files that component under its real parent --
+// Construct hands back a state carrying only a URN and outputs, so the component's own state has no parent to read.
+func TestInvokeDependsOnNestedRemoteComponent(t *testing.T) {
+	t.Parallel()
+
+	invoked := false
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(
+					_ context.Context, req plugin.ConstructRequest, monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+						Parent: req.Parent,
+					})
+					require.NoError(t, err)
+
+					_, err = monitor.RegisterResource("pkgA:m:typChild", req.Name+"-child", true,
+						deploytest.ResourceOptions{Parent: resp.URN})
+					require.NoError(t, err)
+
+					return plugin.ConstructResponse{URN: resp.URN}, nil
+				},
+				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					invoked = true
+					return plugin.InvokeResponse{Properties: resource.PropertyMap{
+						"result": resource.NewProperty("read"),
+					}}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		outer, err := monitor.RegisterResource("pkgA:m:typOuter", "outer", false)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typComponent", "comp", false, deploytest.ResourceOptions{
+			Remote: true,
+			Parent: outer.URN,
+		})
+		require.NoError(t, err)
+
+		// The dependency names the outer component, so reaching the pending child means descending outer ->
+		// remote component -> child.
+		result, err := monitor.InvokeWithResult("pkgA:index:readChild", nil, "", "", "", deploytest.InvokeOptions{
+			DependsOn: []resource.URN{outer.URN},
+		})
+		require.NoError(t, err)
+		require.Empty(t, result.Failures)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	project := p.GetProject()
+
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.False(t, invoked, "invoke must not execute while a nested remote component's child is pending creation")
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	assert.True(t, invoked, "invoke must execute during up")
+
+	invoked = false
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	assert.True(t, invoked, "invoke must execute during a steady-state preview")
+}
+
+// TestInvokeDependsOnPendingCustomResource covers the engine's invoke gate for a plain custom resource: an invoke that
+// depends on a resource whose creation is pending resolves as unknown without reaching the provider, and runs normally
+// during up.
+func TestInvokeDependsOnPendingCustomResource(t *testing.T) {
+	t.Parallel()
+
+	invoked := false
+	expectUnknown := true
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					invoked = true
+					return plugin.InvokeResponse{Properties: resource.PropertyMap{
+						"result": resource.NewProperty("read"),
+					}}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		dep, err := monitor.RegisterResource("pkgA:m:typA", "dep", true)
+		require.NoError(t, err)
+
+		result, err := monitor.InvokeWithResult("pkgA:index:read", nil, "", "", "", deploytest.InvokeOptions{
+			DependsOn: []resource.URN{dep.URN},
+		})
+		require.NoError(t, err)
+		require.Empty(t, result.Failures)
+		assert.Equal(t, expectUnknown, result.Unknown)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	project := p.GetProject()
+
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.False(t, invoked, "invoke must not execute while its dependency is pending creation")
+
+	expectUnknown = false
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	assert.True(t, invoked, "invoke must execute during up")
+}
+
+// TestInvokeDependsOnStopsAtCustomResources pins the expansion boundary: a custom resource contributes only itself, so
+// an invoke depending on it runs even while a custom child of it is pending creation, matching the SDKs' client-side
+// expansion of local dependencies.
+func TestInvokeDependsOnStopsAtCustomResources(t *testing.T) {
+	t.Parallel()
+
+	invoked := false
+	registerChild := false
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					invoked = true
+					return plugin.InvokeResponse{Properties: resource.PropertyMap{
+						"result": resource.NewProperty("read"),
+					}}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		parent, err := monitor.RegisterResource("pkgA:m:typA", "parent", true)
+		require.NoError(t, err)
+		if !registerChild {
+			return nil
+		}
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			Parent: parent.URN,
+		})
+		require.NoError(t, err)
+
+		result, err := monitor.InvokeWithResult("pkgA:index:read", nil, "", "", "", deploytest.InvokeOptions{
+			DependsOn: []resource.URN{parent.URN},
+		})
+		require.NoError(t, err)
+		require.Empty(t, result.Failures)
+		assert.False(t, result.Unknown, "a custom dependency's pending children must not defer the invoke")
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	registerChild = true
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	assert.True(t, invoked, "invoke must execute: its custom dependency exists and the pending child is not expanded")
+}
+
+// TestInvokeDependsOnTargetedUp: --target skips the creation of an untargeted dependency, leaving it without an id, so
+// an invoke depending on it must resolve as unknown even though the operation is not a preview.
+func TestInvokeDependsOnTargetedUp(t *testing.T) {
+	t.Parallel()
+
+	invoked := false
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					invoked = true
+					return plugin.InvokeResponse{Properties: resource.PropertyMap{
+						"result": resource.NewProperty("read"),
+					}}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "keep", true)
+		require.NoError(t, err)
+		dep, err := monitor.RegisterResource("pkgA:m:typA", "dep", true)
+		require.NoError(t, err)
+
+		result, err := monitor.InvokeWithResult("pkgA:index:read", nil, "", "", "", deploytest.InvokeOptions{
+			DependsOn: []resource.URN{dep.URN},
+		})
+		require.NoError(t, err)
+		require.Empty(t, result.Failures)
+		assert.True(t, result.Unknown, "invoke must be unknown: its dependency's creation was skipped by --target")
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+			UpdateOptions: UpdateOptions{
+				Targets: deploy.NewUrnTargets([]string{"**keep**"}),
+			},
+		},
+	}
+	_, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.False(t, invoked, "invoke must not execute against a resource whose creation was skipped")
+}
+
+// TestInvokeDependsOnDestroyRunProgram checks that `destroy --run-program` over a partially destroyed stack doesn't
+// trigger invokes that depend on resources not in state.
+func TestInvokeDependsOnDestroyRunProgram(t *testing.T) {
+	t.Parallel()
+
+	invoked := 0
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DeleteF: func(_ context.Context, _ plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					return plugin.DeleteResponse{Status: resource.StatusOK}, nil
+				},
+				InvokeF: func(_ context.Context, _ plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					invoked++
+					return plugin.InvokeResponse{Properties: resource.PropertyMap{
+						"result": resource.NewProperty("read"),
+					}}, nil
+				},
+			}, nil
+		}),
+	}
+
+	// gone is registered only on the destroy run, standing in for a resource a previous partial destroy removed from
+	// state. dependent is in state both times, but depends on gone during the destroy.
+	destroying := false
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		standalone, err := monitor.RegisterResource("pkgA:m:typA", "standalone", true)
+		require.NoError(t, err)
+
+		var dependsOnGone []resource.URN
+		if destroying {
+			gone, err := monitor.RegisterResource("pkgA:m:typA", "gone", true)
+			require.NoError(t, err)
+			assert.Empty(t, gone.ID, "a resource absent from state is a skipped create during destroy")
+			dependsOnGone = append(dependsOnGone, gone.URN)
+		}
+
+		dependent, err := monitor.RegisterResource("pkgA:m:typA", "dependent", true, deploytest.ResourceOptions{
+			Dependencies: dependsOnGone,
+		})
+		require.NoError(t, err)
+
+		invokeOn := func(urns ...resource.URN) bool {
+			result, err := monitor.InvokeWithResult("pkgA:index:read", nil, "", "", "", deploytest.InvokeOptions{
+				DependsOn: urns,
+			})
+			require.NoError(t, err)
+			require.Empty(t, result.Failures)
+			return result.Unknown
+		}
+
+		assert.Equal(t, destroying, invokeOn(dependent.URN),
+			"a resource in state loses its id when a dependency is skipped, so its invoke is unknown during destroy")
+		assert.False(t, invokeOn(standalone.URN),
+			"a resource in state with an intact dependency closure keeps its id, so its invoke runs")
+		if destroying {
+			assert.True(t, invokeOn(dependsOnGone...),
+				"a resource absent from state has no id, so its invoke is unknown")
+		}
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Equal(t, 2, invoked, "every dependency exists, so both invokes reach the provider")
+
+	invoked = 0
+	destroying = true
+	snap, err = lt.TestOp(DestroyV2).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	assert.Equal(t, 1, invoked, "only the invoke on the standalone resource reaches the provider")
+	assert.Empty(t, snap.Resources, "the destroy still tears the stack down")
 }
 
 func TestSecretsInvoke(t *testing.T) {

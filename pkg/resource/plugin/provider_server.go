@@ -1058,7 +1058,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 
 	result, err := p.provider.Call(ctx, CallRequest{
 		Tok:     tokens.ModuleMember(req.GetTok()),
-		Args:    args,
+		Args:    resource.FromResourcePropertyMap(args),
 		Info:    info,
 		Options: options,
 	})

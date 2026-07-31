@@ -19,9 +19,7 @@ func main() {
 		ctx.Export("parameterValueFromComponent", greetingComp.ParameterValue)
 		ctx.Export("invokeGreeting", myext.GreetOutput(ctx, myext.GreetOutputArgs{
 			Name: pulumi.String("Pulumi"),
-		}, nil).ApplyT(func(invoke myext.GreetResult) (string, error) {
-			return invoke.Greeting, nil
-		}).(pulumi.StringOutput))
+		}, nil).Greeting())
 		return nil
 	})
 }
