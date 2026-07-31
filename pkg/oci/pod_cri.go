@@ -69,6 +69,12 @@ import (
 // and ImportImage (the build-contract sink, taken via proxy-pull — push the layout to ref's registry
 // in-process, then pull it back through the CRI image service; see ImportImage) are here. ReadImageFile
 // remains a non-fatal stub.
+//
+// FROZEN as a proof point: this manager was the second-container-runtime pressure test that
+// flushed dockerisms out of the runtime and build contracts, and it succeeded at that job.
+// It predates the engine's move to dialing plugins by pod-network IP — CRI containers share
+// one sandbox netns (one IP), so its plugin containers are no longer reachable the way the
+// engine now dials. A thaw means sandbox-per-plugin, not a revival of shared-netns attach.
 type criPodManager struct {
 	podID     string // unique id for this pod; labels containers and scopes log paths
 	sandboxID string // the PodSandbox the engine runs in and adds siblings to (from the wrapper)

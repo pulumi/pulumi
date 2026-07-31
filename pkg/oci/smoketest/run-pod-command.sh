@@ -30,17 +30,15 @@
 #   4. the engine runs the command provider FROM the program image; it finds jq on
 #      the program's PATH and reads the baked marker
 #
-# ADDRESS MODE (OCI_ADDRESS_MODE=1) runs the same proof over the address model. The
-# command provider is the injected-binary archetype: a released binary that predates
-# the SDK bind contract, exec'd from the PROGRAM image. Reachability comes from the
-# injected-shim exec — the wrapper's proxy synthesizes the provider image with
-# /plugin/shim baked in, the engine's injection copies the whole dir, and the
+# The command provider is the injected-binary archetype: a released binary that
+# predates the SDK bind contract, exec'd from the PROGRAM image. Reachability comes
+# from the injected-shim exec — the wrapper's proxy synthesizes the provider image
+# with /plugin/shim baked in, the engine's injection copies the whole dir, and the
 # entrypoint boots the shim when (and only when) the copy carried it — so the engine
-# attaches by container DNS at :7777 while the provider still runs rooted in the
+# attaches at the container's address on :7777 while the provider still runs rooted in the
 # program image.
 #
-# Usage: run-pod-command.sh                    # netns default (shared loopback)
-#        OCI_ADDRESS_MODE=1 run-pod-command.sh # address mode (own netns, DNS:7777)
+# Usage: run-pod-command.sh
 # Requires a running Docker daemon and the repo Go toolchain (to cross-compile).
 set -euo pipefail
 
@@ -73,11 +71,7 @@ EXPECTED_TOOLCHAIN="toolchain-from-the-program-image"
 EXPECTED_MARKER="hello-from-the-program-workspace"
 EXPECTED_CRED="fake-cloud-credential-9f3a"
 
-ADDRESS_MODE="${OCI_ADDRESS_MODE:-}"
-MODE_LABEL="netns (provider shares the engine netns, dialed over 127.0.0.1)"
-if [ -n "$ADDRESS_MODE" ]; then
-  MODE_LABEL="address (provider in its own netns, injected shim serving DNS:7777)"
-fi
+MODE_LABEL="provider in its own netns, injected shim serving IP:7777"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
@@ -123,14 +117,6 @@ cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
 export PULUMI_POD_ENGINE_IMAGE="$ENGINE_IMAGE"
 export PULUMI_POD_MOUNT_DIR="$WORK/project"
 export PULUMI_POD_PROGRAM_IMAGE="$PROGRAM_IMAGE"
-if [ -n "$ADDRESS_MODE" ]; then
-  export PULUMI_POD_ADDRESS_MODE=1 # forwarded host->engine by the wrapper's env projection
-else
-  # The wrapper defaults address mode ON; the netns run must pin the legacy mode
-  # explicitly (empty = netns, per the wrapper contract) or it silently tests the
-  # wrong topology.
-  export PULUMI_POD_ADDRESS_MODE=
-fi
 
 # A stand-in credential the engine has but the program image does not. The wrapper
 # forwards the whole host env into the engine by default (no naming needed), and the
@@ -154,22 +140,15 @@ fi
 echo "==> asserting how the engine attached command [$MODE_LABEL]"
 ATTACH_LINE="$(grep 'oci: provider command running as container' "$WORK/up.log" | head -1)"
 echo "    $ATTACH_LINE"
-if [ -n "$ADDRESS_MODE" ]; then
-  # The released command binary has no bind contract, so a successful attach at the
-  # well-known port is itself the proof that the injected shim exec'd and served.
-  if ! echo "$ATTACH_LINE" | grep -qE 'attaching at [^ ]*provider-command[^ ]*:7777'; then
-    echo "!! expected the engine to attach by container DNS name at the well-known port :7777"
-    exit 1
-  fi
-  if echo "$ATTACH_LINE" | grep -q '127.0.0.1'; then
-    echo "!! the engine attached over loopback — address mode did not take effect"
-    exit 1
-  fi
-else
-  if ! echo "$ATTACH_LINE" | grep -q 'attaching at 127.0.0.1:'; then
-    echo "!! expected the netns default: engine attaching over the shared loopback"
-    exit 1
-  fi
+# The released command binary has no bind contract, so a successful attach at the
+# well-known port is itself the proof that the injected shim exec'd and served.
+if ! echo "$ATTACH_LINE" | grep -qE 'attaching at [0-9.]+:7777'; then
+  echo "!! expected the engine to attach at the container's address on the well-known port :7777"
+  exit 1
+fi
+if echo "$ATTACH_LINE" | grep -q '127.0.0.1'; then
+  echo "!! the engine attached over loopback — the provider is not being dialed on the pod network"
+  exit 1
 fi
 # The discriminating control: jq is on the program image's PATH and in no provider
 # image, and the shared mount carries files, not a toolchain. Empty/absent here means

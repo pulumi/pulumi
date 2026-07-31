@@ -36,13 +36,6 @@
 # prefers this wrapper over having the CLI fork itself.
 #
 # Config via env (all optional):
-#   PULUMI_POD_ADDRESS_MODE     '1' (the default) — providers run as their own containers on
-#                               the pod network and the engine attaches to them by container
-#                               DNS name at the well-known plugin port (:7777). Set EMPTY
-#                               (PULUMI_POD_ADDRESS_MODE=) for the legacy netns mode, where
-#                               providers share the engine's netns and are dialed over
-#                               loopback — still needed for plugin images that neither honor
-#                               the bind contract nor carry the forwarder shim (see below)
 #   PULUMI_POD_ENGINE_IMAGE     engine/CLI image to run             (default: DEFAULT_ENGINE_IMAGE below)
 #   PULUMI_POD_MOUNT_DIR        host dir mounted at /workspace       (default: cwd) — mount a
 #                               repo root here when the program reads files from a parent dir
@@ -82,18 +75,16 @@ MOUNT_DIR="${PULUMI_POD_MOUNT_DIR:-$PWD}"
 SUBPATH="${PULUMI_POD_PROJECT_SUBPATH:-}"
 ENGINE_IMAGE="${PULUMI_POD_ENGINE_IMAGE:-$DEFAULT_ENGINE_IMAGE}"
 
-# Address mode is the default topology: each provider is its own container on the pod
-# network, reachable at the well-known plugin port — because its SDK honors the bind
-# contract (PULUMI_PLUGIN_LISTEN_ADDRESS), or because the registry proxy embedded the
-# forwarder shim when it synthesized the image. The one switch drives BOTH halves (the
-# engine's mode and the proxy's shim synthesis); they must never be set independently.
-#
-# The EMPTY escape hatch selects the legacy netns mode, needed for plugins that are
-# neither contract-aware nor shim-wrapped: locally BUILT package images (mlc / publish
-# examples) and the injected-binary archetype (command) — until released SDKs carry the
-# contract, or the build phase learns to embed the shim the way synthesis does.
-# ${VAR-default} (not :-): unset means the default ON; explicitly empty means OFF.
-ADDRESS_MODE="${PULUMI_POD_ADDRESS_MODE-1}"
+# The pod has one topology: each provider is its own container on the pod network,
+# reachable at the well-known plugin port — because its SDK honors the bind contract
+# (PULUMI_PLUGIN_LISTEN_ADDRESS), or because the registry proxy embedded the
+# forwarder shim when it synthesized the image. The retired mode knob gets a loud
+# rejection rather than a silent ignore: a caller setting it expects a topology this
+# wrapper can no longer provide.
+if [ -n "${PULUMI_POD_ADDRESS_MODE+set}" ]; then
+  echo "pulumi-pod: PULUMI_POD_ADDRESS_MODE is retired — the pod always uses the address model (plugins bind :7777, dialed by container IP)" >&2
+  exit 2
+fi
 
 # The workspace is mounted at /workspace; the project (Pulumi.yaml) is the mount
 # root, or a subpath of it when a parent was mounted for shared libraries. The pod
@@ -173,21 +164,19 @@ PRIVATE_PORT="${PULUMI_POD_PROXY_PRIVATE_PORT:-$((PUBLIC_PORT + 1))}"
 
 ensure_registry_proxy() {
   # Reuse a running proxy only if it is running the image we would start now AND
-  # synthesizing for the mode this run wants; otherwise clear it and start fresh. The
-  # proxy is long-lived and shared, so without the image check it would outlive the
-  # refresh above — a freshly pulled engine would talk to a proxy still running last
-  # week's build — and without the shim-mode check a netns-mode proxy would keep
-  # synthesizing shim-less images for an address-mode engine (or vice versa). Running
-  # the multi-arch proxy image natively, it synthesizes for its own (== the host's)
-  # arch, so provider images match the local daemon with no configuration.
+  # synthesizing with the shim; otherwise clear it and start fresh. The proxy is
+  # long-lived and shared, so without the image check it would outlive the refresh
+  # above — a freshly pulled engine would talk to a proxy still running last week's
+  # build — and the shim check retires proxies started before shim synthesis was
+  # unconditional. Running the multi-arch proxy image natively, it synthesizes for
+  # its own (== the host's) arch, so provider images match the local daemon with no
+  # configuration.
   proxy_running_image="$(docker inspect -f '{{.Image}}' "$PROXY_NAME" 2>/dev/null || true)"
   proxy_wanted_image="$(docker image inspect -f '{{.Id}}' "$PROXY_IMAGE" 2>/dev/null || true)"
   proxy_running_shim="$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$PROXY_NAME" 2>/dev/null | grep -c '^PULUMI_POD_SHIM_BIN=' || true)"
-  proxy_wanted_shim="${ADDRESS_MODE:+1}"
-  proxy_wanted_shim="${proxy_wanted_shim:-0}"
   if [ -n "$(docker ps -q --filter "name=^/${PROXY_NAME}$" --filter status=running 2>/dev/null)" ] &&
     [ -n "$proxy_running_image" ] && [ "$proxy_running_image" = "$proxy_wanted_image" ] &&
-    [ "$proxy_running_shim" = "$proxy_wanted_shim" ]; then
+    [ "$proxy_running_shim" = "1" ]; then
     return 0
   fi
   docker rm -f "$PROXY_NAME" >/dev/null 2>&1 || true
@@ -203,14 +192,10 @@ ensure_registry_proxy() {
     echo "pulumi-pod: clearing synthesized provider images cached under the previous proxy" >&2
     docker rmi -f $stale >/dev/null 2>&1 || true
   fi
-  shim_env=()
-  if [ -n "$ADDRESS_MODE" ]; then
-    shim_env=(-e PULUMI_POD_SHIM_BIN=/usr/local/bin/pulumi-pod-shim)
-  fi
   echo "pulumi-pod: starting shared provider registry proxy ($PROXY_NAME): public synth on localhost:$PUBLIC_PORT, private on localhost:$PRIVATE_PORT" >&2
   docker run -d --name "$PROXY_NAME" --label "com.pulumi.pod-proxy=1" \
     --entrypoint registry-proxy -e PROXY_PRIVATE_ADDR=:5001 \
-    ${shim_env[@]+"${shim_env[@]}"} \
+    -e PULUMI_POD_SHIM_BIN=/usr/local/bin/pulumi-pod-shim \
     -p "$PUBLIC_PORT:5000" -p "$PRIVATE_PORT:5001" "$PROXY_IMAGE" >/dev/null 2>&1 || return 1
   # Wait for both distribution APIs to answer (if curl is present; else give it a moment).
   if command -v curl >/dev/null 2>&1; then
@@ -269,7 +254,7 @@ fwd=()
 for name in $(compgen -e); do
   case "$name" in
     PATH | HOME | PWD | OLDPWD | TMPDIR | SHLVL | TERM | HOSTNAME | DOCKER_HOST | PYTHONPATH | NODE_PATH) continue ;;
-    PULUMI_HOME | PULUMI_POD_MODE | PULUMI_POD_NETWORK | PULUMI_POD_ADVERTISE_HOST | PULUMI_POD_ID | PULUMI_POD_ADDRESS_MODE) continue ;;
+    PULUMI_HOME | PULUMI_POD_MODE | PULUMI_POD_NETWORK | PULUMI_POD_ADVERTISE_HOST | PULUMI_POD_ID) continue ;;
     PULUMI_POD_PUBLIC_REGISTRY | PULUMI_POD_PRIVATE_REGISTRY | PULUMI_POD_REGISTRY_ENDPOINTS) continue ;;
   esac
   fwd+=(-e "$name=${!name}")
@@ -330,7 +315,6 @@ docker run --rm -i ${tty_flag[@]+"${tty_flag[@]}"} \
   -e PULUMI_POD_NETWORK="$NET" \
   -e PULUMI_POD_ADVERTISE_HOST="$ENGINE_NAME" \
   -e PULUMI_POD_ID="$POD_ID" \
-  -e PULUMI_POD_ADDRESS_MODE="$ADDRESS_MODE" \
   "${fwd[@]}" \
   "$ENGINE_IMAGE" \
   "$@" || status=$?

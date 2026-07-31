@@ -23,17 +23,14 @@
 # closure reads /program-marker too, so a successful destroy proves the provider
 # again ran welded to the program image with no program in the picture.
 #
-# ADDRESS MODE (OCI_ADDRESS_MODE=1) runs the same proof over the address model,
-# and it is the case the FORWARDER SHIM CANNOT SERVE: the dynamic provider is the
-# program image's SDK entrypoint, which no registry proxy synthesizes a shim
+# This is also the case the FORWARDER SHIM CANNOT SERVE: the dynamic provider is
+# the program image's SDK entrypoint, which no registry proxy synthesizes a shim
 # around. Reachability comes from the SDK bind contract alone — the engine sets
 # PULUMI_PLUGIN_LISTEN_ADDRESS, the SDK binds 0.0.0.0:7777 in its own container
-# on the pod network, and the engine attaches by container DNS name. The image
-# carries NO shim binary (asserted), so a green run proves the engine wiring and
-# the SDK's half of the contract end to end with no forwarding in the picture.
-# Default (netns) mode doubles as the negative control: the variable is never set,
-# the provider binds ephemeral loopback, and the engine attaches over 127.0.0.1
-# exactly as before.
+# on the pod network, and the engine attaches at the container's address. The
+# image carries NO shim binary (asserted), so a green run proves the engine
+# wiring and the SDK's half of the contract end to end with no forwarding in the
+# picture.
 #
 # Pipeline (mirrors run-pod-command.sh, with a Node program image):
 #   1. cross-compile this branch's pulumi + pulumi-language-oci; build the engine
@@ -45,8 +42,7 @@
 #   3. assert the dynamic provider ran from the program image and its output is the
 #      baked marker
 #
-# Usage: run-pod-dynamic.sh                    # netns mode (provider shares the engine netns)
-#        OCI_ADDRESS_MODE=1 run-pod-dynamic.sh # address mode (own container, attach by DNS, no shim)
+# Usage: run-pod-dynamic.sh
 # Requires a running Docker daemon and the repo Go toolchain (to cross-compile).
 set -euo pipefail
 
@@ -69,11 +65,7 @@ PROGRAM_IMAGE="oci-smoke-node-dynamic:latest"
 STACK="dev"
 EXPECTED_MARKER="oci-dynamic-welded-to-program-image"
 
-ADDRESS_MODE="${OCI_ADDRESS_MODE:-}"
-MODE_LABEL="netns (provider shares the engine netns, dialed over 127.0.0.1)"
-if [ -n "$ADDRESS_MODE" ]; then
-  MODE_LABEL="address (provider in its own container, attached by DNS at :7777 via the SDK bind contract — no shim)"
-fi
+MODE_LABEL="provider in its own container, attached at IP:7777 via the SDK bind contract — no shim"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
@@ -116,22 +108,14 @@ echo "==> building Node program image $PROGRAM_IMAGE (bakes /program-marker, shi
 docker buildx build --builder "$BUILDER" --load \
   -t "$PROGRAM_IMAGE" -f "$PROGRAM_DIR/Dockerfile" "$PROGRAM_DIR"
 
-if [ -n "$ADDRESS_MODE" ]; then
-  # The whole point of the address-mode run: the program image must contain no forwarder
-  # shim, so reachability can only come from the SDK binding the requested address itself.
-  if docker run --rm --entrypoint sh "$PROGRAM_IMAGE" -c 'test -e /plugin/shim'; then
-    echo "!! the program image contains /plugin/shim — this run must prove the SDK bind"
-    echo "   contract with NO shim in the picture; remove the shim from the image"
-    exit 1
-  fi
-  echo "    program image carries no /plugin/shim — reachability must come from the SDK bind contract"
-  export PULUMI_POD_ADDRESS_MODE=1 # forwarded host->engine by the wrapper's env projection
-else
-  # The wrapper defaults address mode ON; the netns run must pin the legacy mode
-  # explicitly (empty = netns, per the wrapper contract) or it silently tests the
-  # wrong topology.
-  export PULUMI_POD_ADDRESS_MODE=
+# The whole point of this run: the program image must contain no forwarder shim,
+# so reachability can only come from the SDK binding the requested address itself.
+if docker run --rm --entrypoint sh "$PROGRAM_IMAGE" -c 'test -e /plugin/shim'; then
+  echo "!! the program image contains /plugin/shim — this run must prove the SDK bind"
+  echo "   contract with NO shim in the picture; remove the shim from the image"
+  exit 1
 fi
+echo "    program image carries no /plugin/shim — reachability must come from the SDK bind contract"
 
 cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
 
@@ -184,35 +168,23 @@ echo "==> asserting how the engine attached [$MODE_LABEL]"
 ATTACH_LINE="$(grep 'oci: provider pulumi-nodejs running as container' "$WORK/up.log" | head -1)"
 echo "    $ATTACH_LINE"
 NETMODE="$(cat "$WORK/provider-netmode" 2>/dev/null || true)"
-if [ -n "$ADDRESS_MODE" ]; then
-  if ! echo "$ATTACH_LINE" | grep -qE 'attaching at [^ ]*provider-pulumi-nodejs[^ ]*:7777'; then
-    echo "!! expected the engine to attach by container DNS name at the well-known port :7777"
-    exit 1
-  fi
-  if echo "$ATTACH_LINE" | grep -q '127.0.0.1'; then
-    echo "!! the engine attached over loopback — address mode did not take effect"
-    exit 1
-  fi
-  if [ -z "$NETMODE" ]; then
-    echo "    (provider container was not caught in time — no NetworkMode recorded)"
-  elif [ "${NETMODE#container:}" != "$NETMODE" ]; then
-    echo "!! provider NetworkMode = $NETMODE — the provider shares another container's netns,"
-    echo "   so this run proved nothing about reachability across namespaces"
-    exit 1
-  else
-    echo "    provider NetworkMode = $NETMODE -> own netns on the pod network; the engine's"
-    echo "    dial-back at <dns>:7777 crossed namespaces, served by the SDK's own bind"
-  fi
+if ! echo "$ATTACH_LINE" | grep -qE 'attaching at [0-9.]+:7777'; then
+  echo "!! expected the engine to attach at the container's address on the well-known port :7777"
+  exit 1
+fi
+if echo "$ATTACH_LINE" | grep -q '127.0.0.1'; then
+  echo "!! the engine attached over loopback — the provider is not being dialed on the pod network"
+  exit 1
+fi
+if [ -z "$NETMODE" ]; then
+  echo "    (provider container was not caught in time — no NetworkMode recorded)"
+elif [ "${NETMODE#container:}" != "$NETMODE" ]; then
+  echo "!! provider NetworkMode = $NETMODE — the provider shares another container's netns,"
+  echo "   so this run proved nothing about reachability across namespaces"
+  exit 1
 else
-  if ! echo "$ATTACH_LINE" | grep -q 'attaching at 127.0.0.1:'; then
-    echo "!! expected the netns default: engine attaching over the shared loopback"
-    exit 1
-  fi
-  if [ -n "$NETMODE" ] && [ "${NETMODE#container:}" = "$NETMODE" ]; then
-    echo "!! provider NetworkMode = $NETMODE — expected it to share the engine's netns (container:...)"
-    exit 1
-  fi
-  echo "    netns default intact: provider shares the engine netns (${NETMODE:-uncaught}), dialed over loopback"
+  echo "    provider NetworkMode = $NETMODE -> own netns on the pod network; the engine's"
+  echo "    dial at IP:7777 crossed namespaces, served by the SDK's own bind"
 fi
 
 echo "==> pulumi-pod: destroy (NO program runs — the dynamic provider must start from the"
@@ -224,9 +196,8 @@ if ! grep -q 'oci: provider pulumi-nodejs is a dynamic provider' "$WORK/destroy.
   echo "!! destroy did not start the dynamic provider from the program image"
   exit 1
 fi
-if [ -n "$ADDRESS_MODE" ] &&
-  ! grep -qE 'attaching at [^ ]*provider-pulumi-nodejs[^ ]*:7777' "$WORK/destroy.log"; then
-  echo "!! destroy did not attach by container DNS at :7777 — the no-program path fell off address mode"
+if ! grep -qE 'attaching at [0-9.]+:7777' "$WORK/destroy.log"; then
+  echo "!! destroy did not attach at the container's address on :7777 — the no-program path fell off the address model"
   exit 1
 fi
 # The delete closure reads /program-marker; because the destroy above succeeded

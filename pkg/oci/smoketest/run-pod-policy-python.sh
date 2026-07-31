@@ -2,30 +2,27 @@
 #
 # Python policy (analyzer) smoke test — the Python twin of run-pod-policy.sh. The
 # engine's policy path is language-agnostic (an image run with
-# PULUMI_OCI_ROLE=policy-pack, attached over the shared loopback or by container
-# DNS at :7777), and the Node test already proves that path both ways. What THIS
-# test discriminates is the PYTHON policy SDK's serve site
-# (pulumi_policy/policy.py in pulumi/pulumi-policy): in address mode the pack is
-# reachable only if that serve site honors PULUMI_PLUGIN_LISTEN_ADDRESS itself —
-# no shim exists on the policy path, and a Python pack is ITS OWN server
-# (PolicyPack() binds and serves from __init__; there is no run-policy-pack
-# harness between the bootstrap and the SDK).
+# PULUMI_OCI_ROLE=policy-pack, attached at the container's address on :7777), and
+# the Node test already proves that path. What THIS test discriminates is the
+# PYTHON policy SDK's serve site (pulumi_policy/policy.py in
+# pulumi/pulumi-policy): the pack is reachable only if that serve site honors
+# PULUMI_PLUGIN_LISTEN_ADDRESS itself — no shim exists on the policy path, and a
+# Python pack is ITS OWN server (PolicyPack() binds and serves from __init__;
+# there is no run-policy-pack harness between the bootstrap and the SDK).
 #
 # The companion program is the NODE dynamic-resource program — deliberately the
 # same companion the Node policy test uses, staging and all, so the Python policy
-# image is the single new variable in the run. (The Python dynamic companion would
-# add its own unproven-under-address-mode staging to the experiment.)
+# image is the single new variable in the run.
 #
 # Discriminating proof, as in the Node test: the pack's validate reads
 # /policy-marker — baked into the PYTHON POLICY image alone — inside its
 # validation logic and reports it in the violation message. The engine image
 # carries no Python at all, so the pack also cannot have run ambiently.
 #
-# Usage: run-pod-policy-python.sh                    # netns default (shared loopback)
-#        OCI_ADDRESS_MODE=1 run-pod-policy-python.sh # address mode (own container, DNS:7777)
-# Requires a running Docker daemon and the repo Go toolchain (to cross-compile);
-# address mode also needs a pulumi/pulumi-policy clone (OCI_POLICY_SDK_DIR overrides
-# the default ~/src/pulumi/pulumi-policy).
+# Usage: run-pod-policy-python.sh
+# Requires a running Docker daemon, the repo Go toolchain (to cross-compile), and
+# a pulumi/pulumi-policy clone (OCI_POLICY_SDK_DIR overrides the default
+# ~/src/pulumi/pulumi-policy).
 set -euo pipefail
 
 SMOKE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -48,11 +45,7 @@ POLICY_IMAGE="oci-smoke-policy-py:latest" # short: the sanitized ref feeds a dia
 STACK="dev"
 EXPECTED_MARKER="oci-python-policy-ran-from-its-own-image"
 
-ADDRESS_MODE="${OCI_ADDRESS_MODE:-}"
-MODE_LABEL="netns (pack shares the engine netns, dialed over 127.0.0.1)"
-if [ -n "$ADDRESS_MODE" ]; then
-  MODE_LABEL="address (pack in its own container, attached by DNS at :7777 via the SDK bind contract)"
-fi
+MODE_LABEL="pack in its own container, attached at IP:7777 via the SDK bind contract"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
@@ -117,12 +110,10 @@ if [ -d "$POLICY_SDK_LIB" ]; then
   rm -f "$POLICY_DIR/policy-sdk-lib/version.py"
   find "$POLICY_DIR/policy-sdk-lib" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
   echo "   staged $(du -sh "$POLICY_DIR/policy-sdk-lib" | cut -f1) of policy SDK into the build context"
-elif [ -n "$ADDRESS_MODE" ]; then
-  echo "!! address mode needs the bind-contract pulumi_policy and no clone was found at $POLICY_SDK_LIB"
+else
+  echo "!! this test needs the bind-contract pulumi_policy and no clone was found at $POLICY_SDK_LIB"
   echo "   (git get pulumi/pulumi-policy, or point OCI_POLICY_SDK_DIR at a clone)"
   exit 1
-else
-  echo "==> no pulumi-policy clone at $POLICY_SDK_LIB — netns run uses the stock pulumi-policy"
 fi
 
 echo "==> building Python policy image $POLICY_IMAGE (python toolchain + /policy-marker)"
@@ -167,15 +158,6 @@ WATCH_PID=$!
 export PULUMI_POD_ENGINE_IMAGE="$ENGINE_IMAGE"
 export PULUMI_POD_MOUNT_DIR="$WORK/project"
 export PULUMI_POD_PROGRAM_IMAGE="$PROGRAM_IMAGE"
-if [ -n "$ADDRESS_MODE" ]; then
-  export PULUMI_POD_ADDRESS_MODE=1 # forwarded host->engine by the wrapper's env projection
-else
-  # The wrapper defaults address mode ON; the netns run must pin the legacy mode
-  # explicitly (empty = netns, per the wrapper contract) or it silently tests the
-  # wrong topology.
-  export PULUMI_POD_ADDRESS_MODE=
-fi
-
 echo "==> pulumi-pod [$MODE_LABEL]: stack init + up --policy-pack <ref> (engine consumes the ref, not a path)"
 "$WRAPPER" stack init "$STACK"
 "$WRAPPER" up --yes --skip-preview --policy-pack "$POLICY_REF" 2>&1 | tee "$WORK/up.log"
@@ -190,35 +172,23 @@ echo "==> asserting how the engine attached the pack [$MODE_LABEL]"
 ATTACH_LINE="$(grep 'oci: policy pack .* running as container' "$WORK/up.log" | head -1)"
 echo "    $ATTACH_LINE"
 NETMODE="$(cat "$WORK/policy-netmode" 2>/dev/null || true)"
-if [ -n "$ADDRESS_MODE" ]; then
-  if ! echo "$ATTACH_LINE" | grep -qE 'attaching at [^ ]*policy-oci-smoke-policy-py[^ ]*:7777'; then
-    echo "!! expected the engine to attach by container DNS name at the well-known port :7777"
-    exit 1
-  fi
-  if echo "$ATTACH_LINE" | grep -q '127.0.0.1'; then
-    echo "!! the engine attached over loopback — address mode did not take effect"
-    exit 1
-  fi
-  if [ -z "$NETMODE" ]; then
-    echo "    (policy container was not caught in time — no NetworkMode recorded)"
-  elif [ "${NETMODE#container:}" != "$NETMODE" ]; then
-    echo "!! policy NetworkMode = $NETMODE — the pack shares another container's netns,"
-    echo "   so this run proved nothing about reachability across namespaces"
-    exit 1
-  else
-    echo "    policy NetworkMode = $NETMODE -> own netns on the pod network; the engine's"
-    echo "    Analyze calls at <dns>:7777 crossed namespaces, served by the Python SDK's own bind"
-  fi
+if ! echo "$ATTACH_LINE" | grep -qE 'attaching at [0-9.]+:7777'; then
+  echo "!! expected the engine to attach at the container's address on the well-known port :7777"
+  exit 1
+fi
+if echo "$ATTACH_LINE" | grep -q '127.0.0.1'; then
+  echo "!! the engine attached over loopback — the pack is not being dialed on the pod network"
+  exit 1
+fi
+if [ -z "$NETMODE" ]; then
+  echo "    (policy container was not caught in time — no NetworkMode recorded)"
+elif [ "${NETMODE#container:}" != "$NETMODE" ]; then
+  echo "!! policy NetworkMode = $NETMODE — the pack shares another container's netns,"
+  echo "   so this run proved nothing about reachability across namespaces"
+  exit 1
 else
-  if ! echo "$ATTACH_LINE" | grep -q 'attaching at 127.0.0.1:'; then
-    echo "!! expected the netns default: engine attaching over the shared loopback"
-    exit 1
-  fi
-  if [ -n "$NETMODE" ] && [ "${NETMODE#container:}" = "$NETMODE" ]; then
-    echo "!! policy NetworkMode = $NETMODE — expected it to share the engine's netns (container:...)"
-    exit 1
-  fi
-  echo "    netns default intact: pack shares the engine netns (${NETMODE:-uncaught}), dialed over loopback"
+  echo "    policy NetworkMode = $NETMODE -> own netns on the pod network; the engine's"
+  echo "    Analyze calls at IP:7777 crossed namespaces, served by the Python SDK's own bind"
 fi
 
 echo "==> asserting the policy ran from its own image (violation carries the baked marker)"

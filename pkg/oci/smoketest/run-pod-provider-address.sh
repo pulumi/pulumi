@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 #
 # Address-model provider smoke test (the minimal mechanism proof for the forwarder
-# shim + attach-by-DNS). Same shape as run-pod-provider.sh, but the provider runs as
-# its OWN container on the pod network — not in the engine's netns — and the engine
-# attaches to it by container DNS name at the shim's well-known port, rather than over
-# 127.0.0.1. This exercises the whole address path with a single provider and one
-# image, before the multi-provider case adds registry + collision moving parts.
+# shim + attach-by-address). Same shape as run-pod-provider.sh, but the provider runs
+# as its OWN container on the pod network — not in the engine's netns — and the
+# engine attaches to it at its address on the shim's well-known port, rather than
+# over 127.0.0.1. This exercises the whole address path with a single provider and
+# one image, before the multi-provider case adds registry + collision moving parts.
 #
 # What differs from run-pod-provider.sh:
 #   - the provider image embeds the forwarder shim (Dockerfile.provider-shim), so the
 #     stock loopback-binding binary is reachable at 0.0.0.0:7777;
-#   - the engine runs with PULUMI_POD_ADDRESS_MODE=true, so pkg/oci puts the provider
-#     on the pod network and attaches at <container-dns>:7777 (+ rewrites the engine
-#     address it hands back to the advertised DNS name for the reverse direction).
+#   - pkg/oci puts the provider on the pod network and attaches at IP:7777 (+
+#     rewrites the engine address it hands back to the advertised host for the
+#     reverse direction).
 #
 # Usage: run-pod-provider-address.sh
 # Requires a running Docker daemon and the repo Go toolchain (to cross-compile).
@@ -88,7 +88,7 @@ docker network create "$NET" >/dev/null
 
 cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
 
-echo "==> running engine container $ENGINE_NAME on $NET (address mode: provider joins the pod net, attached by DNS)"
+echo "==> running engine container $ENGINE_NAME on $NET (provider joins the pod net, attached at its address)"
 docker run --rm -i \
   --privileged \
   --network "$NET" \
@@ -102,7 +102,6 @@ docker run --rm -i \
   -e PULUMI_POD_MODE=true \
   -e PULUMI_POD_NETWORK="$NET" \
   -e PULUMI_POD_ADVERTISE_HOST="$ENGINE_NAME" \
-  -e PULUMI_POD_ADDRESS_MODE=true \
   -e PULUMI_POD_ID="$POD_ID" \
   -e PULUMI_BACKEND_URL=file:///state \
   -e PULUMI_CONFIG_PASSPHRASE="$PULUMI_CONFIG_PASSPHRASE" \
@@ -118,16 +117,16 @@ docker run --rm -i \
   ' \
   2>&1 | tee "$WORK/engine.log"
 
-echo "==> asserting the provider was attached by DNS address (not 127.0.0.1)"
+echo "==> asserting the provider was attached at its pod-network address (not 127.0.0.1)"
 if ! grep -q 'oci: provider random running as container' "$WORK/engine.log"; then
   echo "!! the engine did not start the provider as a container"; exit 1
 fi
-# In address mode the attach line names the container DNS host and the shim port, e.g.
-# "attaching at provider-random-xxxx:7777" — assert it is NOT a loopback attach.
+# The attach line names the container's address and the shim port, e.g.
+# "attaching at 172.19.0.4:7777" — assert it is NOT a loopback attach.
 if grep -q 'attaching at 127.0.0.1' "$WORK/engine.log"; then
-  echo "!! provider was attached over 127.0.0.1 — address mode did not take effect"; exit 1
+  echo "!! provider was attached over 127.0.0.1 — it is not being dialed on the pod network"; exit 1
 fi
-if ! grep -qE 'attaching at [^ ]+:7777' "$WORK/engine.log"; then
+if ! grep -qE 'attaching at [0-9.]+:7777' "$WORK/engine.log"; then
   echo "!! did not see an attach at the shim's well-known port :7777"; exit 1
 fi
 PET="$(sed -n 's/.*SMOKE petName=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1)"

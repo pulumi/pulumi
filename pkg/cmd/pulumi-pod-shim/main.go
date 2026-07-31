@@ -48,31 +48,44 @@ import (
 	"syscall"
 )
 
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintf(os.Stderr, "pulumi-pod-shim: %v\n", err)
-		os.Exit(1)
-	}
+// warnf prints to the container's stderr. The shim is a standalone process
+// wrapper, not a cobra command — direct stderr is its relay contract, so the
+// pkg/cmd forbidigo rule (aimed at cobra commands) is silenced here, once.
+//
+//nolint:forbidigo
+func warnf(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, format, args...)
 }
 
-func run() error {
+func main() {
+	code, err := run()
+	if err != nil {
+		warnf("pulumi-pod-shim: %v\n", err)
+		os.Exit(1)
+	}
+	os.Exit(code)
+}
+
+// run wraps the plugin and returns its exit code, so the shim is transparent to
+// whatever supervises the container.
+func run() (int, error) {
 	knownStr := os.Getenv("PULUMI_POD_SHIM_PORT")
 	if knownStr == "" {
-		return fmt.Errorf("PULUMI_POD_SHIM_PORT must be set (the well-known ingress port)")
+		return 0, errors.New("PULUMI_POD_SHIM_PORT must be set (the well-known ingress port)")
 	}
 	known, err := strconv.Atoi(strings.TrimSpace(knownStr))
 	if err != nil || known <= 0 || known > 65535 {
-		return fmt.Errorf("PULUMI_POD_SHIM_PORT %q is not a valid port", knownStr)
+		return 0, fmt.Errorf("PULUMI_POD_SHIM_PORT %q is not a valid port", knownStr)
 	}
 	if len(os.Args) < 2 {
-		return fmt.Errorf("usage: pulumi-pod-shim <plugin> [args...]")
+		return 0, errors.New("usage: pulumi-pod-shim <plugin> [args...]")
 	}
 
 	// Start the plugin. Its stderr is the container's stderr (logs flow through
 	// untouched); its stdout we intercept to read the handshake port.
 	//nolint:gosec // the wrapped command is supplied by the pod, not untrusted input
 	cmd := exec.Command(os.Args[1], os.Args[2:]...)
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = os.Stderr //nolint:forbidigo // the plugin's stderr IS the container's stderr, untouched
 
 	// The shim exists to adapt a plugin that does NOT speak the bind contract. The engine
 	// sets PULUMI_PLUGIN_LISTEN_ADDRESS on every provider container without knowing whether
@@ -87,10 +100,10 @@ func run() error {
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("wiring plugin stdout: %w", err)
+		return 0, fmt.Errorf("wiring plugin stdout: %w", err)
 	}
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("starting plugin %q: %w", os.Args[1], err)
+		return 0, fmt.Errorf("starting plugin %q: %w", os.Args[1], err)
 	}
 
 	// Relay termination signals to the plugin so it shuts down cleanly.
@@ -113,25 +126,25 @@ func run() error {
 			pluginPort = p
 			break
 		}
-		fmt.Fprintln(os.Stderr, line)
+		warnf("%s\n", line)
 	}
 	if pluginPort == 0 {
 		_ = cmd.Wait()
-		return fmt.Errorf("plugin exited before printing a handshake port")
+		return 0, errors.New("plugin exited before printing a handshake port")
 	}
 
 	// Bind the well-known ingress port and forward it to the plugin's loopback port.
 	ln, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", known))
 	if err != nil {
-		return fmt.Errorf("listening on ingress port %d: %w", known, err)
+		return 0, fmt.Errorf("listening on ingress port %d: %w", known, err)
 	}
 	target := fmt.Sprintf("127.0.0.1:%d", pluginPort)
-	fmt.Fprintf(os.Stderr, "pulumi-pod-shim: forwarding 0.0.0.0:%d -> %s\n", known, target)
+	warnf("pulumi-pod-shim: forwarding 0.0.0.0:%d -> %s\n", known, target)
 
 	// Re-emit the well-known port as our handshake line so a host that still scrapes
 	// stdout reads the ingress port, not the plugin's private one.
-	fmt.Println(known)
-	os.Stdout.Close()
+	fmt.Println(known) //nolint:forbidigo // the handshake line IS the shim's stdout contract
+	os.Stdout.Close()  //nolint:forbidigo // close stdout so hosts treating EOF as handshake-complete proceed
 
 	go acceptLoop(ln, target)
 	go drainToStderr(scanner)
@@ -141,11 +154,11 @@ func run() error {
 	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			os.Exit(exitErr.ExitCode())
+			return exitErr.ExitCode(), nil
 		}
-		return fmt.Errorf("plugin: %w", err)
+		return 0, fmt.Errorf("plugin: %w", err)
 	}
-	return nil
+	return 0, nil
 }
 
 // acceptLoop forwards each inbound connection to the plugin's loopback port.
@@ -164,7 +177,7 @@ func proxy(client net.Conn, target string) {
 	defer client.Close()
 	upstream, err := net.Dial("tcp", target)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "pulumi-pod-shim: dial %s: %v\n", target, err)
+		warnf("pulumi-pod-shim: dial %s: %v\n", target, err)
 		return
 	}
 	defer upstream.Close()
@@ -178,7 +191,7 @@ func proxy(client net.Conn, target string) {
 // not lost now that our own stdout is closed.
 func drainToStderr(scanner *bufio.Scanner) {
 	for scanner.Scan() {
-		fmt.Fprintln(os.Stderr, scanner.Text())
+		warnf("%s\n", scanner.Text())
 	}
 }
 

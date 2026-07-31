@@ -40,7 +40,7 @@ func TestImportImageLoadsLayout(t *testing.T) {
 	if !dockerAvailable(t) {
 		t.Skip("docker daemon not available")
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Build a small OCI layout DIRECTORY with go-containerregistry — the same digest-
 	// addressed shape kaniko's --oci-layout-path emits, but hermetic (no builder, no
@@ -73,7 +73,7 @@ func TestImportImageSkipsAttestationManifest(t *testing.T) {
 	if !dockerAvailable(t) {
 		t.Skip("docker daemon not available")
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	img, err := random.Image(1024, 1)
 	require.NoError(t, err)

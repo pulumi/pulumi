@@ -19,6 +19,15 @@
 #   - the repo Go toolchain (to cross-compile)
 #
 # Usage: run-pod-cri.sh
+# FROZEN (2026-07-30): CRI served as the second-container-runtime pressure test and is
+# retired from maintenance. The engine now dials plugins by pod-network IP; CRI
+# containers share one sandbox IP, so these tests no longer hold against current
+# engines (a thaw means sandbox-per-plugin). ac593679 is the last commit with the
+# netns machinery these tests were written against.
+echo "!! CRI smoke tests are FROZEN — the engine now dials plugins by pod-network IP," >&2
+echo "   which CRI's shared-sandbox topology cannot serve. Check out ac593679 or earlier." >&2
+exit 3
+
 set -euo pipefail
 
 SMOKE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

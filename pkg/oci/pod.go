@@ -32,7 +32,6 @@ package oci
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -197,21 +196,24 @@ type Volume struct {
 type Container struct {
 	// ID is the runtime-assigned container identifier.
 	ID string
-	// Name is the container's name, which doubles as its DNS name on the pod
-	// network. Wire this (via Address) into PULUMI_MONITOR/PULUMI_ENGINE and the
-	// like rather than hard-coding a fixed name, so concurrent pods don't collide.
+	// Name is the container's name. Names are identity — log lines, docker ps,
+	// cleanup filters — not addresses: the engine dials IP, so a name may be as
+	// long and descriptive as it likes. (The two exceptions are the engine and
+	// program containers, whose short fixed names are ADVERTISED for dial-back —
+	// an advertised address must be knowable before its consumer exists, which
+	// only a name resolving later can be.)
 	Name string
+	// IP is the container's address on its pod network, read back from the
+	// runtime after start. This is what the engine dials: an IP is known only
+	// once the container exists, which is fine for the dial direction (the
+	// engine attaches after start anyway) and frees names from DNS-label
+	// constraints entirely. Empty when the container joined no named network
+	// (a host engine's default bridge, where dialing goes through HostPort).
+	IP string
 	// HostPort is the host-loopback port a PublishLoopback request mapped to,
 	// zero when nothing was published. A host engine dials 127.0.0.1:HostPort
-	// where a pod engine would dial Address(port).
+	// where a pod engine would dial IP:port.
 	HostPort int
-}
-
-// Address returns "name:port" for reaching a service in this container from
-// another container on the same pod network. The container name doubles as its
-// DNS name, so this is simply Name:port.
-func (c Container) Address(port int) string {
-	return fmt.Sprintf("%s:%d", c.Name, port)
 }
 
 // VolumeMount describes a bind of a named volume (or host path) into a container.

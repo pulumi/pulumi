@@ -183,8 +183,31 @@ func (m *dockerPodManager) RunContainer(ctx context.Context, cfg ContainerConfig
 		}
 		c.HostPort = port
 	}
+	if cfg.Network != "" && !strings.HasPrefix(cfg.Network, "container:") {
+		ip, err := m.containerIP(ctx, name)
+		if err != nil {
+			return Container{}, err
+		}
+		c.IP = ip
+	}
 	m.track(func() { m.containers = append(m.containers, c) })
 	return c, nil
+}
+
+// containerIP reads back the address a started container was assigned on its
+// network — the address the engine dials. The range form sidesteps quoting the
+// network name in the template; a container here joins exactly one network.
+func (m *dockerPodManager) containerIP(ctx context.Context, name string) (string, error) {
+	out, err := m.docker(ctx, "inspect", "-f",
+		"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", name)
+	if err != nil {
+		return "", fmt.Errorf("resolving network address for %s: %w", name, err)
+	}
+	ip := strings.TrimSpace(out)
+	if ip == "" {
+		return "", fmt.Errorf("container %s has no address on its network — nothing the engine could dial", name)
+	}
+	return ip, nil
 }
 
 // publishedPort resolves the ephemeral host port an -p publish mapped a container

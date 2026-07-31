@@ -33,11 +33,10 @@ import (
 // ref instead of a path (the dev-time half of "refs are the internal currency").
 //
 // It builds the pod machinery from the environment, so it must run inside the engine
-// container (pod mode): the schema container joins the network providerNetwork selects
-// (the engine's netns and its shared loopback, or — address mode — its own container on
-// the pod network, reached by DNS at the well-known port; Attach delivers a reachable
-// engine address back in both) and the configured plugin registry/proxy supplies the
-// image — exactly as for a runtime provider. The returned stop function removes the schema container; the caller also Closes
+// container (pod mode): the schema container runs on the pod network, dialed at the
+// well-known port (Attach delivers a reachable engine address back), and the
+// configured plugin registry/proxy supplies the image — exactly as for a runtime
+// provider. The returned stop function removes the schema container; the caller also Closes
 // the returned provider. Crucially this stops only that one container, not the whole pod —
 // the engine's own pod must outlive a package-time schema fetch.
 func ProviderFromImage(ctx *plugin.Context, ref string) (plugin.Provider, func() error, error) {
@@ -60,9 +59,8 @@ func ProviderFromImage(ctx *plugin.Context, ref string) (plugin.Provider, func()
 }
 
 // providerFromImage runs ref as a stateless provider container (its own image,
-// ENTRYPOINT-driven), scrapes the port it prints, and attaches — over the shared
-// loopback on the engine's netns, or by container DNS at the well-known port in
-// address mode, exactly as Provider() does. It mirrors Provider()'s stateless
+// ENTRYPOINT-driven), scrapes the handshake it prints, and attaches at the
+// well-known port, exactly as Provider() does. It mirrors Provider()'s stateless
 // archetype but takes a bare image ref rather than a plugin descriptor, and returns
 // a per-container stop rather than relying on the host's pod-wide Cleanup — the
 // engine's pod is still live around this call.
@@ -77,11 +75,9 @@ func (h *containerHost) providerFromImage(
 	}
 
 	cfg := ContainerConfig{
-		// Named for the provider, not the full ref: the name doubles as the
-		// container's DNS name in address mode, and a whole ref blows the
-		// 63-character DNS label limit (and carries dots, which Docker's
-		// embedded DNS refuses to resolve). The seq suffix disambiguates
-		// concurrent fetches; the ref is in the log line below.
+		// Named for the provider, not the full ref: names are identity, and a
+		// short one keeps docker ps and log lines readable. The seq suffix
+		// disambiguates concurrent fetches; the ref is in the log line below.
 		Name:    uniqueContainerName("schema-" + sanitizeContainerName(providerNameFromRef(ref))),
 		Network: h.providerNetwork(),
 		Image:   ref,
@@ -89,13 +85,10 @@ func (h *containerHost) providerFromImage(
 		// GetSchema is parameterized may need credentials to talk to its upstream.
 		Env: projectedProviderEnv(),
 	}
-	// The same bind contract as a runtime provider: in address mode the schema
-	// container serves the well-known port in its own netns (a shim-wrapped image
-	// does the same by proxy); never set in netns mode, where a second bind of a
-	// fixed port on the shared netns is fatal.
-	if h.addressMode() {
-		h.requestWellKnownBind(&cfg)
-	}
+	// The same bind contract as a runtime provider: the schema container serves
+	// the well-known port in its own netns (a shim-wrapped image does the same by
+	// proxy).
+	h.requestWellKnownBind(&cfg)
 
 	c, err := h.pod.RunContainer(ctx.Base(), cfg)
 	if err != nil {
@@ -112,13 +105,13 @@ func (h *containerHost) providerFromImage(
 	// The handshake honesty check, as in Provider(): a schema container announcing
 	// any port but the requested one ignored the bind contract and is serving
 	// loopback where the engine cannot reach it — name the diagnosis now.
-	if h.addressMode() && port != pluginListenPort {
+	if port != pluginListenPort {
 		return nil, nil, errStop(stop, fmt.Errorf(
 			"oci: provider image %q announced port %d instead of the requested listen port %d: the "+
 				"plugin ignored PULUMI_PLUGIN_LISTEN_ADDRESS (built against an SDK without the bind "+
 				"contract) and its image does not wrap it in the forwarder shim, so it is serving "+
 				"loopback inside its own container where the engine cannot reach it. Rebuild the "+
-				"plugin against a newer SDK, use a shim-wrapped image, or unset PULUMI_POD_ADDRESS_MODE",
+				"plugin against a newer SDK, or use a shim-wrapped image",
 			ref, port, pluginListenPort))
 	}
 

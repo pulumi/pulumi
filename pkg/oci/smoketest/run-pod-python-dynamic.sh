@@ -13,26 +13,22 @@
 # output == the baked marker proves both "the dynamic resource was created" and "its
 # provider ran welded to the program image".
 #
-# ADDRESS MODE (OCI_ADDRESS_MODE=1) runs the same proof over the address model, and
-# like the Node test it is a case the FORWARDER SHIM CANNOT SERVE: the dynamic
+# Like the Node test, this is a case the FORWARDER SHIM CANNOT SERVE: the dynamic
 # provider is the program image's SDK entrypoint, which no registry proxy
 # synthesizes a shim around. Reachability comes from the SDK bind contract alone —
 # the engine sets PULUMI_PLUGIN_LISTEN_ADDRESS, the PYTHON SDK's dynamic entrypoint
 # (pulumi/dynamic/__main__.py) binds 0.0.0.0:7777 in its own container on the pod
-# network, and the engine attaches by container DNS name. The image carries NO shim
-# binary (asserted), so a green run proves the Python SDK's half of the contract
-# with no forwarding in the picture. The program image must therefore carry THIS
-# BRANCH's Python SDK — staged install-then-overwrite, exactly as the transform
-# test does (see program-python-transform/Dockerfile for the reasoning).
-# Default (netns) mode doubles as the negative control: the variable is never set,
-# the provider binds ephemeral loopback, and the engine attaches over 127.0.0.1.
+# network, and the engine attaches at the container's address. The image carries NO
+# shim binary (asserted), so a green run proves the Python SDK's half of the
+# contract with no forwarding in the picture. The program image must therefore
+# carry THIS BRANCH's Python SDK — staged install-then-overwrite, exactly as the
+# transform test does (see program-python-transform/Dockerfile for the reasoning).
 #
 # The Python program image needs the SDK's program-exec shim
 # (pulumi-language-python-exec) to launch the program; that ships with the CLI, not
 # the pip package, so we copy it from the repo into the build context.
 #
-# Usage: run-pod-python-dynamic.sh                    # netns mode (provider shares the engine netns)
-#        OCI_ADDRESS_MODE=1 run-pod-python-dynamic.sh # address mode (own container, attach by DNS, no shim)
+# Usage: run-pod-python-dynamic.sh
 # Requires a running Docker daemon and the repo Go toolchain (to cross-compile).
 set -euo pipefail
 
@@ -54,11 +50,7 @@ PROGRAM_IMAGE="oci-smoke-python-dynamic:latest"
 STACK="dev"
 EXPECTED_MARKER="oci-dynamic-welded-to-python-image"
 
-ADDRESS_MODE="${OCI_ADDRESS_MODE:-}"
-MODE_LABEL="netns (provider shares the engine netns, dialed over 127.0.0.1)"
-if [ -n "$ADDRESS_MODE" ]; then
-  MODE_LABEL="address (provider in its own container, attached by DNS at :7777 via the SDK bind contract — no shim)"
-fi
+MODE_LABEL="provider in its own container, attached at IP:7777 via the SDK bind contract — no shim"
 
 WORK="$(mktemp -d)"
 export PULUMI_CONFIG_PASSPHRASE="smoke-test"
@@ -82,7 +74,7 @@ build_engine_image
 # ── stage this branch's Python SDK into the build context ───────────────────
 # The image overlays it onto the pip install (install-then-overwrite; see the
 # Dockerfile). Guarded on the dynamic entrypoint's bind-contract line: without the
-# branch SDK, address mode fails the engine's handshake honesty check (the stock
+# branch SDK, the run fails the engine's handshake honesty check (the stock
 # PyPI SDK ignores PULUMI_PLUGIN_LISTEN_ADDRESS), and the failure would look like
 # the engine being wrong rather than the artifact being stock.
 echo "==> staging this branch's Python SDK (sdk/python/lib/pulumi)"
@@ -103,22 +95,14 @@ echo "==> building Python program image $PROGRAM_IMAGE (pip install pulumi + bra
 docker buildx build --builder "$BUILDER" --load \
   -t "$PROGRAM_IMAGE" -f "$PROGRAM_DIR/Dockerfile" "$WORK/ctx"
 
-if [ -n "$ADDRESS_MODE" ]; then
-  # The whole point of the address-mode run: the program image must contain no forwarder
-  # shim, so reachability can only come from the SDK binding the requested address itself.
-  if docker run --rm --entrypoint sh "$PROGRAM_IMAGE" -c 'test -e /plugin/shim'; then
-    echo "!! the program image contains /plugin/shim — this run must prove the SDK bind"
-    echo "   contract with NO shim in the picture; remove the shim from the image"
-    exit 1
-  fi
-  echo "    program image carries no /plugin/shim — reachability must come from the SDK bind contract"
-  export PULUMI_POD_ADDRESS_MODE=1 # forwarded host->engine by the wrapper's env projection
-else
-  # The wrapper defaults address mode ON; the netns run must pin the legacy mode
-  # explicitly (empty = netns, per the wrapper contract) or it silently tests the
-  # wrong topology.
-  export PULUMI_POD_ADDRESS_MODE=
+# The whole point of this run: the program image must contain no forwarder shim,
+# so reachability can only come from the SDK binding the requested address itself.
+if docker run --rm --entrypoint sh "$PROGRAM_IMAGE" -c 'test -e /plugin/shim'; then
+  echo "!! the program image contains /plugin/shim — this run must prove the SDK bind"
+  echo "   contract with NO shim in the picture; remove the shim from the image"
+  exit 1
 fi
+echo "    program image carries no /plugin/shim — reachability must come from the SDK bind contract"
 
 cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
 
@@ -167,34 +151,22 @@ echo "==> asserting how the engine attached [$MODE_LABEL]"
 ATTACH_LINE="$(grep 'oci: provider pulumi-python running as container' "$WORK/up.log" | head -1)"
 echo "    $ATTACH_LINE"
 NETMODE="$(cat "$WORK/provider-netmode" 2>/dev/null || true)"
-if [ -n "$ADDRESS_MODE" ]; then
-  if ! echo "$ATTACH_LINE" | grep -qE 'attaching at [^ ]*provider-pulumi-python[^ ]*:7777'; then
-    echo "!! expected the engine to attach by container DNS name at the well-known port :7777"
-    exit 1
-  fi
-  if echo "$ATTACH_LINE" | grep -q '127.0.0.1'; then
-    echo "!! the engine attached over loopback — address mode did not take effect"
-    exit 1
-  fi
-  if [ -z "$NETMODE" ]; then
-    echo "    (provider container was not caught in time — no NetworkMode recorded)"
-  elif [ "${NETMODE#container:}" != "$NETMODE" ]; then
-    echo "!! provider NetworkMode = $NETMODE — the provider shares another container's netns,"
-    echo "   so this run proved nothing about reachability across namespaces"
-    exit 1
-  else
-    echo "    provider NetworkMode = $NETMODE -> own netns on the pod network; the engine's"
-    echo "    dial at <dns>:7777 crossed namespaces, served by the Python SDK's own bind"
-  fi
+if ! echo "$ATTACH_LINE" | grep -qE 'attaching at [0-9.]+:7777'; then
+  echo "!! expected the engine to attach at the container's address on the well-known port :7777"
+  exit 1
+fi
+if echo "$ATTACH_LINE" | grep -q '127.0.0.1'; then
+  echo "!! the engine attached over loopback — the provider is not being dialed on the pod network"
+  exit 1
+fi
+if [ -z "$NETMODE" ]; then
+  echo "    (provider container was not caught in time — no NetworkMode recorded)"
+elif [ "${NETMODE#container:}" != "$NETMODE" ]; then
+  echo "!! provider NetworkMode = $NETMODE — the provider shares another container's netns,"
+  echo "   so this run proved nothing about reachability across namespaces"
+  exit 1
 else
-  if ! echo "$ATTACH_LINE" | grep -q 'attaching at 127.0.0.1:'; then
-    echo "!! expected the netns default: engine attaching over the shared loopback"
-    exit 1
-  fi
-  if [ -n "$NETMODE" ] && [ "${NETMODE#container:}" = "$NETMODE" ]; then
-    echo "!! provider NetworkMode = $NETMODE — expected it to share the engine's netns (container:...)"
-    exit 1
-  fi
-  echo "    netns default intact: provider shares the engine netns (${NETMODE:-uncaught}), dialed over loopback"
+  echo "    provider NetworkMode = $NETMODE -> own netns on the pod network; the engine's"
+  echo "    dial at IP:7777 crossed namespaces, served by the Python SDK's own bind"
 fi
 echo "==> Python dynamic-provider smoke test PASS [$MODE_LABEL] — dynamic-provider execution is language-agnostic"

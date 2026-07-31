@@ -219,7 +219,6 @@ func TestProviderContainerDynamicRunsFromProgramImage(t *testing.T) {
 	cfg, err := h.providerContainer(t.Context(), "", workspace.PluginDescriptor{Name: "pulumi-nodejs"})
 	require.NoError(t, err)
 	require.Equal(t, "my-program:v1", cfg.Image)
-	require.Equal(t, "container:engine", cfg.Network)
 	require.Equal(t, roleDynamicProvider, cfg.Env[roleEnvVar])
 	require.Equal(t, WorkspaceMountPath, cfg.WorkingDir, "every provider runs at the shared workspace path")
 	require.Equal(t, []VolumeMount{{Source: WorkspaceVolumeName(h.podID), Target: WorkspaceMountPath}}, cfg.Volumes,
@@ -267,12 +266,10 @@ func TestProviderContainerStatelessMountsWorkspaceAtWorkingDir(t *testing.T) {
 	require.NotEqual(t, WorkspaceMountPath, "/plugin", "workspace and plugin-code paths must be distinct")
 }
 
-// In address mode the engine asks every provider container — stateless and dynamic alike —
-// to bind the well-known plugin port itself (the SDK bind contract). In netns mode the
-// variable must be ABSENT: all providers share the engine's netns, so two plugins honoring
-// the same fixed port would collide on the second bind.
+// The engine asks every provider container — stateless and dynamic alike — to bind
+// the well-known plugin port itself (the SDK bind contract), on the pod network.
 func TestProviderContainerListenAddress(t *testing.T) {
-	// Not parallel: podAddressMode reads the process environment via t.Setenv.
+	// Not parallel: podNetwork reads the process environment via t.Setenv.
 	h := &containerHost{
 		pod:          fakePod{imageExists: true},
 		engineHost:   "engine",
@@ -281,17 +278,11 @@ func TestProviderContainerListenAddress(t *testing.T) {
 		imageFor:     func(workspace.PluginDescriptor) string { return "pulumi-provider-random:v4.21.0" },
 	}
 
+	t.Setenv("PULUMI_POD_NETWORK", "podnet")
 	cfg, err := h.providerContainer(t.Context(), "", workspace.PluginDescriptor{Name: "random"})
 	require.NoError(t, err)
-	require.NotContains(t, cfg.Env, "PULUMI_PLUGIN_LISTEN_ADDRESS",
-		"netns mode must not request a fixed listen port — providers share one netns")
-
-	t.Setenv("PULUMI_POD_ADDRESS_MODE", "1")
-	t.Setenv("PULUMI_POD_NETWORK", "podnet")
-	cfg, err = h.providerContainer(t.Context(), "", workspace.PluginDescriptor{Name: "random"})
-	require.NoError(t, err)
 	require.Equal(t, "0.0.0.0:7777", cfg.Env["PULUMI_PLUGIN_LISTEN_ADDRESS"])
-	require.Equal(t, "podnet", cfg.Network, "address mode puts the provider on the pod network")
+	require.Equal(t, "podnet", cfg.Network, "the provider joins the pod network")
 
 	// The dynamic path gets the same request — it is the archetype that has no shim
 	// available, so the SDK honoring this variable is its only route to reachability.

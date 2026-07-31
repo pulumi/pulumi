@@ -49,7 +49,12 @@ func (f *fakeRunner) run(_ context.Context, _ io.Reader, _ string, args ...strin
 
 func TestRunContainerArgs(t *testing.T) {
 	t.Parallel()
-	fake := &fakeRunner{respond: func([]string) (string, string, error) { return "container-abc", "", nil }}
+	fake := &fakeRunner{respond: func(args []string) (string, string, error) {
+		if args[0] == "inspect" {
+			return "10.1.2.3", "", nil
+		}
+		return "container-abc", "", nil
+	}}
 	pm := NewDockerPodManager("p1", withRunner(fake.run))
 
 	c, err := pm.RunContainer(t.Context(), ContainerConfig{
@@ -70,8 +75,10 @@ func TestRunContainerArgs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "container-abc", c.ID)
 	assert.Equal(t, "pulumi-pod-p1-program", c.Name)
+	assert.Equal(t, "10.1.2.3", c.IP, "the container's network address is read back for the engine to dial")
 
-	require.Len(t, fake.calls, 1)
+	// Two calls: the run itself, then the inspect that reads the address back.
+	require.Len(t, fake.calls, 2)
 	want := []string{
 		"run", "-d", "--name", "pulumi-pod-p1-program", "--label", "com.pulumi.pod=p1",
 		"--network", "pulumi-pod-p1-net",
@@ -84,6 +91,7 @@ func TestRunContainerArgs(t *testing.T) {
 		"-u", "__main__.py", // remaining entrypoint token, then Cmd
 	}
 	assert.Equal(t, want, fake.calls[0])
+	assert.Equal(t, "inspect", fake.calls[1][0])
 }
 
 func TestRunContainerNoEntrypoint(t *testing.T) {
@@ -227,6 +235,8 @@ func TestCleanupOrderAndTracking(t *testing.T) {
 			return "netid", "", nil
 		case "run":
 			return "cid", "", nil
+		case "inspect":
+			return "10.0.0.9", "", nil
 		default:
 			return "", "", nil
 		}
@@ -295,11 +305,6 @@ func TestCleanupJoinsErrorsAndContinues(t *testing.T) {
 	}
 	assert.True(t, sawVolume, "volume teardown should run even after container teardown fails")
 	assert.True(t, sawNetwork, "network teardown should run even after container teardown fails")
-}
-
-func TestContainerAddress(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, "pulumi-pod-p1-engine:50051", Container{Name: "pulumi-pod-p1-engine"}.Address(50051))
 }
 
 // --- Integration tests (opt-in: require a real Docker daemon) ---

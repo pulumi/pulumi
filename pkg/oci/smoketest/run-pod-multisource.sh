@@ -22,22 +22,12 @@
 # private copy is staged by pulling the public synth and pushing it to the private port
 # (setup only; the engine's pulls are fresh).
 #
-# ADDRESS MODE (OCI_ADDRESS_MODE=1) runs the same proof over the address model: each
-# provider is its own container on the pod network, attached by container DNS name at the
-# forwarder shim's well-known port, instead of sharing the engine's netns and being dialed
-# over 127.0.0.1. This is the case where the shim is load-bearing — two providers of the
-# SAME package attach at the SAME port :7777 and can only be told apart by their DNS names,
-# which a shared netns cannot express.
+# Each provider is its own container on the pod network, attached at its own address
+# on the forwarder shim's well-known port. This is the case where the shim is
+# load-bearing — two providers of the SAME package attach at the SAME port :7777 and
+# can only be told apart by their addresses, which a shared netns could not express.
 #
-# The two halves of address mode are driven by this ONE switch and must never be set
-# independently: the engine's PULUMI_POD_ADDRESS_MODE puts providers on the pod network,
-# and the proxy's PULUMI_POD_SHIM_BIN makes the images it synthesizes boot through the shim.
-# Shim-on with netns providers would put both shims in one netns, where the second bind of
-# 0.0.0.0:7777 fails and kills that provider — a failure that appears only once there are
-# two providers, so a single-provider test would not catch the skew.
-#
-# Usage: run-pod-multisource.sh                 # netns mode (providers share the engine netns)
-#        OCI_ADDRESS_MODE=1 run-pod-multisource.sh   # address mode (own container, attach by DNS)
+# Usage: run-pod-multisource.sh
 # Requires a running Docker daemon (with outbound access to get.pulumi.com, which the
 # public port synthesizes from) and the repo Go toolchain.
 set -euo pipefail
@@ -54,16 +44,8 @@ GOARCH="$(uname -m | sed 's/aarch64/arm64/;s/x86_64/amd64/')"
 PROVIDER_PKG="random"
 PROVIDER_VERSION="4.21.0"
 
-# The one address-mode switch (see the header). Both settings below are derived from it so
-# they cannot skew: empty = the netns behavior this test has always had, since the engine's
-# gate and the proxy's shim gate both read "unset or empty" as off.
-ADDRESS_MODE="${OCI_ADDRESS_MODE:-}"
-PROXY_SHIM_BIN="" # empty = pre-shim synthesis; /shim = synthesized images boot through the shim
-MODE_LABEL="netns (providers share the engine netns, dialed over 127.0.0.1)"
-if [ -n "$ADDRESS_MODE" ]; then
-  PROXY_SHIM_BIN="/shim"
-  MODE_LABEL="address (each provider its own container, attached by DNS at the shim port :7777)"
-fi
+PROXY_SHIM_BIN="/shim" # synthesized images boot through the shim
+MODE_LABEL="each provider its own container, attached at its address on the shim port :7777"
 
 POD_ID="msrc-$$"
 NET="pulumi-pod-$POD_ID"
@@ -187,7 +169,6 @@ docker run --rm -i \
   -e PULUMI_POD_NETWORK="$NET" \
   -e PULUMI_POD_ADVERTISE_HOST="$ENGINE_NAME" \
   -e PULUMI_POD_ID="$POD_ID" \
-  -e PULUMI_POD_ADDRESS_MODE="$ADDRESS_MODE" \
   -e PULUMI_POD_REGISTRY_ENDPOINTS="$REGISTRY_ENDPOINTS" \
   -e PULUMI_BACKEND_URL=file:///state \
   -e PULUMI_CONFIG_PASSPHRASE="$PULUMI_CONFIG_PASSPHRASE" \
@@ -240,34 +221,24 @@ if ! grep -q "synthesizing pulumi/pulumi-provider-$PROVIDER_PKG" "$WORK/proxy.lo
 fi
 echo "    proxy public port synthesized on demand — the public endpoint was reached"
 
-# Each mode asserts the attach topology it claims, so a run always proves which one it took.
-if [ -n "$ADDRESS_MODE" ]; then
-  echo "==> asserting each provider was attached at its OWN container DNS name"
-  if grep -q 'attaching at 127.0.0.1' "$WORK/engine.log"; then
-    echo "!! a provider was attached over 127.0.0.1 — address mode did not take effect"
-    grep -n 'attaching at' "$WORK/engine.log" || true
-    exit 1
-  fi
-  # The claim netns cannot make: two attaches at the SAME well-known port, told apart only
-  # by DNS name. Distinct hosts also rule out one container being attached twice, which a
-  # bare count of ":7777" lines would not.
-  ATTACH_HOSTS="$(sed -n 's/.*attaching at \([^ :]*\):7777.*/\1/p' "$WORK/engine.log" | sort -u)"
-  DISTINCT="$(printf '%s\n' "$ATTACH_HOSTS" | grep -c . || true)"
-  if [ "$DISTINCT" -lt 2 ]; then
-    echo "!! expected two DISTINCT provider hosts at the shim port :7777, saw $DISTINCT"
-    grep -n 'attaching at' "$WORK/engine.log" || true
-    exit 1
-  fi
-  echo "    attached at: $(printf '%s\n' "$ATTACH_HOSTS" | tr '\n' ' ')"
-  echo "    same package, two DNS names, one shared port :7777 — the collision netns cannot express"
-else
-  echo "==> asserting the netns default is unchanged (providers dialed over loopback)"
-  if ! grep -q 'attaching at 127.0.0.1' "$WORK/engine.log"; then
-    echo "!! no loopback attach — the netns default did not hold"
-    grep -n 'attaching at' "$WORK/engine.log" || true
-    exit 1
-  fi
+echo "==> asserting each provider was attached at its OWN address"
+if grep -q 'attaching at 127.0.0.1' "$WORK/engine.log"; then
+  echo "!! a provider was attached over 127.0.0.1 — providers are not being dialed on the pod network"
+  grep -n 'attaching at' "$WORK/engine.log" || true
+  exit 1
 fi
+# The claim a shared netns could not make: two attaches at the SAME well-known port,
+# told apart only by address. Distinct hosts also rule out one container being
+# attached twice, which a bare count of ":7777" lines would not.
+ATTACH_HOSTS="$(sed -n 's/.*attaching at \([^ :]*\):7777.*/\1/p' "$WORK/engine.log" | sort -u)"
+DISTINCT="$(printf '%s\n' "$ATTACH_HOSTS" | grep -c . || true)"
+if [ "$DISTINCT" -lt 2 ]; then
+  echo "!! expected two DISTINCT provider hosts at the shim port :7777, saw $DISTINCT"
+  grep -n 'attaching at' "$WORK/engine.log" || true
+  exit 1
+fi
+echo "    attached at: $(printf '%s\n' "$ATTACH_HOSTS" | tr '\n' ' ')"
+echo "    same package, two addresses, one shared port :7777 — the collision a shared netns could not express"
 
 PET_PUB="$(sed -n 's/.*SMOKE petPub=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1)"
 PET_PRIV="$(sed -n 's/.*SMOKE petPriv=<<\(.*\)>>.*/\1/p' "$WORK/engine.log" | head -1)"
