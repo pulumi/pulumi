@@ -179,7 +179,7 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) Run(
 			return nil, fmt.Errorf("could not get package reference: %w", err)
 		}
 		res, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-			Type:       "extbase:index:Greeting",
+			Type:       "myext:index:Greeting",
 			Custom:     true,
 			Name:       "greeting",
 			PackageRef: ref,
@@ -197,7 +197,7 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) Run(
 			return nil, fmt.Errorf("could not get package reference: %w", err)
 		}
 		res, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-			Type:       "extbase:index:GreetingComponent",
+			Type:       "myext:index:GreetingComponent",
 			Remote:     true,
 			Name:       "greetingComp",
 			PackageRef: ref,
@@ -224,7 +224,7 @@ func (h *L2ExtensionParameterizedResourceLanguageHost) Run(
 		return nil, fmt.Errorf("could not get package reference: %w", err)
 	}
 	invokeResp, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
-		Tok:        "extbase:index:greet",
+		Tok:        "myext:index:greet",
 		PackageRef: ref,
 		Args: &structpb.Struct{
 			Fields: map[string]*structpb.Value{

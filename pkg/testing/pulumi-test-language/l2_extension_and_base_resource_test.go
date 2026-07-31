@@ -192,7 +192,7 @@ func (h *L2ExtensionAndBaseResourceLanguageHost) Run(
 			return nil, fmt.Errorf("could not get package reference: %w", err)
 		}
 		res, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-			Type:       "extbase:index:Greeting",
+			Type:       "myext:index:Greeting",
 			Custom:     true,
 			Name:       "greeting",
 			PackageRef: ref,
