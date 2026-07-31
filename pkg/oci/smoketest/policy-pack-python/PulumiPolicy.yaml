@@ -1,0 +1,15 @@
+# The policy pack's runtime manifest — see policy-pack-node/PulumiPolicy.yaml for
+# the full story; this is its Python twin. `runtime: oci` makes the engine's
+# container host run the pack as a container from the named image; only this
+# manifest needs to be reachable where the pack is named by path (dev-time), the
+# ref is what crosses into the engine.
+name: oci-policy-smoke-python
+version: "1.0.0"
+runtime:
+  name: oci
+  options:
+    # Deliberately short: in address mode the sanitized ref becomes part of a
+    # container name the engine DIALS, and a DNS label caps at 63 chars.
+    image: oci-smoke-policy-py:latest
+    build:
+      image: docker:cli
