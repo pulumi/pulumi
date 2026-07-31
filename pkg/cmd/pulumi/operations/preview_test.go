@@ -495,6 +495,53 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 	assert.Nil(t, importFile.ProviderInputs)
 }
 
+// TestBuildImportFile_NewProviderWithParent tests that a created explicit provider parented to
+// another resource is declared with its parent.
+func TestBuildImportFile_NewProviderWithParent(t *testing.T) {
+	t.Parallel()
+
+	events := make(chan engine.Event)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
+
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeRootStackMetadata(deploy.OpSame),
+	})
+
+	comp := makeStateMetadata(t, "comp", "my:index:Comp", false, stateOptions{})
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, comp),
+	})
+
+	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
+		Parent: comp.URN,
+		Inputs: resource.NewPropertyMapFromMap(map[string]any{
+			"region": "eu-west-1",
+		}),
+	})
+	providerState.ID = providers.UnknownID
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, providerState),
+	})
+
+	close(events)
+	importFile, err := importFilePromise.Result(t.Context())
+	require.NoError(t, err)
+
+	require.Len(t, importFile.NameTable, 0)
+	require.Len(t, importFile.Resources, 2)
+	assert.Equal(t, importSpec{
+		Type:      "my:index:Comp",
+		Name:      "comp",
+		Component: true,
+	}, importFile.Resources[0])
+	assert.Equal(t, importSpec{
+		Type:   "pulumi:providers:pkg",
+		Name:   "prov",
+		Parent: "comp",
+		Inputs: map[string]any{"region": "eu-west-1"},
+	}, importFile.Resources[1])
+}
+
 // TestBuildImportFile_DuplicateNames test that if we try to import resources with the same name we add a
 // suffix to their names to make them unique.
 func TestBuildImportFile_DuplicateNames(t *testing.T) {

@@ -397,9 +397,6 @@ func parseImportFile(
 			if spec.Component {
 				pusherrf("%v is a provider and may not be marked as a component", describeResource(i, spec))
 			}
-			if spec.Parent != "" {
-				pusherrf("%v is a provider and may not have a parent", describeResource(i, spec))
-			}
 			if len(spec.Outputs) > 0 {
 				pusherrf("%v is a provider and may not have outputs", describeResource(i, spec))
 			}

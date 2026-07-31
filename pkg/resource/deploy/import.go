@@ -360,7 +360,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if !sdkproviders.IsProviderType(imp.Type) {
 			continue
 		}
-		urn := i.deployment.generateURN("", imp.Type, imp.Name)
+		urn := i.deployment.generateURN(imp.Parent, imp.Type, imp.Name)
 		if state, ok := i.deployment.olds[urn]; ok {
 			ref, err := sdkproviders.NewReference(urn, state.ID)
 			contract.AssertNoErrorf(err,
@@ -384,6 +384,9 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			continue
 		}
 		if _, ok := explicitProvidersByURN[imp.Provider]; !ok {
+			// This import describes a resource that references the provider, not the provider
+			// itself, so its parent doesn't apply to the provider.
+			imp.Parent = ""
 			explicitProvidersByURN[imp.Provider] = imp
 		}
 	}
@@ -541,7 +544,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			ID:                      "",
 			Inputs:                  inputs,
 			Outputs:                 nil,
-			Parent:                  "",
+			Parent:                  imp.Parent,
 			Protect:                 false,
 			Taint:                   false,
 			External:                false,

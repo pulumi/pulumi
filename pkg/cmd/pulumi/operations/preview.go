@@ -176,38 +176,9 @@ func buildImportFile(
 			// We're importing this URN so track that we've seen it.
 			importSet[urn] = struct{}{}
 
-			// Provider resources are not imported with an ID like regular resources. Instead,
-			// explicit providers are declared in the import file's resources with their full
-			// inputs so the import system can create them with the correct configuration.
-			// Default providers are created by the import system from ambient config.
-			if sdkproviders.IsProviderType(urn.Type()) {
-				if sdkproviders.IsDefaultProvider(urn) {
-					continue
-				}
-				contract.Assertf(preEvent.Metadata.Res.State != nil,
-					"%s: expected State to be non-nil for provider", urn)
-
-				var inputs map[string]any
-				if fullInputs := preEvent.Metadata.Res.State.Inputs; len(fullInputs) > 0 {
-					var serErr error
-					inputs, serErr = stack.SerializeProperties(ctx, fullInputs, enc, false)
-					if serErr != nil {
-						return importFile{}, fmt.Errorf(
-							"could not serialize provider inputs for %s: %w", urn, serErr)
-					}
-				}
-
-				var logicalName string
-				if name != urn.Name() {
-					logicalName = urn.Name()
-				}
-
-				imports.Resources = append(imports.Resources, importSpec{
-					Type:        urn.Type(),
-					Name:        name,
-					Inputs:      inputs,
-					LogicalName: logicalName,
-				})
+			// Default providers are not declared in the import file; the import system creates
+			// them from ambient config.
+			if sdkproviders.IsDefaultProvider(urn) {
 				continue
 			}
 
@@ -265,10 +236,26 @@ func buildImportFile(
 			}
 
 			var id resource.ID
-			// id only needs filling in for custom resources, set it to a placeholder so the user can easily
-			// search for that.
+			var inputs map[string]any
 			if new.Custom {
-				id = "<PLACEHOLDER>"
+				if sdkproviders.IsProviderType(urn.Type()) {
+					// Explicit providers are created by the import system rather than read from a
+					// cloud, so they are declared with their full inputs instead of an ID.
+					contract.Assertf(preEvent.Metadata.Res.State != nil,
+						"%s: expected State to be non-nil for provider", urn)
+					if fullInputs := preEvent.Metadata.Res.State.Inputs; len(fullInputs) > 0 {
+						var serErr error
+						inputs, serErr = stack.SerializeProperties(ctx, fullInputs, enc, false)
+						if serErr != nil {
+							return importFile{}, fmt.Errorf(
+								"could not serialize provider inputs for %s: %w", urn, serErr)
+						}
+					}
+				} else {
+					// id only needs filling in for other custom resources, set it to a placeholder
+					// so the user can easily search for that.
+					id = "<PLACEHOLDER>"
+				}
 			}
 
 			// We only want to set logical name if we need to
@@ -287,6 +274,7 @@ func buildImportFile(
 				Remote:            !new.Custom && new.Provider != "",
 				Version:           version,
 				PluginDownloadURL: pluginDownloadURL,
+				Inputs:            inputs,
 				LogicalName:       logicalName,
 			})
 		}

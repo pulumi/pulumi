@@ -714,6 +714,41 @@ func TestParseImportFileDeclaredProvider(t *testing.T) {
 	assert.Equal(t, providerURN, imports[1].Provider)
 }
 
+func TestParseImportFileProviderWithParent(t *testing.T) {
+	t.Parallel()
+
+	f := importFile{
+		Resources: []importSpec{
+			{
+				Name:      "comp",
+				Type:      "my:index:Comp",
+				Component: true,
+			},
+			{
+				Name:   "my-prov",
+				Type:   "pulumi:providers:aws",
+				Parent: "comp",
+				Inputs: map[string]any{"region": "eu-west-1"},
+			},
+			{
+				Name:     "thing",
+				ID:       "thing-id",
+				Type:     "aws:s3:Bucket",
+				Provider: "my-prov",
+			},
+		},
+	}
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+	require.NoError(t, err)
+	require.Len(t, imports, 3)
+
+	assert.Equal(t, resource.URN("urn:pulumi:stack::proj::my:index:Comp::comp"), imports[1].Parent)
+	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[1].ProviderInputs["region"])
+	assert.Equal(t,
+		resource.URN("urn:pulumi:stack::proj::my:index:Comp$pulumi:providers:aws::my-prov"),
+		imports[2].Provider)
+}
+
 func TestParseImportFileProviderInputsWithoutEntry(t *testing.T) {
 	t.Parallel()
 
