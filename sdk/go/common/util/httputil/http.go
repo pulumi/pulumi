@@ -25,8 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 )
 
-// Rate limiters can send very large Retry-After values (AWS WAF: 3000s); sleeping that
-// long in a CLI is worse than retrying sooner and surfacing the failure.
 const maxRetryAfterDelay = 30 * time.Second
 
 // retryAfterDelay returns the capped delay from a Retry-After header (RFC 9110
