@@ -106,7 +106,6 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 			}
 
 			res, resErr := client.Do(req)
-
 			if opts.HandshakeTimeoutsOnly {
 				if resErr != nil && strings.Contains(resErr.Error(), "net/http: TLS handshake timeout") {
 					// If we have a handshake timeout, we can retry the request.
@@ -123,7 +122,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 				if delay > 0 {
 					select {
 					case <-req.Context().Done():
-						return false, nil, req.Context().Err()
+						return true, nil, req.Context().Err()
 					case <-time.After(delay):
 					}
 				}
