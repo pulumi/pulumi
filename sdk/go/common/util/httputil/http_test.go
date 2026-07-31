@@ -99,17 +99,13 @@ func TestRetryPostHTTP2(t *testing.T) {
 	assert.Equal(t, 200, res.StatusCode)
 }
 
-func TestRetry429UnderHandshakeTimeoutsOnly(t *testing.T) {
+func TestRetry429NotRetriedUnderHandshakeTimeoutsOnly(t *testing.T) {
 	t.Parallel()
 
 	tries := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tries++
-		if tries < 3 {
-			w.WriteHeader(http.StatusTooManyRequests)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusTooManyRequests)
 	}))
 	defer server.Close()
 
@@ -124,8 +120,8 @@ func TestRetry429UnderHandshakeTimeoutsOnly(t *testing.T) {
 	require.NoError(t, err)
 	defer res.Body.Close()
 
-	assert.Equal(t, 3, tries)
-	assert.Equal(t, http.StatusOK, res.StatusCode)
+	assert.Equal(t, 1, tries)
+	assert.Equal(t, http.StatusTooManyRequests, res.StatusCode)
 }
 
 func TestRetry429Exhausted(t *testing.T) {

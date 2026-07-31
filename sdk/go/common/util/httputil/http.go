@@ -109,8 +109,16 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 
 			res, resErr := client.Do(req)
 
-			// A 429 was rejected before any processing, so it is safe to retry under
-			// every policy, even for non-idempotent methods.
+			if opts.HandshakeTimeoutsOnly {
+				if resErr != nil && strings.Contains(resErr.Error(), "net/http: TLS handshake timeout") {
+					// If we have a handshake timeout, we can retry the request.
+					return false, nil, nil
+				}
+				return true, res, resErr
+			}
+
+			// 429s are retried like 5xxs, but honor the server's Retry-After (capped)
+			// before the regular backoff.
 			if resErr == nil && res.StatusCode == http.StatusTooManyRequests && try < maxRetryCount-1 {
 				delay := retryAfterDelay(res, time.Now())
 				contract.IgnoreClose(res.Body)
@@ -124,13 +132,6 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 				return false, nil, nil
 			}
 
-			if opts.HandshakeTimeoutsOnly {
-				if resErr != nil && strings.Contains(resErr.Error(), "net/http: TLS handshake timeout") {
-					// If we have a handshake timeout, we can retry the request.
-					return false, nil, nil
-				}
-				return true, res, resErr
-			}
 			if resErr == nil && !inRange(res.StatusCode, 500, 599) {
 				return true, res, nil
 			}

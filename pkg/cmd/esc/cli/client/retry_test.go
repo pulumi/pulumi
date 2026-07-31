@@ -15,6 +15,7 @@
 package client
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -24,11 +25,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDoWithRetryRetries429ForAllPolicies(t *testing.T) {
+func TestDoWithRetry429(t *testing.T) {
 	t.Parallel()
 
-	for _, policy := range []retryPolicy{retryNone, retryGetMethod, retryAllMethods} {
-		t.Run(policy.String(), func(t *testing.T) {
+	cases := []struct {
+		method    string
+		policy    retryPolicy
+		wantTries int
+	}{
+		{http.MethodGet, retryGetMethod, 2},
+		{http.MethodPost, retryAllMethods, 2},
+		{http.MethodGet, retryNone, 1},
+		{http.MethodPost, retryGetMethod, 1},
+	}
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("%s-%s", c.method, c.policy), func(t *testing.T) {
 			t.Parallel()
 
 			tries := 0
@@ -42,15 +53,19 @@ func TestDoWithRetryRetries429ForAllPolicies(t *testing.T) {
 			}))
 			defer server.Close()
 
-			req, err := http.NewRequest(http.MethodPost, server.URL, strings.NewReader("body"))
+			req, err := http.NewRequest(c.method, server.URL, strings.NewReader("body"))
 			require.NoError(t, err)
 
-			res, err := doWithRetry(server.Client(), req, policy)
+			res, err := doWithRetry(server.Client(), req, c.policy)
 			require.NoError(t, err)
 			defer res.Body.Close()
 
-			assert.Equal(t, 2, tries)
-			assert.Equal(t, http.StatusOK, res.StatusCode)
+			assert.Equal(t, c.wantTries, tries)
+			if c.wantTries > 1 {
+				assert.Equal(t, http.StatusOK, res.StatusCode)
+			} else {
+				assert.Equal(t, http.StatusTooManyRequests, res.StatusCode)
+			}
 		})
 	}
 }
