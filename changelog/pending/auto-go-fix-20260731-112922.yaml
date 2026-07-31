@@ -2,3 +2,5 @@ component: auto/go
 kind: fix
 body: ImportResources no longer leaks `--stack` into the converter's arguments when converter args are passed
 time: 2026-07-31T11:29:22.89566+02:00
+custom:
+    PR: "24146"
