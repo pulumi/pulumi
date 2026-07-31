@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"strconv"
 
 	"example.com/pulumi-primitive/sdk/go/v7/primitive"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -47,11 +48,11 @@ func main() {
 		}
 		_, err = primitive.NewResource(ctx, "sink1", &primitive.ResourceArgs{
 			Boolean: pulumi.Bool(false),
-			Float:   idMap["source1Token"],
-			Integer: idMap["source1Token"],
-			String:  idMap["source1Token"],
+			Float:   idMap["source1Token"].ToIDOutput().ApplyT(func(id pulumi.ID) (float64, error) { return strconv.ParseFloat(string(id), 64) }).(pulumi.Float64Output),
+			Integer: idMap["source1Token"].ToIDOutput().ApplyT(func(id pulumi.ID) (int, error) { return strconv.Atoi(string(id)) }).(pulumi.IntOutput),
+			String:  idMap["source1Token"].ToIDOutput().ToStringOutput(),
 			NumberArray: pulumi.Float64Array{
-				idMap["source1Token"],
+				idMap["source1Token"].ToIDOutput().ApplyT(func(id pulumi.ID) (float64, error) { return strconv.ParseFloat(string(id), 64) }).(pulumi.Float64Output),
 			},
 			BooleanMap: pulumi.BoolMap{
 				"sink": pulumi.Bool(false),
@@ -61,7 +62,7 @@ func main() {
 			return err
 		}
 		sink2, err := primitive.NewResource(ctx, "sink2", &primitive.ResourceArgs{
-			Boolean: idMap["source2Token"],
+			Boolean: idMap["source2Token"].ToIDOutput().ApplyT(func(id pulumi.ID) (bool, error) { return strconv.ParseBool(string(id)) }).(pulumi.BoolOutput),
 			Float:   pulumi.Float64(1),
 			Integer: pulumi.Int(2),
 			String:  pulumi.String("abc"),
@@ -69,13 +70,13 @@ func main() {
 				pulumi.Float64(3),
 			},
 			BooleanMap: pulumi.BoolMap{
-				"sink": idMap["source2Token"],
+				"sink": idMap["source2Token"].ToIDOutput().ApplyT(func(id pulumi.ID) (bool, error) { return strconv.ParseBool(string(id)) }).(pulumi.BoolOutput),
 			},
 		})
 		if err != nil {
 			return err
 		}
-		ctx.Export("ids", idMap)
+		ctx.Export("ids", pulumi.IDMap(idMap))
 		ctx.Export("base64", sink2.ID().ApplyT(func(id pulumi.ID) (pulumi.String, error) {
 			return pulumi.String(base64.StdEncoding.EncodeToString([]byte(pulumi.String(id)))), nil
 		}).(pulumi.StringOutput))

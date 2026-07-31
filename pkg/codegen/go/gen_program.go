@@ -2267,7 +2267,51 @@ func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 	value, destType := liftValueToOutput(v.Value)
 	expr, temps := g.lowerExpression(value, destType)
 	g.genTemps(w, temps)
+	// If the value renders as a typed Go map/slice of Pulumi Input interfaces
+	// (e.g. map[string]pulumi.IDInput), cast it to the corresponding named
+	// Pulumi container so it satisfies pulumi.Input.
+	if wrap, ok := g.typedInputContainerWrap(expr); ok {
+		g.Fgenf(w, "ctx.Export(%q, %s%.3v))\n", v.LogicalName(), wrap, expr)
+		return
+	}
 	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
+}
+
+// typedInputContainerWrap returns a `pulumi.XMap(` / `pulumi.XArray(` prefix
+// when expr renders as a raw Go map/slice of Pulumi Input interfaces (e.g.
+// map[string]pulumi.IDInput). Those raw containers don't satisfy pulumi.Input
+// by themselves, but casting to the named type does — the underlying types
+// are identical. Only recognized for traversals into a local variable, where
+// the local's Go type is derivable without hitting schema resolution.
+func (g *generator) typedInputContainerWrap(expr model.Expression) (string, bool) {
+	// Look through the IntrinsicConvert liftValueToOutput wraps.
+	inner := expr
+	for {
+		call, ok := inner.(*model.FunctionCallExpression)
+		if !ok || call.Name != pcl.IntrinsicConvert || len(call.Args) != 1 {
+			break
+		}
+		inner = call.Args[0]
+	}
+	st, ok := inner.(*model.ScopeTraversalExpression)
+	if !ok || len(st.Parts) == 0 {
+		return "", false
+	}
+	if _, ok := st.Parts[0].(*pcl.LocalVariable); !ok {
+		return "", false
+	}
+	goType := g.argumentTypeName(inner.Type(), false)
+	if elm, ok := strings.CutPrefix(goType, "map[string]"); ok {
+		if named, ok := pulumiInputElementCastName(elm); ok {
+			return "pulumi." + named + "Map(", true
+		}
+	}
+	if elm, ok := strings.CutPrefix(goType, "[]"); ok {
+		if named, ok := pulumiInputElementCastName(elm); ok {
+			return "pulumi." + named + "Array(", true
+		}
+	}
+	return "", false
 }
 
 func (g *generator) genTemps(w io.Writer, temps []any) {

@@ -141,8 +141,6 @@ var expectedFailures = map[string]string{
 	"l3-range-map-ref":  "fails with syntax errors: mapResource.K1 undefined (type []*nestedobject.Target has no field or method K1)", //nolint:lll
 	"l3-range-bool-ref": "fails with syntax errors: index < createBool (mismatched types int and bool)",
 
-	"l2-id-type": "codegen isn't keeping track of ID right now",
-
 	"l1-builtin-string": "cannot convert strings.Split(aString, \"-\") (value of type []string) to type pulumi.StringArray", //nolint:lll
 
 	"l2-failed-create-recover-continue-on-error": "Go SDK output recovery is not implemented",

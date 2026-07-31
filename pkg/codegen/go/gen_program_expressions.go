@@ -341,6 +341,22 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			}
 			return
 		}
+		// PCL treats ID as a string-like type that can be coerced to any
+		// primitive scalar. In Go the IDInput/IDOutput interfaces don't
+		// declare ToStringOutput/ToBoolOutput/etc, so the target field
+		// won't accept an IDInput directly. Emit an ApplyT that parses
+		// the ID string into the destination scalar.
+		if isFromOutput {
+			fromInner := model.ResolveOutputs(fromType)
+			if cns, ok := fromInner.(*model.ConstType); ok {
+				fromInner = cns.Type
+			}
+			if fromInner.Equals(model.IDType) && !to.Equals(model.IDType) {
+				if g.genIDConversion(w, from, to) {
+					return
+				}
+			}
+		}
 		switch arg := from.(type) {
 		case *model.TupleConsExpression:
 			g.genTupleConsExpression(w, arg, expr.Type())
@@ -374,10 +390,22 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						// For collection types (maps, objects, lists), wrap with pulumi.ToMap/ToArray.
 						// If the source has a typed Go representation (e.g. map[string]string,
 						// []int), use the matching typed converter (ToStringMap, ToIntArray)
-						// since pulumi.ToMap/ToArray only accept map[string]any / []any.
+						// since pulumi.ToMap/ToArray only accept map[string]any / []any. For
+						// maps/arrays of Pulumi input interfaces (map[string]pulumi.XInput), a
+						// direct type cast to pulumi.XMap / pulumi.XArray suffices — the
+						// underlying types are identical and the named type satisfies
+						// pulumi.Input.
 						argGoType := g.argumentTypeName(arg.Type(), false)
 						switch scalarType.(type) {
 						case *model.ObjectType, *model.MapType:
+							if elm, ok := strings.CutPrefix(argGoType, "map[string]"); ok {
+								if named, ok := pulumiInputElementCastName(elm); ok {
+									g.Fgenf(w, "pulumi.%sMap(", named)
+									g.genScopeTraversalExpression(w, arg, expr.Type())
+									g.Fgenf(w, ")")
+									return
+								}
+							}
 							fn := "pulumi.ToMap"
 							if elm, ok := strings.CutPrefix(argGoType, "map[string]"); ok &&
 								elm != "interface{}" {
@@ -390,6 +418,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 							g.Fgenf(w, ")")
 							return
 						case *model.ListType, *model.TupleType:
+							if elm, ok := strings.CutPrefix(argGoType, "[]"); ok {
+								if named, ok := pulumiInputElementCastName(elm); ok {
+									g.Fgenf(w, "pulumi.%sArray(", named)
+									g.genScopeTraversalExpression(w, arg, expr.Type())
+									g.Fgenf(w, ")")
+									return
+								}
+							}
 							fn := "pulumi.ToArray"
 							if elm, ok := strings.CutPrefix(argGoType, "[]"); ok &&
 								elm != "interface{}" {
@@ -1714,6 +1750,36 @@ func (g *generator) secretOutputTypeName(expr *model.FunctionCallExpression) str
 	return g.argumentTypeName(expr.Type(), false)
 }
 
+// genIDConversion emits an ApplyT-based cast from an ID-typed expression
+// to a primitive scalar `to`. Returns false if `to` isn't a scalar we know
+// how to parse an ID string into.
+func (g *generator) genIDConversion(w io.Writer, from model.Expression, to model.Type) bool {
+	switch to {
+	case model.StringType:
+		g.Fgenf(w, "%.v.ToIDOutput().ToStringOutput()", from)
+		return true
+	case model.BoolType:
+		g.importer.Import("strconv", "strconv")
+		g.Fgenf(w,
+			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (bool, error) {"+
+				" return strconv.ParseBool(string(id)) }).(pulumi.BoolOutput)", from)
+		return true
+	case model.IntType:
+		g.importer.Import("strconv", "strconv")
+		g.Fgenf(w,
+			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (int, error) {"+
+				" return strconv.Atoi(string(id)) }).(pulumi.IntOutput)", from)
+		return true
+	case model.NumberType:
+		g.importer.Import("strconv", "strconv")
+		g.Fgenf(w,
+			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (float64, error) {"+
+				" return strconv.ParseFloat(string(id), 64) }).(pulumi.Float64Output)", from)
+		return true
+	}
+	return false
+}
+
 // pulumiConverterSuffix maps a Go type name (e.g. "string", "*bool",
 // "map[string]int", "[]string") to the corresponding suffix used in Pulumi's
 // generated typed constructors and outputs (e.g. "String", "BoolPtr",
@@ -1744,6 +1810,24 @@ func pulumiConverterSuffix(goType string) (string, bool) {
 		return inner + "Ptr", true
 	}
 	return pulumiScalarSuffix(goType)
+}
+
+// pulumiInputElementCastName recognizes a Go element type of the form
+// "pulumi.XInput" and returns "X". This is used to convert a raw Go
+// map/slice of such element types (e.g. map[string]pulumi.IDInput) into
+// the corresponding named Pulumi container (pulumi.IDMap) via a direct
+// type cast — the underlying types are identical but the named type
+// satisfies pulumi.Input.
+func pulumiInputElementCastName(elm string) (string, bool) {
+	name, ok := strings.CutPrefix(elm, "pulumi.")
+	if !ok {
+		return "", false
+	}
+	name, ok = strings.CutSuffix(name, "Input")
+	if !ok || name == "" {
+		return "", false
+	}
+	return name, true
 }
 
 // pulumiScalarSuffix returns the Pulumi suffix for a scalar Go type. Only
