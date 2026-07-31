@@ -25,15 +25,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 )
 
-// maxRetryAfterDelay caps how long we are willing to honor a server-provided Retry-After
-// header between retries. Rate-limiting layers can send very large values (AWS WAF in front
-// of the Pulumi Service sends 3000 seconds); sleeping that long in a CLI is worse than
-// retrying sooner and, if still rate limited, surfacing the failure.
+// Rate limiters can send very large Retry-After values (AWS WAF: 3000s); sleeping that
+// long in a CLI is worse than retrying sooner and surfacing the failure.
 const maxRetryAfterDelay = 30 * time.Second
 
-// retryAfterDelay returns the delay requested by a response's Retry-After header, capped at
-// maxRetryAfterDelay, or 0 if the header is absent, unparseable, or non-positive. Both forms
-// from RFC 9110 are supported: delay-seconds and HTTP-date.
+// retryAfterDelay returns the capped delay from a Retry-After header (RFC 9110
+// delay-seconds or HTTP-date), or 0 if absent or unparseable.
 func retryAfterDelay(res *http.Response, now time.Time) time.Duration {
 	header := res.Header.Get("Retry-After")
 	if header == "" {
@@ -112,11 +109,8 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 
 			res, resErr := client.Do(req)
 
-			// HTTP 429 Too Many Requests is retried for every request and retry policy,
-			// including HandshakeTimeoutsOnly: a rate-limited request was refused before any
-			// processing, so retrying cannot duplicate work even for non-idempotent methods.
-			// When the server supplies a Retry-After delay, honor it (capped) before the
-			// next attempt; the regular backoff delay between tries still applies as well.
+			// A 429 was rejected before any processing, so it is safe to retry under
+			// every policy, even for non-idempotent methods.
 			if resErr == nil && res.StatusCode == http.StatusTooManyRequests && try < maxRetryCount-1 {
 				delay := retryAfterDelay(res, time.Now())
 				contract.IgnoreClose(res.Body)

@@ -1,0 +1,7 @@
+component: cli
+kind: fix
+body: Retry API requests that fail with HTTP 429 instead of failing immediately, honoring
+  the server's Retry-After header
+time: 2026-07-30T00:00:00+00:00
+custom:
+    PR: "24131"

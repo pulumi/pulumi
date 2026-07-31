@@ -99,9 +99,6 @@ func TestRetryPostHTTP2(t *testing.T) {
 	assert.Equal(t, 200, res.StatusCode)
 }
 
-// Test that 429 responses are retried even under the strictest retry policy
-// (HandshakeTimeoutsOnly): a rate-limited request was refused before any processing,
-// so retrying cannot duplicate work even for non-idempotent methods.
 func TestRetry429UnderHandshakeTimeoutsOnly(t *testing.T) {
 	t.Parallel()
 
@@ -131,7 +128,6 @@ func TestRetry429UnderHandshakeTimeoutsOnly(t *testing.T) {
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 }
 
-// Test that a persistent 429 is returned to the caller once retries are exhausted.
 func TestRetry429Exhausted(t *testing.T) {
 	t.Parallel()
 
@@ -158,7 +154,6 @@ func TestRetry429Exhausted(t *testing.T) {
 	assert.Equal(t, http.StatusTooManyRequests, res.StatusCode)
 }
 
-// Test that a Retry-After delay on a 429 response is honored before the next attempt.
 func TestRetry429HonorsRetryAfter(t *testing.T) {
 	t.Parallel()
 
@@ -188,8 +183,6 @@ func TestRetry429HonorsRetryAfter(t *testing.T) {
 	assert.GreaterOrEqual(t, time.Since(start), time.Second)
 }
 
-// Test that a canceled request context interrupts a Retry-After wait rather than
-// sleeping through it.
 func TestRetry429ContextCanceledDuringWait(t *testing.T) {
 	t.Parallel()
 
@@ -229,7 +222,6 @@ func TestRetryAfterDelay(t *testing.T) {
 	assert.Equal(t, time.Duration(0), retryAfterDelay(mk("0"), now))
 	assert.Equal(t, time.Duration(0), retryAfterDelay(mk("-3"), now))
 	assert.Equal(t, time.Duration(0), retryAfterDelay(mk("garbage"), now))
-	// Values beyond the cap (e.g. AWS WAF sends 3000) are clamped.
 	assert.Equal(t, maxRetryAfterDelay, retryAfterDelay(mk("3000"), now))
 
 	// HTTP-date form. The date has second precision, so allow rounding slack.
