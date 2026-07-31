@@ -29,9 +29,14 @@
 //   - Linux: a Secret Service item with the same TPM upgrade; with a TPM but
 //     no Secret Service (headless servers) the sealed blob lives in a file.
 //
-// Every operation is prompt-free and time-bounded by construction: probing
-// never triggers OS dialogs and never blocks beyond a short timeout, so the
-// package is safe to use from CI and AI-agent contexts.
+// Operations are prompt-free and time-bounded by default, so the package is
+// safe to use from CI and AI-agent contexts. The exception is unlocking a
+// locked Linux Secret Service collection, which may wait on an OS password
+// dialog when the user opted in (PULUMI_CREDENTIAL_STORE is "auto" or "os")
+// or an already-encrypted file is being read, and when someone could answer
+// it. That wait has no deadline, matching sudo and gpg. Everywhere else an
+// unlock is accepted only if the provider grants it with no prompt at all,
+// so no dialog is ever drawn.
 package securestore
 
 import (
@@ -97,6 +102,19 @@ var (
 	// ErrUnavailable indicates no usable protective backend in this
 	// environment (headless session, missing daemon/TPM, timeout, ...).
 	ErrUnavailable = errors.New("no usable OS credential protection")
+	// ErrBackendUnsupported indicates an envelope recorded under a backend
+	// this build has no implementation for, so its data cannot be read here
+	// no matter what the user does locally.
+	ErrBackendUnsupported = fmt.Errorf("%w: no such credential store on this platform", ErrUnavailable)
+	// ErrLocked indicates a store that exists but is locked, and could not be
+	// unlocked without a password prompt nobody was there to answer. It wraps
+	// ErrUnavailable because the effect is the same, while naming the cause.
+	ErrLocked = fmt.Errorf("%w: the OS credential store is locked", ErrUnavailable)
+	// ErrDeclined indicates a backend that exists and could have been used,
+	// but the user dismissed the unlock prompt. Unlike ErrUnavailable this is
+	// never a reason to fall back: falling back to plaintext, or to another
+	// store, would contradict what the user just said.
+	ErrDeclined = errors.New("the OS credential store was not unlocked")
 	// ErrKeyNotFound indicates the backend works but holds no key yet.
 	ErrKeyNotFound = errors.New("no key stored in the OS credential store")
 	// ErrWrongKey is returned by Open when decryption fails authentication,
@@ -109,7 +127,7 @@ var (
 type itemStore interface {
 	// available reports nil when the store is usable right now, without any
 	// risk of prompting or blocking.
-	available() error
+	available() (Outcome, error)
 	// get returns the stored item, or ErrKeyNotFound if absent.
 	get() (string, error)
 	set(value string) error
@@ -133,42 +151,54 @@ type backendImpl struct {
 	wrap  keyWrapper
 }
 
-func (b backendImpl) available() error {
-	if err := b.store.available(); err != nil {
-		return err
+func (b backendImpl) available() (Outcome, error) {
+	outcome, err := b.store.available()
+	if outcome != Ready {
+		return outcome, err
 	}
-	return b.wrap.available()
+	if err := b.wrap.available(); err != nil {
+		return Absent, err
+	}
+	return Ready, nil
 }
 
 // Store is a resolved secure store the caller can read and write the key
 // through.
 type Store struct {
-	b backendImpl
+	b              backendImpl
+	fallbackReason error
 }
 
 // Backend reports which mechanism this store uses.
 func (s *Store) Backend() Backend { return s.b.id }
 
+// FallbackReason reports why a ModeAuto resolution fell back to plaintext,
+// or nil for any other resolution.
+func (s *Store) FallbackReason() error { return s.fallbackReason }
+
 // mockResolver, when non-nil, overrides platform resolution (tests only).
 var mockResolver func() []backendImpl
 
 // candidates returns the platform's backends in preference order.
-func candidates() []backendImpl {
+func candidates(allowPrompt bool) []backendImpl {
 	if mockResolver != nil {
 		return mockResolver()
 	}
-	return platformCandidates()
+	return platformCandidatesHook(allowPrompt && someoneCanAnswerAPasswordDialog())
 }
+
+var platformCandidatesHook = platformCandidates
 
 // Resolve picks the backend for writing under the given mode. A plaintext
 // resolution returns a *Store whose Backend() is BackendPlaintext and whose
 // key operations fail with ErrUnavailable; callers use it as the signal to
-// keep today's plaintext behavior. The returned error is non-nil only in
-// ModeOS when no protective backend is usable, or on an invalid mode.
+// keep today's plaintext behavior. The returned error is non-nil when the
+// user declined an unlock in any mode, when ModeOS finds no usable backend,
+// or on an invalid mode.
 func Resolve(mode Mode) (*Store, error) {
 	switch mode {
 	case ModePlaintext, ModeDefault:
-		return &Store{backendImpl{id: BackendPlaintext}}, nil
+		return &Store{b: backendImpl{id: BackendPlaintext}}, nil
 	case ModeAuto, ModeOS:
 		// fall through to probing
 	default:
@@ -176,27 +206,34 @@ func Resolve(mode Mode) (*Store, error) {
 	}
 
 	var firstErr error
-	for _, cand := range candidates() {
-		if err := cand.available(); err != nil {
-			logging.V(7).Infof("secure store backend %q not usable: %v", cand.id, err)
+	optedIn := mode == ModeAuto || mode == ModeOS
+	for _, cand := range candidates(optedIn) {
+		outcome, err := cand.available()
+		switch outcome {
+		case Ready:
+		case Declined:
+			logging.V(7).Infof("secure store backend %q: %s", cand.id, outcome)
+			return nil, err
+		case Absent, Locked:
+			logging.V(7).Infof("secure store backend %q: %s (%v)", cand.id, outcome, err)
 			if firstErr == nil {
 				firstErr = err
 			}
 			continue
 		}
 		logging.V(7).Infof("secure store resolved to backend %q", cand.id)
-		return &Store{cand}, nil
+		return &Store{b: cand}, nil
 	}
 	logging.V(7).Infof("no secure store backend usable")
+	if firstErr == nil {
+		firstErr = ErrUnavailable
+	}
 	if mode == ModeOS {
-		if firstErr == nil {
-			firstErr = ErrUnavailable
-		}
 		return nil, fmt.Errorf("PULUMI_CREDENTIAL_STORE=os but %w "+
 			"(set PULUMI_CREDENTIAL_STORE=plaintext to override): %v",
 			ErrUnavailable, firstErr)
 	}
-	return &Store{backendImpl{id: BackendPlaintext}}, nil
+	return &Store{b: backendImpl{id: BackendPlaintext}, fallbackReason: firstErr}, nil
 }
 
 // ForBackend returns a store for the exact backend that produced an existing
@@ -205,17 +242,23 @@ func Resolve(mode Mode) (*Store, error) {
 // machine, missing TPM, changed binary signature, locked keychain, ...).
 func ForBackend(id Backend) (*Store, error) {
 	if id == BackendPlaintext {
-		return &Store{backendImpl{id: BackendPlaintext}}, nil
+		return &Store{b: backendImpl{id: BackendPlaintext}}, nil
 	}
-	for _, cand := range candidates() {
+	const mayPrompt = true // the alternative is unreadable credentials, not a fallback
+	for _, cand := range candidates(mayPrompt) {
 		if cand.id == id {
-			if err := cand.available(); err != nil {
+			outcome, err := cand.available()
+			if outcome == Declined {
+				return nil, err
+			}
+			if err != nil {
 				return nil, fmt.Errorf("credential store backend %q is not usable here: %w", id, err)
 			}
-			return &Store{cand}, nil
+			return &Store{b: cand}, nil
 		}
 	}
-	return nil, fmt.Errorf("credential store backend %q is not available on this platform: %w", id, ErrUnavailable)
+	return nil, fmt.Errorf("credential store backend %q is not available on this platform: %w",
+		id, ErrBackendUnsupported)
 }
 
 // GetKey returns the stored 32-byte key without ever creating one. It returns

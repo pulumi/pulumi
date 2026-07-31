@@ -20,8 +20,8 @@ package securestore
 // Service holding a TPM2-sealed blob where a TPM is present, the Secret
 // Service with the raw key otherwise, and a TPM-sealed file when a TPM
 // exists but no Secret Service is usable (headless servers).
-func platformCandidates() []backendImpl {
-	ss := keyringStore{preCheck: secretServicePrecheck}
+func platformCandidates(allowPrompt bool) []backendImpl {
+	ss := newKeyringStore(func() (Outcome, error) { return secretServicePrecheck(allowPrompt) })
 	return []backendImpl{
 		{id: BackendLinuxSecretServiceTPM, store: ss, wrap: tpmWrapper{}},
 		{id: BackendLinuxSecretService, store: ss, wrap: rawWrapper{}},

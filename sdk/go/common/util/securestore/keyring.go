@@ -17,6 +17,7 @@ package securestore
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/zalando/go-keyring"
 )
@@ -28,32 +29,63 @@ const (
 	keyringAccount = "credentials-key"
 )
 
+type getCache struct {
+	mu    sync.Mutex
+	valid bool
+	value string
+	err   error
+}
+
 // keyringStore is an itemStore over zalando/go-keyring, which selects the
 // platform mechanism automatically: /usr/bin/security on macOS (prompt-free
 // for any binary, incl. across rebuilds), Credential Manager on Windows, and
 // Secret Service on Linux. preCheck lets platforms fail fast before touching
 // the store (e.g. the Linux D-Bus/locked-collection probes).
 type keyringStore struct {
-	preCheck func() error
+	preCheck func() (Outcome, error)
+	cache    *getCache
 }
 
-func (s keyringStore) available() error {
+func newKeyringStore(preCheck func() (Outcome, error)) keyringStore {
+	return keyringStore{preCheck: preCheck, cache: &getCache{}}
+}
+
+func (s keyringStore) available() (Outcome, error) {
 	if s.preCheck != nil {
-		if err := s.preCheck(); err != nil {
-			return err
+		if outcome, err := s.preCheck(); outcome != Ready {
+			return outcome, err
 		}
 	}
-	_, err := s.get()
+	value, err := s.fetch()
+	if s.cache != nil {
+		s.cache.mu.Lock()
+		s.cache.valid, s.cache.value, s.cache.err = true, value, err
+		s.cache.mu.Unlock()
+	}
 	if err == nil || errors.Is(err, ErrKeyNotFound) {
-		return nil
+		return Ready, nil
 	}
 	if errors.Is(err, ErrUnavailable) {
-		return err
+		return Absent, err
 	}
-	return fmt.Errorf("%w: %v", ErrUnavailable, err)
+	return Absent, fmt.Errorf("%w: %v", ErrUnavailable, err)
 }
 
 func (s keyringStore) get() (string, error) {
+	if s.cache != nil {
+		s.cache.mu.Lock()
+		if s.cache.valid {
+			value, err := s.cache.value, s.cache.err
+			s.cache.valid = false
+			s.cache.mu.Unlock()
+			return value, err
+		}
+		s.cache.mu.Unlock()
+	}
+	return s.fetch()
+}
+
+func (s keyringStore) fetch() (string, error) {
 	value, err := withTimeout(func() (string, error) {
 		return keyring.Get(keyringService, keyringAccount)
 	})
@@ -63,7 +95,16 @@ func (s keyringStore) get() (string, error) {
 	return value, err
 }
 
+func (s keyringStore) invalidate() {
+	if s.cache != nil {
+		s.cache.mu.Lock()
+		s.cache.valid = false
+		s.cache.mu.Unlock()
+	}
+}
+
 func (s keyringStore) set(value string) error {
+	s.invalidate()
 	_, err := withTimeout(func() (struct{}, error) {
 		return struct{}{}, keyring.Set(keyringService, keyringAccount, value)
 	})
@@ -71,6 +112,7 @@ func (s keyringStore) set(value string) error {
 }
 
 func (s keyringStore) delete() error {
+	s.invalidate()
 	_, err := withTimeout(func() (struct{}, error) {
 		return struct{}{}, keyring.Delete(keyringService, keyringAccount)
 	})

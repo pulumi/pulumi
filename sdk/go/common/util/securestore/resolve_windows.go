@@ -20,10 +20,10 @@ package securestore
 // Credential Manager holding a TPM-wrapped blob where a TPM is present, the
 // Credential Manager with the raw key otherwise, and a TPM-sealed file when
 // a TPM exists but the credential store is unusable (e.g. SSH sessions).
-func platformCandidates() []backendImpl {
+func platformCandidates(bool) []backendImpl {
 	return []backendImpl{
-		{id: BackendWindowsCredManTPM, store: keyringStore{}, wrap: tpmWrapper{}},
-		{id: BackendWindowsCredMan, store: keyringStore{}, wrap: rawWrapper{}},
+		{id: BackendWindowsCredManTPM, store: newKeyringStore(nil), wrap: tpmWrapper{}},
+		{id: BackendWindowsCredMan, store: newKeyringStore(nil), wrap: rawWrapper{}},
 		{id: BackendTPMFile, store: newTPMFileStore(), wrap: tpmWrapper{}},
 	}
 }

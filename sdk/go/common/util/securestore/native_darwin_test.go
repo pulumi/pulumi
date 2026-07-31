@@ -83,8 +83,9 @@ func TestNativeSelfCheckRejectsTestBinary(t *testing.T) {
 	err := nativeSelfCheck()
 	require.Error(t, err, "an ad-hoc-signed test binary must not pass the self-check")
 
-	availErr := nativeKeychainBackend().available()
+	outcome, availErr := nativeKeychainBackend().available()
 	require.Error(t, availErr)
+	assert.Equal(t, Absent, outcome)
 	assert.True(t, errors.Is(availErr, ErrUnavailable), "available() = %v, want ErrUnavailable", availErr)
 }
 
@@ -93,7 +94,7 @@ func TestNativeStoreRoundTrip(t *testing.T) {
 	withSelfCheckOverride(t, func() error { return nil })
 	store := testNativeStore(t)
 
-	if err := store.available(); err != nil {
+	if _, err := store.available(); err != nil {
 		if errors.Is(err, ErrUnavailable) {
 			t.Skipf("keychain not usable in this environment: %v", err)
 		}
@@ -120,7 +121,8 @@ func TestNativeStoreRoundTrip(t *testing.T) {
 	assert.Equal(t, second, got)
 
 	// available() with an existing item still reports usable.
-	require.NoError(t, store.available())
+	_, availableErr := store.available()
+	require.NoError(t, availableErr)
 
 	// Delete, then the item is gone and delete stays idempotent.
 	require.NoError(t, store.delete())
@@ -133,7 +135,7 @@ func TestNativeStoreRoundTrip(t *testing.T) {
 func TestNativeAvailableUsesSelfCheckError(t *testing.T) {
 	boom := errors.New("not signed enough")
 	withSelfCheckOverride(t, func() error { return boom })
-	err := (&nativeStore{service: "unused", account: "unused"}).available()
+	_, err := (&nativeStore{service: "unused", account: "unused"}).available()
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, ErrUnavailable))
 	assert.Contains(t, err.Error(), "not signed enough")

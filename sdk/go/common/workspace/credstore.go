@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -28,11 +29,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 )
 
-// credentialStoreMode maps PULUMI_CREDENTIAL_STORE to a secure-store mode.
-// An unset variable currently keeps today's plaintext behavior for writes;
-// reads of an already-encrypted file always use its recorded backend.
+// credentialStoreMode maps PULUMI_CREDENTIAL_STORE, case-insensitively. An
+// unset variable keeps today's plaintext behavior for writes; reads of an
+// already-encrypted file always use its recorded backend.
 func credentialStoreMode() (securestore.Mode, error) {
-	switch value := env.CredentialStore.Value(); value {
+	value := env.CredentialStore.Value()
+	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "":
 		return securestore.ModeDefault, nil
 	case "auto":
@@ -57,12 +59,12 @@ func resetWriteStoreForTesting() {
 	writeStore = sync.OnceValues(resolveWriteStore)
 }
 
-func resolveWriteStore() (*securestore.Store, error) {
+func resolveWriteStore() (keyStore, error) {
 	mode, err := credentialStoreMode()
 	if err != nil {
 		return nil, err
 	}
-	return securestore.Resolve(mode)
+	return stores.Resolve(mode)
 }
 
 // credStoreState is a small non-secret marker file next to credentials.json

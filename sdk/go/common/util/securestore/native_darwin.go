@@ -63,7 +63,7 @@ type nativeStore struct {
 // pass the code-signing self-check and the keychain must answer our item
 // query without requiring interaction. Both checks are prompt-free and the
 // whole probe is time-bounded.
-func (s *nativeStore) available() error {
+func (s *nativeStore) available() (Outcome, error) {
 	_, err := withTimeout(func() (struct{}, error) {
 		if err := nativeSelfCheck(); err != nil {
 			if errors.Is(err, ErrUnavailable) {
@@ -74,7 +74,10 @@ func (s *nativeStore) available() error {
 		}
 		return struct{}{}, s.probe()
 	})
-	return err
+	if err != nil {
+		return Absent, err
+	}
+	return Ready, nil
 }
 
 // probe asks the keychain about our item without returning data. A missing

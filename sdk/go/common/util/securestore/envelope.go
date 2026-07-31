@@ -20,21 +20,34 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
 // envelopeVersion is bumped when the on-disk format changes.
 const envelopeVersion = 1
 
+const envelopeAlgo = "aes-256-gcm"
+
+// ErrUnsupportedVersion indicates an envelope whose version this build does
+// not understand. Detection (IsEnvelope) still succeeds for such files so
+// they are never mistaken for plaintext and overwritten.
+var ErrUnsupportedVersion = errors.New("was encrypted by a newer version of the Pulumi CLI")
+
 // envelope is the on-disk JSON shape of an encrypted file. The marker field
 // distinguishes it from any legacy plaintext credentials file, whose schema
-// has no key starting with "$".
+// has no key starting with "$". It is a pointer so that presence (any
+// version) and support (this version) are separate decisions.
 type envelope struct {
-	Marker  int    `json:"$pulumiSecureStore"`
+	Marker  *int   `json:"$pulumiSecureStore"`
 	Backend string `json:"backend"`
 	Algo    string `json:"algo"`
 	Nonce   string `json:"nonce"`
 	Data    string `json:"data"`
+}
+
+func aad(version int, backend Backend, algo string) []byte {
+	return fmt.Appendf(nil, "%d|%s|%s", version, backend, algo)
 }
 
 // Seal encrypts plaintext with AES-256-GCM under the given 32-byte key and
@@ -49,11 +62,12 @@ func Seal(key []byte, backend Backend, plaintext []byte) ([]byte, error) {
 	if _, err := rand.Read(nonce); err != nil {
 		return nil, err
 	}
-	sealed := aead.Seal(nil, nonce, plaintext, nil)
+	sealed := aead.Seal(nil, nonce, plaintext, aad(envelopeVersion, backend, envelopeAlgo))
+	version := envelopeVersion
 	return json.MarshalIndent(envelope{
-		Marker:  envelopeVersion,
+		Marker:  &version,
 		Backend: string(backend),
-		Algo:    "aes-256-gcm",
+		Algo:    envelopeAlgo,
 		Nonce:   base64.StdEncoding.EncodeToString(nonce),
 		Data:    base64.StdEncoding.EncodeToString(sealed),
 	}, "", "    ")
@@ -64,6 +78,9 @@ func Open(key, data []byte) ([]byte, error) {
 	env, err := parseEnvelope(data)
 	if err != nil {
 		return nil, err
+	}
+	if env.Algo != envelopeAlgo {
+		return nil, fmt.Errorf("unsupported secure-store envelope algorithm %q", env.Algo)
 	}
 	aead, err := newAEAD(key)
 	if err != nil {
@@ -80,7 +97,7 @@ func Open(key, data []byte) ([]byte, error) {
 	if len(nonce) != aead.NonceSize() {
 		return nil, fmt.Errorf("invalid secure-store envelope nonce length %d", len(nonce))
 	}
-	plaintext, err := aead.Open(nil, nonce, sealed, nil)
+	plaintext, err := aead.Open(nil, nonce, sealed, aad(*env.Marker, Backend(env.Backend), env.Algo))
 	if err != nil {
 		return nil, ErrWrongKey
 	}
@@ -88,10 +105,14 @@ func Open(key, data []byte) ([]byte, error) {
 }
 
 // IsEnvelope reports whether data looks like a Seal-produced envelope rather
-// than a legacy plaintext file.
+// than a legacy plaintext file. It is detection only: it accepts any
+// envelope version, including ones this build cannot open, so callers never
+// treat an unreadable envelope as plaintext.
 func IsEnvelope(data []byte) bool {
-	_, err := parseEnvelope(data)
-	return err == nil
+	var probe struct {
+		Marker *int `json:"$pulumiSecureStore"`
+	}
+	return json.Unmarshal(data, &probe) == nil && probe.Marker != nil
 }
 
 // EnvelopeBackend returns the backend recorded in an envelope, so reads can
@@ -109,8 +130,11 @@ func parseEnvelope(data []byte) (envelope, error) {
 	if err := json.Unmarshal(data, &env); err != nil {
 		return envelope{}, fmt.Errorf("parsing secure-store envelope: %w", err)
 	}
-	if env.Marker != envelopeVersion {
-		return envelope{}, fmt.Errorf("unsupported secure-store envelope version %d", env.Marker)
+	if env.Marker == nil {
+		return envelope{}, errors.New("not a secure-store envelope")
+	}
+	if *env.Marker != envelopeVersion {
+		return envelope{}, fmt.Errorf("%w (envelope version %d)", ErrUnsupportedVersion, *env.Marker)
 	}
 	return env, nil
 }

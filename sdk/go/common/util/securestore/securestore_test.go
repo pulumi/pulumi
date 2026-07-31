@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -75,6 +76,43 @@ func TestIsEnvelopeRejectsLegacyCredentials(t *testing.T) {
 	assert.False(t, IsEnvelope([]byte(`{"current":"x","accessTokens":{"x":"tok"}}`)))
 	assert.False(t, IsEnvelope([]byte("")))
 	assert.False(t, IsEnvelope([]byte("not json")))
+}
+
+func TestUnsupportedEnvelopeVersion(t *testing.T) {
+	t.Parallel()
+	key := testKey(t)
+	env, err := Seal(key, BackendMock, []byte("secret"))
+	require.NoError(t, err)
+	future := bytes.Replace(env, []byte(`"$pulumiSecureStore": 1`), []byte(`"$pulumiSecureStore": 2`), 1)
+	require.NotEqual(t, env, future)
+
+	assert.True(t, IsEnvelope(future), "a future-version envelope must still be detected as an envelope")
+	_, err = EnvelopeBackend(future)
+	assert.True(t, errors.Is(err, ErrUnsupportedVersion))
+	_, err = Open(key, future)
+	assert.True(t, errors.Is(err, ErrUnsupportedVersion))
+}
+
+func TestOpenRejectsUnknownAlgo(t *testing.T) {
+	t.Parallel()
+	key := testKey(t)
+	env, err := Seal(key, BackendMock, []byte("secret"))
+	require.NoError(t, err)
+	tampered := bytes.Replace(env, []byte(`"algo": "aes-256-gcm"`), []byte(`"algo": "rot13"`), 1)
+	require.NotEqual(t, env, tampered)
+	_, err = Open(key, tampered)
+	assert.ErrorContains(t, err, "algorithm")
+}
+
+func TestOpenRejectsTamperedHeader(t *testing.T) {
+	t.Parallel()
+	key := testKey(t)
+	env, err := Seal(key, BackendMock, []byte("secret"))
+	require.NoError(t, err)
+	tampered := bytes.Replace(env, []byte(`"backend": "mock"`), []byte(`"backend": "mock-strong"`), 1)
+	require.NotEqual(t, env, tampered)
+	_, err = Open(key, tampered)
+	assert.True(t, errors.Is(err, ErrWrongKey), "header edits must fail authentication")
 }
 
 func TestSealRejectsBadKeyLength(t *testing.T) {
@@ -162,6 +200,39 @@ func TestResolveModes(t *testing.T) {
 	assert.Equal(t, BackendMock, st.Backend())
 }
 
+func TestOutcomeClassification(t *testing.T) {
+	t.Parallel()
+	assert.Equal(t, Ready, outcomeOf(nil))
+	assert.Equal(t, Declined, outcomeOf(fmt.Errorf("wrapped: %w", ErrDeclined)))
+	assert.Equal(t, Locked, outcomeOf(fmt.Errorf("wrapped: %w", ErrLocked)))
+	assert.Equal(t, Absent, outcomeOf(ErrUnavailable))
+	assert.Equal(t, Absent, outcomeOf(errors.New("something else")))
+
+	assert.True(t, errors.Is(ErrLocked, ErrUnavailable), "locked still means unusable, so fallback keeps working")
+	assert.False(t, errors.Is(ErrDeclined, ErrUnavailable), "a refusal must never look like absence")
+}
+
+//nolint:paralleltest // mutates the package-global mock resolver
+func TestDeclinedStopsTheChain(t *testing.T) {
+	fallback := &memStore{}
+	mockResolver = func() []backendImpl {
+		return []backendImpl{
+			{id: BackendMockStrong, store: &refusingStore{}, wrap: rawWrapper{}},
+			{id: BackendMock, store: fallback, wrap: rawWrapper{}},
+		}
+	}
+	t.Cleanup(func() { mockResolver = nil })
+
+	for _, mode := range []Mode{ModeAuto, ModeOS} {
+		st, err := Resolve(mode)
+		require.Error(t, err, "a refusal must fail the resolution, not fall back")
+		assert.True(t, errors.Is(err, ErrDeclined))
+		assert.Nil(t, st)
+	}
+	_, err := fallback.get()
+	assert.True(t, errors.Is(err, ErrKeyNotFound), "the next backend must not have been used")
+}
+
 //nolint:paralleltest // MockInit swaps a package-global resolver
 func TestForBackendUnknown(t *testing.T) {
 	MockInit(t)
@@ -181,7 +252,7 @@ type raceLosingStore struct {
 	gets   int
 }
 
-func (r *raceLosingStore) available() error { return nil }
+func (r *raceLosingStore) available() (Outcome, error) { return Ready, nil }
 
 func (r *raceLosingStore) get() (string, error) {
 	r.gets++

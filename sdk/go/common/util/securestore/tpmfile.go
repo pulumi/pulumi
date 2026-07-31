@@ -64,7 +64,7 @@ func pulumiHomeDir() (string, error) {
 // available reports whether the key file's directory exists (creating it if
 // needed) and is actually writable, proven by creating and removing a probe
 // file without touching the real item.
-func (s tpmFileStore) available() error {
+func (s tpmFileStore) available() (Outcome, error) {
 	_, err := withTimeout(func() (struct{}, error) {
 		if s.err != nil {
 			return struct{}{}, s.err
@@ -84,11 +84,11 @@ func (s tpmFileStore) available() error {
 	})
 	if err != nil {
 		if errors.Is(err, ErrUnavailable) {
-			return err
+			return Absent, err
 		}
-		return fmt.Errorf("%w: TPM key file location is not usable: %v", ErrUnavailable, err)
+		return Absent, fmt.Errorf("%w: TPM key file location is not usable: %v", ErrUnavailable, err)
 	}
-	return nil
+	return Ready, nil
 }
 
 func (s tpmFileStore) get() (string, error) {

@@ -31,9 +31,11 @@ func TestTPMFileStoreLifecycle(t *testing.T) {
 	t.Setenv("PULUMI_HOME", home)
 
 	store := newTPMFileStore()
-	require.NoError(t, store.available(), "a writable home dir must be available")
+	outcome, err := store.available()
+	require.NoError(t, err)
+	require.Equal(t, Ready, outcome, "a writable home dir must be available")
 
-	_, err := store.get()
+	_, err = store.get()
 	assert.ErrorIs(t, err, ErrKeyNotFound)
 
 	require.NoError(t, store.set("first-value"))
@@ -70,7 +72,9 @@ func TestTPMFileStoreAvailableCreatesDir(t *testing.T) {
 	t.Setenv("PULUMI_HOME", home)
 
 	store := newTPMFileStore()
-	require.NoError(t, store.available())
+	outcome, err := store.available()
+	require.NoError(t, err)
+	require.Equal(t, Ready, outcome)
 	info, err := os.Stat(home)
 	require.NoError(t, err)
 	assert.True(t, info.IsDir())

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -3016,16 +3017,16 @@ func (nopBatchDecrypter) Enqueue(context.Context, string, *resource.Secret) erro
 // Mirrors the report: PULUMI_BACKEND_URL set (so no earlier read fails),
 // explicit credentials path, no env token, no agent environment.
 //
-//nolint:paralleltest // mutates environment and the process-global secure-store mock
+//nolint:paralleltest // mutates environment
 func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
 	t.Setenv("PULUMI_CREDENTIALS_PATH", t.TempDir())
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
-	securestore.MockInit(t)
 
-	// Construct an envelope whose key is then lost.
-	st, err := securestore.Resolve(securestore.ModeAuto)
-	require.NoError(t, err)
-	key, err := st.GetOrCreateKey()
+	// An envelope recording a backend that exists on no platform is
+	// undecryptable everywhere, which is what a lost key looks like.
+	unreachable := securestore.Backend("not-a-real-backend")
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
 	require.NoError(t, err)
 	cloudURL := "https://api.undecryptable-current.example.com"
 	payload, err := json.Marshal(workspace.Credentials{
@@ -3033,11 +3034,10 @@ func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
 		AccessTokens: map[string]string{cloudURL: "pul-lost"},
 	})
 	require.NoError(t, err)
-	envelope, err := securestore.Seal(key, st.Backend(), payload)
+	envelope, err := securestore.Seal(key, unreachable, payload)
 	require.NoError(t, err)
 	credsFile := filepath.Join(os.Getenv("PULUMI_CREDENTIALS_PATH"), "credentials.json")
 	require.NoError(t, os.WriteFile(credsFile, envelope, 0o600))
-	require.NoError(t, st.DeleteKey())
 
 	_, err = defaultLoginManager{}.Current(t.Context(), cloudURL, false, false)
 	require.Error(t, err, "Current must not treat an undecryptable file as logged-out")

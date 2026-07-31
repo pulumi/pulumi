@@ -17,9 +17,12 @@
 package securestore
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 
 	"github.com/godbus/dbus/v5"
 )
@@ -34,23 +37,49 @@ const (
 	// collectionLockedProperty is the standard Locked property on a
 	// collection.
 	collectionLockedProperty = "org.freedesktop.Secret.Collection.Locked"
+	secretServicePath        = dbus.ObjectPath("/org/freedesktop/secrets")
+)
+
+type precheckResult struct {
+	outcome Outcome
+	err     error
+}
+
+var (
+	precheckMu      sync.Mutex
+	precheckResults = map[bool]precheckResult{}
 )
 
 // secretServicePrecheck fast-fails before go-keyring ever touches the Secret
-// Service, guaranteeing the probe is prompt-free: it verifies a session bus
-// exists, that a Secret Service provider is actually running, and that the
-// default collection is unlocked. It never calls Unlock — unlocking may pop
-// an OS dialog, which this package must never trigger.
-func secretServicePrecheck() error {
+// Service: it verifies a session bus exists, that a provider is actually
+// running, and that the default collection is unlocked. A locked collection
+// gets one unlock attempt, which only draws a dialog when allowPrompt says
+// someone is there to answer it.
+func secretServicePrecheck(allowPrompt bool) (Outcome, error) {
+	// Memoized per process, keyed on whether prompting was allowed: one
+	// command probes several times (reading the existing file, checking
+	// stickiness, then writing) and each probe of a locked collection would
+	// otherwise raise its own dialog.
+	precheckMu.Lock()
+	defer precheckMu.Unlock()
+	if done, ok := precheckResults[allowPrompt]; ok {
+		return done.outcome, done.err
+	}
+	outcome, err := probeSecretService(allowPrompt)
+	precheckResults[allowPrompt] = precheckResult{outcome, err}
+	return outcome, err
+}
+
+func probeSecretService(allowPrompt bool) (Outcome, error) {
 	// Cheap environment check first: no session bus address and no
 	// user-runtime bus socket means connecting is pointless.
 	if os.Getenv("DBUS_SESSION_BUS_ADDRESS") == "" {
 		runtimeDir := os.Getenv("XDG_RUNTIME_DIR")
 		if runtimeDir == "" {
-			return fmt.Errorf("%w: no D-Bus session bus", ErrUnavailable)
+			return Absent, fmt.Errorf("%w: no D-Bus session bus", ErrUnavailable)
 		}
 		if _, err := os.Stat(filepath.Join(runtimeDir, "bus")); err != nil {
-			return fmt.Errorf("%w: no D-Bus session bus", ErrUnavailable)
+			return Absent, fmt.Errorf("%w: no D-Bus session bus", ErrUnavailable)
 		}
 	}
 
@@ -66,25 +95,201 @@ func secretServicePrecheck() error {
 		var owner string
 		err = conn.BusObject().Call("org.freedesktop.DBus.GetNameOwner", 0, secretServiceBusName).Store(&owner)
 		if err != nil || owner == "" {
-			return struct{}{}, fmt.Errorf("%w: no Secret Service provider", ErrUnavailable)
+			return struct{}{}, fmt.Errorf("%w: no Secret Service provider is running", ErrUnavailable)
 		}
+		provider := nameOwnerProcess(conn, owner)
 
 		// Reading the Locked property is side-effect free; anything but an
 		// unlocked default collection means using the store would prompt.
 		locked, err := conn.Object(secretServiceBusName, defaultCollectionPath).GetProperty(collectionLockedProperty)
 		if err != nil {
-			return struct{}{}, fmt.Errorf("%w: cannot read the default secret collection: %v", ErrUnavailable, err)
+			return struct{}{}, fmt.Errorf("%w: cannot read the default secret collection%s: %v",
+				ErrUnavailable, provider, err)
 		}
 		isLocked, ok := locked.Value().(bool)
 		if !ok {
-			return struct{}{}, fmt.Errorf("%w: cannot read the default secret collection: "+
-				"unexpected Locked property type %T", ErrUnavailable, locked.Value())
+			return struct{}{}, fmt.Errorf("%w: cannot read the default secret collection%s: "+
+				"unexpected Locked property type %T", ErrUnavailable, provider, locked.Value())
 		}
 		if isLocked {
-			return struct{}{}, fmt.Errorf(
-				"%w: secret collection is locked; unlocking would require a prompt", ErrUnavailable)
+			return struct{}{}, lockedCollectionError{provider: provider}
 		}
 		return struct{}{}, nil
 	})
+	var locked lockedCollectionError
+	if errors.As(err, &locked) {
+		unlockErr := unlockDefaultCollection(allowPrompt)
+		switch {
+		case unlockErr == nil:
+			return Ready, nil
+		case errors.Is(unlockErr, ErrDeclined):
+			return Declined, unlockErr
+		default:
+			return Locked, fmt.Errorf("%w%s: %v", ErrLocked, locked.provider, unlockErr)
+		}
+	}
+	if err != nil {
+		return Absent, err
+	}
+	return Ready, nil
+}
+
+type lockedCollectionError struct{ provider string }
+
+func (lockedCollectionError) Error() string { return "the default secret collection is locked" }
+
+func unlockDefaultCollection(mayAskUser bool) error {
+	if mayAskUser {
+		return onSessionBus(unlockAndWaitForUser)
+	}
+	_, err := withTimeout(func() (struct{}, error) {
+		return struct{}{}, onSessionBus(unlockWithoutDrawingUI)
+	})
 	return err
+}
+
+func onSessionBus(do func(*dbus.Conn) error) error {
+	conn, err := dbus.ConnectSessionBus()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return do(conn)
+}
+
+func unlockWithoutDrawingUI(conn *dbus.Conn) error {
+	unlocked, promptPath, err := requestUnlock(conn)
+	if err != nil {
+		return err
+	}
+	if len(unlocked) > 0 {
+		return nil
+	}
+	if promptPath != "" && promptPath != "/" {
+		_ = conn.Object(secretServiceBusName, promptPath).Call("org.freedesktop.Secret.Prompt.Dismiss", 0).Err
+	}
+	return errors.New("it needs a password prompt, and none can be shown here")
+}
+
+func confirmUnlocked(conn *dbus.Conn) error {
+	locked, err := conn.Object(secretServiceBusName, defaultCollectionPath).GetProperty(collectionLockedProperty)
+	if err != nil {
+		return err
+	}
+	if isLocked, ok := locked.Value().(bool); !ok || isLocked {
+		return errors.New("the collection is still locked after the unlock attempt")
+	}
+	return nil
+}
+
+func requestUnlock(conn *dbus.Conn) (unlocked []dbus.ObjectPath, prompt dbus.ObjectPath, err error) {
+	err = conn.Object(secretServiceBusName, secretServicePath).
+		Call("org.freedesktop.Secret.Service.Unlock", 0, []dbus.ObjectPath{defaultCollectionPath}).
+		Store(&unlocked, &prompt)
+	return unlocked, prompt, err
+}
+
+func unlockAndWaitForUser(conn *dbus.Conn) error {
+	unlocked, promptPath, err := requestUnlock(conn)
+	if err != nil {
+		return err
+	}
+	if len(unlocked) > 0 {
+		return nil
+	}
+	if promptPath == "" || promptPath == "/" {
+		return errors.New("unlock returned neither an unlocked collection nor a prompt")
+	}
+
+	matchOpts := []dbus.MatchOption{
+		dbus.WithMatchObjectPath(promptPath),
+		dbus.WithMatchInterface("org.freedesktop.Secret.Prompt"),
+		dbus.WithMatchMember("Completed"),
+	}
+	if err := conn.AddMatchSignal(matchOpts...); err != nil {
+		return err
+	}
+	defer func() { _ = conn.RemoveMatchSignal(matchOpts...) }()
+	ownerOpts := []dbus.MatchOption{
+		dbus.WithMatchInterface("org.freedesktop.DBus"),
+		dbus.WithMatchMember("NameOwnerChanged"),
+		dbus.WithMatchArg(0, secretServiceBusName),
+	}
+	if err := conn.AddMatchSignal(ownerOpts...); err != nil {
+		return err
+	}
+	defer func() { _ = conn.RemoveMatchSignal(ownerOpts...) }()
+	signals := make(chan *dbus.Signal, 8)
+	conn.Signal(signals)
+	defer conn.RemoveSignal(signals)
+
+	prompt := conn.Object(secretServiceBusName, promptPath)
+	// The command ends when the user answers, so the only prompt we ever
+	// take down is one we are abandoning ourselves.
+	defer func() { _ = prompt.Call("org.freedesktop.Secret.Prompt.Dismiss", 0).Err }()
+	shown := showDialogNonBlocking(prompt)
+	notifyWaitingForUnlock()
+
+	for {
+		select {
+		case call := <-shown:
+			// The method reply says only whether the dialog was raised. A
+			// failure here means no Completed signal is ever coming, so the
+			// wait must end rather than hang on a dialog nobody can see.
+			if call.Err != nil {
+				return call.Err
+			}
+			shown = nil
+		case sig, ok := <-signals:
+			if !ok {
+				return errors.New("the session bus closed before the unlock prompt completed")
+			}
+			switch {
+			case sig.Name == "org.freedesktop.DBus.NameOwnerChanged" && providerVanished(sig):
+				return errors.New("the credential store stopped while its password prompt was open")
+			case sig.Path == promptPath && sig.Name == "org.freedesktop.Secret.Prompt.Completed":
+				if len(sig.Body) > 0 {
+					if dismissed, isBool := sig.Body[0].(bool); isBool && !dismissed {
+						return confirmUnlocked(conn)
+					}
+				}
+				// Providers also report "dismissed" when no prompter could be
+				// reached at all, so do not claim the user did it.
+				return fmt.Errorf("%w: its password prompt was dismissed or could not be shown", ErrDeclined)
+			}
+		}
+	}
+}
+
+func showDialogNonBlocking(prompt dbus.BusObject) <-chan *dbus.Call {
+	done := make(chan *dbus.Call, 1)
+	prompt.Go("org.freedesktop.Secret.Prompt.Prompt", 0, done, "")
+	return done
+}
+
+func providerVanished(sig *dbus.Signal) bool {
+	if len(sig.Body) < 3 {
+		return false
+	}
+	name, _ := sig.Body[0].(string)
+	newOwner, _ := sig.Body[2].(string)
+	return name == secretServiceBusName && newOwner == ""
+}
+
+var notifyWaitingForUnlock = func() {
+	fmt.Fprintln(os.Stderr,
+		"Pulumi needs the key protecting your credentials: answer your keyring's password prompt to continue.")
+}
+
+func nameOwnerProcess(conn *dbus.Conn, owner string) string {
+	var pid uint32
+	err := conn.BusObject().Call("org.freedesktop.DBus.GetConnectionUnixProcessID", 0, owner).Store(&pid)
+	if err != nil {
+		return ""
+	}
+	comm, err := os.ReadFile(fmt.Sprintf("/proc/%d/comm", pid))
+	if err != nil {
+		return ""
+	}
+	return fmt.Sprintf(" (provider %q)", strings.TrimSpace(string(comm)))
 }

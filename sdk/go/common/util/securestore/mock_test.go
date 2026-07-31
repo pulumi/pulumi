@@ -27,7 +27,7 @@ type memStore struct {
 	set_  bool
 }
 
-func (m *memStore) available() error { return nil }
+func (m *memStore) available() (Outcome, error) { return Ready, nil }
 
 func (m *memStore) get() (string, error) {
 	m.mu.Lock()
@@ -68,9 +68,9 @@ type gatedStore struct {
 	enabled *bool
 }
 
-func (g *gatedStore) available() error {
+func (g *gatedStore) available() (Outcome, error) {
 	if !*g.enabled {
-		return fmt.Errorf("%w: mock backend not yet enabled", ErrUnavailable)
+		return Absent, fmt.Errorf("%w: mock backend not yet enabled", ErrUnavailable)
 	}
 	return g.inner.available()
 }
@@ -79,9 +79,12 @@ func (g *gatedStore) get() (string, error)   { return g.inner.get() }
 func (g *gatedStore) set(value string) error { return g.inner.set(value) }
 func (g *gatedStore) delete() error          { return g.inner.delete() }
 
+type refusingStore struct{ memStore }
+
+func (*refusingStore) available() (Outcome, error) { return Declined, ErrDeclined }
+
 // MockInit replaces platform backend resolution with a single in-memory
-// backend for the duration of a test. Tests that touch the secure store MUST
-// call this to avoid writing to the developer's real keychain/TPM.
+// backend for the duration of a test.
 func MockInit(t *testing.T) {
 	t.Helper()
 	mem := &memStore{}
@@ -91,12 +94,8 @@ func MockInit(t *testing.T) {
 	t.Cleanup(func() { mockResolver = nil })
 }
 
-// MockInitDual installs two in-memory backends: BackendMockStrong (preferred
-// by Resolve but initially unavailable) and BackendMock (always available).
-// The returned promote function makes the strong backend available,
-// simulating a platform gaining a better protection tier — such as a signed
-// binary unlocking the native macOS keychain, or a TPM becoming usable — so
-// tests can exercise the cross-backend upgrade of encrypted data.
+// MockInitDual installs a preferred backend that only becomes available once
+// promote is called, so tests can exercise the cross-backend upgrade.
 func MockInitDual(t *testing.T) (promote func()) {
 	t.Helper()
 	enabled := false

@@ -46,6 +46,19 @@ func EmojiOr(e, or string) string {
 // scenario, such as in continuous integration, or when using the Pulumi CLI/SDK in a programmatic way.
 var DisableInteractive bool
 
+// InteractivityStated reports whether the user said anything about
+// interactivity, so that --non-interactive=false can assert presence rather
+// than merely matching the default. Detection heuristics apply only when this
+// is false.
+var InteractivityStated bool
+
+// StatedInteractive returns the user's explicit choice, if they made one:
+// --non-interactive yields (false, true), --non-interactive=false yields
+// (true, true), and saying nothing yields (false, false).
+func StatedInteractive() (interactive, stated bool) {
+	return !DisableInteractive, InteractivityStated
+}
+
 // Interactive returns true if we should be running in interactive mode. That is, we have an interactive terminal
 // session, interactivity hasn't been explicitly disabled, and we're not running in a known CI system.
 func Interactive() bool {
