@@ -71,7 +71,7 @@ func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 // and installs them using similar logic to the 'pulumi package add' command
 func InstallPackagesFromProject(
 	ctx context.Context, proj workspace.BaseProject, root string, registry registry.Registry,
-	parallelism int, useLanguageVersionTools bool,
+	parallelism int, useLanguageVersionTools bool, skipLink bool,
 	stdout, stderr io.Writer, e env.Env,
 ) (packageinstallation.State, error) {
 	d := diag.DefaultSink(stdout, stderr, diag.FormatOptions{
@@ -98,6 +98,7 @@ func InstallPackagesFromProject(
 			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
 		Concurrency: parallelism,
+		SkipLink:    skipLink,
 	}
 	continuation, err := packageinstallation.InstallProjectPlugins(ctx, proj, root, opts, registry, ws)
 	if e := (packageinstallation.ErrorCyclicDependencies{}); errors.As(err, &e) {

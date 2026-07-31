@@ -1555,6 +1555,35 @@ func TestPackageAddPython(t *testing.T) {
 	}
 }
 
+// TestInstallLocalPluginNoLinkPython verifies that `pulumi install --no-link` regenerates
+// the local SDK for a Python project without modifying requirements.txt.
+func TestInstallLocalPluginNoLinkPython(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packages-install-local")
+	ptesting.InstallDependencies(t, filepath.Join(e.RootPath, "provider"))
+	e.CWD = filepath.Join(e.RootPath, "example-python")
+
+	manifestPath := filepath.Join(e.CWD, "requirements.txt")
+	before, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
+
+	// --no-link should generate the SDK but leave requirements.txt untouched
+	// --no-dependencies keeps the test hermetic (no pip install of the generated SDK)
+	e.RunCommand("pulumi", "install", "--no-link", "--no-dependencies")
+
+	require.True(t, e.PathExists("sdks/provider"),
+		"--no-link should still generate the local SDK")
+
+	// Verify that the project's requirements.txt was not modified
+	after, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
+	assert.Equal(t, string(before), string(after),
+		"--no-link must not modify requirements.txt")
+}
+
 //nolint:paralleltest // mutates environment
 func TestConvertTerraformProviderPython(t *testing.T) {
 	e := ptesting.NewEnvironment(t)

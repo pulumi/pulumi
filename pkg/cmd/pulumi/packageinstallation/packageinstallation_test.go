@@ -659,6 +659,70 @@ func TestInstallInProjectWithSharedDependency(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestInstallProjectWithSkipLink verifies that with Options.SkipLink set, local SDKs are
+// still generated but not linked into the project's language manifest (package.json,
+// requirements.txt, pyproject.toml). It uses the same project layout as
+// TestInstallInProjectWithSharedDependency, whose golden file shows LinkIntoProject steps,
+// so the difference in the golden file for this test is exactly the absence of linking.
+func TestInstallProjectWithSkipLink(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, []string{"/project"}, nil, []invariantPlugin{
+		{
+			d: workspace.PluginDescriptor{
+				Name: "plugin-a",
+				Kind: apitype.ResourcePlugin,
+			},
+			project: &workspace.PluginProject{
+				Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+				Packages: map[string]workspace.PackageSpec{
+					"plugin-b": {
+						Source:            "plugin-b",
+						PluginDownloadURL: "https://example.com/plugin-b.tar.gz",
+					},
+				},
+			},
+		},
+		{
+			d: workspace.PluginDescriptor{
+				Name: "plugin-b",
+				Kind: apitype.ResourcePlugin,
+			},
+			hasBinary: true,
+		},
+	})
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	_, err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
+		Name:    "test-project",
+		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		Packages: map[string]workspace.PackageSpec{
+			"plugin-a": {
+				Source:            "plugin-a",
+				PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
+			},
+			"plugin-b": {
+				Source:            "plugin-b",
+				PluginDownloadURL: "https://example.com/plugin-b.tar.gz",
+			},
+		},
+	}, "/project", packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
+		},
+		Concurrency: 1,
+		SkipLink:    true,
+	}, nil, rws)
+	require.NoError(t, err)
+
+	// Verify nothing was linked
+	assert.Empty(t, ws.downloadedWorkspace["/project"].linked,
+		"SkipLink must not link any package into the project")
+}
+
 // TestInstallInProjectWithRelativePaths tests that InstallPluginAt is called with paths
 // correctly resolved relative to projectDir for packages in various relative locations.
 //
@@ -1903,6 +1967,67 @@ func TestInstallPluginSet(t *testing.T) {
 
 	require.True(t, ws.plugins[descriptorPath].downloaded, "descriptor plugin should be downloaded")
 	require.True(t, ws.plugins[specPath].downloaded, "spec plugin should be downloaded")
+}
+
+// TestInstallPluginSetWithSkipLink verifies that Options.SkipLink also applies to the
+// InstallPluginSet step: the local SDK should be generated but should not be linked into the project.
+func TestInstallPluginSetWithSkipLink(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, []string{"/project"}, nil, []invariantPlugin{
+		{
+			d: workspace.PluginDescriptor{
+				Name:    "plugin-descriptor",
+				Version: &semver.Version{Major: 1},
+				Kind:    apitype.ResourcePlugin,
+			},
+			hasBinary: true,
+		},
+		{
+			d: workspace.PluginDescriptor{
+				Name: "plugin-spec",
+				Kind: apitype.ResourcePlugin,
+			},
+			hasBinary: true,
+		},
+	})
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	_, err := packageinstallation.InstallPluginSet(t.Context(),
+		[]workspace.PackageDescriptor{
+			{
+				PluginDescriptor: workspace.PluginDescriptor{
+					Name:              "plugin-descriptor",
+					Version:           &semver.Version{Major: 1},
+					Kind:              apitype.ResourcePlugin,
+					PluginDownloadURL: "https://example.com/plugin-descriptor.tar.gz",
+				},
+			},
+		},
+		[]workspace.PackageSpec{
+			{
+				Source:            "plugin-spec",
+				PluginDownloadURL: "https://example.com/plugin-spec.tar.gz",
+			},
+		},
+		&workspace.Project{
+			Name:    "test-project",
+			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		}, "/project", packageinstallation.Options{
+			Options: packageresolution.Options{
+				ResolveVersionWithLocalWorkspace:           true,
+				AllowNonInvertableLocalWorkspaceResolution: true,
+			},
+			Concurrency: 1,
+			SkipLink:    true,
+		}, nil, rws)
+	require.NoError(t, err)
+
+	// Verify nothing was linked
+	assert.Empty(t, ws.downloadedWorkspace["/project"].linked,
+		"SkipLink must not link any package into the project")
 }
 
 // TestInstallPluginSetRemotePackageOverride checks that a remote (registry)

@@ -123,6 +123,10 @@ type Options struct {
 
 	// A [PriorState] representing existing work done that won't be repeated.
 	PriorState State
+
+	// SkipLink, when true, generates local SDKs but does not link them into the
+	// project's language manifest (package.json, requirements.txt, pyproject.toml).
+	SkipLink bool
 }
 
 // A function to run the installed plugin.
@@ -257,6 +261,7 @@ func runInstall(
 		registry:          registry,
 		resolutionOptions: options.Options,
 		dag:               dag,
+		skipLink:          options.SkipLink,
 
 		// Most Installs will install exactly one binary plugin, so pre-allocate for that.
 		seen:  make(map[pluginHash]cachedPlugin, 1),
@@ -419,6 +424,9 @@ type state struct {
 	registry          registry.Registry
 	resolutionOptions packageresolution.Options
 	dag               *pdag.DAG[step]
+
+	// skipLink, when true, skips linking generated SDKs into the project's language manifest.
+	skipLink bool
 
 	// A mapping of plugins already managed by dag.
 	seen  map[pluginHash]cachedPlugin
@@ -757,6 +765,12 @@ type linkPackageStep struct {
 }
 
 func (step linkPackageStep) run(ctx context.Context, p state) error {
+	// When SkipLink is set, SDKs are still generated (via generateLocalSDKStep) but we do
+	// not link them into the project's language manifest.
+	if p.skipLink {
+		return nil
+	}
+
 	toLink := slices.DeleteFunc(step.descriptors, func(d workspace.LinkablePackageDescriptor) bool {
 		return d.Path == alreadyLinkedDescriptorPath
 	})

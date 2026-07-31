@@ -1,0 +1,10 @@
+name: package-install-local-python
+description: Install
+packages:
+  # The test validates that we can deal with the version number here
+  provider: ../provider@0.0.0
+runtime:
+  name: python
+  options:
+    toolchain: pip
+    virtualenv: venv

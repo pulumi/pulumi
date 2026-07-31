@@ -2891,6 +2891,33 @@ func TestInstallLocalPlugin(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview")
 }
 
+func TestInstallLocalPluginNoLink(t *testing.T) {
+	t.Parallel()
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.ImportDirectory("packages-install-local")
+	ptesting.InstallDependencies(t, filepath.Join(e.RootPath, "provider"))
+	e.CWD = filepath.Join(e.RootPath, "example")
+
+	manifestPath := filepath.Join(e.CWD, "package.json")
+	before, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
+
+	// --no-link should generate the SDK but leave package.json untouched
+	// --no-dependencies keeps the test hermetic (no npm install of the generated SDK)
+	e.RunCommand("pulumi", "install", "--no-link", "--no-dependencies")
+
+	require.True(t, e.PathExists(filepath.Join("sdks/provider/package.json")),
+		"--no-link should still generate the local SDK")
+
+	// Verify that the project's package.json was not modified
+	after, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
+	assert.Equal(t, string(before), string(after),
+		"--no-link must not modify package.json")
+}
+
 func TestInstallLocalPluginRecursive(t *testing.T) {
 	t.Parallel()
 	e := ptesting.NewEnvironment(t)
