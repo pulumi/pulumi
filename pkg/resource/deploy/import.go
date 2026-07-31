@@ -384,10 +384,17 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			continue
 		}
 		if _, ok := explicitProvidersByURN[imp.Provider]; !ok {
-			// This import describes a resource that references the provider, not the provider
-			// itself, so its parent doesn't apply to the provider.
-			imp.Parent = ""
-			explicitProvidersByURN[imp.Provider] = imp
+			// This import describes a resource that references the provider rather than the
+			// provider itself, so carry over only the fields that describe the provider: its
+			// inputs and the plugin (version/parameterization) needed to load it.
+			explicitProvidersByURN[imp.Provider] = Import{
+				Type:              imp.Type,
+				Version:           imp.Version,
+				PluginDownloadURL: imp.PluginDownloadURL,
+				PluginChecksums:   imp.PluginChecksums,
+				Parameterization:  imp.Parameterization,
+				ProviderInputs:    imp.ProviderInputs,
+			}
 		}
 	}
 
