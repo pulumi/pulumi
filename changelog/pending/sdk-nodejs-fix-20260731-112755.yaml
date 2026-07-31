@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: fix
+body: Fix trustedDependencies parsing for bun
+time: 2026-07-31T11:27:55.091863361+02:00
