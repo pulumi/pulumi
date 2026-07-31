@@ -597,12 +597,12 @@ func parseImportFile(
 				serializedInputs, ok = spec.Inputs, true
 			}
 			if ok {
-				providerInputs, err := resourcestack.DeserializeProperties(serializedInputs, dec)
+				inputs, err := resourcestack.DeserializeProperties(serializedInputs, dec)
 				if err != nil {
 					pusherrf("could not deserialize provider inputs for %v: %w",
 						describeResource(i, spec), err)
 				} else {
-					imp.ProviderInputs = providerInputs
+					imp.Inputs = inputs
 				}
 			}
 		} else {

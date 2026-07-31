@@ -675,8 +675,8 @@ func TestParseImportFileInputsOutputs(t *testing.T) {
 	require.Len(t, imports, 2)
 
 	// A provider spec's inputs become its configuration.
-	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].ProviderInputs["region"])
-	require.Nil(t, imports[0].Inputs)
+	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].Inputs["region"])
+	require.Nil(t, imports[0].ProviderInputs)
 
 	assert.Equal(t, resource.NewProperty("my-bucket"), imports[1].Inputs["bucket"])
 	assert.Equal(t, resource.NewProperty("arn:aws:s3:::my-bucket"), imports[1].Outputs["arn"])
@@ -709,8 +709,8 @@ func TestParseImportFileDeclaredProvider(t *testing.T) {
 	require.Len(t, imports, 2)
 
 	providerURN := resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::my-prov")
-	require.NotNil(t, imports[0].ProviderInputs)
-	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].ProviderInputs["region"])
+	require.NotNil(t, imports[0].Inputs)
+	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].Inputs["region"])
 	assert.Equal(t, providerURN, imports[1].Provider)
 }
 
@@ -743,7 +743,7 @@ func TestParseImportFileProviderWithParent(t *testing.T) {
 	require.Len(t, imports, 3)
 
 	assert.Equal(t, resource.URN("urn:pulumi:stack::proj::my:index:Comp::comp"), imports[1].Parent)
-	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[1].ProviderInputs["region"])
+	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[1].Inputs["region"])
 	assert.Equal(t,
 		resource.URN("urn:pulumi:stack::proj::my:index:Comp$pulumi:providers:aws::my-prov"),
 		imports[2].Provider)
