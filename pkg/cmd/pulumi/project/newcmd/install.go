@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
@@ -64,6 +65,50 @@ func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 		return fmt.Errorf("installing dependencies failed: %w\nRun `pulumi install` to complete the installation.", err)
 	}
 
+	return nil
+}
+
+// InstallRequiredPackages asks the language runtime which packages the program requires,
+// resolves them, and then installs them.
+func InstallRequiredPackages(
+	ctx context.Context, pctx *plugin.Context, proj *workspace.Project, root, main string,
+	prior packageinstallation.State, parallelism int, useLanguageVersionTools bool,
+	reg registry.Registry, stdout, stderr io.Writer,
+) error {
+	lang, err := pctx.Host.LanguageRuntime(pctx, proj.Runtime.Name())
+	if err != nil {
+		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
+	}
+
+	programInfo := plugin.NewProgramInfo(pctx.Root, pctx.Pwd, main, proj.Runtime.Options())
+	packages, specs, err := lang.GetRequiredPackages(ctx, programInfo)
+	if err != nil {
+		return err
+	}
+
+	projPath, err := workspace.DetectProjectPathFrom(root)
+	if err != nil {
+		return fmt.Errorf("locating Pulumi.yaml: %w", err)
+	}
+
+	ws := packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx, stdout, stderr, nil,
+		packageworkspace.Options{
+			UseLanguageVersionTools: useLanguageVersionTools,
+		})
+
+	_, err = packageinstallation.InstallPluginSet(ctx, packages, specs, proj, filepath.Dir(projPath),
+		packageinstallation.Options{
+			Concurrency: parallelism,
+			PriorState:  prior,
+			Options: packageresolution.Options{
+				ResolveVersionWithLocalWorkspace:           true,
+				ResolveWithRegistry:                        !env.DisableRegistryResolve.Value(),
+				AllowNonInvertableLocalWorkspaceResolution: true,
+			},
+		}, reg, ws)
+	if err != nil {
+		return fmt.Errorf("installing packages: %w", err)
+	}
 	return nil
 }
 

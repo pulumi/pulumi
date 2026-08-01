@@ -15,17 +15,23 @@
 package newcmd
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"iter"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -43,9 +49,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 //nolint:paralleltest // changes directory for process
@@ -1411,6 +1421,124 @@ func TestNewCmdYesRejectsInvalidExplicitName(t *testing.T) {
 	require.ErrorContains(t, err, "'my project' is not a valid project name")
 	_, statErr := os.Stat(filepath.Join(dir, "Pulumi.yaml"))
 	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+// requiredPackagesRecorder is an in-process language runtime, attached via
+// PULUMI_DEBUG_LANGUAGES, that records the GetRequiredPackages call it receives and
+// reports a single required package.
+type requiredPackagesRecorder struct {
+	pulumirpc.UnimplementedLanguageRuntimeServer
+
+	programDirectory atomic.Value
+	requiredPackage  *pulumirpc.PackageDependency
+}
+
+func (s *requiredPackagesRecorder) Handshake(
+	context.Context, *pulumirpc.LanguageHandshakeRequest,
+) (*pulumirpc.LanguageHandshakeResponse, error) {
+	return &pulumirpc.LanguageHandshakeResponse{}, nil
+}
+
+func (s *requiredPackagesRecorder) GetPluginInfo(context.Context, *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
+	return &pulumirpc.PluginInfo{Version: "1.0.0"}, nil
+}
+
+func (s *requiredPackagesRecorder) InstallDependencies(
+	*pulumirpc.InstallDependenciesRequest, pulumirpc.LanguageRuntime_InstallDependenciesServer,
+) error {
+	return nil
+}
+
+func (s *requiredPackagesRecorder) GetRequiredPackages(
+	_ context.Context, req *pulumirpc.GetRequiredPackagesRequest,
+) (*pulumirpc.GetRequiredPackagesResponse, error) {
+	s.programDirectory.Store(req.Info.ProgramDirectory)
+	return &pulumirpc.GetRequiredPackagesResponse{
+		Packages: []*pulumirpc.PackageDependency{s.requiredPackage},
+	}, nil
+}
+
+func pluginBinaryName(name string) string {
+	binary := "pulumi-resource-" + name
+	if goruntime.GOOS == "windows" {
+		binary += ".exe"
+	}
+	return binary
+}
+
+// fakePluginServer serves a plugin tarball containing a stub pulumi-resource-<name>
+// binary, in the layout the plugin download machinery expects.
+func fakePluginServer(t *testing.T, name string) *httptest.Server {
+	t.Helper()
+
+	var tarball bytes.Buffer
+	gzw := gzip.NewWriter(&tarball)
+	tw := tar.NewWriter(gzw)
+	binary := []byte("#!/bin/sh\nexit 0\n")
+	require.NoError(t, tw.WriteHeader(&tar.Header{
+		Name: pluginBinaryName(name),
+		Mode: 0o755,
+		Size: int64(len(binary)),
+	}))
+	_, err := tw.Write(binary)
+	require.NoError(t, err)
+	require.NoError(t, tw.Close())
+	require.NoError(t, gzw.Close())
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write(tarball.Bytes())
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+	return server
+}
+
+// TestNewInstallsRequiredPackages ensures that `pulumi new` resolves & installs required packages.
+func TestNewInstallsRequiredPackages(t *testing.T) {
+	useTempFilestateBackend(t)
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+
+	pluginServer := fakePluginServer(t, "testpkg")
+	lang := &requiredPackagesRecorder{
+		requiredPackage: &pulumirpc.PackageDependency{
+			Name:    "testpkg",
+			Kind:    "resource",
+			Version: "1.2.3",
+			Server:  pluginServer.URL,
+		},
+	}
+	cancel := make(chan bool)
+	t.Cleanup(func() { close(cancel) })
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: cancel,
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterLanguageRuntimeServer(srv, lang)
+			return nil
+		},
+	})
+	require.NoError(t, err)
+	t.Setenv("PULUMI_DEBUG_LANGUAGES", fmt.Sprintf("testlang:%d", handle.Port))
+
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+	template := writeLocalTemplate(t, t.TempDir(), "testlang-template",
+		"name: ${PROJECT}\ndescription: ${DESCRIPTION}\nruntime: testlang\n")
+
+	args := newArgs{
+		interactive:       false,
+		yes:               true,
+		prompt:            ui.PromptForValue,
+		secretsProvider:   "default",
+		stack:             stackName,
+		templateNameOrURL: template,
+		languageTemplate:  languageTemplateMock,
+	}
+	require.NoError(t, runNew(t.Context(), args))
+
+	assert.Equal(t, tempdir, lang.programDirectory.Load())
+	assert.FileExists(t,
+		filepath.Join(pulumiHome, "plugins", "resource-testpkg-v1.2.3", pluginBinaryName("testpkg")))
 }
 
 //nolint:paralleltest
