@@ -274,6 +274,49 @@ describe("runtime", () => {
             assert.strictEqual(result.secret1, 1);
             assert.strictEqual(result.secret2, undefined);
         });
+        it("canonicalizes nested secrets to a single envelope", async () => {
+            state.getStore().supportsSecrets = true;
+
+            // A value that arrives shaped as Secret(Secret("...")), e.g. from state written
+            // by an engine or provider that nested secret envelopes, must round-trip as a
+            // canonical single envelope rather than gaining or keeping extra layers.
+            const nested = {
+                [runtime.specialSigKey]: runtime.specialSecretSig,
+                value: {
+                    [runtime.specialSigKey]: runtime.specialSecretSig,
+                    value: "shh",
+                },
+            };
+
+            // Deserialization collapses the envelopes.
+            const deserialized = runtime.deserializeProperties(gstruct.Struct.fromJavaScript({ prop: nested }));
+            assert.ok(runtime.isRpcSecret(deserialized.prop));
+            assert.strictEqual(deserialized.prop.value, "shh");
+
+            // unwrapRpcSecret removes all consecutive envelopes.
+            assert.strictEqual(runtime.unwrapRpcSecret(nested), "shh");
+
+            // Serializing an already-serialized secret envelope must not wrap it again.
+            const inputs: Inputs = {
+                secret: secret(deserialized.prop),
+            };
+            const serialized = await runtime.serializeProperties("test", inputs);
+            assert.ok(runtime.isRpcSecret(serialized.secret));
+            assert.strictEqual(serialized.secret.value, "shh");
+
+            // Objects and arrays with secret descendants still hoist a single envelope.
+            const roundTripped = runtime.deserializeProperties(
+                gstruct.Struct.fromJavaScript({
+                    map: { plain: "a value", nested: nested },
+                    list: ["a value", nested],
+                }),
+            );
+            assert.ok(runtime.isRpcSecret(roundTripped.map));
+            assert.ok(!runtime.isRpcSecret(roundTripped.map.value.nested));
+            assert.strictEqual(roundTripped.map.value.nested, "shh");
+            assert.ok(runtime.isRpcSecret(roundTripped.list));
+            assert.strictEqual(roundTripped.list.value[1], "shh");
+        });
         it("marshals resource references correctly during preview", async () => {
             runtime._setIsDryRun(true);
             runtime.setMocks(new TestMocks());
