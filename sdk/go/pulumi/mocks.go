@@ -110,6 +110,8 @@ type MockResourceArgs struct {
 }
 
 type mockMonitor struct {
+	pulumirpc.UnimplementedResourceMonitorServer
+
 	project   string
 	stack     string
 	mocks     MockResourceMonitor
@@ -382,25 +384,25 @@ func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc
 func (m *mockMonitor) RegisterStackTransform(ctx context.Context, in *pulumirpc.Callback,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
-	panic("not implemented")
+	return &emptypb.Empty{}, nil
 }
 
 func (m *mockMonitor) RegisterStackInvokeTransform(ctx context.Context, in *pulumirpc.Callback,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
-	panic("not implemented")
+	return &emptypb.Empty{}, nil
 }
 
 func (m *mockMonitor) RegisterResourceHook(ctx context.Context, in *pulumirpc.RegisterResourceHookRequest,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
-	panic("not implemented")
+	return &emptypb.Empty{}, nil
 }
 
 func (m *mockMonitor) RegisterErrorHook(ctx context.Context, in *pulumirpc.RegisterErrorHookRequest,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
-	panic("not implemented")
+	return &emptypb.Empty{}, nil
 }
 
 func (m *mockMonitor) RegisterPackage(ctx context.Context, in *pulumirpc.RegisterPackageRequest,

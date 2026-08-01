@@ -943,6 +943,40 @@ func TestRegisterResourceOutputs(t *testing.T) {
 	require.Equal(t, int32(2), count.Load(), "RegisterResourceOutputs should be called exactly twice")
 }
 
+// This test checks that transforms and hooks are no-ops under the mock monitor, rather than errors/panics.
+func TestHooksAndTransformsNoop(t *testing.T) {
+	t.Parallel()
+
+	mocks := &testMonitor{}
+
+	err := RunErr(func(ctx *Context) error {
+		err := ctx.RegisterResourceTransform(func(_ context.Context, args *ResourceTransformArgs) *ResourceTransformResult {
+			return &ResourceTransformResult{Props: args.Props, Opts: args.Opts}
+		})
+		require.NoError(t, err)
+
+		hook, err := ctx.RegisterResourceHook("test-hook", func(args *ResourceHookArgs) error {
+			return nil
+		}, nil)
+		require.NoError(t, err)
+
+		transform := func(_ context.Context, args *ResourceTransformArgs) *ResourceTransformResult {
+			return &ResourceTransformResult{Props: args.Props, Opts: args.Opts}
+		}
+
+		_, err = NewLoggingTestResource(t, ctx, "res", String("A"),
+			Transforms([]ResourceTransform{transform}),
+			ResourceHooks(&ResourceHookBinding{
+				BeforeCreate: []*ResourceHook{hook},
+				AfterCreate:  []*ResourceHook{hook},
+			}),
+		)
+		require.NoError(t, err)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	require.NoError(t, err)
+}
+
 // packageRefMonitor is a mock monitor that tracks RegisterPackage calls and
 // returns configurable refs. It embeds mockMonitor for the full interface.
 type packageRefMonitor struct {
