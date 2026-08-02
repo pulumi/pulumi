@@ -3,6 +3,20 @@
     "version": "0.1.0",
     "resources": {
         "repro:index:Foo": {
+            "inputProperties": {
+                "scalingResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "$ref": "#/types/repro:index:ScalingResource"
+                            }
+                        }
+                    }
+                }
+            },
             "properties": {
                 "conditionSets": {
                     "type": "array",
@@ -24,6 +38,18 @@
                             "type": "object",
                             "additionalProperties": {
                                 "type": "string"
+                            }
+                        }
+                    }
+                },
+                "scalingResources": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "$ref": "#/types/repro:index:ScalingResource"
                             }
                         }
                     }
@@ -63,6 +89,13 @@
             "properties": {
                 "prop": { "type": "string" }
             }
+        },
+        "repro:index:ScalingResource": {
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" }
+            },
+            "required": ["name"]
         }
     },
     "language": {

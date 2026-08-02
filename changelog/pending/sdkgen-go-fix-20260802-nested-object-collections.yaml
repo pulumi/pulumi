@@ -1,0 +1,4 @@
+component: sdkgen/go
+kind: fix
+body: Generate valid input types for nested object collections
+time: 2026-08-02T10:36:57Z
