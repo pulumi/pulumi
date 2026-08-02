@@ -404,10 +404,6 @@ func (a *API) Import(
 // * `pulumi new https://<user>:<password>@<hostname>/<project>/<repo>`
 // * `pulumi new <user>@<hostname>:<project>/<repo>`
 // * `PULUMI_GITSSH_PASSPHRASE=<passphrase> pulumi new ssh://<user>@<hostname>/<project>/<repo>`
-// To create a project using Pulumi AI, either select `ai` from the first selection, or provide any of the following:
-// * `pulumi new --ai "<prompt>"`
-// * `pulumi new --language <language>`
-// * `pulumi new --ai "<prompt>" --language <language>`
 // Any missing but required information will be prompted for.
 func (a *API) New(
 	ctx context.Context,
