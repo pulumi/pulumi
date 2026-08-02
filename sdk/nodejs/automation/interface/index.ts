@@ -905,7 +905,7 @@ export interface PulumiNewOptions extends BaseOptions {
     tracingHeader?: string;
     /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
     verbose?: number;
-    /** Prompt to use for Pulumi AI */
+    /** Retired: use 'pulumi neo -p "prompt"' instead. */
     ai?: string;
     /** Config to save */
     config?: string[];
@@ -919,7 +919,7 @@ export interface PulumiNewOptions extends BaseOptions {
     force?: boolean;
     /** Generate the project only; do not create a stack, save config, or install dependencies */
     generateOnly?: boolean;
-    /** Language to use for Pulumi AI (must be one of TypeScript, JavaScript, Python, Go, C#, Java, or YAML) */
+    /** Retired: use 'pulumi neo -p "prompt"' instead. */
     language?: string;
     /** List locally installed templates and exit */
     listTemplates?: boolean;
@@ -935,7 +935,7 @@ export interface PulumiNewOptions extends BaseOptions {
     secretsProvider?: string;
     /** The stack name; either an existing stack or stack to create; if not specified, a prompt will request it */
     stack?: string;
-    /** Run in template mode, which will skip prompting for AI or Template functionality */
+    /** Deprecated: template mode is now the only mode; this flag is a no-op */
     templateMode?: boolean;
 }
 

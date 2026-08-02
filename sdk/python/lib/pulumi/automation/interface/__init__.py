@@ -347,14 +347,14 @@ class API:
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
-        :param ai: Prompt to use for Pulumi AI
+        :param ai: Retired: use 'pulumi neo -p "prompt"' instead.
         :param config: Config to save
         :param config_path: Config keys contain a path to a property in a map or list to set
         :param description: The project description; if not specified, a prompt will request it
         :param dir: The location to place the generated project; if not specified, the current directory is used
         :param force: Forces content to be generated even if it would change existing files
         :param generate_only: Generate the project only; do not create a stack, save config, or install dependencies
-        :param language: Language to use for Pulumi AI (must be one of TypeScript, JavaScript, Python, Go, C#, Java, or YAML)
+        :param language: Retired: use 'pulumi neo -p "prompt"' instead.
         :param list_templates: List locally installed templates and exit
         :param name: The project name; if not specified, a prompt will request it
         :param offline: Use locally cached templates without making any network requests
@@ -362,7 +362,7 @@ class API:
         :param runtime_options: Additional options for the language runtime (format: key1=value1,key2=value2)
         :param secrets_provider: The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)
         :param stack: The stack name; either an existing stack or stack to create; if not specified, a prompt will request it
-        :param template_mode: Run in template mode, which will skip prompting for AI or Template functionality
+        :param template_mode: Deprecated: template mode is now the only mode; this flag is a no-op
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
