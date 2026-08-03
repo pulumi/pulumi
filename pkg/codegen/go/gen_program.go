@@ -85,7 +85,11 @@ type generator struct {
 	// inPlainObjectField indicates that the generator is producing a value for a plain (non-input)
 	// struct field, so the object literal should be emitted as a value rather than a pointer.
 	inPlainObjectField bool
-	isComponent        bool
+	// inPlainInvokeArgs indicates that the generator is producing the arguments for a plain
+	// (non-output-versioned) invoke, which uses the plain argument structs rather than the
+	// paired ...Args input shapes.
+	inPlainInvokeArgs bool
+	isComponent       bool
 
 	// User-configurable options
 	assignResourcesToVariables bool // Assign resource to a new variable instead of _.

@@ -1,0 +1,4 @@
+component: programgen/go
+kind: fix
+body: Fix plain invokes emitting nonexistent `...ArgsArgs` argument types
+time: 2026-08-03T00:00:00+00:00

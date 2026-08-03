@@ -475,6 +475,49 @@ func parseAndBindProgram(t *testing.T,
 	return pcl.BindProgram(parser.Files, schema.NewPluginLoader(utils.NewContext(testdataPath)), options...)
 }
 
+func TestPlainInvokeUsesPlainArgTypes(t *testing.T) {
+	t.Parallel()
+
+	source := `
+policy = invoke("infra:index:getPolicyDocument", {
+	statements = [{
+		sid = "1"
+	}]
+})`
+
+	program, diags, err := parseAndBindProgram(t, source, "plain_invoke.pp")
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	files, diags, err := GenerateProgram(program)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	assert.Equal(t, `package main
+
+import (
+	"example.com/pulumi-infra/sdk/go/infra"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+func main() {
+	pulumi.Run(func(ctx *pulumi.Context) error {
+		_, err := infra.GetPolicyDocument(ctx, &infra.GetPolicyDocumentArgs{
+			Statements: []infra.GetPolicyDocumentStatement{
+				{
+					Sid: pulumi.StringRef("1"),
+				},
+			},
+		}, nil)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
+`, string(files["main.go"]))
+}
+
 func TestGenerateProjectDoesNotPanicWhenMissingVersion(t *testing.T) {
 	t.Parallel()
 
