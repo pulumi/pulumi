@@ -69,7 +69,7 @@ func TestKnownLanguageRuntimeHCL(t *testing.T) {
 	assert.Equal(t, workspace.PluginDescriptor{
 		Name:              "hcl",
 		Kind:              apitype.LanguagePlugin,
-		PluginDownloadURL: "github://api.github.com/pulumi-labs/pulumi-hcl",
+		PluginDownloadURL: "github://api.github.com/pulumi/pulumi-hcl",
 	}, spec)
 }
 
@@ -87,7 +87,7 @@ func TestKnownLanguageRuntimePreservesExplicitVersion(t *testing.T) {
 	assert.Equal(t, workspace.PluginDescriptor{
 		Name:              "hcl",
 		Kind:              apitype.LanguagePlugin,
-		PluginDownloadURL: "github://api.github.com/pulumi-labs/pulumi-hcl",
+		PluginDownloadURL: "github://api.github.com/pulumi/pulumi-hcl",
 		Version:           &explicit,
 	}, spec)
 }
