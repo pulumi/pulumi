@@ -137,7 +137,6 @@ func (pc *packageCommand) newStatefulResourceCreateCommand(res *schema.Resource)
 				inputFormat:   inputFormat,
 				resourcesFile: resourcesFile,
 				yes:           yes,
-				verb:          "created",
 				requireFresh:  true,
 			})
 		},
