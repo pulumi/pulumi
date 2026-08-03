@@ -20,7 +20,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -58,10 +58,10 @@ type ResourceImport struct {
 	// Inputs holds input properties supplied for the resource. Values the provider's Read cannot return
 	// (e.g. write-only attributes) are taken from here instead. For a provider declared in the response,
 	// Inputs is its configuration.
-	Inputs resource.PropertyMap
+	Inputs *property.Map
 	// Outputs holds the resource's full output state. When set, the resource is imported from these
 	// values directly and the provider's Read is skipped entirely.
-	Outputs resource.PropertyMap
+	Outputs *property.Map
 }
 
 // ResourceParameterization describes the base plugin that a resource's parameterized provider is built
