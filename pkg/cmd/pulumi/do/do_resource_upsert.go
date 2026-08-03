@@ -315,7 +315,8 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 		if existed {
 			verb = "Updated"
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "%s %s (snippet %s)\n", verb, args.name, result.SnippetUUIDs[len(result.SnippetUUIDs)-1])
+		fmt.Fprintf(cmd.OutOrStdout(), "%s %s (snippet %s)\n",
+			verb, args.name, result.SnippetUUIDs[len(result.SnippetUUIDs)-1])
 	}
 	return nil
 }
