@@ -271,6 +271,19 @@ func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRe
 	}
 }
 
+// Preview runs a preview of the given operation by invoking apply with DryRun set. It exists so that
+// backends can share a single implementation of Backend.Preview rather than each duplicating the same
+// ApplierOptions setup and apply call.
+func Preview(ctx context.Context, stack Stack, op UpdateOperation, apply Applier,
+	events chan<- engine.Event,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+	opts := ApplierOptions{
+		DryRun:   true,
+		ShowLink: true,
+	}
+	return apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
+}
+
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
 	op UpdateOperation, apply Applier, explainer Explainer, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
