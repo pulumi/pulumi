@@ -34,18 +34,26 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
         run: |
           set -euo pipefail
+          branch=automation/update-automation-api
           git add -A
           if git diff --cached --quiet; then
             echo "Automation APIs are up to date."
             exit 0
           fi
+          if git fetch --depth=2 --quiet origin "$branch" 2>/dev/null; then
+            paths=$(git show --name-only --format= FETCH_HEAD; git diff --cached --name-only)
+            if git diff --quiet FETCH_HEAD -- $paths; then
+              echo "The open PR already contains these exact changes."
+              exit 0
+            fi
+          fi
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git switch --create automation/update-automation-api
+          git switch --create "$branch"
           git commit -m "Regenerate automation APIs from the CLI specification"
           git push --force origin HEAD
           # If a PR is already open for this branch, the force-push above refreshed it; reuse its URL.
-          existing=$(gh pr list --head automation/update-automation-api --state open --json url --jq '.[0].url')
+          existing=$(gh pr list --head "$branch" --state open --json url --jq '.[0].url')
           if [ -n "$existing" ]; then
             echo "PR already open: ${existing}; refreshed the branch."
             echo "url=${existing}" >> "$GITHUB_OUTPUT"
