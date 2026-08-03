@@ -263,6 +263,7 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 		restClient: &defaultRESTClient{
 			client: &defaultHTTPClient{
 				client: httpClient,
+				diag:   d,
 			},
 		},
 	}
@@ -284,6 +285,7 @@ func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 	pc.restClient = &defaultRESTClient{
 		client: &defaultHTTPClient{
 			client: httpClient,
+			diag:   pc.diag,
 		},
 	}
 	return pc
