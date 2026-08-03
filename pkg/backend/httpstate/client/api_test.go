@@ -736,3 +736,39 @@ func assertSpanAttribute(t *testing.T, span sdktrace.ReadOnlySpan, key string, w
 	}
 	require.Failf(t, "attribute not found", "attribute %q not found on span %q", key, span.Name())
 }
+
+func TestOnRetryWaitWarner(t *testing.T) {
+	t.Parallel()
+
+	mkRes := func(status int) *http.Response {
+		return &http.Response{StatusCode: status, Header: http.Header{}}
+	}
+
+	t.Run("warns on long maintenance waits", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		onRetryWaitWarner(sink)(15*time.Second, mkRes(http.StatusServiceUnavailable))
+		require.Len(t, sink.Messages[diag.Warning], 1)
+		assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "unavailable")
+	})
+
+	t.Run("warns on long rate-limit waits", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		onRetryWaitWarner(sink)(15*time.Second, mkRes(http.StatusTooManyRequests))
+		require.Len(t, sink.Messages[diag.Warning], 1)
+		assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "rate-limited")
+	})
+
+	t.Run("silent on short waits", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		onRetryWaitWarner(sink)(time.Second, mkRes(http.StatusServiceUnavailable))
+		assert.Empty(t, sink.Messages)
+	})
+
+	t.Run("nil sink is safe", func(t *testing.T) {
+		t.Parallel()
+		onRetryWaitWarner(nil)(15*time.Second, mkRes(http.StatusServiceUnavailable))
+	})
+}

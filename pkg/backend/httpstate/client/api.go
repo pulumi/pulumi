@@ -396,6 +396,29 @@ type defaultHTTPClient struct {
 	client *http.Client
 	// apiHost is the host of the Pulumi Cloud API. Only requests to this host carry the trace context.
 	apiHost string
+	// diag, if non-nil, surfaces long server-directed retry waits to the user.
+	diag diag.Sink
+}
+
+// serverWaitWarningThreshold is the shortest server-directed wait surfaced to the
+// user; shorter blips stay silent.
+const serverWaitWarningThreshold = 10 * time.Second
+
+// onRetryWaitWarner returns an OnRetryWait callback that tells the user about long
+// server-directed waits, such as sitting out a maintenance window.
+func onRetryWaitWarner(d diag.Sink) func(delay time.Duration, res *http.Response) {
+	return func(delay time.Duration, res *http.Response) {
+		if d == nil || delay < serverWaitWarningThreshold {
+			return
+		}
+		if res.StatusCode == http.StatusServiceUnavailable {
+			d.Warningf(diag.Message("", /*urn*/
+				"the service is temporarily unavailable; retrying in %v... ^C to stop"), delay)
+			return
+		}
+		d.Warningf(diag.Message("", /*urn*/
+			"the request was rate-limited; retrying in %v... ^C to stop"), delay)
+	}
 }
 
 func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Response, error) {
@@ -441,6 +464,7 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 
 		MaxRetryCount:         new(4),
 		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
+		OnRetryWait:           onRetryWaitWarner(c.diag),
 	}
 	return httputil.DoWithRetryOpts(req, &tracingClient, opts)
 }
