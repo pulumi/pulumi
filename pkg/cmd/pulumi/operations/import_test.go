@@ -955,5 +955,5 @@ func TestImportCmd_TerraformConverterRejectedInHclProject(t *testing.T) {
 
 	err = cmd.Execute()
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Pulumi HCL project")
+	assert.Contains(t, err.Error(), "pulumi import --from hcl")
 }
