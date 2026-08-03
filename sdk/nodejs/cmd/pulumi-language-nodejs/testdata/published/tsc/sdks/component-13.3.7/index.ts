@@ -18,6 +18,11 @@ export type ComponentCustomRefOutput = import("./componentCustomRefOutput").Comp
 export const ComponentCustomRefOutput: typeof import("./componentCustomRefOutput").ComponentCustomRefOutput = null as any;
 utilities.lazyLoad(exports, ["ComponentCustomRefOutput"], () => require("./componentCustomRefOutput"));
 
+export { ComponentForeignChildArgs } from "./componentForeignChild";
+export type ComponentForeignChild = import("./componentForeignChild").ComponentForeignChild;
+export const ComponentForeignChild: typeof import("./componentForeignChild").ComponentForeignChild = null as any;
+utilities.lazyLoad(exports, ["ComponentForeignChild"], () => require("./componentForeignChild"));
+
 export { CustomArgs } from "./custom";
 export type Custom = import("./custom").Custom;
 export const Custom: typeof import("./custom").Custom = null as any;
@@ -39,6 +44,8 @@ const _module = {
                 return new ComponentCustomRefInputOutput(name, <any>undefined, { urn })
             case "component:index:ComponentCustomRefOutput":
                 return new ComponentCustomRefOutput(name, <any>undefined, { urn })
+            case "component:index:ComponentForeignChild":
+                return new ComponentForeignChild(name, <any>undefined, { urn })
             case "component:index:Custom":
                 return new Custom(name, <any>undefined, { urn })
             default:
