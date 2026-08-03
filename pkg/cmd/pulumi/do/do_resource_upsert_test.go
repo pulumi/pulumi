@@ -183,6 +183,7 @@ size = 2
 	assert.True(t, got.Yes)
 
 	assert.Contains(t, stdout.String(), got.Snippets[len(got.Snippets)-1].UUID)
+	assert.Contains(t, stdout.String(), "Created myres")
 	_ = stderr
 }
 
@@ -505,7 +506,7 @@ func TestDoCmdResourceUpsertReusesExistingSnippet(t *testing.T) {
 		"existing snippet UUID should be reused")
 	assert.Equal(t, `name = "new"`, got.Snippets[len(got.Snippets)-1].Code,
 		"code should be replaced with the new file contents")
-	_ = stdout
+	assert.Contains(t, stdout.String(), "Updated myres")
 	_ = stderr
 }
 
@@ -791,7 +792,7 @@ size = 2
 
 // TestDoCmdResourceStatefulCreateConstructsSnippet mirrors the upsert-constructs-snippet test but
 // for stateful `create`: the CLI takes a name arg, mints a fresh UUID, hands the snippet to
-// runStatefulUpdate, and the completion line uses "created" rather than "upserted".
+// runStatefulUpdate, and the completion line uses the "Created" verb.
 //
 //nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
 func TestDoCmdResourceStatefulCreateConstructsSnippet(t *testing.T) {
@@ -825,7 +826,7 @@ func TestDoCmdResourceStatefulCreateConstructsSnippet(t *testing.T) {
 	assert.Equal(t, "azure:index:myResource", got.Snippets[len(got.Snippets)-1].Type)
 	assert.Contains(t, got.Snippets[len(got.Snippets)-1].Code, `name = "example"`)
 	require.NotEmpty(t, got.Snippets[len(got.Snippets)-1].UUID)
-	assert.Contains(t, stdout.String(), "created myres")
+	assert.Contains(t, stdout.String(), "Created myres")
 	_ = stderr
 }
 
@@ -978,7 +979,7 @@ func TestDoCmdResourceStatefulDeleteConstructsSnippetDelete(t *testing.T) {
 	assert.Equal(t, existing.UUID, got.Snippets[len(got.Snippets)-1].UUID)
 	assert.Equal(t, "myres", got.Snippets[len(got.Snippets)-1].Name)
 	assert.Equal(t, "azure:index:myResource", got.Snippets[len(got.Snippets)-1].Type)
-	assert.Contains(t, stdout.String(), "deleted myres")
+	assert.Contains(t, stdout.String(), "Deleted myres")
 	assert.Contains(t, stdout.String(), existing.UUID)
 	_ = stderr
 }

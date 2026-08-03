@@ -372,14 +372,32 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						}
 					default:
 						// For collection types (maps, objects, lists), wrap with pulumi.ToMap/ToArray.
+						// If the source has a typed Go representation (e.g. map[string]string,
+						// []int), use the matching typed converter (ToStringMap, ToIntArray)
+						// since pulumi.ToMap/ToArray only accept map[string]any / []any.
+						argGoType := g.argumentTypeName(arg.Type(), false)
 						switch scalarType.(type) {
 						case *model.ObjectType, *model.MapType:
-							g.Fgenf(w, "pulumi.ToMap(")
+							fn := "pulumi.ToMap"
+							if elm, ok := strings.CutPrefix(argGoType, "map[string]"); ok &&
+								elm != "interface{}" {
+								if title, ok := pulumiConverterSuffix(elm); ok {
+									fn = "pulumi.To" + title + "Map"
+								}
+							}
+							g.Fgenf(w, "%s(", fn)
 							g.genScopeTraversalExpression(w, arg, expr.Type())
 							g.Fgenf(w, ")")
 							return
 						case *model.ListType, *model.TupleType:
-							g.Fgenf(w, "pulumi.ToArray(")
+							fn := "pulumi.ToArray"
+							if elm, ok := strings.CutPrefix(argGoType, "[]"); ok &&
+								elm != "interface{}" {
+								if title, ok := pulumiConverterSuffix(elm); ok {
+									fn = "pulumi.To" + title + "Array"
+								}
+							}
+							g.Fgenf(w, "%s(", fn)
 							g.genScopeTraversalExpression(w, arg, expr.Type())
 							g.Fgenf(w, ")")
 							return
@@ -1477,22 +1495,42 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 				return "*" + md.TypeName
 			}
 		}
-		if isInput {
-			// check for element type uniformity and return appropriate type if so
-			allSameType := true
-			var elmType string
-			for _, v := range destType.Properties {
-				valType := g.argumentTypeName(v, true)
-				if elmType != "" && elmType != valType {
-					allSameType = false
-					break
-				}
-				elmType = valType
+		// check for element type uniformity and return appropriate type if so
+		allSameType := true
+		anyOptional := false
+		var elmType string
+		for _, v := range destType.Properties {
+			if model.IsOptionalType(v) {
+				anyOptional = true
 			}
+			valType := g.argumentTypeName(v, isInput)
+			if elmType != "" && elmType != valType {
+				allSameType = false
+				break
+			}
+			elmType = valType
+		}
+		if isInput {
 			if allSameType && elmType != "" {
 				return elmType + "Map"
 			}
 			return "pulumi.Map"
+		}
+		// Optional properties resolve to `*T`, but the Go SDK doesn't expose
+		// typed `*T` map/array/output containers (no `StringPtrMapOutput`).
+		// Fall back to map[string]interface{} so downstream ToSecret/ApplyT
+		// casts continue to work.
+		if allSameType && elmType != "" && !anyOptional {
+			// Nested ObjectType values whose schema resolves to a `...Args`
+			// struct are rendered as `&FooArgs{...}` (see
+			// genObjectConsExpressionWithTypeName), so the map value type
+			// must be the pointer form.
+			if strings.HasSuffix(elmType, "Args") && !strings.HasSuffix(elmType, "OutputArgs") &&
+				!strings.HasPrefix(elmType, "*") && !strings.HasPrefix(elmType, "map[") &&
+				!strings.HasPrefix(elmType, "[]") && !strings.HasPrefix(elmType, "pulumi.") {
+				elmType = "*" + elmType
+			}
+			return "map[string]" + elmType
 		}
 		return "map[string]interface{}"
 	case *model.MapType:
@@ -1662,7 +1700,63 @@ func (g *generator) secretOutputTypeName(expr *model.FunctionCallExpression) str
 	if argGoType == "map[string]interface{}" {
 		return "pulumi.Map"
 	}
+	// If the argument has a typed Go representation (e.g. map[string]*string,
+	// []int), the runtime output type follows the same shape (StringPtrMap,
+	// IntArray) — infer directly rather than relying on argumentTypeName of
+	// the expression's OutputType, which can lose pointer-ness.
+	if suffix, ok := pulumiConverterSuffix(argGoType); ok {
+		return "pulumi." + suffix
+	}
 	return g.argumentTypeName(expr.Type(), false)
+}
+
+// pulumiConverterSuffix maps a Go type name (e.g. "string", "*bool",
+// "map[string]int", "[]string") to the corresponding suffix used in Pulumi's
+// generated typed constructors and outputs (e.g. "String", "BoolPtr",
+// "IntMap", "StringArray"). Returns false if the Go type has no matching
+// typed converter — for example named struct types, unknown opaques, or
+// pointer element types nested inside a Map/Array (no `StringPtrMapOutput`
+// exists in the SDK).
+func pulumiConverterSuffix(goType string) (string, bool) {
+	if elm, ok := strings.CutPrefix(goType, "map[string]"); ok {
+		inner, ok := pulumiScalarSuffix(elm)
+		if !ok {
+			return "", false
+		}
+		return inner + "Map", true
+	}
+	if elm, ok := strings.CutPrefix(goType, "[]"); ok {
+		inner, ok := pulumiScalarSuffix(elm)
+		if !ok {
+			return "", false
+		}
+		return inner + "Array", true
+	}
+	if elm, ok := strings.CutPrefix(goType, "*"); ok {
+		inner, ok := pulumiScalarSuffix(elm)
+		if !ok {
+			return "", false
+		}
+		return inner + "Ptr", true
+	}
+	return pulumiScalarSuffix(goType)
+}
+
+// pulumiScalarSuffix returns the Pulumi suffix for a scalar Go type. Only
+// primitive scalars have generated Ptr/Map/Array containers in the SDK, so
+// callers use this to gate composition of the compound suffixes above.
+func pulumiScalarSuffix(goType string) (string, bool) {
+	switch goType {
+	case "string":
+		return "String", true
+	case "bool":
+		return "Bool", true
+	case "int":
+		return "Int", true
+	case "float64":
+		return "Float64", true
+	}
+	return "", false
 }
 
 // isTypedStructRoot reports whether the traversable represents a root whose
@@ -1730,9 +1824,14 @@ func (g *generator) genMapKeyAccess(w io.Writer, source model.Traversable, key s
 
 	// Non-schema ObjectTypes are represented as map[string]interface{} in Go,
 	// so map access returns interface{} and needs a type assertion.
-	// MapTypes use typed Go maps (e.g., map[string]string), so no assertion
-	// is needed since the access already returns the correct type.
+	// MapTypes (and ObjectTypes that unify to a typed map) use typed Go maps
+	// (e.g., map[string]string), so no assertion is needed since the access
+	// already returns the correct type.
 	if objType, ok := sourceType.(*model.ObjectType); ok {
+		sourceGoType := g.argumentTypeName(sourceType, false)
+		if strings.HasPrefix(sourceGoType, "map[string]") && sourceGoType != "map[string]interface{}" {
+			return
+		}
 		if propType, hasProp := objType.Properties[key]; hasProp {
 			propType = model.ResolveOutputs(propType)
 			propType = pcl.UnwrapOption(propType)

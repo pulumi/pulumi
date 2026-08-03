@@ -105,7 +105,6 @@ func (pc *packageCommand) newStatefulResourceUpsertCommand(res *schema.Resource)
 				inputFormat:   inputFormat,
 				resourcesFile: resourcesFile,
 				yes:           yes,
-				verb:          "upserted",
 				requireFresh:  false,
 			})
 		},
@@ -186,7 +185,6 @@ type statefulSnippetUpdate struct {
 	inputFormat   string
 	resourcesFile string
 	yes           bool
-	verb          string // completion-message verb, e.g. "created" or "upserted"
 	// requireFresh errors when a snippet with the same (Name, Type) already exists in the stack —
 	// the invariant `create` enforces to distinguish itself from `upsert`.
 	requireFresh bool
@@ -313,8 +311,11 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 		return err
 	}
 	if result != nil && !pc.dryrun && len(result.SnippetUUIDs) > 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "%s %s (snippet %s)\n",
-			args.verb, args.name, result.SnippetUUIDs[len(result.SnippetUUIDs)-1])
+		verb := "Created"
+		if existed {
+			verb = "Updated"
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "%s %s (snippet %s)\n", verb, args.name, result.SnippetUUIDs[len(result.SnippetUUIDs)-1])
 	}
 	return nil
 }
@@ -373,7 +374,7 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 		return err
 	}
 	if result != nil && !pc.dryrun && len(result.SnippetUUIDs) > 0 {
-		fmt.Fprintf(cmd.OutOrStdout(), "deleted %s (snippet %s)\n", name, result.SnippetUUIDs[0])
+		fmt.Fprintf(cmd.OutOrStdout(), "Deleted %s (snippet %s)\n", name, result.SnippetUUIDs[0])
 	}
 	return nil
 }
