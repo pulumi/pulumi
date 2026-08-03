@@ -962,17 +962,20 @@ func NewImportCmd() *cobra.Command {
 
 				mapperServer := convert.NewMapperServer(mapper)
 				loaderServer := schema.NewLoaderServer(schema.NewPluginLoader(pCtx))
+				resolverServer := packageworkspace.NewResolverServer(reg)(pCtx)
 				grpcServer, err := plugin.NewServer(pCtx,
 					convert.MapperRegistration(mapperServer),
-					schema.LoaderRegistration(loaderServer))
+					schema.LoaderRegistration(loaderServer),
+					packageworkspace.ResolverRegistration(resolverServer))
 				if err != nil {
 					return err
 				}
 
 				resp, err := converter.ConvertState(ctx, &plugin.ConvertStateRequest{
-					MapperTarget: grpcServer.Addr(),
-					Args:         args,
-					LoaderTarget: grpcServer.Addr(),
+					MapperTarget:   grpcServer.Addr(),
+					Args:           args,
+					LoaderTarget:   grpcServer.Addr(),
+					ResolverTarget: grpcServer.Addr(),
 				})
 				if err != nil {
 					rpcErr := rpcerror.Convert(err)

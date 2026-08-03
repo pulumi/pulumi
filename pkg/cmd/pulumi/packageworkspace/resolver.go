@@ -34,7 +34,14 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"google.golang.org/grpc"
 )
+
+// ResolverRegistration returns a function to register the given resolver service with a gRPC
+// server, for serving the resolver alongside other services on a single [plugin.NewServer].
+func ResolverRegistration(r pulumirpc.PackageResolverServer) func(*grpc.Server) {
+	return func(srv *grpc.Server) { pulumirpc.RegisterPackageResolverServer(srv, r) }
+}
 
 // resolverTracer instruments the package-resolution steps so the cost of
 // installing a plugin versus generating its schema is visible in traces.

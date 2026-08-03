@@ -45,9 +45,12 @@ type ConvertStateRequest struct {
 	// import from.
 	Args []string `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
 	// The target of a codegen.LoaderServer to use for loading schemas.
-	LoaderTarget  string `protobuf:"bytes,3,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	LoaderTarget string `protobuf:"bytes,3,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
+	// The target of a [](pulumirpc.PackageResolver) service the converter can use to resolve package
+	// specifications to concrete package dependencies. May be empty on older engines.
+	ResolverTarget string `protobuf:"bytes,4,opt,name=resolver_target,json=resolverTarget,proto3" json:"resolver_target,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ConvertStateRequest) Reset() {
@@ -97,6 +100,13 @@ func (x *ConvertStateRequest) GetArgs() []string {
 func (x *ConvertStateRequest) GetLoaderTarget() string {
 	if x != nil {
 		return x.LoaderTarget
+	}
+	return ""
+}
+
+func (x *ConvertStateRequest) GetResolverTarget() string {
+	if x != nil {
+		return x.ResolverTarget
 	}
 	return ""
 }
@@ -846,11 +856,12 @@ var File_pulumi_converter_proto protoreflect.FileDescriptor
 
 const file_pulumi_converter_proto_rawDesc = "" +
 	"\n" +
-	"\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\"s\n" +
+	"\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x1cgoogle/protobuf/struct.proto\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\"\x9c\x01\n" +
 	"\x13ConvertStateRequest\x12#\n" +
 	"\rmapper_target\x18\x01 \x01(\tR\fmapperTarget\x12\x12\n" +
 	"\x04args\x18\x02 \x03(\tR\x04args\x12#\n" +
-	"\rloader_target\x18\x03 \x01(\tR\floaderTarget\"\xb8\x04\n" +
+	"\rloader_target\x18\x03 \x01(\tR\floaderTarget\x12'\n" +
+	"\x0fresolver_target\x18\x04 \x01(\tR\x0eresolverTarget\"\xb8\x04\n" +
 	"\x0eResourceImport\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x0e\n" +

@@ -115,9 +115,10 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 	logging.V(7).Infof("%s executing", label)
 
 	resp, err := c.clientRaw.ConvertState(ctx, &pulumirpc.ConvertStateRequest{
-		MapperTarget: req.MapperTarget,
-		Args:         req.Args,
-		LoaderTarget: req.LoaderTarget,
+		MapperTarget:   req.MapperTarget,
+		Args:           req.Args,
+		LoaderTarget:   req.LoaderTarget,
+		ResolverTarget: req.ResolverTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
