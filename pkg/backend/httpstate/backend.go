@@ -2706,12 +2706,6 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 		token = logs.NextToken
 	}
 
-	return b.checkDeploymentResult(ctx, stackID, id)
-}
-
-func (b *cloudBackend) checkDeploymentResult(
-	ctx context.Context, stackID client.StackIdentifier, id string,
-) error {
 	deployment, err := b.client.GetDeployment(ctx, stackID, id)
 	if err != nil {
 		return err
