@@ -370,6 +370,79 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 	return nil
 }
 
+func (pc *packageCommand) newResourceGetCommand(res *schema.Resource) *cobra.Command {
+	return &cobra.Command{
+		Use:   "get <name>",
+		Short: "Show a resource tracked in the stack",
+		Long: "Show a resource tracked in the stack.\n\n" +
+			"Displays the state Pulumi tracks for the named resource, including its " +
+			"provider ID and outputs, without calling the provider.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if pc.stateless {
+				return errors.New("`get` shows the resource state tracked in the stack and is not " +
+					"available with --stateless; use `read <id>` to read directly from the provider")
+			}
+			if pc.proj == nil {
+				return fmt.Errorf("`%s` requires a Pulumi project (run inside a project directory)", cmd.Name())
+			}
+			ctx := cmd.Context()
+			displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
+			stack, err := cmdStack.RequireStack(
+				ctx, pc.diagFwd, pc.ws, pc.lm,
+				"",                                 /*stackName — use currently selected*/
+				cmdStack.LoadOnly, displayOpts, "", /*configFile*/
+			)
+			if err != nil {
+				return fmt.Errorf("load stack: %w", err)
+			}
+			snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+			if err != nil {
+				return fmt.Errorf("load stack snapshot: %w", err)
+			}
+			name := args[0]
+			snippetUUID, exists, err := resolveSnippetUUID(snap, name, res.Token)
+			if err != nil {
+				return err
+			}
+			if !exists {
+				return fmt.Errorf("resource %s %q does not exist in stack %s", res.Token, name, stack.Ref())
+			}
+			state := findSnippetResource(snap, snippetUUID, name, res.Token)
+			if state == nil {
+				return fmt.Errorf("no state is tracked yet for %s %q in stack %s; the last update may have failed",
+					res.Token, name, stack.Ref())
+			}
+			result := operationState(state.URN, state.ID, nil, state.Outputs)
+			if state.ID != "" {
+				result = resultState(state.URN, state.ID, nil, state.Outputs, res)
+			}
+			return pc.runDisplayedStep(cmd, displayedStep{
+				Op:  deploy.OpRead,
+				New: operationState(state.URN, state.ID, nil, nil),
+			}, func() (*pkgresource.State, error) {
+				return result, nil
+			})
+		},
+	}
+}
+
+func findSnippetResource(snap *deploy.Snapshot, snippetUUID, name, resourceToken string) *pkgresource.State {
+	var fallback *pkgresource.State
+	for _, state := range snap.Resources {
+		if state == nil || state.SnippetID != snippetUUID {
+			continue
+		}
+		if state.URN.Name() == name && string(state.URN.Type()) == resourceToken {
+			return state
+		}
+		if fallback == nil {
+			fallback = state
+		}
+	}
+	return fallback
+}
+
 // addStatefulSnippetUpdateFlags installs the flag set shared by stateful `create` and `upsert`.
 func addStatefulSnippetUpdateFlags(
 	cmd *cobra.Command, inputFile, inputFormat, resourcesFile *string, yes *bool, inputs []*schema.Property,
