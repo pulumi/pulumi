@@ -5,4 +5,4 @@ body: Wait out service maintenance windows by honoring uncapped Retry-After dela
   extend or suppress request retries
 time: 2026-08-03T00:00:00+00:00
 custom:
-    PR: ""
+    PR: "24168"
