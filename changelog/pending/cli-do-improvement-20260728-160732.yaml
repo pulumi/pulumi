@@ -1,4 +1,4 @@
 component: cli/do
 kind: improvement
-body: Stateful resources can now register their own provider resources based on provider inputs on the command line
+body: Allow stateful resources to register their own provider resources based on provider inputs on the command line
 time: 2026-07-28T16:07:32.678181+01:00
