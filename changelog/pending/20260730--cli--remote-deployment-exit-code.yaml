@@ -1,0 +1,5 @@
+component: cli
+kind: fix
+body: Exit non-zero from remote operations (`pulumi up --remote`, `pulumi deployment
+  run`) when the deployment fails
+time: 2026-07-30T00:00:00+00:00
