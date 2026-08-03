@@ -41,8 +41,8 @@ jobs:
             exit 0
           fi
           if git fetch --depth=2 --quiet origin "$branch" 2>/dev/null; then
-            paths=$(git show --name-only --format= FETCH_HEAD; git diff --cached --name-only)
-            if git diff --quiet FETCH_HEAD -- $paths; then
+            mapfile -t paths < <(git show --name-only --format= FETCH_HEAD; git diff --cached --name-only)
+            if git diff --quiet FETCH_HEAD -- "${paths[@]}"; then
               echo "The open PR already contains these exact changes."
               exit 0
             fi
