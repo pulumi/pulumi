@@ -1,0 +1,8 @@
+component: cli/import
+kind: improvement
+body: Serve the package-resolver service to state converters via `resolver_target`
+  on `ConvertStateRequest`, so converters can resolve package specifications the
+  same way the CLI does
+time: 2026-08-03T00:00:00+00:00
+custom:
+  PR: "24174"

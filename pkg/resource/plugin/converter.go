@@ -89,6 +89,9 @@ type ConvertStateRequest struct {
 	MapperTarget string
 	Args         []string
 	LoaderTarget string
+	// ResolverTarget is the target of a PackageResolver service the converter can use to resolve
+	// package specifications to concrete package dependencies. May be empty on older engines.
+	ResolverTarget string
 }
 
 type ConvertStateResponse struct {
