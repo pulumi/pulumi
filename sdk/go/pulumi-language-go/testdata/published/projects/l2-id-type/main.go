@@ -41,7 +41,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		idMap := map[string]pulumi.String{
+		idMap := map[string]id{
 			"source1Token": source1.ID(),
 			"source2Token": source2.ID(),
 		}
@@ -76,8 +76,8 @@ func main() {
 			return err
 		}
 		ctx.Export("ids", idMap)
-		ctx.Export("base64", sink2.ID().ApplyT(func(id string) (pulumi.String, error) {
-			return pulumi.String(base64.StdEncoding.EncodeToString([]byte(id))), nil
+		ctx.Export("base64", sink2.ID().ApplyT(func(id id) (pulumi.String, error) {
+			return pulumi.String(base64.StdEncoding.EncodeToString([]byte(pulumi.String(id)))), nil
 		}).(pulumi.StringOutput))
 		return nil
 	})
