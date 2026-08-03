@@ -607,10 +607,9 @@ func (p *ComponentProvider) constructComponentForeignChild(
 ) (plugin.ConstructResponse, error) {
 	// Register the parent component, propagating the parent we were constructed with, as real MLC SDKs do.
 	parent, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:     "component:index:ComponentForeignChild",
-		Name:     req.Name,
-		Parent:   string(req.Parent),
-		Provider: req.Options.Providers["component"],
+		Type:   "component:index:ComponentForeignChild",
+		Name:   req.Name,
+		Parent: string(req.Parent),
 	})
 	if err != nil {
 		return plugin.ConstructResponse{}, fmt.Errorf("register parent component: %w", err)
