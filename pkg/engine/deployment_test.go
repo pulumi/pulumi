@@ -96,6 +96,59 @@ func makePluginHost(t testing.TB, program deploytest.ProgramFunc) plugin.Host {
 	return deploytest.NewPluginHost(sink, statusSink, lang)
 }
 
+func TestDeploymentSupportsStateMigrations(t *testing.T) {
+	t.Parallel()
+
+	supportingManager := &MockSnapshotManager{StateMigrationsSupported: true}
+	unsupportedManager := &MockSnapshotManager{}
+
+	tests := []struct {
+		name         string
+		actions      runActions
+		dryRun       bool
+		manager      SnapshotManager
+		capabilities SnapshotManagerCapabilities
+		supported    bool
+	}{
+		{
+			name:         "preview with supporting update persistence",
+			actions:      &previewActions{},
+			dryRun:       true,
+			capabilities: SnapshotManagerCapabilities{StateMigrations: true},
+			supported:    true,
+		},
+		{
+			name:    "preview with unsupported update persistence",
+			actions: &previewActions{},
+			dryRun:  true,
+		},
+		{
+			name:      "update with supporting persistence",
+			actions:   &updateActions{},
+			manager:   supportingManager,
+			supported: true,
+		},
+		{
+			name:    "update with unsupported persistence",
+			actions: &updateActions{},
+			manager: unsupportedManager,
+		},
+		{
+			name:         "preview missing migration event handler",
+			dryRun:       true,
+			capabilities: SnapshotManagerCapabilities{StateMigrations: true},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.supported,
+				deploymentSupportsStateMigrations(
+					tt.actions, tt.dryRun, tt.manager, tt.capabilities))
+		})
+	}
+}
+
 // Tests cancellation during early stage of deployment, e.g. plugin installation.
 func TestSourceFuncCancellation(t *testing.T) {
 	t.Parallel()

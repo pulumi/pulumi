@@ -16,13 +16,20 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"sync/atomic"
 	"testing"
+	"time"
 
+	"github.com/blang/semver"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -231,6 +238,186 @@ func (iter *iterator) Next() (SourceEvent, error) {
 		return nil, errors.New("error")
 	}
 	return nil, nil
+}
+
+type eventIterator struct {
+	events     []SourceEvent
+	next       int
+	beforeNext func(int) error
+}
+
+func (iter *eventIterator) Cancel(context.Context) error { return nil }
+
+func (iter *eventIterator) Next() (SourceEvent, error) {
+	if iter.beforeNext != nil {
+		if err := iter.beforeNext(iter.next); err != nil {
+			return nil, err
+		}
+	}
+	if iter.next == len(iter.events) {
+		return nil, nil
+	}
+	event := iter.events[iter.next]
+	iter.next++
+	return event, nil
+}
+
+func TestStateMigrationDrainsAsyncPlannerEvents(t *testing.T) {
+	t.Parallel()
+
+	const timeout = 10 * time.Second
+	wait := func(ch <-chan struct{}, description string) error {
+		select {
+		case <-ch:
+			return nil
+		case <-time.After(timeout):
+			return fmt.Errorf("timed out waiting for %s", description)
+		}
+	}
+
+	stack := tokens.MustParseStackName("test")
+	project := tokens.PackageName("project")
+	providerType := sdkproviders.MakeProviderType("pkgA")
+	providerURN := resource.NewURN(stack.Q(), project, "", providerType, "provider")
+	providerID := resource.ID("provider-id")
+
+	componentType := tokens.Type("example:m:Component")
+	componentURN := resource.NewURN(stack.Q(), project, "", componentType, "component")
+
+	oldProviderInputs := resource.PropertyMap{
+		"version": resource.NewProperty("1.0.0"),
+		"value":   resource.NewProperty("old"),
+	}
+	newProviderInputs := resource.PropertyMap{
+		"version": resource.NewProperty("1.0.0"),
+		"value":   resource.NewProperty("new"),
+	}
+	oldComponentInputs := resource.PropertyMap{"version": resource.NewProperty("old")}
+	newComponentInputs := resource.PropertyMap{"version": resource.NewProperty("new")}
+
+	providerState := &pkgresource.State{
+		Type: providerType, URN: providerURN, Custom: true, ID: providerID,
+		Inputs: oldProviderInputs, Outputs: oldProviderInputs,
+	}
+	componentState := &pkgresource.State{
+		Type: componentType, URN: componentURN,
+		Inputs: oldComponentInputs, Outputs: oldComponentInputs,
+	}
+
+	newEvent := func(
+		typ tokens.Type, name string, custom bool, inputs resource.PropertyMap, provider string,
+		migrations ...StateMigrationFunction,
+	) *registerResourceEvent {
+		return &registerResourceEvent{
+			goal: &pkgresource.Goal{
+				Type: typ, Name: name, Custom: custom,
+				Properties: resource.FromResourcePropertyMap(inputs), Provider: provider,
+			},
+			done:            make(chan *RegisterResult, 1),
+			stateMigrations: migrations,
+		}
+	}
+
+	providerEvent := newEvent(providerType, "provider", true, newProviderInputs, "")
+	var migrationCalls atomic.Int32
+	migrationEvent := newEvent(componentType, "component", false, newComponentInputs, "",
+		func(_ context.Context, urn resource.URN, oldState []byte) ([]byte, map[resource.URN]resource.URN, error) {
+			migrationCalls.Add(1)
+			assert.Equal(t, componentURN, urn)
+
+			var states []apitype.ResourceV3
+			if err := json.Unmarshal(oldState, &states); err != nil {
+				return nil, nil, err
+			}
+			require.Len(t, states, 1)
+			states[0].Inputs["version"] = "new"
+			states[0].Outputs["version"] = "new"
+			migrated, err := json.Marshal(states)
+			return migrated, nil, err
+		})
+
+	diffStarted := make(chan struct{})
+	migrationDelivered := make(chan struct{})
+	iter := &eventIterator{
+		events: []SourceEvent{providerEvent, migrationEvent},
+		beforeNext: func(index int) error {
+			switch index {
+			case 1:
+				return wait(diffStarted, "parallel diff to start")
+			case 2:
+				// The executor's source goroutine cannot ask for this event until the main loop has accepted the
+				// migration registration. Releasing the diff here deterministically puts the migration between the
+				// diff operation and its planner continuation.
+				close(migrationDelivered)
+			}
+			return nil
+		},
+	}
+
+	var diffCalls atomic.Int32
+	loader := deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+		return &deploytest.Provider{
+			DiffConfigF: func(context.Context, plugin.DiffConfigRequest) (plugin.DiffResult, error) {
+				if diffCalls.Add(1) == 1 {
+					close(diffStarted)
+					if err := wait(migrationDelivered, "migration registration to reach the executor"); err != nil {
+						return plugin.DiffResult{}, err
+					}
+				}
+				return plugin.DiffResult{
+					Changes:     plugin.DiffSome,
+					ChangedKeys: []resource.PropertyKey{"value"},
+				}, nil
+			},
+		}, nil
+	})
+
+	sink := &deploytest.NoopSink{}
+	host := deploytest.NewPluginHost(sink, sink, nil, loader)
+	plugctx, err := plugin.NewContext(t.Context(), sink, sink, host, nil, "", nil, false, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, plugctx.Close()) }()
+
+	serialize := func(_ context.Context, state *pkgresource.State) (apitype.ResourceV3, error) {
+		return apitype.ResourceV3{
+			URN: state.URN, Type: state.Type, Custom: state.Custom, ID: state.ID,
+			Inputs: state.Inputs.Mappable(), Outputs: state.Outputs.Mappable(),
+			Parent: state.Parent, Provider: state.Provider,
+		}, nil
+	}
+	deserialize := func(state apitype.ResourceV3) (*pkgresource.State, error) {
+		return &pkgresource.State{
+			URN: state.URN, Type: state.Type, Custom: state.Custom, ID: state.ID,
+			Inputs: resource.NewPropertyMapFromMap(state.Inputs), Outputs: resource.NewPropertyMapFromMap(state.Outputs),
+			Parent: state.Parent, Provider: state.Provider,
+		}, nil
+	}
+
+	events := &mockEvents{
+		OnResourceStepPreF:  func(Step) (any, error) { return nil, nil },
+		OnResourceStepPostF: func(any, Step, resource.Status, error) error { return nil },
+		OnResourceOutputsF:  func(Step) error { return nil },
+	}
+	prev := &Snapshot{Resources: []*pkgresource.State{providerState, componentState}}
+	deployment, err := NewDeployment(
+		plugctx,
+		&Options{Parallel: 2, ParallelDiff: true, StateSerializer: serialize, StateDeserializer: deserialize},
+		events,
+		&Target{Name: stack, Snapshot: prev},
+		prev,
+		nil,
+		&source{iterator: iter},
+		nil,
+		nil,
+	)
+	require.NoError(t, err)
+
+	_, err = (&deploymentExecutor{deployment: deployment}).Execute(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, int32(1), diffCalls.Load(),
+		"the migration must not invalidate a completed provider configuration diff")
+	assert.Equal(t, int32(1), migrationCalls.Load())
+	assert.Equal(t, resource.NewProperty("new"), deployment.olds[componentURN].Inputs["version"])
 }
 
 func TestSourceIteratorClose(t *testing.T) {
