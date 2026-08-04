@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
@@ -47,45 +48,45 @@ func (c *converterServer) ConvertState(ctx context.Context,
 	}
 
 	resources := make([]*pulumirpc.ResourceImport, len(resp.Resources))
-	for i, resource := range resp.Resources {
+	for i, res := range resp.Resources {
 		resources[i] = &pulumirpc.ResourceImport{
-			Type:              resource.Type,
-			Name:              resource.Name,
-			Id:                resource.ID,
-			Version:           resource.Version,
-			PluginDownloadURL: resource.PluginDownloadURL,
-			LogicalName:       resource.LogicalName,
-			IsRemote:          resource.IsRemote,
-			IsComponent:       resource.IsComponent,
-			Parent:            resource.Parent,
-			Properties:        resource.Properties,
-			Provider:          resource.Provider,
+			Type:              res.Type,
+			Name:              res.Name,
+			Id:                res.ID,
+			Version:           res.Version,
+			PluginDownloadURL: res.PluginDownloadURL,
+			LogicalName:       res.LogicalName,
+			IsRemote:          res.IsRemote,
+			IsComponent:       res.IsComponent,
+			Parent:            res.Parent,
+			Properties:        res.Properties,
+			Provider:          res.Provider,
 		}
-		if p := resource.Parameterization; p != nil {
+		if p := res.Parameterization; p != nil {
 			resources[i].Parameterization = &pulumirpc.ResourceParameterization{
 				PluginName:    p.PluginName,
 				PluginVersion: p.PluginVersion,
 				Value:         p.Value,
 			}
 		}
-		if e := resource.Extension; e != nil {
+		if e := res.Extension; e != nil {
 			resources[i].Extension = &pulumirpc.ResourceExtension{
 				Name:    e.Name,
 				Version: e.Version,
 				Value:   e.Value,
 			}
 		}
-		if resource.Inputs != nil {
-			inputs, err := MarshalProperties(resource.Inputs, MarshalOptions{KeepSecrets: true})
+		if res.Inputs != nil {
+			inputs, err := MarshalProperties(resource.ToResourcePropertyMap(*res.Inputs), MarshalOptions{KeepSecrets: true})
 			if err != nil {
-				return nil, fmt.Errorf("marshaling inputs for resource %q: %w", resource.Name, err)
+				return nil, fmt.Errorf("marshaling inputs for resource %q: %w", res.Name, err)
 			}
 			resources[i].Inputs = inputs
 		}
-		if resource.Outputs != nil {
-			outputs, err := MarshalProperties(resource.Outputs, MarshalOptions{KeepSecrets: true})
+		if res.Outputs != nil {
+			outputs, err := MarshalProperties(resource.ToResourcePropertyMap(*res.Outputs), MarshalOptions{KeepSecrets: true})
 			if err != nil {
-				return nil, fmt.Errorf("marshaling outputs for resource %q: %w", resource.Name, err)
+				return nil, fmt.Errorf("marshaling outputs for resource %q: %w", res.Name, err)
 			}
 			resources[i].Outputs = outputs
 		}

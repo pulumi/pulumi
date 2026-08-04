@@ -420,6 +420,11 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				}
 			}
 
+			request.DependsOn = make([]string, len(dependsOn))
+			for i, urn := range dependsOn {
+				request.DependsOn[i] = string(urn)
+			}
+
 			resp, err := ectx.invoke(context.TODO(), request)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("invoke engine: %w", err)
@@ -431,6 +436,13 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 					fmt.Fprintf(&buf, "- %s\n", failure)
 				}
 				return cty.NilVal, errors.New(buf.String())
+			}
+
+			if resp.Unknown {
+				return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(resource.Output{
+					Known:        false,
+					Dependencies: dependsOn,
+				}))
 			}
 
 			resultPM, err := plugin.UnmarshalProperties(resp.GetReturn(), marshalOpts)

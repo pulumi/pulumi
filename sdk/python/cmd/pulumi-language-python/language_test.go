@@ -101,6 +101,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
+	"l2-invoke-depends-on-component":     "the SDK does not yet send dependsOn on invoke requests, so the invoke resolves during preview", //nolint:lll
 	"l2-config-default-from-invoke":      "config default from an invoke is Output[Any], not str | None; fails mypy",
 	"l1-builtin-try":                     "Temporarily disabled until pr #18915 is submitted",
 	"l1-expand-final":                    "Python program generation does not support `...` argument expansion",
