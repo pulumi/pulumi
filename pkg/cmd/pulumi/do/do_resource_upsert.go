@@ -222,10 +222,13 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
 
-	resources, err := readResourceReferences(args.resourcesFile)
+	userResources, err := readResourceReferences(args.resourcesFile)
 	if err != nil {
 		return err
 	}
+	// Merge the auto-assigned identifiers (derived from the stack snapshot) with the user's
+	// --resources-file. User entries win on collision.
+	resources := mergeResourceNames(autoResourceNames(snap), userResources)
 	resourceInfos, err := resourceReferenceInfos(resources, snap)
 	if err != nil {
 		return err
@@ -280,6 +283,13 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 			mergedReferences = map[string]string{}
 		}
 		mergedReferences[k] = v
+	}
+	// Trim the reference map to just the identifiers the resource's PCL body actually references
+	// before persisting. Auto-derived entries that aren't used would freeze URNs from the current
+	// snapshot into state and go stale if those resources change. The provider-injected identifier
+	// (in provReferences) is always kept — buildProviderSnippet injected it into resourceCode.
+	if used := referencedIdentsInPCL(resourceCode, resourceFilename); used != nil {
+		mergedReferences = filterReferencesByUsage(mergedReferences, used)
 	}
 
 	snippet := resource.Snippet{
@@ -394,7 +404,9 @@ func addStatefulSnippetUpdateFlags(
 			"  {\n"+
 			"    \"myBucket\": \"urn:pulumi:dev::my-project::aws:s3/bucket:Bucket::my-bucket\",\n"+
 			"    \"myVpc\":    \"urn:pulumi:dev::my-project::aws:ec2/vpc:Vpc::my-vpc\"\n"+
-			"  }")
+			"  }\n"+
+			"Identifiers for existing stack resources are auto-assigned; run `pulumi do --resources`\n"+
+			"to see them. Entries in this file take precedence over any auto-assigned identifier.")
 	cmd.Flags().BoolVar(yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
 	addInputFlags(cmd, "input", inputs)
