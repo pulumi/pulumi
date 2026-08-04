@@ -90,6 +90,9 @@ type stepGenerator struct {
 
 	refreshAliasLock sync.Mutex // lock to protect calls to deployment.depGraph.Alias
 
+	// stepExecutionBarrier pauses resource operations while a state migration updates deployment state.
+	stepExecutionBarrier sync.Locker
+
 	// A map of original state which will be what's seen by the snapshot system to their new refreshed state.
 	refreshStates map[*pkgresource.State]*pkgresource.State
 
@@ -786,6 +789,13 @@ func (sg *stepGenerator) generateResourceSteps(
 	ctx context.Context, event RegisterResourceEvent, urn resource.URN,
 ) ([]Step, bool, error) {
 	goal := event.Goal()
+
+	// If the registration carries state migrations, run them against the prior state of this resource and its
+	// descendants before any of that state is read for diffing.
+	if err := sg.applyStateMigrations(ctx, event, urn); err != nil {
+		return nil, false, err
+	}
+
 	if err := sg.deployment.normalizeStateMigrationGoal(goal); err != nil {
 		return nil, false, fmt.Errorf("normalizing resource goal for %s after state migration: %w", urn, err)
 	}

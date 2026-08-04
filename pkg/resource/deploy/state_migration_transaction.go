@@ -24,8 +24,6 @@ import (
 )
 
 // prepareStateMigrationTransaction validates a migration result and prepares every rewrite that must be persisted.
-//
-//nolint:unused // Used by state-migration orchestration added in the engine transaction branch.
 func (sg *stepGenerator) prepareStateMigrationTransaction(
 	registrationURN resource.URN, priorRoot *pkgresource.State, priorSubtree, resultSubtree []*pkgresource.State,
 	successors map[resource.URN]resource.URN,
@@ -129,8 +127,6 @@ func (sg *stepGenerator) prepareStateMigrationTransaction(
 
 // mapResourcesToPreparedRewrites maps each live resource whose references changed to its prepared rewritten state.
 // Provider states must remain unchanged and are rejected if normalization produced a rewrite for one.
-//
-//nolint:unused // Used by state-migration orchestration added in the engine transaction branch.
 func mapResourcesToPreparedRewrites(
 	urn resource.URN, before, after []*pkgresource.State, origin string,
 ) (map[*pkgresource.State]*pkgresource.State, error) {
