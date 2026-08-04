@@ -24,6 +24,7 @@
         "componentCustomRefOutput.ts",
         "componentForeignChild.ts",
         "custom.ts",
+        "identity.ts",
         "index.ts",
         "provider.ts",
         "utilities.ts"
