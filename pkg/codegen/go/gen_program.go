@@ -252,6 +252,8 @@ func componentInputElementType(pclType model.Type) string {
 		return "pulumi.Float64Input"
 	case model.StringType:
 		return "pulumi.StringInput"
+	case model.IDType:
+		return "pulumi.IDInput"
 	default:
 		switch pclType := pclType.(type) {
 		case *model.ListType, *model.MapType:
@@ -1213,6 +1215,9 @@ func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
 func (g *generator) genHelpers(w io.Writer) {
 	for _, v := range g.arrayHelpers {
 		inputType := strings.TrimSuffix(v.destType, "Array")
+		if inputType == "pulumi.IDArray" {
+			inputType = "pulumi.IDInput"
+		}
 		parts := strings.Split(inputType, ".")
 		contract.Assertf(len(parts) == 2, "genHelpers inputType expected to have two parts.")
 		typ := parts[1]
@@ -1965,6 +1970,8 @@ func deferredOutputTypeParameter(outputType model.Type) string {
 		return "float64"
 	case model.StringType:
 		return "string"
+	case model.IDType:
+		return "pulumi.ID"
 	default:
 		switch exprType := unwrapped.(type) {
 		case *model.ListType:
@@ -1991,6 +1998,8 @@ func deferredOutputCastTypeParameter(outputType model.Type) string {
 		return "pulumi.Float64Output"
 	case model.StringType:
 		return "pulumi.StringOutput"
+	case model.IDType:
+		return "pulumi.IDOutput"
 	default:
 		switch exprType := unwrapped.(type) {
 		case *model.ListType:
@@ -2003,6 +2012,8 @@ func deferredOutputCastTypeParameter(outputType model.Type) string {
 				return "pulumi.Float64ArrayOutput"
 			case model.StringType:
 				return "pulumi.StringArrayOutput"
+			case model.IDType:
+				return "pulumi.IDArrayOutput"
 			}
 			return "pulumi.ArrayOutput"
 		case *model.MapType:
@@ -2015,6 +2026,8 @@ func deferredOutputCastTypeParameter(outputType model.Type) string {
 				return "pulumi.Float64MapOutput"
 			case model.StringType:
 				return "pulumi.StringMapOutput"
+			case model.IDType:
+				return "pulumi.IDMapOutput"
 			}
 			return "pulumi.MapOutput"
 		case *model.OutputType:
@@ -2258,7 +2271,51 @@ func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 	value, destType := liftValueToOutput(v.Value)
 	expr, temps := g.lowerExpression(value, destType)
 	g.genTemps(w, temps)
+	// If the value renders as a typed Go map/slice of Pulumi Input interfaces
+	// (e.g. map[string]pulumi.IDInput), cast it to the corresponding named
+	// Pulumi container so it satisfies pulumi.Input.
+	if wrap, ok := g.typedInputContainerWrap(expr); ok {
+		g.Fgenf(w, "ctx.Export(%q, %s%.3v))\n", v.LogicalName(), wrap, expr)
+		return
+	}
 	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
+}
+
+// typedInputContainerWrap returns a `pulumi.XMap(` / `pulumi.XArray(` prefix
+// when expr renders as a raw Go map/slice of Pulumi Input interfaces (e.g.
+// map[string]pulumi.IDInput). Those raw containers don't satisfy pulumi.Input
+// by themselves, but casting to the named type does — the underlying types
+// are identical. Only recognized for traversals into a local variable, where
+// the local's Go type is derivable without hitting schema resolution.
+func (g *generator) typedInputContainerWrap(expr model.Expression) (string, bool) {
+	// Look through the IntrinsicConvert liftValueToOutput wraps.
+	inner := expr
+	for {
+		call, ok := inner.(*model.FunctionCallExpression)
+		if !ok || call.Name != pcl.IntrinsicConvert || len(call.Args) != 1 {
+			break
+		}
+		inner = call.Args[0]
+	}
+	st, ok := inner.(*model.ScopeTraversalExpression)
+	if !ok || len(st.Parts) == 0 {
+		return "", false
+	}
+	if _, ok := st.Parts[0].(*pcl.LocalVariable); !ok {
+		return "", false
+	}
+	goType := g.argumentTypeName(inner.Type(), false)
+	if elm, ok := strings.CutPrefix(goType, "map[string]"); ok {
+		if named, ok := pulumiInputElementCastName(elm); ok {
+			return "pulumi." + named + "Map(", true
+		}
+	}
+	if elm, ok := strings.CutPrefix(goType, "[]"); ok {
+		if named, ok := pulumiInputElementCastName(elm); ok {
+			return "pulumi." + named + "Array(", true
+		}
+	}
+	return "", false
 }
 
 func (g *generator) genTemps(w io.Writer, temps []any) {
@@ -2312,6 +2369,9 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType 
 		case *splatTemp:
 			argTyp := g.argumentTypeName(t.Value.Each.Type(), false)
 			if strings.Contains(argTyp, ".") {
+				if argTyp == "pulumi.IDInput" {
+					argTyp = "pulumi.ID"
+				}
 				g.Fgenf(w, "var %s %sArray\n", t.Name, argTyp)
 			} else {
 				g.Fgenf(w, "var %s []%s\n", t.Name, argTyp)
