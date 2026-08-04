@@ -3044,3 +3044,39 @@ func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
 	assert.True(t, workspace.IsUndecryptableCredentials(err))
 	assert.Contains(t, err.Error(), "pulumi login")
 }
+
+//nolint:paralleltest // mutates env vars and credentials on disk
+func TestCurrentEnvTokenDoesNotBypassUndecryptableCredentials(t *testing.T) {
+	// While PULUMI_ACCESS_TOKEN is persisted into the credentials file,
+	// proceeding despite an undecryptable file would end in a write over an
+	// envelope that may only be temporarily unreadable. Surface the
+	// actionable error instead; revisit once the env token is no longer
+	// written to disk.
+	credsDir := t.TempDir()
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "env-token")
+
+	key := make([]byte, 32)
+	envelope, err := securestore.Seal(key, securestore.Backend("test-unsupported"), []byte(`{}`))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(credsDir, "credentials.json"), envelope, 0o600))
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		err := json.NewEncoder(rw).Encode(map[string]any{
+			"githubLogin":   "env-user",
+			"organizations": []map[string]string{},
+		})
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.Error(t, err)
+	assert.Nil(t, account)
+	assert.True(t, workspace.IsUndecryptableCredentials(err),
+		"the typed error must surface so callers can point at recovery, got: %v", err)
+
+	raw, err := os.ReadFile(filepath.Join(credsDir, "credentials.json"))
+	require.NoError(t, err)
+	assert.Equal(t, envelope, raw, "the unreadable file must be left untouched")
+}

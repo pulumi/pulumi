@@ -612,12 +612,11 @@ func (m defaultLoginManager) Current(
 	if err == nil && existingAccount.HasCredential() {
 		logging.V(7).Infof("Found stored credentials for %q in default credentials", cloudURL)
 	} else if err != nil {
-		// An undecryptable credentials file is an actionable state that must
-		// not silently degrade into "not logged in": surface it. Exception: a
-		// PULUMI_ACCESS_TOKEN takes precedence over stored credentials anyway
-		// and its next store replaces the unreadable file. `pulumi login` and
-		// `pulumi logout` recover from this state explicitly.
-		if accessToken == "" && workspace.IsUndecryptableCredentials(err) {
+		// Surface an undecryptable credentials file even with a
+		// PULUMI_ACCESS_TOKEN set: the token is persisted to that same file,
+		// so proceeding would end in a write over an envelope that may only
+		// be temporarily unreadable.
+		if workspace.IsUndecryptableCredentials(err) {
 			return nil, err
 		}
 		logging.V(7).Infof("Could not read default credentials for %q: %v", cloudURL, err)
@@ -748,10 +747,8 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		logging.V(7).Infof("No shared agent credentials found for %q; creating a new agent account", cloudURL)
 	}
 
-	// Never paper over an undecryptable default credentials file by signing
-	// up a fresh ephemeral agent identity: the user has an account whose key
-	// is unusable (deleted item, restored backup, locked keyring) — surface
-	// the actionable error so they (or the agent) can run `pulumi login`.
+	// An undecryptable credentials file must surface its actionable error,
+	// not be papered over with a fresh ephemeral agent identity.
 	if workspace.IsUndecryptableCredentials(defaultCredsErr) {
 		return nil, defaultCredsErr
 	}
