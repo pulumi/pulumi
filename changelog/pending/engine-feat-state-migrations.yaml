@@ -1,0 +1,4 @@
+component: engine
+kind: feat
+body: Support state migration callbacks on resource registrations
+time: 2026-07-21T17:16:58.868913+02:00

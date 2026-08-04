@@ -83,13 +83,11 @@ type StateMigrationTransaction struct {
 
 	// retainedRewriteIndices maps each retained live pointer to the index of its prepared value in
 	// PreparedPriorResources.
-	//nolint:unused // Used by state-migration orchestration added in the engine transaction branch.
 	retainedRewriteIndices map[*pkgresource.State]int
 
 	// currentResourceRewrites maps each changed live resource already present in Deployment.news or Deployment.reads
 	// to its prepared value. The migration commit copies the rewritten fields into the live object so those maps retain
 	// the same pointer.
-	//nolint:unused // Used by state-migration orchestration added in the engine transaction branch.
 	currentResourceRewrites map[*pkgresource.State]*pkgresource.State
 }
 
