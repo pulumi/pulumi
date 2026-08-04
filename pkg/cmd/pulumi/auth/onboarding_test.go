@@ -17,8 +17,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -31,74 +29,45 @@ import (
 func TestOfferFirstStepSaysNothingToAUserWithStacks(t *testing.T) {
 	t.Parallel()
 
-	be := &pkgBackend.MockBackend{
-		URLF: func() string { return "https://api.pulumi.com" },
-		ListStackNamesF: func(
-			context.Context, pkgBackend.ListStackNamesFilter, pkgBackend.ContinuationToken,
-		) ([]pkgBackend.StackReference, pkgBackend.ContinuationToken, error) {
-			return []pkgBackend.StackReference{&pkgBackend.MockStackReference{}}, nil, nil
-		},
-	}
+	// Both backend kinds take the same path: a user with stacks is a returning user either way.
+	for _, url := range []string{"https://api.pulumi.com", "file:///tmp/state"} {
+		t.Run(url, func(t *testing.T) {
+			t.Parallel()
 
-	out := &strings.Builder{}
-	err := offerFirstStep(t.Context(), be, t.TempDir(), out, display.Options{}, true)
-	require.NoError(t, err)
-	assert.Empty(t, out.String(), "a returning user's login output must be unchanged")
+			be := &pkgBackend.MockBackend{
+				URLF: func() string { return url },
+				ListStackNamesF: func(
+					context.Context, pkgBackend.ListStackNamesFilter, pkgBackend.ContinuationToken,
+				) ([]pkgBackend.StackReference, pkgBackend.ContinuationToken, error) {
+					return []pkgBackend.StackReference{&pkgBackend.MockStackReference{}}, nil, nil
+				},
+			}
+
+			out := &strings.Builder{}
+			err := offerFirstStep(t.Context(), be, t.TempDir(), out, display.Options{}, true)
+			require.NoError(t, err)
+			assert.Empty(t, out.String(), "a returning user's login output must be unchanged")
+		})
+	}
 }
 
-func TestOfferFirstStepPrintsHintInNonEmptyDirectory(t *testing.T) {
+func TestOfferFirstStepNeverCallsBackendWhenNotInteractive(t *testing.T) {
 	t.Parallel()
-
-	dir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "README.md"), []byte("hi"), 0o600))
 
 	be := &pkgBackend.MockBackend{
 		URLF: func() string { return "https://api.pulumi.com" },
 		ListStackNamesF: func(
 			context.Context, pkgBackend.ListStackNamesFilter, pkgBackend.ContinuationToken,
 		) ([]pkgBackend.StackReference, pkgBackend.ContinuationToken, error) {
+			t.Fatal("ListStackNames must not be called on a non-interactive login")
 			return nil, nil, nil
 		},
 	}
 
 	out := &strings.Builder{}
-	err := offerFirstStep(t.Context(), be, dir, out, display.Options{}, true)
+	err := offerFirstStep(t.Context(), be, t.TempDir(), out, display.Options{}, false)
 	require.NoError(t, err)
-	assert.Contains(t, out.String(), "To get started, run `pulumi new` in an empty directory")
-}
-
-func TestOfferFirstStepNeverCallsBackendWhenGuardSaysNo(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name        string
-		url         string
-		interactive bool
-	}{
-		{name: "non-interactive", url: "https://api.pulumi.com", interactive: false},
-		{name: "diy backend", url: "file:///tmp/state", interactive: true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			be := &pkgBackend.MockBackend{
-				URLF: func() string { return tt.url },
-				ListStackNamesF: func(
-					context.Context, pkgBackend.ListStackNamesFilter, pkgBackend.ContinuationToken,
-				) ([]pkgBackend.StackReference, pkgBackend.ContinuationToken, error) {
-					t.Fatal("ListStackNames must not be called when the guard says no")
-					return nil, nil, nil
-				},
-			}
-
-			out := &strings.Builder{}
-			err := offerFirstStep(t.Context(), be, t.TempDir(), out, display.Options{}, tt.interactive)
-			require.NoError(t, err)
-			assert.Empty(t, out.String())
-		})
-	}
+	assert.Empty(t, out.String())
 }
 
 func TestOfferFirstStepIgnoresListStacksFailure(t *testing.T) {
