@@ -52,11 +52,12 @@ func (m MockRegisterResourceEvent) StateMigrations() []deploy.StateMigrationFunc
 
 type MockStackPersister struct {
 	SavedSnapshots []*apitype.DeploymentV3
+	SaveError      error
 }
 
 func (m *MockStackPersister) Save(deployment apitype.TypedDeployment) error {
 	m.SavedSnapshots = append(m.SavedSnapshots, deployment.Deployment)
-	return nil
+	return m.SaveError
 }
 
 func (m *MockStackPersister) LastSnap() *apitype.DeploymentV3 {
@@ -261,6 +262,57 @@ func TestSamesWithDependencyChanges(t *testing.T) {
 	assert.Equal(t, resourceA.URN, secondSnap.Resources[1].URN)
 	require.Len(t, secondSnap.Resources[1].Dependencies, 1)
 	assert.Equal(t, resourceB.URN, secondSnap.Resources[1].Dependencies[0])
+}
+
+func TestStateMigrationPersistenceFailureLeavesLiveStateUntouched(t *testing.T) {
+	t.Parallel()
+
+	predecessorURN := resource.NewURN("test-stack", "test-project", "", "pkg:typ", "predecessor")
+	successorURN := resource.NewURN("test-stack", "test-project", "", "pkg:typ", "successor")
+	consumerURN := resource.NewURN("test-stack", "test-project", "", "pkg:typ", "consumer")
+
+	predecessor := NewResource(predecessorURN)
+	predecessor.Custom = true
+	predecessor.ID = "resource-id"
+	consumer := NewResource(consumerURN)
+	consumer.Outputs = resource.PropertyMap{
+		"reference": resource.MakeCustomResourceReference(predecessorURN, predecessor.ID, ""),
+	}
+	snap := NewSnapshot([]*pkgresource.State{predecessor, consumer})
+	manager, persister := MockSetup(t, snap)
+
+	currentConsumer := consumer.Copy()
+	same := deploy.NewSameStep(nil, nil, consumer, currentConsumer)
+	mutation, err := manager.BeginMutation(same)
+	require.NoError(t, err)
+	require.NoError(t, mutation.End(same, true))
+
+	successor := predecessor.Copy()
+	successor.URN = successorURN
+	preparedConsumer := consumer.Copy()
+	preparedConsumer.Outputs = resource.PropertyMap{
+		"reference": resource.MakeCustomResourceReference(successorURN, successor.ID, ""),
+	}
+	transaction := &deploy.StateMigrationTransaction{
+		RootURN:                  predecessorURN,
+		PriorSubtree:             []*pkgresource.State{predecessor},
+		ResultSubtree:            []*pkgresource.State{successor},
+		SuccessorURNs:            map[resource.URN]resource.URN{predecessorURN: successorURN},
+		PreparedPriorResources:   []*pkgresource.State{successor, preparedConsumer},
+		RetainedResourceRewrites: map[*pkgresource.State]*pkgresource.State{consumer: preparedConsumer},
+	}
+
+	persister.SaveError = errors.New("save failed")
+	err = manager.StateMigration(transaction)
+	require.ErrorContains(t, err, "save failed")
+	require.Len(t, persister.SavedSnapshots, 1)
+	assert.Equal(t, predecessorURN,
+		currentConsumer.Outputs["reference"].ResourceReferenceValue().URN)
+	assert.Same(t, predecessor, snap.Resources[0])
+	assert.Same(t, consumer, snap.Resources[1])
+
+	persister.SaveError = nil
+	require.NoError(t, manager.Close())
 }
 
 // This test checks that we only write the Checkpoint once whether or

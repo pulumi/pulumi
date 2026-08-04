@@ -99,6 +99,11 @@ type SnapshotManager struct {
 	// events is an optional channel for emitting engine events. When set, the snapshot manager will emit
 	// ErrorEvents to this channel when it detects and auto-repairs snapshot integrity errors.
 	events chan<- engine.Event
+
+	// resourceOverride is set only while StateMigration synchronously persists its prospective snapshot. It lets the
+	// normal serialization and integrity-checking path operate on prepared resources without mutating the engine's
+	// shared base snapshot before persistence succeeds.
+	resourceOverride []*pkgresource.State
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -229,6 +234,69 @@ func (sm *SnapshotManager) RebuiltBaseState() error {
 	// Similar to Write() we don't need to do anything here, as the snapshot manager uses the
 	// same in-memory snapshot as the engine, that is already mutated.
 	return nil
+}
+
+func (*SnapshotManager) SupportsStateMigrations() bool {
+	return true
+}
+
+// StateMigration saves the migrated state as a full checkpoint. It changes in-memory resources only after the save
+// succeeds.
+func (sm *SnapshotManager) StateMigration(transaction *deploy.StateMigrationTransaction) error {
+	if transaction == nil {
+		return errors.New("state migration transaction must not be nil")
+	}
+
+	var migrationErr error
+	err := sm.mutate(func() bool {
+		// Rewrite resources created or updated earlier in this update.
+		current := make([]*pkgresource.State, 0, len(sm.resources))
+		for _, state := range sm.resources {
+			if !sm.dones[state] {
+				current = append(current, state)
+			}
+		}
+		rewrittenCurrent, err := transaction.RewriteResources(current)
+		if err != nil {
+			migrationErr = err
+			return false
+		}
+
+		// Prepared resources may be copies. Use the original resource to check whether it has already been processed.
+		retainedOriginals := make(map[*pkgresource.State]*pkgresource.State, len(transaction.RetainedResourceRewrites))
+		for original, prepared := range transaction.RetainedResourceRewrites {
+			retainedOriginals[prepared] = original
+		}
+		preparedResources := make([]*pkgresource.State, 0, len(rewrittenCurrent)+len(transaction.PreparedPriorResources))
+		preparedResources = append(preparedResources, rewrittenCurrent...)
+		for _, state := range transaction.PreparedPriorResources {
+			original := state
+			if retained, ok := retainedOriginals[state]; ok {
+				original = retained
+			}
+			if !sm.dones[original] {
+				preparedResources = append(preparedResources, state)
+			}
+		}
+
+		// Save the migrated resources before changing any in-memory resources.
+		sm.resourceOverride = preparedResources
+		migrationErr = sm.saveSnapshot()
+		sm.resourceOverride = nil
+		if migrationErr != nil {
+			return false
+		}
+
+		// The save succeeded. Apply the same changes to the existing in-memory resource objects.
+		err = transaction.RewriteResourcesInPlace(current)
+		contract.AssertNoErrorf(err,
+			"reapplying prepared state migration rewrites after successful persistence")
+		return false
+	})
+	if err != nil {
+		return err
+	}
+	return migrationErr
 }
 
 func (sm *SnapshotManager) SetSnippets(snippets []resource.Snippet) error {
@@ -727,22 +795,27 @@ func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	//         - If any of r's dependencies were not in the current list, they must already be in the merged list, as
 	//           they would have been appended to the list before r.
 
-	// Start with a copy of the resources produced during the evaluation of the current plan.
-	resources := make([]*pkgresource.State, 0, len(sm.resources))
+	var resources []*pkgresource.State
+	if sm.resourceOverride != nil {
+		resources = slices.Clone(sm.resourceOverride)
+	} else {
+		// Start with a copy of the resources produced during the evaluation of the current plan.
+		resources = make([]*pkgresource.State, 0, len(sm.resources))
 
-	// If any resources are "done", we need to filter them out here. These could be resources that have been later
-	// deleted, or had some other operation performed on them such as an import then an update.
-	for _, res := range sm.resources {
-		if !sm.dones[res] {
-			resources = append(resources, res)
-		}
-	}
-
-	// Append any resources from the base plan that were not produced by the current plan.
-	if base := sm.baseSnapshot; base != nil {
-		for _, res := range base.Resources {
+		// If any resources are "done", we need to filter them out here. These could be resources that have been later
+		// deleted, or had some other operation performed on them such as an import then an update.
+		for _, res := range sm.resources {
 			if !sm.dones[res] {
 				resources = append(resources, res)
+			}
+		}
+
+		// Append any resources from the base plan that were not produced by the current plan.
+		if base := sm.baseSnapshot; base != nil {
+			for _, res := range base.Resources {
+				if !sm.dones[res] {
+					resources = append(resources, res)
+				}
 			}
 		}
 	}

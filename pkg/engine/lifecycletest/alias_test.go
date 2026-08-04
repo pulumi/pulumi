@@ -214,9 +214,8 @@ func createUpdateProgramWithResourceFuncForAliasTests(
 								assert.Subset(t, allowedOps, []display.StepOp{entry.Step.Op()})
 							case TestJournalEntryFailure:
 								assert.Fail(t, "unexpected failure in journal")
-							case TestJournalEntryBegin:
-							case TestJournalEntryOutputs:
-							case TestJournalEntrySnippets:
+							case TestJournalEntryBegin, TestJournalEntryOutputs, TestJournalEntrySnippets,
+								TestJournalEntryStateMigration:
 							}
 						}
 

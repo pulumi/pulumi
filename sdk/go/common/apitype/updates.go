@@ -111,6 +111,10 @@ type UpdateProgramResponse struct {
 	AISettings AISettingsForUpdate `json:"aiSettings,omitempty"`
 }
 
+// LatestJournalVersion is the maximum journal version supported by this version of the code. Version 1 is the
+// initial journaling protocol; version 2 adds state migration entries.
+const LatestJournalVersion int64 = 2
+
 // StartUpdateRequest requests that an update starts getting applied to a stack.
 type StartUpdateRequest struct {
 	// Tags contains an updated set of Tags for the stack. If non-nil, will replace the current
