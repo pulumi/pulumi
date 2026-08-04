@@ -28,12 +28,18 @@ import "fmt"
 // OSStatus codes from Security/SecBase.h.
 const (
 	errSecSuccess               = 0
+	errSecUserCanceled          = -128   // the user canceled an authorization dialog
 	errSecNotAvailable          = -25291 // no keychain is available
+	errSecAuthFailed            = -25293
 	errSecDuplicateItem         = -25299
 	errSecItemNotFound          = -25300
 	errSecInteractionNotAllowed = -25308
 	errSecInteractionRequired   = -25315
 )
+
+// kSecUnlockStateStatus from Security/SecKeychain.h: set in the
+// SecKeychainGetStatus mask when the keychain is unlocked.
+const kSecUnlockStateStatus = 1
 
 // osStatusError maps a Security-framework OSStatus to a package error,
 // keeping the numeric code in the message for diagnosability.
@@ -43,9 +49,11 @@ func osStatusError(status int32) error {
 		return nil
 	case errSecItemNotFound:
 		return ErrKeyNotFound
+	case errSecUserCanceled:
+		return fmt.Errorf("%w: keychain error %d: the keychain prompt was canceled", ErrDeclined, status)
 	case errSecInteractionNotAllowed, errSecInteractionRequired:
 		return fmt.Errorf("%w: keychain error %d: user interaction required; "+
-			"the keychain may be locked (e.g. in an SSH session)", ErrUnavailable, status)
+			"the keychain may be locked (e.g. in an SSH session)", ErrLocked, status)
 	case errSecNotAvailable:
 		return fmt.Errorf("%w: keychain error %d: no keychain is available", ErrUnavailable, status)
 	default:
@@ -62,6 +70,16 @@ type secAPI struct {
 
 	codeCopySelf               func(flags uint32, self *uintptr) int32
 	codeCopySigningInformation func(code uintptr, flags uint32, info *uintptr) int32
+
+	// Deprecated-but-functional SecKeychain calls. They have no modern
+	// replacement for what we need them for, and the modern no-UI lever
+	// (kSecUseAuthenticationContext with an LAContext) is documented as, and
+	// was measured to be, inert for legacy keychain items — which is where
+	// the code-signing-bound ACL model requires our item to live.
+	keychainCopyDefault          func(keychain *uintptr) int32
+	keychainGetStatus            func(keychain uintptr, status *uint32) int32
+	keychainUnlock               func(keychain uintptr, passwordLength uint32, password uintptr, usePassword bool) int32
+	keychainSetUserInteractionOK func(allowed bool) int32
 
 	// SecItem attribute/value CFStringRef constants.
 	class                uintptr
@@ -88,6 +106,10 @@ func newSecAPI(l *lib) *secAPI {
 	l.fn(&s.itemDelete, "SecItemDelete")
 	l.fn(&s.codeCopySelf, "SecCodeCopySelf")
 	l.fn(&s.codeCopySigningInformation, "SecCodeCopySigningInformation")
+	l.fn(&s.keychainCopyDefault, "SecKeychainCopyDefault")
+	l.fn(&s.keychainGetStatus, "SecKeychainGetStatus")
+	l.fn(&s.keychainUnlock, "SecKeychainUnlock")
+	l.fn(&s.keychainSetUserInteractionOK, "SecKeychainSetUserInteractionAllowed")
 	s.class = l.constant("kSecClass")
 	s.classGenericPassword = l.constant("kSecClassGenericPassword")
 	s.attrService = l.constant("kSecAttrService")

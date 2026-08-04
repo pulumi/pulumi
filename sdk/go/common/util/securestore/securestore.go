@@ -31,12 +31,18 @@
 //
 // Operations are prompt-free and time-bounded by default, so the package is
 // safe to use from CI and AI-agent contexts. The exception is unlocking a
-// locked Linux Secret Service collection, which may wait on an OS password
-// dialog when the user opted in (PULUMI_CREDENTIAL_STORE is "auto" or "os")
-// or an already-encrypted file is being read, and when someone could answer
-// it. That wait has no deadline, matching sudo and gpg. Everywhere else an
-// unlock is accepted only if the provider grants it with no prompt at all,
-// so no dialog is ever drawn.
+// locked store, which may wait on an OS password dialog when the user opted
+// in (PULUMI_CREDENTIAL_STORE is "auto" or "os") or an already-encrypted file
+// is being read, and when someone could answer it. That wait has no deadline,
+// matching sudo and gpg. Everywhere else an unlock is accepted only if it
+// needs no prompt at all, so no dialog is ever drawn.
+//
+// Both platforms that can draw a dialog enforce this the same way, by asking
+// the store's lock state before doing anything that could prompt: the Secret
+// Service collection's Locked property on Linux, SecKeychainGetStatus on
+// macOS. macOS additionally suppresses dialogs process-wide around silent
+// operations, which also covers the keychain's second dialog source, an ACL
+// mismatch after the binary's signing identity changes.
 package securestore
 
 import (

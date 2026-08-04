@@ -61,7 +61,7 @@ func testNativeStore(t *testing.T) *nativeStore {
 
 func TestNativeBackendShape(t *testing.T) {
 	t.Parallel()
-	b := nativeKeychainBackend()
+	b := nativeKeychainBackend(true)
 	assert.Equal(t, BackendMacOSNative, b.id)
 	assert.Equal(t, rawWrapper{}, b.wrap)
 	store, ok := b.store.(*nativeStore)
@@ -70,6 +70,10 @@ func TestNativeBackendShape(t *testing.T) {
 	assert.Equal(t, "credentials-key-native", store.account,
 		"must differ from the fallback backend's account to avoid item collisions")
 	assert.NotEmpty(t, store.label)
+	assert.True(t, store.allowPrompt, "the prompt policy must reach the store")
+	silent, ok := nativeKeychainBackend(false).store.(*nativeStore)
+	require.True(t, ok)
+	assert.False(t, silent.allowPrompt)
 }
 
 // Test binaries are at best ad-hoc signed, so without the override the
@@ -83,7 +87,7 @@ func TestNativeSelfCheckRejectsTestBinary(t *testing.T) {
 	err := nativeSelfCheck()
 	require.Error(t, err, "an ad-hoc-signed test binary must not pass the self-check")
 
-	outcome, availErr := nativeKeychainBackend().available()
+	outcome, availErr := nativeKeychainBackend(false).available()
 	require.Error(t, availErr)
 	assert.Equal(t, Absent, outcome)
 	assert.True(t, errors.Is(availErr, ErrUnavailable), "available() = %v, want ErrUnavailable", availErr)
@@ -149,17 +153,74 @@ func TestOSStatusErrorMapping(t *testing.T) {
 
 	for _, status := range []int32{errSecInteractionNotAllowed, errSecInteractionRequired} {
 		err := osStatusError(status)
-		assert.True(t, errors.Is(err, ErrUnavailable), "status %d must map to ErrUnavailable", status)
+		assert.True(t, errors.Is(err, ErrLocked), "status %d must map to ErrLocked", status)
+		assert.True(t, errors.Is(err, ErrUnavailable), "ErrLocked wraps ErrUnavailable")
+		assert.Equal(t, Locked, outcomeOf(err), "a locked keychain must classify as Locked, not Absent")
 		assert.Contains(t, err.Error(), fmt.Sprintf("keychain error %d", status))
 		assert.Contains(t, err.Error(), "locked")
 	}
 
-	err := osStatusError(errSecNotAvailable)
+	err := osStatusError(errSecUserCanceled)
+	assert.True(t, errors.Is(err, ErrDeclined), "a canceled prompt is a refusal, never a fallback")
+	assert.Equal(t, Declined, outcomeOf(err))
+
+	err = osStatusError(errSecNotAvailable)
 	assert.True(t, errors.Is(err, ErrUnavailable))
 	assert.Contains(t, err.Error(), "keychain error -25291")
 
-	err = osStatusError(-25293) // errSecAuthFailed: not a special case
+	err = osStatusError(errSecAuthFailed) // not a special case
 	assert.False(t, errors.Is(err, ErrUnavailable))
 	assert.False(t, errors.Is(err, ErrKeyNotFound))
 	assert.Contains(t, err.Error(), "keychain error -25293")
+}
+
+// A locked keychain must be answered from the lock state, never by running
+// the operation: with UI suppressed securityd reports errSecAuthFailed, which
+// is indistinguishable from a genuine authorization failure and would
+// classify as Absent. Verified interactively on macOS 26.5 against a locked
+// keychain: silent get/set/delete return in milliseconds, drawing no dialog.
+//
+//nolint:paralleltest // mutates the package-global lock-state hook
+func TestSilentOpsOnLockedKeychainReportLocked(t *testing.T) {
+	prev := defaultKeychainLockedHook
+	defaultKeychainLockedHook = func() (bool, bool) { return true, true }
+	t.Cleanup(func() { defaultKeychainLockedHook = prev })
+
+	store := &nativeStore{service: "unused", account: "unused", allowPrompt: false}
+
+	_, err := store.get()
+	assert.True(t, errors.Is(err, ErrLocked), "get on a locked keychain = %v, want ErrLocked", err)
+	assert.Equal(t, Locked, outcomeOf(err))
+
+	assert.True(t, errors.Is(store.set("value"), ErrLocked))
+	assert.True(t, errors.Is(store.delete(), ErrLocked))
+
+	// The probe answers the same way, so resolution treats the tier as locked
+	// rather than falling through to a weaker one.
+	outcome, probeErr := store.probe()
+	assert.Equal(t, Locked, outcome)
+	assert.True(t, errors.Is(probeErr, ErrLocked))
+}
+
+// The prompt path announces the wait before securityd draws its dialog, so a
+// dialog on another space does not look like a hang.
+//
+//nolint:paralleltest // mutates package-global hooks
+func TestPromptPathAnnouncesTheWaitWhenLocked(t *testing.T) {
+	prevLock := defaultKeychainLockedHook
+	defaultKeychainLockedHook = func() (bool, bool) { return true, true }
+	t.Cleanup(func() { defaultKeychainLockedHook = prevLock })
+
+	notified := 0
+	prevNotify := notifyWaitingForKeychainUnlock
+	notifyWaitingForKeychainUnlock = func() { notified++ }
+	t.Cleanup(func() { notifyWaitingForKeychainUnlock = prevNotify })
+
+	store := &nativeStore{service: "unused", account: "unused", allowPrompt: true}
+	_, _ = runNativeOp(store, func() (struct{}, error) { return struct{}{}, nil })
+	assert.Equal(t, 1, notified, "a locked keychain must announce the wait")
+
+	defaultKeychainLockedHook = func() (bool, bool) { return false, true }
+	_, _ = runNativeOp(store, func() (struct{}, error) { return struct{}{}, nil })
+	assert.Equal(t, 1, notified, "an unlocked keychain must stay quiet")
 }

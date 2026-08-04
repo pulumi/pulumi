@@ -37,14 +37,17 @@ const (
 // nativeKeychainBackend returns the native SecItem keychain backend. Its
 // availability is gated on the running binary carrying a real code signature
 // (see nativeSelfCheck); the item's per-app ACL comes from SecItemAdd itself,
-// which binds access to the creating app's code-signing identity.
-func nativeKeychainBackend() backendImpl {
+// which binds access to the creating app's code-signing identity. allowPrompt
+// carries the unlock prompt policy: whether operations may let securityd draw
+// its unlock or ACL-confirmation dialogs.
+func nativeKeychainBackend(allowPrompt bool) backendImpl {
 	return backendImpl{
 		id: BackendMacOSNative,
 		store: &nativeStore{
-			service: nativeService,
-			account: nativeAccount,
-			label:   nativeLabel,
+			service:     nativeService,
+			account:     nativeAccount,
+			label:       nativeLabel,
+			allowPrompt: allowPrompt,
 		},
 		wrap: rawWrapper{},
 	}
@@ -57,73 +60,124 @@ func nativeKeychainBackend() backendImpl {
 // and setting access attributes on existing items triggers prompts).
 type nativeStore struct {
 	service, account, label string
+	allowPrompt             bool
+}
+
+// runNativeOp applies the unlock prompt policy to one keychain operation.
+//
+// Silent operations run with securityd's dialogs suppressed process-wide and
+// under the usual deadline, so neither a locked keychain nor an ACL mismatch
+// can draw UI: both come back as errSecInteractionNotAllowed, classified as
+// Locked. Prompt-permitted operations run with dialogs enabled and no
+// deadline — the user may take as long as they need to type a password —
+// after announcing the wait when the keychain is known to be locked.
+func runNativeOp[T any](s *nativeStore, op func() (T, error)) (T, error) {
+	locked, lockKnown := defaultKeychainLocked()
+	if s.allowPrompt {
+		if lockKnown && locked {
+			notifyWaitingForKeychainUnlock()
+		}
+		return op()
+	}
+	if lockKnown && locked {
+		// Answer from the lock state instead of the operation: with UI
+		// suppressed a locked keychain reports errSecAuthFailed, which is
+		// indistinguishable from a genuine authorization failure and would
+		// classify as Absent rather than Locked.
+		var zero T
+		return zero, fmt.Errorf("%w: unlock it or set PULUMI_CREDENTIAL_STORE=plaintext", ErrLocked)
+	}
+	return withTimeout(func() (T, error) {
+		return withoutKeychainUI(op)
+	})
 }
 
 // available reports whether the native backend is usable: the binary must
 // pass the code-signing self-check and the keychain must answer our item
 // query without requiring interaction. Both checks are prompt-free and the
-// whole probe is time-bounded.
+// whole probe is time-bounded regardless of the prompt policy.
 func (s *nativeStore) available() (Outcome, error) {
-	_, err := withTimeout(func() (struct{}, error) {
+	outcome, err := withTimeout(func() (Outcome, error) {
 		if err := nativeSelfCheck(); err != nil {
 			if errors.Is(err, ErrUnavailable) {
-				return struct{}{}, err
+				return Absent, err
 			}
-			return struct{}{}, fmt.Errorf("%w: native keychain requires a signed binary: %v",
+			return Absent, fmt.Errorf("%w: native keychain requires a signed binary: %v",
 				ErrUnavailable, err)
 		}
-		return struct{}{}, s.probe()
+		return s.probe()
+	})
+	if err != nil && outcome == Ready {
+		// withTimeout's zero value for Outcome is Ready; a timeout is Absent.
+		outcome = Absent
+	}
+	return outcome, err
+}
+
+// probe reads our item with UI suppressed, whatever the prompt policy: a
+// probe decides whether a backend is usable and must never itself draw a
+// dialog. A missing item proves the keychain is reachable and unlocked; an
+// interaction-required error classifies it as Locked rather than Absent, so
+// resolution treats it like a locked keyring instead of falling through.
+func (s *nativeStore) probe() (Outcome, error) {
+	if err := loadDarwinAPI(); err != nil {
+		return Absent, fmt.Errorf("%w: %v", ErrUnavailable, err)
+	}
+	// Ask the keychain's lock state directly rather than inferring it from
+	// the item query: a query for an item that does not exist yet answers
+	// errSecItemNotFound even on a locked keychain (no data to decrypt), so
+	// first-run probes would otherwise report a locked keychain as usable and
+	// only fail later, at the write.
+	if locked, ok := defaultKeychainLocked(); ok && locked {
+		return Locked, fmt.Errorf("%w: unlock it or set PULUMI_CREDENTIAL_STORE=plaintext", ErrLocked)
+	}
+	status, err := withoutKeychainUI(func() (int32, error) {
+		var result uintptr
+		status := s.copyMatching(&result)
+		if result != 0 {
+			cf.release(result)
+		}
+		return status, nil
 	})
 	if err != nil {
 		return Absent, err
 	}
-	return Ready, nil
+	if status == errSecSuccess || status == errSecItemNotFound {
+		return Ready, nil
+	}
+	statusErr := osStatusError(status)
+	if outcome := outcomeOf(statusErr); outcome != Absent {
+		return outcome, statusErr
+	}
+	if errors.Is(statusErr, ErrUnavailable) {
+		return Absent, statusErr
+	}
+	return Absent, fmt.Errorf("%w: %v", ErrUnavailable, statusErr)
 }
 
-// probe asks the keychain about our item without returning data. A missing
-// item still proves the keychain is reachable and unlocked.
-func (s *nativeStore) probe() error {
-	if err := loadDarwinAPI(); err != nil {
-		return fmt.Errorf("%w: %v", ErrUnavailable, err)
-	}
+// copyMatching runs the data-returning item query. Requesting the data (not
+// just attributes) is deliberate: item attributes stay readable while the
+// keychain is locked, so only a data read makes a locked keychain visible.
+func (s *nativeStore) copyMatching(result *uintptr) int32 {
 	service := cf.newString(s.service)
 	defer cf.release(service)
 	account := cf.newString(s.account)
 	defer cf.release(account)
 	query := cf.newDict(
 		[]uintptr{sec.class, sec.attrService, sec.attrAccount, sec.returnData, sec.matchLimit},
-		[]uintptr{sec.classGenericPassword, service, account, cf.booleanFalse, sec.matchLimitOne},
+		[]uintptr{sec.classGenericPassword, service, account, cf.booleanTrue, sec.matchLimitOne},
 	)
 	defer cf.release(query)
-
-	status := sec.itemCopyMatching(query, nil)
-	if status == errSecSuccess || status == errSecItemNotFound {
-		return nil
-	}
-	err := osStatusError(status)
-	if errors.Is(err, ErrUnavailable) {
-		return err
-	}
-	return fmt.Errorf("%w: %v", ErrUnavailable, err)
+	return sec.itemCopyMatching(query, result)
 }
 
 func (s *nativeStore) get() (string, error) {
-	return withTimeout(func() (string, error) {
+	return runNativeOp(s, func() (string, error) {
 		if err := loadDarwinAPI(); err != nil {
 			return "", fmt.Errorf("%w: %v", ErrUnavailable, err)
 		}
-		service := cf.newString(s.service)
-		defer cf.release(service)
-		account := cf.newString(s.account)
-		defer cf.release(account)
-		query := cf.newDict(
-			[]uintptr{sec.class, sec.attrService, sec.attrAccount, sec.returnData, sec.matchLimit},
-			[]uintptr{sec.classGenericPassword, service, account, cf.booleanTrue, sec.matchLimitOne},
-		)
-		defer cf.release(query)
-
 		var result uintptr
-		if status := sec.itemCopyMatching(query, &result); status != errSecSuccess {
+		if status := s.copyMatching(&result); status != errSecSuccess {
 			return "", osStatusError(status)
 		}
 		if result == 0 {
@@ -135,7 +189,7 @@ func (s *nativeStore) get() (string, error) {
 }
 
 func (s *nativeStore) set(value string) error {
-	_, err := withTimeout(func() (struct{}, error) {
+	_, err := runNativeOp(s, func() (struct{}, error) {
 		if err := loadDarwinAPI(); err != nil {
 			return struct{}{}, fmt.Errorf("%w: %v", ErrUnavailable, err)
 		}
@@ -178,7 +232,7 @@ func (s *nativeStore) set(value string) error {
 }
 
 func (s *nativeStore) delete() error {
-	_, err := withTimeout(func() (struct{}, error) {
+	_, err := runNativeOp(s, func() (struct{}, error) {
 		if err := loadDarwinAPI(); err != nil {
 			return struct{}{}, fmt.Errorf("%w: %v", ErrUnavailable, err)
 		}
