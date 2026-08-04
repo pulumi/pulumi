@@ -268,12 +268,16 @@ func (sg *stepGenerator) bailDiag(diag *diag.Diag, args ...any) error {
 	return result.BailErrorf(diag.Message, args...)
 }
 
-// generateURN generates a URN for a new resource and confirms we haven't seen it before in this deployment.
+// generateURN generates a resource's canonical URN after its parent has been normalized and confirms we haven't seen
+// it before in this deployment.
 func (sg *stepGenerator) generateURN(
 	parent resource.URN, ty tokens.Type, name string,
 ) (resource.URN, error) {
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
 	urn := sg.deployment.generateURN(parent, ty, name)
+	if err := sg.deployment.rejectStateMigrationPredecessorURN(urn); err != nil {
+		return "", err
+	}
 	if sg.urns[urn] {
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
 		return "", sg.bailDiag(diag.GetDuplicateResourceURNError(urn), urn)
@@ -285,8 +289,10 @@ func (sg *stepGenerator) generateURN(
 // GenerateReadSteps is responsible for producing one or more steps required to service
 // a ReadResourceEvent coming from the language host.
 func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, error) {
+	parent := sg.deployment.rewriteStateMigrationURN(event.Parent())
+
 	// Some event settings are based on the parent settings so make sure our parent is correct.
-	parent, err := sg.checkParent(event.Parent(), event.Type())
+	parent, err := sg.checkParent(parent, event.Type())
 	if err != nil {
 		return nil, err
 	}
@@ -340,6 +346,11 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		ResourceHooks:           nil,
 		SnippetID:               "",
 	}.Make()
+	rewritten, err := sg.deployment.rewriteStateMigrationState(newState)
+	if err != nil {
+		return nil, fmt.Errorf("normalizing read state for %s after state migration: %w", urn, err)
+	}
+	newState = rewritten
 
 	if newState.ID == "" {
 		return nil, fmt.Errorf("Expected an ID for %v", urn)
@@ -631,12 +642,25 @@ func (sg *stepGenerator) generateAliases(
 	return result
 }
 
+// generateRewrittenAliases resolves registration aliases through state migration rewrites committed earlier in the
+// update. A program may continue to name a predecessor URN even though a migration has already replaced that state
+// with its successor in the deployment's old-resource map.
+func (sg *stepGenerator) generateRewrittenAliases(
+	name string, typ tokens.Type, parent resource.URN, resAliases []resource.Alias,
+) []resource.URN {
+	aliases := sg.generateAliases(name, typ, parent, resAliases)
+	for i, alias := range aliases {
+		aliases[i] = sg.deployment.rewriteStateMigrationURN(alias)
+	}
+	return aliases
+}
+
 func (sg *stepGenerator) getOldResource(
 	urn resource.URN, name string, typ tokens.Type, parent resource.URN, resAliases []resource.Alias,
 ) (*pkgresource.State, bool, resource.URN) {
 	invalid := false
 	// Generate the aliases for this resource.
-	aliases := sg.generateAliases(name, typ, parent, resAliases)
+	aliases := sg.generateRewrittenAliases(name, typ, parent, resAliases)
 	// Log the aliases we're going to use to help with debugging aliasing issues.
 	logging.V(7).Infof("Generated aliases for %s: %v", urn, aliases)
 
@@ -694,8 +718,10 @@ func (sg *stepGenerator) getOldResource(
 func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResourceEvent) ([]Step, bool, error) {
 	goal := event.Goal()
 
+	parent := sg.deployment.rewriteStateMigrationURN(goal.Parent)
+
 	// Some goal settings are based on the parent settings so make sure our parent is correct.
-	parent, err := sg.checkParent(goal.Parent, goal.Type)
+	parent, err := sg.checkParent(parent, goal.Type)
 	if err != nil {
 		return nil, false, err
 	}
@@ -820,6 +846,11 @@ func (sg *stepGenerator) generateResourceSteps(
 		ResourceHooks:           goal.ResourceHooks,
 		SnippetID:               goal.SnippetID,
 	}.Make()
+	rewritten, err := sg.deployment.rewriteStateMigrationState(new)
+	if err != nil {
+		return nil, false, fmt.Errorf("normalizing resource state for %s after state migration: %w", urn, err)
+	}
+	new = rewritten
 	if sdkproviders.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 		for _, aliasURN := range aliasUrns {
@@ -968,6 +999,12 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 	err := event.Error()
 	if err != nil {
 		return nil, false, err
+	}
+	if err := sg.deployment.rewriteStateMigrationStateInPlace(event.Old()); err != nil {
+		return nil, false, fmt.Errorf("normalizing refreshed state for %s after state migration: %w", urn, err)
+	}
+	if err := sg.deployment.rewriteStateMigrationStateInPlace(event.New()); err != nil {
+		return nil, false, fmt.Errorf("normalizing desired state for %s after state migration: %w", urn, err)
 	}
 
 	// If this is a refresh deployment we're _always_ going to do a skip create or refresh step here for
@@ -1239,6 +1276,16 @@ func (sg *stepGenerator) continueStepsFromImport(
 	if err != nil {
 		return nil, false, nil
 	}
+	if err := sg.deployment.rewriteStateMigrationStateInPlace(old); err != nil {
+		return nil, false, fmt.Errorf("normalizing imported state for %s after state migration: %w", urn, err)
+	}
+	if err := sg.deployment.rewriteStateMigrationStateInPlace(new); err != nil {
+		return nil, false, fmt.Errorf("normalizing desired state for %s after state migration: %w", urn, err)
+	}
+	// Some Check paths intentionally ignore old/defaulted inputs and start again from the program's desired inputs.
+	// Preserve that input set after migration normalization so those paths do not reintroduce predecessor references
+	// from goal.Properties.
+	normalizedGoalInputs := new.Inputs
 
 	inputs := new.Inputs
 	if old != nil {
@@ -1304,7 +1351,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
 				URN:           urn,
-				News:          resource.ToResourcePropertyMap(goal.Properties),
+				News:          normalizedGoalInputs,
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
@@ -1327,6 +1374,10 @@ func (sg *stepGenerator) continueStepsFromImport(
 			invalid = true
 		}
 		new.Inputs = inputs
+		if err := sg.deployment.rewriteStateMigrationStateInPlace(new); err != nil {
+			return nil, false, fmt.Errorf("normalizing checked inputs for %s after state migration: %w", urn, err)
+		}
+		inputs = new.Inputs
 	}
 
 	// If the resource is valid and we're generating plans then generate a plan
@@ -1435,6 +1486,10 @@ func (sg *stepGenerator) continueStepsFromImport(
 				new.Inputs = resource.ToResourcePropertyMap(tresult.Properties)
 			}
 		}
+		if err := sg.deployment.rewriteStateMigrationStateInPlace(new); err != nil {
+			return nil, false, fmt.Errorf("normalizing remediated inputs for %s after state migration: %w", urn, err)
+		}
+		inputs = new.Inputs
 		summary := resourceanalyzer.NewRemediatePolicySummary(new.URN, response, info)
 		sg.deployment.events.OnPolicyRemediateSummary(summary)
 	}
@@ -1844,8 +1899,7 @@ func (sg *stepGenerator) ContinueStepsFromDiff(event ContinueResourceDiffEvent) 
 		return nil, err
 	}
 
-	updateSteps, err = sg.validateSteps(updateSteps)
-	return updateSteps, err
+	return sg.validateSteps(updateSteps)
 }
 
 // continueStepsFromDiff continues the process of generating steps for a resource after the diff has been computed
@@ -1864,6 +1918,12 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 	autonaming := diffEvent.Autonaming()
 	event := diffEvent.Event()
 	goal := event.Goal()
+	normalizedGoal := &pkgresource.State{Inputs: resource.ToResourcePropertyMap(goal.Properties)}
+	normalizedGoal, rewriteErr := sg.deployment.rewriteStateMigrationState(normalizedGoal)
+	if rewriteErr != nil {
+		return nil, fmt.Errorf("normalizing replacement inputs for %s after state migration: %w", urn, rewriteErr)
+	}
+	normalizedGoalInputs := normalizedGoal.Inputs
 
 	// If we try to return zero steps change it to one same step
 	defer func() {
@@ -1983,7 +2043,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			if prov != nil && !sg.isTargetedReplace(urn, old) {
 				resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
 					URN:           urn,
-					News:          resource.ToResourcePropertyMap(goal.Properties),
+					News:          normalizedGoalInputs,
 					AllowUnknowns: allowUnknowns,
 					RandomSeed:    randomSeed,
 					Autonaming:    autonaming,
