@@ -156,7 +156,9 @@ func (pc *packageCommand) newStatelessResourceUpsertCommand(res *schema.Resource
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
 			}
-			if readNotFound(read) {
+			verdict := classifyRead(read)
+			logReadVerdict(ctx, "upsert", res.Token, id, verdict)
+			if verdict.missing() {
 				return pc.runStatelessCreate(cmd, res, yes, func() (resource.PropertyMap, error) {
 					return inputs, nil
 				})
@@ -164,7 +166,7 @@ func (pc *packageCommand) newStatelessResourceUpsertCommand(res *schema.Resource
 			if read.ID != "" {
 				id = read.ID
 			}
-			return pc.runStatelessUpdate(cmd, res, id, read, inputs, "update", yes)
+			return pc.runStatelessUpdate(cmd, res, id, read, inputs, "update", keepFailure, yes)
 		},
 	}
 	cmd.Flags().StringVar(&inputFormat, "input", "yaml", "Format of the resource inputs file")
