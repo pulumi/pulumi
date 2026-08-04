@@ -18,9 +18,7 @@ func main() {
 		}, pulumi.DependsOn([]pulumi.Resource{
 			pulumi.Resource(target),
 		}))
-		ctx.Export("echoed", data.ApplyT(func(data component.IdentityResult) (string, error) {
-			return data.Result, nil
-		}).(pulumi.StringOutput))
+		ctx.Export("echoed", data.Result())
 		return nil
 	})
 }
