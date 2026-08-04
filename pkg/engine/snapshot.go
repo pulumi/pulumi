@@ -21,6 +21,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
+// SnapshotManagerCapabilities describes persistence features that may be needed before a SnapshotManager exists.
+// Backends provide these capabilities for previews, which do not construct a manager of their own.
+type SnapshotManagerCapabilities struct {
+	// StateMigrations reports whether the selected persistence mode can store state migrations.
+	StateMigrations bool
+}
+
 // SnapshotManager manages an in-memory resource graph.
 type SnapshotManager interface {
 	io.Closer
@@ -32,6 +39,13 @@ type SnapshotManager interface {
 	// RebuiltBaseState is called to inform the SnapshotManager that the engine has rebuilt
 	// the base state after a refresh
 	RebuiltBaseState() error
+
+	// SupportsStateMigrations reports whether this manager can persist state migrations.
+	SupportsStateMigrations() bool
+
+	// StateMigration is called with the validated, fully rewritten transaction just before the engine mutates
+	// its base snapshot. An error aborts the migration before any state is changed.
+	StateMigration(transaction *deploy.StateMigrationTransaction) error
 
 	// SetSnippets replaces the PCL snippets that should be persisted with the next snapshot.
 	SetSnippets(snippets []resource.Snippet) error

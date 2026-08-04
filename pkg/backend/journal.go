@@ -91,8 +91,55 @@ func SerializeJournalEntry(
 		}
 	}
 
+	var resultStates []apitype.ResourceV3
+	if je.ResultStates != nil {
+		resultStates = make([]apitype.ResourceV3, len(je.ResultStates))
+		for i, result := range je.ResultStates {
+			s, encodedByteString, err := stack.SerializeResource(ctx, result, enc, false)
+			if err != nil {
+				return apitype.JournalEntry{}, fmt.Errorf("serializing migrated resource state: %w", err)
+			}
+			resultStates[i] = s
+			requiresByteString = requiresByteString || encodedByteString
+		}
+	}
+	var baseStatePatches []apitype.JournalBaseStatePatch
+	if je.BaseStatePatches != nil {
+		baseStatePatches = make([]apitype.JournalBaseStatePatch, len(je.BaseStatePatches))
+		for i, patch := range je.BaseStatePatches {
+			state, encodedByteString, err := stack.SerializeResource(ctx, patch.State, enc, false)
+			if err != nil {
+				return apitype.JournalEntry{}, fmt.Errorf("serializing migrated base resource state: %w", err)
+			}
+			baseStatePatches[i] = apitype.JournalBaseStatePatch{
+				Index: patch.Index,
+				State: state,
+			}
+			requiresByteString = requiresByteString || encodedByteString
+		}
+	}
+	var newStatePatches []apitype.JournalNewStatePatch
+	if je.NewStatePatches != nil {
+		newStatePatches = make([]apitype.JournalNewStatePatch, len(je.NewStatePatches))
+		for i, patch := range je.NewStatePatches {
+			state, encodedByteString, err := stack.SerializeResource(ctx, patch.State, enc, false)
+			if err != nil {
+				return apitype.JournalEntry{}, fmt.Errorf("serializing migrated operation resource state: %w", err)
+			}
+			newStatePatches[i] = apitype.JournalNewStatePatch{
+				OperationID: patch.OperationID,
+				State:       state,
+			}
+			requiresByteString = requiresByteString || encodedByteString
+		}
+	}
+	entryVersion := 1
+	if je.Kind == engine.JournalEntryStateMigration {
+		entryVersion = 2
+	}
+
 	serializedEntry := apitype.JournalEntry{
-		Version:               1,
+		Version:               entryVersion,
 		Kind:                  apitype.JournalEntryKind(je.Kind),
 		SequenceID:            je.SequenceID,
 		OperationID:           je.OperationID,
@@ -110,8 +157,11 @@ func SerializeJournalEntry(
 		ExtensionRef:          je.ExtensionRef,
 		Extension:             je.Extension,
 		Snippets:              snippets,
-
-		RequiresByteString: requiresByteString,
+		RequiresByteString:    requiresByteString,
+		RemoveOlds:            je.RemoveOlds,
+		States:                resultStates,
+		BaseStatePatches:      baseStatePatches,
+		NewStatePatches:       newStatePatches,
 	}
 
 	return serializedEntry, nil
@@ -175,6 +225,12 @@ func NewJournalReplayer(base *apitype.DeploymentV3) *JournalReplayer {
 }
 
 func (r *JournalReplayer) Add(entry apitype.JournalEntry) error {
+	if entry.Version <= 0 || int64(entry.Version) > apitype.LatestJournalVersion {
+		return fmt.Errorf("unsupported journal entry version %d", entry.Version)
+	}
+	if entry.Kind == apitype.JournalEntryKindStateMigration && entry.Version != 2 {
+		return fmt.Errorf("state migration journal entry must use version 2, got %d", entry.Version)
+	}
 	if entry.RequiresByteString {
 		r.requiresByteString = true
 	}
@@ -274,6 +330,12 @@ func (r *JournalReplayer) Add(entry apitype.JournalEntry) error {
 		r.extensions = make(map[apitype.ExtensionRef]apitype.Extension)
 	case apitype.JournalEntryKindExtensionParameterize:
 		r.extensions[*entry.ExtensionRef] = *entry.Extension
+	case apitype.JournalEntryKindStateMigration:
+		if err := r.applyStateMigration(entry); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unsupported journal entry kind %d", entry.Kind)
 	}
 	return nil
 }
@@ -350,6 +412,9 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	resources := make([]apitype.ResourceV3, 0)
 	for i, res := range r.newResources {
 		if _, ok := removeIndices[int64(i)]; !ok {
+			if res == nil {
+				return apitype.TypedDeployment{}, fmt.Errorf("journal new resource at index %d is nil", i)
+			}
 			resources = append(resources, *res)
 			stack.ApplyFeatures(*res, r.requiresByteString, features)
 		}
@@ -405,8 +470,8 @@ func (r *JournalReplayer) GenerateDeployment() (apitype.TypedDeployment, error) 
 	}
 
 	if r.hasRefresh {
-		// Rebuild dependencies if we had a refresh, as refreshes may delete resources,
-		// which may cause other resources to have dangling dependencies.
+		// Refreshes can delete resources without exact typed patches for their dependents, so prune dangling
+		// dependencies. State migrations carry exact prepared patches and deliberately require mechanical replay.
 		rebuildDependencies(resources)
 	}
 
