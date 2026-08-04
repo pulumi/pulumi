@@ -136,7 +136,7 @@ var AccessToken = env.String("ACCESS_TOKEN",
 	env.Secret)
 
 var CredentialStore = env.String("CREDENTIAL_STORE",
-	`Where to keep CLI credentials: "auto" encrypts them with a key protected by the operating `+
+	`How to keep CLI credentials: "auto" encrypts them with a key protected by the operating `+
 		`system (macOS Keychain, Windows Credential Manager, Linux Secret Service, TPM) when such `+
 		`protection is usable, "os" requires it, and "plaintext" uses the plaintext credentials file.`)
 
