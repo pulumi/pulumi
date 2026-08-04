@@ -15,6 +15,11 @@ export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
+export { SubsetExampleArgs } from "./subsetExample";
+export type SubsetExample = import("./subsetExample").SubsetExample;
+export const SubsetExample: typeof import("./subsetExample").SubsetExample = null as any;
+utilities.lazyLoad(exports, ["SubsetExample"], () => require("./subsetExample"));
+
 
 // Export sub-modules:
 import * as types from "./types";
@@ -29,6 +34,8 @@ const _module = {
         switch (type) {
             case "discriminated-union-many:index:Example":
                 return new Example(name, <any>undefined, { urn })
+            case "discriminated-union-many:index:SubsetExample":
+                return new SubsetExample(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);
         }

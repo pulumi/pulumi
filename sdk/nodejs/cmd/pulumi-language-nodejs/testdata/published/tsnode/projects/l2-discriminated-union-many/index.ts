@@ -51,3 +51,12 @@ const example10 = new discriminated_union_many.Example("example10", {unionOf: {
     payload: "p10",
     note: "n10",
 }});
+// A SubsetExample's unionOf is typed as a 3-variant subset union. We should be
+// able to assign that output to an Example's unionOf, which is typed as the
+// full 10-variant union.
+const subset1 = new discriminated_union_many.SubsetExample("subset1", {unionOf: {
+    discriminantKind: "variant3",
+    payload: "sp",
+    count: 33,
+}});
+const example11 = new discriminated_union_many.Example("example11", {unionOf: subset1.unionOf});

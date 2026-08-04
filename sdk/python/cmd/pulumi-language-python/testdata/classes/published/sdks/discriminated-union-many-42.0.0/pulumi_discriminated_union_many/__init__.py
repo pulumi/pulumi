@@ -8,6 +8,7 @@ import typing
 # Export this package's modules as members:
 from .example import *
 from .provider import *
+from .subset_example import *
 from ._inputs import *
 from . import outputs
 _utilities.register(
@@ -18,7 +19,8 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_discriminated_union_many",
   "classes": {
-   "discriminated-union-many:index:Example": "Example"
+   "discriminated-union-many:index:Example": "Example",
+   "discriminated-union-many:index:SubsetExample": "SubsetExample"
   }
  }
 ]

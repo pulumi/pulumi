@@ -51,3 +51,12 @@ example10 = discriminated_union_many.Example("example10", union_of=discriminated
     payload="p10",
     note="n10",
 ))
+# A SubsetExample's unionOf is typed as a 3-variant subset union. We should be
+# able to assign that output to an Example's unionOf, which is typed as the
+# full 10-variant union.
+subset1 = discriminated_union_many.SubsetExample("subset1", union_of=discriminated_union_many.Variant3Args(
+    discriminant_kind="variant3",
+    payload="sp",
+    count=33,
+))
+example11 = discriminated_union_many.Example("example11", union_of=subset1.union_of)

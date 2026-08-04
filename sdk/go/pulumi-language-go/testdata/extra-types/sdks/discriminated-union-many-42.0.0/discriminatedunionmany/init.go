@@ -23,6 +23,8 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 	switch typ {
 	case "discriminated-union-many:index:Example":
 		r = &Example{}
+	case "discriminated-union-many:index:SubsetExample":
+		r = &SubsetExample{}
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", typ)
 	}

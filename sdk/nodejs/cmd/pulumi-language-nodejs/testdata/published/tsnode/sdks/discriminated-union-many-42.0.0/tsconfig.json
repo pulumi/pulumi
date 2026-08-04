@@ -22,6 +22,7 @@
         "example.ts",
         "index.ts",
         "provider.ts",
+        "subsetExample.ts",
         "types/index.ts",
         "types/input.ts",
         "types/output.ts",

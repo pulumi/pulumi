@@ -107,6 +107,25 @@ func main() {
 		if err != nil {
 			return err
 		}
+		// A SubsetExample's unionOf is typed as a 3-variant subset union. We should be
+		// able to assign that output to an Example's unionOf, which is typed as the
+		// full 10-variant union.
+		subset1, err := discriminatedunionmany.NewSubsetExample(ctx, "subset1", &discriminatedunionmany.SubsetExampleArgs{
+			UnionOf: &discriminatedunionmany.Variant3Args{
+				DiscriminantKind: pulumi.String("variant3"),
+				Payload:          pulumi.String("sp"),
+				Count:            pulumi.Int(33),
+			},
+		})
+		if err != nil {
+			return err
+		}
+		_, err = discriminatedunionmany.NewExample(ctx, "example11", &discriminatedunionmany.ExampleArgs{
+			UnionOf: subset1.UnionOf,
+		})
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 }
