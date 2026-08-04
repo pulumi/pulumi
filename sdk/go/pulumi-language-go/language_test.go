@@ -99,21 +99,20 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-invoke-depends-on-component": "the SDK does not yet send dependsOn on invoke requests, so the invoke resolves during preview",                     //nolint:lll
-	"l2-resource-any":                "a list inside an any-typed input generates pulumi.Any{...}, but pulumi.Any is a func not a type; does not compile", //nolint:lll
-	"l2-config-default-from-invoke":  "config variable defaulting to an invoke result is never declared; generated code does not compile",                 //nolint:lll
-	"l1-config-types-object":         "fails to compile",
-	"l1-config-types-optional":       "fails to compile: cfg.GetObject signature mismatch (same as l1-config-types-object)", //nolint:lll
-	"l1-builtin-try":                 "pulumi#18506 Support try in Go program generation",
-	"l1-expand-final":                "Go program generation does not support `...` argument expansion",
-	"l1-builtin-can":                 "pulumi#18570 Support can in Go program generation",
-	"l1-builtin-list":                "list(string) config decoded as string; element/split emit TODO stubs",
-	"l1-builtin-object":              "entries/lookup emit TODO stubs",
-	"l2-builtin-object":              "entries/lookup emit TODO stubs",
-	"l1-builtin-to-json":             "Go doesn't support output based toJSON",
-	"l2-resource-config-primitives":  "cannot convert secretBool (variable of struct type pulumi.BoolOutput) to type pulumi.Bool, etc", //nolint:lll
-	"l2-resource-config-objects":     "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
-	"l2-resource-schema-secret":      "does not preserve schema-secret unknown outputs",
+	"l2-resource-any":               "a list inside an any-typed input generates pulumi.Any{...}, but pulumi.Any is a func not a type; does not compile", //nolint:lll
+	"l2-config-default-from-invoke": "config variable defaulting to an invoke result is never declared; generated code does not compile",                 //nolint:lll
+	"l1-config-types-object":        "fails to compile",
+	"l1-config-types-optional":      "fails to compile: cfg.GetObject signature mismatch (same as l1-config-types-object)", //nolint:lll
+	"l1-builtin-try":                "pulumi#18506 Support try in Go program generation",
+	"l1-expand-final":               "Go program generation does not support `...` argument expansion",
+	"l1-builtin-can":                "pulumi#18570 Support can in Go program generation",
+	"l1-builtin-list":               "list(string) config decoded as string; element/split emit TODO stubs",
+	"l1-builtin-object":             "entries/lookup emit TODO stubs",
+	"l2-builtin-object":             "entries/lookup emit TODO stubs",
+	"l1-builtin-to-json":            "Go doesn't support output based toJSON",
+	"l2-resource-config-primitives": "cannot convert secretBool (variable of struct type pulumi.BoolOutput) to type pulumi.Bool, etc", //nolint:lll
+	"l2-resource-config-objects":    "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
+	"l2-resource-schema-secret":     "does not preserve schema-secret unknown outputs",
 
 	"l2-plain": "map literals nested in plain list elements render without a type; generated code does not compile",
 

@@ -145,6 +145,8 @@ func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.Support
 func (m *mockMonitor) GetDeploymentInfo(ctx context.Context, in *emptypb.Empty,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.DeploymentInfo, error) {
+	// INVOKE_DEPENDS_ON is left out because the mock monitor implements no invoke
+	// dependency gate; leaving it out keeps the client-side one.
 	features := []pulumirpc.ResourceMonitorFeature{
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SECRETS,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
