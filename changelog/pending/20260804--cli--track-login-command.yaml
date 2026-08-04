@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Pass the invoked command (e.g. `pulumi new`) to the browser-based login/signup flow so Pulumi Cloud can attribute signups to the command that triggered them
+time: 2026-08-04T00:00:00+00:00
