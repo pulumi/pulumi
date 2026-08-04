@@ -41,8 +41,20 @@ var stores keyStores = secureStores{}
 
 type secureStores struct{}
 
+// pulumiHome resolves the directory securestore keeps file-based key material
+// in. Deliberately GetPulumiHomeDir and not GetPulumiPath: the key file's
+// location must be stable, never redirected to a per-session agent directory.
+// An empty result just makes the file-based backend report itself unusable.
+func pulumiHome() string {
+	dir, err := GetPulumiHomeDir()
+	if err != nil {
+		return ""
+	}
+	return dir
+}
+
 func (secureStores) Resolve(mode securestore.Mode) (keyStore, error) {
-	st, err := securestore.Resolve(mode)
+	st, err := securestore.Resolve(mode, pulumiHome())
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +62,7 @@ func (secureStores) Resolve(mode securestore.Mode) (keyStore, error) {
 }
 
 func (secureStores) ForBackend(id securestore.Backend) (keyStore, error) {
-	st, err := securestore.ForBackend(id)
+	st, err := securestore.ForBackend(id, pulumiHome())
 	if err != nil {
 		return nil, err
 	}

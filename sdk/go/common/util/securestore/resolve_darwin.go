@@ -19,7 +19,7 @@ package securestore
 // platformCandidates returns macOS backends in preference order: the native
 // SecItem backend (per-app ACL, Developer-ID-signed builds only) first, then
 // the /usr/bin/security fallback that works for any binary without prompts.
-func platformCandidates(bool) []backendImpl {
+func platformCandidates(bool, string) []backendImpl {
 	return []backendImpl{
 		nativeKeychainBackend(),
 		{id: BackendMacOSSecurity, store: newKeyringStore(nil), wrap: rawWrapper{}},

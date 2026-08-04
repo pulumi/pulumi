@@ -28,9 +28,8 @@ import (
 
 func TestTPMFileStoreLifecycle(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "pulumi-home")
-	t.Setenv("PULUMI_HOME", home)
 
-	store := newTPMFileStore()
+	store := newTPMFileStore(home)
 	outcome, err := store.available()
 	require.NoError(t, err)
 	require.Equal(t, Ready, outcome, "a writable home dir must be available")
@@ -69,9 +68,8 @@ func TestTPMFileStoreLifecycle(t *testing.T) {
 
 func TestTPMFileStoreAvailableCreatesDir(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "deep", "nested", ".pulumi")
-	t.Setenv("PULUMI_HOME", home)
 
-	store := newTPMFileStore()
+	store := newTPMFileStore(home)
 	outcome, err := store.available()
 	require.NoError(t, err)
 	require.Equal(t, Ready, outcome)
@@ -85,21 +83,9 @@ func TestTPMFileStoreAvailableCreatesDir(t *testing.T) {
 	assert.Empty(t, entries)
 }
 
-func TestPulumiHomeDirPrefersPulumiHome(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("PULUMI_HOME", dir)
-	got, err := pulumiHomeDir()
-	require.NoError(t, err)
-	assert.Equal(t, dir, got)
-}
-
-func TestPulumiHomeDirFallsBackToHome(t *testing.T) {
-	t.Setenv("PULUMI_HOME", "")
-	home, err := os.UserHomeDir()
-	if err != nil {
-		t.Skipf("no user home directory: %v", err)
-	}
-	got, err := pulumiHomeDir()
-	require.NoError(t, err)
-	assert.Equal(t, filepath.Join(home, ".pulumi"), got)
+func TestTPMFileStoreUnavailableWithoutHomeDir(t *testing.T) {
+	store := newTPMFileStore("")
+	outcome, err := store.available()
+	assert.Equal(t, Absent, outcome)
+	assert.ErrorContains(t, err, "PULUMI_HOME")
 }

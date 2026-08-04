@@ -38,27 +38,13 @@ type tpmFileStore struct {
 }
 
 // newTPMFileStore returns the itemStore keeping the TPM-sealed key in a file
-// under the Pulumi home directory.
-func newTPMFileStore() itemStore {
-	dir, err := pulumiHomeDir()
-	if err != nil {
-		return tpmFileStore{err: err}
+// under the given Pulumi home directory (the caller resolves it; this package
+// cannot import workspace).
+func newTPMFileStore(pulumiHome string) itemStore {
+	if pulumiHome == "" {
+		return tpmFileStore{err: errors.New("the Pulumi home directory could not be determined, set PULUMI_HOME")}
 	}
-	return tpmFileStore{path: filepath.Join(dir, tpmFileName)}
-}
-
-// pulumiHomeDir resolves $PULUMI_HOME, falling back to $HOME/.pulumi. This
-// deliberately duplicates the tiny path rule of workspace.GetPulumiHomeDir:
-// importing the workspace package from here would create an import cycle.
-func pulumiHomeDir() (string, error) {
-	if dir := os.Getenv("PULUMI_HOME"); dir != "" {
-		return dir, nil
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("could not find user home directory, set PULUMI_HOME: %w", err)
-	}
-	return filepath.Join(home, ".pulumi"), nil
+	return tpmFileStore{path: filepath.Join(pulumiHome, tpmFileName)}
 }
 
 // available reports whether the key file's directory exists (creating it if

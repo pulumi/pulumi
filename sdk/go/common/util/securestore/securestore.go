@@ -180,11 +180,11 @@ func (s *Store) FallbackReason() error { return s.fallbackReason }
 var mockResolver func() []backendImpl
 
 // candidates returns the platform's backends in preference order.
-func candidates(allowPrompt bool) []backendImpl {
+func candidates(allowPrompt bool, pulumiHome string) []backendImpl {
 	if mockResolver != nil {
 		return mockResolver()
 	}
-	return platformCandidatesHook(allowPrompt && someoneCanAnswerAPasswordDialog())
+	return platformCandidatesHook(allowPrompt && someoneCanAnswerAPasswordDialog(), pulumiHome)
 }
 
 var platformCandidatesHook = platformCandidates
@@ -195,7 +195,11 @@ var platformCandidatesHook = platformCandidates
 // keep today's plaintext behavior. The returned error is non-nil when the
 // user declined an unlock in any mode, when ModeOS finds no usable backend,
 // or on an invalid mode.
-func Resolve(mode Mode) (*Store, error) {
+//
+// pulumiHome is the directory for file-based key material (the TPM-sealed
+// key file used when no OS credential store exists); an empty string makes
+// that backend unavailable.
+func Resolve(mode Mode, pulumiHome string) (*Store, error) {
 	switch mode {
 	case ModePlaintext, ModeDefault:
 		return &Store{b: backendImpl{id: BackendPlaintext}}, nil
@@ -207,7 +211,7 @@ func Resolve(mode Mode) (*Store, error) {
 
 	var firstErr error
 	optedIn := mode == ModeAuto || mode == ModeOS
-	for _, cand := range candidates(optedIn) {
+	for _, cand := range candidates(optedIn, pulumiHome) {
 		outcome, err := cand.available()
 		switch outcome {
 		case Ready:
@@ -240,12 +244,13 @@ func Resolve(mode Mode) (*Store, error) {
 // envelope, regardless of mode — reading data back must always be attempted.
 // The error explains why the recorded backend is not usable here (moved
 // machine, missing TPM, changed binary signature, locked keychain, ...).
-func ForBackend(id Backend) (*Store, error) {
+// pulumiHome is as for Resolve.
+func ForBackend(id Backend, pulumiHome string) (*Store, error) {
 	if id == BackendPlaintext {
 		return &Store{b: backendImpl{id: BackendPlaintext}}, nil
 	}
 	const mayPrompt = true // the alternative is unreadable credentials, not a fallback
-	for _, cand := range candidates(mayPrompt) {
+	for _, cand := range candidates(mayPrompt, pulumiHome) {
 		if cand.id == id {
 			outcome, err := cand.available()
 			if outcome == Declined {
