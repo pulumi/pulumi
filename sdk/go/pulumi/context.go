@@ -81,6 +81,7 @@ type contextState struct {
 	supportsParameterization bool         // true if package references and parameterized providers are supported by pulumi
 	supportsResourceHooks    bool         // true if resource hooks are supported by pulumi
 	supportsErrorHooks       bool         // true if error hooks are supported by pulumi
+	supportsInvokeDependsOn  bool         // true if the monitor gates invokes on their declared dependencies.
 	rpcs                     int          // the number of outstanding RPC requests.
 	rpcsDone                 *sync.Cond   // an event signaling completion of RPCs.
 	rpcsLock                 sync.Mutex   // a lock protecting the RPC count and event.
@@ -187,6 +188,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsParameterization: has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_PARAMETERIZATION),
 		supportsResourceHooks:    has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS),
 		supportsErrorHooks:       has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS),
+		supportsInvokeDependsOn:  has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON),
 		registeredOutputs:        make(map[URN]bool),
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
@@ -728,8 +730,9 @@ func (ctx *Context) Invoke(tok string, args any, result any, opts ...InvokeOptio
 // and whether an argument was secret. Secret arguments are sent to the provider as raw values.
 //
 // If checkDependencies is set, the invoke is skipped with known=false while any argument
-// or any dependency's ID is unknown. Plain invokes pass false: their arguments cannot
-// contain outputs, and their resource-reference arguments are not existence-gated.
+// is unknown or any dependency is pending creation. Plain invokes pass false: their
+// arguments cannot contain outputs, and their resource-reference arguments are not
+// existence-gated.
 func (ctx *Context) invokePackageRaw(
 	tok string, args any, marshalOpts *marshalOptions, checkDependencies bool, packageRef string,
 	options invokeOptions,
@@ -747,6 +750,7 @@ func (ctx *Context) invokePackageRaw(
 	}
 	secret = resolvedArgs.ContainsSecrets()
 
+	var invokeDependsOn []string
 	if checkDependencies {
 		// The expanded set of dependencies, including children of components.
 		depSet := map[URN]Resource{}
@@ -787,28 +791,37 @@ func (ctx *Context) invokePackageRaw(
 			return nil, deps, false, secret, nil
 		}
 
-		// DependsOn for resources is an ordering constraint for register
-		// resource calls. If a resource R1 depends on a resource R2, the
-		// register resource call for R2 will happen after R1. This is ensured
-		// by awaiting the URN for each resource dependency before calling
-		// register resource.
-		//
-		// For invokes, this causes a problem when running under preview. During
-		// preview, register resource immediately returns with the URN, however
-		// this does not tell us if the resource "exists".
-		//
-		// Instead of waiting for the dependency's URN, we wait for the ID. This
-		// tells us that wether a physical resource exists (if the state does
-		// not require a refresh), and we can avoid calling the invoke when it
-		// is unknown.
-		for _, d := range depSet {
-			if r, ok := d.(CustomResource); ok {
-				_, k, _, _, err := internal.AwaitOutput(ctx.Context(), r.ID())
-				if err != nil {
-					contract.Failf("Awaiting ID: %s", err)
-				}
-				if !k {
-					return nil, deps, false, secret, nil
+		if ctx.state.supportsInvokeDependsOn {
+			invokeDependsOn = make([]string, 0, len(depSet))
+			for urn := range depSet {
+				invokeDependsOn = append(invokeDependsOn, string(urn))
+			}
+		} else {
+			// Older engines need the language to manage the await.
+			//
+			// DependsOn for resources is an ordering constraint for register
+			// resource calls. If a resource R1 depends on a resource R2, the
+			// register resource call for R2 will happen after R1. This is ensured
+			// by awaiting the URN for each resource dependency before calling
+			// register resource.
+			//
+			// For invokes, this causes a problem when running under preview. During
+			// preview, register resource immediately returns with the URN, however
+			// this does not tell us if the resource "exists".
+			//
+			// Instead of waiting for the dependency's URN, we wait for the ID. This
+			// tells us that wether a physical resource exists (if the state does
+			// not require a refresh), and we can avoid calling the invoke when it
+			// is unknown.
+			for _, d := range depSet {
+				if r, ok := d.(CustomResource); ok {
+					_, k, _, _, err := internal.AwaitOutput(ctx.Context(), r.ID())
+					if err != nil {
+						contract.Failf("Awaiting ID: %s", err)
+					}
+					if !k {
+						return nil, deps, false, secret, nil
+					}
 				}
 			}
 		}
@@ -862,6 +875,7 @@ func (ctx *Context) invokePackageRaw(
 		AcceptResources:   !disableResourceReferences,
 		AcceptsByteString: true,
 		PackageRef:        packageRef,
+		DependsOn:         invokeDependsOn,
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
@@ -877,6 +891,11 @@ func (ctx *Context) invokePackageRaw(
 				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
 		}
 		return nil, nil, false, false, ferr
+	}
+
+	// The engine declined to service the invoke because dependencies are pending creation.
+	if resp.Unknown {
+		return nil, deps, false, secret, nil
 	}
 
 	// Otherwise, simply unmarshal the output properties and return the result.
