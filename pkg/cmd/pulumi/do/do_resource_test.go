@@ -630,7 +630,7 @@ func TestDoCmdResourceList(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				ListF: func(ctx context.Context, req plugin.ListRequest) (*plugin.ListStream, error) {
 					calls = append(calls, req)
-					assert.Equal(t, "prod", req.Query["prefix"].StringValue())
+					assert.Equal(t, "prod", req.Query.Get("prefix").AsString())
 					return plugin.NewListStream([]plugin.ListResult{{ID: "1", Name: "one"}}, "next"), nil
 				},
 			},

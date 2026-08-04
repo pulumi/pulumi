@@ -673,7 +673,7 @@ func (p *providerServer) List(
 	}
 	listStream, err := p.provider.List(stream.Context(), ListRequest{
 		Token:             tokens.Type(req.GetToken()),
-		Query:             query,
+		Query:             resource.FromResourcePropertyMap(query),
 		Limit:             req.GetLimit(),
 		PageSize:          req.GetPageSize(),
 		ContinuationToken: req.GetContinuationToken(),

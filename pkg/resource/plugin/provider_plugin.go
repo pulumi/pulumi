@@ -1910,7 +1910,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 
 func (p *provider) List(ctx context.Context, req ListRequest) (*ListStream, error) {
 	label := fmt.Sprintf("%s.List(%s)", p.label(), req.Token)
-	logging.V(7).Infof("%s executing (#query=%d)", label, len(req.Query))
+	logging.V(7).Infof("%s executing (#query=%d)", label, req.Query.Len())
 
 	client := p.clientRaw
 	protocol, pcfg, err := p.getPluginConfig(ctx)
@@ -1921,7 +1921,7 @@ func (p *provider) List(ctx context.Context, req ListRequest) (*ListStream, erro
 		return NewComputedListStream(), nil
 	}
 
-	query, err := MarshalProperties(req.Query, MarshalOptions{
+	query, err := MarshalProperties(resource.ToResourcePropertyMap(req.Query), MarshalOptions{
 		Label:          label + ".query",
 		KeepSecrets:    protocol.acceptSecrets,
 		KeepResources:  protocol.acceptResources,
