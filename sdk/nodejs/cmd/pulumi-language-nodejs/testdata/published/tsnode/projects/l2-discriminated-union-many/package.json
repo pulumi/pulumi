@@ -1,0 +1,11 @@
+{
+	"name": "l2-discriminated-union-many",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/discriminated-union-many": "ROOT/artifacts/pulumi-discriminated-union-many-42.0.0.tgz"
+	}
+}
