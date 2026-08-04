@@ -275,21 +275,57 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		// generator is done when its async counter is 0, i.e. for each async event it said it was going to do we've
 		// seen and posted that event back to it.
 		seenNil := false
+		// The source-event select case is disabled while migrationPlanningFence is set, so at most one migration can
+		// be pending here.
+		var pendingMigrationEvent RegisterResourceEvent
+		migrationPlanningFence := false
+
+		handleEvent := func(event SourceEvent) error {
+			if err := ex.handleSingleEvent(ctx, event); err != nil {
+				if !result.IsBail(err) {
+					logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+					ex.reportError(ex.deployment.generateEventURN(event), err)
+				}
+				cancel()
+				return result.BailError(err)
+			}
+			return nil
+		}
+
+		// A registration with migrations creates a planning fence. The loop stops accepting source events while it
+		// drains earlier planning continuations, handles the migration registration, and drains any planning work it
+		// starts.
 		for {
+			// Earlier planning has drained, so the pending migration registration can now be handled.
+			if pendingMigrationEvent != nil && ex.asyncEventsExpected == 0 {
+				event := pendingMigrationEvent
+				pendingMigrationEvent = nil
+				if err := handleEvent(event); err != nil {
+					return false, err
+				}
+			}
+			// The migration registration has been handled and no earlier or migration-triggered planning continuations
+			// remain, we can unblock source event consumption.
+			if migrationPlanningFence && pendingMigrationEvent == nil && ex.asyncEventsExpected == 0 {
+				migrationPlanningFence = false
+			}
+
+			sourceEvents := incomingEvents
+			if migrationPlanningFence {
+				// A nil channel disables the select case below. Stop accepting source events until all planning before
+				// and for the migration registration is complete.
+				sourceEvents = nil
+			}
+
 			select {
 			case event := <-stepGenEvents:
 				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming async event")
 
-				if err := ex.handleSingleEvent(ctx, event); err != nil {
-					if !result.IsBail(err) {
-						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
-						ex.reportError(ex.deployment.generateEventURN(event), err)
-					}
-					cancel()
-					return false, result.BailError(err)
+				if err := handleEvent(event); err != nil {
+					return false, err
 				}
 
-			case event := <-incomingEvents:
+			case event := <-sourceEvents:
 				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming source event (nil? %v, %v)", event.Event == nil,
 					event.Error)
 
@@ -306,13 +342,18 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 				if event.Event == nil {
 					seenNil = true
 				} else {
-					if err := ex.handleSingleEvent(ctx, event.Event); err != nil {
-						if !result.IsBail(err) {
-							logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
-							ex.reportError(ex.deployment.generateEventURN(event.Event), err)
+					registration, hasMigration := event.Event.(RegisterResourceEvent)
+					hasMigration = hasMigration && len(registration.StateMigrations()) != 0
+					if hasMigration {
+						migrationPlanningFence = true
+						if ex.asyncEventsExpected != 0 {
+							pendingMigrationEvent = registration
+							continue
 						}
-						cancel()
-						return false, result.BailError(err)
+					}
+
+					if err := handleEvent(event.Event); err != nil {
+						return false, err
 					}
 				}
 			case <-ctx.Done():
@@ -578,8 +619,14 @@ func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
 func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event SourceEvent) error {
 	contract.Requiref(event != nil, "event", "must not be nil")
 
+	// A program may still send references that use resource names from before a migration.
+	normalizedEvent, err := ex.deployment.normalizeStateMigrationSourceEvent(event)
+	if err != nil {
+		return err
+	}
+	event = normalizedEvent
+
 	var steps []Step
-	var err error
 	switch e := event.(type) {
 	case ContinueResourceImportEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceImportEvent")

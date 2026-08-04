@@ -857,7 +857,8 @@ func TestStepGenerator(t *testing.T) {
 		t.Run("could not find parent resource", func(t *testing.T) {
 			t.Parallel()
 			sg := &stepGenerator{
-				urns: map[resource.URN]bool{},
+				deployment: &Deployment{},
+				urns:       map[resource.URN]bool{},
 			}
 			_, err := sg.GenerateReadSteps(&readResourceEvent{
 				parent: "does-not-exist",

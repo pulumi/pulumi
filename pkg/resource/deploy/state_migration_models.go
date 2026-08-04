@@ -93,14 +93,11 @@ type StateMigrationTransaction struct {
 	currentResourceRewrites map[*pkgresource.State]*pkgresource.State
 }
 
-// A StateMigrationTransaction prepares rewrites for states whose final values are already available, but some states
-// acquire their final values only after the migration has committed. These include states returned by in-flight
-// refresh or import continuations, Step.Apply, RegisterResourceOutputs, and provider-published view steps. Their work
-// may have captured references to predecessor URNs before the migration, so the engine rewrites those references when
-// the states re-enter the deployment.
-//
-// Registration and read states pass through the same boundary because their goals may also contain references
-// captured before the migration. References that already use successor URNs are unchanged.
+// A migration is committed only when no planning or execution work is in flight. The commit rewrites all engine-held
+// state before work resumes, so continuation events are already normalized. However, programs may retain pre-migration
+// references. Read and output events are normalized as the engine receives them. Registration goals are normalized
+// later, after any migrations carried by the registration itself have been applied. Providers and analyzers are
+// expected to derive resource references from the normalized values they receive.
 //
 // stateMigrationRewrite is the part of a committed transaction retained for this later normalization. successorURNs
 // rewrites logical references; successorIdentities supplies the Custom and ID information needed to rebuild typed
@@ -134,8 +131,6 @@ func newStateMigrationRewrite(
 
 // applyToResource rewrites references in state using the successor URNs and identities retained for one committed
 // migration.
-//
-//nolint:unused // Used by state-migration normalization added in the streaming-safety branch.
 func (rewrite *stateMigrationRewrite) applyToResource(state *pkgresource.State) (*pkgresource.State, error) {
 	rewritten, err := rewriteStateMigrationReferences(
 		[]*pkgresource.State{state}, rewrite.successorURNs, rewrite.successorIdentities)
