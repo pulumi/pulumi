@@ -18,6 +18,8 @@ export class ConvertStateRequest extends jspb.Message {
     addArgs(value: string, index?: number): string;
     getLoaderTarget(): string;
     setLoaderTarget(value: string): ConvertStateRequest;
+    getResolverTarget(): string;
+    setResolverTarget(value: string): ConvertStateRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ConvertStateRequest.AsObject;
@@ -34,6 +36,7 @@ export namespace ConvertStateRequest {
         mapperTarget: string,
         argsList: Array<string>,
         loaderTarget: string,
+        resolverTarget: string,
     }
 }
 

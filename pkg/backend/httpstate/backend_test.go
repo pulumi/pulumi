@@ -3069,7 +3069,7 @@ func TestShowDeploymentEventsResult(t *testing.T) {
 	}
 }
 
-func TestCheckDeploymentResult(t *testing.T) {
+func TestRunDeploymentResult(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -3088,23 +3088,41 @@ func TestCheckDeploymentResult(t *testing.T) {
 			t.Parallel()
 
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-				require.Equal(t, "/api/stacks/org/proj/stack/deployments/deployment-id", req.URL.Path)
-				err := json.NewEncoder(rw).Encode(apitype.GetDeploymentResponse{
-					ID:     "deployment-id",
-					Status: tt.status,
-				})
+				var err error
+				switch {
+				case req.Method == http.MethodPost && req.URL.Path == "/api/stacks/org/proj/stack/deployments":
+					err = json.NewEncoder(rw).Encode(apitype.CreateDeploymentResponse{ID: "deployment-id"})
+				case req.URL.Path == "/api/stacks/org/proj/stack/deployments/deployment-id/logs":
+					err = json.NewEncoder(rw).Encode(apitype.DeploymentLogs{
+						Lines: []apitype.DeploymentLogLine{
+							{Header: "Get source"},
+							{Line: "fetching source\n"},
+						},
+					})
+				case req.URL.Path == "/api/stacks/org/proj/stack/deployments/deployment-id":
+					err = json.NewEncoder(rw).Encode(apitype.GetDeploymentResponse{
+						ID:     "deployment-id",
+						Status: tt.status,
+					})
+				default:
+					require.Failf(t, "unexpected request", "%v %v", req.Method, req.URL.Path)
+				}
 				require.NoError(t, err)
 			}))
 			t.Cleanup(server.Close)
 
 			b := &cloudBackend{client: client.NewClient(server.URL, "fake-token", true, nil)}
-			stackID := client.StackIdentifier{
-				Owner:   "org",
-				Project: "proj",
-				Stack:   tokens.MustParseStackName("stack"),
+			stackRef := cloudBackendReference{
+				owner:   "org",
+				project: "proj",
+				name:    tokens.MustParseStackName("stack"),
+				b:       b,
 			}
+			opts := display.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard}
 
-			err := b.checkDeploymentResult(t.Context(), stackID, "deployment-id")
+			err := b.RunDeployment(t.Context(), stackRef, apitype.CreateDeploymentRequest{
+				Op: apitype.Update,
+			}, opts, "", false)
 			if tt.wantErr == "" {
 				require.NoError(t, err)
 			} else {

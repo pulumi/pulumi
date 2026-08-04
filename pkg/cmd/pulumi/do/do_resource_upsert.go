@@ -55,7 +55,7 @@ import (
 // UUID against any existing snippet of the same Name+Type); the resolved Stack is passed through
 // here so the hook doesn't repeat the load.
 type StatefulUpdateRequest struct {
-	Snippet     resource.Snippet
+	Snippets    []resource.Snippet
 	Stack       backend.Stack
 	DryRun      bool
 	Yes         bool
@@ -68,7 +68,8 @@ type StatefulUpdateRequest struct {
 
 // StatefulUpdateResult carries whatever the caller wants to render after the update.
 type StatefulUpdateResult struct {
-	SnippetUUID string
+	// SnippetUUIDs in the same order as StatefulUpdateRequest.Snippets.
+	SnippetUUIDs []string
 }
 
 // RunStatefulUpdateFunc is the injection point for driving the backend update/preview operation.
@@ -257,39 +258,47 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 		return fmt.Errorf("resource %s %q already exists in stack %s; use `upsert` to replace it",
 			args.res.Token, args.name, stack.Ref())
 	}
-	// Handle bare --provider: reference the given provider URN from the resource snippet and
-	// inject an options { provider = provider } block into its PCL.
-	if pc.providerURN != "" {
-		// Pick an identifier for the injected provider reference that doesn't collide with a
-		// user-supplied resource reference of the same name.
-		providerRefName := "provider"
-		for i := 2; ; i++ {
-			if _, taken := references[providerRefName]; !taken {
-				break
-			}
-			providerRefName = fmt.Sprintf("provider%d", i)
+	// Pick an identifier for the injected provider reference that doesn't collide with a
+	// user-supplied resource reference of the same name.
+	providerRefName := "provider"
+	for i := 2; ; i++ {
+		if _, taken := references[providerRefName]; !taken {
+			break
 		}
-		if references == nil {
-			references = map[string]string{}
+		providerRefName = fmt.Sprintf("provider%d", i)
+	}
+	providerSnippet, provReferences, resourceCode, err := pc.buildProviderSnippet(
+		ctx, cmd, snap, stack, args.name+"-provider", providerRefName, code, resourceFilename,
+	)
+	if err != nil {
+		return err
+	}
+
+	mergedReferences := references
+	for k, v := range provReferences {
+		if mergedReferences == nil {
+			mergedReferences = map[string]string{}
 		}
-		references[providerRefName] = pc.providerURN
-		code, err = injectProviderOptionInPCL(code, resourceFilename, providerRefName)
-		if err != nil {
-			return fmt.Errorf("inject provider option: %w", err)
-		}
+		mergedReferences[k] = v
 	}
 
 	snippet := resource.Snippet{
 		UUID:       snippetUUID,
 		Name:       args.name,
 		Type:       args.res.Token,
-		Code:       string(code),
+		Code:       string(resourceCode),
 		Descriptor: packageDescriptorFromProto(pc.packageDescriptor),
-		References: references,
+		References: mergedReferences,
 	}
 
+	snippets := []resource.Snippet{}
+	if providerSnippet != nil {
+		snippets = append(snippets, *providerSnippet)
+	}
+	snippets = append(snippets, snippet)
+
 	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
-		Snippet:     snippet,
+		Snippets:    snippets,
 		Stack:       stack,
 		DryRun:      pc.dryrun,
 		Yes:         args.yes,
@@ -301,12 +310,13 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	if err != nil {
 		return err
 	}
-	if result != nil && !pc.dryrun {
+	if result != nil && !pc.dryrun && len(result.SnippetUUIDs) > 0 {
 		verb := "Created"
 		if existed {
 			verb = "Updated"
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "%s %s (snippet %s)\n", verb, args.name, result.SnippetUUID)
+		fmt.Fprintf(cmd.OutOrStdout(), "%s %s (snippet %s)\n",
+			verb, args.name, result.SnippetUUIDs[len(result.SnippetUUIDs)-1])
 	}
 	return nil
 }
@@ -347,11 +357,11 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 	}
 
 	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
-		Snippet: resource.Snippet{
+		Snippets: []resource.Snippet{{
 			UUID: snippetUUID,
 			Name: name,
 			Type: res.Token,
-		},
+		}},
 		Stack:       stack,
 		DryRun:      pc.dryrun,
 		Yes:         yes,
@@ -364,8 +374,8 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 	if err != nil {
 		return err
 	}
-	if result != nil && !pc.dryrun {
-		fmt.Fprintf(cmd.OutOrStdout(), "Deleted %s (snippet %s)\n", name, result.SnippetUUID)
+	if result != nil && !pc.dryrun && len(result.SnippetUUIDs) > 0 {
+		fmt.Fprintf(cmd.OutOrStdout(), "Deleted %s (snippet %s)\n", name, result.SnippetUUIDs[0])
 	}
 	return nil
 }
@@ -577,6 +587,86 @@ func resolveSnippetUUID(snap *deploy.Snapshot, name, resourceToken string) (stri
 	return fresh.String(), false, nil
 }
 
+// buildProviderSnippet decides whether the resource being upserted needs an inline provider
+// snippet. It returns (providerSnippet, resourceReferences, updatedResourceCode) for the caller to
+// stitch into the resource snippet. Three cases:
+//   - Default provider: no --provider, no provider overrides — returns (nil, nil, resourceCode).
+//   - Bare --provider: --provider set, no overrides — returns (nil, references, resourceCode with
+//     options { provider = provider }).
+//   - Materialize: provider overrides given (with or without --provider) — returns a provider
+//     snippet whose Code carries the overrides overlaid on top of any base --provider inputs, plus
+//     the resource references + injected options block.
+func (pc *packageCommand) buildProviderSnippet(
+	ctx context.Context, cmd *cobra.Command, snap *deploy.Snapshot,
+	stack backend.Stack, providerName, providerRefName string, resourceCode []byte, resourceFilename string,
+) (*resource.Snippet, map[string]string, []byte, error) {
+	providerFlags := collectInputFlags(cmd, pc.spec.Name(), pc.providerDef.InputProperties)
+	hasOverrides := pc.providerFile != "" || len(providerFlags) > 0
+	if pc.providerURN == "" && !hasOverrides {
+		return nil, nil, resourceCode, nil
+	}
+
+	stackShortName := stack.Ref().Name().String()
+	providerType := "pulumi:providers:" + pc.spec.Name()
+
+	providerURN := resource.URN(pc.providerURN)
+	var providerSnippet *resource.Snippet
+	if hasOverrides {
+		providerCode, providerFilename, _, err := parseFile(
+			ctx, pc.providerFile, "provider", pc.format, "",
+			pc.converter, pc.loaderTarget, pc.packageDescriptor, providerFlags, nil,
+		)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("parse provider file: %w", err)
+		}
+
+		if pc.providerURN != "" {
+			base, err := pc.loadProviderInputsFromStack(ctx, resource.URN(pc.providerURN))
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("--provider: %w", err)
+			}
+			baseLiterals := make(map[string]string, len(base))
+			for k, v := range base {
+				// Skip engine bookkeeping (__internal) and the pinned plugin version — carrying
+				// these into a new snippet would collide with the plugin selection the descriptor
+				// already encodes.
+				if k == "__internal" || k == "version" {
+					continue
+				}
+				lit, err := propertyValueToPCLLiteral(string(k), v)
+				if err != nil {
+					return nil, nil, nil, fmt.Errorf("--provider: %w", err)
+				}
+				baseLiterals[string(k)] = lit
+			}
+			providerCode, err = mergeAbsentAttributeLiteralsIntoPCL(providerCode, providerFilename, "provider", baseLiterals)
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("merge --provider base inputs: %w", err)
+			}
+		}
+
+		providerURN = resource.CreateURN(providerName, providerType, "", string(pc.proj.Name), stackShortName)
+		providerUUID, _, err := resolveSnippetUUID(snap, providerName, providerType)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		providerSnippet = &resource.Snippet{
+			UUID:       providerUUID,
+			Name:       providerName,
+			Type:       providerType,
+			Code:       string(providerCode),
+			Descriptor: packageDescriptorFromProto(pc.packageDescriptor),
+		}
+	}
+
+	refs := map[string]string{providerRefName: string(providerURN)}
+	newCode, err := injectProviderOptionInPCL(resourceCode, resourceFilename, providerRefName)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("inject provider option: %w", err)
+	}
+	return providerSnippet, refs, newCode, nil
+}
+
 // DefaultRunStatefulUpdate is the production implementation of the runStatefulUpdate hook. The
 // caller (typically the upsert command) has already loaded the stack and picked the snippet's
 // UUID; this function loads config + secrets and calls the backend preview/update entrypoint with
@@ -606,18 +696,34 @@ func DefaultRunStatefulUpdate(
 	}
 	cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
-	snippetUUIDVal, err := uuid.FromString(req.Snippet.UUID)
-	if err != nil {
-		return nil, fmt.Errorf("snippet uuid: %w", err)
+	if len(req.Snippets) == 0 {
+		return nil, errors.New("stateful update requires at least one snippet")
 	}
-	var snippet *resource.Snippet
-	if !req.Delete {
-		snippet = &req.Snippet
+	snippets := map[uuid.UUID]*resource.Snippet{}
+	targetSnippets := make([]string, 0, len(req.Snippets))
+	uuids := make([]string, 0, len(req.Snippets))
+	for i := range req.Snippets {
+		s := req.Snippets[i]
+		snippetUUIDVal, err := uuid.FromString(s.UUID)
+		if err != nil {
+			return nil, fmt.Errorf("snippet uuid: %w", err)
+		}
+		if _, dup := snippets[snippetUUIDVal]; dup {
+			return nil, fmt.Errorf("duplicate snippet uuid %s in stateful update request", s.UUID)
+		}
+		if req.Delete {
+			snippets[snippetUUIDVal] = nil
+		} else {
+			snippet := s
+			snippets[snippetUUIDVal] = &snippet
+		}
+		targetSnippets = append(targetSnippets, snippetUUIDVal.String())
+		uuids = append(uuids, s.UUID)
 	}
 
 	engineOpts := engine.UpdateOptions{
-		Snippets:       map[uuid.UUID]*resource.Snippet{snippetUUIDVal: snippet},
-		TargetSnippets: []string{snippetUUIDVal.String()},
+		Snippets:       snippets,
+		TargetSnippets: targetSnippets,
 		ShowSecrets:    req.ShowSecrets,
 	}
 
@@ -644,7 +750,7 @@ func DefaultRunStatefulUpdate(
 		return nil, err
 	}
 
-	return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+	return &StatefulUpdateResult{SnippetUUIDs: uuids}, nil
 }
 
 // packageDescriptorFromProto lifts the codegen-RPC schema request into the resource-layer

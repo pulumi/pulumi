@@ -1259,6 +1259,35 @@ options {
 	}
 }
 
+func TestMergeAbsentAttributeLiteralsIntoPCL(t *testing.T) {
+	t.Parallel()
+
+	// Absent attributes are added.
+	got, err := mergeAbsentAttributeLiteralsIntoPCL(
+		[]byte(`name = "example"`+"\n"), "provider.pcl", "provider",
+		map[string]string{"region": `"us-east-1"`},
+	)
+	require.NoError(t, err)
+	assert.Contains(t, string(got), `"us-east-1"`)
+	assert.Contains(t, string(got), `region`)
+	assert.Contains(t, string(got), `name`)
+
+	// Present attributes are preserved.
+	got, err = mergeAbsentAttributeLiteralsIntoPCL(
+		[]byte(`region = "eu-west-1"`+"\n"), "provider.pcl", "provider",
+		map[string]string{"region": `"us-east-1"`},
+	)
+	require.NoError(t, err)
+	assert.Equal(t, `region = "eu-west-1"`+"\n", string(got))
+
+	// Empty attrs is a no-op.
+	got, err = mergeAbsentAttributeLiteralsIntoPCL(
+		[]byte(`name = "example"`+"\n"), "provider.pcl", "provider", nil,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, `name = "example"`+"\n", string(got))
+}
+
 func TestInjectProviderOptionInPCL(t *testing.T) {
 	t.Parallel()
 
@@ -1289,4 +1318,99 @@ options {
 	require.NoError(t, err)
 	assert.Contains(t, string(got), "provider = other")
 	assert.NotContains(t, string(got), "provider = provider")
+}
+
+func TestPropertyValueToPCLLiteral(t *testing.T) {
+	t.Parallel()
+
+	got, err := propertyValueToPCLLiteral("x", resource.NewNullProperty())
+	require.NoError(t, err)
+	assert.Equal(t, "null", got)
+
+	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(true))
+	require.NoError(t, err)
+	assert.Equal(t, "true", got)
+
+	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(3.5))
+	require.NoError(t, err)
+	assert.Equal(t, "3.5", got)
+
+	got, err = propertyValueToPCLLiteral("x", resource.NewProperty("hello"))
+	require.NoError(t, err)
+	assert.Equal(t, `"hello"`, got)
+
+	// Nested array/object with deterministic key order.
+	inner := resource.PropertyMap{
+		"b": resource.NewProperty("two"),
+		"a": resource.NewProperty(1.0),
+	}
+	arr := resource.NewProperty([]resource.PropertyValue{
+		resource.NewProperty("first"),
+		resource.NewProperty(inner),
+	})
+	got, err = propertyValueToPCLLiteral("x", arr)
+	require.NoError(t, err)
+	assert.Equal(t, "[\"first\", {\n  a = 1\n  b = \"two\"\n}]", got)
+
+	// Secrets are preserved.
+	got, err = propertyValueToPCLLiteral("x", resource.MakeSecret(resource.NewProperty("s")))
+	require.NoError(t, err)
+	assert.Equal(t, `secret("s")`, got)
+
+	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(resource.PropertyMap{
+		"plain":  resource.NewProperty("p"),
+		"secret": resource.MakeSecret(resource.NewProperty("s")),
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "{\n  plain = \"p\"\n  secret = secret(\"s\")\n}", got)
+
+	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(resource.PropertyMap{
+		"123":         resource.NewProperty("number prefix"),
+		"cost center": resource.NewProperty("platform"),
+		"quote\"key":  resource.NewProperty("quoted"),
+		"team:name":   resource.NewProperty("infra"),
+		"valid":       resource.NewProperty("identifier"),
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "{\n"+
+		"  \"123\" = \"number prefix\"\n"+
+		"  \"cost center\" = \"platform\"\n"+
+		"  \"quote\\\"key\" = \"quoted\"\n"+
+		"  \"team:name\" = \"infra\"\n"+
+		"  valid = \"identifier\"\n"+
+		"}", got)
+
+	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(resource.PropertyMap{
+		"outer key": resource.NewProperty(resource.PropertyMap{
+			"inner:key": resource.MakeSecret(resource.NewProperty("s")),
+		}),
+	}))
+	require.NoError(t, err)
+	assert.Equal(t, "{\n  \"outer key\" = {\n    \"inner:key\" = secret(\"s\")\n  }\n}", got)
+
+	merged, err := mergeAbsentAttributeLiteralsIntoPCL(
+		[]byte{}, "provider.pcl", "provider", map[string]string{"tags": got},
+	)
+	require.NoError(t, err)
+	assert.Contains(t, string(merged), `"outer key"`)
+	assert.Contains(t, string(merged), `"inner:key"`)
+
+	// Asset errors.
+	asset, err := resource.NewTextAsset("hello")
+	require.NoError(t, err)
+	_, err = propertyValueToPCLLiteral("cfg", resource.NewProperty(asset))
+	require.ErrorContains(t, err, `"cfg"`)
+	require.ErrorContains(t, err, "asset")
+
+	// Resource reference errors.
+	rref := resource.ResourceReference{URN: resource.URN("urn:pulumi:x::y::z::n")}
+	_, err = propertyValueToPCLLiteral("cfg", resource.NewProperty(rref))
+	require.ErrorContains(t, err, `"cfg"`)
+	require.ErrorContains(t, err, "resource reference")
+
+	// Computed value errors.
+	_, err = propertyValueToPCLLiteral(
+		"cfg", resource.MakeComputed(resource.NewProperty("")))
+	require.ErrorContains(t, err, `"cfg"`)
+	require.ErrorContains(t, err, "computed/output")
 }
