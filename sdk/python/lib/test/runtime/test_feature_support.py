@@ -71,7 +71,8 @@ async def test_loads_features_from_get_deployment_info():
             resource_pb2.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
             resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
             resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
-            # Features with no legacy string ID never show up in feature_support.
+            resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
+            # Features the SDK does not track never show up in feature_support.
             resource_pb2.RESOURCE_MONITOR_FEATURE_BYTE_STRING,
         ]
     )
@@ -91,6 +92,7 @@ async def test_loads_features_from_get_deployment_info():
         "parameterization": False,
         "resourceHooks": True,
         "errorHooks": False,
+        "invokeDependsOn": True,
     }
     assert monitor.supports_feature_calls == 0
 

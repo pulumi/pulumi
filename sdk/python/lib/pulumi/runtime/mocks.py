@@ -273,6 +273,8 @@ class MockMonitor:
     def GetDeploymentInfo(self, request):
         # Support for "outputValues" is deliberately disabled for the mock monitor so
         # instances of `Output` don't show up in `MockResourceArgs` inputs.
+        # INVOKE_DEPENDS_ON is left out because the mock monitor implements no invoke
+        # dependency gate; leaving it out keeps the client-side one.
         return resource_pb2.DeploymentInfo(
             supportedFeatures=[
                 resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS,
