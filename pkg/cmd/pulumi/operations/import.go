@@ -70,6 +70,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func parseResourceSpec(spec string) (string, resource.URN, error) {
@@ -96,11 +97,12 @@ func parseResourceSpec(spec string) (string, resource.URN, error) {
 func makeImportFileFromResourceList(ctx context.Context, resources []plugin.ResourceImport) (importFile, error) {
 	// Serialized with secrets in plain text, marked with the secret signature: the converter response
 	// carries them the same way, and parseImportFile deserializes them back into secret values.
-	serialize := func(props resource.PropertyMap, name, kind string) (map[string]any, error) {
+	serialize := func(props *property.Map, name, kind string) (map[string]any, error) {
 		if props == nil {
 			return nil, nil
 		}
-		serialized, err := resourcestack.SerializeProperties(ctx, props, sdkconfig.NopEncrypter, true /*showSecrets*/)
+		mprops := resource.ToResourcePropertyMap(*props)
+		serialized, err := resourcestack.SerializeProperties(ctx, mprops, sdkconfig.NopEncrypter, true /*showSecrets*/)
 		if err != nil {
 			return nil, fmt.Errorf("serializing %s for resource %q: %w", kind, name, err)
 		}

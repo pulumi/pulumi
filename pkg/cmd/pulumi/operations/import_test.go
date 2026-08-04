@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -616,6 +617,10 @@ func TestParseImportFileProviderInputs(t *testing.T) {
 	assert.Equal(t, resource.NewProperty("6.0.0"), imports[0].ProviderInputs["version"])
 }
 
+func ptr[T any](v T) *T {
+	return &v
+}
+
 func TestMakeImportFileFromResourceListInputsOutputs(t *testing.T) {
 	t.Parallel()
 
@@ -624,12 +629,12 @@ func TestMakeImportFileFromResourceListInputsOutputs(t *testing.T) {
 			Type: "aws:s3/bucket:Bucket",
 			Name: "thing",
 			ID:   "thing-id",
-			Inputs: resource.PropertyMap{
-				"password": resource.MakeSecret(resource.NewProperty("shh")),
-			},
-			Outputs: resource.PropertyMap{
-				"arn": resource.NewProperty("some:arn"),
-			},
+			Inputs: ptr(property.NewMap(map[string]property.Value{
+				"password": property.New("shh").WithSecret(true),
+			})),
+			Outputs: ptr(property.NewMap(map[string]property.Value{
+				"arn": property.New("some:arn"),
+			})),
 		},
 	})
 	require.NoError(t, err)
