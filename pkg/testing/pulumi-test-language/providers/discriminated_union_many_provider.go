@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 
 	"github.com/blang/semver"
 
@@ -83,9 +84,7 @@ func (p *DiscriminatedUnionManyProvider) GetSchema(
 			"discriminantKind": {TypeSpec: stringT, Const: v.kind},
 			"payload":          {TypeSpec: stringT},
 		}
-		for k, s := range v.extra {
-			props[k] = s
-		}
+		maps.Copy(props, v.extra)
 		types[fmt.Sprintf("%s:index:%s", p.pkg(), v.token)] = schema.ComplexTypeSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{
 				Type:       "object",
