@@ -880,6 +880,11 @@ func NewImportCmd() *cobra.Command {
 				return err
 			}
 
+			if from == "terraform" && importFilePath == "" && proj.Runtime.Name() == "hcl" {
+				return errors.New("`pulumi import --from terraform` will produce state that doesn't line up " +
+					"with Pulumi's HCL runtime.\nYou should run `pulumi import --from hcl` instead.")
+			}
+
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 			cwd, err := os.Getwd()
