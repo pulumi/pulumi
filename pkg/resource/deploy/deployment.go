@@ -367,6 +367,12 @@ type Deployment struct {
 	// the resource hook registry for this deployment
 	resourceHooks *ResourceHooks
 
+	// stateMigrationRewrites contains the rewrite rule from every migration committed during this deployment.
+	// State materialized after a migration is normalized before its next consumer: planning, step execution, or
+	// snapshot persistence.
+	stateMigrationRewritesM sync.RWMutex
+	stateMigrationRewrites  []*stateMigrationRewrite
+
 	// postStepErrors collects errors reported by phases that run after a step's primary cloud operation has succeeded
 	// (e.g. an after-hook callback). The step itself is still treated as successful and its state is committed to the
 	// snapshot, but the deployment as a whole will be cancelled.
