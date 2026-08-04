@@ -504,7 +504,7 @@ func (pc *packageCommand) newResourceListCommand(res *schema.Resource) *cobra.Co
 				}
 				stream, err := pc.provider.List(ctx, plugin.ListRequest{
 					Token:             tokens.Type(res.Token),
-					Query:             query,
+					Query:             resource.FromResourcePropertyMap(query),
 					Limit:             limit,
 					ContinuationToken: continuation,
 				})

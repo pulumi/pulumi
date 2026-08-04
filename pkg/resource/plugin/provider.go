@@ -371,7 +371,7 @@ type ListRequest struct {
 	Token tokens.Type
 	// Query is an optional provider-defined filter over resource state. It may contain unknown values, in which case
 	// the provider should respond with a [ListResponse] whose Computed flag is set.
-	Query resource.PropertyMap
+	Query property.Map
 	// Limit caps the total number of results across the entire enumeration. A value of zero means "no limit". The
 	// provider may return fewer results than Limit even when more match.
 	Limit int64
