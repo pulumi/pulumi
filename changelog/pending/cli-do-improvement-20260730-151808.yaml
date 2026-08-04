@@ -1,4 +1,0 @@
-component: cli/do
-kind: improvement
-body: Add support for the `--provider` argument for stateful operations
-time: 2026-07-30T15:18:08.804503+01:00

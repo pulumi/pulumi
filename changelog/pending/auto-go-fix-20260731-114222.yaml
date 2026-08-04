@@ -1,4 +1,0 @@
-component: auto/go
-kind: fix
-body: Fix `ImportResources` when `GenerateCode(false)` is set
-time: 2026-07-31T11:42:22.152630722+02:00

@@ -1,4 +1,0 @@
-component: cli
-kind: feat
-body: Add a `--server` flag to `pulumi package add`, `publish`, `get-schema`, `get-mapping`, `gen-sdk`, `info` and `pulumi schema check` that skips package resolution and uses the given URL as the plugin download URL
-time: 2026-07-29T12:00:00.000000+00:00

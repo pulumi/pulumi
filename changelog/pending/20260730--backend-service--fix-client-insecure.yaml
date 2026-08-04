@@ -1,7 +1,0 @@
-component: backend/service
-kind: fix
-body: Fix `pulumi login --insecure` not being reflected in the stack's service secrets
-    manager state, which caused TLS verification failures against self-hosted backends
-    using self-signed certificates
-custom:
-    PR: "24134"
