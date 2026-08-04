@@ -78,7 +78,13 @@ ResourceHookFunction = Callable[
     [ResourceHookArgs],
     Union[None, Awaitable[None]],
 ]
-"""ResourceHookFunction is a function that can be registered as a resource hook."""
+"""
+ResourceHookFunction is a function that can be registered as a resource hook.
+
+Resource hook callbacks may invoke provider functions and call external services,
+but they must not register Pulumi resources, hooks, or transforms, or otherwise
+modify the deployment.
+"""
 
 
 class ErrorHookArgs:
@@ -150,7 +156,14 @@ ErrorHookFunction = Callable[
     [ErrorHookArgs],
     Union[bool, Awaitable[bool]],
 ]
-"""ErrorHookFunction is a function that can be registered as an error hook. Returns True to retry, False to not retry."""
+"""
+ErrorHookFunction is a function that can be registered as an error hook. Returns
+True to retry and False to stop retrying.
+
+Error hook callbacks may invoke provider functions and call external services,
+but they must not register Pulumi resources, hooks, or transforms, or otherwise
+modify the deployment.
+"""
 
 
 class ErrorHook:

@@ -33,6 +33,7 @@ from google.protobuf import empty_pb2
 from .._utils import contextproperty
 from ..errors import RunError
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc, engine_pb2
+from ._callback_context import _ensure_runtime_operation_allowed
 from ._callbacks import _CallbackServicer
 from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from .rpc_manager import RPCManager
@@ -409,6 +410,8 @@ async def register_package(
     receive distinct refs. When extension is True, the package is registered as
     an extension parameterization rather than a replacement.
     """
+    _ensure_runtime_operation_allowed("register package", provider_function=True)
+
     key = "\0".join(
         [
             base_provider_name,

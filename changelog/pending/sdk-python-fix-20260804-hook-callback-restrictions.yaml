@@ -1,0 +1,4 @@
+component: sdk/python
+kind: fix
+body: Prevent resource and error hook callbacks from modifying the Pulumi deployment
+time: 2026-08-04T13:35:02+02:00

@@ -29,6 +29,7 @@ from collections.abc import Awaitable, Mapping, Sequence
 from . import _types
 from .resource_hooks import ResourceHookBinding
 from .runtime import known_types
+from .runtime._callback_context import _ensure_runtime_operation_allowed
 from .runtime.resource import (
     _pkg_from_type,
     get_resource,
@@ -915,6 +916,8 @@ class Resource:
             self._childResources = set()
             return
 
+        _ensure_runtime_operation_allowed("resource construction")
+
         if props is None:
             props = {}
         if not t:
@@ -1358,6 +1361,8 @@ def export(name: str, value: Any):
     :param str name: The name to assign to this output.
     :param Any value: The value of this output.
     """
+    _ensure_runtime_operation_allowed("export stack output")
+
     res = cast("Stack", get_root_resource())
     if known_types.is_stack(res):
         res.output(name, value)

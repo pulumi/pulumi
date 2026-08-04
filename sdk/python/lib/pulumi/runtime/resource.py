@@ -27,6 +27,7 @@ from collections.abc import Awaitable, Mapping, Sequence
 
 import grpc
 
+from ._callback_context import _ensure_runtime_operation_allowed
 from ._instrumentation import wrap_with_context
 from google.protobuf import struct_pb2
 
@@ -1278,6 +1279,8 @@ def register_resource(
 def register_resource_outputs(
     res: "Resource", outputs: "Union[Inputs, Output[Inputs]]"
 ):
+    _ensure_runtime_operation_allowed("register resource outputs")
+
     async def do_register_resource_outputs():
         urn = await res.urn.future()
         # serialize_properties expects a collection (empty is fine) but not None, but this is called pretty
@@ -1441,6 +1444,8 @@ async def _prepare_resource_hooks(
 
 
 def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
+    _ensure_runtime_operation_allowed("register resource hook")
+
     async def do_register() -> None:
         callbacks = await _get_callbacks()
         if callbacks is None:
@@ -1464,6 +1469,8 @@ def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
 
 
 def register_error_hook(hook: "ErrorHook") -> asyncio.Future[None]:
+    _ensure_runtime_operation_allowed("register error hook")
+
     async def do_register() -> None:
         callbacks = await _get_callbacks()
         if callbacks is None:

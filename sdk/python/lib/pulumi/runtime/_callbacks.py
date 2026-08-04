@@ -33,6 +33,7 @@ from packaging import version
 
 from .. import log
 from ..invoke import InvokeOptions, InvokeTransform
+from ._callback_context import _callback_restrictions
 from .proto import (
     alias_pb2,
     callback_pb2,
@@ -58,6 +59,11 @@ if TYPE_CHECKING:
 
 
 _CallbackFunction = Callable[[bytes], Awaitable[Message]]
+
+_HOOK_CALLBACK_GUIDANCE = (
+    "Hook callbacks may invoke provider functions, but must not register resources "
+    "or otherwise modify the Pulumi deployment."
+)
 
 
 class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
@@ -352,20 +358,25 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
                     else None
                 )
 
-                maybeAwaitable = hook(
-                    ResourceHookArgs(
-                        urn=request.urn,
-                        id=request.id,
-                        name=request.name,
-                        type=request.type,
-                        new_inputs=new_inputs,
-                        old_inputs=old_inputs,
-                        new_outputs=new_outputs,
-                        old_outputs=old_outputs,
+                with _callback_restrictions(
+                    f"resource hook {hook.name!r} for resource {request.urn!r}",
+                    allow_provider_functions=True,
+                    guidance=_HOOK_CALLBACK_GUIDANCE,
+                ):
+                    maybeAwaitable = hook(
+                        ResourceHookArgs(
+                            urn=request.urn,
+                            id=request.id,
+                            name=request.name,
+                            type=request.type,
+                            new_inputs=new_inputs,
+                            old_inputs=old_inputs,
+                            new_outputs=new_outputs,
+                            old_outputs=old_outputs,
+                        )
                     )
-                )
-                if isinstance(maybeAwaitable, Awaitable):
-                    await maybeAwaitable
+                    if isinstance(maybeAwaitable, Awaitable):
+                        await maybeAwaitable
                 return resource_pb2.ResourceHookResponse()
             except Exception as e:  # noqa: BLE001 catch blind exception
                 log.debug(f"Exception while executing hook: {str(e)}")
@@ -448,11 +459,16 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
                     failed_operation=request.failed_operation,
                     errors=list(request.errors),
                 )
-                maybe_retry = hook(args)
-                if isinstance(maybe_retry, Awaitable):
-                    retry = await maybe_retry
-                else:
-                    retry = maybe_retry
+                with _callback_restrictions(
+                    f"error hook {hook.name!r} for resource {request.urn!r}",
+                    allow_provider_functions=True,
+                    guidance=_HOOK_CALLBACK_GUIDANCE,
+                ):
+                    maybe_retry = hook(args)
+                    if isinstance(maybe_retry, Awaitable):
+                        retry = await maybe_retry
+                    else:
+                        retry = maybe_retry
                 return resource_pb2.ErrorHookResponse(retry=retry)
             except Exception as e:  # noqa: BLE001 catch blind exception
                 log.debug(f"Exception while executing error hook: {str(e)}")
