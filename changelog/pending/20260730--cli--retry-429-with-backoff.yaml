@@ -1,7 +1,0 @@
-component: cli
-kind: fix
-body: Retry rate-limited (HTTP 429) API requests when they are safe to retry, honoring
-  the server's Retry-After header
-time: 2026-07-30T00:00:00+00:00
-custom:
-    PR: "24131"

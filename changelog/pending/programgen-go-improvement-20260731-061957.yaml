@@ -1,4 +1,0 @@
-component: programgen/go
-kind: improvement
-body: Better typing for maps, using known types rather than `map[string]interface{}`
-time: 2026-07-31T06:19:57.614121+01:00

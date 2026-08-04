@@ -1,4 +1,0 @@
-component: sdk/go
-kind: fix
-body: Fix hooks and transforms causing panics with mocks
-time: 2026-08-01T04:09:15.736529+01:00

@@ -1,4 +1,0 @@
-component: programgen/go
-kind: fix
-body: Avoid redundant applies when projecting properties from generated Go object outputs
-time: 2026-07-28T17:17:17+02:00

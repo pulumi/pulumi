@@ -1,4 +1,0 @@
-component: sdk
-kind: fix
-body: Fix apply erroring for skipped resources
-time: 2026-07-29T13:37:29.054684063+02:00
