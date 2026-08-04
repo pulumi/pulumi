@@ -22,6 +22,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
+// Attended reports whether a user is present for this run. It decides both
+// whether an unlock prompt may be completed and whether stderr warnings have
+// an audience, so the CLI holds one opinion about presence. --non-interactive
+// overrides detection in either direction; otherwise CI counts as unattended,
+// and on Linux a session without a display cannot draw dialogs.
+func Attended() bool { return someoneCanAnswerAPasswordDialog() }
+
 func someoneCanAnswerAPasswordDialog() bool {
 	if interactive, stated := cmdutil.StatedInteractive(); stated {
 		return interactive

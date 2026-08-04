@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -420,6 +421,8 @@ func readCredentialsFile(credsFile string) (Credentials, error) {
 		if c, err = decryptCredentials(credsFile, c); err != nil {
 			return Credentials{}, err
 		}
+	} else if mode, _ := credentialStoreMode(); mode == securestore.ModeAuto || mode == securestore.ModeOS {
+		warnPlaintextPending()
 	}
 
 	var creds Credentials
@@ -546,6 +549,10 @@ func writeCredentialsFile(credsFile string, creds Credentials) error {
 	// set would silently downgrade migrated credentials back to plaintext.
 	// Only the explicit "plaintext" mode decrypts on write, and an envelope
 	// this build cannot parse is never overwritten at all.
+	//
+	// Stickiness survives key-recovery: when `pulumi login` has just removed
+	// an undecryptable envelope, the replacement is written as auto would,
+	// not plaintext.
 	sticky := false
 	if mode, _ := credentialStoreMode(); mode != securestore.ModePlaintext {
 		if existing, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(existing) {
@@ -568,6 +575,16 @@ func writeCredentialsFile(credsFile string, creds Credentials) error {
 			}
 		}
 	}
+	recovery := false
+	if !sticky && st.Backend() == securestore.BackendPlaintext && replacedEnvelope.Load() {
+		if mode, _ := credentialStoreMode(); mode == securestore.ModeDefault {
+			recovered, rerr := stores.Resolve(securestore.ModeAuto)
+			if rerr != nil {
+				return rerr
+			}
+			st, recovery = recovered, true
+		}
+	}
 	if st.Backend() != securestore.BackendPlaintext {
 		key, keyErr := st.GetOrCreateKey()
 		if keyErr != nil {
@@ -587,7 +604,7 @@ func writeCredentialsFile(credsFile string, creds Credentials) error {
 			}
 			logging.V(7).Infof("Writing credentials with secure store backend %q", st.Backend())
 		}
-	} else if mode, _ := credentialStoreMode(); mode == securestore.ModeAuto {
+	} else if mode, _ := credentialStoreMode(); mode == securestore.ModeAuto || recovery {
 		reason := st.FallbackReason()
 		if reason == nil {
 			reason = securestore.ErrUnavailable
@@ -623,6 +640,11 @@ func deleteCurrentBackendKey() {
 	}
 }
 
+// replacedEnvelope records that this process removed an encrypted credentials
+// file, so the replacement write stays encrypted: recovering from a lost key
+// is not the explicit "plaintext" opt-out.
+var replacedEnvelope atomic.Bool
+
 // ResetStoredCredentials removes the stored credentials file along with the
 // encryption key and secure-store marker state protecting it, leaving other
 // local configuration intact. It is the recovery path used by `pulumi login`
@@ -635,6 +657,7 @@ func ResetStoredCredentials() error {
 	// Drop the key both via the backend recorded in the envelope and via the
 	// best currently-available backend — they can differ. Best effort.
 	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
+		replacedEnvelope.Store(true)
 		if backend, backendErr := securestore.EnvelopeBackend(raw); backendErr == nil {
 			if st, stErr := stores.ForBackend(backend); stErr == nil {
 				if err := st.DeleteKey(); err != nil {

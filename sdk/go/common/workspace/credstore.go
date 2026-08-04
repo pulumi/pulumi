@@ -24,7 +24,6 @@ import (
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 )
@@ -53,10 +52,13 @@ func credentialStoreMode() (securestore.Mode, error) {
 // /usr/bin/security on macOS.
 var writeStore = sync.OnceValues(resolveWriteStore)
 
-// resetWriteStoreForTesting re-arms the memoization; tests that change
-// PULUMI_CREDENTIAL_STORE or install the securestore mock must call it.
+// resetWriteStoreForTesting re-arms the memoization and clears the recovery
+// marker; tests that change PULUMI_CREDENTIAL_STORE or install the
+// securestore mock must call it.
 func resetWriteStoreForTesting() {
 	writeStore = sync.OnceValues(resolveWriteStore)
+	replacedEnvelope.Store(false)
+	plaintextPendingOnce = sync.Once{}
 }
 
 func resolveWriteStore() (keyStore, error) {
@@ -111,30 +113,32 @@ func writeCredStoreState(state credStoreState) {
 	_ = os.WriteFile(path, data, 0o600)
 }
 
-// headlessEnvironment reports whether we're running without an interactive
-// user: AI-agent sessions, CI, or SSH. Used ONLY to suppress the
-// plaintext-fallback warning so automation logs stay clean — it never
-// influences the backend decision.
-func headlessEnvironment() bool {
-	if agentdetect.Detect(os.Getenv) != "" {
-		return true
-	}
-	for _, v := range []string{"CI", "SSH_CONNECTION", "SSH_TTY"} {
-		if os.Getenv(v) != "" {
-			return true
-		}
-	}
-	return false
-}
-
 // warnWriter is swapped in tests.
 var warnWriter io.Writer = os.Stderr
 
+// plaintextPendingOnce caps the opted-in plaintext-read notice at one per
+// process: credentials are read by the engine and every language host alike.
+var plaintextPendingOnce sync.Once
+
+// warnPlaintextPending tells an opted-in (auto/os) user that their
+// credentials file is still plaintext. Reads never rewrite the file, so the
+// nudge points at the write that will: the next login or credential update.
+func warnPlaintextPending() {
+	if !securestore.Attended() {
+		return
+	}
+	plaintextPendingOnce.Do(func() {
+		fmt.Fprintf(warnWriter,
+			"warning: credentials are stored in plaintext; the next `pulumi login` or credential update will encrypt them\n")
+	})
+}
+
 // warnPlaintextFallback prints a one-time notice that credentials will be
 // stored in plaintext and why. Recorded in the state file so it fires once
-// per machine, not once per run.
+// per machine, not once per run. Suppressed when nobody is watching, judged
+// by the same attended signal that governs unlock prompts.
 func warnPlaintextFallback(reason error) {
-	if headlessEnvironment() {
+	if !securestore.Attended() {
 		logging.V(7).Infof("credential store unavailable, using plaintext: %v", reason)
 		return
 	}

@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -195,17 +196,21 @@ func TestAgentCredentialsEncryptedToo(t *testing.T) {
 	assert.Equal(t, "pul-secret-token", account.AccessToken)
 }
 
+// forceAttended pins the tri-state interactivity to "attended" so warning
+// tests are deterministic on CI hosts, mirroring --non-interactive=false.
+func forceAttended(t *testing.T) {
+	t.Helper()
+	prevDisable, prevStated := cmdutil.DisableInteractive, cmdutil.InteractivityStated
+	cmdutil.DisableInteractive, cmdutil.InteractivityStated = false, true
+	t.Cleanup(func() {
+		cmdutil.DisableInteractive, cmdutil.InteractivityStated = prevDisable, prevStated
+	})
+}
+
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestWarnPlaintextFallbackOnlyOnce(t *testing.T) {
 	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
-	// Force non-headless so the warning is not suppressed.
-	t.Setenv("CI", "")
-	t.Setenv("SSH_CONNECTION", "")
-	t.Setenv("SSH_TTY", "")
-	t.Setenv("AI_AGENT", "")
-	if headlessEnvironment() {
-		t.Skip("cannot force a non-headless environment here (agent env vars present)")
-	}
+	forceAttended(t)
 
 	var buf bytes.Buffer
 	warnWriter = &buf
@@ -455,13 +460,7 @@ func TestDeclinedUnlockOnStickyWriteKeepsTheEnvelope(t *testing.T) {
 func TestPlaintextFallbackWarningNamesTheReason(t *testing.T) {
 	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
-	t.Setenv("CI", "")
-	t.Setenv("SSH_CONNECTION", "")
-	t.Setenv("SSH_TTY", "")
-	t.Setenv("AI_AGENT", "")
-	if headlessEnvironment() {
-		t.Skip("cannot force a non-headless environment here")
-	}
+	forceAttended(t)
 	absent := &fakeKeyStore{backend: fakeBackend, absent: true}
 	installStores(t, &fakeStores{
 		byBackend: map[securestore.Backend]*fakeKeyStore{fakeBackend: absent},
@@ -595,4 +594,97 @@ func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 	require.NoError(t, err)
 	_, err = weak.GetKey()
 	require.NoError(t, err)
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestRecoveryFromLostKeyStaysEncrypted(t *testing.T) {
+	// Replacing an undecryptable envelope is recovery, not the explicit
+	// "plaintext" opt-out: the file `pulumi login` writes back must be an
+	// envelope again even when no mode is configured at recovery time.
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+
+	require.NoError(t, fakeStore(t).DeleteKey())
+	_, err := GetStoredCredentials()
+	require.True(t, IsUndecryptableCredentials(err))
+
+	t.Setenv("PULUMI_CREDENTIAL_STORE", "")
+	resetWriteStoreForTesting()
+	require.NoError(t, ResetStoredCredentials())
+	require.NoError(t, StoreCredentials(testCreds()))
+
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	raw, err := os.ReadFile(credsFile)
+	require.NoError(t, err)
+	assert.True(t, securestore.IsEnvelope(raw),
+		"recovery must not downgrade a previously encrypted user to plaintext")
+
+	creds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, "pul-secret-token", creds.AccessTokens["https://api.pulumi.com"])
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestRecoveryInExplicitPlaintextModeWritesPlaintext(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+	require.NoError(t, fakeStore(t).DeleteKey())
+
+	t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
+	resetWriteStoreForTesting()
+	require.NoError(t, ResetStoredCredentials())
+	require.NoError(t, StoreCredentials(testCreds()))
+
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	raw, err := os.ReadFile(credsFile)
+	require.NoError(t, err)
+	assert.False(t, securestore.IsEnvelope(raw), "explicit plaintext mode governs recovery too")
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestOptedInPlaintextReadWarnsOnce(t *testing.T) {
+	for _, mode := range []string{"auto", "os"} {
+		pinSecureCreds(t, mode)
+		forceAttended(t)
+		credsFile, err := getCredsFilePath()
+		require.NoError(t, err)
+		plaintext := []byte(`{"current":"x","accessTokens":{"x":"tok"}}`)
+		require.NoError(t, os.WriteFile(credsFile, plaintext, 0o600))
+
+		var buf bytes.Buffer
+		warnWriter = &buf
+		t.Cleanup(func() { warnWriter = os.Stderr })
+
+		_, err = GetStoredCredentials()
+		require.NoError(t, err)
+		assert.Contains(t, buf.String(), "plaintext", "mode %q must warn about a plaintext file", mode)
+
+		raw, err := os.ReadFile(credsFile)
+		require.NoError(t, err)
+		assert.Equal(t, plaintext, raw, "the warning must not come with a rewrite")
+
+		buf.Reset()
+		_, err = GetStoredCredentials()
+		require.NoError(t, err)
+		assert.Empty(t, buf.String(), "the warning fires once per process")
+	}
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestUnsetModePlaintextReadDoesNotWarn(t *testing.T) {
+	pinSecureCreds(t, "")
+	forceAttended(t)
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(credsFile, []byte(`{"current":"x","accessTokens":{"x":"tok"}}`), 0o600))
+
+	var buf bytes.Buffer
+	warnWriter = &buf
+	t.Cleanup(func() { warnWriter = os.Stderr })
+
+	_, err = GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Empty(t, buf.String(), "plaintext is the expected default without opt-in")
 }
