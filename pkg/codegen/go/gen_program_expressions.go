@@ -516,6 +516,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 			// Unlike other languages, Go cannot leave out trailing optional parameters, so
 			// every parameter is emitted, passing nil for absent optional ones.
+			savedPlainInvokeArgs := g.inPlainInvokeArgs
+			g.inPlainInvokeArgs = !pcl.IsOutputVersionInvokeCall(expr)
 			for _, param := range pcl.SortedFunctionParameters(expr) {
 				g.Fgen(w, ", ")
 				if value, ok := arguments[param.Name]; ok {
@@ -524,6 +526,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					g.Fgen(w, "nil")
 				}
 			}
+			g.inPlainInvokeArgs = savedPlainInvokeArgs
 		} else if isOut {
 			outTypeName, err := outputVersionFunctionArgTypeName(outArgsType, g.externalCache)
 			if err != nil {
@@ -545,7 +548,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.genObjectConsExpressionWithTypeName(w, outArgs, outArgsType, outTypeName)
 		} else {
 			g.Fgenf(w, "%s.%s(ctx, ", module, fn)
+			savedPlainInvokeArgs := g.inPlainInvokeArgs
+			g.inPlainInvokeArgs = true
 			g.Fgenf(w, "%.v", expr.Args[1])
+			g.inPlainInvokeArgs = savedPlainInvokeArgs
 		}
 
 		var options []string
@@ -917,7 +923,10 @@ func (g *generator) genObjectConsExpression(
 	// input shape. isInputty only detects a wrapping OutputType; for union
 	// members inside a resource input the model type is a bare ObjectType,
 	// so detect the InputShape directly to route to the ...Args form.
-	if !isInput {
+	// Plain invokes are exempt: they take the plain argument structs, and
+	// their anonymous inputs object is tokened "<fn>Args", so routing it to
+	// the input shape would name a nonexistent "...ArgsArgs" type.
+	if !isInput && !g.inPlainInvokeArgs {
 		if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 			if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok && obj.InputShape != nil {
 				isInput = true
