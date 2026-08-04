@@ -1,0 +1,7 @@
+component: sdk/nodejs
+kind: fix
+body: Defer output-form invokes that depend on a remote component whose resources
+  are pending creation, by declaring invoke dependencies to the engine
+time: 2026-07-23T00:00:00+00:00
+custom:
+  PR: "24042"

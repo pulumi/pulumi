@@ -392,6 +392,9 @@ export async function awaitFeatureSupport(): Promise<void> {
         resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
     );
     store.supportsErrorHooks = features.includes(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS);
+    store.supportsInvokeDependsOn = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
+    );
 }
 
 /**
