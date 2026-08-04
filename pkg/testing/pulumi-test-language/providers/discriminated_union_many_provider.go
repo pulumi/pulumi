@@ -106,8 +106,27 @@ func (p *DiscriminatedUnionManyProvider) GetSchema(
 		},
 	}
 
+	// A subset union over the first three variants. A value of this type should
+	// be assignable to a field typed as the full union above, so we can chain
+	// a SubsetExample's output into an Example's input.
+	subsetOneOf := oneOf[:3]
+	subsetMapping := map[string]string{}
+	for _, v := range variants[:3] {
+		subsetMapping[v.kind] = mapping[v.kind]
+	}
+	subsetUnion := schema.TypeSpec{
+		OneOf: subsetOneOf,
+		Discriminator: &schema.DiscriminatorSpec{
+			PropertyName: "discriminantKind",
+			Mapping:      subsetMapping,
+		},
+	}
+
 	resourceProperties := map[string]schema.PropertySpec{
 		"unionOf": {TypeSpec: union},
+	}
+	subsetResourceProperties := map[string]schema.PropertySpec{
+		"unionOf": {TypeSpec: subsetUnion},
 	}
 
 	pkg := schema.PackageSpec{
@@ -115,6 +134,13 @@ func (p *DiscriminatedUnionManyProvider) GetSchema(
 		Version: p.version().String(),
 		Types:   types,
 		Resources: map[string]schema.ResourceSpec{
+			fmt.Sprintf("%s:index:SubsetExample", p.pkg()): {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type:       "object",
+					Properties: subsetResourceProperties,
+				},
+				InputProperties: subsetResourceProperties,
+			},
 			fmt.Sprintf("%s:index:Example", p.pkg()): {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
@@ -173,10 +199,16 @@ func (p *DiscriminatedUnionManyProvider) DiffConfig(
 	return plugin.DiffResult{}, nil
 }
 
+func (p *DiscriminatedUnionManyProvider) isKnownType(t tokens.Type) bool {
+	s := string(t)
+	return s == fmt.Sprintf("%s:index:Example", p.pkg()) ||
+		s == fmt.Sprintf("%s:index:SubsetExample", p.pkg())
+}
+
 func (p *DiscriminatedUnionManyProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	if string(req.URN.Type()) != fmt.Sprintf("%s:index:Example", p.pkg()) {
+	if !p.isKnownType(req.URN.Type()) {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
@@ -188,7 +220,7 @@ func (p *DiscriminatedUnionManyProvider) Check(
 func (p *DiscriminatedUnionManyProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	if string(req.URN.Type()) == fmt.Sprintf("%s:index:Example", p.pkg()) {
+	if p.isKnownType(req.URN.Type()) {
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
 			Properties: req.Properties,

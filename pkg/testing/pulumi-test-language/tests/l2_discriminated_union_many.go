@@ -96,6 +96,23 @@ func init() {
 						"unionOf": resource.NewProperty(e.m),
 					}, r.Outputs, "resource %s", e.name)
 				}
+
+				// Sub-union assignment: subset1's output (a 3-variant union) is
+				// passed through to example11's input (the full 10-variant union).
+				subsetPayload := resource.PropertyMap{
+					"discriminantKind": resource.NewProperty("variant3"),
+					"payload":          resource.NewProperty("sp"),
+					"count":            resource.NewProperty(33.0),
+				}
+				subset1 := RequireSingleNamedResource(l, snapshot.Resources, "subset1")
+				require.Equal(l, resource.PropertyMap{
+					"unionOf": resource.NewProperty(subsetPayload),
+				}, subset1.Outputs)
+
+				example11 := RequireSingleNamedResource(l, snapshot.Resources, "example11")
+				require.Equal(l, resource.PropertyMap{
+					"unionOf": resource.NewProperty(subsetPayload),
+				}, example11.Outputs)
 			},
 		}},
 	}
