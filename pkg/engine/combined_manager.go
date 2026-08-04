@@ -67,6 +67,46 @@ func (c *CombinedManager) RebuiltBaseState() error {
 	return errors.Join(errs...)
 }
 
+func (c *CombinedManager) SupportsStateMigrations() bool {
+	hasRequiredManager := false
+	for i, manager := range c.Managers {
+		if len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i] {
+			continue
+		}
+
+		hasRequiredManager = true
+		if !manager.SupportsStateMigrations() {
+			return false
+		}
+	}
+	return hasRequiredManager
+}
+
+func (c *CombinedManager) StateMigration(transaction *deploy.StateMigrationTransaction) error {
+	if !c.SupportsStateMigrations() {
+		return deploy.ErrStateMigrationsUnsupported
+	}
+
+	// As with the other CombinedManager mutations, forwarding is sequential rather than a distributed transaction.
+	// Production configurations use one authoritative manager; additional validation/shadow managers are best-effort.
+	var errs []error
+	for i, manager := range c.Managers {
+		bestEffort := len(c.CollectErrorsOnly) > i && c.CollectErrorsOnly[i]
+		// The preflight above guarantees every authoritative manager supports migrations.
+		if bestEffort && !manager.SupportsStateMigrations() {
+			continue
+		}
+		if err := manager.StateMigration(transaction); err != nil {
+			if bestEffort {
+				c.appendError(err)
+			} else {
+				errs = append(errs, err)
+			}
+		}
+	}
+	return errors.Join(errs...)
+}
+
 func (c *CombinedManager) SetSnippets(snippets []resource.Snippet) error {
 	var errs []error
 	for i, m := range c.Managers {

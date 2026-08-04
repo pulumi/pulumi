@@ -32,6 +32,7 @@ const (
 	JournalEntryKindRebuiltBaseState      JournalEntryKind = 7
 	JournalEntryKindExtensionParameterize JournalEntryKind = 8
 	JournalEntryKindSnippets              JournalEntryKind = 9
+	JournalEntryKindStateMigration        JournalEntryKind = 10
 )
 
 func (k JournalEntryKind) String() string {
@@ -56,9 +57,25 @@ func (k JournalEntryKind) String() string {
 		return "extension-parameterize"
 	case JournalEntryKindSnippets:
 		return "snippets"
+	case JournalEntryKindStateMigration:
+		return "state-migration"
 	default:
 		return "invalid"
 	}
+}
+
+// JournalBaseStatePatch replaces a retained resource in the journal's base snapshot after a state migration.
+// State is the complete, already-rewritten checkpoint state; replay must not reinterpret migration successors.
+type JournalBaseStatePatch struct {
+	Index int64      `json:"index"`
+	State ResourceV3 `json:"state"`
+}
+
+// JournalNewStatePatch replaces a resource produced by an earlier operation after a state migration.
+// OperationID identifies the successful operation that introduced the resource into the journal's new-state list.
+type JournalNewStatePatch struct {
+	OperationID int64      `json:"operationID"`
+	State       ResourceV3 `json:"state"`
 }
 
 type JournalEntry struct {
@@ -102,10 +119,21 @@ type JournalEntry struct {
 	ExtensionRef *ExtensionRef `json:"extensionRef,omitempty"`
 	Extension    *Extension    `json:"extension,omitempty"`
 
-	// True if serializing this entry's State, Operation, or NewSnapshot encoded strings containing
-	// non-UTF8 bytes. Such strings inside secrets are invisible after encryption, so the fact must be
-	// recorded at serialization time for replay to gate rebuilt deployments on the byteString feature.
+	// True if serializing any resource state carried by this entry encoded strings containing non-UTF8 bytes.
+	// Such strings inside secrets are invisible after encryption, so the fact must be recorded at serialization
+	// time for replay to gate rebuilt deployments on the byteString feature.
 	RequiresByteString bool `json:"requiresByteString,omitempty"`
+	// RemoveOlds holds the indices (in increasing order) of the resources in the base snapshot that a state
+	// migration removes. Only set for JournalEntryKindStateMigration entries.
+	RemoveOlds []int64 `json:"removeOlds,omitempty"`
+	// States holds the resources a state migration splices into the base snapshot, in order. They take the
+	// position of the last removed resource. Only set for JournalEntryKindStateMigration entries.
+	States []ResourceV3 `json:"states,omitempty"`
+	// BaseStatePatches contains complete replacements for retained base resources whose references were rewritten.
+	// Indices refer to the base snapshot before RemoveOlds is applied.
+	BaseStatePatches []JournalBaseStatePatch `json:"baseStatePatches,omitempty"`
+	// NewStatePatches contains complete replacements for resources produced by operations earlier in this update.
+	NewStatePatches []JournalNewStatePatch `json:"newStatePatches,omitempty"`
 }
 
 func (e JournalEntry) String() string {
@@ -147,6 +175,18 @@ func (e JournalEntry) String() string {
 	}
 	if e.Snippets != nil {
 		fmt.Fprintf(&sb, ", snippets(%v)", len(e.Snippets))
+	}
+	if e.RemoveOlds != nil {
+		fmt.Fprintf(&sb, ", removeOlds(%v)", len(e.RemoveOlds))
+	}
+	if e.States != nil {
+		fmt.Fprintf(&sb, ", states(%v)", len(e.States))
+	}
+	if e.BaseStatePatches != nil {
+		fmt.Fprintf(&sb, ", baseStatePatches(%v)", len(e.BaseStatePatches))
+	}
+	if e.NewStatePatches != nil {
+		fmt.Fprintf(&sb, ", newStatePatches(%v)", len(e.NewStatePatches))
 	}
 
 	return sb.String()

@@ -15,9 +15,14 @@
 package backend
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -101,6 +106,7 @@ func TestJournalReplayerRefreshPrunesReplaceWith(t *testing.T) {
 	// old state in the base snapshot.
 	removeOld := int64(1)
 	require.NoError(t, replayer.Add(apitype.JournalEntry{
+		Version:     1,
 		Kind:        apitype.JournalEntryKindRefreshSuccess,
 		OperationID: 1,
 		RemoveOld:   &removeOld,
@@ -123,5 +129,144 @@ func TestJournalReplayerRefreshPrunesReplaceWith(t *testing.T) {
 	assert.Empty(t, byURN[unrelated.URN].ReplaceWith)
 	for _, r := range deployment.Deployment.Resources {
 		assert.NotContains(t, r.ReplaceWith, resource.URN(""), "resource %s", r.URN)
+	}
+}
+
+func TestJournalReplayerRejectsUnsupportedEntryVersion(t *testing.T) {
+	t.Parallel()
+
+	for _, version := range []int{0, int(apitype.LatestJournalVersion + 1)} {
+		t.Run(fmt.Sprintf("version %d", version), func(t *testing.T) {
+			t.Parallel()
+
+			err := NewJournalReplayer(&apitype.DeploymentV3{}).Add(apitype.JournalEntry{
+				Version: version,
+				Kind:    apitype.JournalEntryKindBegin,
+			})
+			require.ErrorContains(t, err, fmt.Sprintf("unsupported journal entry version %d", version))
+		})
+	}
+}
+
+func TestJournalReplayerRejectsUnknownEntryKind(t *testing.T) {
+	t.Parallel()
+
+	err := NewJournalReplayer(&apitype.DeploymentV3{}).Add(apitype.JournalEntry{
+		Version: 1,
+		Kind:    apitype.JournalEntryKind(999),
+	})
+	require.ErrorContains(t, err, "unsupported journal entry kind 999")
+}
+
+func TestStateMigrationSecretReferencePatchRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	newState := func(name string) *pkgresource.State {
+		urn := resource.URN("urn:pulumi:test::test::pkgA:m:typA::" + name)
+		return &pkgresource.State{
+			Type:   urn.Type(),
+			URN:    urn,
+			Custom: true,
+			ID:     resource.ID("id-" + name),
+		}
+	}
+	predecessor := newState("predecessor")
+	successor := newState("successor")
+	successor.ID = predecessor.ID
+	consumer := newState("consumer")
+	consumer.Outputs = resource.PropertyMap{
+		"payload": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
+			"nestedReference": resource.MakeCustomResourceReference(
+				predecessor.URN, predecessor.ID, "1.2.3"),
+		})),
+	}
+	operationConsumer := consumer.Copy()
+	operationConsumer.URN = resource.URN("urn:pulumi:test::test::pkgA:m:typA::operation-consumer")
+	operationConsumer.ID = "id-operation-consumer"
+
+	transaction := &deploy.StateMigrationTransaction{
+		SuccessorURNs:          map[resource.URN]resource.URN{predecessor.URN: successor.URN},
+		PreparedPriorResources: []*pkgresource.State{successor, consumer},
+	}
+	rewritten, err := transaction.RewriteResources([]*pkgresource.State{consumer, operationConsumer})
+	require.NoError(t, err)
+	require.NotSame(t, consumer, rewritten[0])
+	require.NotSame(t, operationConsumer, rewritten[1])
+
+	secretsManager := b64.NewBase64SecretsManager()
+	entry, err := SerializeJournalEntry(t.Context(), engine.JournalEntry{
+		Kind:         engine.JournalEntryStateMigration,
+		RemoveOlds:   []int64{0},
+		ResultStates: []*pkgresource.State{successor},
+		BaseStatePatches: []engine.JournalBaseStatePatch{{
+			Index: 1,
+			State: rewritten[0],
+		}},
+		NewStatePatches: []engine.JournalNewStatePatch{{
+			OperationID: 42,
+			State:       rewritten[1],
+		}},
+	}, secretsManager.Encrypter())
+	require.NoError(t, err)
+	require.Len(t, entry.BaseStatePatches, 1)
+	require.Len(t, entry.NewStatePatches, 1)
+
+	patchSecret := func(state apitype.ResourceV3) *apitype.SecretV1 {
+		secret, ok := state.Outputs["payload"].(*apitype.SecretV1)
+		require.True(t, ok)
+		assert.Empty(t, secret.Plaintext)
+		assert.NotEmpty(t, secret.Ciphertext)
+		assert.NotContains(t, secret.Ciphertext, string(predecessor.URN))
+		assert.NotContains(t, secret.Ciphertext, string(successor.URN))
+		return secret
+	}
+	basePatchSecret := patchSecret(entry.BaseStatePatches[0].State)
+	newPatchSecret := patchSecret(entry.NewStatePatches[0].State)
+
+	serializeBaseState := func(state *pkgresource.State) apitype.ResourceV3 {
+		serialized, _, err := stack.SerializeResource(t.Context(), state, secretsManager.Encrypter(), false)
+		require.NoError(t, err)
+		return serialized
+	}
+	replayer := NewJournalReplayer(&apitype.DeploymentV3{Resources: []apitype.ResourceV3{
+		serializeBaseState(predecessor),
+		serializeBaseState(consumer),
+	}})
+	operationState := serializeBaseState(operationConsumer)
+	require.NoError(t, replayer.Add(apitype.JournalEntry{
+		Version:     1,
+		Kind:        apitype.JournalEntryKindSuccess,
+		OperationID: 42,
+		State:       &operationState,
+	}))
+	require.NoError(t, replayer.Add(entry))
+	deployment, err := replayer.GenerateDeployment()
+	require.NoError(t, err)
+
+	byURN := make(map[resource.URN]apitype.ResourceV3, len(deployment.Deployment.Resources))
+	for _, state := range deployment.Deployment.Resources {
+		byURN[state.URN] = state
+	}
+	for _, expected := range []struct {
+		urn        resource.URN
+		ciphertext string
+	}{
+		{consumer.URN, basePatchSecret.Ciphertext},
+		{operationConsumer.URN, newPatchSecret.Ciphertext},
+	} {
+		replayed := byURN[expected.urn]
+		replayedSecret, ok := replayed.Outputs["payload"].(*apitype.SecretV1)
+		require.True(t, ok)
+		assert.Equal(t, expected.ciphertext, replayedSecret.Ciphertext,
+			"replay should install the prepared ciphertext without interpreting it")
+
+		roundTripped, err := stack.DeserializeResource(replayed, secretsManager.Decrypter())
+		require.NoError(t, err)
+		payload := roundTripped.Outputs["payload"]
+		require.True(t, payload.IsSecret())
+		reference := payload.SecretValue().Element.ObjectValue()["nestedReference"].ResourceReferenceValue()
+		assert.Equal(t, successor.URN, reference.URN)
+		assert.Equal(t, string(successor.ID), reference.ID.StringValue())
+		assert.Empty(t, reference.PackageVersion)
 	}
 }
