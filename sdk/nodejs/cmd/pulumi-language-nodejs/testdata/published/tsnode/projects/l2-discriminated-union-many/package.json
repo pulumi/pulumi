@@ -6,6 +6,6 @@
 	"dependencies": {
 		"typescript": "^4.7.0",
 		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
-		"@pulumi/discriminated-union-many": "ROOT/artifacts/pulumi-discriminated-union-many-42.0.0.tgz"
+		"@pulumi/discriminated-union-many": "ROOT/artifacts/pulumi-discriminated-union-many-49.0.0.tgz"
 	}
 }

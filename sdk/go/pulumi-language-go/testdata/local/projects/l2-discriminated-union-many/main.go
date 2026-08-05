@@ -1,7 +1,7 @@
 package main
 
 import (
-	"example.com/pulumi-discriminated-union-many/sdk/go/v42/discriminatedunionmany"
+	"example.com/pulumi-discriminated-union-many/sdk/go/v49/discriminatedunionmany"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

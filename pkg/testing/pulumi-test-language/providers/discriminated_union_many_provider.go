@@ -39,7 +39,7 @@ type DiscriminatedUnionManyProvider struct {
 var _ plugin.Provider = (*DiscriminatedUnionManyProvider)(nil)
 
 func (DiscriminatedUnionManyProvider) version() semver.Version {
-	return semver.Version{Major: 42}
+	return semver.Version{Major: 49}
 }
 
 func (p *DiscriminatedUnionManyProvider) pkg() tokens.Package {
