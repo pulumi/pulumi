@@ -56,9 +56,15 @@ All commands assume you're at the repo root.
 - Integration tests need the CLI and SDKs built first. `bin/` must be on `PATH`.
 - Copyright headers for new files should always be stamped with the current year.
 
+## Branch naming
+
+- Never create a top-level git branch (e.g. `fix-foo`, `add-bar`) when addressing an issue or PR.
+- Always scope branch names under an `eon/` prefix, and include the requesting user's GitHub login when it's known: `eon/<user-login>/<short-description>` (e.g. `eon/octocat/fix-flaky-test`). If the login isn't known, fall back to `eon/<short-description>`.
+
 ## Forbidden actions
 
 - Do not run `git push --force`, `git reset --hard`, or `rm -rf` without explicit approval.
+- Do not create a git branch that isn't prefixed with `eon/` (see Branch naming above).
 - Do not skip linting.
 - Do not edit generated proto files by hand — edit `proto/*.proto` and run `mise exec -- make build_proto`.
 - Do not edit other generated files by hand. Some tests use golden files updated with `PULUMI_ACCEPT=1`.
