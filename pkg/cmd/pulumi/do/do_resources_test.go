@@ -164,8 +164,8 @@ func TestFilterReferencesByPCLUsage_KeepsAllOnParseFailure(t *testing.T) {
 
 // TestDoCmdShowResourcesHelp asserts that `pulumi do show-resources --help` renders the
 // subcommand's own help without touching the backend. The parent `do` command runs with
-// DisableFlagParsing so cobra doesn't handle --help for it directly — dispatchShowResources
-// hands off to a real cobra subcommand to make --help behave normally.
+// DisableFlagParsing so cobra doesn't handle --help for it directly; the parent hands off to a
+// real cobra subcommand to make --help behave normally.
 func TestDoCmdShowResourcesHelp(t *testing.T) {
 	t.Parallel()
 
