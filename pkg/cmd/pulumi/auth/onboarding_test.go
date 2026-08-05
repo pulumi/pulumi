@@ -17,6 +17,8 @@ package auth
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -86,4 +88,62 @@ func TestOfferFirstStepIgnoresListStacksFailure(t *testing.T) {
 	err := offerFirstStep(t.Context(), be, t.TempDir(), out, display.Options{}, true)
 	require.NoError(t, err, "a failed emptiness check must not fail a successful login")
 	assert.Empty(t, out.String())
+}
+
+func TestValidateProjectDirectory(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+
+	empty := filepath.Join(root, "empty")
+	require.NoError(t, os.Mkdir(empty, 0o700))
+
+	occupied := filepath.Join(root, "occupied")
+	require.NoError(t, os.Mkdir(occupied, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(occupied, "main.go"), []byte("package main"), 0o600))
+
+	tests := []struct {
+		name    string
+		answer  any
+		wantErr string
+	}{
+		{name: "a directory that does not exist yet", answer: filepath.Join(root, "new")},
+		{name: "an existing empty directory", answer: empty},
+		{
+			name:    "an existing directory with files in it",
+			answer:  occupied,
+			wantErr: "is not empty, please enter an empty or new directory",
+		},
+		{name: "an empty answer", answer: "  ", wantErr: "please enter a directory"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := validateProjectDirectory(tt.answer)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestSuggestDirectories(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(root, "infra"), 0o700))
+	require.NoError(t, os.Mkdir(filepath.Join(root, "infra-staging"), 0o700))
+	require.NoError(t, os.Mkdir(filepath.Join(root, "other"), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "infra.txt"), []byte("x"), 0o600))
+
+	suggestions := suggestDirectories(filepath.Join(root, "inf"))
+
+	assert.Equal(t, []string{
+		filepath.Join(root, "infra"),
+		filepath.Join(root, "infra-staging"),
+	}, suggestions, "only directories matching the prefix are suggested, never files")
 }

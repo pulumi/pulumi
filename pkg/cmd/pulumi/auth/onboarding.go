@@ -16,8 +16,12 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
+	"strings"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/pkg/browser"
@@ -27,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const (
@@ -35,7 +38,6 @@ const (
 	newProjectAnswer = "Create a new Pulumi project"
 	guideAnswer      = "View the getting started guide"
 	skipAnswer       = "Skip for now"
-	runNewHint       = "To get started, run `pulumi new` in an empty directory"
 )
 
 // offerFirstStep offers a user with no stacks a path into their first project. It runs after login
@@ -57,8 +59,9 @@ func offerFirstStep(
 		return nil
 	}
 
-	message := "\nYou don't have any stacks yet. What would you like to do?"
-	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
+	message := opts.Color.Colorize(
+		colors.SpecPrompt + "\n\rYou don't have any stacks yet. What would you like to do?" + colors.Reset,
+	)
 
 	var answer string
 	if err := survey.AskOne(&survey.Select{
@@ -73,32 +76,43 @@ func offerFirstStep(
 	case newProjectAnswer:
 		return runNew(ctx, cwd, opts)
 	case guideAnswer:
-		fmt.Fprintf(out, "\n%s\n", getStartedURL)
-		contract.IgnoreError(browser.OpenURL(getStartedURL))
+		fmt.Fprintln(out, "\nOpening the getting started guide in your web browser...")
+		if err := browser.OpenURL(getStartedURL); err != nil {
+			fmt.Fprintf(out, "\nWe couldn't launch your web browser for some reason. Please visit:\n\n"+
+				"%s\n\nto get started.\n", getStartedURL)
+		}
 		return nil
 	default:
-		fmt.Fprintf(out, "\n%s\n", runNewHint)
+		fmt.Fprintln(out, "\nTo get started, run `pulumi new` in an empty directory")
 		return nil
 	}
 }
 
 // runNew runs `pulumi new` in cwd, asking where to put the project when cwd already has files in
-// it. `pulumi new` rejects a directory that isn't empty, so the answer is validated for us.
+// it.
 func runNew(ctx context.Context, cwd string, opts display.Options) error {
-	// An empty, non-nil slice: cobra parses os.Args when a command's args are nil.
+	// Cobra parses os.Args when a command's args are nil, so pass an empty slice instead.
 	args := []string{}
+	target := cwd
 	if newcmd.ErrorIfNotEmptyDirectory(cwd) != nil {
 		message := opts.Color.Colorize(colors.SpecPrompt +
-			"Current directory is not empty. Please choose an empty directory:" + colors.Reset)
+			"\rCurrent directory is not empty. Enter or create an empty directory:" + colors.Reset)
 
 		var dir string
 		if err := survey.AskOne(&survey.Input{
 			Message: message,
 			Help:    "The directory is created if it does not already exist.",
-		}, &dir, survey.WithValidator(survey.Required), ui.SurveyIcons(opts.Color)); err != nil {
+			Suggest: suggestDirectories,
+		}, &dir, survey.WithValidator(validateProjectDirectory), ui.SurveyIcons(opts.Color)); err != nil {
 			return nil
 		}
 		args = []string{"--dir", dir}
+		target = dir
+	}
+
+	// `pulumi new --dir` changes the working directory, so resolve the target while we still can.
+	if abs, err := filepath.Abs(target); err == nil {
+		target = abs
 	}
 
 	newCmd := newcmd.NewNewCmd()
@@ -106,5 +120,48 @@ func runNew(ctx context.Context, cwd string, opts display.Options) error {
 	// `pulumi new`'s usage text and error reporting belong to `pulumi login`'s caller here.
 	newCmd.SilenceUsage = true
 	newCmd.SilenceErrors = true
-	return newCmd.ExecuteContext(ctx)
+
+	// `pulumi new` can fail before it writes anything or long after, and returns a bare error
+	// either way. We don't have to tell those apart: target was empty before this ran, so anything
+	// in it now is a half-written project the user should know about.
+	err := newCmd.ExecuteContext(ctx)
+	if err != nil && newcmd.ErrorIfNotEmptyDirectory(target) != nil {
+		return fmt.Errorf("%w\nYour new project in %s is incomplete", err, target)
+	}
+	return err
+}
+
+// suggestDirectories completes a partially typed path against the directories it could name, so
+// the prompt answers <tab> the way a shell would.
+func suggestDirectories(toComplete string) []string {
+	// Glob only fails on a malformed pattern, for which no suggestions is the right answer.
+	matches, _ := filepath.Glob(toComplete + "*")
+
+	dirs := make([]string, 0, len(matches))
+	for _, match := range matches {
+		if info, err := os.Stat(match); err == nil && info.IsDir() {
+			dirs = append(dirs, match)
+		}
+	}
+	return dirs
+}
+
+// validateProjectDirectory rejects what `pulumi new` would reject, so the user can correct it at
+// the prompt.
+func validateProjectDirectory(answer any) error {
+	dir, _ := answer.(string)
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		return errors.New("please enter a directory")
+	}
+
+	// A directory that does not exist yet is the common answer; `pulumi new --dir` creates it.
+	if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+
+	if newcmd.ErrorIfNotEmptyDirectory(dir) != nil {
+		return fmt.Errorf("%s is not empty, please enter an empty or new directory", dir)
+	}
+	return nil
 }
