@@ -16,14 +16,20 @@ package do
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestAutoResourceNames_PrefersBareName(t *testing.T) {
@@ -153,6 +159,58 @@ func TestFilterReferencesByUsage(t *testing.T) {
 	// A nil `used` (e.g. from an unparseable file) leaves refs unchanged so we don't accidentally
 	// strip everything on a parse failure.
 	assert.Equal(t, refs, filterReferencesByUsage(refs, nil))
+}
+
+// TestDoCmdShowResourcesHelp asserts that `pulumi do show-resources --help` renders the
+// subcommand's own help without touching the backend. The parent `do` command runs with
+// DisableFlagParsing so cobra doesn't handle --help for it directly — dispatchShowResources
+// hands off to a real cobra subcommand to make --help behave normally.
+func TestDoCmdShowResourcesHelp(t *testing.T) {
+	t.Parallel()
+
+	// A backend that panics if opened — proves --help never reaches the stack loader.
+	panicWs := &pkgWorkspace.MockContext{
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			t.Fatal("--help must not read the project")
+			return nil, "", nil
+		},
+	}
+	panicLm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			t.Fatal("--help must not open the backend")
+			return nil, nil
+		},
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(panicLm, panicWs, nil, testHost, panicLoadConverterPlugin, nil)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs([]string{"show-resources", "--help"})
+	require.NoError(t, cmd.Execute())
+
+	out := stdout.String()
+	assert.Contains(t, out, "show-resources")
+	assert.Contains(t, out, "auto-assign")
+}
+
+// TestDoCmdShowResourcesRejectsArgs asserts that positional arguments are rejected by cobra's
+// NoArgs check on the subcommand rather than silently ignored.
+func TestDoCmdShowResourcesRejectsArgs(t *testing.T) {
+	t.Parallel()
+
+	nopWs := &pkgWorkspace.MockContext{}
+	nopLm := &cmdBackend.MockLoginManager{}
+
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(nopLm, nopWs, nil, testHost, panicLoadConverterPlugin, nil)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs([]string{"show-resources", "extra"})
+	require.Error(t, cmd.Execute())
 }
 
 //nolint:paralleltest // installMockUpsertBackend calls t.Setenv.

@@ -15,6 +15,7 @@
 package do
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -25,6 +26,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	hclv2syntax "github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/spf13/cobra"
+
+	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
@@ -109,7 +112,7 @@ func autoResourceNames(snap *deploy.Snapshot) map[string]string {
 		// per resource so this candidate never collides with another resource's fallback, and it's
 		// stable across runs.
 		hash := sha256.Sum256([]byte(e.urn))
-		candidates = append(candidates, sanitizeIdent(e.name)+"_"+hex.EncodeToString(hash[:4]))
+		candidates = append(candidates, sanitizeIdent(e.name)+"_"+hex.EncodeToString(hash[:6]))
 
 		for _, c := range candidates {
 			if c == "" {
@@ -172,19 +175,18 @@ func sanitizeIdent(s string) string {
 // code actually consumes — auto-derived entries that aren't referenced would otherwise freeze
 // stale URNs into the snapshot.
 //
-// The result is best-effort: parse errors are swallowed and yield an empty set (safer to persist
-// nothing than to persist a wrong subset). Callers that need the full map for the converter
-// upstream must not use this to gate the converter's inputs — only the write-side reference set.
+// Returns nil on parse failure — callers must treat nil as "unknown" and keep the full reference
+// map rather than blanking it, since dropping an identifier the engine later needs is a hard
+// failure at update time.
 func referencedIdentsInPCL(src []byte, filename string) map[string]struct{} {
 	if len(src) == 0 {
 		return nil
 	}
-	file, diags := hclv2syntax.ParseConfig(src, filename, hcl.Pos{Line: 1, Column: 1})
-	if diags.HasErrors() || file == nil {
+	parser := hclsyntax.NewParser()
+	if err := parser.ParseFile(bytes.NewReader(src), filename); err != nil {
 		return nil
 	}
-	body, ok := file.Body.(*hclv2syntax.Body)
-	if !ok {
+	if parser.Diagnostics.HasErrors() || len(parser.Files) == 0 {
 		return nil
 	}
 	out := map[string]struct{}{}
@@ -198,7 +200,7 @@ func referencedIdentsInPCL(src []byte, filename string) map[string]struct{} {
 		}
 		return nil
 	}
-	walkBody(body, visit)
+	walkBody(parser.Files[0].Body, visit)
 	return out
 }
 
@@ -226,9 +228,41 @@ func filterReferencesByUsage(refs map[string]string, used map[string]struct{}) m
 	return out
 }
 
-// runShowResources is the handler for `pulumi do show-resources`: it opens the currently-selected
-// stack, computes the auto-name map and prints it (identifier -> URN). This is the discoverability
-// surface for the auto-map that upsert/create silently merge into the user's --resources-file.
+// dispatchShowResources runs `pulumi do show-resources <args>` by handing off to a real cobra
+// subcommand. The parent `do` command runs with DisableFlagParsing (it dispatches through raw
+// argv), so `--help` and arg validation don't fire naturally — building a real subcommand and
+// executing it here restores standard cobra behavior for both.
+func dispatchShowResources(
+	cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, args []string,
+) error {
+	sub := newShowResourcesCommand(ws, lm)
+	sub.SetContext(cmd.Context())
+	sub.SetOut(cmd.OutOrStdout())
+	sub.SetErr(cmd.ErrOrStderr())
+	sub.SetIn(cmd.InOrStdin())
+	sub.SetArgs(args)
+	return sub.Execute()
+}
+
+// newShowResourcesCommand builds the cobra command for `pulumi do show-resources`.
+func newShowResourcesCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
+	return &cobra.Command{
+		Use:   "show-resources",
+		Short: "Show the identifiers `pulumi do` will auto-assign to resources in the current stack",
+		Long: "Show the identifiers `pulumi do` will auto-assign to resources in the current stack.\n\n" +
+			"These identifiers can be used in --input-file expressions (e.g. `${myBucket.arn}`) " +
+			"without needing to hand-write a --resources-file. Entries in --resources-file take " +
+			"precedence over the auto-assigned identifiers shown here.",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runShowResources(cmd, ws, lm)
+		},
+	}
+}
+
+// runShowResources opens the currently-selected stack, computes the auto-name map and prints it
+// (identifier -> URN). This is the discoverability surface for the auto-map that upsert/create
+// silently merge into the user's --resources-file.
 func runShowResources(cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend.LoginManager) error {
 	ctx := cmd.Context()
 	base := diag.DefaultSink(cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{

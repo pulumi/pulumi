@@ -421,10 +421,7 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 && args[0] == "show-resources" {
-				if len(args) != 1 {
-					return errors.New("show-resources accepts no arguments")
-				}
-				return runShowResources(cmd, ws, lm)
+				return dispatchShowResources(cmd, ws, lm, args[1:])
 			}
 			subcmd, cleanup, err := buildSubcommand(cmd, args)
 			if cleanup != nil {
