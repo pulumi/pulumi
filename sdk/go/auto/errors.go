@@ -15,6 +15,7 @@
 package auto
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -40,10 +41,14 @@ func (ae autoError) Error() string {
 	return fmt.Sprintf("%s\ncode: %d\nstdout: %s\nstderr: %s\n", ae.err, ae.code, ae.stdout, ae.stderr)
 }
 
+func (ae autoError) Unwrap() error {
+	return ae.err
+}
+
 // IsConcurrentUpdateError returns true if the error was a result of a conflicting update locking the stack.
 func IsConcurrentUpdateError(e error) bool {
-	ae, ok := e.(autoError)
-	if !ok {
+	var ae autoError
+	if !errors.As(e, &ae) {
 		return false
 	}
 
@@ -54,8 +59,8 @@ func IsConcurrentUpdateError(e error) bool {
 
 // IsSelectStack404Error returns true if the error was a result of selecting a stack that does not exist.
 func IsSelectStack404Error(e error) bool {
-	ae, ok := e.(autoError)
-	if !ok {
+	var ae autoError
+	if !errors.As(e, &ae) {
 		return false
 	}
 
@@ -65,8 +70,8 @@ func IsSelectStack404Error(e error) bool {
 
 // IsCreateStack409Error returns true if the error was a result of creating a stack that already exists.
 func IsCreateStack409Error(e error) bool {
-	ae, ok := e.(autoError)
-	if !ok {
+	var ae autoError
+	if !errors.As(e, &ae) {
 		return false
 	}
 
@@ -76,8 +81,8 @@ func IsCreateStack409Error(e error) bool {
 
 // IsCompilationError returns true if the program failed at the build/run step (only Typescript, Go, .NET)
 func IsCompilationError(e error) bool {
-	as, ok := e.(autoError)
-	if !ok {
+	var as autoError
+	if !errors.As(e, &as) {
 		return false
 	}
 
@@ -106,8 +111,8 @@ func IsCompilationError(e error) bool {
 
 // IsRuntimeError returns true if there was an error in the user program at during execution.
 func IsRuntimeError(e error) bool {
-	as, ok := e.(autoError)
-	if !ok {
+	var as autoError
+	if !errors.As(e, &as) {
 		return false
 	}
 
@@ -138,8 +143,8 @@ func IsRuntimeError(e error) bool {
 // IsUnexpectedEngineError returns true if the pulumi core engine encountered an error (most likely a bug).
 func IsUnexpectedEngineError(e error) bool {
 	// TODO: figure out how to write a test for this
-	as, ok := e.(autoError)
-	if !ok {
+	var as autoError
+	if !errors.As(e, &as) {
 		return false
 	}
 
