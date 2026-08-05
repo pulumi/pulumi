@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"slices"
 	"strings"
@@ -425,10 +424,7 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 			// parent runs with DisableFlagParsing (provider schemas contribute unknown flags),
 			// so we intercept the token here and execute a real cobra subcommand for it — that
 			// restores standard --help and arg-validation behavior for `show-resources`.
-			showResourcesArgs, isShowResources, err := parseShowResourcesArgs(args)
-			if err != nil {
-				return err
-			}
+			showResourcesArgs, isShowResources := showResourcesArgs(args)
 			if isShowResources {
 				sub := newShowResourcesCommand(ws, lm)
 				sub.SetContext(cmd.Context())
@@ -480,33 +476,6 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 	return cmd
 }
 
-func parseShowResourcesArgs(args []string) ([]string, bool, error) {
-	flags := pflag.NewFlagSet("do", pflag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	flags.SetInterspersed(false)
-	flags.ParseErrorsAllowlist.UnknownFlags = true
-
-	var dryrun bool
-	var showSecrets bool
-	var stateless bool
-	var output string
-	var pkg string
-	addDoPersistentFlags(flags, &dryrun, &showSecrets, &output, &stateless, &pkg)
-
-	if err := flags.Parse(args); err != nil {
-		return nil, false, fmt.Errorf("parse arguments: %w", err)
-	}
-	if pkg != "" {
-		return nil, false, nil
-	}
-
-	pargs := flags.Args()
-	if len(pargs) == 0 || pargs[0] != "show-resources" {
-		return nil, false, nil
-	}
-	return pargs[1:], true, nil
-}
-
 func addDoPersistentFlags(
 	flags *pflag.FlagSet,
 	dryrun *bool,
@@ -529,6 +498,27 @@ func addDoPersistentFlags(
 			"parameterization, additional space-separated parameters can be "+
 			"included after the package name, e.g. --package \"name@version "+
 			"param1 \\\"multi word param\\\"\"")
+}
+
+func showResourcesArgs(args []string) ([]string, bool) {
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; {
+		case a == "show-resources":
+			return args[i+1:], true
+		case a == "--package" || strings.HasPrefix(a, "--package="):
+			return nil, false
+		case a == "--output":
+			i++
+		case strings.HasPrefix(a, "--output="):
+		case a == "--dry-run" || a == "--show-secrets" || a == "--stateless" ||
+			strings.HasPrefix(a, "--dry-run=") ||
+			strings.HasPrefix(a, "--show-secrets=") ||
+			strings.HasPrefix(a, "--stateless="):
+		default:
+			return nil, false
+		}
+	}
+	return nil, false
 }
 
 // currentStackIdentity reads the workspace's currently selected stack and splits it into an organization

@@ -162,7 +162,7 @@ func TestFilterReferencesByPCLUsage_KeepsAllOnParseFailure(t *testing.T) {
 	assert.Equal(t, refs, got)
 }
 
-func TestParseShowResourcesArgs(t *testing.T) {
+func TestShowResourcesArgs(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -205,8 +205,7 @@ func TestParseShowResourcesArgs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotArgs, gotBuiltin, err := parseShowResourcesArgs(tt.args)
-			require.NoError(t, err)
+			gotArgs, gotBuiltin := showResourcesArgs(tt.args)
 			assert.Equal(t, tt.wantBuiltin, gotBuiltin)
 			assert.Equal(t, tt.wantArgs, gotArgs)
 		})
