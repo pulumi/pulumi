@@ -161,11 +161,11 @@ func buildAPIHeaders(contentType, accept string, headers []ParsedHeader) http.He
 		}
 		key := http.CanonicalHeaderKey(ph.Name)
 		if seenNames[key] {
-			h.Add(ph.Name, ph.Value)
+			h.Add(key, ph.Value)
 		} else {
 			// First user-supplied value for this name; replace whatever
 			// encoder default (or nothing) was there.
-			h.Set(ph.Name, ph.Value)
+			h.Set(key, ph.Value)
 			seenNames[key] = true
 		}
 	}
