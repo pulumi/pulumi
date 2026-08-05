@@ -99,6 +99,19 @@ func agentCredentialUseFromContext(ctx context.Context) *agentCredentialUse {
 	return use
 }
 
+type commandNameContextKey struct{}
+
+// ContextWithCommandName returns a context carrying the full invoked CLI command path
+// (e.g. "pulumi new"), for use in login/signup analytics.
+func ContextWithCommandName(ctx context.Context, name string) context.Context {
+	return context.WithValue(ctx, commandNameContextKey{}, name)
+}
+
+func commandNameFromContext(ctx context.Context) (string, bool) {
+	name, ok := ctx.Value(commandNameContextKey{}).(string)
+	return name, ok
+}
+
 // MarkAgentCredentialsUsed records that this CLI command selected shared
 // temporary agent credentials for the given cloud URL.
 func MarkAgentCredentialsUsed(ctx context.Context, cloudURL string) {
@@ -372,8 +385,11 @@ func loginWithBrowser(
 	q.Add("cliSessionPort", port)
 	q.Add("cliSessionNonce", nonce)
 	q.Add("cliSessionDescription", tokenDescription)
-	if command != "pulumi" {
-		q.Add("cliCommand", command)
+	// The invoked command path (e.g. "pulumi new"), independent of the "pulumi" literal
+	// above, so the login/signup destination can attribute the visit to the command
+	// that triggered it.
+	if name, ok := commandNameFromContext(ctx); ok && name != "" && name != "pulumi" {
+		q.Add("cliCommand", name)
 	}
 	u.RawQuery = q.Encode()
 
