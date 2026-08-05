@@ -1,0 +1,25 @@
+{
+  "resources": [
+    {
+      "name": "hideDiffs",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      },
+      "options": {
+        "hideDiffs": [
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "notHideDiffs",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "resources": [
+    {
+      "name": "res",
+      "type": "secret:index:Resource",
+      "custom": true,
+      "properties": {
+        "private": "closed",
+        "privateData": {
+          "private": "closed",
+          "public": "open"
+        },
+        "public": "open",
+        "publicData": {
+          "private": "closed",
+          "public": "open"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "resources": [
+    {
+      "name": "withV2",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      },
+      "options": {
+        "version": "2.0.0"
+      }
+    },
+    {
+      "name": "withV26",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": false
+      },
+      "options": {
+        "version": "26.0.0"
+      }
+    },
+    {
+      "name": "withDefault",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      }
+    }
+  ]
+}

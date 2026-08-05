@@ -1,0 +1,36 @@
+{
+  "resources": [
+    {
+      "name": "target",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      }
+    },
+    {
+      "name": "replaceWith",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      },
+      "dependencies": [
+        "target"
+      ],
+      "options": {
+        "replaceWith": [
+          "${target}"
+        ]
+      }
+    },
+    {
+      "name": "notReplaceWith",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      }
+    }
+  ]
+}

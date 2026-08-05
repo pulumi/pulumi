@@ -1,0 +1,25 @@
+{
+  "resources": [
+    {
+      "name": "withSecret",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      },
+      "options": {
+        "additionalSecretOutputs": [
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "withoutSecret",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      }
+    }
+  ]
+}
