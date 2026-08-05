@@ -60,9 +60,10 @@ type blobData struct {
 
 // Bucket implements blob.Bucket storage using PostgreSQL.
 type Bucket struct {
-	db        *sql.DB
-	tableName string
-	bucket    *blob.Bucket
+	db               *sql.DB
+	tableName        string
+	checkpointFormat string
+	bucket           *blob.Bucket
 }
 
 //go:embed schema.sql
@@ -80,6 +81,20 @@ func NewPostgresBucket(ctx context.Context, u *url.URL) (*Bucket, error) {
 		tableName = "pulumi_state"
 	}
 	q.Del("table") // Remove it from connection string
+
+	// Optional opt-in: store stack checkpoints as queryable JSONB instead of
+	// base64-wrapped JSON. Non-checkpoint blobs always use the legacy format.
+	checkpointFormat := q.Get("checkpoint_format")
+	switch checkpointFormat {
+	case "", "legacy":
+		checkpointFormat = "legacy"
+	case "jsonb":
+		// accepted
+	default:
+		return nil, fmt.Errorf(
+			"unsupported checkpoint_format %q (valid: legacy, jsonb)", checkpointFormat)
+	}
+	q.Del("checkpoint_format")
 	u.RawQuery = q.Encode()
 
 	// Connect to database
@@ -101,15 +116,16 @@ func NewPostgresBucket(ctx context.Context, u *url.URL) (*Bucket, error) {
 
 	// Create table if it doesn't exist
 	// SECURITY NOTE: tableName is from connection string config, not user input - safe from SQL injection
-	createTableSQL := fmt.Sprintf(tableSchema, tableName, tableName, tableName)
+	createTableSQL := fmt.Sprintf(tableSchema, tableName)
 	if _, err := db.ExecContext(ctx, createTableSQL); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to create table %s: %w", tableName, err)
 	}
 
 	bucket := &Bucket{
-		db:        db,
-		tableName: tableName,
+		db:               db,
+		tableName:        tableName,
+		checkpointFormat: checkpointFormat,
 	}
 
 	// Create the driver.Bucket implementation
@@ -168,11 +184,14 @@ func (d *postgresBucketDriver) ErrorCode(err error) gcerrors.ErrorCode {
 
 // Copy implements driver.Bucket.Copy.
 func (d *postgresBucketDriver) Copy(ctx context.Context, dstKey, srcKey string, opts *driver.CopyOptions) error {
-	// Read the source data
+	// Preserve the source row's storage format (legacy vs jsonb) — never
+	// re-encode, so a Copy under flag=off cannot silently downgrade jsonb.
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
-	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName) //nolint:gosec
-	var dataJSON string
-	err := d.bucket.db.QueryRowContext(ctx, query, srcKey).Scan(&dataJSON)
+	query := fmt.Sprintf( //nolint:gosec
+		"SELECT data, data_jsonb FROM %s WHERE key = $1", d.bucket.tableName)
+	var legacy sql.NullString
+	var jsonbRaw []byte
+	err := d.bucket.db.QueryRowContext(ctx, query, srcKey).Scan(&legacy, &jsonbRaw)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return fmt.Errorf("source key not found: %w", err)
@@ -180,13 +199,22 @@ func (d *postgresBucketDriver) Copy(ctx context.Context, dstKey, srcKey string, 
 		return err
 	}
 
-	// Write to the destination key
+	var dataArg, jsonbArg any
+	if legacy.Valid {
+		dataArg = legacy.String
+	}
+	if len(jsonbRaw) > 0 {
+		jsonbArg = jsonbRaw
+	}
+
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 	insertQuery := fmt.Sprintf( //nolint:gosec
-		"INSERT INTO %s (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2, updated_at = now()",
+		"INSERT INTO %s (key, data, data_jsonb) VALUES ($1, $2, $3) "+
+			"ON CONFLICT (key) DO UPDATE "+
+			"SET data = EXCLUDED.data, data_jsonb = EXCLUDED.data_jsonb, updated_at = now()",
 		d.bucket.tableName,
 	)
-	_, err = d.bucket.db.ExecContext(ctx, insertQuery, dstKey, dataJSON)
+	_, err = d.bucket.db.ExecContext(ctx, insertQuery, dstKey, dataArg, jsonbArg)
 	return err
 }
 
@@ -267,7 +295,7 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 		var size int64
 		// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 		metaQuery := fmt.Sprintf( //nolint:gosec
-			"SELECT updated_at, octet_length((data->>'data')::text) / 4 * 3 FROM %s WHERE key = $1",
+			"SELECT updated_at, COALESCE(octet_length((data->>'data')::text) / 4 * 3, octet_length(data_jsonb::text)) FROM %s WHERE key = $1",
 			d.bucket.tableName,
 		)
 		err := d.bucket.db.QueryRowContext(ctx, metaQuery, key).Scan(&updatedAt, &size)
@@ -304,7 +332,7 @@ func (d *postgresBucketDriver) ListPaged(ctx context.Context, opts *driver.ListO
 func (d *postgresBucketDriver) Attributes(ctx context.Context, key string) (*driver.Attributes, error) {
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 	query := fmt.Sprintf( //nolint:gosec
-		"SELECT updated_at, octet_length((data->>'data')::text) / 4 * 3 FROM %s WHERE key = $1",
+		"SELECT updated_at, COALESCE(octet_length((data->>'data')::text) / 4 * 3, octet_length(data_jsonb::text)) FROM %s WHERE key = $1",
 		d.bucket.tableName,
 	)
 	var updatedAt time.Time
@@ -336,9 +364,11 @@ func (d *postgresBucketDriver) NewRangeReader(
 	ctx context.Context, key string, offset, length int64, opts *driver.ReaderOptions,
 ) (driver.Reader, error) {
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
-	query := fmt.Sprintf("SELECT data FROM %s WHERE key = $1", d.bucket.tableName) //nolint:gosec
-	var dataJSON string
-	err := d.bucket.db.QueryRowContext(ctx, query, key).Scan(&dataJSON)
+	query := fmt.Sprintf( //nolint:gosec
+		"SELECT data, data_jsonb FROM %s WHERE key = $1", d.bucket.tableName)
+	var legacy sql.NullString
+	var jsonbRaw []byte
+	err := d.bucket.db.QueryRowContext(ctx, query, key).Scan(&legacy, &jsonbRaw)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("key not found: %w", err)
@@ -346,15 +376,24 @@ func (d *postgresBucketDriver) NewRangeReader(
 		return nil, err
 	}
 
-	// Parse the JSON and decode the base64 data
-	var blobData blobData
-	if err := json.Unmarshal([]byte(dataJSON), &blobData); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON data: %w", err)
-	}
-
-	data, err := base64.StdEncoding.DecodeString(blobData.Data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode base64 data: %w", err)
+	// Rows are self-describing: exactly one of data / data_jsonb is populated
+	// (enforced by the XOR CHECK constraint). jsonb rows already hold canonical
+	// JSON bytes; legacy rows need base64 unwrapping.
+	var data []byte
+	switch {
+	case len(jsonbRaw) > 0:
+		data = jsonbRaw
+	case legacy.Valid:
+		var bd blobData
+		if err := json.Unmarshal([]byte(legacy.String), &bd); err != nil {
+			return nil, fmt.Errorf("failed to parse JSON data: %w", err)
+		}
+		data, err = base64.StdEncoding.DecodeString(bd.Data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode base64 data: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("row %q has neither data nor data_jsonb", key)
 	}
 
 	// Apply offset and length
@@ -479,19 +518,59 @@ func (w *postgresWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
+// isJSONStateKey reports whether key names an uncompressed JSON blob under
+// the DIY backend's `.pulumi/` tree — i.e. a checkpoint, history entry,
+// backup, or lock. These are the blobs we store in the JSONB column when the
+// flag is on; everything else (meta.yaml, Pulumi.*.yaml, compressed
+// `.json.gz`/`.json.zst` streams, etc.) stays in the legacy column.
+//
+// The DIY backend may wrap the bucket in blob.PrefixedBucket using the URL
+// path, so the ".pulumi/" marker can appear at any depth.
+func isJSONStateKey(key string) bool {
+	const marker = ".pulumi/"
+	i := strings.Index(key, marker)
+	if i < 0 {
+		return false
+	}
+	if i > 0 && key[i-1] != '/' {
+		return false
+	}
+	return strings.HasSuffix(key, ".json")
+}
+
 // Close implements io.Closer.
 func (w *postgresWriter) Close() error {
-	// Encode the binary data as base64 and wrap in JSON
+	// Opt-in: store uncompressed JSON state blobs (checkpoints, history,
+	// backups, locks) as native JSONB for SQL-queryable state. Everything else
+	// (meta.yaml, Pulumi.*.yaml, compressed .json.gz/.json.zst streams) stays
+	// in the legacy column. Rows are self-describing: exactly one of data /
+	// data_jsonb is populated, so readers never need the flag.
+	useJSONB := w.bucket.checkpointFormat == "jsonb" && isJSONStateKey(w.key)
+
+	if useJSONB {
+		// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
+		query := fmt.Sprintf( //nolint:gosec
+			"INSERT INTO %s (key, data, data_jsonb) VALUES ($1, NULL, $2::jsonb) "+
+				"ON CONFLICT (key) DO UPDATE "+
+				"SET data = NULL, data_jsonb = EXCLUDED.data_jsonb, updated_at = now()",
+			w.bucket.tableName,
+		)
+		_, err := w.bucket.db.ExecContext(w.ctx, query, w.key, w.buf)
+		return err
+	}
+
+	// Legacy: base64-encode and wrap in {"data": "..."} to fit the JSON column.
 	encodedData := base64.StdEncoding.EncodeToString(w.buf)
-	blobData := blobData{Data: encodedData}
-	jsonData, err := json.Marshal(blobData)
+	jsonData, err := json.Marshal(blobData{Data: encodedData})
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON data: %w", err)
 	}
 
 	// SECURITY: tableName is from connection string config, not user input - safe from SQL injection
 	query := fmt.Sprintf( //nolint:gosec
-		"INSERT INTO %s (key, data) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET data = $2, updated_at = now()",
+		"INSERT INTO %s (key, data, data_jsonb) VALUES ($1, $2, NULL) "+
+			"ON CONFLICT (key) DO UPDATE "+
+			"SET data = EXCLUDED.data, data_jsonb = NULL, updated_at = now()",
 		w.bucket.tableName,
 	)
 	_, err = w.bucket.db.ExecContext(w.ctx, query, w.key, string(jsonData))

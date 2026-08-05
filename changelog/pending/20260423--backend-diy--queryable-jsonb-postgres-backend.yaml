@@ -1,0 +1,6 @@
+changes:
+- type: feat
+  scope: backend/diy
+  description: Add optional `?checkpoint_format=jsonb` URL param to the Postgres
+    backend, storing stack checkpoints as queryable JSONB. Default behavior is
+    unchanged.
