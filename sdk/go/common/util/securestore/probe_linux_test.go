@@ -49,11 +49,16 @@ func statePrompting(t *testing.T, attended bool) *[]bool {
 	}
 	t.Cleanup(func() { platformCandidatesHook = restore })
 
-	prevDisable, prevStated := cmdutil.DisableInteractive, cmdutil.InteractivityStated
-	cmdutil.DisableInteractive, cmdutil.InteractivityStated = !attended, true
-	t.Cleanup(func() {
-		cmdutil.DisableInteractive, cmdutil.InteractivityStated = prevDisable, prevStated
-	})
+	prevDisable := cmdutil.DisableInteractive
+	cmdutil.DisableInteractive = !attended
+	t.Cleanup(func() { cmdutil.DisableInteractive = prevDisable })
+	if attended {
+		// Neutralise the detectors so an attended run stays attended on a CI
+		// host or a headless machine.
+		t.Setenv("CI", "")
+		t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
+		t.Setenv("DISPLAY", ":0")
+	}
 	return &granted
 }
 

@@ -24,14 +24,19 @@ import (
 
 // Attended reports whether a user is present for this run. It decides both
 // whether an unlock prompt may be completed and whether stderr warnings have
-// an audience, so the CLI holds one opinion about presence. --non-interactive
-// overrides detection in either direction; otherwise CI counts as unattended,
-// and on Linux a session without a display cannot draw dialogs.
+// an audience, so the CLI holds one opinion about presence.
+//
+// The question is whether a dialog the credential provider draws on the
+// desktop session can reach someone, which is why this deliberately ignores
+// whether stdio is a TTY: `pulumi up | tee log` is attended, and `ssh host
+// pulumi whoami` is not. --non-interactive forces unattended; there is no way
+// to force the opposite, because a session with no display cannot show a
+// dialog however present the user is.
 func Attended() bool { return someoneCanAnswerAPasswordDialog() }
 
 func someoneCanAnswerAPasswordDialog() bool {
-	if interactive, stated := cmdutil.StatedInteractive(); stated {
-		return interactive
+	if cmdutil.DisableInteractive {
+		return false
 	}
 	// ciutil knows vendor variables; the bare CI convention is checked too so
 	// this agrees with the rest of the CLI about what counts as headless.

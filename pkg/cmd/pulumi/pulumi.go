@@ -299,8 +299,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				parseRootPersistentFlags(cmd.Root().PersistentFlags(), args)
 			}
 
-			cmdutil.InteractivityStated = cmd.Root().PersistentFlags().Changed("non-interactive")
-
 			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
 			client.SetUserAgentCommand(commandPath)
 			client.SetUserAgentAIAgent(agentdetect.Detect(os.Getenv))

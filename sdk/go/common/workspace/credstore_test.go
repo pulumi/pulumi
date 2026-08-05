@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -196,15 +197,19 @@ func TestAgentCredentialsEncryptedToo(t *testing.T) {
 	assert.Equal(t, "pul-secret-token", account.AccessToken)
 }
 
-// forceAttended pins the tri-state interactivity to "attended" so warning
-// tests are deterministic on CI hosts, mirroring --non-interactive=false.
+// forceAttended makes the attended check pass deterministically, including on
+// CI hosts and headless machines, so warning tests do not depend on where they
+// run.
 func forceAttended(t *testing.T) {
 	t.Helper()
-	prevDisable, prevStated := cmdutil.DisableInteractive, cmdutil.InteractivityStated
-	cmdutil.DisableInteractive, cmdutil.InteractivityStated = false, true
-	t.Cleanup(func() {
-		cmdutil.DisableInteractive, cmdutil.InteractivityStated = prevDisable, prevStated
-	})
+	prev := cmdutil.DisableInteractive
+	cmdutil.DisableInteractive = false
+	t.Cleanup(func() { cmdutil.DisableInteractive = prev })
+	t.Setenv("CI", "")
+	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
+	if runtime.GOOS == "linux" {
+		t.Setenv("DISPLAY", ":0")
+	}
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs

@@ -22,30 +22,29 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func statedInteractivity(t *testing.T, disable, stated bool) {
+func disableInteractive(t *testing.T, disable bool) {
 	t.Helper()
-	prevDisable, prevStated := cmdutil.DisableInteractive, cmdutil.InteractivityStated
-	cmdutil.DisableInteractive, cmdutil.InteractivityStated = disable, stated
-	t.Cleanup(func() {
-		cmdutil.DisableInteractive, cmdutil.InteractivityStated = prevDisable, prevStated
-	})
+	prev := cmdutil.DisableInteractive
+	cmdutil.DisableInteractive = disable
+	t.Cleanup(func() { cmdutil.DisableInteractive = prev })
 }
 
 //nolint:paralleltest // mutates interactivity globals and the environment
-func TestStatedInteractivityWinsOverDetection(t *testing.T) {
-	t.Setenv("GITHUB_ACTIONS", "true")
-	statedInteractivity(t, false, true)
-	assert.True(t, someoneCanAnswerAPasswordDialog(), "--non-interactive=false asserts a user is present")
-
-	statedInteractivity(t, true, true)
+func TestNonInteractiveForbidsPrompting(t *testing.T) {
+	// --non-interactive wins over every detector. There is deliberately no
+	// way to assert the opposite: a session that cannot draw a dialog cannot
+	// be talked into drawing one.
+	disableInteractive(t, true)
 	t.Setenv("GITHUB_ACTIONS", "")
+	t.Setenv("CI", "")
+	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
 	t.Setenv("DISPLAY", ":0")
-	assert.False(t, someoneCanAnswerAPasswordDialog(), "--non-interactive forbids prompting")
+	assert.False(t, someoneCanAnswerAPasswordDialog())
 }
 
 //nolint:paralleltest // mutates interactivity globals and the environment
 func TestDetectionWithoutAStatedPreference(t *testing.T) {
-	statedInteractivity(t, false, false)
+	disableInteractive(t, false)
 
 	t.Setenv("CI", "")
 	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "")
