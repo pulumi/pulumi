@@ -37,6 +37,10 @@ REGISTRY_HOST="localhost:$REGISTRY_PORT"
 PROVIDER_REF="$REGISTRY_HOST/pulumi/pulumi-provider-random:v4.21.0"
 # The pack's pin ref; the built image is tagged exactly this (store hit, no pull).
 POLICY_REF="$REGISTRY_HOST/pulumi/pulumi-policy-smoke:v1.0.0"
+# A throwaway scratch image carrying just the bind-contract @pulumi/policy, so the pack image
+# can overlay it via the same --from mechanism run-pod-policy uses (host mode has no engine
+# image to bake it into, so we mint one here).
+POLICY_SDK_IMAGE="oci-smoke-policy-sdk:latest"
 EXPECTED_MARKER="oci-policy-ran-from-its-own-image"
 
 POD_ID="hostpolicy-$$"
@@ -61,7 +65,7 @@ cleanup() {
   leftovers="$(docker ps -aq --filter "label=$POD_LABEL" 2>/dev/null || true)"
   [ -n "$leftovers" ] && docker rm -f $leftovers >/dev/null 2>&1 || true
   docker rm -f "$PROXY_NAME" >/dev/null 2>&1 || true
-  docker image rm -f "$PROVIDER_REF" "$POLICY_REF" >/dev/null 2>&1 || true
+  docker image rm -f "$PROVIDER_REF" "$POLICY_REF" "$POLICY_SDK_IMAGE" >/dev/null 2>&1 || true
   rm -rf "$POLICY_DIR/policy-sdk-bin"
   rm -rf "$WORK"
 }
@@ -95,8 +99,16 @@ mkdir -p "$POLICY_DIR/policy-sdk-bin"
 cp -R "$POLICY_SDK_DIR/bin/." "$POLICY_DIR/policy-sdk-bin/"
 rm -f "$POLICY_DIR/policy-sdk-bin/package.json" # overlay is code, not identity
 
+# The shared policy Dockerfile overlays the SDK from an image (--from), the same as the skill's
+# template will from the published pod image. Host mode has no engine image, so bake the staged
+# bin into a throwaway scratch image and point the build at it.
+echo "==> baking the bind-contract @pulumi/policy into $POLICY_SDK_IMAGE (overlay source)"
+printf 'FROM scratch\nCOPY policy-sdk-bin/ /opt/pulumi-sdk/policy/\n' | \
+  docker buildx build --builder "$BUILDER" --load -t "$POLICY_SDK_IMAGE" -f - "$POLICY_DIR" >/dev/null
+
 echo "==> building the policy image and tagging it as the pin ref $POLICY_REF"
 docker buildx build --builder "$BUILDER" --load \
+  --build-arg PULUMI_SDK_IMAGE="$POLICY_SDK_IMAGE" \
   -t "$POLICY_REF" -f "$POLICY_DIR/Dockerfile" "$POLICY_DIR"
 
 echo "==> cross-compiling the registry-proxy + forwarder shim (linux/$GOARCH) for the random pull"

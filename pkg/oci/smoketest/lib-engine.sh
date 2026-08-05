@@ -70,6 +70,21 @@ build_engine_image() {
   cp -R "$root/sdk/python/lib/pulumi" "$WORK/cli/sdk-python"
   find "$WORK/cli/sdk-python" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 
+  # The bind-contract @pulumi/policy SDK lives in its own repo (pulumi/pulumi-policy) and is
+  # not yet released with the contract, so bake its compiled bin/ alongside the language SDKs —
+  # policy images overlay it exactly as components overlay @pulumi/pulumi. Tolerant: an absent
+  # clone stages an EMPTY dir (Dockerfile.cli's COPY is then a no-op and the stock SDK serves),
+  # so non-policy smoke runs need no policy clone. We do NOT build it here (that would slow every
+  # run and force bun on all of them) — run-pod-policy.sh builds it fresh before calling us;
+  # other tests bake whatever prebuilt bin happens to be present and never read it.
+  rm -rf "$WORK/cli/sdk-policy"
+  mkdir -p "$WORK/cli/sdk-policy"
+  local policy_bin="${OCI_POLICY_SDK_DIR:-$HOME/src/pulumi/pulumi-policy}/sdk/nodejs/policy/bin"
+  if [ -d "$policy_bin" ]; then
+    cp -R "$policy_bin/." "$WORK/cli/sdk-policy/"
+    rm -f "$WORK/cli/sdk-policy/package.json"  # overlay is code, not identity
+  fi
+
   echo "==> building engine image $ENGINE_IMAGE"
   docker buildx build --builder "$BUILDER" --load \
     -t "$ENGINE_IMAGE" -f "$SMOKE_DIR/Dockerfile.cli" "$WORK/cli"

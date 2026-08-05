@@ -47,10 +47,10 @@
 # The pack runs in its OWN container on the pod network, the engine asks it to
 # bind the well-known port via PULUMI_PLUGIN_LISTEN_ADDRESS, and attaches at the
 # container's address on :7777. The policy SDK's serve site honors that env only
-# with the bind-contract patch (pulumi/pulumi-policy), so this run stages the
-# patched @pulumi/policy from a local clone over the stock install — reachability
-# can only come from the SDK binding the requested address itself; no shim exists
-# on the policy path at all.
+# with the bind-contract patch (pulumi/pulumi-policy), so this run bakes the patched
+# @pulumi/policy into the engine image (/opt/pulumi-sdk/policy) and the policy image
+# overlays it — reachability can only come from the SDK binding the requested address
+# itself; no shim exists on the policy path at all.
 #
 # Usage: run-pod-policy.sh
 # Requires a running Docker daemon, the repo Go toolchain (to cross-compile), and
@@ -86,9 +86,8 @@ mkdir -p "$WORK/cli" "$WORK/project"
 
 cleanup() {
   # The wrapper reclaims each pod (containers, volumes, network) itself; this only
-  # clears the watcher, the staged policy SDK, and the scratch dir.
+  # clears the watcher, the staged program SDK, and the scratch dir.
   if [ -n "${WATCH_PID:-}" ]; then kill "$WATCH_PID" >/dev/null 2>&1 || true; fi
-  rm -rf "$POLICY_DIR/policy-sdk-bin"
   rm -rf "$PROGRAM_DIR/sdk-bin"
   rm -rf "$WORK"
 }
@@ -96,6 +95,28 @@ trap cleanup EXIT
 
 if ! docker info >/dev/null 2>&1; then
   echo "!! docker daemon not available — cannot run policy test"
+  exit 1
+fi
+
+# ── build the bind-contract @pulumi/policy BEFORE the engine image ────────────
+# The policy SDK lives in its own repo (pulumi/pulumi-policy); the bind-contract patch —
+# the serve site honoring PULUMI_PLUGIN_LISTEN_ADDRESS — is on a local clone. Build it fresh
+# so a stale bin/ can't ship an SDK without the change (the failure would look like the change
+# being wrong rather than the artifact being old). lib-engine.sh then bakes bin/ at
+# /opt/pulumi-sdk/policy in the engine image, and the policy image overlays it from there
+# (--build-arg below) — exactly as components overlay @pulumi/pulumi. Address mode cannot work
+# on the stock SDK, so this test requires the clone.
+POLICY_SDK_DIR="${OCI_POLICY_SDK_DIR:-$HOME/src/pulumi/pulumi-policy}/sdk/nodejs/policy"
+if [ ! -d "$POLICY_SDK_DIR" ]; then
+  echo "!! this test needs the bind-contract @pulumi/policy and no clone was found at $POLICY_SDK_DIR"
+  echo "   (git get pulumi/pulumi-policy, or point OCI_POLICY_SDK_DIR at a clone)"
+  exit 1
+fi
+echo "==> building the bind-contract @pulumi/policy ($POLICY_SDK_DIR -> bin/)"
+(cd "$POLICY_SDK_DIR" && bun install >/dev/null && bun run tsc >/dev/null)
+if ! grep -q "PULUMI_PLUGIN_LISTEN_ADDRESS" "$POLICY_SDK_DIR/bin/server.js"; then
+  echo "!! the built policy SDK's serve site does not honor the bind contract —"
+  echo "   bin/ is stale or the clone lacks the patch"
   exit 1
 fi
 
@@ -117,40 +138,9 @@ echo "==> building Node program image $PROGRAM_IMAGE (registers a dynamic resour
 docker buildx build --builder "$BUILDER" --load \
   -t "$PROGRAM_IMAGE" -f "$PROGRAM_DIR/Dockerfile" "$PROGRAM_DIR"
 
-# ── stage the bind-contract @pulumi/policy into the policy build context ──────
-# The policy SDK lives in its own repo (pulumi/pulumi-policy); the bind-contract
-# patch — the serve site honoring PULUMI_PLUGIN_LISTEN_ADDRESS — is on a local
-# clone. Install-then-overwrite: the image npm-installs the stock SDK, then
-# overlays the patched compiled output on top, so there is never a second nested
-# copy for the pack to resolve instead. Rebuilt every run, not reused: a stale
-# bin/ would ship an SDK without the change and the failure would look like the
-# change being wrong rather than the artifact being old. Without a clone the
-# netns run proceeds on the stock SDK (the image is byte-identical to before);
-# address mode cannot work stock, so it fails fast here with the reason.
-POLICY_SDK_DIR="${OCI_POLICY_SDK_DIR:-$HOME/src/pulumi/pulumi-policy}/sdk/nodejs/policy"
-rm -rf "$POLICY_DIR/policy-sdk-bin"
-mkdir -p "$POLICY_DIR/policy-sdk-bin"
-if [ -d "$POLICY_SDK_DIR" ]; then
-  echo "==> building the bind-contract @pulumi/policy ($POLICY_SDK_DIR -> bin/)"
-  (cd "$POLICY_SDK_DIR" && bun install >/dev/null && bun run tsc >/dev/null)
-  if ! grep -q "PULUMI_PLUGIN_LISTEN_ADDRESS" "$POLICY_SDK_DIR/bin/server.js"; then
-    echo "!! the built policy SDK's serve site does not honor the bind contract —"
-    echo "   bin/ is stale or the clone lacks the patch"
-    exit 1
-  fi
-  cp -R "$POLICY_SDK_DIR/bin/." "$POLICY_DIR/policy-sdk-bin/"
-  # Keep the stock package.json: the overlay is code, not identity (the built one
-  # carries an unsubstituted ${VERSION} placeholder besides).
-  rm -f "$POLICY_DIR/policy-sdk-bin/package.json"
-  echo "   staged $(du -sh "$POLICY_DIR/policy-sdk-bin" | cut -f1) of policy SDK into the build context"
-else
-  echo "!! this test needs the bind-contract @pulumi/policy and no clone was found at $POLICY_SDK_DIR"
-  echo "   (git get pulumi/pulumi-policy, or point OCI_POLICY_SDK_DIR at a clone)"
-  exit 1
-fi
-
-echo "==> building TypeScript policy image $POLICY_IMAGE (ts-node toolchain + /policy-marker)"
+echo "==> building TypeScript policy image $POLICY_IMAGE (ts-node + bind-contract @pulumi/policy overlaid from the engine image)"
 docker buildx build --builder "$BUILDER" --load \
+  --build-arg PULUMI_SDK_IMAGE="$ENGINE_IMAGE" \
   -t "$POLICY_IMAGE" -f "$POLICY_DIR/Dockerfile" "$POLICY_DIR"
 
 cp "$PROJECT_DIR/Pulumi.yaml" "$WORK/project/"
