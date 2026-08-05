@@ -30,7 +30,7 @@ func NewGreetingComponent(ctx *pulumi.Context,
 		return nil, err
 	}
 	var resource GreetingComponent
-	err = ctx.RegisterPackageRemoteComponentResource("extbase:index:GreetingComponent", name, args, &resource, ref, opts...)
+	err = ctx.RegisterPackageRemoteComponentResource("myext:index:GreetingComponent", name, args, &resource, ref, opts...)
 	if err != nil {
 		return nil, err
 	}

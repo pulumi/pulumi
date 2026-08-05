@@ -25,9 +25,9 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
-            case "extbase:index:Greeting":
+            case "myext:index:Greeting":
                 return new Greeting(name, <any>undefined, { urn })
-            case "extbase:index:GreetingComponent":
+            case "myext:index:GreetingComponent":
                 return new GreetingComponent(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);

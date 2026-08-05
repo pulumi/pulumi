@@ -25,7 +25,7 @@ class GreetingComponentArgs:
         pass
 
 
-@pulumi.type_token("extbase:index:GreetingComponent")
+@pulumi.type_token("myext:index:GreetingComponent")
 class GreetingComponent(pulumi.ComponentResource):
     @overload
     def __init__(__self__,
@@ -75,7 +75,7 @@ class GreetingComponent(pulumi.ComponentResource):
 
             __props__.__dict__["parameter_value"] = None
         super(GreetingComponent, __self__).__init__(
-            'extbase:index:GreetingComponent',
+            'myext:index:GreetingComponent',
             resource_name,
             __props__,
             opts,
