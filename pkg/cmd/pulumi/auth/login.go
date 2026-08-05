@@ -114,6 +114,14 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			if _, err := workspace.GetStoredCredentials(); workspace.IsUndecryptableCredentials(err) {
+				fmt.Fprintf(cmd.ErrOrStderr(),
+					"warning: existing stored credentials can no longer be decrypted and will be replaced: %v\n", err)
+				if err := workspace.ResetStoredCredentials(); err != nil {
+					return fmt.Errorf("removing undecryptable credentials: %w", err)
+				}
+			}
+
 			// If a <cloud> was specified as an argument, use it.
 			if len(args) > 0 {
 				if cloudURL != "" {
