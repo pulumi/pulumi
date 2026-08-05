@@ -97,14 +97,20 @@ func runNativeOp[T any](s *nativeStore, op func() (T, error)) (T, error) {
 // query without requiring interaction. Both checks are prompt-free and the
 // whole probe is time-bounded regardless of the prompt policy.
 func (s *nativeStore) available() (Outcome, error) {
-	outcome, err := withTimeout(func() (Outcome, error) {
-		if err := nativeSelfCheck(); err != nil {
-			if errors.Is(err, ErrUnavailable) {
-				return Absent, err
-			}
-			return Absent, fmt.Errorf("%w: native keychain requires a signed binary: %v",
-				ErrUnavailable, err)
+	if _, err := withTimeout(func() (struct{}, error) {
+		return struct{}{}, nativeSelfCheck()
+	}); err != nil {
+		if errors.Is(err, ErrUnavailable) {
+			return Absent, err
 		}
+		return Absent, fmt.Errorf("%w: native keychain requires a signed binary: %v",
+			ErrUnavailable, err)
+	}
+	// Deliberately outside the deadline: a permitted unlock waits on the user.
+	if outcome, err := keychainPrecheck(s.allowPrompt); outcome != Ready {
+		return outcome, err
+	}
+	outcome, err := withTimeout(func() (Outcome, error) {
 		return s.probe()
 	})
 	if err != nil && outcome == Ready {

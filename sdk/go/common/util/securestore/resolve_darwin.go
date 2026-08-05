@@ -25,7 +25,7 @@ func platformCandidates(allowPrompt bool, _ string) []backendImpl {
 		nativeKeychainBackend(allowPrompt),
 		{
 			id:    BackendMacOSSecurity,
-			store: newKeyringStore(func() (Outcome, error) { return securityExecPrecheck(allowPrompt) }),
+			store: newKeyringStore(func() (Outcome, error) { return keychainPrecheck(allowPrompt) }),
 			wrap:  rawWrapper{},
 		},
 	}

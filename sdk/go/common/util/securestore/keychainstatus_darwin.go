@@ -101,13 +101,16 @@ func withoutKeychainUI[T any](fn func() (T, error)) (T, error) {
 	return fn()
 }
 
-// securityExecPrecheck classifies the default keychain before the
-// /usr/bin/security tier execs anything, so a locked keychain in a silent
-// cell can never make securityd draw a dialog. With prompting permitted, a
-// locked keychain gets one unlock attempt: securityd's own password dialog,
-// waited on with no deadline (the user may be typing). An unknown lock state
-// keeps today's behavior and lets the tool try.
-func securityExecPrecheck(allowPrompt bool) (Outcome, error) {
+// keychainPrecheck classifies the default keychain before an operation that
+// could make securityd draw a dialog. Both macOS tiers go through it, so the
+// unlock prompt policy is enforced in one place.
+//
+// A locked keychain in a silent cell is reported as Locked without touching
+// it. With prompting permitted it gets exactly one unlock attempt, waited on
+// with no deadline because the user may be typing a password — the same rule
+// the Linux Secret Service path follows. An unknown lock state is treated as
+// usable and left to the operation itself.
+func keychainPrecheck(allowPrompt bool) (Outcome, error) {
 	locked, ok := defaultKeychainLocked()
 	if !ok || !locked {
 		return Ready, nil
