@@ -18,85 +18,118 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"sort"
+	"slices"
+	"strings"
 
-	survey "github.com/AlecAivazis/survey/v2"
-	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/AlecAivazis/survey/v2/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 const (
 	BrokenTemplateDescription = "(This template is currently broken)"
 )
 
+var errNoTemplateSelected = errors.New("no template selected; please use `pulumi new` to choose one")
+
 // ChooseTemplate will prompt the user to choose amongst the available templates.
 func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error) {
 	if !opts.IsInteractive {
 		return nil, nil
 	}
-
-	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).
-	surveycore.DisableColor = true
-
-	options, optionToTemplateMap := templatesToOptionArrayAndMap(templates)
-	nopts := len(options)
-	pageSize := cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: nopts})
-	message := fmt.Sprintf("\rPlease choose a template (%d total):\n", nopts)
-	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
-
-	var option string
-	if err := survey.AskOne(&survey.Select{
-		Message:  message,
-		Options:  options,
-		PageSize: pageSize,
-	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
-		return nil, errors.New("no template selected; please use `pulumi new` to choose one")
-	}
-
-	return optionToTemplateMap[option], nil
+	return declinedToChoose(chooseTemplateFromList(sortedForDisplay(templates), opts, surveySelect))
 }
 
-// templatesToOptionArrayAndMap returns an array of option strings and a map of option strings to templates.
-// Each option string is made up of the template name and description with some padding in between.
-func templatesToOptionArrayAndMap(templates []cmdTemplates.Template) ([]string, map[string]cmdTemplates.Template) {
-	// Find the longest name length. Used to add padding between the name and description.
+// sortedForDisplay orders templates by display name, broken templates last.
+func sortedForDisplay(templates []cmdTemplates.Template) []cmdTemplates.Template {
+	sorted := slices.Clone(templates)
+	slices.SortStableFunc(sorted, func(a, b cmdTemplates.Template) int {
+		aBroken, bBroken := a.Error() != nil, b.Error() != nil
+		if aBroken != bBroken {
+			if aBroken {
+				return 1
+			}
+			return -1
+		}
+		return strings.Compare(a.DisplayName(), b.DisplayName())
+	})
+	return sorted
+}
+
+// templateSource is the subset of [cmdTemplates.Source] template selection needs. The first three
+// are the fetches quick enough to build the guided flow's first screen from; Templates is every
+// template there is, and reaching it means waiting on the slowest fetch.
+type templateSource interface {
+	ProjectTemplates() ([]cmdTemplates.Template, error)
+	DatabaseTemplates() ([]cmdTemplates.Template, error)
+	VcsTemplateSourceOrgs() []string
+	Templates() ([]cmdTemplates.Template, error)
+}
+
+// useGuidedFlow reports whether the guided provider/language prompts apply. They need a user to
+// prompt, and they only help when nothing has narrowed the choice already: a named template or
+// URL has, and `--yes` must never prompt at all.
+func (args newArgs) useGuidedFlow() bool {
+	return args.templateNameOrURL == "" && !args.yes && args.interactive
+}
+
+// declinedToChoose maps a cancelled prompt to the sentinel callers report, leaving real failures
+// alone. Every path that can put a template prompt on screen ends in this.
+func declinedToChoose(
+	template cmdTemplates.Template, err error,
+) (cmdTemplates.Template, error) {
+	if errors.Is(err, terminal.InterruptErr) {
+		return nil, errNoTemplateSelected
+	}
+	return template, err
+}
+
+// resolveTemplate works out which template this invocation should instantiate, prompting through
+// sel as needed. It owns the whole decision, so a test that replaces sel exercises the same
+// branching the CLI does.
+func resolveTemplate(
+	src templateSource, args newArgs, opts display.Options, sel selectFunc,
+) (cmdTemplates.Template, error) {
+	if args.useGuidedFlow() {
+		return declinedToChoose(chooseGuidedFromSource(src, opts, sel))
+	}
+	all, err := src.Templates()
+	if err != nil {
+		return nil, err
+	}
+	return declinedToChoose(pickFromSet(all, args.yes, opts, sel))
+}
+
+// pickFromSet chooses a template from the complete set. A lone template needs no prompt, `--yes`
+// never prompts and takes no template rather than guessing among several, and anything else goes
+// to the flat list.
+func pickFromSet(
+	templates []cmdTemplates.Template, yes bool, opts display.Options, sel selectFunc,
+) (cmdTemplates.Template, error) {
+	switch {
+	case len(templates) == 1:
+		return templates[0], nil
+	case yes:
+		return nil, nil
+	case len(templates) == 0:
+		return nil, errors.New("no templates")
+	}
+	return chooseTemplateFromList(sortedForDisplay(templates), opts, sel)
+}
+
+func templateLabeler(templates []cmdTemplates.Template) func(cmdTemplates.Template) string {
 	maxNameLength := 0
 	for _, template := range templates {
-		if len(template.DisplayName()) > maxNameLength {
-			maxNameLength = len(template.DisplayName())
-		}
+		maxNameLength = max(maxNameLength, len(template.DisplayName()))
 	}
-
-	// Build the array and map.
-	var options []string
-	var brokenOptions []string
-	nameToTemplateMap := make(map[string]cmdTemplates.Template)
-	for _, template := range templates {
-		// Create the option string that combines the name, padding, and description.
+	return func(template cmdTemplates.Template) string {
 		desc := template.Description()
-		// If template is broken, indicate it in the description.
 		if template.Error() != nil {
 			desc = BrokenTemplateDescription
 		}
-		option := fmt.Sprintf(fmt.Sprintf("%%%ds    %%s", -maxNameLength), template.DisplayName(), desc)
-
-		nameToTemplateMap[option] = template
-		if template.Error() != nil {
-			brokenOptions = append(brokenOptions, option)
-		} else {
-			options = append(options, option)
-		}
+		return fmt.Sprintf("%-*s    %s", maxNameLength, template.DisplayName(), desc)
 	}
-	// After sorting the options, add the broken templates to the end
-	sort.Strings(options)
-	options = append(options, brokenOptions...)
-
-	return options, nameToTemplateMap
 }
 
 // sanitizeTemplate strips sensitive data such as credentials and query strings from a template URL.
