@@ -16,6 +16,7 @@ package cmdutil
 
 import (
 	"fmt"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -54,6 +55,38 @@ func NewSpinnerAndTicker(prefix string, ttyFrames []string,
 		color:  color,
 		prefix: prefix,
 	}, time.NewTicker(time.Second * 20)
+}
+
+// SpinUntilStopped ticks spinner on every tick of ticker until the returned stop function is
+// called. Stopping halts the ticker, waits for any in-flight tick to finish and resets the
+// spinner, so it is safe to write to stdout once stop returns. Calling stop again is a no-op.
+//
+// Callers decide whether to announce the spinner immediately by calling [Spinner.Tick] before
+// handing it over: a slow operation that should always be reported wants that first tick, while
+// one that usually finishes before the first tick wants to stay silent.
+func SpinUntilStopped(spinner Spinner, ticker *time.Ticker) (stop func()) {
+	done := make(chan struct{})
+	stopped := make(chan struct{})
+	go func() {
+		defer close(stopped)
+		for {
+			select {
+			case <-ticker.C:
+				spinner.Tick()
+			case <-done:
+				return
+			}
+		}
+	}()
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			ticker.Stop()
+			close(done)
+			<-stopped
+			spinner.Reset()
+		})
+	}
 }
 
 // Spinner represents a very simple progress reporter.
