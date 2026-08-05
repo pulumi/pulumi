@@ -244,9 +244,7 @@ func TestForBackendUnknown(t *testing.T) {
 	assert.Equal(t, BackendPlaintext, st.Backend())
 }
 
-// raceLosingStore simulates losing a non-atomic create race: set fails with a
-// duplicate-item error while — as the concurrent winner would have — a key
-// becomes readable afterwards.
+// Loses a non-atomic create race: set fails, but a key is readable after.
 type raceLosingStore struct {
 	winner string
 	gets   int
@@ -257,9 +255,8 @@ func (r *raceLosingStore) available() (Outcome, error) { return Ready, nil }
 func (r *raceLosingStore) get() (string, error) {
 	r.gets++
 	if r.gets == 1 {
-		// The initial lookup (and the under-lock re-check) miss the item,
-		// mirroring `security find-generic-password` returning "not found"
-		// just before `add-generic-password` collides.
+		// Mirrors `security find-generic-password` reporting "not found" just
+		// before `add-generic-password` collides.
 		return "", ErrKeyNotFound
 	}
 	if r.gets == 2 {
@@ -315,8 +312,7 @@ func TestGetOrCreateKeyConcurrent(t *testing.T) {
 	}
 }
 
-// fakeTPMWrapper simulates a TPM keyWrapper for tests: it "seals" by
-// prefixing a marker so wrapped and raw payloads are distinguishable.
+// "Seals" by prefixing a marker, so wrapped and raw payloads differ.
 type fakeTPMWrapper struct{}
 
 func (fakeTPMWrapper) kind() wrapKind   { return wrapTPM }
@@ -334,8 +330,6 @@ func (fakeTPMWrapper) unwrap(blob []byte) ([]byte, error) {
 
 //nolint:paralleltest // mutates the package-global resolution hook
 func TestGetOrCreateKeyUpgradesRawItemToTPM(t *testing.T) {
-	// A raw-wrapped key stored before a TPM became usable must be upgraded
-	// in place, not fail (which would downgrade the user to plaintext).
 	rawKey := testKey(t)
 	mem := &memStore{}
 	require.NoError(t, mem.set(formatItem(wrapRaw, rawKey)))

@@ -16,8 +16,7 @@ package workspace
 
 import "github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 
-// keyStore is the slice of securestore this package uses;
-// *securestore.Store satisfies it implicitly.
+// *securestore.Store satisfies this implicitly.
 type keyStore interface {
 	Backend() securestore.Backend
 	GetKey() ([]byte, error)
@@ -26,15 +25,12 @@ type keyStore interface {
 	FallbackReason() error
 }
 
-// keyStores resolves the store to use, either by mode for writes or by the
-// backend an existing envelope records.
 type keyStores interface {
 	Resolve(mode securestore.Mode) (keyStore, error)
 	ForBackend(id securestore.Backend) (keyStore, error)
 }
 
-// stores is the wiring point, so no test double need be exported from
-// securestore.
+// Wiring point, so no test double need be exported from securestore.
 var stores keyStores = secureStores{}
 
 type secureStores struct{}

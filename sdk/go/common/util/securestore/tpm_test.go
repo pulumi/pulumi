@@ -29,8 +29,7 @@ func TestTPMWrapperKind(t *testing.T) {
 	assert.Equal(t, wrapTPM, tpmWrapper{}.kind())
 }
 
-// TestTPMUnwrapRejectsMalformedBlob needs no TPM: framing validation fails
-// before the transport is ever opened.
+// Needs no TPM: framing fails before the transport opens.
 func TestTPMUnwrapRejectsMalformedBlob(t *testing.T) {
 	t.Parallel()
 	for _, blob := range [][]byte{nil, {0x01}, {0xFF, 0xFF, 0x00}} {
@@ -39,8 +38,6 @@ func TestTPMUnwrapRejectsMalformedBlob(t *testing.T) {
 	}
 }
 
-// TestTPMWrapUnwrapRoundTrip exercises the real TPM where one exists (e.g.
-// bare-metal Linux CI or a developer laptop) and self-skips everywhere else.
 func TestTPMWrapUnwrapRoundTrip(t *testing.T) {
 	t.Parallel()
 	w := tpmWrapper{}
@@ -60,8 +57,7 @@ func TestTPMWrapUnwrapRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, key, got)
 
-	// Unwrapping is repeatable: the storage primary is deterministically
-	// regenerated on every operation.
+	// The storage primary is deterministically regenerated each operation.
 	got2, err := w.unwrap(blob)
 	require.NoError(t, err)
 	assert.Equal(t, key, got2)

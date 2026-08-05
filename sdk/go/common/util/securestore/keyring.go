@@ -23,8 +23,7 @@ import (
 )
 
 const (
-	// keyringService/keyringAccount identify the item in the OS store. Never
-	// change them: existing users' encrypted files reference this exact item.
+	// Never change: encrypted files reference this exact item.
 	keyringService = "Pulumi CLI"
 	keyringAccount = "credentials-key"
 )
@@ -36,11 +35,8 @@ type getCache struct {
 	err   error
 }
 
-// keyringStore is an itemStore over zalando/go-keyring, which selects the
-// platform mechanism automatically: /usr/bin/security on macOS (prompt-free
-// for any binary, incl. across rebuilds), Credential Manager on Windows, and
-// Secret Service on Linux. preCheck lets platforms fail fast before touching
-// the store (e.g. the Linux D-Bus/locked-collection probes).
+// go-keyring picks the platform mechanism itself. preCheck lets platforms fail
+// fast before the store is touched.
 type keyringStore struct {
 	preCheck func() (Outcome, error)
 	cache    *getCache

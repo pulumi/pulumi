@@ -20,7 +20,6 @@ import (
 	"testing"
 )
 
-// memStore is an in-memory itemStore for tests.
 type memStore struct {
 	mu    sync.Mutex
 	value string
@@ -52,17 +51,12 @@ func (m *memStore) delete() error {
 	return nil
 }
 
-// BackendMock is the backend id used by MockInit; it never resolves outside
-// tests.
+// Never resolves outside tests.
 const BackendMock Backend = "mock"
 
-// BackendMockStrong is the preferred backend installed by MockInitDual; it
-// never resolves outside tests.
 const BackendMockStrong Backend = "mock-strong"
 
-// gatedStore wraps an itemStore whose availability can be toggled, letting
-// tests simulate a platform gaining a stronger protection tier over time
-// (e.g. a binary becoming signed, or a TPM becoming usable).
+// Toggleable availability, simulating a platform gaining a stronger tier.
 type gatedStore struct {
 	inner   itemStore
 	enabled *bool
@@ -83,8 +77,6 @@ type refusingStore struct{ memStore }
 
 func (*refusingStore) available() (Outcome, error) { return Declined, ErrDeclined }
 
-// MockInit replaces platform backend resolution with a single in-memory
-// backend for the duration of a test.
 func MockInit(t *testing.T) {
 	t.Helper()
 	mem := &memStore{}
@@ -95,8 +87,7 @@ func MockInit(t *testing.T) {
 	t.Cleanup(func() { platformCandidatesHook = prev })
 }
 
-// MockInitDual installs a preferred backend that only becomes available once
-// promote is called, so tests can exercise the cross-backend upgrade.
+// The preferred backend becomes available only once promote is called.
 func MockInitDual(t *testing.T) (promote func()) {
 	t.Helper()
 	enabled := false

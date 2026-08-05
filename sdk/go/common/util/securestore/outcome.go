@@ -19,21 +19,16 @@ import (
 	"sync"
 )
 
-// Outcome is the result of probing one backend. Fallback keys off the
-// outcome, not off the raw error: only Absent and Locked mean "try something
-// else".
+// Outcome is the result of probing one backend. Only Absent and Locked permit
+// falling back to the next one.
 type Outcome int
 
 const (
-	// Ready means the backend is present and usable right now.
 	Ready Outcome = iota
-	// Absent means there is nothing to use here: no provider, no session
-	// bus, no TPM.
 	Absent
-	// Locked means the store exists but needs an unlock we were not
-	// permitted to ask for.
+	// Locked: exists, needs an unlock we were not permitted to ask for.
 	Locked
-	// Declined means the store exists, we asked, and the user said no.
+	// Declined: we asked, the user said no.
 	Declined
 )
 
@@ -52,10 +47,8 @@ func (o Outcome) String() string {
 	}
 }
 
-// memoizePrecheck caches a precheck per allowPrompt value. One command probes
-// several times — reading the existing file, checking stickiness, then
-// writing — and without this each probe of a locked store would raise its own
-// dialog, including re-asking after the user already declined.
+// One command probes several times, so without memoizing, each probe of a
+// locked store raises its own dialog — re-asking after a decline.
 func memoizePrecheck(probe func(allowPrompt bool) (Outcome, error)) func(bool) (Outcome, error) {
 	var (
 		once [2]sync.Once

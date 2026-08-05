@@ -14,12 +14,10 @@
 
 // Package securestore keeps a per-user 32-byte encryption key in the most
 // protective mechanism the platform offers and encrypts local files with it.
-// The Backend constants below name the per-platform mechanisms.
 //
-// Operations are prompt-free and time-bounded, so the package is safe in CI
-// and AI-agent contexts. The one exception is unlocking a locked store when
-// the user opted in and someone can answer; that wait has no deadline,
-// matching sudo and gpg.
+// Operations are prompt-free and time-bounded, so the package is safe in CI.
+// The exception is unlocking a locked store when the user opted in and someone
+// can answer; that wait has no deadline, matching sudo and gpg.
 package securestore
 
 import (
@@ -32,87 +30,62 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
-// Backend identifies the mechanism protecting the key. It is recorded in the
-// on-disk envelope so reads use the same mechanism.
+// Backend is recorded in the on-disk envelope so reads use the same mechanism.
 type Backend string
 
 const (
-	// BackendMacOSACL is a SecItem keychain item whose ACL binds to our
-	// code-signing identity (Developer-ID-signed builds only).
-	BackendMacOSACL Backend = "macos-acl"
-	// BackendMacOSSecurity manages the keychain item via /usr/bin/security
-	// (unsigned/ad-hoc builds; same-user readable, prompt-free).
+	// ACL bound to our code-signing identity; signed builds only.
+	BackendMacOSACL      Backend = "macos-acl"
 	BackendMacOSSecurity Backend = "macos-security"
-	// BackendWindowsCredMan stores the raw key in the Windows Credential
-	// Manager (no TPM present).
-	BackendWindowsCredMan Backend = "windows-credman"
-	// BackendWindowsCredManTPM stores a TPM-wrapped blob in the Windows
-	// Credential Manager.
-	BackendWindowsCredManTPM Backend = "windows-credman-tpm"
-	// BackendLinuxSecretService stores the raw key in the Secret Service
-	// (no TPM present).
-	BackendLinuxSecretService Backend = "linux-secretservice"
-	// BackendLinuxSecretServiceTPM stores a TPM2-sealed blob in the Secret
-	// Service.
+
+	BackendWindowsCredMan        Backend = "windows-credman"
+	BackendWindowsCredManTPM     Backend = "windows-credman-tpm"
+	BackendLinuxSecretService    Backend = "linux-secretservice"
 	BackendLinuxSecretServiceTPM Backend = "linux-secretservice-tpm"
-	// BackendTPMFile stores a TPM-sealed blob in a private file — used when a
-	// TPM is present but no OS credential store is usable (headless servers).
+	// TPM present but no usable OS store (headless servers).
 	BackendTPMFile Backend = "tpm-file"
-	// BackendPlaintext means no protection is available; callers keep their
-	// existing plaintext behavior.
+	// No protection available; callers keep plaintext behavior.
 	BackendPlaintext Backend = "plaintext"
 )
 
-// Mode controls backend selection, mirroring PULUMI_CREDENTIAL_STORE.
+// Mode mirrors PULUMI_CREDENTIAL_STORE.
 type Mode int
 
 const (
-	// ModeDefault is no explicit user choice: plaintext for writes until
-	// encryption becomes the default.
+	// No explicit choice: plaintext for writes until encryption is the default.
 	ModeDefault Mode = iota
-	// ModeAuto selects the best available backend, falling back to plaintext
-	// when none is usable.
+	// Best available backend, else plaintext.
 	ModeAuto
-	// ModeOS requires a protective backend and errors when none is usable.
+	// Require a backend, error when none is usable.
 	ModeOS
-	// ModePlaintext disables the secure store for writes.
 	ModePlaintext
 )
 
 var (
-	// ErrUnavailable indicates no usable protective backend in this
-	// environment (headless session, missing daemon/TPM, timeout, ...).
 	ErrUnavailable = errors.New("no usable OS credential protection")
-	// ErrBackendUnsupported indicates an envelope recorded under a backend this
-	// build cannot implement, so nothing the user does locally will read it.
+	// Nothing the user does locally will read this data.
 	ErrBackendUnsupported = fmt.Errorf("%w: no such credential store on this platform", ErrUnavailable)
-	// ErrLocked indicates a store that could not be unlocked without a prompt
-	// nobody could answer. Wraps ErrUnavailable: same effect, named cause.
+	// Wraps ErrUnavailable: same effect, named cause.
 	ErrLocked = fmt.Errorf("%w: the OS credential store is locked", ErrUnavailable)
-	// ErrDeclined indicates the user dismissed the unlock prompt. Never a
-	// reason to fall back — that would contradict what they just said.
-	ErrDeclined = errors.New("the OS credential store was not unlocked")
-	// ErrKeyNotFound indicates the backend works but holds no key yet.
+	// Never a reason to fall back — that would contradict what the user said.
+	ErrDeclined    = errors.New("the OS credential store was not unlocked")
 	ErrKeyNotFound = errors.New("no key stored in the OS credential store")
-	// ErrWrongKey indicates decryption failed authentication — almost always a
-	// stored key that does not match the file.
-	ErrWrongKey = errors.New("data cannot be decrypted with the stored key")
+	ErrWrongKey    = errors.New("data cannot be decrypted with the stored key")
 )
 
-// itemStore persists one opaque string item in an OS credential store (or
-// file). Implementations must be prompt-free and time-bounded.
+// itemStore persists one opaque string item. Implementations must be
+// prompt-free and time-bounded.
 type itemStore interface {
-	// available must never prompt or block.
 	available() (Outcome, error)
-	// get returns the stored item, or ErrKeyNotFound if absent.
+	// get returns ErrKeyNotFound if absent.
 	get() (string, error)
 	set(value string) error
-	// delete removes the item; deleting a missing item is not an error.
+	// delete of a missing item is not an error.
 	delete() error
 }
 
-// keyWrapper converts between the raw 32-byte key and the payload persisted
-// in the item store (identity for "raw", TPM sealing for "tpm").
+// keyWrapper converts between the raw key and the persisted payload (identity
+// for "raw", TPM sealing for "tpm").
 type keyWrapper interface {
 	kind() wrapKind
 	available() error
@@ -137,38 +110,29 @@ func (b backendImpl) available() (Outcome, error) {
 	return Ready, nil
 }
 
-// Store is a resolved secure store.
 type Store struct {
 	b              backendImpl
 	fallbackReason error
 }
 
-// Backend reports which mechanism this store uses.
 func (s *Store) Backend() Backend { return s.b.id }
 
-// FallbackReason reports why a ModeAuto resolution fell back to plaintext,
-// or nil for any other resolution.
+// FallbackReason reports why a ModeAuto resolution fell back to plaintext.
 func (s *Store) FallbackReason() error { return s.fallbackReason }
 
-// candidates returns the platform's backends in preference order. Only
-// Resolve and ForBackend call it, and both have already established that the
-// caller opted in, so prompting is governed by attendance alone.
+// Both callers have established the user opted in, so prompting is governed
+// by attendance alone.
 func candidates(pulumiHome string) []backendImpl {
 	return platformCandidatesHook(someoneCanAnswerAPasswordDialog(), pulumiHome)
 }
 
 var platformCandidatesHook = platformCandidates
 
-// Resolve picks the backend for writing under the given mode. A plaintext
-// resolution returns a *Store whose Backend() is BackendPlaintext and whose
-// key operations fail with ErrUnavailable; callers use it as the signal to
-// keep today's plaintext behavior. The returned error is non-nil when the
-// user declined an unlock in any mode, when ModeOS finds no usable backend,
-// or on an invalid mode.
+// Resolve picks the backend for writing. A plaintext resolution is not an
+// error: its key operations fail with ErrUnavailable, which callers take as
+// the signal to keep plaintext behavior.
 //
-// pulumiHome is the directory for file-based key material (the TPM-sealed
-// key file used when no OS credential store exists); an empty string makes
-// that backend unavailable.
+// pulumiHome locates file-based key material; empty disables that backend.
 func Resolve(mode Mode, pulumiHome string) (*Store, error) {
 	switch mode {
 	case ModePlaintext, ModeDefault:
@@ -208,11 +172,8 @@ func Resolve(mode Mode, pulumiHome string) (*Store, error) {
 	return &Store{b: backendImpl{id: BackendPlaintext}, fallbackReason: firstErr}, nil
 }
 
-// ForBackend returns a store for the exact backend that produced an existing
+// ForBackend returns a store for the backend that produced an existing
 // envelope, regardless of mode — reading data back must always be attempted.
-// The error explains why the recorded backend is not usable here (moved
-// machine, missing TPM, changed binary signature, locked keychain, ...).
-// pulumiHome is as for Resolve.
 func ForBackend(id Backend, pulumiHome string) (*Store, error) {
 	if id == BackendPlaintext {
 		return &Store{b: backendImpl{id: BackendPlaintext}}, nil
@@ -233,7 +194,7 @@ func ForBackend(id Backend, pulumiHome string) (*Store, error) {
 		id, ErrBackendUnsupported)
 }
 
-// GetKey returns the stored key without ever creating one.
+// GetKey never creates a key.
 func (s *Store) GetKey() ([]byte, error) {
 	if s.b.id == BackendPlaintext {
 		return nil, ErrUnavailable
@@ -343,8 +304,7 @@ func (s *Store) upgradeKeyWrap() ([]byte, error) {
 	return blob, nil
 }
 
-// DeleteKey removes the key and any wrapper material. Deleting a missing key
-// is not an error; the plaintext backend is a no-op.
+// Deleting a missing key is not an error.
 func (s *Store) DeleteKey() error {
 	if s.b.id == BackendPlaintext {
 		return nil

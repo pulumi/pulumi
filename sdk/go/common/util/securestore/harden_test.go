@@ -16,8 +16,7 @@ package securestore
 
 import "testing"
 
-// TestHardenProcess pins the contract that hardening is best-effort and safe
-// to call on every platform: it must never panic or otherwise fail.
+// Must be safe to call on every platform.
 func TestHardenProcess(t *testing.T) {
 	t.Parallel()
 	HardenProcess()

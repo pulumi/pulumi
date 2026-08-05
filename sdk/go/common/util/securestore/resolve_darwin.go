@@ -16,10 +16,8 @@
 
 package securestore
 
-// platformCandidates returns macOS backends in preference order: the native
-// SecItem backend (per-app ACL, Developer-ID-signed builds only) first, then
-// the /usr/bin/security fallback that works for any binary. Both tiers apply
-// the unlock prompt policy: silent cells never let securityd draw a dialog.
+// SecItem (per-app ACL, signed builds only) first, then the /usr/bin/security
+// fallback that works for any binary.
 func platformCandidates(allowPrompt bool, _ string) []backendImpl {
 	return []backendImpl{
 		nativeKeychainBackend(allowPrompt),

@@ -27,8 +27,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// withSelfCheckOverride replaces the code-signing self-check for one test.
-// These tests must not run in parallel: the override is package state.
 func withSelfCheckOverride(t *testing.T, fn func() error) {
 	t.Helper()
 	prev := nativeSelfCheckOverride
@@ -36,9 +34,7 @@ func withSelfCheckOverride(t *testing.T, fn func() error) {
 	t.Cleanup(func() { nativeSelfCheckOverride = prev })
 }
 
-// testNativeStore returns a nativeStore pointing at a throwaway keychain item
-// so tests never touch the real "Pulumi CLI" item, and registers a cleanup
-// that always removes the item.
+// A throwaway item, so tests never touch the real one.
 func testNativeStore(t *testing.T) *nativeStore {
 	t.Helper()
 	suffix := make([]byte, 8)
@@ -50,8 +46,7 @@ func testNativeStore(t *testing.T) *nativeStore {
 		label:   "Pulumi CLI test item (safe to delete)",
 	}
 	t.Cleanup(func() {
-		// Best-effort when the keychain itself is unusable (the test body
-		// skips in that case and there is nothing to clean up).
+		// The body skips when the keychain is unusable; nothing to clean up.
 		if err := store.delete(); err != nil && !errors.Is(err, ErrUnavailable) {
 			t.Errorf("cleaning up test keychain item: %v", err)
 		}
@@ -76,10 +71,6 @@ func TestNativeBackendShape(t *testing.T) {
 	assert.False(t, silent.allowPrompt)
 }
 
-// Test binaries are at best ad-hoc signed, so without the override the
-// self-check must report the binary as not eligible and available() must
-// fail with ErrUnavailable.
-//
 //nolint:paralleltest // must not overlap tests that set nativeSelfCheckOverride
 func TestNativeSelfCheckRejectsTestBinary(t *testing.T) {
 	require.Nil(t, nativeSelfCheckOverride)
@@ -169,11 +160,8 @@ func TestOSStatusErrorMapping(t *testing.T) {
 	assert.Contains(t, err.Error(), "keychain error -25293")
 }
 
-// A locked keychain must be answered from the lock state, never by running
-// the operation: with UI suppressed securityd reports errSecAuthFailed, which
-// is indistinguishable from a genuine authorization failure and would
-// classify as Absent. Verified interactively on macOS 26.5 against a locked
-// keychain: silent get/set/delete return in milliseconds, drawing no dialog.
+// With UI suppressed a locked keychain reports errSecAuthFailed, which would
+// classify as Absent. Verified interactively on macOS 26.5.
 //
 //nolint:paralleltest // mutates the package-global lock-state hook
 func TestSilentOpsOnLockedKeychainReportLocked(t *testing.T) {
@@ -189,11 +177,8 @@ func TestSilentOpsOnLockedKeychainReportLocked(t *testing.T) {
 	assert.True(t, errors.Is(store.delete(), ErrLocked))
 }
 
-// The prompt path announces the wait before securityd draws its dialog, so a
-// dialog on another space does not look like a hang.
-//
-// fakeKeychainLock pins the reported lock state and re-arms the memoized
-// precheck, which would otherwise carry a cached answer between tests.
+// Re-arms the memoized precheck, which would otherwise carry a cached answer
+// between tests.
 func fakeKeychainLock(t *testing.T, locked bool) {
 	t.Helper()
 	prev := defaultKeychainLockedHook
@@ -220,10 +205,8 @@ func TestSilentPathNeverAnnouncesAWait(t *testing.T) {
 	assert.Zero(t, notified, "a silent operation announces nothing because it never waits")
 }
 
-// The deprecated SecKeychain family is bound optionally, so its removal must
-// disable only what needs it. Losing UI suppression means silence can no
-// longer be promised, so silent operations decline instead of risking a
-// dialog, and resolution falls through to the /usr/bin/security tier.
+// Losing UI suppression means silence cannot be promised, so the tier must
+// step aside rather than risk a dialog.
 //
 //nolint:paralleltest // mutates the package-global bindings
 func TestMissingUISuppressionDisablesSilentOps(t *testing.T) {

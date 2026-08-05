@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 )
 
-// credentialStoreMode maps PULUMI_CREDENTIAL_STORE, case-insensitively.
 func credentialStoreMode() (securestore.Mode, error) {
 	value := env.CredentialStore.Value()
 	switch strings.ToLower(strings.TrimSpace(value)) {
@@ -45,13 +44,10 @@ func credentialStoreMode() (securestore.Mode, error) {
 	}
 }
 
-// writeStore memoizes the resolved store: probing costs an exec of
-// /usr/bin/security on macOS.
+// Memoized: probing costs an exec of /usr/bin/security on macOS.
 var writeStore = sync.OnceValues(resolveWriteStore)
 
-// resetWriteStoreForTesting re-arms the memoization and clears the recovery
-// marker; tests that change PULUMI_CREDENTIAL_STORE or install the
-// securestore mock must call it.
+// Tests that change PULUMI_CREDENTIAL_STORE or install the mock must call this.
 func resetWriteStoreForTesting() {
 	writeStore = sync.OnceValues(resolveWriteStore)
 	replacedEnvelope.Store(false)
@@ -66,9 +62,8 @@ func resolveWriteStore() (keyStore, error) {
 	return stores.Resolve(mode)
 }
 
-// credStoreState is a non-secret marker recording whether the plaintext
-// warning was shown. Deliberately does not record the backend: a stale
-// decision could downgrade a user who has protection available.
+// Deliberately does not record the backend: a stale decision could downgrade
+// a user who has protection available.
 type credStoreState struct {
 	Warned bool `json:"warned,omitempty"`
 }
@@ -108,14 +103,11 @@ func writeCredStoreState(state credStoreState) {
 	_ = os.WriteFile(path, data, 0o600)
 }
 
-// warnWriter is swapped in tests.
 var warnWriter io.Writer = os.Stderr
 
-// plaintextPendingOnce caps the opted-in plaintext-read notice at one per
-// process: credentials are read by the engine and every language host alike.
+// Credentials are read by the engine and every language host alike.
 var plaintextPendingOnce sync.Once
 
-// warnPlaintextPending tells an opted-in user their file is still plaintext.
 func warnPlaintextPending() {
 	if !securestore.Attended() {
 		return
@@ -126,8 +118,7 @@ func warnPlaintextPending() {
 	})
 }
 
-// warnPlaintextFallback fires once per machine (recorded in the state file),
-// and only when someone is watching.
+// Once per machine, and only when someone is watching.
 func warnPlaintextFallback(reason error) {
 	if !securestore.Attended() {
 		logging.V(7).Infof("credential store unavailable, using plaintext: %v", reason)

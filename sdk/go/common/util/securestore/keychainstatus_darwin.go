@@ -22,12 +22,11 @@ import (
 	"sync"
 )
 
-// The login keychain can genuinely be locked: lock-keychain, the
-// lock-on-sleep/inactivity settings, key-authenticated SSH (the PAM unlock
-// never ran), or a keychain password diverged from the login password.
+// The login keychain is genuinely lockable: lock-keychain, lock-on-sleep,
+// key-authenticated SSH (no PAM unlock), or a diverged keychain password.
 
-// The caller releases the returned ref. Not ok when the deprecated lookup is
-// gone, which reads as "lock state unknown" rather than failing the tier.
+// Caller releases the ref. Not ok also means the deprecated lookup is gone,
+// which reads as "lock state unknown" rather than failing the tier.
 func copyDefaultKeychain() (kc uintptr, ok bool) {
 	if loadDarwinAPI() != nil || sec.keychainCopyDefault == nil || sec.keychainGetStatus == nil {
 		return 0, false
@@ -38,8 +37,7 @@ func copyDefaultKeychain() (kc uintptr, ok bool) {
 	return kc, true
 }
 
-// Hooked so tests can exercise the locked branches without locking the
-// developer's own keychain.
+// Hooked so tests need not lock the developer's own keychain.
 var defaultKeychainLockedHook = realDefaultKeychainLocked
 
 func defaultKeychainLocked() (locked, ok bool) { return defaultKeychainLockedHook() }
@@ -57,23 +55,17 @@ func realDefaultKeychainLocked() (locked, ok bool) {
 	return status&kSecUnlockStateStatus == 0, true
 }
 
-// notifyWaitingForKeychainUnlock is printed before an operation that is about
-// to wait on securityd's password dialog, so a dialog on another space does
-// not look like a hang. Swapped in tests.
+// Printed before blocking, so a dialog on another space is not seen as a hang.
 var notifyWaitingForKeychainUnlock = func() {
 	fmt.Fprintln(os.Stderr,
 		"Pulumi needs the key protecting your credentials: answer the keychain password prompt to continue.")
 }
 
-// interactionMu serializes the process-wide user-interaction setting below.
 var interactionMu sync.Mutex
 
-// withoutKeychainUI suppresses securityd's dialogs process-wide, so a locked
-// keychain or an ACL mismatch errors instead of drawing UI.
-//
-// SecKeychainSetUserInteractionAllowed is deprecated, but the modern
-// replacement (kSecUseAuthenticationContext + LAContext) was measured to be
-// inert for legacy keychain items and drew the dialog it should suppress.
+// Deprecated, but the modern replacement (kSecUseAuthenticationContext +
+// LAContext) was measured inert for legacy keychain items — it drew the very
+// dialog it should suppress.
 func withoutKeychainUI[T any](fn func() (T, error)) (T, error) {
 	if err := loadDarwinAPI(); err != nil {
 		var zero T
@@ -96,10 +88,9 @@ func withoutKeychainUI[T any](fn func() (T, error)) (T, error) {
 	return fn()
 }
 
-// keychainPrecheck classifies the default keychain before anything that could
-// draw a dialog; both macOS tiers go through it. Locked plus silent reports
-// Locked untouched, locked plus permitted gets one unlock attempt with no
-// deadline, and an unknown state is left to the operation.
+// Both macOS tiers go through this before anything that could draw a dialog.
+// Locked gets one unlock attempt when permitted, and is reported untouched
+// when not; unknown state is left to the operation.
 var keychainPrecheck = memoizePrecheck(probeKeychain)
 
 func probeKeychain(allowPrompt bool) (Outcome, error) {

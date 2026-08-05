@@ -28,15 +28,11 @@ const envelopeVersion = 1
 
 const envelopeAlgo = "aes-256-gcm"
 
-// ErrUnsupportedVersion indicates an envelope whose version this build does
-// not understand. Detection (IsEnvelope) still succeeds for such files so
-// they are never mistaken for plaintext and overwritten.
+// IsEnvelope still detects these, so they are never overwritten as plaintext.
 var ErrUnsupportedVersion = errors.New("was encrypted by a newer version of the Pulumi CLI")
 
-// envelope is the on-disk JSON shape of an encrypted file. The marker field
-// distinguishes it from any legacy plaintext credentials file, whose schema
-// has no key starting with "$". It is a pointer so that presence (any
-// version) and support (this version) are separate decisions.
+// The marker distinguishes this from a legacy plaintext file, whose schema has
+// no "$"-prefixed key. Pointer so presence and supported version stay separate.
 type envelope struct {
 	Marker  *int   `json:"$pulumiSecureStore"`
 	Backend string `json:"backend"`
@@ -49,9 +45,7 @@ func aad(version int, backend Backend, algo string) []byte {
 	return fmt.Appendf(nil, "%d|%s|%s", version, backend, algo)
 }
 
-// Seal encrypts plaintext with AES-256-GCM under the given 32-byte key and
-// returns a versioned JSON envelope recording the backend that protects the
-// key, suitable for writing to disk.
+// Seal returns a versioned JSON envelope recording the protecting backend.
 func Seal(key []byte, backend Backend, plaintext []byte) ([]byte, error) {
 	aead, err := newAEAD(key)
 	if err != nil {
@@ -103,10 +97,8 @@ func Open(key, data []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-// IsEnvelope reports whether data looks like a Seal-produced envelope rather
-// than a legacy plaintext file. It is detection only: it accepts any
-// envelope version, including ones this build cannot open, so callers never
-// treat an unreadable envelope as plaintext.
+// Detection only: accepts versions this build cannot open, so an unreadable
+// envelope is never treated as plaintext.
 func IsEnvelope(data []byte) bool {
 	var probe struct {
 		Marker *int `json:"$pulumiSecureStore"`
@@ -114,8 +106,7 @@ func IsEnvelope(data []byte) bool {
 	return json.Unmarshal(data, &probe) == nil && probe.Marker != nil
 }
 
-// EnvelopeBackend returns the backend recorded in an envelope, so reads can
-// be attempted with the same mechanism that protected the key.
+// EnvelopeBackend returns the backend recorded in an envelope.
 func EnvelopeBackend(data []byte) (Backend, error) {
 	env, err := parseEnvelope(data)
 	if err != nil {

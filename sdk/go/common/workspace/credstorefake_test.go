@@ -28,8 +28,7 @@ const (
 	fakeStrongBackend = securestore.Backend("fake-strong")
 )
 
-// fakeKeyStore keeps one key in memory, standing in for an OS credential
-// store that is present and unlocked.
+// Stands in for a store that is present and unlocked.
 type fakeKeyStore struct {
 	backend    securestore.Backend
 	key        []byte
@@ -66,9 +65,8 @@ func (f *fakeKeyStore) DeleteKey() error {
 
 func (f *fakeKeyStore) FallbackReason() error { return nil }
 
-// fakeStores resolves the fakes a test installed, mirroring how the real
-// resolver picks the first usable backend and honours an envelope's recorded
-// one.
+// Mirrors the real resolver: first usable backend wins, envelopes honour
+// their recorded one.
 type fakeStores struct {
 	byBackend map[securestore.Backend]*fakeKeyStore
 	preferred []securestore.Backend
@@ -126,8 +124,7 @@ func (f *fakeStores) ForBackend(id securestore.Backend) (keyStore, error) {
 	return st, nil
 }
 
-// plaintextKeyStore is the "no protection available" store, whose key
-// operations fail the way the real plaintext backend's do.
+// Fails the way the real plaintext backend does.
 type plaintextKeyStore struct{ reason error }
 
 func (plaintextKeyStore) Backend() securestore.Backend { return securestore.BackendPlaintext }
@@ -138,8 +135,7 @@ func (plaintextKeyStore) GetOrCreateKey() ([]byte, error) {
 func (plaintextKeyStore) DeleteKey() error        { return nil }
 func (p plaintextKeyStore) FallbackReason() error { return p.reason }
 
-// useFakeStores installs a single usable fake backend for the duration of a
-// test, and returns it so the test can drop its key or make it refuse.
+// Returned so the test can drop its key or make it refuse.
 func useFakeStores(t *testing.T) *fakeKeyStore {
 	t.Helper()
 	st := &fakeKeyStore{backend: fakeBackend}
@@ -166,9 +162,7 @@ func fakeStore(t *testing.T) *fakeKeyStore {
 	return fakes.byBackend[fakeBackend]
 }
 
-// useUpgradableStores installs a weak backend plus a stronger one that only
-// becomes available once promote is called, mirroring a platform that gains a
-// better protection tier.
+// The stronger backend becomes available only once promote is called.
 func useUpgradableStores(t *testing.T) (promote func()) {
 	t.Helper()
 	weak := &fakeKeyStore{backend: fakeBackend}

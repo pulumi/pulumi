@@ -24,13 +24,9 @@ import (
 	"github.com/ebitengine/purego"
 )
 
-// CoreFoundation bindings, resolved at runtime with purego (no cgo). All
-// CFTypeRef-like values are carried as uintptr.
-//
-// Ownership follows the CF "Create Rule": every ref obtained from a function
-// with Create or Copy in its name must be passed to cf.release exactly once.
-// Refs obtained from Get-style calls (e.g. CFDictionaryGetValue) are borrowed
-// and must not be released.
+// CoreFoundation bindings via purego (no cgo); CFTypeRefs are carried as
+// uintptr. CF Create Rule: refs from Create/Copy functions must be released
+// exactly once; Get-style refs are borrowed and must not be.
 
 const (
 	coreFoundationPath = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
@@ -42,9 +38,8 @@ const (
 	kCFNumberSInt64Type = 4
 )
 
-// lib wraps a dlopen'd library and accumulates the first symbol-resolution
-// error, so call sites can bind many symbols without per-symbol error
-// handling.
+// Accumulates the first symbol-resolution error, so call sites can bind many
+// symbols without per-symbol error handling.
 type lib struct {
 	path   string
 	handle uintptr
@@ -62,7 +57,6 @@ func openLib(path string) *lib {
 	return l
 }
 
-// fn binds fptr (a pointer to a Go func variable) to the named C function.
 func (l *lib) fn(fptr any, name string) {
 	if l.err != nil {
 		return
@@ -75,10 +69,9 @@ func (l *lib) fn(fptr any, name string) {
 	purego.RegisterFunc(fptr, sym)
 }
 
-// optionalFn binds a symbol that may not exist, leaving the func variable nil
-// when it does not. Used for the deprecated SecKeychain family: if Apple ever
-// removes it, only the features needing it should stop working, rather than
-// every Security binding at once. Callers must nil-check.
+// Binds a symbol that may not exist, leaving the variable nil. For the
+// deprecated SecKeychain family: its removal should disable only the features
+// needing it, not every Security binding. Callers must nil-check.
 func (l *lib) optionalFn(fptr any, name string) {
 	if l.err != nil {
 		return
@@ -88,8 +81,8 @@ func (l *lib) optionalFn(fptr any, name string) {
 	}
 }
 
-// addr returns the address of an exported data symbol, for struct-typed
-// symbols (e.g. kCFTypeDictionaryKeyCallBacks) that C code passes by address.
+// For struct-typed symbols (e.g. kCFTypeDictionaryKeyCallBacks) that C passes
+// by address.
 func (l *lib) addr(name string) uintptr {
 	if l.err != nil {
 		return 0
@@ -102,9 +95,8 @@ func (l *lib) addr(name string) uintptr {
 	return sym
 }
 
-// constant returns the value of an exported pointer-typed data symbol such as
-// `const CFStringRef kSecClass`: Dlsym yields the address of the variable, so
-// one dereference yields the CFStringRef value itself.
+// For pointer-typed symbols like `const CFStringRef kSecClass`: Dlsym yields
+// the variable's address, so one dereference gives the value.
 func (l *lib) constant(name string) uintptr {
 	addr := l.addr(name)
 	if addr == 0 {
@@ -154,12 +146,12 @@ func newCFAPI(l *lib) *cfAPI {
 	return c
 }
 
-// newString creates a CFString (caller releases) from a Go string.
+// Caller releases.
 func (c *cfAPI) newString(s string) uintptr {
 	return c.stringCreate(0, s, kCFStringEncodingUTF8)
 }
 
-// goString copies a borrowed CFString into a Go string.
+// Borrowed ref.
 func (c *cfAPI) goString(s uintptr) string {
 	n := c.stringGetLength(s) // length in UTF-16 code units
 	if n <= 0 {
@@ -177,7 +169,7 @@ func (c *cfAPI) goString(s uintptr) string {
 	return string(buf)
 }
 
-// newData creates a CFData (caller releases) holding a copy of b.
+// Caller releases.
 func (c *cfAPI) newData(b []byte) uintptr {
 	return c.dataCreate(0, b, len(b))
 }
@@ -196,9 +188,8 @@ func (c *cfAPI) dataBytes(data uintptr) []byte {
 	return out
 }
 
-// newDict creates a CFDictionary (caller releases) from parallel keys/values.
-// The dictionary retains its keys and values, so the caller may release any
-// refs it created for them immediately afterwards.
+// Caller releases. Retains its keys and values, so caller-created refs may be
+// released immediately after.
 func (c *cfAPI) newDict(keys, values []uintptr) uintptr {
 	return c.dictionaryCreate(0, &keys[0], &values[0], len(keys),
 		c.typeDictKeyCallBacks, c.typeDictValueCallBacks)
@@ -212,10 +203,7 @@ var (
 	sec *secAPI
 )
 
-// loadDarwinAPI resolves the CoreFoundation and Security framework bindings
-// once per process. Both frameworks ship with macOS, so failure here is
-// unexpected; it is still surfaced as an error rather than a panic so that
-// backend probing can fall back gracefully.
+// Failure is an error, not a panic, so probing can fall back.
 func loadDarwinAPI() error {
 	darwinAPIOnce.Do(func() {
 		cfLib := openLib(coreFoundationPath)

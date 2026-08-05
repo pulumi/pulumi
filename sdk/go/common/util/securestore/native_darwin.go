@@ -22,24 +22,17 @@ import (
 )
 
 const (
-	// nativeService/nativeAccount identify the native backend's keychain
-	// item. Never change them: existing users' encrypted files reference
-	// this exact item. The account deliberately differs from keyringAccount
-	// ("credentials-key") so the native and /usr/bin/security backends never
-	// collide on one keychain item: this item's ACL is bound to our signing
-	// identity, while the fallback item must stay readable by
+	// Never change: encrypted files reference this exact item. The account
+	// differs from keyringAccount so the two macOS backends never collide —
+	// this item's ACL is ours alone, the fallback must stay readable by
 	// /usr/bin/security.
 	nativeService = "Pulumi CLI"
 	nativeAccount = "credentials-key-native"
 	nativeLabel   = "Pulumi CLI credentials key"
 )
 
-// nativeKeychainBackend returns the native SecItem keychain backend. Its
-// availability is gated on the running binary carrying a real code signature
-// (see nativeSelfCheck); the item's per-app ACL comes from SecItemAdd itself,
-// which binds access to the creating app's code-signing identity. allowPrompt
-// carries the unlock prompt policy: whether operations may let securityd draw
-// its unlock or ACL-confirmation dialogs.
+// The per-app ACL comes from SecItemAdd itself, which binds access to the
+// creating app's code-signing identity.
 func nativeKeychainBackend(allowPrompt bool) backendImpl {
 	return backendImpl{
 		id: BackendMacOSACL,
@@ -53,24 +46,17 @@ func nativeKeychainBackend(allowPrompt bool) backendImpl {
 	}
 }
 
-// nativeStore is an itemStore over the SecItem API for one generic-password
-// item. The item is intentionally minimal: no kSecAttrSynchronizable (so it
-// is never iCloud-synced) and no explicit kSecAttrAccess/kSecAttrAccessControl
-// (the default ACL from SecItemAdd is exactly the per-app protection wanted,
-// and setting access attributes on existing items triggers prompts).
+// Deliberately minimal: no synchronizable attribute (never iCloud-synced) and
+// no explicit access attributes — SecItemAdd's default ACL is what we want,
+// and setting access attributes prompts.
 type nativeStore struct {
 	service, account, label string
 	allowPrompt             bool
 }
 
-// runNativeOp applies the unlock prompt policy to one keychain operation.
-//
-// Silent operations suppress securityd's dialogs even though the precheck
-// just read the lock state: the keychain can lock in between (sleep,
-// inactivity timer, screen lock), and suppression makes silence a property of
-// the call rather than an inference from a check that has already gone stale.
-// Prompt-permitted operations run with dialogs enabled and no deadline, since
-// the user may be typing a password.
+// Silent ops suppress dialogs even though the precheck just read the lock
+// state: the keychain can lock in between (sleep, inactivity, screen lock).
+// Prompt-permitted ops run untimed, since the user may be typing a password.
 func runNativeOp[T any](s *nativeStore, op func() (T, error)) (T, error) {
 	if _, err := keychainPrecheck(s.allowPrompt); err != nil {
 		var zero T
@@ -84,10 +70,6 @@ func runNativeOp[T any](s *nativeStore, op func() (T, error)) (T, error) {
 	})
 }
 
-// available reports whether the native backend is usable: the binary must
-// pass the code-signing self-check and the keychain must answer our item
-// query without requiring interaction. Both checks are prompt-free and the
-// whole probe is time-bounded regardless of the prompt policy.
 func (s *nativeStore) available() (Outcome, error) {
 	if _, err := withTimeout(func() (struct{}, error) {
 		return struct{}{}, nativeSelfCheck()
@@ -112,11 +94,8 @@ func (s *nativeStore) available() (Outcome, error) {
 	return outcome, err
 }
 
-// probe reads our item with UI suppressed, whatever the prompt policy: a
-// probe decides whether a backend is usable and must never itself draw a
-// dialog. A missing item proves the keychain is reachable and unlocked; an
-// interaction-required error classifies it as Locked rather than Absent, so
-// resolution treats it like a locked keyring instead of falling through.
+// Suppresses UI whatever the prompt policy: deciding usability must never
+// itself draw a dialog.
 func (s *nativeStore) probe() (Outcome, error) {
 	if err := loadDarwinAPI(); err != nil {
 		return Absent, fmt.Errorf("%w: %v", ErrUnavailable, err)
@@ -145,9 +124,8 @@ func (s *nativeStore) probe() (Outcome, error) {
 	return Absent, fmt.Errorf("%w: %v", ErrUnavailable, statusErr)
 }
 
-// copyMatching runs the data-returning item query. Requesting the data (not
-// just attributes) is deliberate: item attributes stay readable while the
-// keychain is locked, so only a data read makes a locked keychain visible.
+// Requests the data, not just attributes: attributes stay readable on a
+// locked keychain, so only a data read exposes the lock.
 func (s *nativeStore) copyMatching(result *uintptr) int32 {
 	service := cf.newString(s.service)
 	defer cf.release(service)
@@ -200,10 +178,7 @@ func (s *nativeStore) set(value string) error {
 
 		status := sec.itemAdd(attrs, nil)
 		if status == errSecDuplicateItem {
-			// Update kSecValueData only. Never touch ACL/access attributes on
-			// an existing item: re-setting access triggers authorization
-			// prompts, while a pure data update by the item's creator is
-			// silent.
+			// Data only — re-setting access attributes on an existing item prompts.
 			query := cf.newDict(
 				[]uintptr{sec.class, sec.attrService, sec.attrAccount},
 				[]uintptr{sec.classGenericPassword, service, account},

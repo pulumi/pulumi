@@ -106,10 +106,8 @@ func GetAccountWithAgentFallback(key string) (Account, bool, error) {
 		return Account{}, false, errors.Join(err, agentErr)
 	}
 	if !agentAccount.HasCredential() {
-		// An undecryptable default credentials file is an actionable state
-		// the user must resolve (or recover from via `pulumi login`); when no
-		// usable agent credentials stand in for it, it must not be masked as
-		// a plain "not logged in".
+		// With no agent credentials standing in, do not mask this as
+		// "not logged in".
 		if IsUndecryptableCredentials(err) {
 			return Account{}, false, err
 		}
@@ -151,7 +149,6 @@ func DeleteAllAccounts() error {
 		return err
 	}
 
-	// Logging out of everything leaves nothing behind.
 	dropEnvelopeKey(credsFile, false)
 	var result error
 	if err = os.Remove(credsFile); err != nil && !os.IsNotExist(err) {
@@ -176,11 +173,9 @@ func StoreAccount(key string, account Account, current bool) error {
 func storeAccountAt(path, key string, account Account, current bool) error {
 	creds, err := readCredentialsFile(path)
 	if err != nil && !os.IsNotExist(err) {
-		// A file that can no longer be decrypted is replaced rather than
-		// blocking the write: storing an account only happens after a
-		// successful authentication, and the unreadable previous contents
-		// cannot be preserved anyway. This is what lets `pulumi login`
-		// recover from a lost encryption key.
+		// Storing only happens after a successful authentication, and the
+		// unreadable contents cannot be preserved — this is what lets
+		// `pulumi login` recover.
 		if !IsUndecryptableCredentials(err) {
 			return err
 		}
@@ -428,9 +423,8 @@ func readCredentialsFile(credsFile string) (Credentials, error) {
 	return creds, nil
 }
 
-// UndecryptableCredentialsError indicates an encrypted credentials file that
-// cannot be decrypted here. Read paths surface it; `pulumi login` and `pulumi
-// logout` recover by replacing or removing the file.
+// Read paths surface this; `pulumi login` and `pulumi logout` recover by
+// replacing or removing the file.
 type UndecryptableCredentialsError struct {
 	Path string
 	Err  error
@@ -440,15 +434,11 @@ func (e *UndecryptableCredentialsError) Error() string { return e.Err.Error() }
 
 func (e *UndecryptableCredentialsError) Unwrap() error { return e.Err }
 
-// IsUndecryptableCredentials reports whether err (or anything it wraps)
-// indicates an encrypted credentials file that cannot be decrypted here.
 func IsUndecryptableCredentials(err error) bool {
 	var undecryptable *UndecryptableCredentialsError
 	return errors.As(err, &undecryptable)
 }
 
-// decryptCredentials opens a secure-store envelope using the backend
-// recorded in it, mapping failures to actionable errors.
 func decryptCredentials(credsFile string, data []byte) ([]byte, error) {
 	backend, err := securestore.EnvelopeBackend(data)
 	if err != nil {
@@ -494,9 +484,8 @@ func decryptCredentials(credsFile string, data []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-// writeCredentialsFile replaces credentials at a path, encrypting whenever a
-// store is usable under PULUMI_CREDENTIAL_STORE. Agent credentials go through
-// here too — all agent processes share one OS user and one key.
+// Agent credentials go through here too — all agent processes share one OS
+// user and one key.
 func writeCredentialsFile(credsFile string, creds Credentials) error {
 	if len(creds.AccessTokens) == 0 {
 		err := os.Remove(credsFile)
@@ -515,10 +504,9 @@ func writeCredentialsFile(credsFile string, creds Credentials) error {
 	if err != nil {
 		return err
 	}
-	// Encryption is sticky: without it every command run without
-	// PULUMI_CREDENTIAL_STORE set would downgrade migrated credentials back
-	// to plaintext. Only explicit "plaintext" decrypts, and an envelope this
-	// build cannot parse is never overwritten at all.
+	// Sticky: otherwise every command run without PULUMI_CREDENTIAL_STORE set
+	// would downgrade migrated credentials. Only explicit "plaintext"
+	// decrypts, and an unparseable envelope is never overwritten.
 	sticky := false
 	if mode, _ := credentialStoreMode(); mode != securestore.ModePlaintext {
 		if existing, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(existing) {
@@ -555,8 +543,7 @@ func writeCredentialsFile(credsFile string, creds Credentials) error {
 		key, keyErr := st.GetOrCreateKey()
 		if keyErr != nil {
 			mode, _ := credentialStoreMode()
-			// Falling back would write plaintext over a file we just proved
-			// is an envelope, so a sticky store's failure is always fatal.
+			// Falling back would write plaintext over a proven envelope.
 			if sticky || mode == securestore.ModeOS || errors.Is(keyErr, securestore.ErrDeclined) {
 				return fmt.Errorf("getting credentials encryption key: %w", keyErr)
 			}
@@ -602,19 +589,13 @@ func deleteCurrentBackendKey() {
 	}
 }
 
-// replacedEnvelope records that this process removed an encrypted credentials
-// file, so the replacement write stays encrypted: recovering from a lost key
-// is not the explicit "plaintext" opt-out.
+// Recovering from a lost key is not the explicit "plaintext" opt-out, so the
+// replacement write stays encrypted.
 var replacedEnvelope atomic.Bool
 
-// ResetStoredCredentials removes the credentials file, its encryption key and
-// the marker state. The recovery path for `pulumi login` when the existing
-// file can no longer be decrypted.
-// dropEnvelopeKey deletes the credentials encryption key, looked up both via
-// the backend recorded in the (possibly undecryptable) envelope and via the
-// best currently-available backend, since they can differ. Best effort: the
-// store may legitimately be unavailable. markReplaced records that an
-// encrypted file was removed, so the replacement write stays encrypted.
+// The recovery path for `pulumi login` when the file cannot be decrypted.
+// Looks the key up both via the envelope's recorded backend and the best
+// available one, since they can differ. Best effort.
 func dropEnvelopeKey(credsFile string, markReplaced bool) {
 	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
 		if markReplaced {

@@ -31,9 +31,6 @@ func disableInteractive(t *testing.T, disable bool) {
 
 //nolint:paralleltest // mutates interactivity globals and the environment
 func TestNonInteractiveForbidsPrompting(t *testing.T) {
-	// --non-interactive wins over every detector. There is deliberately no
-	// way to assert the opposite: a session that cannot draw a dialog cannot
-	// be talked into drawing one.
 	disableInteractive(t, true)
 	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("CI", "")

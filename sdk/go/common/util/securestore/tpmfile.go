@@ -23,23 +23,17 @@ import (
 	"path/filepath"
 )
 
-// tpmFileName is the file under the Pulumi home directory holding the item
-// when no OS credential store is usable. Never change it: existing users'
-// encrypted files reference this exact location.
+// Never change: encrypted files reference this exact location.
 const tpmFileName = "credentials-key.tpm"
 
-// tpmFileStore is an itemStore persisting the item in a private file. It is
-// only ever paired with tpmWrapper, so the file content is a TPM-sealed blob:
-// the 0600 mode is defense in depth, while the TPM binding is what keeps a
-// harvested file useless off the originating machine.
+// Only ever paired with tpmWrapper: the TPM binding, not the 0600 mode, is
+// what makes a harvested file useless.
 type tpmFileStore struct {
 	path string
 	err  error // non-nil when the Pulumi home directory could not be determined
 }
 
-// newTPMFileStore returns the itemStore keeping the TPM-sealed key in a file
-// under the given Pulumi home directory (the caller resolves it; this package
-// cannot import workspace).
+// The caller resolves pulumiHome; this package cannot import workspace.
 func newTPMFileStore(pulumiHome string) itemStore {
 	if pulumiHome == "" {
 		return tpmFileStore{err: errors.New("the Pulumi home directory could not be determined, set PULUMI_HOME")}
@@ -47,9 +41,7 @@ func newTPMFileStore(pulumiHome string) itemStore {
 	return tpmFileStore{path: filepath.Join(pulumiHome, tpmFileName)}
 }
 
-// available reports whether the key file's directory exists (creating it if
-// needed) and is actually writable, proven by creating and removing a probe
-// file without touching the real item.
+// Proves writability with a probe file, never touching the item.
 func (s tpmFileStore) available() (Outcome, error) {
 	_, err := withTimeout(func() (struct{}, error) {
 		if s.err != nil {
@@ -102,9 +94,8 @@ func (s tpmFileStore) set(value string) error {
 		if err := os.MkdirAll(dir, 0o700); err != nil {
 			return struct{}{}, err
 		}
-		// Write to a temp file and rename into place so a crash can never
-		// leave a truncated item behind. os.CreateTemp creates the file with
-		// mode 0600.
+		// Temp file + rename so a crash cannot truncate the item. CreateTemp
+		// already gives mode 0600.
 		tmp, err := os.CreateTemp(dir, ".credentials-key-*")
 		if err != nil {
 			return struct{}{}, err
@@ -118,7 +109,7 @@ func (s tpmFileStore) set(value string) error {
 			os.Remove(tmp.Name())
 			return struct{}{}, err
 		}
-		// Same-directory rename, mirroring workspace/creds.go's atomic write.
+		// Same-directory rename, so //nolint:forbidigo below is safe.
 		if err := os.Rename(tmp.Name(), s.path); err != nil { //nolint:forbidigo
 			os.Remove(tmp.Name())
 			return struct{}{}, err

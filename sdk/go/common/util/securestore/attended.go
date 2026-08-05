@@ -22,24 +22,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// Attended reports whether a user is present for this run. It decides both
-// whether an unlock prompt may be completed and whether stderr warnings have
-// an audience, so the CLI holds one opinion about presence.
-//
-// The question is whether a dialog the credential provider draws on the
-// desktop session can reach someone, which is why this deliberately ignores
-// whether stdio is a TTY: `pulumi up | tee log` is attended, and `ssh host
-// pulumi whoami` is not. --non-interactive forces unattended; there is no way
-// to force the opposite, because a session with no display cannot show a
-// dialog however present the user is.
+// Attended reports whether anyone can answer a dialog the credential provider
+// draws on the desktop session. Deliberately not a TTY test: `pulumi up | tee
+// log` is attended, `ssh host pulumi whoami` is not.
 func Attended() bool { return someoneCanAnswerAPasswordDialog() }
 
 func someoneCanAnswerAPasswordDialog() bool {
 	if cmdutil.DisableInteractive {
 		return false
 	}
-	// ciutil knows vendor variables; the bare CI convention is checked too so
-	// this agrees with the rest of the CLI about what counts as headless.
 	if ciutil.IsCI() || os.Getenv("CI") != "" {
 		return false
 	}

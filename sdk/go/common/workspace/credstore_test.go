@@ -27,8 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// pinSecureCreds points credential paths at a temp dir, installs the
-// in-memory secure store, and selects the given PULUMI_CREDENTIAL_STORE mode.
+// Temp credential dir, fake store, chosen mode.
 func pinSecureCreds(t *testing.T, mode string) {
 	t.Helper()
 	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
@@ -96,8 +95,6 @@ func TestPlaintextFileMigratesOnWriteNotRead(t *testing.T) {
 	require.NoError(t, os.WriteFile(credsFile,
 		[]byte(`{"current":"https://api.pulumi.com","accessTokens":{"https://api.pulumi.com":"pul-legacy"}}`), 0o600))
 
-	// Reads must not rewrite the file: read-only commands cannot opt the
-	// user into encryption as a side effect.
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
 	assert.Equal(t, "pul-legacy", creds.AccessTokens["https://api.pulumi.com"])
@@ -137,8 +134,7 @@ func TestEncryptedFileReadableRegardlessOfMode(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	// Even with the mode flipped to plaintext, an existing envelope must
-	// still be readable (reads always use the envelope's recorded backend).
+	// Reads always use the envelope's recorded backend.
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
 	resetWriteStoreForTesting()
 
@@ -196,9 +192,7 @@ func TestAgentCredentialsEncryptedToo(t *testing.T) {
 	assert.Equal(t, "pul-secret-token", account.AccessToken)
 }
 
-// forceAttended makes the attended check pass deterministically, including on
-// CI hosts and headless machines, so warning tests do not depend on where they
-// run.
+// Makes the attended check pass on CI hosts and headless machines.
 func forceAttended(t *testing.T) {
 	t.Helper()
 	prev := cmdutil.DisableInteractive
@@ -235,9 +229,6 @@ func TestUnsetModePreservesExistingEncryption(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	// Re-store with the env var unset: the file must stay encrypted —
-	// otherwise every ordinary command would silently downgrade migrated
-	// credentials back to plaintext.
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "")
 	resetWriteStoreForTesting()
 
@@ -262,8 +253,6 @@ func TestExplicitPlaintextModeDowngrades(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	// The explicit plaintext mode is the deliberate escape hatch: writes
-	// decrypt the file back to plaintext.
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
 	resetWriteStoreForTesting()
 
@@ -286,8 +275,7 @@ func TestStoreAccountRecoversFromUndecryptableFile(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, IsUndecryptableCredentials(err))
 
-	// ...but storing a fresh account (what login does after authenticating)
-	// replaces the unreadable file instead of failing.
+	// Storing a fresh account is what login does after authenticating.
 	require.NoError(t, StoreAccount("https://api.pulumi.com",
 		Account{AccessToken: "pul-fresh-token"}, true))
 
@@ -389,9 +377,7 @@ func TestDeclinedUnlockNeverWritesPlaintext(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestDeclinedUnlockOnReadIsNotAdviceToReAuthenticate(t *testing.T) {
-	// Dismissing the dialog while reading must say the store was not
-	// unlocked, not send the user off to `pulumi login`: their credentials
-	// are intact and one click away.
+	// Their credentials are intact and one click away.
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
@@ -400,17 +386,13 @@ func TestDeclinedUnlockOnReadIsNotAdviceToReAuthenticate(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorIs(t, err, securestore.ErrDeclined)
 	assert.NotContains(t, err.Error(), "re-authenticate")
-	// Crucially not an UndecryptableCredentialsError: `pulumi login` reacts to
-	// that by deleting the file, so a dismissed dialog would destroy readable
-	// credentials and write plaintext in their place.
+	// Not UndecryptableCredentialsError: login reacts by deleting the file.
 	assert.False(t, IsUndecryptableCredentials(err))
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestUnusableStoreIsNotTreatedAsUnreadableCredentials(t *testing.T) {
-	// A locked or absent store says nothing about the credentials: they stay
-	// readable once it works again. Reporting this as undecryptable would let
-	// `pulumi login` delete the file and write plaintext in its place.
+	// A store unusable right now must not authorise replacing the file.
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
@@ -424,8 +406,7 @@ func TestUnusableStoreIsNotTreatedAsUnreadableCredentials(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestLostKeyStillAllowsRecovery(t *testing.T) {
-	// The opposite case: the key is genuinely gone, so the data cannot be
-	// recovered and `pulumi login` may replace it.
+	// The key is genuinely gone, so login may replace the data.
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
@@ -437,8 +418,7 @@ func TestLostKeyStillAllowsRecovery(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestDeclinedUnlockOnStickyWriteKeepsTheEnvelope(t *testing.T) {
-	// An existing envelope plus a refused unlock must fail, not fall through
-	// to the "refusing to overwrite" path, and must leave the file alone.
+	// Must fail rather than fall through to "refusing to overwrite".
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 	credsFile, err := getCredsFilePath()
@@ -508,10 +488,8 @@ func TestModeIsCaseInsensitive(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv, the package-global secure-store mock, and the real credentials file
 func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
-	// The agent fallback must not mask an undecryptable default credentials
-	// file as "not logged in" when no usable agent credentials stand in.
-	// Follows the established agent-test pattern: temporarily operate on the
-	// real credentials path (saved and restored), agent dir redirected.
+	// Operates on the real credentials path (saved and restored) with the
+	// agent dir redirected, following the established agent-test pattern.
 	useFakeStores(t)
 
 	oldCreds, err := GetStoredCredentials()
@@ -544,10 +522,7 @@ func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestWriteUpgradesToStrongerBackend(t *testing.T) {
-	// The upgrade story behind shipping now and strengthening later: data
-	// encrypted under one backend must be silently re-encrypted under a
-	// stronger backend once it becomes available (a signed binary unlocking
-	// the native macOS keychain, a TPM appearing) on the next write, while
+	// Data must be re-encrypted under a stronger backend once one appears,
 	// staying readable throughout via the envelope's recorded backend.
 	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
@@ -569,8 +544,6 @@ func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "pul-secret-token", creds.AccessTokens["https://api.pulumi.com"])
 
-	// The next write upgrades: re-encrypted under the stronger backend with
-	// all data preserved, no user action required.
 	creds.AccessTokens["https://api.other.com"] = "pul-second-token"
 	require.NoError(t, StoreCredentials(creds))
 
@@ -586,8 +559,7 @@ func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 	assert.Equal(t, "pul-secret-token", upgraded.AccessTokens["https://api.pulumi.com"], "existing data preserved")
 	assert.Equal(t, "pul-second-token", upgraded.AccessTokens["https://api.other.com"])
 
-	// The weaker backend's key is deliberately left in place: the shared
-	// agent credentials file may still be encrypted under it.
+	// Left in place: the shared agent file may still be encrypted under it.
 	weak, err := stores.ForBackend(fakeBackend)
 	require.NoError(t, err)
 	_, err = weak.GetKey()
@@ -596,9 +568,7 @@ func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestRecoveryFromLostKeyStaysEncrypted(t *testing.T) {
-	// Replacing an undecryptable envelope is recovery, not the explicit
-	// "plaintext" opt-out: the file `pulumi login` writes back must be an
-	// envelope again even when no mode is configured at recovery time.
+	// Recovery is not the explicit "plaintext" opt-out.
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 

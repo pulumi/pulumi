@@ -21,10 +21,9 @@ import (
 	"fmt"
 )
 
-// The native keychain backend is only worth using on a real (Developer ID /
-// App Store) signature: that is what the item's per-app ACL binds to, and an
-// ad-hoc binary gets a new identity every rebuild, re-prompting each time.
-// Uses SecCodeCopySelf, not csops, which misreports on macOS 26/arm64.
+// The ACL binds to a real (Developer ID / App Store) signature; an ad-hoc
+// binary gets a new identity every rebuild, re-prompting each time. Uses
+// SecCodeCopySelf, not csops, which misreports on macOS 26/arm64.
 
 // Constants from Security/CSCommon.h and Security/SecCode.h.
 const (
@@ -33,8 +32,7 @@ const (
 	kSecCodeSignatureAdhoc   = 0x0002
 )
 
-// nativeSelfCheckOverride lets tests exercise the native store: test binaries
-// are at best ad-hoc signed, so the real check would always reject them.
+// Test binaries are at best ad-hoc signed, so the real check always rejects them.
 var nativeSelfCheckOverride func() error
 
 func nativeSelfCheck() error {

@@ -22,7 +22,6 @@ import (
 	"time"
 )
 
-// wrapKind names how the persisted item protects the key material.
 type wrapKind string
 
 const (
@@ -30,16 +29,11 @@ const (
 	wrapTPM wrapKind = "tpm"
 )
 
-// itemPrefix versions the stored item so future format changes are
-// detectable. Items are stored as strings (base64 payload) because that is
-// the lowest common denominator across OS stores: gnome-keyring drops the
-// content type, KWallet rejects non-UTF-8, and some Secret Service providers
-// hard-fail on raw binary.
+// Stored as a base64 string: gnome-keyring drops the content type, KWallet
+// rejects non-UTF-8, and some Secret Service providers hard-fail on binary.
 const itemPrefix = "pulumi-securestore-v1"
 
-// opTimeout bounds every store operation. Linux Secret Service calls can
-// hang on D-Bus activation or invisible unlock prompts; the gh CLI wraps its
-// keyring calls in a timeout for the same reason.
+// Secret Service calls can hang on D-Bus activation or invisible prompts.
 const opTimeout = 3 * time.Second
 
 func formatItem(kind wrapKind, blob []byte) string {
@@ -62,9 +56,7 @@ func parseItem(value string) (wrapKind, []byte, error) {
 	return kind, blob, nil
 }
 
-// withTimeout runs fn on a goroutine and abandons it after opTimeout. An
-// abandoned goroutine may leak for the process lifetime; that is acceptable
-// for a CLI and matches the gh CLI's approach.
+// The abandoned goroutine may leak for the process lifetime, acceptable in a CLI.
 func withTimeout[T any](fn func() (T, error)) (T, error) {
 	type result struct {
 		v   T
@@ -84,8 +76,7 @@ func withTimeout[T any](fn func() (T, error)) (T, error) {
 	}
 }
 
-// rawWrapper is the identity keyWrapper for backends where the OS store item
-// holds the key itself.
+// Identity wrapper: the store item holds the key itself.
 type rawWrapper struct{}
 
 func (rawWrapper) kind() wrapKind                     { return wrapRaw }

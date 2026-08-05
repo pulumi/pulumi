@@ -25,9 +25,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSecretServicePrecheckNoSessionBus pins the cheap environment fast-fail:
-// with no bus address and no user-runtime bus socket the probe must fail with
-// ErrUnavailable without attempting any connection.
 func TestSecretServicePrecheckNoSessionBus(t *testing.T) {
 	t.Setenv("DBUS_SESSION_BUS_ADDRESS", "")
 	t.Setenv("XDG_RUNTIME_DIR", t.TempDir()) // exists, but has no "bus" socket
