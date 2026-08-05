@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -28,6 +29,7 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 	var (
 		orgFilter     string
 		projectFilter string
+		nameFilter    string
 		output        string
 	)
 
@@ -51,7 +53,7 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			allEnvs, err := env.listEnvironments(ctx, orgFilter, projectFilter)
+			allEnvs, err := env.listEnvironments(ctx, orgFilter, projectFilter, nameFilter)
 			if err != nil {
 				return err
 			}
@@ -90,6 +92,8 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 		&orgFilter, "organization", "o", "", "Filter returned environments to those in a specific organization")
 	cmd.PersistentFlags().StringVarP(
 		&projectFilter, "project", "p", "", "Filter returned environments to those in a specific project")
+	cmd.PersistentFlags().StringVar(
+		&nameFilter, "name", "", "Filter returned environments to those whose name contains the given value")
 	addOutputFlag(cmd, &output)
 
 	return cmd
@@ -106,7 +110,7 @@ func envIdentifier(e client.OrgEnvironment) string {
 
 func (env *envCommand) listEnvironments(
 	ctx context.Context,
-	orgFilter, projectFilter string,
+	orgFilter, projectFilter, nameFilter string,
 ) ([]client.OrgEnvironment, error) {
 	user := env.esc.account.Username
 	continuationToken, allEnvs := "", []client.OrgEnvironment(nil)
@@ -131,6 +135,9 @@ func (env *envCommand) listEnvironments(
 				e.Organization = ""
 			}
 			if projectFilter != "" && e.Project != projectFilter {
+				continue
+			}
+			if nameFilter != "" && !strings.Contains(e.Name, nameFilter) {
 				continue
 			}
 			allEnvs = append(allEnvs, e)

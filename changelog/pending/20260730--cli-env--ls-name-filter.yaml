@@ -1,0 +1,5 @@
+component: cli/env
+kind: feat
+body: Add `--name` flag to `pulumi env ls` to filter environments by name substring
+custom:
+    PR: "24141"

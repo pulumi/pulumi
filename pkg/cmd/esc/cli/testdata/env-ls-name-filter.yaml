@@ -1,0 +1,35 @@
+run: |
+  esc env ls --name env-2
+  esc env ls -o test-org --name env-2
+  esc env ls -p project-a --name env-2
+  esc env ls --name no-match
+environments:
+  test-org-2/default/env: true
+  test-org/default/env: true
+  test-org/default/env-2: true
+  test-org/project-a/env: true
+  test-org/project-a/env-2: true
+  test-org/project-b/env: true
+  test-org/project-b/env-2-extra: true
+  test-user/default/env: true
+  test-user/default/env-2: true
+
+---
+> esc env ls --name env-2
+default/env-2
+test-org/default/env-2
+test-org/project-a/env-2
+test-org/project-b/env-2-extra
+> esc env ls -o test-org --name env-2
+test-org/default/env-2
+test-org/project-a/env-2
+test-org/project-b/env-2-extra
+> esc env ls -p project-a --name env-2
+test-org/project-a/env-2
+> esc env ls --name no-match
+
+---
+> esc env ls --name env-2
+> esc env ls -o test-org --name env-2
+> esc env ls -p project-a --name env-2
+> esc env ls --name no-match
