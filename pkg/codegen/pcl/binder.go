@@ -95,6 +95,7 @@ func (opts bindOptions) modelOptions() []model.BindOption {
 }
 
 type binder struct {
+	ctx     context.Context
 	options bindOptions
 
 	packageDescriptors map[string]*schema.PackageDescriptor
@@ -306,6 +307,7 @@ func BindResource(
 // this binds the full resource shape, including options and range, so the resulting program can be
 // evaluated through the normal resource registration path.
 func BindResourceProgram(
+	ctx context.Context,
 	file *syntax.File, name, token string,
 	loader schema.Loader,
 	opts ...BindOption,
@@ -343,7 +345,7 @@ func BindResourceProgram(
 		Bytes:  file.Bytes,
 		Tokens: file.Tokens,
 	}
-	return BindProgram([]*syntax.File{resourceFile}, loader, opts...)
+	return BindProgramWithContext(ctx, []*syntax.File{resourceFile}, loader, opts...)
 }
 
 // BindResourceList binds a PCL file as a resource list input and returns the bound arguments. This is used for `do` to
@@ -437,9 +439,14 @@ func typecheckObjectArgs(
 // loader resolves any packages the program references; the caller owns its lifetime. A program that references
 // no packages can pass a non-resolving loader (see [schema.NewNullLoader]).
 func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption) (*Program, hcl.Diagnostics, error) {
+	return BindProgramWithContext(context.Background(), files, loader, opts...)
+}
+
+func BindProgramWithContext(
+	ctx context.Context, files []*syntax.File, loader schema.Loader, opts ...BindOption,
+) (*Program, hcl.Diagnostics, error) {
 	contract.Requiref(loader != nil, "loader", "must not be nil")
 
-	ctx := context.TODO()
 	options := bindOptions{loader: loader}
 	for _, o := range opts {
 		o(&options)
@@ -450,6 +457,7 @@ func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption)
 	}
 
 	b := &binder{
+		ctx:                ctx,
 		options:            options,
 		tokens:             syntax.NewTokenMapForFiles(files),
 		packageDescriptors: map[string]*schema.PackageDescriptor{},

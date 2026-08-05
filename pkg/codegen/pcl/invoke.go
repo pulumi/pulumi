@@ -15,7 +15,6 @@
 package pcl
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
@@ -98,9 +97,9 @@ func invokeTokenArgument(args []model.Expression) (
 // binder_resource.go.
 func (b *binder) loadPackageSchema(pkg string) (*packageSchema, error) {
 	if descriptor, ok := b.packageDescriptors[pkg]; ok {
-		return b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, descriptor)
+		return b.options.packageCache.loadPackageSchemaFromDescriptor(b.ctx, b.options.loader, descriptor)
 	}
-	return b.options.packageCache.loadPackageSchema(context.TODO(), b.options.loader, pkg, "", "")
+	return b.options.packageCache.loadPackageSchema(b.ctx, b.options.loader, pkg, "", "")
 }
 
 // annotateObjectProperties annotates the properties of an object expression with the
@@ -177,9 +176,9 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	var pkgSchema *packageSchema
 	var err error
 	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
-		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.ctx, b.options.loader, packageDescriptor)
 	} else {
-		pkgSchema, err = b.options.packageCache.loadPackageSchema(context.TODO(), b.options.loader, pkg, "", "")
+		pkgSchema, err = b.options.packageCache.loadPackageSchema(b.ctx, b.options.loader, pkg, "", "")
 	}
 	if err != nil {
 		if b.options.skipInvokeTypecheck {
