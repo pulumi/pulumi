@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !linux && !windows
+
 package securestore
 
-// Platform backends land in follow-up changes; until then every platform
-// resolves to plaintext.
+// platformCandidates: no protective backends on this platform; callers fall
+// back to plaintext.
 func platformCandidates(bool, string) []backendImpl { return nil }

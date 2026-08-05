@@ -44,6 +44,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.6
 	github.com/git-pkgs/manifests v0.4.1
 	github.com/go-git/go-git/v6 v6.0.0-alpha.4
+	github.com/godbus/dbus/v5 v5.2.2
 	github.com/golang/glog v1.2.5
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.22.0
@@ -55,6 +56,7 @@ require (
 	github.com/pkg/term v1.1.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
+	github.com/zalando/go-keyring v0.2.8
 	go.opentelemetry.io/collector/pdata v1.53.0
 	go.opentelemetry.io/contrib/bridges/otelslog v0.18.0
 	go.opentelemetry.io/otel v1.44.0
@@ -86,6 +88,7 @@ require (
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
+	github.com/danieljoos/wincred v1.2.3 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/git-pkgs/packageurl-go v0.3.1 // indirect
