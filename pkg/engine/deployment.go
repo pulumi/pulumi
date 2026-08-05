@@ -418,6 +418,9 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 	if deployment.Ctx.TracingSpan != nil {
 		ctx = opentracing.ContextWithSpan(ctx, deployment.Ctx.TracingSpan)
 	}
+	if deployment.Ctx.otelSpan != nil {
+		ctx = trace.ContextWithSpan(ctx, deployment.Ctx.otelSpan)
+	}
 
 	// Emit an appropriate prelude event.
 	deployment.Options.Events.preludeEvent(
