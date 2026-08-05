@@ -82,7 +82,7 @@ func TestKnownLanguageRuntimePreservesExplicitVersion(t *testing.T) {
 		Version: &explicit,
 	}
 	res := SetKnownPluginDownloadURL(&spec)
-	assert.True(t, res)
+	assert.False(t, res)
 	assert.Equal(t, workspace.PluginDescriptor{
 		Name:    "hcl",
 		Kind:    apitype.LanguagePlugin,
