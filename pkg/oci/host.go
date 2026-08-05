@@ -970,9 +970,10 @@ func (h *containerHost) prefetchNow(ctx context.Context) {
 // (GetAnalyzerInfo/Analyze/AnalyzeStack) at the pack container's pod-network
 // address, as for a provider. This reuses the
 // same build-and-run-from-image mechanism as MLCs; the one genuinely new bit is the
-// analyzer protocol, which the engine speaks to a *server* (the pack binds
-// 127.0.0.1, prints its port, raises its own message-size limit), so unlike a
-// provider there is no Attach RPC to issue — we dial and hand the engine a client.
+// analyzer protocol, which the engine speaks to a *server* (the pack serves the
+// well-known port on all interfaces per the bind contract, prints it, and raises its
+// own message-size limit), so unlike a provider there is no Attach RPC to issue — we
+// dial and hand the engine a client.
 //
 // A pack that does not opt into the OCI runtime falls back to the base host's
 // normal spawn path, so non-containerized policy packs keep working unchanged.

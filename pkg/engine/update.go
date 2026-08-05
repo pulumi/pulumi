@@ -963,6 +963,12 @@ func newUpdateSource(ctx context.Context,
 
 	manager := newInstallManager(false /*returnPluginErrors*/)
 
+	// Temporary (non-shipping) OCI dogfooding hook: redirect or inject org-required policy
+	// packs to OCI images per PULUMI_OCI_REQUIRED_POLICY_IMAGES, before install (below) and
+	// load (loadPolicyPlugins) both read opts.RequiredPolicies off this shared *deploymentOptions.
+	// A no-op when the env var is unset. See policypack_oci_override.go.
+	opts.RequiredPolicies = applyRequiredPolicyImageOverrides(opts.RequiredPolicies)
+
 	ensurePoliciesAreInstalled(ctx, plugctx, opts, opts.RequiredPolicies, manager)
 
 	allPlugins, defaultProviderVersions, err := installPlugins(
