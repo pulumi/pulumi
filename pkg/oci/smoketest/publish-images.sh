@@ -106,6 +106,25 @@ cp -R "\$ROOT_DIR/sdk/nodejs/bin" "\$WORK/sdk-nodejs"
 cp -R "\$ROOT_DIR/sdk/python/lib/pulumi" "\$WORK/sdk-python"
 find "\$WORK/sdk-python" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
 
+# The bind-contract @pulumi/policy (its own repo, pulumi/pulumi-policy) — built + staged fresh
+# too, so the published pod image can overlay it onto policy images exactly as components
+# overlay @pulumi/pulumi. REQUIRED at publish: a pod image missing it would ship a policy path
+# that rejects every pack ("rebuild against a newer policy SDK"). Bin only, minus package.json.
+POLICY_SDK_DIR="\${OCI_POLICY_SDK_DIR:-\$HOME/src/pulumi/pulumi-policy}/sdk/nodejs/policy"
+if [ ! -d "\$POLICY_SDK_DIR" ]; then
+  echo "!! publishing needs the bind-contract @pulumi/policy and no clone was found at \$POLICY_SDK_DIR"
+  echo "   (git get pulumi/pulumi-policy, or point OCI_POLICY_SDK_DIR at a clone)"
+  exit 1
+fi
+( cd "\$POLICY_SDK_DIR" && bun install >/dev/null && bun run tsc >/dev/null )
+if ! grep -q "PULUMI_PLUGIN_LISTEN_ADDRESS" "\$POLICY_SDK_DIR/bin/server.js"; then
+  echo "!! the built policy SDK's serve site does not honor the bind contract — bin/ is stale or the clone lacks the patch"
+  exit 1
+fi
+mkdir -p "\$WORK/sdk-policy"
+cp -R "\$POLICY_SDK_DIR/bin/." "\$WORK/sdk-policy/"
+rm -f "\$WORK/sdk-policy/package.json"  # overlay is code, not identity
+
 echo "==> ensuring a multi-arch buildx builder (docker-container driver)"
 docker buildx inspect pulumi-pod-publish >/dev/null 2>&1 || docker buildx create --name pulumi-pod-publish --driver docker-container --bootstrap
 
