@@ -1210,7 +1210,7 @@ func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
 					ListTemplatesF: func(
 						ctx context.Context, opts registry.ListTemplatesOptions,
 					) iter.Seq2[apitype.ListTemplatesResponse, error] {
-						assert.Equal(t, registry.ListTemplatesOptions{}, opts)
+						require.Len(t, opts.Backing, 1, "browsing splits the listing, one backing per fetch")
 						return singlePage()
 					},
 				},
