@@ -162,6 +162,57 @@ func TestFilterReferencesByPCLUsage_KeepsAllOnParseFailure(t *testing.T) {
 	assert.Equal(t, refs, got)
 }
 
+func TestParseShowResourcesArgs(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		args        []string
+		wantArgs    []string
+		wantBuiltin bool
+	}{
+		{
+			name:        "bare command",
+			args:        []string{"show-resources"},
+			wantArgs:    []string{},
+			wantBuiltin: true,
+		},
+		{
+			name:        "command help",
+			args:        []string{"show-resources", "--help"},
+			wantArgs:    []string{"--help"},
+			wantBuiltin: true,
+		},
+		{
+			name:        "top-level flag before command",
+			args:        []string{"--output", "default", "show-resources"},
+			wantArgs:    []string{},
+			wantBuiltin: true,
+		},
+		{
+			name:        "dynamic package dispatch",
+			args:        []string{"--package", "azure", "show-resources"},
+			wantBuiltin: false,
+		},
+		{
+			name:        "provider token",
+			args:        []string{"azure:index:myResource"},
+			wantBuiltin: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotArgs, gotBuiltin, err := parseShowResourcesArgs(tt.args)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantBuiltin, gotBuiltin)
+			assert.Equal(t, tt.wantArgs, gotArgs)
+		})
+	}
+}
+
 // TestDoCmdShowResourcesHelp asserts that `pulumi do show-resources --help` renders the
 // subcommand's own help without touching the backend. The parent `do` command runs with
 // DisableFlagParsing so cobra doesn't handle --help for it directly; the parent hands off to a

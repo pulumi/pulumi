@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -424,13 +425,17 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 			// parent runs with DisableFlagParsing (provider schemas contribute unknown flags),
 			// so we intercept the token here and execute a real cobra subcommand for it — that
 			// restores standard --help and arg-validation behavior for `show-resources`.
-			if len(args) > 0 && args[0] == "show-resources" {
+			showResourcesArgs, isShowResources, err := parseShowResourcesArgs(args)
+			if err != nil {
+				return err
+			}
+			if isShowResources {
 				sub := newShowResourcesCommand(ws, lm)
 				sub.SetContext(cmd.Context())
 				sub.SetOut(cmd.OutOrStdout())
 				sub.SetErr(cmd.ErrOrStderr())
 				sub.SetIn(cmd.InOrStdin())
-				sub.SetArgs(args[1:])
+				sub.SetArgs(showResourcesArgs)
 				return sub.Execute()
 			}
 			subcmd, cleanup, err := buildSubcommand(cmd, args)
@@ -486,6 +491,37 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 			"param1 \\\"multi word param\\\"\"")
 
 	return cmd
+}
+
+func parseShowResourcesArgs(args []string) ([]string, bool, error) {
+	flags := pflag.NewFlagSet("do", pflag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	flags.SetInterspersed(false)
+	flags.ParseErrorsAllowlist.UnknownFlags = true
+
+	var dryrun bool
+	var showSecrets bool
+	var stateless bool
+	var output string
+	var pkg string
+	flags.BoolVar(&dryrun, "dry-run", false, "")
+	flags.BoolVar(&showSecrets, "show-secrets", false, "")
+	flags.StringVar(&output, "output", "", "")
+	flags.BoolVar(&stateless, "stateless", false, "")
+	flags.StringVar(&pkg, "package", "", "")
+
+	if err := flags.Parse(args); err != nil {
+		return nil, false, fmt.Errorf("parse arguments: %w", err)
+	}
+	if pkg != "" {
+		return nil, false, nil
+	}
+
+	pargs := flags.Args()
+	if len(pargs) == 0 || pargs[0] != "show-resources" {
+		return nil, false, nil
+	}
+	return pargs[1:], true, nil
 }
 
 // currentStackIdentity reads the workspace's currently selected stack and splits it into an organization
