@@ -16,14 +16,23 @@
 
 package securestore
 
-// platformCandidates returns Windows backends in preference order: the
-// Credential Manager holding a TPM-wrapped blob where a TPM is present, the
-// Credential Manager with the raw key otherwise, and a TPM-sealed file when
-// a TPM exists but the credential store is unusable (e.g. SSH sessions).
-func platformCandidates(_ bool, pulumiHome string) []backendImpl {
-	return []backendImpl{
-		{id: BackendWindowsCredManTPM, store: newKeyringStore(nil), wrap: tpmWrapper{}},
-		{id: BackendWindowsCredMan, store: newKeyringStore(nil), wrap: rawWrapper{}},
-		{id: BackendTPMFile, store: newTPMFileStore(pulumiHome), wrap: tpmWrapper{}},
+import (
+	"github.com/google/go-tpm/tpm2/transport"
+	"github.com/google/go-tpm/tpm2/transport/windowstpm"
+)
+
+// openTPM opens the Windows TPM 2.0 via the TPM Base Services (tbs.dll)
+// transport, which brokers access so we cannot collide with other TPM
+// clients. windowstpm.Open verifies the device is a TPM 2.0.
+func openTPM() (transport.TPMCloser, error) {
+	tpm, err := windowstpm.Open()
+	if err != nil {
+		// windowstpm.Open can return a non-nil transport alongside an
+		// error; treat any error as failure.
+		if tpm != nil {
+			tpm.Close()
+		}
+		return nil, err
 	}
+	return tpm, nil
 }
