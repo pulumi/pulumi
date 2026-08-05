@@ -144,7 +144,6 @@ Flags:
       --param1 string          To set param1 things (alias for --input:param1)
       --provider string        The URN of a provider resource in the current stack whose inputs to use as the base of the provider configuration (requires a stack context)
       --provider-file string   Path to a file containing provider configuration
-      --resources              List all resource names in the current stack
       --show-secrets           Show secret values in output
       --stateless              Run create/patch/delete directly against the provider without persisting state. Required for now: the stateful (engine-driven) implementation is still in development, so patch/delete error out unless --stateless is set.
 `

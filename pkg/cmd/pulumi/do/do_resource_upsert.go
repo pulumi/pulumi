@@ -405,7 +405,7 @@ func addStatefulSnippetUpdateFlags(
 			"    \"myBucket\": \"urn:pulumi:dev::my-project::aws:s3/bucket:Bucket::my-bucket\",\n"+
 			"    \"myVpc\":    \"urn:pulumi:dev::my-project::aws:ec2/vpc:Vpc::my-vpc\"\n"+
 			"  }\n"+
-			"Identifiers for existing stack resources are auto-assigned; run `pulumi do --resources`\n"+
+			"Identifiers for existing stack resources are auto-assigned; run `pulumi do show-resources`\n"+
 			"to see them. Entries in this file take precedence over any auto-assigned identifier.")
 	cmd.Flags().BoolVar(yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")

@@ -226,26 +226,10 @@ func filterReferencesByUsage(refs map[string]string, used map[string]struct{}) m
 	return out
 }
 
-// hasResourcesFlag reports whether the raw argv contains the top-level `--resources` flag.
-// The top-level `do` command runs with DisableFlagParsing (provider schemas contribute unknown
-// flags), so we scan by hand rather than relying on the bound cobra flag's value — that flag is
-// wired for --help discoverability but never actually parsed at the top-level.
-func hasResourcesFlag(args []string) bool {
-	for _, a := range args {
-		if a == "--resources" || a == "--resources=true" {
-			return true
-		}
-		if a == "--" {
-			return false
-		}
-	}
-	return false
-}
-
-// runResourcesFlag is the handler for `pulumi do --resources`: it opens the currently-selected
+// runShowResources is the handler for `pulumi do show-resources`: it opens the currently-selected
 // stack, computes the auto-name map and prints it (identifier -> URN). This is the discoverability
 // surface for the auto-map that upsert/create silently merge into the user's --resources-file.
-func runResourcesFlag(cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend.LoginManager) error {
+func runShowResources(cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend.LoginManager) error {
 	ctx := cmd.Context()
 	base := diag.DefaultSink(cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),

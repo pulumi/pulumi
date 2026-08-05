@@ -95,7 +95,6 @@ func NewDoCmd(
 	var showSecrets bool
 	var stateless bool
 	var output string
-	var resources bool
 
 	// buildSubcommand returns the dynamically constructed subcommand along with a cleanup function that must be
 	// deferred by the caller. The cleanup tears down the provider gRPC channel — running it as a defer inside
@@ -402,6 +401,7 @@ e.g. pulumi do --package "name@version param1 \"multi word param\""
 
 Resource operations: list, create, read, patch, delete
 Functions are invoked directly by name.
+Built-in commands: show-resources
 
 Provider plugins are auto-installed on first use; you don't need to run
 'pulumi plugin install' ahead of time. Run 'pulumi plugin list' to see what is
@@ -420,13 +420,11 @@ value as a literal, while --<property>+ <value> parses the value as an
 expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// `--resources` is a stack-scoped built-in that doesn't need a provider package
-			// loaded. Intercept before buildSubcommand so we can skip provider loading; scan
-			// argv by hand because the parent runs with DisableFlagParsing (the bound cobra
-			// flag exists only so it appears in --help).
-			_ = resources
-			if hasResourcesFlag(args) {
-				return runResourcesFlag(cmd, ws, lm)
+			if len(args) > 0 && args[0] == "show-resources" {
+				if len(args) != 1 {
+					return errors.New("show-resources accepts no arguments")
+				}
+				return runShowResources(cmd, ws, lm)
 			}
 			subcmd, cleanup, err := buildSubcommand(cmd, args)
 			if cleanup != nil {
@@ -465,7 +463,6 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		}
 	})
 
-	cmd.Flags().BoolVar(&resources, "resources", false, "List all resource names in the current stack")
 	cmd.PersistentFlags().BoolVar(&dryrun, "dry-run", false, "Run the operation in preview mode")
 	cmd.PersistentFlags().BoolVar(&showSecrets, "show-secrets", false, "Show secret values in output")
 	cmd.PersistentFlags().StringVar(&output, "output", "",

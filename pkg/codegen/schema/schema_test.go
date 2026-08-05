@@ -3790,13 +3790,11 @@ func TestRequiredObjectCycles(t *testing.T) {
 	})
 }
 
-// TestBindSpecReservedPackageNames asserts that the package names "pulumi" and "input" are rejected at bind time.
-// "pulumi" is reserved for the builtin package/provider resources; "input" is reserved for `pulumi do` to use as
-// a flag-vs-token discriminator.
+// TestBindSpecReservedPackageNames asserts that reserved package names are rejected at bind time.
 func TestBindSpecReservedPackageNames(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"pulumi", "input"} {
+	for _, name := range []string{"pulumi", "input", "show-resources"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			_, diags, err := BindSpec(PackageSpec{Name: name}, NewNullLoader(), ValidationOptions{})
@@ -3819,7 +3817,7 @@ func TestBindSpecReservedPackageNames(t *testing.T) {
 		t.Parallel()
 		_, diags, _ := BindSpec(PackageSpec{Name: "aws"}, NewNullLoader(), ValidationOptions{})
 		for _, d := range diags {
-			assert.NotContains(t, d.Summary, "package names 'pulumi' and 'input' are reserved")
+			assert.NotContains(t, d.Summary, "package names 'pulumi', 'input', and 'show-resources' are reserved")
 		}
 	})
 }

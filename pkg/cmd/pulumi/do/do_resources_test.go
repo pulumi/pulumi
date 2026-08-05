@@ -156,7 +156,7 @@ func TestFilterReferencesByUsage(t *testing.T) {
 }
 
 //nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
-func TestDoCmdResourcesSubcommand(t *testing.T) {
+func TestDoCmdShowResourcesSubcommand(t *testing.T) {
 	bucket := resource.URN("urn:pulumi:dev::proj::aws:s3/bucket:Bucket::myBucket")
 	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{
 		Resources: []*pkgresource.State{
@@ -168,7 +168,7 @@ func TestDoCmdResourcesSubcommand(t *testing.T) {
 	cmd := NewDoCmd(mlm, mws, nil, testHost, panicLoadConverterPlugin, nil)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
-	cmd.SetArgs([]string{"--resources"})
+	cmd.SetArgs([]string{"show-resources"})
 	require.NoError(t, cmd.Execute())
 
 	assert.Contains(t, stdout.String(), "myBucket")
