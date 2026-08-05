@@ -1,0 +1,6 @@
+component: cli/display
+kind: feat
+body: Annotate properties that force resource replacement with `# forces replacement`
+time: 2026-04-14T00:00:00.000000+00:00
+custom:
+  PR: "22598"

@@ -10,7 +10,7 @@
 <{%reset%}><{%reset%}>    <{%fg 10%}>++urn:pulumi:dev::aws-ts-webserver::aws:ec2/instance:Instance::web-server-www: (create-replacement)
 <{%reset%}>        [id=i-0207dc7a2d8c5135a]
 <{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::aws-ts-webserver::pulumi:providers:aws::default_3_38_1::57baf899-740a-486a-908e-43cf27cce182]
-<{%reset%}><{%fg 3%}>      ~ userData: <{%reset%}><{%fg 3%}>
+<{%reset%}><{%fg 3%}>      ~ userData: <{%reset%}><{%fg 3%}><{%reset%}><{%fg 13%}> # forces replacement
 <{%reset%}><{%reset%}>            #!/bin/bash<{%reset%}>
 <{%fg 1%}>          - echo "Hello, World!" > index.html<{%reset%}>
 <{%fg 2%}>          + echo "Hello, Pulumi!" > index.html<{%reset%}>
@@ -18,7 +18,7 @@
 <{%reset%}>    <{%fg 13%}>+-urn:pulumi:dev::aws-ts-webserver::aws:ec2/instance:Instance::web-server-www: (replace)
 <{%reset%}>        [id=i-0207dc7a2d8c5135a]
 <{%reset%}><{%reset%}>        [provider=urn:pulumi:dev::aws-ts-webserver::pulumi:providers:aws::default_3_38_1::57baf899-740a-486a-908e-43cf27cce182]
-<{%reset%}><{%fg 3%}>      ~ userData: <{%reset%}><{%fg 3%}>
+<{%reset%}><{%fg 3%}>      ~ userData: <{%reset%}><{%fg 3%}><{%reset%}><{%fg 13%}> # forces replacement
 <{%reset%}><{%reset%}>            #!/bin/bash<{%reset%}>
 <{%fg 1%}>          - echo "Hello, World!" > index.html<{%reset%}>
 <{%fg 2%}>          + echo "Hello, Pulumi!" > index.html<{%reset%}>
