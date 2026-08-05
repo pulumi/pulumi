@@ -78,6 +78,12 @@ func GetCurrentCloudURLWithAgentFallback(ws Context, e env.Env, project *workspa
 		logging.V(7).Infof("Using current cloud URL %q from shared agent credentials", agentCreds.Current)
 	} else {
 		logging.V(7).Infof("No current cloud URL found in shared agent credentials")
+		// Without an agent-credentials stand-in, an undecryptable default
+		// credentials file must surface its actionable error rather than be
+		// treated as "not logged in".
+		if workspace.IsUndecryptableCredentials(err) {
+			return "", err
+		}
 	}
 
 	return agentCreds.Current, nil
