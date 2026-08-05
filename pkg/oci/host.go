@@ -445,17 +445,17 @@ func runsFromProgramImage(name string) bool {
 	return name == "command"
 }
 
-// roleEnvVar selects which entrypoint a program image boots into. The program
+// roleEnvVar selects which entrypoint the program image boots into. The program
 // image's bootstrap shim reads it: unset → run the program (the run harness);
-// roleDynamicProvider → serve the SDK's dynamic-provider entrypoint instead;
-// rolePolicyPack → serve the policy pack's analyzer (the run-policy-pack harness).
-// The host stays language-agnostic — it only sets the role — while the image owns
-// the translation, exactly as the shim already owns the PULUMI_* → run-harness
-// mapping.
+// roleDynamicProvider → serve the SDK's dynamic-provider entrypoint instead, since
+// dynamic providers are welded into the program image and it must serve both. The
+// host stays language-agnostic — it only sets the role — while the image owns the
+// translation, exactly as the shim already owns the PULUMI_* → run-harness mapping.
+// Single-purpose leaf images (policy packs, components) serve one thing and need no
+// role, so the host sets none for them.
 const (
 	roleEnvVar          = "PULUMI_OCI_ROLE"
 	roleDynamicProvider = "dynamic-provider"
-	rolePolicyPack      = "policy-pack"
 )
 
 // isDynamicProvider reports whether a provider package is a language SDK's
@@ -1030,7 +1030,8 @@ func (h *containerHost) runPolicyPackContainer(
 		// provider does. See projectedProviderEnv.
 		Env: projectedProviderEnv(),
 	}
-	cfg.Env[roleEnvVar] = rolePolicyPack
+	// No PULUMI_OCI_ROLE: a policy image is single-purpose (it only ever serves its
+	// analyzer), so unlike the program image it has no entrypoint to select.
 	// Hand the pack the engine address it would normally receive as argv. The pack
 	// is a server the engine calls, but it may dial back for invokes/logging;
 	// ServerAddr rewrites itself to the engine's advertised host, reachable from
