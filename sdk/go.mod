@@ -42,6 +42,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/ansi v0.11.6
+	github.com/ebitengine/purego v0.10.2
 	github.com/git-pkgs/manifests v0.4.1
 	github.com/go-git/go-git/v6 v6.0.0-alpha.4
 	github.com/godbus/dbus/v5 v5.2.2
