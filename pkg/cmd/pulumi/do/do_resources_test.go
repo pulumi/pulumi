@@ -132,33 +132,34 @@ func TestSanitizeIdent(t *testing.T) {
 	}
 }
 
-func TestReferencedIdentsInPCL(t *testing.T) {
+func TestFilterReferencesByPCLUsage_KeepsOnlyUsedRoots(t *testing.T) {
 	t.Parallel()
+	refs := map[string]string{
+		"myBucket": "urn:bucket",
+		"teamRef":  "urn:team",
+		"provider": "urn:provider",
+		"unused":   "urn:unused",
+	}
 	src := []byte(`
 name = myBucket.arn
 tags = { owner = teamRef.name }
 options { provider = provider }
 `)
-	got := referencedIdentsInPCL(src, "test.pp")
-	// The keys we care about are the roots of any traversal — attributes further down the path
-	// (like `.arn`) shouldn't leak in.
-	for _, want := range []string{"myBucket", "teamRef", "provider"} {
-		_, ok := got[want]
-		assert.True(t, ok, "expected %q in identifier set, got %v", want, got)
-	}
-	_, hasArn := got["arn"]
-	assert.False(t, hasArn, "attribute names must not be treated as roots")
+	got := filterReferencesByPCLUsage(refs, src, "test.pp")
+	assert.Equal(t, map[string]string{
+		"myBucket": "urn:bucket",
+		"teamRef":  "urn:team",
+		"provider": "urn:provider",
+	}, got)
 }
 
-func TestFilterReferencesByUsage(t *testing.T) {
+func TestFilterReferencesByPCLUsage_KeepsAllOnParseFailure(t *testing.T) {
 	t.Parallel()
-	refs := map[string]string{"a": "urn:a", "b": "urn:b", "c": "urn:c"}
-	used := map[string]struct{}{"a": {}, "c": {}, "other": {}}
-	assert.Equal(t, map[string]string{"a": "urn:a", "c": "urn:c"},
-		filterReferencesByUsage(refs, used))
-	// A nil `used` (e.g. from an unparseable file) leaves refs unchanged so we don't accidentally
-	// strip everything on a parse failure.
-	assert.Equal(t, refs, filterReferencesByUsage(refs, nil))
+	// Unparseable input must not silently drop references — losing one the engine later needs
+	// is a hard failure at update time, so keeping extras is the safer default.
+	refs := map[string]string{"a": "urn:a", "b": "urn:b"}
+	got := filterReferencesByPCLUsage(refs, []byte("this is =not= valid hcl"), "bad.pp")
+	assert.Equal(t, refs, got)
 }
 
 // TestDoCmdShowResourcesHelp asserts that `pulumi do show-resources --help` renders the

@@ -288,9 +288,7 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	// before persisting. Auto-derived entries that aren't used would freeze URNs from the current
 	// snapshot into state and go stale if those resources change. The provider-injected identifier
 	// (in provReferences) is always kept — buildProviderSnippet injected it into resourceCode.
-	if used := referencedIdentsInPCL(resourceCode, resourceFilename); used != nil {
-		mergedReferences = filterReferencesByUsage(mergedReferences, used)
-	}
+	mergedReferences = filterReferencesByPCLUsage(mergedReferences, resourceCode, resourceFilename)
 
 	snippet := resource.Snippet{
 		UUID:       snippetUUID,

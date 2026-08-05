@@ -169,38 +169,45 @@ func sanitizeIdent(s string) string {
 	return b.String()
 }
 
-// referencedIdentsInPCL returns the set of top-level identifier roots (the leading name in a
-// scope traversal, e.g. `myBucket` in `myBucket.arn`) that appear in the given PCL source. It's
-// used to trim the persisted snippet.References map down to only the identifiers the snippet's
-// code actually consumes — auto-derived entries that aren't referenced would otherwise freeze
-// stale URNs into the snapshot.
+// filterReferencesByPCLUsage returns the subset of refs whose keys appear as top-level identifier
+// roots (the leading name in a scope traversal, e.g. `myBucket` in `myBucket.arn`) in the given
+// PCL source. It's used to trim the persisted snippet.References map down to only the identifiers
+// the snippet's code actually consumes — auto-derived entries that aren't referenced would
+// otherwise freeze stale URNs into the snapshot.
 //
-// Returns nil on parse failure — callers must treat nil as "unknown" and keep the full reference
-// map rather than blanking it, since dropping an identifier the engine later needs is a hard
-// failure at update time.
-func referencedIdentsInPCL(src []byte, filename string) map[string]struct{} {
-	if len(src) == 0 {
-		return nil
+// On parse failure the refs map is returned unchanged rather than blanked: dropping an identifier
+// the engine later needs is a hard failure at update time, so keeping extras is the safer default.
+func filterReferencesByPCLUsage(refs map[string]string, src []byte, filename string) map[string]string {
+	if len(refs) == 0 || len(src) == 0 {
+		return refs
 	}
 	parser := hclsyntax.NewParser()
 	if err := parser.ParseFile(bytes.NewReader(src), filename); err != nil {
-		return nil
+		return refs
 	}
 	if parser.Diagnostics.HasErrors() || len(parser.Files) == 0 {
-		return nil
+		return refs
 	}
-	out := map[string]struct{}{}
+
+	used := map[string]struct{}{}
 	visit := func(node hclv2syntax.Node) hcl.Diagnostics {
 		if trav, ok := node.(*hclv2syntax.ScopeTraversalExpr); ok {
 			if len(trav.Traversal) > 0 {
 				if root, ok := trav.Traversal[0].(hcl.TraverseRoot); ok {
-					out[root.Name] = struct{}{}
+					used[root.Name] = struct{}{}
 				}
 			}
 		}
 		return nil
 	}
 	walkBody(parser.Files[0].Body, visit)
+
+	out := make(map[string]string, len(used))
+	for k, v := range refs {
+		if _, ok := used[k]; ok {
+			out[k] = v
+		}
+	}
 	return out
 }
 
@@ -213,46 +220,18 @@ func walkBody(body *hclv2syntax.Body, visit hclv2syntax.VisitFunc) {
 	}
 }
 
-// filterReferencesByUsage returns the subset of refs whose keys appear in used. When used is nil
-// (e.g. the PCL failed to parse), refs is returned unchanged rather than blanking the snippet.
-func filterReferencesByUsage(refs map[string]string, used map[string]struct{}) map[string]string {
-	if refs == nil || used == nil {
-		return refs
-	}
-	out := make(map[string]string, len(used))
-	for k, v := range refs {
-		if _, ok := used[k]; ok {
-			out[k] = v
-		}
-	}
-	return out
-}
-
-// dispatchShowResources runs `pulumi do show-resources <args>` by handing off to a real cobra
-// subcommand. The parent `do` command runs with DisableFlagParsing (it dispatches through raw
-// argv), so `--help` and arg validation don't fire naturally — building a real subcommand and
-// executing it here restores standard cobra behavior for both.
-func dispatchShowResources(
-	cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, args []string,
-) error {
-	sub := newShowResourcesCommand(ws, lm)
-	sub.SetContext(cmd.Context())
-	sub.SetOut(cmd.OutOrStdout())
-	sub.SetErr(cmd.ErrOrStderr())
-	sub.SetIn(cmd.InOrStdin())
-	sub.SetArgs(args)
-	return sub.Execute()
-}
-
-// newShowResourcesCommand builds the cobra command for `pulumi do show-resources`.
+// newShowResourcesCommand builds the cobra command for `pulumi do show-resources`. It's executed
+// as a fresh cobra command from the parent `do` command's RunE (see do.go) because the parent
+// runs with DisableFlagParsing, so cobra wouldn't otherwise handle --help or arg validation for
+// this subcommand.
 func newShowResourcesCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	return &cobra.Command{
 		Use:   "show-resources",
 		Short: "Show the identifiers `pulumi do` will auto-assign to resources in the current stack",
 		Long: "Show the identifiers `pulumi do` will auto-assign to resources in the current stack.\n\n" +
-			"These identifiers can be used in --input-file expressions (e.g. `${myBucket.arn}`) " +
-			"without needing to hand-write a --resources-file. Entries in --resources-file take " +
-			"precedence over the auto-assigned identifiers shown here.",
+			"Each identifier can be used in a --input-file expression in place of the resource's " +
+			"URN, in whatever expression syntax the chosen input format supports. Entries in " +
+			"--resources-file take precedence over the auto-assigned identifiers shown here.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runShowResources(cmd, ws, lm)

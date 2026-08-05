@@ -420,8 +420,18 @@ value as a literal, while --<property>+ <value> parses the value as an
 expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// `show-resources` is a stack-scoped built-in that doesn't load a provider. The
+			// parent runs with DisableFlagParsing (provider schemas contribute unknown flags),
+			// so we intercept the token here and execute a real cobra subcommand for it — that
+			// restores standard --help and arg-validation behavior for `show-resources`.
 			if len(args) > 0 && args[0] == "show-resources" {
-				return dispatchShowResources(cmd, ws, lm, args[1:])
+				sub := newShowResourcesCommand(ws, lm)
+				sub.SetContext(cmd.Context())
+				sub.SetOut(cmd.OutOrStdout())
+				sub.SetErr(cmd.ErrOrStderr())
+				sub.SetIn(cmd.InOrStdin())
+				sub.SetArgs(args[1:])
+				return sub.Execute()
 			}
 			subcmd, cleanup, err := buildSubcommand(cmd, args)
 			if cleanup != nil {
