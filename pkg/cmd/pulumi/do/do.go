@@ -471,33 +471,22 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		}
 	})
 
-	addDoPersistentFlags(cmd.PersistentFlags(), &dryrun, &showSecrets, &output, &stateless, &pkg)
-
-	return cmd
-}
-
-func addDoPersistentFlags(
-	flags *pflag.FlagSet,
-	dryrun *bool,
-	showSecrets *bool,
-	output *string,
-	stateless *bool,
-	pkg *string,
-) {
-	flags.BoolVar(dryrun, "dry-run", false, "Run the operation in preview mode")
-	flags.BoolVar(showSecrets, "show-secrets", false, "Show secret values in output")
-	flags.StringVar(output, "output", "",
+	cmd.PersistentFlags().BoolVar(&dryrun, "dry-run", false, "Run the operation in preview mode")
+	cmd.PersistentFlags().BoolVar(&showSecrets, "show-secrets", false, "Show secret values in output")
+	cmd.PersistentFlags().StringVar(&output, "output", "",
 		"Output format for resource operation results (supported: default, json)")
-	flags.BoolVar(stateless, "stateless", false,
+	cmd.PersistentFlags().BoolVar(&stateless, "stateless", false,
 		"Run create/patch/delete directly against the provider without persisting state. "+
 			"Required for now: the stateful (engine-driven) implementation is still in development, "+
 			"so patch/delete error out unless --stateless is set.")
-	flags.StringVar(
-		pkg, "package", "", "The package to load, in the form 'name@version' or "+
+	cmd.PersistentFlags().StringVar(
+		&pkg, "package", "", "The package to load, in the form 'name@version' or "+
 			"a path to a plugin binary or folder. If the package supports "+
 			"parameterization, additional space-separated parameters can be "+
 			"included after the package name, e.g. --package \"name@version "+
 			"param1 \\\"multi word param\\\"\"")
+
+	return cmd
 }
 
 func showResourcesArgs(args []string) ([]string, bool) {
