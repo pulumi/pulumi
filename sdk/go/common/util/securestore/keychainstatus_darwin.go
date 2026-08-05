@@ -26,9 +26,10 @@ import (
 // lock-on-sleep/inactivity settings, key-authenticated SSH (the PAM unlock
 // never ran), or a keychain password diverged from the login password.
 
-// The caller releases the returned ref.
+// The caller releases the returned ref. Not ok when the deprecated lookup is
+// gone, which reads as "lock state unknown" rather than failing the tier.
 func copyDefaultKeychain() (kc uintptr, ok bool) {
-	if loadDarwinAPI() != nil {
+	if loadDarwinAPI() != nil || sec.keychainCopyDefault == nil || sec.keychainGetStatus == nil {
 		return 0, false
 	}
 	if status := sec.keychainCopyDefault(&kc); status != errSecSuccess || kc == 0 {
@@ -78,6 +79,11 @@ func withoutKeychainUI[T any](fn func() (T, error)) (T, error) {
 		var zero T
 		return zero, fmt.Errorf("%w: %v", ErrUnavailable, err)
 	}
+	if sec.keychainSetUserInteractionOK == nil {
+		// Silence cannot be promised, so decline rather than risk a dialog.
+		var zero T
+		return zero, fmt.Errorf("%w: cannot suppress keychain dialogs", ErrUnavailable)
+	}
 	interactionMu.Lock()
 	defer interactionMu.Unlock()
 	if status := sec.keychainSetUserInteractionOK(false); status != errSecSuccess {
@@ -105,8 +111,8 @@ func probeKeychain(allowPrompt bool) (Outcome, error) {
 		return Locked, fmt.Errorf("%w: unlock it or set PULUMI_CREDENTIAL_STORE=plaintext", ErrLocked)
 	}
 	kc, ok := copyDefaultKeychain()
-	if !ok {
-		return Ready, nil
+	if !ok || sec.keychainUnlock == nil {
+		return Locked, fmt.Errorf("%w: it cannot be unlocked from here", ErrLocked)
 	}
 	defer cf.release(kc)
 	notifyWaitingForKeychainUnlock()

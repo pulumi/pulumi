@@ -37,9 +37,9 @@ import (
 type Backend string
 
 const (
-	// BackendMacOSNative is a native SecItem keychain item with a
-	// code-signing-bound ACL (Developer-ID-signed builds only).
-	BackendMacOSNative Backend = "macos-native"
+	// BackendMacOSACL is a SecItem keychain item whose ACL binds to our
+	// code-signing identity (Developer-ID-signed builds only).
+	BackendMacOSACL Backend = "macos-acl"
 	// BackendMacOSSecurity manages the keychain item via /usr/bin/security
 	// (unsigned/ad-hoc builds; same-user readable, prompt-free).
 	BackendMacOSSecurity Backend = "macos-security"

@@ -42,7 +42,7 @@ const (
 // its unlock or ACL-confirmation dialogs.
 func nativeKeychainBackend(allowPrompt bool) backendImpl {
 	return backendImpl{
-		id: BackendMacOSNative,
+		id: BackendMacOSACL,
 		store: &nativeStore{
 			service:     nativeService,
 			account:     nativeAccount,

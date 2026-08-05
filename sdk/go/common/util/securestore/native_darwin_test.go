@@ -62,7 +62,7 @@ func testNativeStore(t *testing.T) *nativeStore {
 func TestNativeBackendShape(t *testing.T) {
 	t.Parallel()
 	b := nativeKeychainBackend(true)
-	assert.Equal(t, BackendMacOSNative, b.id)
+	assert.Equal(t, BackendMacOSACL, b.id)
 	assert.Equal(t, rawWrapper{}, b.wrap)
 	store, ok := b.store.(*nativeStore)
 	require.True(t, ok)
@@ -218,4 +218,38 @@ func TestSilentPathNeverAnnouncesAWait(t *testing.T) {
 	_, _ = store.get()
 	_ = store.set("value")
 	assert.Zero(t, notified, "a silent operation announces nothing because it never waits")
+}
+
+// The deprecated SecKeychain family is bound optionally, so its removal must
+// disable only what needs it. Losing UI suppression means silence can no
+// longer be promised, so silent operations decline instead of risking a
+// dialog, and resolution falls through to the /usr/bin/security tier.
+//
+//nolint:paralleltest // mutates the package-global bindings
+func TestMissingUISuppressionDisablesSilentOps(t *testing.T) {
+	require.NoError(t, loadDarwinAPI())
+	prev := sec.keychainSetUserInteractionOK
+	sec.keychainSetUserInteractionOK = nil
+	t.Cleanup(func() { sec.keychainSetUserInteractionOK = prev })
+
+	store := &nativeStore{service: "unused", account: "unused", allowPrompt: false}
+	_, err := store.get()
+	assert.ErrorIs(t, err, ErrUnavailable)
+	assert.Contains(t, err.Error(), "suppress")
+
+	outcome, probeErr := store.probe()
+	assert.Equal(t, Absent, outcome, "the tier must step aside, not claim to be usable")
+	assert.ErrorIs(t, probeErr, ErrUnavailable)
+}
+
+//nolint:paralleltest // mutates the package-global bindings
+func TestMissingLockLookupReadsAsUnknown(t *testing.T) {
+	require.NoError(t, loadDarwinAPI())
+	prev := sec.keychainGetStatus
+	sec.keychainGetStatus = nil
+	t.Cleanup(func() { sec.keychainGetStatus = prev })
+
+	locked, ok := realDefaultKeychainLocked()
+	assert.False(t, ok, "an absent lookup is unknown state, not a false answer")
+	assert.False(t, locked)
 }

@@ -75,6 +75,19 @@ func (l *lib) fn(fptr any, name string) {
 	purego.RegisterFunc(fptr, sym)
 }
 
+// optionalFn binds a symbol that may not exist, leaving the func variable nil
+// when it does not. Used for the deprecated SecKeychain family: if Apple ever
+// removes it, only the features needing it should stop working, rather than
+// every Security binding at once. Callers must nil-check.
+func (l *lib) optionalFn(fptr any, name string) {
+	if l.err != nil {
+		return
+	}
+	if sym, err := purego.Dlsym(l.handle, name); err == nil {
+		purego.RegisterFunc(fptr, sym)
+	}
+}
+
 // addr returns the address of an exported data symbol, for struct-typed
 // symbols (e.g. kCFTypeDictionaryKeyCallBacks) that C code passes by address.
 func (l *lib) addr(name string) uintptr {
