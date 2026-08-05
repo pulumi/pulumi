@@ -474,8 +474,12 @@ func TestGetAccountWithAgentFallbackDisabledOutsideAgentMode(t *testing.T) {
 	assert.Empty(t, account.AccessToken)
 }
 
+// PULUMI_HOME is for state isolation (sandboxes, CI runners, dev containers) — it doesn't mean
+// "don't use agent credentials." An empty default credentials file at the explicit path falls
+// through to the shared agent cache just like a missing default file does.
+//
 //nolint:paralleltest // mutates environment and package global
-func TestGetAccountWithAgentFallbackDisabledWithExplicitHome(t *testing.T) {
+func TestGetAccountWithAgentFallbackUsesAgentCredentialsWithExplicitHome(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
 	t.Cleanup(func() {
@@ -492,12 +496,12 @@ func TestGetAccountWithAgentFallbackDisabledWithExplicitHome(t *testing.T) {
 
 	account, fromAgent, err := GetAccountWithAgentFallback(cloudURL)
 	require.NoError(t, err)
-	assert.False(t, fromAgent)
-	assert.Empty(t, account.AccessToken)
+	assert.True(t, fromAgent)
+	assert.Equal(t, "agent-token", account.AccessToken)
 }
 
 //nolint:paralleltest // mutates environment and package global
-func TestGetAccountWithAgentFallbackDisabledWithExplicitCredentialsPath(t *testing.T) {
+func TestGetAccountWithAgentFallbackUsesAgentCredentialsWithExplicitCredentialsPath(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir
 	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
 	t.Cleanup(func() {
@@ -514,6 +518,33 @@ func TestGetAccountWithAgentFallbackDisabledWithExplicitCredentialsPath(t *testi
 
 	account, fromAgent, err := GetAccountWithAgentFallback(cloudURL)
 	require.NoError(t, err)
+	assert.True(t, fromAgent)
+	assert.Equal(t, "agent-token", account.AccessToken)
+}
+
+// An explicit credentials path that errors out (malformed file) is a misconfiguration the user
+// intended; surface it instead of silently falling through to agent credentials.
+//
+//nolint:paralleltest // mutates environment and package global
+func TestGetAccountWithAgentFallbackPropagatesDefaultReadErrorWithExplicitPath(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		require.NoError(t, DeleteAgentCredentials())
+		agentPulumiDir = oldAgentPulumiDir
+	})
+
+	setAgentEnv(t)
+	credsDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, credsDir)
+	t.Setenv("PULUMI_HOME", "")
+	require.NoError(t, os.WriteFile(filepath.Join(credsDir, "credentials.json"), []byte("{not json"), 0o600))
+
+	cloudURL := "https://api.malformed-default.example.com"
+	require.NoError(t, StoreAgentAccount(cloudURL, Account{AccessToken: "agent-token"}, true))
+
+	account, fromAgent, err := GetAccountWithAgentFallback(cloudURL)
+	require.Error(t, err)
 	assert.False(t, fromAgent)
 	assert.Empty(t, account.AccessToken)
 }

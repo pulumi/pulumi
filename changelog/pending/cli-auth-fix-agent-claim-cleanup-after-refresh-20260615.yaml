@@ -1,0 +1,6 @@
+component: cli/auth
+kind: fix
+body: Stop emitting the `PULUMI_EPHEMERAL_AGENT_ACCOUNT` instruction (and stale claim URL) after a claim has bound the agent's refresh token to a user
+time: 2026-06-15T00:00:00+00:00
+custom:
+  PR: ""
