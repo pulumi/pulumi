@@ -1145,12 +1145,7 @@ func (b *diyBackend) PackPolicies(
 func (b *diyBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
-	opts := backend.ApplierOptions{
-		DryRun:   true,
-		ShowLink: true,
-	}
-	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
+	return backend.Preview(ctx, stack, op, b.apply, events)
 }
 
 func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
