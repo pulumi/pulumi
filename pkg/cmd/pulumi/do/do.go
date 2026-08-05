@@ -475,20 +475,7 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		}
 	})
 
-	cmd.PersistentFlags().BoolVar(&dryrun, "dry-run", false, "Run the operation in preview mode")
-	cmd.PersistentFlags().BoolVar(&showSecrets, "show-secrets", false, "Show secret values in output")
-	cmd.PersistentFlags().StringVar(&output, "output", "",
-		"Output format for resource operation results (supported: default, json)")
-	cmd.PersistentFlags().BoolVar(&stateless, "stateless", false,
-		"Run create/patch/delete directly against the provider without persisting state. "+
-			"Required for now: the stateful (engine-driven) implementation is still in development, "+
-			"so patch/delete error out unless --stateless is set.")
-	cmd.PersistentFlags().StringVar(
-		&pkg, "package", "", "The package to load, in the form 'name@version' or "+
-			"a path to a plugin binary or folder. If the package supports "+
-			"parameterization, additional space-separated parameters can be "+
-			"included after the package name, e.g. --package \"name@version "+
-			"param1 \\\"multi word param\\\"\"")
+	addDoPersistentFlags(cmd.PersistentFlags(), &dryrun, &showSecrets, &output, &stateless, &pkg)
 
 	return cmd
 }
@@ -504,11 +491,7 @@ func parseShowResourcesArgs(args []string) ([]string, bool, error) {
 	var stateless bool
 	var output string
 	var pkg string
-	flags.BoolVar(&dryrun, "dry-run", false, "")
-	flags.BoolVar(&showSecrets, "show-secrets", false, "")
-	flags.StringVar(&output, "output", "", "")
-	flags.BoolVar(&stateless, "stateless", false, "")
-	flags.StringVar(&pkg, "package", "", "")
+	addDoPersistentFlags(flags, &dryrun, &showSecrets, &output, &stateless, &pkg)
 
 	if err := flags.Parse(args); err != nil {
 		return nil, false, fmt.Errorf("parse arguments: %w", err)
@@ -522,6 +505,30 @@ func parseShowResourcesArgs(args []string) ([]string, bool, error) {
 		return nil, false, nil
 	}
 	return pargs[1:], true, nil
+}
+
+func addDoPersistentFlags(
+	flags *pflag.FlagSet,
+	dryrun *bool,
+	showSecrets *bool,
+	output *string,
+	stateless *bool,
+	pkg *string,
+) {
+	flags.BoolVar(dryrun, "dry-run", false, "Run the operation in preview mode")
+	flags.BoolVar(showSecrets, "show-secrets", false, "Show secret values in output")
+	flags.StringVar(output, "output", "",
+		"Output format for resource operation results (supported: default, json)")
+	flags.BoolVar(stateless, "stateless", false,
+		"Run create/patch/delete directly against the provider without persisting state. "+
+			"Required for now: the stateful (engine-driven) implementation is still in development, "+
+			"so patch/delete error out unless --stateless is set.")
+	flags.StringVar(
+		pkg, "package", "", "The package to load, in the form 'name@version' or "+
+			"a path to a plugin binary or folder. If the package supports "+
+			"parameterization, additional space-separated parameters can be "+
+			"included after the package name, e.g. --package \"name@version "+
+			"param1 \\\"multi word param\\\"\"")
 }
 
 // currentStackIdentity reads the workspace's currently selected stack and splits it into an organization
