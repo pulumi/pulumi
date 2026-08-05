@@ -27,6 +27,7 @@ import (
 )
 
 func TestTPMFileStoreLifecycle(t *testing.T) {
+	t.Parallel()
 	home := filepath.Join(t.TempDir(), "pulumi-home")
 
 	store := newTPMFileStore(home)
@@ -64,6 +65,7 @@ func TestTPMFileStoreLifecycle(t *testing.T) {
 }
 
 func TestTPMFileStoreAvailableCreatesDir(t *testing.T) {
+	t.Parallel()
 	home := filepath.Join(t.TempDir(), "deep", "nested", ".pulumi")
 
 	store := newTPMFileStore(home)
@@ -81,6 +83,7 @@ func TestTPMFileStoreAvailableCreatesDir(t *testing.T) {
 }
 
 func TestTPMFileStoreUnavailableWithoutHomeDir(t *testing.T) {
+	t.Parallel()
 	store := newTPMFileStore("")
 	outcome, err := store.available()
 	assert.Equal(t, Absent, outcome)
