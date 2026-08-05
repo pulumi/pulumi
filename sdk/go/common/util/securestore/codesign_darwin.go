@@ -33,11 +33,11 @@ const (
 )
 
 // Test binaries are at best ad-hoc signed, so the real check always rejects them.
-var nativeSelfCheckOverride func() error
+var aclSelfCheckOverride func() error
 
-func nativeSelfCheck() error {
-	if nativeSelfCheckOverride != nil {
-		return nativeSelfCheckOverride()
+func aclSelfCheck() error {
+	if aclSelfCheckOverride != nil {
+		return aclSelfCheckOverride()
 	}
 	if err := loadDarwinAPI(); err != nil {
 		return err

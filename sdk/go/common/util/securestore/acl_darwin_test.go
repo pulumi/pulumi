@@ -29,20 +29,20 @@ import (
 
 func withSelfCheckOverride(t *testing.T, fn func() error) {
 	t.Helper()
-	prev := nativeSelfCheckOverride
-	nativeSelfCheckOverride = fn
-	t.Cleanup(func() { nativeSelfCheckOverride = prev })
+	prev := aclSelfCheckOverride
+	aclSelfCheckOverride = fn
+	t.Cleanup(func() { aclSelfCheckOverride = prev })
 }
 
 // A throwaway item, so tests never touch the real one.
-func testNativeStore(t *testing.T) *nativeStore {
+func testACLStore(t *testing.T) *aclStore {
 	t.Helper()
 	suffix := make([]byte, 8)
 	_, err := rand.Read(suffix)
 	require.NoError(t, err)
-	store := &nativeStore{
+	store := &aclStore{
 		service: "Pulumi CLI Test " + hex.EncodeToString(suffix),
-		account: "credentials-key-native-test",
+		account: "credentials-key-acl-test",
 		label:   "Pulumi CLI test item (safe to delete)",
 	}
 	t.Cleanup(func() {
@@ -54,40 +54,40 @@ func testNativeStore(t *testing.T) *nativeStore {
 	return store
 }
 
-func TestNativeBackendShape(t *testing.T) {
+func TestACLBackendShape(t *testing.T) {
 	t.Parallel()
-	b := nativeKeychainBackend(true)
+	b := aclKeychainBackend(true)
 	assert.Equal(t, BackendMacOSACL, b.id)
 	assert.Equal(t, rawWrapper{}, b.wrap)
-	store, ok := b.store.(*nativeStore)
+	store, ok := b.store.(*aclStore)
 	require.True(t, ok)
 	assert.Equal(t, "Pulumi CLI", store.service)
-	assert.Equal(t, "credentials-key-native", store.account,
+	assert.Equal(t, "credentials-key-acl", store.account,
 		"must differ from the fallback backend's account to avoid item collisions")
 	assert.NotEmpty(t, store.label)
 	assert.True(t, store.allowPrompt, "the prompt policy must reach the store")
-	silent, ok := nativeKeychainBackend(false).store.(*nativeStore)
+	silent, ok := aclKeychainBackend(false).store.(*aclStore)
 	require.True(t, ok)
 	assert.False(t, silent.allowPrompt)
 }
 
-//nolint:paralleltest // must not overlap tests that set nativeSelfCheckOverride
-func TestNativeSelfCheckRejectsTestBinary(t *testing.T) {
-	require.Nil(t, nativeSelfCheckOverride)
+//nolint:paralleltest // must not overlap tests that set aclSelfCheckOverride
+func TestACLSelfCheckRejectsTestBinary(t *testing.T) {
+	require.Nil(t, aclSelfCheckOverride)
 
-	err := nativeSelfCheck()
+	err := aclSelfCheck()
 	require.Error(t, err, "an ad-hoc-signed test binary must not pass the self-check")
 
-	outcome, availErr := nativeKeychainBackend(false).available()
+	outcome, availErr := aclKeychainBackend(false).available()
 	require.Error(t, availErr)
 	assert.Equal(t, Absent, outcome)
 	assert.True(t, errors.Is(availErr, ErrUnavailable), "available() = %v, want ErrUnavailable", availErr)
 }
 
-//nolint:paralleltest // mutates package-global nativeSelfCheckOverride
-func TestNativeStoreRoundTrip(t *testing.T) {
+//nolint:paralleltest // mutates package-global aclSelfCheckOverride
+func TestACLStoreRoundTrip(t *testing.T) {
 	withSelfCheckOverride(t, func() error { return nil })
-	store := testNativeStore(t)
+	store := testACLStore(t)
 
 	if _, err := store.available(); err != nil {
 		if errors.Is(err, ErrUnavailable) {
@@ -121,11 +121,11 @@ func TestNativeStoreRoundTrip(t *testing.T) {
 	require.NoError(t, store.delete())
 }
 
-//nolint:paralleltest // mutates package-global nativeSelfCheckOverride
-func TestNativeAvailableUsesSelfCheckError(t *testing.T) {
+//nolint:paralleltest // mutates package-global aclSelfCheckOverride
+func TestACLAvailableUsesSelfCheckError(t *testing.T) {
 	boom := errors.New("not signed enough")
 	withSelfCheckOverride(t, func() error { return boom })
-	_, err := (&nativeStore{service: "unused", account: "unused"}).available()
+	_, err := (&aclStore{service: "unused", account: "unused"}).available()
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, ErrUnavailable))
 	assert.Contains(t, err.Error(), "not signed enough")
@@ -167,7 +167,7 @@ func TestOSStatusErrorMapping(t *testing.T) {
 func TestSilentOpsOnLockedKeychainReportLocked(t *testing.T) {
 	fakeKeychainLock(t, true)
 
-	store := &nativeStore{service: "unused", account: "unused", allowPrompt: false}
+	store := &aclStore{service: "unused", account: "unused", allowPrompt: false}
 
 	_, err := store.get()
 	assert.True(t, errors.Is(err, ErrLocked), "get on a locked keychain = %v, want ErrLocked", err)
@@ -199,7 +199,7 @@ func TestSilentPathNeverAnnouncesAWait(t *testing.T) {
 	notifyWaitingForKeychainUnlock = func() { notified++ }
 	t.Cleanup(func() { notifyWaitingForKeychainUnlock = prevNotify })
 
-	store := &nativeStore{service: "unused", account: "unused", allowPrompt: false}
+	store := &aclStore{service: "unused", account: "unused", allowPrompt: false}
 	_, _ = store.get()
 	_ = store.set("value")
 	assert.Zero(t, notified, "a silent operation announces nothing because it never waits")
@@ -215,7 +215,7 @@ func TestMissingUISuppressionDisablesSilentOps(t *testing.T) {
 	sec.keychainSetUserInteractionOK = nil
 	t.Cleanup(func() { sec.keychainSetUserInteractionOK = prev })
 
-	store := &nativeStore{service: "unused", account: "unused", allowPrompt: false}
+	store := &aclStore{service: "unused", account: "unused", allowPrompt: false}
 	_, err := store.get()
 	assert.ErrorIs(t, err, ErrUnavailable)
 	assert.Contains(t, err.Error(), "suppress")

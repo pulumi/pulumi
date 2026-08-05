@@ -20,7 +20,7 @@ package securestore
 // fallback that works for any binary.
 func platformCandidates(allowPrompt bool, _ string) []backendImpl {
 	return []backendImpl{
-		nativeKeychainBackend(allowPrompt),
+		aclKeychainBackend(allowPrompt),
 		{
 			id:    BackendMacOSSecurity,
 			store: newKeyringStore(func() (Outcome, error) { return keychainPrecheck(allowPrompt) }),

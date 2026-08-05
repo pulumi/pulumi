@@ -26,20 +26,20 @@ const (
 	// differs from keyringAccount so the two macOS backends never collide —
 	// this item's ACL is ours alone, the fallback must stay readable by
 	// /usr/bin/security.
-	nativeService = "Pulumi CLI"
-	nativeAccount = "credentials-key-native"
-	nativeLabel   = "Pulumi CLI credentials key"
+	aclService = "Pulumi CLI"
+	aclAccount = "credentials-key-acl"
+	aclLabel   = "Pulumi CLI credentials key"
 )
 
 // The per-app ACL comes from SecItemAdd itself, which binds access to the
 // creating app's code-signing identity.
-func nativeKeychainBackend(allowPrompt bool) backendImpl {
+func aclKeychainBackend(allowPrompt bool) backendImpl {
 	return backendImpl{
 		id: BackendMacOSACL,
-		store: &nativeStore{
-			service:     nativeService,
-			account:     nativeAccount,
-			label:       nativeLabel,
+		store: &aclStore{
+			service:     aclService,
+			account:     aclAccount,
+			label:       aclLabel,
 			allowPrompt: allowPrompt,
 		},
 		wrap: rawWrapper{},
@@ -49,7 +49,7 @@ func nativeKeychainBackend(allowPrompt bool) backendImpl {
 // Deliberately minimal: no synchronizable attribute (never iCloud-synced) and
 // no explicit access attributes — SecItemAdd's default ACL is what we want,
 // and setting access attributes prompts.
-type nativeStore struct {
+type aclStore struct {
 	service, account, label string
 	allowPrompt             bool
 }
@@ -57,7 +57,7 @@ type nativeStore struct {
 // Silent ops suppress dialogs even though the precheck just read the lock
 // state: the keychain can lock in between (sleep, inactivity, screen lock).
 // Prompt-permitted ops run untimed, since the user may be typing a password.
-func runNativeOp[T any](s *nativeStore, op func() (T, error)) (T, error) {
+func runACLOp[T any](s *aclStore, op func() (T, error)) (T, error) {
 	if _, err := keychainPrecheck(s.allowPrompt); err != nil {
 		var zero T
 		return zero, err
@@ -70,14 +70,14 @@ func runNativeOp[T any](s *nativeStore, op func() (T, error)) (T, error) {
 	})
 }
 
-func (s *nativeStore) available() (Outcome, error) {
+func (s *aclStore) available() (Outcome, error) {
 	if _, err := withTimeout(func() (struct{}, error) {
-		return struct{}{}, nativeSelfCheck()
+		return struct{}{}, aclSelfCheck()
 	}); err != nil {
 		if errors.Is(err, ErrUnavailable) {
 			return Absent, err
 		}
-		return Absent, fmt.Errorf("%w: native keychain requires a signed binary: %v",
+		return Absent, fmt.Errorf("%w: the keychain ACL requires a signed binary: %v",
 			ErrUnavailable, err)
 	}
 	// Deliberately outside the deadline: a permitted unlock waits on the user.
@@ -96,7 +96,7 @@ func (s *nativeStore) available() (Outcome, error) {
 
 // Suppresses UI whatever the prompt policy: deciding usability must never
 // itself draw a dialog.
-func (s *nativeStore) probe() (Outcome, error) {
+func (s *aclStore) probe() (Outcome, error) {
 	if err := loadDarwinAPI(); err != nil {
 		return Absent, fmt.Errorf("%w: %v", ErrUnavailable, err)
 	}
@@ -126,7 +126,7 @@ func (s *nativeStore) probe() (Outcome, error) {
 
 // Requests the data, not just attributes: attributes stay readable on a
 // locked keychain, so only a data read exposes the lock.
-func (s *nativeStore) copyMatching(result *uintptr) int32 {
+func (s *aclStore) copyMatching(result *uintptr) int32 {
 	service := cf.newString(s.service)
 	defer cf.release(service)
 	account := cf.newString(s.account)
@@ -139,8 +139,8 @@ func (s *nativeStore) copyMatching(result *uintptr) int32 {
 	return sec.itemCopyMatching(query, result)
 }
 
-func (s *nativeStore) get() (string, error) {
-	return runNativeOp(s, func() (string, error) {
+func (s *aclStore) get() (string, error) {
+	return runACLOp(s, func() (string, error) {
 		if err := loadDarwinAPI(); err != nil {
 			return "", fmt.Errorf("%w: %v", ErrUnavailable, err)
 		}
@@ -156,8 +156,8 @@ func (s *nativeStore) get() (string, error) {
 	})
 }
 
-func (s *nativeStore) set(value string) error {
-	_, err := runNativeOp(s, func() (struct{}, error) {
+func (s *aclStore) set(value string) error {
+	_, err := runACLOp(s, func() (struct{}, error) {
 		if err := loadDarwinAPI(); err != nil {
 			return struct{}{}, fmt.Errorf("%w: %v", ErrUnavailable, err)
 		}
@@ -196,8 +196,8 @@ func (s *nativeStore) set(value string) error {
 	return err
 }
 
-func (s *nativeStore) delete() error {
-	_, err := runNativeOp(s, func() (struct{}, error) {
+func (s *aclStore) delete() error {
+	_, err := runACLOp(s, func() (struct{}, error) {
 		if err := loadDarwinAPI(); err != nil {
 			return struct{}{}, fmt.Errorf("%w: %v", ErrUnavailable, err)
 		}
