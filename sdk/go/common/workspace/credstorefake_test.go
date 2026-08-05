@@ -159,7 +159,6 @@ func installStores(t *testing.T, s keyStores) {
 	t.Cleanup(resetWriteStoreForTesting)
 }
 
-// fakeStore returns the single fake backend installed by useFakeStores.
 func fakeStore(t *testing.T) *fakeKeyStore {
 	t.Helper()
 	fakes, ok := stores.(*fakeStores)

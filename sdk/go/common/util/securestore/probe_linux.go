@@ -22,7 +22,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/godbus/dbus/v5"
 )
@@ -40,35 +39,12 @@ const (
 	secretServicePath        = dbus.ObjectPath("/org/freedesktop/secrets")
 )
 
-type precheckResult struct {
-	outcome Outcome
-	err     error
-}
-
-var (
-	precheckMu      sync.Mutex
-	precheckResults = map[bool]precheckResult{}
-)
-
 // secretServicePrecheck fast-fails before go-keyring ever touches the Secret
 // Service: it verifies a session bus exists, that a provider is actually
 // running, and that the default collection is unlocked. A locked collection
 // gets one unlock attempt, which only draws a dialog when allowPrompt says
 // someone is there to answer it.
-func secretServicePrecheck(allowPrompt bool) (Outcome, error) {
-	// Memoized per process, keyed on whether prompting was allowed: one
-	// command probes several times (reading the existing file, checking
-	// stickiness, then writing) and each probe of a locked collection would
-	// otherwise raise its own dialog.
-	precheckMu.Lock()
-	defer precheckMu.Unlock()
-	if done, ok := precheckResults[allowPrompt]; ok {
-		return done.outcome, done.err
-	}
-	outcome, err := probeSecretService(allowPrompt)
-	precheckResults[allowPrompt] = precheckResult{outcome, err}
-	return outcome, err
-}
+var secretServicePrecheck = memoizePrecheck(probeSecretService)
 
 func probeSecretService(allowPrompt bool) (Outcome, error) {
 	// Cheap environment check first: no session bus address and no

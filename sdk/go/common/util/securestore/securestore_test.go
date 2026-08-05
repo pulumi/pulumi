@@ -153,7 +153,6 @@ func TestGetOrCreateKeyCreatesOnceAndIsStable(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, k1, k2)
 
-	// ForBackend on the recorded backend reaches the same key.
 	rd, err := ForBackend(BackendMock, "")
 	require.NoError(t, err)
 	k3, err := rd.GetKey()
@@ -212,16 +211,17 @@ func TestOutcomeClassification(t *testing.T) {
 	assert.False(t, errors.Is(ErrDeclined, ErrUnavailable), "a refusal must never look like absence")
 }
 
-//nolint:paralleltest // mutates the package-global mock resolver
+//nolint:paralleltest // mutates the package-global resolution hook
 func TestDeclinedStopsTheChain(t *testing.T) {
 	fallback := &memStore{}
-	mockResolver = func() []backendImpl {
+	prevHook := platformCandidatesHook
+	platformCandidatesHook = func(bool, string) []backendImpl {
 		return []backendImpl{
 			{id: BackendMockStrong, store: &refusingStore{}, wrap: rawWrapper{}},
 			{id: BackendMock, store: fallback, wrap: rawWrapper{}},
 		}
 	}
-	t.Cleanup(func() { mockResolver = nil })
+	t.Cleanup(func() { platformCandidatesHook = prevHook })
 
 	for _, mode := range []Mode{ModeAuto, ModeOS} {
 		st, err := Resolve(mode, "")
@@ -274,14 +274,15 @@ func (r *raceLosingStore) set(value string) error {
 
 func (r *raceLosingStore) delete() error { return nil }
 
-//nolint:paralleltest // mutates the package-global mock resolver
+//nolint:paralleltest // mutates the package-global resolution hook
 func TestGetOrCreateKeyReconcilesWhenSetLosesRace(t *testing.T) {
 	winnerKey := testKey(t)
 	store := &raceLosingStore{winner: formatItem(wrapRaw, winnerKey)}
-	mockResolver = func() []backendImpl {
+	prevHook := platformCandidatesHook
+	platformCandidatesHook = func(bool, string) []backendImpl {
 		return []backendImpl{{id: BackendMock, store: store, wrap: rawWrapper{}}}
 	}
-	t.Cleanup(func() { mockResolver = nil })
+	t.Cleanup(func() { platformCandidatesHook = prevHook })
 
 	st, err := Resolve(ModeAuto, "")
 	require.NoError(t, err)
@@ -290,7 +291,7 @@ func TestGetOrCreateKeyReconcilesWhenSetLosesRace(t *testing.T) {
 	assert.Equal(t, winnerKey, key, "the persisted (winning) key must be adopted")
 }
 
-//nolint:paralleltest // mutates the package-global mock resolver
+//nolint:paralleltest // mutates the package-global resolution hook
 func TestGetOrCreateKeyConcurrent(t *testing.T) {
 	MockInit(t)
 	st, err := Resolve(ModeAuto, "")
@@ -331,17 +332,18 @@ func (fakeTPMWrapper) unwrap(blob []byte) ([]byte, error) {
 	return bytes.TrimPrefix(blob, []byte("sealed:")), nil
 }
 
-//nolint:paralleltest // mutates the package-global mock resolver
+//nolint:paralleltest // mutates the package-global resolution hook
 func TestGetOrCreateKeyUpgradesRawItemToTPM(t *testing.T) {
 	// A raw-wrapped key stored before a TPM became usable must be upgraded
 	// in place, not fail (which would downgrade the user to plaintext).
 	rawKey := testKey(t)
 	mem := &memStore{}
 	require.NoError(t, mem.set(formatItem(wrapRaw, rawKey)))
-	mockResolver = func() []backendImpl {
+	prevHook := platformCandidatesHook
+	platformCandidatesHook = func(bool, string) []backendImpl {
 		return []backendImpl{{id: BackendMock, store: mem, wrap: fakeTPMWrapper{}}}
 	}
-	t.Cleanup(func() { mockResolver = nil })
+	t.Cleanup(func() { platformCandidatesHook = prevHook })
 
 	st, err := Resolve(ModeAuto, "")
 	require.NoError(t, err)
@@ -356,8 +358,24 @@ func TestGetOrCreateKeyUpgradesRawItemToTPM(t *testing.T) {
 	assert.Equal(t, wrapTPM, kind, "stored item must now be TPM-wrapped")
 	assert.Equal(t, append([]byte("sealed:"), rawKey...), blob)
 
-	// And reads keep working through the upgraded item.
 	got, err := st.GetKey()
 	require.NoError(t, err)
 	assert.Equal(t, rawKey, got)
+}
+
+func TestMemoizePrecheckAsksOncePerPolicy(t *testing.T) {
+	t.Parallel()
+	calls := 0
+	precheck := memoizePrecheck(func(bool) (Outcome, error) {
+		calls++
+		return Ready, nil
+	})
+
+	for range 3 {
+		_, _ = precheck(true)
+	}
+	assert.Equal(t, 1, calls, "repeated probes must not re-ask, or a declined dialog would reappear")
+
+	_, _ = precheck(false)
+	assert.Equal(t, 2, calls, "the silent policy is a separate question")
 }

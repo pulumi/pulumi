@@ -60,9 +60,8 @@ func panicHandler(finished *bool) {
 func main() {
 	maxprocs.Set() //nolint:errcheck
 
-	// Best-effort process hardening: on Linux this marks the process
-	// non-dumpable so unprivileged same-user processes cannot read decrypted
-	// credential material out of our memory via ptrace or /proc/pid/mem.
+	// Best effort: keeps decrypted credential material out of reach of ptrace
+	// and /proc/pid/mem.
 	securestore.HardenProcess()
 
 	finished := new(bool)

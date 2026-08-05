@@ -72,20 +72,12 @@ type nativeStore struct {
 // deadline — the user may take as long as they need to type a password —
 // after announcing the wait when the keychain is known to be locked.
 func runNativeOp[T any](s *nativeStore, op func() (T, error)) (T, error) {
-	locked, lockKnown := defaultKeychainLocked()
-	if s.allowPrompt {
-		if lockKnown && locked {
-			notifyWaitingForKeychainUnlock()
-		}
-		return op()
-	}
-	if lockKnown && locked {
-		// Answer from the lock state instead of the operation: with UI
-		// suppressed a locked keychain reports errSecAuthFailed, which is
-		// indistinguishable from a genuine authorization failure and would
-		// classify as Absent rather than Locked.
+	if _, err := keychainPrecheck(s.allowPrompt); err != nil {
 		var zero T
-		return zero, fmt.Errorf("%w: unlock it or set PULUMI_CREDENTIAL_STORE=plaintext", ErrLocked)
+		return zero, err
+	}
+	if s.allowPrompt {
+		return op()
 	}
 	return withTimeout(func() (T, error) {
 		return withoutKeychainUI(op)
@@ -128,14 +120,6 @@ func (s *nativeStore) available() (Outcome, error) {
 func (s *nativeStore) probe() (Outcome, error) {
 	if err := loadDarwinAPI(); err != nil {
 		return Absent, fmt.Errorf("%w: %v", ErrUnavailable, err)
-	}
-	// Ask the keychain's lock state directly rather than inferring it from
-	// the item query: a query for an item that does not exist yet answers
-	// errSecItemNotFound even on a locked keychain (no data to decrypt), so
-	// first-run probes would otherwise report a locked keychain as usable and
-	// only fail later, at the write.
-	if locked, ok := defaultKeychainLocked(); ok && locked {
-		return Locked, fmt.Errorf("%w: unlock it or set PULUMI_CREDENTIAL_STORE=plaintext", ErrLocked)
 	}
 	status, err := withoutKeychainUI(func() (int32, error) {
 		var result uintptr

@@ -16,8 +16,7 @@ package workspace
 
 import "github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 
-// keyStore is the slice of the secure store this package calls: the key that
-// encrypts the credentials file, and which mechanism protects it.
+// keyStore is the slice of securestore this package uses;
 // *securestore.Store satisfies it implicitly.
 type keyStore interface {
 	Backend() securestore.Backend
@@ -34,17 +33,14 @@ type keyStores interface {
 	ForBackend(id securestore.Backend) (keyStore, error)
 }
 
-// stores is the wiring point for this package. Production uses the real
-// secure store; tests substitute a fake, so no test double is exported from
-// securestore itself.
+// stores is the wiring point, so no test double need be exported from
+// securestore.
 var stores keyStores = secureStores{}
 
 type secureStores struct{}
 
-// pulumiHome resolves the directory securestore keeps file-based key material
-// in. Deliberately GetPulumiHomeDir and not GetPulumiPath: the key file's
-// location must be stable, never redirected to a per-session agent directory.
-// An empty result just makes the file-based backend report itself unusable.
+// Deliberately GetPulumiHomeDir, not GetPulumiPath: the key file's location
+// must be stable, never redirected to a per-session agent directory.
 func pulumiHome() string {
 	dir, err := GetPulumiHomeDir()
 	if err != nil {

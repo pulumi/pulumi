@@ -114,8 +114,6 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			// An undecryptable credentials file must not block logging in
-			// again: warn, clear it, and proceed with a fresh login.
 			if _, err := workspace.GetStoredCredentials(); workspace.IsUndecryptableCredentials(err) {
 				fmt.Fprintf(cmd.ErrOrStderr(),
 					"warning: existing stored credentials can no longer be decrypted and will be replaced: %v\n", err)

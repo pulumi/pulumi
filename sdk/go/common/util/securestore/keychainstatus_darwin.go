@@ -22,14 +22,11 @@ import (
 	"sync"
 )
 
-// The default (login) keychain can genuinely be locked: `security
-// lock-keychain`, the lock-after-inactivity/lock-on-sleep keychain settings,
-// SSH sessions authenticated by key (the PAM unlock never ran), or a keychain
-// password that diverged from the login password. Both macOS tiers consult
-// the lock state before an operation that could make securityd draw a dialog.
+// The login keychain can genuinely be locked: lock-keychain, the
+// lock-on-sleep/inactivity settings, key-authenticated SSH (the PAM unlock
+// never ran), or a keychain password diverged from the login password.
 
-// copyDefaultKeychain returns the default keychain ref (caller releases) or
-// ok=false when it cannot be determined.
+// The caller releases the returned ref.
 func copyDefaultKeychain() (kc uintptr, ok bool) {
 	if loadDarwinAPI() != nil {
 		return 0, false
@@ -40,10 +37,8 @@ func copyDefaultKeychain() (kc uintptr, ok bool) {
 	return kc, true
 }
 
-// defaultKeychainLocked reports whether the default keychain is locked,
-// without any risk of UI. ok=false when the state cannot be determined.
-// Indirected through a hook so tests can exercise the locked branches
-// without locking the developer's own keychain.
+// Hooked so tests can exercise the locked branches without locking the
+// developer's own keychain.
 var defaultKeychainLockedHook = realDefaultKeychainLocked
 
 func defaultKeychainLocked() (locked, ok bool) { return defaultKeychainLockedHook() }
@@ -70,19 +65,14 @@ var notifyWaitingForKeychainUnlock = func() {
 }
 
 // interactionMu serializes the process-wide user-interaction setting below.
-// Keychain operations are rare enough that a global lock costs nothing.
 var interactionMu sync.Mutex
 
-// withoutKeychainUI runs fn with securityd's dialogs suppressed for this
-// process, so a locked keychain or an ACL mismatch returns
-// errSecInteractionNotAllowed instead of drawing UI.
+// withoutKeychainUI suppresses securityd's dialogs process-wide, so a locked
+// keychain or an ACL mismatch errors instead of drawing UI.
 //
-// SecKeychainSetUserInteractionAllowed is deprecated, and the modern
-// replacement (kSecUseAuthenticationContext holding an LAContext with
-// interactionNotAllowed) governs only data-protection keychain items — it was
-// measured to be inert for the legacy keychain item this backend must use,
-// which drew the dialog it was supposed to suppress. This is the only lever
-// that works for legacy items, so it stays until the item can move.
+// SecKeychainSetUserInteractionAllowed is deprecated, but the modern
+// replacement (kSecUseAuthenticationContext + LAContext) was measured to be
+// inert for legacy keychain items and drew the dialog it should suppress.
 func withoutKeychainUI[T any](fn func() (T, error)) (T, error) {
 	if err := loadDarwinAPI(); err != nil {
 		var zero T
@@ -95,22 +85,18 @@ func withoutKeychainUI[T any](fn func() (T, error)) (T, error) {
 		return zero, fmt.Errorf("%w: could not disable keychain dialogs: %v",
 			ErrUnavailable, osStatusError(status))
 	}
-	// Restore unconditionally: leaving interaction disabled would silently
-	// break every later keychain user in this process.
+	// Leaving interaction disabled would break every later keychain user.
 	defer sec.keychainSetUserInteractionOK(true) //nolint:errcheck // best effort restore
 	return fn()
 }
 
-// keychainPrecheck classifies the default keychain before an operation that
-// could make securityd draw a dialog. Both macOS tiers go through it, so the
-// unlock prompt policy is enforced in one place.
-//
-// A locked keychain in a silent cell is reported as Locked without touching
-// it. With prompting permitted it gets exactly one unlock attempt, waited on
-// with no deadline because the user may be typing a password — the same rule
-// the Linux Secret Service path follows. An unknown lock state is treated as
-// usable and left to the operation itself.
-func keychainPrecheck(allowPrompt bool) (Outcome, error) {
+// keychainPrecheck classifies the default keychain before anything that could
+// draw a dialog; both macOS tiers go through it. Locked plus silent reports
+// Locked untouched, locked plus permitted gets one unlock attempt with no
+// deadline, and an unknown state is left to the operation.
+var keychainPrecheck = memoizePrecheck(probeKeychain)
+
+func probeKeychain(allowPrompt bool) (Outcome, error) {
 	locked, ok := defaultKeychainLocked()
 	if !ok || !locked {
 		return Ready, nil

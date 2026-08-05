@@ -42,12 +42,10 @@ const itemPrefix = "pulumi-securestore-v1"
 // keyring calls in a timeout for the same reason.
 const opTimeout = 3 * time.Second
 
-// formatItem encodes a wrapped key payload for storage.
 func formatItem(kind wrapKind, blob []byte) string {
 	return itemPrefix + ":" + string(kind) + ":" + base64.StdEncoding.EncodeToString(blob)
 }
 
-// parseItem decodes a stored item into its wrap kind and payload.
 func parseItem(value string) (wrapKind, []byte, error) {
 	parts := strings.SplitN(value, ":", 3)
 	if len(parts) != 3 || parts[0] != itemPrefix {

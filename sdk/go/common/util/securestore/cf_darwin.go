@@ -102,7 +102,6 @@ func (l *lib) constant(name string) uintptr {
 	return **(**uintptr)(unsafe.Pointer(&addr))
 }
 
-// cfAPI holds the CoreFoundation functions and data symbols we use.
 type cfAPI struct {
 	release            func(ref uintptr)
 	stringCreate       func(alloc uintptr, cstr string, encoding uint32) uintptr
@@ -120,7 +119,6 @@ type cfAPI struct {
 	typeDictKeyCallBacks   uintptr
 	typeDictValueCallBacks uintptr
 	booleanTrue            uintptr
-	booleanFalse           uintptr
 }
 
 func newCFAPI(l *lib) *cfAPI {
@@ -140,7 +138,6 @@ func newCFAPI(l *lib) *cfAPI {
 	c.typeDictKeyCallBacks = l.addr("kCFTypeDictionaryKeyCallBacks")
 	c.typeDictValueCallBacks = l.addr("kCFTypeDictionaryValueCallBacks")
 	c.booleanTrue = l.constant("kCFBooleanTrue")
-	c.booleanFalse = l.constant("kCFBooleanFalse")
 	return c
 }
 
@@ -172,7 +169,6 @@ func (c *cfAPI) newData(b []byte) uintptr {
 	return c.dataCreate(0, b, len(b))
 }
 
-// dataBytes copies the contents of a CFData into a fresh Go slice.
 func (c *cfAPI) dataBytes(data uintptr) []byte {
 	n := c.dataGetLength(data)
 	if n <= 0 {

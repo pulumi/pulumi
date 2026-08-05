@@ -60,7 +60,6 @@ func decodeSealedBlob(blob []byte) (priv, pub []byte, err error) {
 	return priv, pub, nil
 }
 
-// readSealedChunk reads one uint16-BE-length-prefixed chunk from b.
 func readSealedChunk(b []byte) (chunk, rest []byte, err error) {
 	if len(b) < 2 {
 		return nil, nil, errors.New("truncated length prefix")

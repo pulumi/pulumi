@@ -105,30 +105,25 @@ func TestNativeStoreRoundTrip(t *testing.T) {
 		t.Fatalf("available() = %v", err)
 	}
 
-	// Empty store: get reports ErrKeyNotFound, delete is a no-op.
 	_, err := store.get()
 	assert.True(t, errors.Is(err, ErrKeyNotFound), "get on missing item = %v, want ErrKeyNotFound", err)
 	require.NoError(t, store.delete(), "deleting a missing item is not an error")
 
-	// Create, read back (exercises the SecItemAdd path).
 	first := formatItem(wrapRaw, []byte("first value \x00\xff with bytes ✓"))
 	require.NoError(t, store.set(first))
 	got, err := store.get()
 	require.NoError(t, err)
 	assert.Equal(t, first, got)
 
-	// Overwrite, read back (exercises the errSecDuplicateItem/SecItemUpdate path).
 	second := formatItem(wrapRaw, []byte("second value"))
 	require.NoError(t, store.set(second))
 	got, err = store.get()
 	require.NoError(t, err)
 	assert.Equal(t, second, got)
 
-	// available() with an existing item still reports usable.
 	_, availableErr := store.available()
 	require.NoError(t, availableErr)
 
-	// Delete, then the item is gone and delete stays idempotent.
 	require.NoError(t, store.delete())
 	_, err = store.get()
 	assert.True(t, errors.Is(err, ErrKeyNotFound), "get after delete = %v, want ErrKeyNotFound", err)
@@ -182,9 +177,7 @@ func TestOSStatusErrorMapping(t *testing.T) {
 //
 //nolint:paralleltest // mutates the package-global lock-state hook
 func TestSilentOpsOnLockedKeychainReportLocked(t *testing.T) {
-	prev := defaultKeychainLockedHook
-	defaultKeychainLockedHook = func() (bool, bool) { return true, true }
-	t.Cleanup(func() { defaultKeychainLockedHook = prev })
+	fakeKeychainLock(t, true)
 
 	store := &nativeStore{service: "unused", account: "unused", allowPrompt: false}
 
@@ -194,33 +187,35 @@ func TestSilentOpsOnLockedKeychainReportLocked(t *testing.T) {
 
 	assert.True(t, errors.Is(store.set("value"), ErrLocked))
 	assert.True(t, errors.Is(store.delete(), ErrLocked))
-
-	// The probe answers the same way, so resolution treats the tier as locked
-	// rather than falling through to a weaker one.
-	outcome, probeErr := store.probe()
-	assert.Equal(t, Locked, outcome)
-	assert.True(t, errors.Is(probeErr, ErrLocked))
 }
 
 // The prompt path announces the wait before securityd draws its dialog, so a
 // dialog on another space does not look like a hang.
 //
+// fakeKeychainLock pins the reported lock state and re-arms the memoized
+// precheck, which would otherwise carry a cached answer between tests.
+func fakeKeychainLock(t *testing.T, locked bool) {
+	t.Helper()
+	prev := defaultKeychainLockedHook
+	defaultKeychainLockedHook = func() (bool, bool) { return locked, true }
+	keychainPrecheck = memoizePrecheck(probeKeychain)
+	t.Cleanup(func() {
+		defaultKeychainLockedHook = prev
+		keychainPrecheck = memoizePrecheck(probeKeychain)
+	})
+}
+
 //nolint:paralleltest // mutates package-global hooks
-func TestPromptPathAnnouncesTheWaitWhenLocked(t *testing.T) {
-	prevLock := defaultKeychainLockedHook
-	defaultKeychainLockedHook = func() (bool, bool) { return true, true }
-	t.Cleanup(func() { defaultKeychainLockedHook = prevLock })
+func TestSilentPathNeverAnnouncesAWait(t *testing.T) {
+	fakeKeychainLock(t, true)
 
 	notified := 0
 	prevNotify := notifyWaitingForKeychainUnlock
 	notifyWaitingForKeychainUnlock = func() { notified++ }
 	t.Cleanup(func() { notifyWaitingForKeychainUnlock = prevNotify })
 
-	store := &nativeStore{service: "unused", account: "unused", allowPrompt: true}
-	_, _ = runNativeOp(store, func() (struct{}, error) { return struct{}{}, nil })
-	assert.Equal(t, 1, notified, "a locked keychain must announce the wait")
-
-	defaultKeychainLockedHook = func() (bool, bool) { return false, true }
-	_, _ = runNativeOp(store, func() (struct{}, error) { return struct{}{}, nil })
-	assert.Equal(t, 1, notified, "an unlocked keychain must stay quiet")
+	store := &nativeStore{service: "unused", account: "unused", allowPrompt: false}
+	_, _ = store.get()
+	_ = store.set("value")
+	assert.Zero(t, notified, "a silent operation announces nothing because it never waits")
 }

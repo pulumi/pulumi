@@ -612,10 +612,8 @@ func (m defaultLoginManager) Current(
 	if err == nil && existingAccount.HasCredential() {
 		logging.V(7).Infof("Found stored credentials for %q in default credentials", cloudURL)
 	} else if err != nil {
-		// Surface an undecryptable credentials file even with a
-		// PULUMI_ACCESS_TOKEN set: the token is persisted to that same file,
-		// so proceeding would end in a write over an envelope that may only
-		// be temporarily unreadable.
+		// Even with PULUMI_ACCESS_TOKEN set: the token is persisted to this
+		// same file, so proceeding would end in a write over the envelope.
 		if workspace.IsUndecryptableCredentials(err) {
 			return nil, err
 		}

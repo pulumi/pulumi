@@ -24,7 +24,6 @@ import (
 	"fmt"
 )
 
-// envelopeVersion is bumped when the on-disk format changes.
 const envelopeVersion = 1
 
 const envelopeAlgo = "aes-256-gcm"

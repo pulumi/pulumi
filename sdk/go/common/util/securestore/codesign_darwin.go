@@ -21,31 +21,22 @@ import (
 	"fmt"
 )
 
-// Code-signing self-check: the native keychain backend is only worth using
-// when the running binary carries a real (Developer ID / App Store) signature,
-// because that is what the keychain binds the item's per-app ACL to. An
-// unsigned or ad-hoc-signed binary gets a new signing identity on every
-// rebuild, which would make every rebuilt binary re-prompt; those builds use
-// the /usr/bin/security fallback backend instead.
-//
-// The check uses SecCodeCopySelf + SecCodeCopySigningInformation (not csops,
-// which misreports on macOS 26/arm64) and requires a signed binary with a
-// non-empty Team ID and without the ad-hoc signature flag.
+// The native keychain backend is only worth using on a real (Developer ID /
+// App Store) signature: that is what the item's per-app ACL binds to, and an
+// ad-hoc binary gets a new identity every rebuild, re-prompting each time.
+// Uses SecCodeCopySelf, not csops, which misreports on macOS 26/arm64.
 
 // Constants from Security/CSCommon.h and Security/SecCode.h.
 const (
-	kSecCSDefaultFlags       = 0      // CSCommon.h
-	kSecCSSigningInformation = 1 << 1 // SecCode.h
-	kSecCodeSignatureAdhoc   = 0x0002 // CSCommon.h
+	kSecCSDefaultFlags       = 0
+	kSecCSSigningInformation = 1 << 1
+	kSecCodeSignatureAdhoc   = 0x0002
 )
 
-// nativeSelfCheckOverride, when non-nil, is used instead of the real
-// code-signing self-check. Tests set it: test binaries are at best ad-hoc
-// signed, so the real check would never let them exercise the native store.
+// nativeSelfCheckOverride lets tests exercise the native store: test binaries
+// are at best ad-hoc signed, so the real check would always reject them.
 var nativeSelfCheckOverride func() error
 
-// nativeSelfCheck reports nil when the running binary's code signature makes
-// it eligible for the native keychain backend.
 func nativeSelfCheck() error {
 	if nativeSelfCheckOverride != nil {
 		return nativeSelfCheckOverride()

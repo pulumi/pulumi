@@ -91,7 +91,6 @@ func TestStoreCredentialsPlaintextModeExplicit(t *testing.T) {
 func TestPlaintextFileMigratesOnWriteNotRead(t *testing.T) {
 	pinSecureCreds(t, "auto")
 
-	// Simulate a pre-existing plaintext credentials file from an older CLI.
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(credsFile,
@@ -282,7 +281,6 @@ func TestStoreAccountRecoversFromUndecryptableFile(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
-	// Lose the key: reads must fail with the typed error...
 	require.NoError(t, fakeStore(t).DeleteKey())
 	_, err := GetStoredCredentials()
 	require.Error(t, err)
@@ -312,7 +310,6 @@ func TestResetStoredCredentialsClearsUndecryptableState(t *testing.T) {
 	_, err = os.Stat(credsFile)
 	assert.True(t, os.IsNotExist(err))
 
-	// A fresh read now behaves like a logged-out machine.
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
 	assert.Empty(t, creds.AccessTokens)
@@ -538,7 +535,6 @@ func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
 	cloudURL := "https://api.undecryptable.example.com"
 	require.NoError(t, StoreAccount(cloudURL, Account{AccessToken: "tok"}, true))
 
-	// Lose the key: the file is now an undecryptable envelope.
 	require.NoError(t, fakeStore(t).DeleteKey())
 
 	_, _, err = GetAccountWithAgentFallback(cloudURL)
@@ -557,7 +553,6 @@ func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 	t.Setenv("PULUMI_CREDENTIAL_STORE", "auto")
 	promote := useUpgradableStores(t)
 
-	// Phase 1: only the weaker backend is available.
 	require.NoError(t, StoreCredentials(testCreds()))
 	credsFile, err := getCredsFilePath()
 	require.NoError(t, err)
@@ -567,11 +562,9 @@ func TestWriteUpgradesToStrongerBackend(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, fakeBackend, backend)
 
-	// Phase 2: the stronger backend becomes available (new release).
 	promote()
 	resetWriteStoreForTesting()
 
-	// Reads still work through the recorded (weaker) backend.
 	creds, err := GetStoredCredentials()
 	require.NoError(t, err)
 	assert.Equal(t, "pul-secret-token", creds.AccessTokens["https://api.pulumi.com"])

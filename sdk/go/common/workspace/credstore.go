@@ -28,9 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 )
 
-// credentialStoreMode maps PULUMI_CREDENTIAL_STORE, case-insensitively. An
-// unset variable keeps today's plaintext behavior for writes; reads of an
-// already-encrypted file always use its recorded backend.
+// credentialStoreMode maps PULUMI_CREDENTIAL_STORE, case-insensitively.
 func credentialStoreMode() (securestore.Mode, error) {
 	value := env.CredentialStore.Value()
 	switch strings.ToLower(strings.TrimSpace(value)) {
@@ -47,8 +45,7 @@ func credentialStoreMode() (securestore.Mode, error) {
 	}
 }
 
-// writeStore memoizes the resolved secure store for this process: a single
-// command may write credentials several times, and probing costs an exec of
+// writeStore memoizes the resolved store: probing costs an exec of
 // /usr/bin/security on macOS.
 var writeStore = sync.OnceValues(resolveWriteStore)
 
@@ -69,11 +66,9 @@ func resolveWriteStore() (keyStore, error) {
 	return stores.Resolve(mode)
 }
 
-// credStoreState is a small non-secret marker file next to credentials.json
-// recording whether the plaintext-fallback warning was already shown. It
-// deliberately does NOT record the chosen backend: availability is decided
-// fresh per process so a stale decision can never violate the
-// never-plaintext-when-protection-is-available invariant.
+// credStoreState is a non-secret marker recording whether the plaintext
+// warning was shown. Deliberately does not record the backend: a stale
+// decision could downgrade a user who has protection available.
 type credStoreState struct {
 	Warned bool `json:"warned,omitempty"`
 }
@@ -120,9 +115,7 @@ var warnWriter io.Writer = os.Stderr
 // process: credentials are read by the engine and every language host alike.
 var plaintextPendingOnce sync.Once
 
-// warnPlaintextPending tells an opted-in (auto/os) user that their
-// credentials file is still plaintext. Reads never rewrite the file, so the
-// nudge points at the write that will: the next login or credential update.
+// warnPlaintextPending tells an opted-in user their file is still plaintext.
 func warnPlaintextPending() {
 	if !securestore.Attended() {
 		return
@@ -133,10 +126,8 @@ func warnPlaintextPending() {
 	})
 }
 
-// warnPlaintextFallback prints a one-time notice that credentials will be
-// stored in plaintext and why. Recorded in the state file so it fires once
-// per machine, not once per run. Suppressed when nobody is watching, judged
-// by the same attended signal that governs unlock prompts.
+// warnPlaintextFallback fires once per machine (recorded in the state file),
+// and only when someone is watching.
 func warnPlaintextFallback(reason error) {
 	if !securestore.Attended() {
 		logging.V(7).Infof("credential store unavailable, using plaintext: %v", reason)

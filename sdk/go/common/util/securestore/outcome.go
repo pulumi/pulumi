@@ -14,7 +14,10 @@
 
 package securestore
 
-import "errors"
+import (
+	"errors"
+	"sync"
+)
 
 // Outcome is the result of probing one backend. Fallback keys off the
 // outcome, not off the raw error: only Absent and Locked mean "try something
@@ -46,6 +49,28 @@ func (o Outcome) String() string {
 		return "declined"
 	default:
 		return "unknown"
+	}
+}
+
+// memoizePrecheck caches a precheck per allowPrompt value. One command probes
+// several times — reading the existing file, checking stickiness, then
+// writing — and without this each probe of a locked store would raise its own
+// dialog, including re-asking after the user already declined.
+func memoizePrecheck(probe func(allowPrompt bool) (Outcome, error)) func(bool) (Outcome, error) {
+	var (
+		once [2]sync.Once
+		res  [2]struct {
+			outcome Outcome
+			err     error
+		}
+	)
+	return func(allowPrompt bool) (Outcome, error) {
+		i := 0
+		if allowPrompt {
+			i = 1
+		}
+		once[i].Do(func() { res[i].outcome, res[i].err = probe(allowPrompt) })
+		return res[i].outcome, res[i].err
 	}
 }
 

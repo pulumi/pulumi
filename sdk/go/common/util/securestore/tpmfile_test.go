@@ -42,7 +42,6 @@ func TestTPMFileStoreLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "first-value", got)
 
-	// The item lands in exactly $PULUMI_HOME/credentials-key.tpm.
 	path := filepath.Join(home, "credentials-key.tpm")
 	info, err := os.Stat(path)
 	require.NoError(t, err)
@@ -53,13 +52,11 @@ func TestTPMFileStoreLifecycle(t *testing.T) {
 		assert.Equal(t, os.FileMode(0o700), dirInfo.Mode().Perm(), "created home dir must be private")
 	}
 
-	// Overwrites replace the value.
 	require.NoError(t, store.set("second-value"))
 	got, err = store.get()
 	require.NoError(t, err)
 	assert.Equal(t, "second-value", got)
 
-	// Delete is idempotent and returns the store to the not-found state.
 	require.NoError(t, store.delete())
 	require.NoError(t, store.delete())
 	_, err = store.get()

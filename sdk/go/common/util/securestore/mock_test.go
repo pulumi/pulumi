@@ -88,10 +88,11 @@ func (*refusingStore) available() (Outcome, error) { return Declined, ErrDecline
 func MockInit(t *testing.T) {
 	t.Helper()
 	mem := &memStore{}
-	mockResolver = func() []backendImpl {
+	prev := platformCandidatesHook
+	platformCandidatesHook = func(bool, string) []backendImpl {
 		return []backendImpl{{id: BackendMock, store: mem, wrap: rawWrapper{}}}
 	}
-	t.Cleanup(func() { mockResolver = nil })
+	t.Cleanup(func() { platformCandidatesHook = prev })
 }
 
 // MockInitDual installs a preferred backend that only becomes available once
@@ -100,12 +101,13 @@ func MockInitDual(t *testing.T) (promote func()) {
 	t.Helper()
 	enabled := false
 	weak, strong := &memStore{}, &memStore{}
-	mockResolver = func() []backendImpl {
+	prev := platformCandidatesHook
+	platformCandidatesHook = func(bool, string) []backendImpl {
 		return []backendImpl{
 			{id: BackendMockStrong, store: &gatedStore{inner: strong, enabled: &enabled}, wrap: rawWrapper{}},
 			{id: BackendMock, store: weak, wrap: rawWrapper{}},
 		}
 	}
-	t.Cleanup(func() { mockResolver = nil })
+	t.Cleanup(func() { platformCandidatesHook = prev })
 	return func() { enabled = true }
 }

@@ -18,18 +18,15 @@ package securestore
 
 import "fmt"
 
-// Security framework bindings, resolved at runtime with purego (no cgo).
-// Only the modern SecItem API is used (SecItemAdd/CopyMatching/Update/Delete);
-// the deprecated SecKeychain*/SecAccess*/SecTrustedApplication* calls are
-// deliberately avoided. A plain SecItemAdd already yields a per-app ACL bound
-// to the creating app's code-signing identity, which is the per-app
-// protection this backend relies on.
+// Security framework bindings via purego. A plain SecItemAdd already yields a
+// per-app ACL bound to the creating app's signing identity, so no SecAccess or
+// SecTrustedApplication is needed.
 
 // OSStatus codes from Security/SecBase.h.
 const (
 	errSecSuccess               = 0
-	errSecUserCanceled          = -128   // the user canceled an authorization dialog
-	errSecNotAvailable          = -25291 // no keychain is available
+	errSecUserCanceled          = -128 // the user canceled an authorization dialog
+	errSecNotAvailable          = -25291
 	errSecAuthFailed            = -25293
 	errSecDuplicateItem         = -25299
 	errSecItemNotFound          = -25300
@@ -41,8 +38,7 @@ const (
 // SecKeychainGetStatus mask when the keychain is unlocked.
 const kSecUnlockStateStatus = 1
 
-// osStatusError maps a Security-framework OSStatus to a package error,
-// keeping the numeric code in the message for diagnosability.
+// osStatusError maps an OSStatus to a package error, keeping the numeric code.
 func osStatusError(status int32) error {
 	switch status {
 	case errSecSuccess:
@@ -61,7 +57,6 @@ func osStatusError(status int32) error {
 	}
 }
 
-// secAPI holds the Security framework functions and data symbols we use.
 type secAPI struct {
 	itemAdd          func(attrs uintptr, result *uintptr) int32
 	itemCopyMatching func(query uintptr, result *uintptr) int32
@@ -71,11 +66,8 @@ type secAPI struct {
 	codeCopySelf               func(flags uint32, self *uintptr) int32
 	codeCopySigningInformation func(code uintptr, flags uint32, info *uintptr) int32
 
-	// Deprecated-but-functional SecKeychain calls. They have no modern
-	// replacement for what we need them for, and the modern no-UI lever
-	// (kSecUseAuthenticationContext with an LAContext) is documented as, and
-	// was measured to be, inert for legacy keychain items — which is where
-	// the code-signing-bound ACL model requires our item to live.
+	// Deprecated, with no modern replacement for what we need; see
+	// withoutKeychainUI.
 	keychainCopyDefault          func(keychain *uintptr) int32
 	keychainGetStatus            func(keychain uintptr, status *uint32) int32
 	keychainUnlock               func(keychain uintptr, passwordLength uint32, password uintptr, usePassword bool) int32
