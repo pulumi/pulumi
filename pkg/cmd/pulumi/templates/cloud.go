@@ -151,7 +151,7 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 	}
 
 	matches := NewTemplateMatcher(urlInfo, templateName)
-	for template, err := range r.ListTemplates(ctx, registry.ListTemplatesOptions{}) {
+	for template, err := range registry.Templates(r.ListTemplates(ctx, registry.ListTemplatesOptions{})) {
 		if err != nil {
 			s.addError(fmt.Errorf("could not get template: %w", err))
 			return
