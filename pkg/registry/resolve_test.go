@@ -836,15 +836,13 @@ func TestResolveTemplateFromName(t *testing.T) {
 	t.Run("single/private-match", func(t *testing.T) {
 		t.Parallel()
 		mockReg := mockRegistry{
-			listTemplates: func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.TemplateMetadata, error] {
+			listTemplates: func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.ListTemplatesResponse, error] {
 				assert.Equal(t, "my-template", opts.Name)
-				return func(yield func(apitype.TemplateMetadata, error) bool) {
-					yield(apitype.TemplateMetadata{
-						Source:    "private",
-						Publisher: "my-org",
-						Name:      "my-template",
-					}, nil)
-				}
+				return singlePage(apitype.TemplateMetadata{
+					Source:    "private",
+					Publisher: "my-org",
+					Name:      "my-template",
+				})
 			},
 		}
 
@@ -857,14 +855,12 @@ func TestResolveTemplateFromName(t *testing.T) {
 	t.Run("single/pulumi-match", func(t *testing.T) {
 		t.Parallel()
 		mockReg := mockRegistry{
-			listTemplates: func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.TemplateMetadata, error] {
-				return func(yield func(apitype.TemplateMetadata, error) bool) {
-					yield(apitype.TemplateMetadata{
-						Source:    "pulumi",
-						Publisher: "pulumi",
-						Name:      "aws",
-					}, nil)
-				}
+			listTemplates: func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.ListTemplatesResponse, error] {
+				return singlePage(apitype.TemplateMetadata{
+					Source:    "pulumi",
+					Publisher: "pulumi",
+					Name:      "aws",
+				})
 			},
 		}
 
@@ -878,14 +874,12 @@ func TestResolveTemplateFromName(t *testing.T) {
 		t.Parallel()
 		desiredVersion := semver.MustParse("1.5.0")
 		mockReg := mockRegistry{
-			listTemplates: func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.TemplateMetadata, error] {
-				return func(yield func(apitype.TemplateMetadata, error) bool) {
-					yield(apitype.TemplateMetadata{
-						Source:    "private",
-						Publisher: "my-org",
-						Name:      "my-template",
-					}, nil)
-				}
+			listTemplates: func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.ListTemplatesResponse, error] {
+				return singlePage(apitype.TemplateMetadata{
+					Source:    "private",
+					Publisher: "my-org",
+					Name:      "my-template",
+				})
 			},
 			getTemplate: func(
 				ctx context.Context, source, publisher, name string, version *semver.Version,
@@ -911,14 +905,12 @@ func TestResolveTemplateFromName(t *testing.T) {
 		t.Parallel()
 		desiredVersion := semver.MustParse("99.0.0")
 		mockReg := mockRegistry{
-			listTemplates: func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.TemplateMetadata, error] {
-				return func(yield func(apitype.TemplateMetadata, error) bool) {
-					yield(apitype.TemplateMetadata{
-						Source:    "private",
-						Publisher: "my-org",
-						Name:      "my-template",
-					}, nil)
-				}
+			listTemplates: func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.ListTemplatesResponse, error] {
+				return singlePage(apitype.TemplateMetadata{
+					Source:    "private",
+					Publisher: "my-org",
+					Name:      "my-template",
+				})
 			},
 			getTemplate: func(
 				ctx context.Context, source, publisher, name string, version *semver.Version,
@@ -936,10 +928,8 @@ func TestResolveTemplateFromName(t *testing.T) {
 	t.Run("single/not-found", func(t *testing.T) {
 		t.Parallel()
 		mockReg := mockRegistry{
-			listTemplates: func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.TemplateMetadata, error] {
-				return func(yield func(apitype.TemplateMetadata, error) bool) {
-					// No matches
-				}
+			listTemplates: func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.ListTemplatesResponse, error] {
+				return singlePage()
 			},
 		}
 

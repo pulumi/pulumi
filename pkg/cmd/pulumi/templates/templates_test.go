@@ -46,6 +46,24 @@ import (
 const expectedRegistryFormatError = "Expected: registry://templates/source/publisher/name[@version], " +
 	"source/publisher/name[@version], publisher/name[@version], or name[@version]"
 
+// asPages presents a stream of templates as the pages a registry listing yields, one template per
+// page.
+func asPages(s iter.Seq2[apitype.TemplateMetadata, error]) iter.Seq2[apitype.ListTemplatesResponse, error] {
+	return func(yield func(apitype.ListTemplatesResponse, error) bool) {
+		for t, err := range s {
+			if err != nil {
+				if !yield(apitype.ListTemplatesResponse{}, err) {
+					return
+				}
+				continue
+			}
+			if !yield(apitype.ListTemplatesResponse{Templates: []apitype.TemplateMetadata{t}}, nil) {
+				return
+			}
+		}
+	}
+}
+
 //nolint:paralleltest // replaces global backend instance
 func TestFilterOnName(t *testing.T) {
 	template1 := &apitype.PulumiTemplateRemote{
@@ -124,9 +142,9 @@ func TestFilterOnName(t *testing.T) {
 	t.Run("org-backed-templates - disable registry resolve = false", func(t *testing.T) {
 		listTemplates := func(
 			ctx context.Context, opts registry.ListTemplatesOptions,
-		) iter.Seq2[apitype.TemplateMetadata, error] {
+		) iter.Seq2[apitype.ListTemplatesResponse, error] {
 			assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-			return func(yield func(apitype.TemplateMetadata, error) bool) {
+			return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
 				if !yield(apitype.TemplateMetadata{
 					Name:      "name1",
 					Publisher: "publisher1",
@@ -141,7 +159,7 @@ func TestFilterOnName(t *testing.T) {
 				}, nil) {
 					return
 				}
-			}
+			})
 		}
 		mockBackend := &backend.MockBackend{
 			GetReadOnlyCloudRegistryF: func() registry.Registry {
@@ -303,10 +321,10 @@ func TestSurfaceListTemplateErrors_RegistryTemplates(t *testing.T) {
 		Mock: registry.Mock{
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
-			) iter.Seq2[apitype.TemplateMetadata, error] {
-				return func(yield func(apitype.TemplateMetadata, error) bool) {
+			) iter.Seq2[apitype.ListTemplatesResponse, error] {
+				return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
 					yield(apitype.TemplateMetadata{}, somethingWentWrong)
-				}
+				})
 			},
 		},
 	}
@@ -390,8 +408,8 @@ func TestSurfaceOnEmptyError_RegistryTemplates(t *testing.T) {
 		Mock: registry.Mock{
 			ListTemplatesF: func(
 				_ context.Context, opts registry.ListTemplatesOptions,
-			) iter.Seq2[apitype.TemplateMetadata, error] {
-				return func(func(apitype.TemplateMetadata, error) bool) {}
+			) iter.Seq2[apitype.ListTemplatesResponse, error] {
+				return asPages(func(func(apitype.TemplateMetadata, error) bool) {})
 			},
 		},
 	}
@@ -561,13 +579,13 @@ func createMockRegistrySource(
 		Mock: registry.Mock{
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
-			) iter.Seq2[apitype.TemplateMetadata, error] {
-				return func(yield func(apitype.TemplateMetadata, error) bool) {
+			) iter.Seq2[apitype.ListTemplatesResponse, error] {
+				return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
 					yield(apitype.TemplateMetadata{
 						Name:        "name1",
 						DownloadURL: "example.com/download/name",
 					}, nil)
-				}
+				})
 			},
 			DownloadTemplateF: downloadFunc,
 		},
@@ -659,9 +677,9 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 		Mock: registry.Mock{
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
-			) iter.Seq2[apitype.TemplateMetadata, error] {
+			) iter.Seq2[apitype.ListTemplatesResponse, error] {
 				assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-				return func(yield func(apitype.TemplateMetadata, error) bool) {
+				return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
 					if !yield(apitype.TemplateMetadata{
 						Name:      "gh-org/repo/name",
 						Source:    "github",
@@ -685,7 +703,7 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 					}, nil) {
 						return
 					}
-				}
+				})
 			},
 		},
 	}
@@ -731,9 +749,9 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 		Mock: registry.Mock{
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
-			) iter.Seq2[apitype.TemplateMetadata, error] {
+			) iter.Seq2[apitype.ListTemplatesResponse, error] {
 				assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-				return func(yield func(apitype.TemplateMetadata, error) bool) {
+				return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
 					if !yield(apitype.TemplateMetadata{
 						Name:        "gh-org/repo/target",
 						Source:      "github",
@@ -759,7 +777,7 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 					}, nil) {
 						return
 					}
-				}
+				})
 			},
 		},
 	}
@@ -823,8 +841,8 @@ func TestRegistryTemplateResolution(t *testing.T) {
 		Mock: registry.Mock{
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
-			) iter.Seq2[apitype.TemplateMetadata, error] {
-				return func(yield func(apitype.TemplateMetadata, error) bool) {
+			) iter.Seq2[apitype.ListTemplatesResponse, error] {
+				return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
 					yield(apitype.TemplateMetadata{
 						Name:        "csharp-documented",
 						Source:      "private",
@@ -849,7 +867,7 @@ func TestRegistryTemplateResolution(t *testing.T) {
 						Publisher:   "test-org",
 						Description: ptr("A template with special chars"),
 					}, nil)
-				}
+				})
 			},
 		},
 	}
@@ -1047,15 +1065,15 @@ func TestVersionedTemplateResolution(t *testing.T) {
 			},
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
-			) iter.Seq2[apitype.TemplateMetadata, error] {
-				return func(yield func(apitype.TemplateMetadata, error) bool) {
+			) iter.Seq2[apitype.ListTemplatesResponse, error] {
+				return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
 					yield(apitype.TemplateMetadata{
 						Name:        "my-template",
 						Source:      "private",
 						Publisher:   "my-org",
 						Description: ptr("Latest version"),
 					}, nil)
-				}
+				})
 			},
 		},
 	}
