@@ -12,15 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build linux || windows
-
 package securestore
 
 import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/zalando/go-keyring"
 )
@@ -30,29 +27,6 @@ const (
 	keyringService = "Pulumi CLI"
 	keyringAccount = "credentials-key"
 )
-
-// Secret Service calls can hang on D-Bus activation or invisible prompts.
-const opTimeout = 3 * time.Second
-
-// The abandoned goroutine may leak for the process lifetime, acceptable in a CLI.
-func withTimeout[T any](fn func() (T, error)) (T, error) {
-	type result struct {
-		v   T
-		err error
-	}
-	ch := make(chan result, 1)
-	go func() {
-		v, err := fn()
-		ch <- result{v, err}
-	}()
-	select {
-	case r := <-ch:
-		return r.v, r.err
-	case <-time.After(opTimeout):
-		var zero T
-		return zero, fmt.Errorf("%w: operation timed out after %s", ErrUnavailable, opTimeout)
-	}
-}
 
 type getCache struct {
 	mu    sync.Mutex

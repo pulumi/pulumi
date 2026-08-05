@@ -12,10 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !darwin && !linux && !windows
+//go:build darwin
 
 package securestore
 
-// platformCandidates: no protective backends on this platform; callers fall
-// back to plaintext.
-func platformCandidates(bool, string) []backendImpl { return nil }
+// SecItem (per-app ACL, signed builds only) first, then the /usr/bin/security
+// fallback that works for any binary.
+func platformCandidates(allowPrompt bool, _ string) []backendImpl {
+	return []backendImpl{
+		aclKeychainBackend(allowPrompt),
+		{
+			id:    BackendMacOSSecurity,
+			store: newKeyringStore(func() (Outcome, error) { return keychainPrecheck(allowPrompt) }),
+			wrap:  rawWrapper{},
+		},
+	}
+}
