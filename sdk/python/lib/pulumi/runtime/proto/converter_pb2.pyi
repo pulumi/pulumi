@@ -35,10 +35,15 @@ class ConvertStateRequest(google.protobuf.message.Message):
     MAPPER_TARGET_FIELD_NUMBER: builtins.int
     ARGS_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
+    RESOLVER_TARGET_FIELD_NUMBER: builtins.int
     mapper_target: builtins.str
     """the gRPC target of the mapper service."""
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
+    resolver_target: builtins.str
+    """The target of a [](pulumirpc.PackageResolver) service the converter can use to resolve package
+    specifications to concrete package dependencies. May be empty on older engines.
+    """
     @property
     def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """the args passed to `pulumi import` for this conversion. Normally used to specifiy a state file to
@@ -51,8 +56,9 @@ class ConvertStateRequest(google.protobuf.message.Message):
         mapper_target: builtins.str = ...,
         args: collections.abc.Iterable[builtins.str] | None = ...,
         loader_target: builtins.str = ...,
+        resolver_target: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["args", b"args", "loader_target", b"loader_target", "mapper_target", b"mapper_target"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["args", b"args", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "resolver_target", b"resolver_target"]) -> None: ...
 
 global___ConvertStateRequest = ConvertStateRequest
 

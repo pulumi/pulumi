@@ -1,6 +1,0 @@
-component: backend/diy
-kind: fix
-body: Fix 403 errors writing to third-party S3-compatible backends (e.g. IBM COS,
-  MinIO) by defaulting request_checksum_calculation to when_required when the
-  s3:// backend URL sets a custom endpoint
-time: 2026-07-29T00:00:00+00:00

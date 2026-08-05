@@ -106,6 +106,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -613,9 +614,12 @@ func (s *Stack) ImportResources(ctx context.Context, opts ...optimport.Option) (
 		return res, fmt.Errorf("failed to import resources: %w", err)
 	}
 
-	generatedCode, err := os.ReadFile(generatedCodePath)
-	if err != nil {
-		return res, fmt.Errorf("failed to read generated code: %w", err)
+	var generatedCode []byte
+	if importOpts.GenerateCode == nil || *importOpts.GenerateCode {
+		generatedCode, err = os.ReadFile(generatedCodePath)
+		if err != nil {
+			return res, fmt.Errorf("failed to read generated code: %w", err)
+		}
 	}
 
 	var summary UpdateSummary
@@ -1577,8 +1581,15 @@ func (s *Stack) runPulumiCmdSync(
 	if err != nil {
 		return "", "", -1, fmt.Errorf("failed to exec command, error getting additional args: %w", err)
 	}
+	// Everything after a "--" separator is positional and must stay last; insert our flags before it.
+	var positional []string
+	if i := slices.Index(args, "--"); i >= 0 {
+		positional = args[i:]
+		args = args[:i:i]
+	}
 	args = append(args, additionalArgs...)
 	args = append(args, "--stack", s.Name())
+	args = append(args, positional...)
 
 	stdout, stderr, errCode, err := s.workspace.PulumiCommand().Run(
 		ctx,

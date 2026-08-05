@@ -259,6 +259,7 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 		apiURL:   apiURL,
 		apiToken: apiAccessToken(apiToken),
 		diag:     d,
+		insecure: insecure,
 		restClient: &defaultRESTClient{
 			client: &defaultHTTPClient{
 				client: httpClient,
@@ -532,11 +533,6 @@ func publishPolicyPackPublishComplete(orgName, policyPackName string, versionTag
 func getPolicyPackConfigSchemaPath(orgName, policyPackName string, versionTag string) string {
 	return fmt.Sprintf(
 		"/api/orgs/%s/policypacks/%s/versions/%s/schema", orgName, policyPackName, versionTag)
-}
-
-// getAIPromptPath returns the API path to create a Pulumi AI prompt.
-func getAIPromptPath() string {
-	return "/api/ai/template"
 }
 
 // getUpdatePath returns the API path to for the given stack with the given components joined with path separators
@@ -2698,25 +2694,6 @@ func is404(err error) bool {
 		return true
 	}
 	return false
-}
-
-// SubmitAIPrompt sends the user's prompt to the Pulumi Service and streams back the response.
-func (pc *Client) SubmitAIPrompt(ctx context.Context, requestBody any) (*http.Response, error) {
-	url, err := url.Parse(pc.apiURL + getAIPromptPath())
-	if err != nil {
-		return nil, err
-	}
-	marshalledBody, err := json.Marshal(requestBody)
-	if err != nil {
-		return nil, err
-	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url.String(), bytes.NewReader(marshalledBody))
-	if err != nil {
-		return nil, err
-	}
-	request.Header.Add("Authorization", fmt.Sprintf("token %s", pc.apiToken))
-	res, err := pc.restClient.HTTPClient().Do(request, retryAllMethods)
-	return res, err
 }
 
 // SummarizeErrorWithNeo summarizes Pulumi Update output using the Copilot API

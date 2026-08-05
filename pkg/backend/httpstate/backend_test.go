@@ -3080,3 +3080,126 @@ func TestCurrentEnvTokenDoesNotBypassUndecryptableCredentials(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, envelope, raw, "the unreadable file must be left untouched")
 }
+
+func TestShowDeploymentEventsResult(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		summaryResult apitype.OperationResult
+		wantErr       string
+		wantCancelled bool
+	}{
+		{name: "succeeded", summaryResult: apitype.OperationResultSucceeded},
+		{name: "no result", summaryResult: ""},
+		{name: "failed", summaryResult: apitype.OperationResultFailed, wantErr: "deployment failed"},
+		{name: "canceled", summaryResult: apitype.OperationResultCanceled, wantCancelled: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				var err error
+				switch req.URL.Path {
+				case "/api/stacks/org/proj/stack/deployments/deployment-id/updates":
+					err = json.NewEncoder(rw).Encode([]apitype.GetDeploymentUpdatesUpdateInfo{
+						{UpdateID: "update-id", Version: 1},
+					})
+				case "/api/stacks/org/proj/stack/update/update-id/events":
+					err = json.NewEncoder(rw).Encode(apitype.GetUpdateEventsResponse{
+						Events: []apitype.EngineEvent{
+							{Sequence: 1, SummaryEvent: &apitype.SummaryEvent{Result: tt.summaryResult}},
+						},
+					})
+				default:
+					require.Failf(t, "unexpected request", "path %v", req.URL.Path)
+				}
+				require.NoError(t, err)
+			}))
+			t.Cleanup(server.Close)
+
+			b := &cloudBackend{client: client.NewClient(server.URL, "fake-token", true, nil)}
+			stackID := client.StackIdentifier{
+				Owner:   "org",
+				Project: "proj",
+				Stack:   tokens.MustParseStackName("stack"),
+			}
+			opts := display.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard}
+
+			err := b.showDeploymentEvents(t.Context(), stackID, apitype.UpdateUpdate, "deployment-id", opts)
+			switch {
+			case tt.wantCancelled:
+				require.ErrorAs(t, err, &backenderr.CancelledError{})
+			case tt.wantErr != "":
+				require.ErrorContains(t, err, tt.wantErr)
+			default:
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestRunDeploymentResult(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		status  string
+		wantErr string
+	}{
+		{name: "succeeded", status: "succeeded"},
+		{name: "skipped", status: "skipped"},
+		{name: "running", status: "running"},
+		{name: "failed", status: "failed", wantErr: "deployment failed"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				var err error
+				switch {
+				case req.Method == http.MethodPost && req.URL.Path == "/api/stacks/org/proj/stack/deployments":
+					err = json.NewEncoder(rw).Encode(apitype.CreateDeploymentResponse{ID: "deployment-id"})
+				case req.URL.Path == "/api/stacks/org/proj/stack/deployments/deployment-id/logs":
+					err = json.NewEncoder(rw).Encode(apitype.DeploymentLogs{
+						Lines: []apitype.DeploymentLogLine{
+							{Header: "Get source"},
+							{Line: "fetching source\n"},
+						},
+					})
+				case req.URL.Path == "/api/stacks/org/proj/stack/deployments/deployment-id":
+					err = json.NewEncoder(rw).Encode(apitype.GetDeploymentResponse{
+						ID:     "deployment-id",
+						Status: tt.status,
+					})
+				default:
+					require.Failf(t, "unexpected request", "%v %v", req.Method, req.URL.Path)
+				}
+				require.NoError(t, err)
+			}))
+			t.Cleanup(server.Close)
+
+			b := &cloudBackend{client: client.NewClient(server.URL, "fake-token", true, nil)}
+			stackRef := cloudBackendReference{
+				owner:   "org",
+				project: "proj",
+				name:    tokens.MustParseStackName("stack"),
+				b:       b,
+			}
+			opts := display.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard}
+
+			err := b.RunDeployment(t.Context(), stackRef, apitype.CreateDeploymentRequest{
+				Op: apitype.Update,
+			}, opts, "", false)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.wantErr)
+			}
+		})
+	}
+}

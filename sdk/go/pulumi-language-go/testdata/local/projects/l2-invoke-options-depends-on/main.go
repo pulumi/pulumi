@@ -19,16 +19,12 @@ func main() {
 			pulumi.Resource(first),
 		}))
 		_, err = simpleinvoke.NewStringResource(ctx, "second", &simpleinvoke.StringResourceArgs{
-			Text: data.ApplyT(func(data simpleinvoke.MyInvokeResult) (string, error) {
-				return data.Result, nil
-			}).(pulumi.StringOutput),
+			Text: data.Result(),
 		})
 		if err != nil {
 			return err
 		}
-		ctx.Export("hello", data.ApplyT(func(data simpleinvoke.MyInvokeResult) (string, error) {
-			return data.Result, nil
-		}).(pulumi.StringOutput))
+		ctx.Export("hello", data.Result())
 		return nil
 	})
 }

@@ -18,7 +18,7 @@ func Greet(ctx *pulumi.Context, args *GreetArgs, opts ...pulumi.InvokeOption) (*
 		return nil, err
 	}
 	var rv GreetResult
-	err = ctx.InvokePackage("extbase:index:greet", args, &rv, ref, opts...)
+	err = ctx.InvokePackage("myext:index:greet", args, &rv, ref, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func GreetOutput(ctx *pulumi.Context, args GreetOutputArgs, opts ...pulumi.Invok
 				return GreetResultOutput{}, err
 			}
 			options.PackageRef = ref
-			return ctx.InvokeOutput("extbase:index:greet", args, GreetResultOutput{}, options).(GreetResultOutput), nil
+			return ctx.InvokeOutput("myext:index:greet", args, GreetResultOutput{}, options).(GreetResultOutput), nil
 		}).(GreetResultOutput)
 }
 

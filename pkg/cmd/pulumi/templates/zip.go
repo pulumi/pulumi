@@ -92,6 +92,7 @@ func shouldRetry(err error, resp *http.Response) bool {
 	if resp.StatusCode == http.StatusBadGateway ||
 		resp.StatusCode == http.StatusServiceUnavailable ||
 		resp.StatusCode == http.StatusGatewayTimeout ||
+		resp.StatusCode == http.StatusTooManyRequests ||
 		resp.StatusCode == http.StatusNotFound {
 		return true
 	}

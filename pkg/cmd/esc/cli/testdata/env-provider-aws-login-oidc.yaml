@@ -2,7 +2,7 @@ run: |
   esc env init default/test
   esc env provider aws-login oidc default/test arn:aws:iam::123456789012:role/role-name sess && esc env get default/test --definition
   esc env provider aws-login oidc default/test arn:aws:iam::123456789012:role/role-name sess --duration 1h && esc env get default/test --definition
-  esc env provider aws-login oidc default/test arn:aws:iam::123456789012:role/role-name sess --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess --policy-arn arn:aws:iam::aws:policy/Other --subject-attribute env --subject-attribute team && esc env get default/test --definition
+  esc env provider aws-login oidc default/test arn:aws:iam::123456789012:role/role-name sess --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess --policy-arn arn:aws:iam::aws:policy/Other --subject-attribute env --subject-attribute team --export-env-vars && esc env get default/test --definition
 
 ---
 > esc env init default/test
@@ -28,7 +28,7 @@ values:
           roleArn: arn:aws:iam::123456789012:role/role-name
           sessionName: sess
           duration: 1h
-> esc env provider aws-login oidc default/test arn:aws:iam::123456789012:role/role-name sess --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess --policy-arn arn:aws:iam::aws:policy/Other --subject-attribute env --subject-attribute team
+> esc env provider aws-login oidc default/test arn:aws:iam::123456789012:role/role-name sess --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess --policy-arn arn:aws:iam::aws:policy/Other --subject-attribute env --subject-attribute team --export-env-vars
 Provider updated. (revision 4)
 > esc env get default/test --definition
 values:
@@ -44,6 +44,10 @@ values:
           subjectAttributes:
             - env
             - team
+  environmentVariables:
+    AWS_ACCESS_KEY_ID: ${aws.login.accessKeyId}
+    AWS_SECRET_ACCESS_KEY: ${aws.login.secretAccessKey}
+    AWS_SESSION_TOKEN: ${aws.login.sessionToken}
 
 ---
 > esc env init default/test
@@ -51,5 +55,5 @@ values:
 > esc env get default/test --definition
 > esc env provider aws-login oidc default/test arn:aws:iam::123456789012:role/role-name sess --duration 1h
 > esc env get default/test --definition
-> esc env provider aws-login oidc default/test arn:aws:iam::123456789012:role/role-name sess --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess --policy-arn arn:aws:iam::aws:policy/Other --subject-attribute env --subject-attribute team
+> esc env provider aws-login oidc default/test arn:aws:iam::123456789012:role/role-name sess --policy-arn arn:aws:iam::aws:policy/ReadOnlyAccess --policy-arn arn:aws:iam::aws:policy/Other --subject-attribute env --subject-attribute team --export-env-vars
 > esc env get default/test --definition

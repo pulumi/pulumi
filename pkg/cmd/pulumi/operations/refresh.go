@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func NewRefreshCmd() *cobra.Command {
@@ -114,13 +115,18 @@ func NewRefreshCmd() *cobra.Command {
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
 
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
-				return err
-			}
+			var proj *workspace.Project
+			var root string
+			if !remoteArgs.Remote {
+				var err error
+				proj, root, err = readProjectForUpdate(ws, client)
+				if err != nil {
+					return err
+				}
 
-			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
-				return err
+				if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+					return err
+				}
 			}
 
 			// Remote implies we're skipping previews.

@@ -1,7 +1,7 @@
 run: |
   esc env init default/test
   esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com && esc env get default/test --definition
-  esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com --region us-central1 --token-lifetime 1h --subject-attribute env && esc env get default/test --definition
+  esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com --region us-central1 --token-lifetime 1h --subject-attribute env --export-env-vars && esc env get default/test --definition
 
 ---
 > esc env init default/test
@@ -18,7 +18,7 @@ values:
           workloadPoolId: pool
           providerId: provider
           serviceAccount: sa@proj.iam.gserviceaccount.com
-> esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com --region us-central1 --token-lifetime 1h --subject-attribute env
+> esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com --region us-central1 --token-lifetime 1h --subject-attribute env --export-env-vars
 Provider updated. (revision 3)
 > esc env get default/test --definition
 values:
@@ -34,10 +34,14 @@ values:
           tokenLifetime: 1h
           subjectAttributes:
             - env
+  environmentVariables:
+    GOOGLE_PROJECT: ${gcp.login.project}
+    GOOGLE_OAUTH_ACCESS_TOKEN: ${gcp.login.accessToken}
+    CLOUDSDK_AUTH_ACCESS_TOKEN: ${gcp.login.accessToken}
 
 ---
 > esc env init default/test
 > esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com
 > esc env get default/test --definition
-> esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com --region us-central1 --token-lifetime 1h --subject-attribute env
+> esc env provider gcp-login oidc default/test 123456789 --workload-pool-id pool --provider-id provider --service-account sa@proj.iam.gserviceaccount.com --region us-central1 --token-lifetime 1h --subject-attribute env --export-env-vars
 > esc env get default/test --definition

@@ -55,10 +55,13 @@ jobs:
           cache-dependency-path: pkg/go.sum
           go-version-file: pkg/go.mod
       - uses: ./.github/actions/retry
+        env:
+          MISE_NPM_SHELL_OUT: "true"
         with:
           action: jdx/mise-action@v2
           with: |
             experimental: true
+            cache_key_prefix: mise-npm-shell-out-v0
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix

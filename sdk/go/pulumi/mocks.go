@@ -110,6 +110,8 @@ type MockResourceArgs struct {
 }
 
 type mockMonitor struct {
+	pulumirpc.UnimplementedResourceMonitorServer
+
 	project   string
 	stack     string
 	mocks     MockResourceMonitor
@@ -143,6 +145,8 @@ func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.Support
 func (m *mockMonitor) GetDeploymentInfo(ctx context.Context, in *emptypb.Empty,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.DeploymentInfo, error) {
+	// INVOKE_DEPENDS_ON is left out because the mock monitor implements no invoke
+	// dependency gate; leaving it out keeps the client-side one.
 	features := []pulumirpc.ResourceMonitorFeature{
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SECRETS,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
@@ -382,25 +386,25 @@ func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc
 func (m *mockMonitor) RegisterStackTransform(ctx context.Context, in *pulumirpc.Callback,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
-	panic("not implemented")
+	return &emptypb.Empty{}, nil
 }
 
 func (m *mockMonitor) RegisterStackInvokeTransform(ctx context.Context, in *pulumirpc.Callback,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
-	panic("not implemented")
+	return &emptypb.Empty{}, nil
 }
 
 func (m *mockMonitor) RegisterResourceHook(ctx context.Context, in *pulumirpc.RegisterResourceHookRequest,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
-	panic("not implemented")
+	return &emptypb.Empty{}, nil
 }
 
 func (m *mockMonitor) RegisterErrorHook(ctx context.Context, in *pulumirpc.RegisterErrorHookRequest,
 	opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
-	panic("not implemented")
+	return &emptypb.Empty{}, nil
 }
 
 func (m *mockMonitor) RegisterPackage(ctx context.Context, in *pulumirpc.RegisterPackageRequest,

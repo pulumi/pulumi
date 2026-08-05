@@ -673,7 +673,7 @@ func (p *providerServer) List(
 	}
 	listStream, err := p.provider.List(stream.Context(), ListRequest{
 		Token:             tokens.Type(req.GetToken()),
-		Query:             query,
+		Query:             resource.FromResourcePropertyMap(query),
 		Limit:             req.GetLimit(),
 		PageSize:          req.GetPageSize(),
 		ContinuationToken: req.GetContinuationToken(),
@@ -1058,7 +1058,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 
 	result, err := p.provider.Call(ctx, CallRequest{
 		Tok:     tokens.ModuleMember(req.GetTok()),
-		Args:    args,
+		Args:    resource.FromResourcePropertyMap(args),
 		Info:    info,
 		Options: options,
 	})

@@ -151,6 +151,17 @@ func (p *ComponentProvider) GetSchema(context.Context, plugin.GetSchemaRequest) 
 		},
 	)
 
+	pkg.Resources["component:index:ComponentForeignChild"] = componentResource(
+		"A component resource that creates a child custom resource from another package (simple), "+
+			"using the provider passed for that package in the component's providers map.",
+		map[string]schema.PropertySpec{
+			"value": primitiveType("boolean"),
+		},
+		map[string]schema.PropertySpec{
+			"value": primitiveType("boolean"),
+		},
+	)
+
 	callableResource := componentResource(
 		"A component resource that has callable methods.",
 		map[string]schema.PropertySpec{
@@ -208,6 +219,26 @@ func (p *ComponentProvider) GetSchema(context.Context, plugin.GetSchemaRequest) 
 
 	pkg.Resources["component:index:ComponentCallable"] = callableResource
 
+	pkg.Functions["component:index:identity"] = schema.FunctionSpec{
+		Description: "Returns its input unchanged.",
+		Inputs: &schema.ObjectTypeSpec{
+			Type: "object",
+			Properties: map[string]schema.PropertySpec{
+				"input": primitiveType("string"),
+			},
+			Required: []string{"input"},
+		},
+		ReturnType: &schema.ReturnTypeSpec{
+			ObjectTypeSpec: &schema.ObjectTypeSpec{
+				Type: "object",
+				Properties: map[string]schema.PropertySpec{
+					"result": primitiveType("string"),
+				},
+				Required: []string{"result"},
+			},
+		},
+	}
+
 	jsonBytes, err := json.Marshal(pkg)
 	if err != nil {
 		return plugin.GetSchemaResponse{}, err
@@ -215,6 +246,23 @@ func (p *ComponentProvider) GetSchema(context.Context, plugin.GetSchemaRequest) 
 
 	res := plugin.GetSchemaResponse{Schema: jsonBytes}
 	return res, nil
+}
+
+func (p *ComponentProvider) Invoke(
+	_ context.Context, req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	if req.Tok != "component:index:identity" {
+		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
+	}
+	input, ok := req.Args["input"]
+	if !ok || !input.IsString() {
+		return plugin.InvokeResponse{}, errors.New("missing string argument 'input'")
+	}
+	return plugin.InvokeResponse{
+		Properties: resource.PropertyMap{
+			"result": input,
+		},
+	}, nil
 }
 
 func (p *ComponentProvider) GetMapping(
@@ -345,19 +393,19 @@ func (p *ComponentProvider) Construct(
 
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 
-	if req.Type == "component:index:ComponentCustomRefOutput" {
+	//exhaustive:ignore // the default branch handles the remaining cases
+	switch req.Type {
+	case "component:index:ComponentCustomRefOutput":
 		return p.constructComponentCustomRefOutput(ctx, req, monitor)
-	}
-
-	if req.Type == "component:index:ComponentCustomRefInputOutput" {
+	case "component:index:ComponentCustomRefInputOutput":
 		return p.constructComponentCustomRefInputOutput(ctx, req, monitor)
-	}
-
-	if req.Type == "component:index:ComponentCallable" {
+	case "component:index:ComponentCallable":
 		return p.constructComponentCallable(ctx, req, monitor)
+	case "component:index:ComponentForeignChild":
+		return p.constructComponentForeignChild(ctx, req, monitor)
+	default:
+		return plugin.ConstructResponse{}, fmt.Errorf("unknown type %v", req.Type)
 	}
-
-	return plugin.ConstructResponse{}, fmt.Errorf("unknown type %v", req.Type)
 }
 
 func (p *ComponentProvider) constructComponentCustomRefOutput(
@@ -589,6 +637,62 @@ func (p *ComponentProvider) constructComponentCallable(
 	}, nil
 }
 
+func (p *ComponentProvider) constructComponentForeignChild(
+	ctx context.Context,
+	req plugin.ConstructRequest,
+	monitor pulumirpc.ResourceMonitorClient,
+) (plugin.ConstructResponse, error) {
+	// Register the parent component, propagating the parent we were constructed with, as real MLC SDKs do.
+	parent, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:   "component:index:ComponentForeignChild",
+		Name:   req.Name,
+		Parent: string(req.Parent),
+	})
+	if err != nil {
+		return plugin.ConstructResponse{}, fmt.Errorf("register parent component: %w", err)
+	}
+
+	// Register a child resource from the "simple" package, parented to the component we just created and using the
+	// provider passed for that package in the providers map, if any.
+	child, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:     "simple:index:Resource",
+		Custom:   true,
+		Name:     req.Name + "-child",
+		Parent:   parent.Urn,
+		Version:  "2.0.0",
+		Provider: req.Options.Providers["simple"],
+		Object: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"value": structpb.NewBoolValue(req.Inputs["value"].BoolValue()),
+			},
+		},
+	})
+	if err != nil {
+		return plugin.ConstructResponse{}, fmt.Errorf("register child resource: %w", err)
+	}
+
+	// Register the component's outputs and finish up.
+	value := child.Object.Fields["value"].GetBoolValue()
+	_, err = monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
+		Urn: parent.Urn,
+		Outputs: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"value": structpb.NewBoolValue(value),
+			},
+		},
+	})
+	if err != nil {
+		return plugin.ConstructResponse{}, fmt.Errorf("register resource outputs: %w", err)
+	}
+
+	return plugin.ConstructResponse{
+		URN: resource.URN(parent.Urn),
+		Outputs: resource.NewPropertyMapFromMap(map[string]any{
+			"value": value,
+		}),
+	}, nil
+}
+
 func (p *ComponentProvider) Call(
 	ctx context.Context,
 	req plugin.CallRequest,
@@ -619,7 +723,7 @@ func (p *ComponentProvider) callComponentCallableIdentity(
 	req plugin.CallRequest,
 	monitor pulumirpc.ResourceMonitorClient,
 ) (plugin.CallResponse, error) {
-	selfRef := req.Args["__self__"].ResourceReferenceValue()
+	selfRef := req.Args.Get("__self__").AsResourceReference()
 
 	selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok: "pulumi:pulumi:getResource",
@@ -649,7 +753,7 @@ func (p *ComponentProvider) callComponentCallablePrefixed(
 	req plugin.CallRequest,
 	monitor pulumirpc.ResourceMonitorClient,
 ) (plugin.CallResponse, error) {
-	prefix, ok := req.Args["prefix"]
+	prefix, ok := req.Args.GetOk("prefix")
 	if !ok {
 		return plugin.CallResponse{
 			Failures: makeCheckFailure("prefix", "missing prefix"),
@@ -662,7 +766,7 @@ func (p *ComponentProvider) callComponentCallablePrefixed(
 		}, nil
 	}
 
-	selfRef := req.Args["__self__"].ResourceReferenceValue()
+	selfRef := req.Args.Get("__self__").AsResourceReference()
 
 	selfRes, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok: "pulumi:pulumi:getResource",
@@ -678,7 +782,7 @@ func (p *ComponentProvider) callComponentCallablePrefixed(
 	}
 
 	value := selfRes.Return.Fields["state"].GetStructValue().Fields["value"]
-	result := prefix.StringValue() + value.GetStringValue()
+	result := prefix.AsString() + value.GetStringValue()
 
 	return plugin.CallResponse{
 		Return: property.NewMap(map[string]property.Value{

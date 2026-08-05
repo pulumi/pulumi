@@ -79,10 +79,10 @@ func BindSpecWithContext(
 // It returns the path to the installed package.
 func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *plugin.Context,
 	language, root, schemaSource string, parameters plugin.ParameterizeParameters,
-	registry registry.Registry, e env.Env, concurrency int, asExtension bool,
+	registry registry.Registry, e env.Env, concurrency int, asExtension bool, pluginDownloadURL string,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
 	pkgSpec, specOverride, err := SchemaFromSchemaSource(ws, pctx, schemaSource, parameters, registry, e, concurrency,
-		asExtension)
+		asExtension, pluginDownloadURL)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
@@ -384,10 +384,11 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginDescr
 func SchemaFromSchemaSource(
 	ws pkgWorkspace.Context,
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
-	env env.Env, concurrency int, asExtension bool,
+	env env.Env, concurrency int, asExtension bool, pluginDownloadURL string,
 ) (*schema.PackageSpec, *workspace.PackageSpec, error) {
 	raw, packageSpec, parameterizationName, err := schemaJSONBytes(
-		ws, pctx, packageSource, parameters, registry, env, concurrency)
+		ws, pctx, packageSource, parameters, registry, env, concurrency, pluginDownloadURL,
+	)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -424,7 +425,9 @@ func SchemaFromSchemaSource(
 				spec.Name, parameterizationName)
 		}
 	}
-	pluginSpec, err := workspace.NewPluginDescriptor(pctx.Request(), packageSource, apitype.ResourcePlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginDescriptor(
+		pctx.Request(), packageSource, apitype.ResourcePlugin, nil, pluginDownloadURL, nil,
+	)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -443,8 +446,9 @@ func PartialPackageFromSchemaSource(
 	ctx context.Context,
 	ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string,
 	parameters plugin.ParameterizeParameters, reg registry.Registry, env env.Env, concurrency int,
+	pluginDownloadURL string,
 ) (*schema.PartialPackage, error) {
-	raw, _, _, err := schemaJSONBytes(ws, pctx, packageSource, parameters, reg, env, concurrency)
+	raw, _, _, err := schemaJSONBytes(ws, pctx, packageSource, parameters, reg, env, concurrency, pluginDownloadURL)
 	if err != nil {
 		return nil, err
 	}
@@ -461,6 +465,7 @@ func PartialPackageFromSchemaSource(
 func schemaJSONBytes(
 	ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string,
 	parameters plugin.ParameterizeParameters, reg registry.Registry, env env.Env, concurrency int,
+	pluginDownloadURL string,
 ) ([]byte, *workspace.PackageSpec, string, error) {
 	switch filepath.Ext(packageSource) {
 	case ".yaml", ".yml":
@@ -485,7 +490,7 @@ func schemaJSONBytes(
 		return raw, nil, "", err
 	}
 
-	p, packageSpec, err := ProviderFromSource(ws, pctx, packageSource, reg, env, concurrency)
+	p, packageSpec, err := ProviderFromSource(ws, pctx, packageSource, reg, env, concurrency, pluginDownloadURL)
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -518,13 +523,13 @@ func schemaJSONBytes(
 func ProviderFromSource(
 	ws pkgWorkspace.Context,
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
-	e env.Env, concurrency int,
+	e env.Env, concurrency int, pluginDownloadURL string,
 ) (plugin.Provider, workspace.PackageSpec, error) {
 	// Helper without a *cobra.Command writer; plumbing the writer into
 	// packageworkspace.New would require a much larger API change.
 	installCtx := packageworkspace.New(pluginstorage.Instance, ws, pctx, os.Stderr, os.Stderr, //nolint:forbidigo
 		nil, packageworkspace.Options{})
-	return providerFromSource(pctx, packageSource, reg, e, concurrency, installCtx)
+	return providerFromSource(pctx, packageSource, reg, e, concurrency, pluginDownloadURL, installCtx)
 }
 
 // providerFromSource is the injectable core of [ProviderFromSource]. It performs all package
@@ -532,7 +537,7 @@ func ProviderFromSource(
 // mock [packageinstallation.Context] for the real, IO-performing [packageworkspace.Workspace].
 func providerFromSource(
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
-	e env.Env, concurrency int, installCtx packageinstallation.Context,
+	e env.Env, concurrency int, pluginDownloadURL string, installCtx packageinstallation.Context,
 ) (plugin.Provider, workspace.PackageSpec, error) {
 	ctx, span := otel.Tracer("pulumi-cli").Start(pctx.Request(), "provider.load")
 	defer span.End()
@@ -553,6 +558,10 @@ func providerFromSource(
 				packageSpec = remap
 			}
 		}
+	}
+	if pluginDownloadURL != "" {
+		// If an explicit plugin download URL is provided, override the package spec's PluginDownloadURL.
+		packageSpec.PluginDownloadURL = pluginDownloadURL
 	}
 
 	f, spec, _, err := packageinstallation.InstallPlugin(ctx, packageSpec, nil, "", packageinstallation.Options{

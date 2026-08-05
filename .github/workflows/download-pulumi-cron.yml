@@ -184,6 +184,8 @@ jobs:
     steps:
       - name: Install Pulumi CLI
         uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7
+        with:
+          pulumi-version: latest
       - name: Pulumi Version Details
         id: vars
         run: |

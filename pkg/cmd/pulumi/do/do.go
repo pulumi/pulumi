@@ -68,7 +68,8 @@ func NewDoCmd(
 			pctx *plugin.Context, wd, source string,
 		) (plugin.Provider, error) {
 			registry := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, pctx.Diag, env.Global())
-			p, _, err := packages.ProviderFromSource(ws, pctx, source, registry, env.Global(), 0 /* unbounded concurrency */)
+			p, _, err := packages.ProviderFromSource(
+				ws, pctx, source, registry, env.Global(), 0 /* unbounded concurrency */, "" /* pluginDownloadURL */)
 			return p, err
 		}
 	}
@@ -486,7 +487,8 @@ func currentStackIdentity(ws pkgWorkspace.Context) (organization, stack string) 
 	if err != nil {
 		return "", ""
 	}
-	name := w.Settings().Stack
+	backendURL, _ := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), nil)
+	name, _ := w.Settings().StackForBackend(backendURL)
 	if name == "" {
 		return "", ""
 	}

@@ -110,7 +110,6 @@ var expectedFailures = map[string]string{
 	"l1-builtin-object":             "entries/lookup emit TODO stubs",
 	"l2-builtin-object":             "entries/lookup emit TODO stubs",
 	"l1-builtin-to-json":            "Go doesn't support output based toJSON",
-	"l2-resource-config-primitives": "cannot convert secretBool (variable of struct type pulumi.BoolOutput) to type pulumi.Bool, etc", //nolint:lll
 	"l2-resource-config-objects":    "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
 	"l2-resource-schema-secret":     "does not preserve schema-secret unknown outputs",
 
@@ -122,6 +121,7 @@ var expectedFailures = map[string]string{
 	"l3-range":                            "list(string) and map(string) config values decoded as raw JSON strings by cfg.Require; cannot range over string as list/map", //nolint:lll
 	"l3-range-resource-output-traversal":  "pulumi#21678: cannot range over an ArrayOutput",
 	"l3-range-invoke-output-traversal":    "pulumi#21678: len() of an invoke's ArrayOutput does not compile",
+	"l2-invoke-dependencies":              "pulumi#18298: output invokes cannot infer resource dependencies from arguments, so they are not skipped during preview", //nolint:lll
 	"l3-for":                              "syntax errors",
 	"l3-for-resource":                     "syntax errors",
 	"l3-component-nested":                 "./main.go:10:11: cannot use true (constant of type bool) as pulumi.BoolInput",
@@ -139,8 +139,6 @@ var expectedFailures = map[string]string{
 	"l3-range-list-ref": "fails with syntax errors: undefined: err",
 	"l3-range-map-ref":  "fails with syntax errors: mapResource.K1 undefined (type []*nestedobject.Target has no field or method K1)", //nolint:lll
 	"l3-range-bool-ref": "fails with syntax errors: index < createBool (mismatched types int and bool)",
-
-	"l2-id-type": "codegen isn't keeping track of ID right now",
 
 	"l1-builtin-string": "cannot convert strings.Split(aString, \"-\") (value of type []string) to type pulumi.StringArray", //nolint:lll
 

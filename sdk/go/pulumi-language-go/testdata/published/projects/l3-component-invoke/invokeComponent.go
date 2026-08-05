@@ -29,20 +29,14 @@ func NewInvokeComponent(
 	// out, so parenting it must not displace the options bag into an argument slot.
 	greeting := multiargumentinvoke.MultiArgumentInvokeOutput(ctx, pulumi.String("hello"), nil, pulumi.Parent(&componentResource))
 	providerConfig := config.GetConfigOutput(ctx, config.GetConfigOutputArgs{
-		Text: greeting.ApplyT(func(greeting multiargumentinvoke.MultiArgumentInvokeResult) (string, error) {
-			return greeting.Result, nil
-		}).(pulumi.StringOutput),
+		Text: greeting.Result(),
 	}, pulumi.Parent(&componentResource))
 	err = ctx.RegisterResourceOutputs(&componentResource, pulumi.Map{
-		"result": providerConfig.ApplyT(func(providerConfig config.GetConfigResult) (string, error) {
-			return providerConfig.Text, nil
-		}).(pulumi.StringOutput),
+		"result": providerConfig.Text(),
 	})
 	if err != nil {
 		return nil, err
 	}
-	componentResource.Result = pulumi.Any(providerConfig.ApplyT(func(providerConfig config.GetConfigResult) (string, error) {
-		return providerConfig.Text, nil
-	}).(pulumi.StringOutput))
+	componentResource.Result = pulumi.Any(providerConfig.Text())
 	return &componentResource, nil
 }

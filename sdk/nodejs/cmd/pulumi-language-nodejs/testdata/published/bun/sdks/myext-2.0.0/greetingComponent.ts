@@ -6,7 +6,7 @@ import * as utilities from "./utilities";
 
 export class GreetingComponent extends pulumi.ComponentResource {
     /** @internal */
-    public static readonly __pulumiType = 'extbase:index:GreetingComponent';
+    public static readonly __pulumiType = 'myext:index:GreetingComponent';
 
     /**
      * Returns true if the given object is an instance of GreetingComponent.  This is designed to work even

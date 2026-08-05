@@ -157,7 +157,7 @@ func getStackConfigurationFromProjectStack(
 			return backend.StackConfiguration{}, fmt.Errorf("preparing environment: %w", err)
 		}
 		if len(secrets) != 0 {
-			logging.AddGlobalFilter(logging.CreateFilter(secrets, "[secret]"))
+			logging.AddGlobalSecretFilter(secrets, "[secret]")
 		}
 
 		for _, kvp := range environ {

@@ -84,14 +84,14 @@ type Import struct {
 	// Mutually exclusive with Parameterization.
 	Extension *apitype.Extension
 
-	// ProviderInputs holds the full inputs for an explicit provider that is not yet in state.
-	// When set, these inputs are used to create the provider during import. Unlike default
-	// providers (which use ambient stack config via GetPackageConfig), explicit providers
-	// are configured solely from these inputs.
+	// ProviderInputs holds the full inputs for this resource's explicit provider when it is not
+	// yet in state, as supplied by the import file's deprecated providerInputs section. Imports
+	// of providers themselves carry their configuration in Inputs instead.
 	ProviderInputs resource.PropertyMap
 
 	// Inputs holds input properties supplied for the resource, if any. When the provider's Read cannot
 	// return a property supplied here (e.g. a write-only attribute), the supplied value is used instead.
+	// For an import of a provider, Inputs is its configuration.
 	Inputs resource.PropertyMap
 	// Outputs holds the full output state supplied for the resource, if any. When set, the resource is
 	// imported from these values directly and the provider's Read is skipped entirely.
@@ -351,7 +351,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		defaultProviders[urn] = struct{}{}
 	}
 	// Collect explicit providers that are not in state. Their full inputs may come from the
-	// import file (ProviderInputs), or they may have no config at all (e.g. the random provider).
+	// import file, or they may have no config at all (e.g. the random provider).
 	// Deduplicate by URN since multiple resources may reference the same explicit provider.
 	explicitProvidersByURN := map[resource.URN]Import{}
 	// Providers declared directly as imports are collected first so the declared entry, which carries
@@ -360,7 +360,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		if !sdkproviders.IsProviderType(imp.Type) {
 			continue
 		}
-		urn := i.deployment.generateURN("", imp.Type, imp.Name)
+		urn := i.deployment.generateURN(imp.Parent, imp.Type, imp.Name)
 		if state, ok := i.deployment.olds[urn]; ok {
 			ref, err := sdkproviders.NewReference(urn, state.ID)
 			contract.AssertNoErrorf(err,
@@ -384,7 +384,17 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			continue
 		}
 		if _, ok := explicitProvidersByURN[imp.Provider]; !ok {
-			explicitProvidersByURN[imp.Provider] = imp
+			// This import describes a resource that references the provider rather than the
+			// provider itself, so carry over only the fields that describe the provider: its
+			// inputs and the plugin (version/parameterization) needed to load it.
+			explicitProvidersByURN[imp.Provider] = Import{
+				Type:              imp.Type,
+				Version:           imp.Version,
+				PluginDownloadURL: imp.PluginDownloadURL,
+				PluginChecksums:   imp.PluginChecksums,
+				Parameterization:  imp.Parameterization,
+				Inputs:            imp.ProviderInputs,
+			}
 		}
 	}
 
@@ -498,10 +508,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		typ := providerURN.Type()
 
 		// Use the full provider inputs from the import file instead of ambient config.
-		// Some providers (e.g. random) don't need any config, so ProviderInputs may be nil.
+		// Some providers (e.g. random) don't need any config, so Inputs may be nil.
 		var inputs resource.PropertyMap
-		if imp.ProviderInputs != nil {
-			inputs = imp.ProviderInputs.Copy()
+		if imp.Inputs != nil {
+			inputs = imp.Inputs.Copy()
 		} else {
 			inputs = resource.PropertyMap{}
 		}
@@ -541,7 +551,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			ID:                      "",
 			Inputs:                  inputs,
 			Outputs:                 nil,
-			Parent:                  "",
+			Parent:                  imp.Parent,
 			Protect:                 false,
 			Taint:                   false,
 			External:                false,

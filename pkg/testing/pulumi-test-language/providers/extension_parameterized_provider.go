@@ -30,8 +30,8 @@ import (
 
 // ExtensionParameterizedProvider models a base plugin that accepts extension
 // parameterization arguments. The emitted schema sets Name to the extension
-// identity, leaves Provider nil, and keeps every resource token in the base
-// provider's namespace.
+// identity, leaves Provider nil, and puts every extension resource token in
+// the extension package's own namespace.
 type ExtensionParameterizedProvider struct {
 	plugin.UnimplementedProvider
 	mu               sync.Mutex
@@ -115,9 +115,9 @@ func (p *ExtensionParameterizedProvider) GetSchema(
 		version = req.SubpackageVersion.String()
 	}
 
-	token := extensionBaseName + ":index:Greeting"
+	token := name + ":index:Greeting"
 	componentToken := token + "Component"
-	greetToken := extensionBaseName + ":index:greet"
+	greetToken := name + ":index:greet"
 
 	greetingSpec := schema.ObjectTypeSpec{
 		Type: "object",
@@ -174,7 +174,8 @@ func (p *ExtensionParameterizedProvider) CheckConfig(
 func (p *ExtensionParameterizedProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	greeting := extensionBaseName + ":index:Greeting"
+	extName, _, _ := p.snapshot()
+	greeting := extName + ":index:Greeting"
 	base := extensionBaseName + ":index:Base"
 	if t := string(req.URN.Type()); t != greeting && t != base {
 		return plugin.CheckResponse{
@@ -192,10 +193,10 @@ func (p *ExtensionParameterizedProvider) Create(
 	if req.Preview {
 		id = ""
 	}
-	_, _, value := p.snapshot()
+	extName, _, value := p.snapshot()
 	var properties resource.PropertyMap
 	switch t := string(req.URN.Type()); t {
-	case extensionBaseName + ":index:Greeting":
+	case extName + ":index:Greeting":
 		properties = resource.NewPropertyMapFromMap(map[string]any{
 			"parameterValue": string(value),
 		})
@@ -217,8 +218,8 @@ func (p *ExtensionParameterizedProvider) Create(
 func (p *ExtensionParameterizedProvider) Construct(
 	_ context.Context, req plugin.ConstructRequest,
 ) (plugin.ConstructResponse, error) {
-	token := extensionBaseName + ":index:GreetingComponent"
-	_, _, value := p.snapshot()
+	extName, _, value := p.snapshot()
+	token := extName + ":index:GreetingComponent"
 	return plugin.ConstructResponse{
 		URN: resource.CreateURN(req.Name, token, req.Parent, req.Info.Project, req.Info.Stack),
 		Outputs: resource.PropertyMap{
@@ -230,11 +231,11 @@ func (p *ExtensionParameterizedProvider) Construct(
 func (p *ExtensionParameterizedProvider) Invoke(
 	_ context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
-	expected := extensionBaseName + ":index:greet"
+	extName, _, value := p.snapshot()
+	expected := extName + ":index:greet"
 	if string(req.Tok) != expected {
 		return plugin.InvokeResponse{}, fmt.Errorf("invalid invoke token %s, expected %s", req.Tok, expected)
 	}
-	_, _, value := p.snapshot()
 	return plugin.InvokeResponse{
 		Properties: resource.NewPropertyMapFromMap(map[string]any{
 			"greeting": string(value) + ", " + req.Args["name"].StringValue(),

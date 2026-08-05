@@ -196,7 +196,6 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 	}
 
-	// TODO: should this step be marked as skipped if it comes from a targeted up?
 	complete := func() {
 		// It's possible that s.reg will be nil in the case that multiple same steps
 		// are emitted for a single RegisterResourceEvent. This occurs when a
@@ -207,7 +206,7 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		// cases the only Done callback we care about is the one for the root
 		// resource.
 		if s.reg != nil {
-			s.reg.Done(&RegisterResult{State: s.new})
+			s.reg.Done(&RegisterResult{State: s.new, Unknown: s.skippedCreate})
 		}
 	}
 	return resource.StatusOK, complete, nil

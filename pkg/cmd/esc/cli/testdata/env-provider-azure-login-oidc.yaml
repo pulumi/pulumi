@@ -1,7 +1,7 @@
 run: |
   esc env init default/test
   esc env provider azure-login oidc default/test tid /subscriptions/sub cid && esc env get default/test --definition
-  esc env provider azure-login oidc default/test tid /subscriptions/sub cid --subject-attribute env --subject-attribute team && esc env get default/test --definition
+  esc env provider azure-login oidc default/test tid /subscriptions/sub cid --subject-attribute env --subject-attribute team --export-env-vars && esc env get default/test --definition
 
 ---
 > esc env init default/test
@@ -17,7 +17,7 @@ values:
         tenantId: tid
         subscriptionId: /subscriptions/sub
         oidc: true
-> esc env provider azure-login oidc default/test tid /subscriptions/sub cid --subject-attribute env --subject-attribute team
+> esc env provider azure-login oidc default/test tid /subscriptions/sub cid --subject-attribute env --subject-attribute team --export-env-vars
 Provider updated. (revision 3)
 > esc env get default/test --definition
 values:
@@ -31,10 +31,16 @@ values:
         subjectAttributes:
           - env
           - team
+  environmentVariables:
+    ARM_USE_OIDC: 'true'
+    ARM_CLIENT_ID: ${azure.login.clientId}
+    ARM_TENANT_ID: ${azure.login.tenantId}
+    ARM_OIDC_TOKEN: ${azure.login.oidc.token}
+    ARM_SUBSCRIPTION_ID: ${azure.login.subscriptionId}
 
 ---
 > esc env init default/test
 > esc env provider azure-login oidc default/test tid /subscriptions/sub cid
 > esc env get default/test --definition
-> esc env provider azure-login oidc default/test tid /subscriptions/sub cid --subject-attribute env --subject-attribute team
+> esc env provider azure-login oidc default/test tid /subscriptions/sub cid --subject-attribute env --subject-attribute team --export-env-vars
 > esc env get default/test --definition

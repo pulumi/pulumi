@@ -22,6 +22,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -115,9 +116,10 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 	logging.V(7).Infof("%s executing", label)
 
 	resp, err := c.clientRaw.ConvertState(ctx, &pulumirpc.ConvertStateRequest{
-		MapperTarget: req.MapperTarget,
-		Args:         req.Args,
-		LoaderTarget: req.LoaderTarget,
+		MapperTarget:   req.MapperTarget,
+		Args:           req.Args,
+		LoaderTarget:   req.LoaderTarget,
+		ResolverTarget: req.ResolverTarget,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
@@ -126,47 +128,49 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 	}
 
 	resources := make([]ResourceImport, len(resp.Resources))
-	for i, resource := range resp.Resources {
+	for i, res := range resp.Resources {
 		resources[i] = ResourceImport{
-			Type:              resource.Type,
-			Name:              resource.Name,
-			ID:                resource.Id,
-			Version:           resource.Version,
-			PluginDownloadURL: resource.PluginDownloadURL,
-			LogicalName:       resource.LogicalName,
-			IsRemote:          resource.IsRemote,
-			IsComponent:       resource.IsComponent,
-			Parent:            resource.Parent,
-			Properties:        resource.Properties,
-			Provider:          resource.Provider,
+			Type:              res.Type,
+			Name:              res.Name,
+			ID:                res.Id,
+			Version:           res.Version,
+			PluginDownloadURL: res.PluginDownloadURL,
+			LogicalName:       res.LogicalName,
+			IsRemote:          res.IsRemote,
+			IsComponent:       res.IsComponent,
+			Parent:            res.Parent,
+			Properties:        res.Properties,
+			Provider:          res.Provider,
 		}
-		if p := resource.Parameterization; p != nil {
+		if p := res.Parameterization; p != nil {
 			resources[i].Parameterization = &ResourceParameterization{
 				PluginName:    p.PluginName,
 				PluginVersion: p.PluginVersion,
 				Value:         p.Value,
 			}
 		}
-		if e := resource.Extension; e != nil {
+		if e := res.Extension; e != nil {
 			resources[i].Extension = &ResourceExtension{
 				Name:    e.Name,
 				Version: e.Version,
 				Value:   e.Value,
 			}
 		}
-		if resource.Inputs != nil {
-			inputs, err := UnmarshalProperties(resource.Inputs, MarshalOptions{Label: label, KeepSecrets: true})
+		if res.Inputs != nil {
+			inputs, err := UnmarshalProperties(res.Inputs, MarshalOptions{Label: label, KeepSecrets: true})
 			if err != nil {
-				return nil, fmt.Errorf("unmarshaling inputs for resource %q: %w", resource.Name, err)
+				return nil, fmt.Errorf("unmarshaling inputs for resource %q: %w", res.Name, err)
 			}
-			resources[i].Inputs = inputs
+			minputs := resource.FromResourcePropertyMap(inputs)
+			resources[i].Inputs = &minputs
 		}
-		if resource.Outputs != nil {
-			outputs, err := UnmarshalProperties(resource.Outputs, MarshalOptions{Label: label, KeepSecrets: true})
+		if res.Outputs != nil {
+			outputs, err := UnmarshalProperties(res.Outputs, MarshalOptions{Label: label, KeepSecrets: true})
 			if err != nil {
-				return nil, fmt.Errorf("unmarshaling outputs for resource %q: %w", resource.Name, err)
+				return nil, fmt.Errorf("unmarshaling outputs for resource %q: %w", res.Name, err)
 			}
-			resources[i].Outputs = outputs
+			moutputs := resource.FromResourcePropertyMap(outputs)
+			resources[i].Outputs = &moutputs
 		}
 	}
 

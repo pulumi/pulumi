@@ -41,7 +41,7 @@ func init() {
 					AssertPropertyMapMember(l, stack.Outputs, "parameterValue", resource.NewProperty("Hello"))
 					AssertPropertyMapMember(l, stack.Outputs, "baseValue", resource.NewProperty("base"))
 
-					greeting := RequireSingleResource(l, snap.Resources, "extbase:index:Greeting")
+					greeting := RequireSingleResource(l, snap.Resources, "myext:index:Greeting")
 					require.NotEmpty(l, greeting.ExtensionRef,
 						"extension resource state must carry an ExtensionRef")
 					require.Contains(l, greeting.Provider, "pulumi:providers:extbase::",

@@ -59,6 +59,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // buildImportFile takes an event stream from the engine and builds an import file from it for every create.
@@ -80,9 +81,6 @@ func buildImportFile(
 		importSet := map[resource.URN]struct{}{}
 		// All providers that we've seen so far, used to build Version and PluginDownloadURL.
 		providerInputs := map[resource.URN]resource.PropertyMap{}
-		// Full (unfiltered) provider inputs from the resource State, used to serialize into the
-		// import file for explicit providers that need creation.
-		providerFullInputs := map[resource.URN]resource.PropertyMap{}
 
 		imports := importFile{
 			NameTable: map[string]resource.URN{},
@@ -165,9 +163,6 @@ func buildImportFile(
 			// any resources that use it.
 			if sdkproviders.IsProviderType(urn.Type()) {
 				providerInputs[urn] = preEvent.Metadata.Res.Inputs
-				contract.Assertf(preEvent.Metadata.Res.State != nil,
-					"%s: expected State to be non-nil for provider", urn)
-				providerFullInputs[urn] = preEvent.Metadata.Res.State.Inputs
 			}
 
 			// Only interested in creates
@@ -182,10 +177,9 @@ func buildImportFile(
 			// We're importing this URN so track that we've seen it.
 			importSet[urn] = struct{}{}
 
-			// Provider resources are not imported with an ID like regular resources. Instead,
-			// their inputs are serialized into the import file's providerInputs section so the
-			// import system can create them with the correct configuration.
-			if sdkproviders.IsProviderType(urn.Type()) {
+			// Default providers are not declared in the import file; the import system creates
+			// them from ambient config.
+			if sdkproviders.IsDefaultProvider(urn) {
 				continue
 			}
 
@@ -213,30 +207,15 @@ func buildImportFile(
 					return importFile{}, fmt.Errorf("could not parse provider reference: %w", err)
 				}
 
-				// Providers are not imported as resources (we skip them above), but resources
-				// that use a new explicit provider can still be in the import file. We serialize
-				// the provider's full inputs so the import system can create it.
 				if !sdkproviders.IsDefaultProvider(ref.URN()) {
 					var has bool
 					provider, has = fullNameTable[ref.URN()]
 					contract.Assertf(has, "expected provider %q to be in full name table", new.Provider)
 
-					imports.NameTable[provider] = ref.URN()
-
-					// If this provider is being created in this deployment, serialize its full inputs
-					// so the import system can recreate it with the correct configuration.
-					if _, inImportSet := importSet[ref.URN()]; inImportSet {
-						if fullInputs, ok := providerFullInputs[ref.URN()]; ok {
-							serialized, serErr := stack.SerializeProperties(ctx, fullInputs, enc, false)
-							if serErr != nil {
-								return importFile{}, fmt.Errorf(
-									"could not serialize provider inputs for %s: %w", ref.URN(), serErr)
-							}
-							if imports.ProviderInputs == nil {
-								imports.ProviderInputs = map[string]map[string]any{}
-							}
-							imports.ProviderInputs[provider] = serialized
-						}
+					// Don't add to the import NameTable if we're creating the provider in the same
+					// deployment; it is declared in the resources list instead.
+					if _, inImportSet := importSet[ref.URN()]; !inImportSet {
+						imports.NameTable[provider] = ref.URN()
 					}
 				}
 
@@ -258,10 +237,26 @@ func buildImportFile(
 			}
 
 			var id resource.ID
-			// id only needs filling in for custom resources, set it to a placeholder so the user can easily
-			// search for that.
+			var inputs map[string]any
 			if new.Custom {
-				id = "<PLACEHOLDER>"
+				if sdkproviders.IsProviderType(urn.Type()) {
+					// Explicit providers are created by the import system rather than read from a
+					// cloud, so they are declared with their full inputs instead of an ID.
+					contract.Assertf(preEvent.Metadata.Res.State != nil,
+						"%s: expected State to be non-nil for provider", urn)
+					if fullInputs := preEvent.Metadata.Res.State.Inputs; len(fullInputs) > 0 {
+						var serErr error
+						inputs, serErr = stack.SerializeProperties(ctx, fullInputs, enc, false)
+						if serErr != nil {
+							return importFile{}, fmt.Errorf(
+								"could not serialize provider inputs for %s: %w", urn, serErr)
+						}
+					}
+				} else {
+					// id only needs filling in for other custom resources, set it to a placeholder
+					// so the user can easily search for that.
+					id = "<PLACEHOLDER>"
+				}
 			}
 
 			// We only want to set logical name if we need to
@@ -280,6 +275,7 @@ func buildImportFile(
 				Remote:            !new.Custom && new.Provider != "",
 				Version:           version,
 				PluginDownloadURL: pluginDownloadURL,
+				Inputs:            inputs,
 				LogicalName:       logicalName,
 			})
 		}
@@ -362,16 +358,22 @@ func NewPreviewCmd() *cobra.Command {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 
-			proj, root, err := readProjectForUpdate(ws, client)
-			if err != nil {
-				return err
-			}
+			var proj *workspace.Project
+			var root string
+			var meta *promise.Promise[map[string]string]
+			if !remoteArgs.Remote {
+				var err error
+				proj, root, err = readProjectForUpdate(ws, client)
+				if err != nil {
+					return err
+				}
 
-			if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
-				return err
-			}
+				if err := plugin.ValidatePulumiVersionRange(proj.RequiredPulumiVersion, version.Version); err != nil {
+					return err
+				}
 
-			meta := metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
+				meta = metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
+			}
 
 			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
 				return err

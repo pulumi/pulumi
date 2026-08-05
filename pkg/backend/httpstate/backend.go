@@ -123,67 +123,6 @@ func AgentCredentialsUsed(ctx context.Context, cloudURL string) bool {
 	return use.cloudURLs[cloudURL]
 }
 
-type PulumiAILanguage string
-
-const (
-	PulumiAILanguageTypeScript PulumiAILanguage = "TypeScript"
-	PulumiAILanguageJavaScript PulumiAILanguage = "JavaScript"
-	PulumiAILanguagePython     PulumiAILanguage = "Python"
-	PulumiAILanguageGo         PulumiAILanguage = "Go"
-	PulumiAILanguageCSharp     PulumiAILanguage = "C#"
-	PulumiAILanguageJava       PulumiAILanguage = "Java"
-	PulumiAILanguageYAML       PulumiAILanguage = "YAML"
-)
-
-var pulumiAILanguageMap = map[string]PulumiAILanguage{
-	"typescript": PulumiAILanguageTypeScript,
-	"javascript": PulumiAILanguageJavaScript,
-	"python":     PulumiAILanguagePython,
-	"go":         PulumiAILanguageGo,
-	"c#":         PulumiAILanguageCSharp,
-	"java":       PulumiAILanguageJava,
-	"yaml":       PulumiAILanguageYAML,
-}
-
-// All of the languages supported by Pulumi AI.
-var PulumiAILanguageOptions = []PulumiAILanguage{
-	PulumiAILanguageTypeScript,
-	PulumiAILanguageJavaScript,
-	PulumiAILanguagePython,
-	PulumiAILanguageGo,
-	PulumiAILanguageCSharp,
-	PulumiAILanguageJava,
-	PulumiAILanguageYAML,
-}
-
-// A natural language list of languages supported by Pulumi AI.
-const PulumiAILanguagesClause = "TypeScript, JavaScript, Python, Go, C#, Java, or YAML"
-
-func (e *PulumiAILanguage) String() string {
-	return string(*e)
-}
-
-func (e *PulumiAILanguage) Set(v string) error {
-	value, ok := pulumiAILanguageMap[strings.ToLower(v)]
-	if !ok {
-		return fmt.Errorf("must be one of %s", PulumiAILanguagesClause)
-	}
-	*e = value
-	return nil
-}
-
-func (e *PulumiAILanguage) Type() string {
-	return "pulumiAILanguage"
-}
-
-type AIPromptRequestBody struct {
-	Language       PulumiAILanguage `json:"language"`
-	Instructions   string           `json:"instructions"`
-	ResponseMode   string           `json:"responseMode"`
-	ConversationID string           `json:"conversationId"`
-	ConnectionID   string           `json:"connectionId"`
-}
-
 // Name validation rules enforced by the Pulumi Service.
 var stackOwnerRegexp = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-_]{1,38}[a-zA-Z0-9]$")
 
@@ -238,7 +177,6 @@ type Backend interface {
 	NaturalLanguageSearch(
 		ctx context.Context, orgName string, query string,
 	) (*apitype.ResourceSearchResponse, error)
-	PromptAI(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
 	// Capabilities returns the capabilities of the backend indicating what features are available.
 	Capabilities(ctx context.Context) apitype.Capabilities
 
@@ -934,25 +872,18 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	return &account, nil
 }
 
-// WelcomeUser prints a Welcome to Pulumi message.
-func WelcomeUser(opts display.Options) {
-	fmt.Printf(`
-
-  %s
-
-  Pulumi helps you create, deploy, and manage infrastructure on any cloud using
-  your favorite language. You can get started today with Pulumi at:
-
-      https://www.pulumi.com/docs/get-started/
-
-  %s Resources you create with Pulumi are given unique names (a randomly
-  generated suffix) by default. To learn more about auto-naming or customizing resource
-  names see https://www.pulumi.com/docs/intro/concepts/resources/#autonaming.
-
-
-`,
-		opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset),
-		opts.Color.Colorize(colors.SpecSubHeadline+"Tip:"+colors.Reset))
+// WelcomeUser prints a Welcome to Pulumi message. consoleURL may be empty, in which case the
+// console line is omitted.
+func WelcomeUser(opts display.Options, consoleURL string) {
+	fmt.Printf("\n\n  %s\n\n", opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset))
+	if consoleURL != "" {
+		fmt.Printf("  Your stacks, state, and deployment history live at %s\n\n",
+			opts.Color.Colorize(colors.BrightBlue+colors.Underline+consoleURL+colors.Reset))
+	}
+	fmt.Printf("  See what's new: %s\n\n",
+		opts.Color.Colorize(colors.BrightBlue+colors.Underline+"https://www.pulumi.com/releases/changelog/"+colors.Reset))
+	fmt.Printf("  %s Create your first project with `pulumi new`.\n\n\n",
+		opts.Color.Colorize(colors.SpecSubHeadline+"New to Pulumi?"+colors.Reset))
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
@@ -1547,13 +1478,7 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
-	opts := backend.ApplierOptions{
-		DryRun:   true,
-		ShowLink: true,
-	}
-	return b.apply(
-		ctx, apitype.PreviewUpdate, stack, op, opts, events)
+	return backend.Preview(ctx, stack, op, b.apply, events)
 }
 
 func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
@@ -1733,19 +1658,6 @@ func (b *cloudBackend) NaturalLanguageSearch(
 		return nil, err
 	}
 	return results, err
-}
-
-func (b *cloudBackend) PromptAI(
-	ctx context.Context, requestBody AIPromptRequestBody,
-) (*http.Response, error) {
-	res, err := b.client.SubmitAIPrompt(ctx, requestBody)
-	if err != nil {
-		return nil, err
-	}
-	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to submit AI prompt: %s", res.Status)
-	}
-	return res, nil
 }
 
 func (b *cloudBackend) renderAndSummarizeOutput(
@@ -2800,6 +2712,13 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 		token = logs.NextToken
 	}
 
+	deployment, err := b.client.GetDeployment(ctx, stackID, id)
+	if err != nil {
+		return err
+	}
+	if deployment.Status == "failed" {
+		return errors.New("deployment failed")
+	}
 	return nil
 }
 
@@ -2847,6 +2766,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	// The UpdateEvents API returns a continuation token to only get events after the previous call.
 	var continuationToken *string
 	var lastEvent engine.Event
+	var opResult apitype.OperationResult
 	for {
 		resp, err := b.client.GetUpdateEngineEvents(ctx, update, client.GetUpdateEngineEventsOptions{
 			ContinuationToken: continuationToken,
@@ -2855,6 +2775,9 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 			return err
 		}
 		for _, jsonEvent := range resp.Events {
+			if jsonEvent.SummaryEvent != nil {
+				opResult = jsonEvent.SummaryEvent.Result
+			}
 			event, err := display.ConvertJSONEvent(jsonEvent)
 			if err != nil {
 				return err
@@ -2873,6 +2796,13 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 
 			close(events)
 			<-done
+			switch opResult {
+			case apitype.OperationResultFailed:
+				return errors.New("deployment failed")
+			case apitype.OperationResultCanceled:
+				return backenderr.CancelledError{Operation: string(kind)}
+			case apitype.OperationResultSucceeded:
+			}
 			return nil
 		}
 

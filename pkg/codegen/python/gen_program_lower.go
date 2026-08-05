@@ -15,19 +15,82 @@
 package python
 
 import (
+	"strings"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/zclconf/go-cty/cty"
 )
 
-func isParameterReference(parameters codegen.Set, x model.Expression) bool {
+// Keep this set in sync with the non-private members of Output in sdk/python/lib/pulumi/output.py.
+// Output.__getattr__ cannot project properties whose names are already defined by Output.
+var outputMemberNames = codegen.NewStringSet(
+	"all",
+	"apply",
+	"concat",
+	"format",
+	"from_input",
+	"future",
+	"get",
+	"is_known",
+	"is_secret",
+	"json_dumps",
+	"json_loads",
+	"recover",
+	"resources",
+	"secret",
+	"unsecret",
+)
+
+func canLiftOutputTraversal(traversal hcl.Traversal) bool {
+	for _, traverser := range traversal {
+		var name string
+		switch traverser := traverser.(type) {
+		case hcl.TraverseAttr:
+			name = PyName(traverser.Name)
+		case hcl.TraverseIndex:
+			if traverser.Key.Type() != cty.String {
+				continue
+			}
+			name = PyName(traverser.Key.AsString())
+		default:
+			continue
+		}
+
+		// Attribute lifting uses Output.__getattr__, so it cannot project names already defined by Output.
+		if strings.HasPrefix(name, "_") || outputMemberNames.Has(name) {
+			return false
+		}
+	}
+	return true
+}
+
+func isDirectParameterReference(parameters codegen.Set, x model.Expression) bool {
 	scopeTraversal, ok := x.(*model.ScopeTraversalExpression)
-	if !ok {
+	if !ok || len(scopeTraversal.Parts) != 1 {
 		return false
 	}
 
 	return parameters.Has(scopeTraversal.Parts[0])
+}
+
+func parameterRelativeTraversal(parameters codegen.Set, x model.Expression) (hcl.Traversal, bool) {
+	switch x := x.(type) {
+	case *model.ScopeTraversalExpression:
+		if !parameters.Has(x.Parts[0]) {
+			return nil, false
+		}
+		return x.Traversal.SimpleSplit().Rel, true
+	case *model.RelativeTraversalExpression:
+		if !isDirectParameterReference(parameters, x.Source) {
+			return nil, false
+		}
+		return x.Traversal, true
+	default:
+		return nil, false
+	}
 }
 
 // parseProxyApply attempts to match and rewrite the given parsed apply using the following patterns:
@@ -49,7 +112,7 @@ func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Express
 	switch then := then.(type) {
 	case *model.IndexExpression:
 		// Rewrite `__apply(<expr>, eval(x, x[index]))` to `<expr>[index]`.
-		if !isParameterReference(parameters, then.Collection) {
+		if !isDirectParameterReference(parameters, then.Collection) {
 			return nil, false
 		}
 		// Create a new IndexExpression instead of mutating the original
@@ -60,38 +123,23 @@ func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Express
 		// Typecheck to set the type
 		_ = newIndex.Typecheck(false)
 		return newIndex, true
-	case *model.ScopeTraversalExpression:
-		if !isParameterReference(parameters, then) {
+	case *model.ScopeTraversalExpression, *model.RelativeTraversalExpression:
+		traversal, ok := parameterRelativeTraversal(parameters, then)
+		if !ok || !canLiftOutputTraversal(traversal) {
 			return nil, false
 		}
 
-		switch arg := arg.(type) {
-		case *model.RelativeTraversalExpression:
-			// Create a new RelativeTraversalExpression instead of mutating
-			newTraversal := &model.RelativeTraversalExpression{
-				Source:    arg.Source,
-				Traversal: append(arg.Traversal, then.Traversal[1:]...),
-				Parts:     append(arg.Parts, then.Parts...),
-			}
-			// Typecheck to set the type
-			_ = newTraversal.Typecheck(false)
-			return newTraversal, true
-		case *model.ScopeTraversalExpression:
-			// Create a new ScopeTraversalExpression instead of mutating
-			newTraversal := &model.ScopeTraversalExpression{
-				RootName:  arg.RootName,
-				Traversal: append(arg.Traversal, then.Traversal[1:]...),
-				Parts:     append(arg.Parts, then.Parts...),
-			}
-			// Typecheck to set the type
-			_ = newTraversal.Typecheck(false)
-			return newTraversal, true
+		newTraversal := &model.RelativeTraversalExpression{
+			Source:    arg,
+			Traversal: traversal,
 		}
+		if diags := newTraversal.Typecheck(false); diags.HasErrors() {
+			return nil, false
+		}
+		return newTraversal, true
 	default:
 		return nil, false
 	}
-
-	return nil, false
 }
 
 // lowerProxyApplies lowers certain calls to the apply intrinsic into proxied property accesses. Concretely, this

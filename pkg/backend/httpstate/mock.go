@@ -16,7 +16,6 @@ package httpstate
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -33,7 +32,6 @@ type MockHTTPBackend struct {
 		queryParams *apitype.PulumiQueryRequest,
 	) (*apitype.ResourceSearchResponse, error)
 	FNaturalLanguageSearch func(ctx context.Context, orgName string, query string) (*apitype.ResourceSearchResponse, error)
-	FPromptAI              func(ctx context.Context, requestBody AIPromptRequestBody) (*http.Response, error)
 	FStackConsoleURL       func(stackRef backend.StackReference) (string, error)
 	FRunDeployment         func(
 		ctx context.Context,
@@ -59,12 +57,6 @@ func (b *MockHTTPBackend) NaturalLanguageSearch(
 	ctx context.Context, orgName string, query string,
 ) (*apitype.ResourceSearchResponse, error) {
 	return b.FNaturalLanguageSearch(ctx, orgName, query)
-}
-
-func (b *MockHTTPBackend) PromptAI(
-	ctx context.Context, requestBody AIPromptRequestBody,
-) (*http.Response, error) {
-	return b.FPromptAI(ctx, requestBody)
 }
 
 func (b *MockHTTPBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {

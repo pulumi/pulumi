@@ -16,16 +16,28 @@ package state
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// mockCloudBackend mimics httpstate.Backend: URL() is a console URL (possibly
+// user-scoped) while CloudURL() is the stable API URL used by credentials /
+// GetCurrentCloudURL.
+type mockCloudBackend struct {
+	backend.MockBackend
+	cloudURL string
+}
+
+func (b *mockCloudBackend) CloudURL() string { return b.cloudURL }
 
 func TestCurrentStack(t *testing.T) {
 	ctx := t.Context()
@@ -45,6 +57,7 @@ func TestCurrentStack(t *testing.T) {
 
 			ws := &pkgWorkspace.MockContext{}
 			backend := &backend.MockBackend{
+				URLF: func() string { return "https://api.pulumi.com" },
 				GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
 					assert.Equal(t, fullyQualifiedName, ref.FullyQualifiedName().String())
 					return &backend.MockStack{}, nil
@@ -61,6 +74,7 @@ func TestCurrentStack(t *testing.T) {
 
 			ws := &pkgWorkspace.MockContext{}
 			backend := &backend.MockBackend{
+				URLF: func() string { return "https://api.pulumi.com" },
 				GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
 					assert.Equal(t, orgQualifiedName, ref.FullyQualifiedName().String())
 					return &backend.MockStack{}, nil
@@ -83,6 +97,7 @@ func TestCurrentStack(t *testing.T) {
 
 			ws := &pkgWorkspace.MockContext{}
 			backend := &backend.MockBackend{
+				URLF: func() string { return backendURL },
 				SupportsOrganizationsF: func() bool {
 					return true
 				},
@@ -117,6 +132,7 @@ func TestCurrentStack(t *testing.T) {
 
 			ws := &pkgWorkspace.MockContext{}
 			backend := &backend.MockBackend{
+				URLF: func() string { return backendURL },
 				SupportsOrganizationsF: func() bool {
 					return true
 				},
@@ -135,6 +151,7 @@ func TestCurrentStack(t *testing.T) {
 
 			ws := &pkgWorkspace.MockContext{}
 			backend := &backend.MockBackend{
+				URLF: func() string { return "file://~" },
 				SupportsOrganizationsF: func() bool {
 					return false
 				},
@@ -147,6 +164,159 @@ func TestCurrentStack(t *testing.T) {
 			_, err := CurrentStack(ctx, ws, backend)
 			require.NoError(t, err)
 		})
+	})
+
+	t.Run("legacy cloud selection is ignored on local backend", func(t *testing.T) {
+		t.Parallel()
+		settings := &pkgWorkspace.Settings{
+			Stack: "cloud-org/my-project/my-stack",
+		}
+		ws := &pkgWorkspace.MockContext{
+			NewF: func(string) (pkgWorkspace.W, error) {
+				return &pkgWorkspace.MockW{
+					SettingsF: func() *pkgWorkspace.Settings { return settings },
+				}, nil
+			},
+		}
+		be := &backend.MockBackend{
+			URLF: func() string { return "file://~" },
+			SupportsOrganizationsF: func() bool {
+				return false
+			},
+			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+				assert.Equal(t, "cloud-org/my-project/my-stack", s)
+				return nil, errors.New("organization name must be 'organization'")
+			},
+			GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+				t.Fatal("GetStack should not be called for a legacy selection from another backend")
+				return nil, nil
+			},
+		}
+
+		got, err := CurrentStack(ctx, ws, be)
+		require.NoError(t, err)
+		assert.Nil(t, got)
+	})
+
+	t.Run("per-backend selections do not leak across backends", func(t *testing.T) {
+		t.Parallel()
+		settings := &pkgWorkspace.Settings{
+			Stacks: map[string]string{
+				"https://api.pulumi.com": "cloud-org/my-project/dev",
+				"file://~":               "organization/my-project/local",
+			},
+		}
+		ws := &pkgWorkspace.MockContext{
+			NewF: func(string) (pkgWorkspace.W, error) {
+				return &pkgWorkspace.MockW{
+					SettingsF: func() *pkgWorkspace.Settings { return settings },
+				}, nil
+			},
+		}
+
+		localBe := &backend.MockBackend{
+			URLF: func() string { return "file://~" },
+			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+				assert.Equal(t, "organization/my-project/local", s)
+				return &backend.MockStackReference{
+					FullyQualifiedNameV: tokens.QName(s),
+				}, nil
+			},
+			GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+				return &backend.MockStack{}, nil
+			},
+		}
+		got, err := CurrentStack(ctx, ws, localBe)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+
+		cloudBe := &backend.MockBackend{
+			URLF: func() string { return "https://api.pulumi.com" },
+			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+				assert.Equal(t, "cloud-org/my-project/dev", s)
+				return &backend.MockStackReference{
+					FullyQualifiedNameV: tokens.QName(s),
+				}, nil
+			},
+			GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+				return &backend.MockStack{}, nil
+			},
+		}
+		got, err = CurrentStack(ctx, ws, cloudBe)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+	})
+
+	t.Run("invalid scoped selection still returns parse error", func(t *testing.T) {
+		t.Parallel()
+		settings := &pkgWorkspace.Settings{
+			Stacks: map[string]string{
+				"file://~": "cloud-org/my-project/dev",
+			},
+		}
+		ws := &pkgWorkspace.MockContext{
+			NewF: func(string) (pkgWorkspace.W, error) {
+				return &pkgWorkspace.MockW{
+					SettingsF: func() *pkgWorkspace.Settings { return settings },
+				}, nil
+			},
+		}
+		be := &backend.MockBackend{
+			URLF: func() string { return "file://~" },
+			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+				return nil, errors.New("organization name must be 'organization'")
+			},
+		}
+
+		_, err := CurrentStack(ctx, ws, be)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "organization name must be 'organization'")
+	})
+
+	t.Run("cloud selection is keyed by API URL not console URL", func(t *testing.T) {
+		t.Parallel()
+		apiURL := "https://api.pulumi.com"
+		consoleURL := "https://app.pulumi.com/pulumi-bot"
+		stackName := "pulumi-bot/my-project/dev"
+
+		settings := &pkgWorkspace.Settings{}
+		ws := &pkgWorkspace.MockContext{
+			NewF: func(string) (pkgWorkspace.W, error) {
+				return &pkgWorkspace.MockW{
+					SettingsF: func() *pkgWorkspace.Settings { return settings },
+					SaveF:     func() error { return nil },
+				}, nil
+			},
+		}
+		be := &mockCloudBackend{
+			MockBackend: backend.MockBackend{
+				URLF: func() string { return consoleURL },
+				ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+					assert.Equal(t, stackName, s)
+					return &backend.MockStackReference{
+						FullyQualifiedNameV: tokens.QName(s),
+					}, nil
+				},
+				GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+					return &backend.MockStack{}, nil
+				},
+			},
+			cloudURL: apiURL,
+		}
+
+		require.Equal(t, apiURL, BackendURLKey(be))
+		require.NoError(t, SetCurrentStack(ws, BackendURLKey(be), stackName))
+		require.Equal(t, stackName, settings.Stacks[apiURL])
+		assert.Empty(t, settings.Stacks[consoleURL], "must not key selection by console URL")
+
+		// Readers that use GetCurrentCloudURL (API URL) must see the selection.
+		name, fromLegacy := settings.StackForBackend(apiURL)
+		require.Equal(t, stackName, name)
+		require.False(t, fromLegacy)
+
+		got, err := CurrentStack(ctx, ws, be)
+		require.NoError(t, err)
+		require.NotNil(t, got)
 	})
 }
 

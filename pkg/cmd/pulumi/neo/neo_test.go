@@ -35,7 +35,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -118,10 +117,6 @@ func (f *fakeHTTPBackend) Search(
 func (f *fakeHTTPBackend) NaturalLanguageSearch(
 	context.Context, string, string,
 ) (*apitype.ResourceSearchResponse, error) {
-	return nil, nil
-}
-
-func (f *fakeHTTPBackend) PromptAI(context.Context, httpstate.AIPromptRequestBody) (*http.Response, error) {
 	return nil, nil
 }
 

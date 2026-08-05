@@ -151,7 +151,7 @@ func TestDoCmdResourceUpsertConstructsSnippet(t *testing.T) {
 	) (*StatefulUpdateResult, error) {
 		called = true
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
@@ -173,16 +173,146 @@ size = 2
 	require.NoError(t, cmd.Execute())
 
 	require.True(t, called, "runStatefulUpdate should have been invoked")
-	assert.Equal(t, "myres", got.Snippet.Name)
-	assert.Equal(t, "azure:index:myResource", got.Snippet.Type)
-	assert.Equal(t, pcl, got.Snippet.Code, "snippet Code should be the raw input file")
-	assert.Equal(t, "azure", got.Snippet.Descriptor.Name)
-	require.NotEmpty(t, got.Snippet.UUID, "snippet should carry a generated UUID")
+	assert.Equal(t, "myres", got.Snippets[len(got.Snippets)-1].Name)
+	assert.Equal(t, "azure:index:myResource", got.Snippets[len(got.Snippets)-1].Type)
+	assert.Equal(t, pcl, got.Snippets[len(got.Snippets)-1].Code, "snippet Code should be the raw input file")
+	assert.Equal(t, "azure", got.Snippets[len(got.Snippets)-1].Descriptor.Name)
+	require.NotEmpty(t, got.Snippets[len(got.Snippets)-1].UUID, "snippet should carry a generated UUID")
 	require.NotNil(t, got.Stack, "runStatefulUpdate should receive the loaded stack")
 	assert.False(t, got.DryRun)
 	assert.True(t, got.Yes)
 
-	assert.Contains(t, stdout.String(), got.Snippet.UUID)
+	assert.Contains(t, stdout.String(), got.Snippets[len(got.Snippets)-1].UUID)
+	assert.Contains(t, stdout.String(), "Created myres")
+	_ = stderr
+}
+
+// TestDoCmdResourceUpsertBareProviderReference verifies that supplying --provider (without any
+// provider overrides) makes the resource snippet reference the given provider URN via its
+// References map and injects an options { provider = provider } block into its code, without
+// producing an inline provider snippet.
+//
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceUpsertBareProviderReference(t *testing.T) {
+	// Existing provider resource in the snapshot for the URN we point at with --provider.
+	providerURN := "urn:pulumi:dev::proj::pulumi:providers:azure::existing"
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{
+		Resources: []*pkgresource.State{{
+			URN:    resource.URN(providerURN),
+			Type:   tokens.Type("pulumi:providers:azure"),
+			Inputs: resource.PropertyMap{"region": resource.NewProperty("us-east-1")},
+		}},
+	})
+
+	var got StatefulUpdateRequest
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		got = req
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "upsert.pcl", `name = "example"`+"\n")
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "upsert", "myres", "--yes",
+		"--provider", providerURN,
+		"--input", "pcl", "--input-file", inputFile,
+	})
+	require.NoError(t, cmd.Execute())
+
+	require.Len(t, got.Snippets, 1, "bare --provider should not add a provider snippet")
+	resSnippet := got.Snippets[0]
+	assert.Equal(t, providerURN, resSnippet.References["provider"])
+	assert.Contains(t, resSnippet.Code, "options {")
+	assert.Contains(t, resSnippet.Code, "provider = provider")
+	_ = stderr
+}
+
+// TestDoCmdResourceUpsertMaterializesProviderSnippet verifies that --provider-file (with or
+// without --provider) produces an inline provider snippet whose Code carries the overrides, whose
+// URN is referenced from the resource snippet, and injects the options block.
+//
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceUpsertMaterializesProviderSnippet(t *testing.T) {
+	providerURN := "urn:pulumi:dev::proj::pulumi:providers:azure::existing"
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{
+		Resources: []*pkgresource.State{{
+			URN:  resource.URN(providerURN),
+			Type: tokens.Type("pulumi:providers:azure"),
+			Inputs: resource.PropertyMap{
+				"__internal": resource.NewProperty(resource.PropertyMap{
+					"pluginDownloadURL": resource.NewProperty("https://example.com/plugins"),
+				}),
+				"region":  resource.NewProperty("eu-west-1"),
+				"token":   resource.MakeSecret(resource.NewProperty("base-secret")),
+				"version": resource.NewProperty("1.2.3"),
+			},
+		}},
+	})
+
+	var got StatefulUpdateRequest
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		got = req
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	// Provider parsing runs through pc.format (yaml by default); route the yaml converter
+	// through a stub that echoes the source verbatim so the test doesn't need a real converter.
+	loadConverter := func(
+		_ *plugin.Context, _ string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		return &plugin.MockConverter{
+			ConvertSnippetF: func(_ context.Context, req *plugin.ConvertSnippetRequest) (
+				*plugin.ConvertSnippetResponse, error,
+			) {
+				return &plugin.ConvertSnippetResponse{
+					Source:   req.Source,
+					Filename: req.Filename,
+				}, nil
+			},
+		}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, loadConverter, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	providerFile := writeHCLFile(t, "provider.pcl", `region = "us-east-1"`+"\n")
+	inputFile := writeHCLFile(t, "upsert.pcl", `name = "example"`+"\n")
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "upsert", "myres", "--yes",
+		"--provider", providerURN, "--provider-file", providerFile,
+		"--input", "pcl", "--input-file", inputFile,
+	})
+	require.NoError(t, cmd.Execute())
+
+	require.Len(t, got.Snippets, 2, "materialize path emits provider snippet then resource snippet")
+	providerSnippet := got.Snippets[0]
+	resSnippet := got.Snippets[1]
+	assert.Equal(t, "myres-provider", providerSnippet.Name)
+	assert.Equal(t, "pulumi:providers:azure", providerSnippet.Type)
+	assert.Contains(t, providerSnippet.Code, `region = "us-east-1"`)
+	assert.Contains(t, providerSnippet.Code, `secret("base-secret")`)
+	assert.NotContains(t, providerSnippet.Code, "__internal")
+	assert.NotContains(t, providerSnippet.Code, `version = "1.2.3"`)
+	require.NotEmpty(t, providerSnippet.UUID)
+
+	// The resource snippet references the provider snippet by its computed URN.
+	wantProviderURN := string(resource.CreateURN(
+		"myres-provider", "pulumi:providers:azure", "", "proj", "dev",
+	))
+	assert.Equal(t, wantProviderURN, resSnippet.References["provider"])
+	assert.Contains(t, resSnippet.Code, "options {")
+	assert.Contains(t, resSnippet.Code, "provider = provider")
 	_ = stderr
 }
 
@@ -195,7 +325,7 @@ func TestDoCmdResourceUpsertConstructsSnippetWithReferences(t *testing.T) {
 	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
 	) (*StatefulUpdateResult, error) {
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
@@ -214,7 +344,7 @@ func TestDoCmdResourceUpsertConstructsSnippetWithReferences(t *testing.T) {
 	})
 	require.NoError(t, cmd.Execute())
 
-	assert.Equal(t, map[string]string{"source": string(referencedURN)}, got.Snippet.References)
+	assert.Equal(t, map[string]string{"source": string(referencedURN)}, got.Snippets[len(got.Snippets)-1].References)
 	_ = stdout
 	_ = stderr
 }
@@ -228,7 +358,7 @@ func TestDoCmdResourceUpsertConvertsReferences(t *testing.T) {
 	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
 	) (*StatefulUpdateResult, error) {
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
@@ -275,8 +405,8 @@ func TestDoCmdResourceUpsertConvertsReferences(t *testing.T) {
 	})
 	require.NoError(t, cmd.Execute())
 
-	assert.Equal(t, "name = sourceName.name\n", got.Snippet.Code)
-	assert.Equal(t, map[string]string{"sourceName": string(referencedURN)}, got.Snippet.References)
+	assert.Equal(t, "name = sourceName.name\n", got.Snippets[len(got.Snippets)-1].Code)
+	assert.Equal(t, map[string]string{"sourceName": string(referencedURN)}, got.Snippets[len(got.Snippets)-1].References)
 	_ = stdout
 	_ = stderr
 }
@@ -355,7 +485,7 @@ func TestDoCmdResourceUpsertReusesExistingSnippet(t *testing.T) {
 	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
 	) (*StatefulUpdateResult, error) {
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		return &testProvider{spec: doResourceSpec(false)}, nil
@@ -372,9 +502,11 @@ func TestDoCmdResourceUpsertReusesExistingSnippet(t *testing.T) {
 	})
 	require.NoError(t, cmd.Execute())
 
-	assert.Equal(t, existing.UUID, got.Snippet.UUID, "existing snippet UUID should be reused")
-	assert.Equal(t, `name = "new"`, got.Snippet.Code, "code should be replaced with the new file contents")
-	_ = stdout
+	assert.Equal(t, existing.UUID, got.Snippets[len(got.Snippets)-1].UUID,
+		"existing snippet UUID should be reused")
+	assert.Equal(t, `name = "new"`, got.Snippets[len(got.Snippets)-1].Code,
+		"code should be replaced with the new file contents")
+	assert.Contains(t, stdout.String(), "Updated myres")
 	_ = stderr
 }
 
@@ -448,7 +580,7 @@ func TestDoCmdResourceUpsertEndToEnd(t *testing.T) {
 	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
 	) (*StatefulUpdateResult, error) {
 		snap := baseSnap
-		snap.Snippets = []resource.Snippet{req.Snippet}
+		snap.Snippets = append([]resource.Snippet{}, req.Snippets...)
 		var err error
 		finalSnap, err = lt.TestOp(engine.Update).RunStep(
 			p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1",
@@ -456,7 +588,7 @@ func TestDoCmdResourceUpsertEndToEnd(t *testing.T) {
 		if err != nil {
 			return nil, err
 		}
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
 	}
 
 	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{})
@@ -613,11 +745,54 @@ size = 2
 		assert.Equal(t, []string{"read", "check", "create"}, calls)
 		assert.JSONEq(t, `{"id":"res-2","name":"new","size":2}`, stdout.String())
 	})
+
+	t.Run("creates a missing resource read back as emptied state", func(t *testing.T) {
+		t.Parallel()
+		var calls []string
+		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(false),
+			MockProvider: plugin.MockProvider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					calls = append(calls, "read")
+					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+						Inputs:  resource.PropertyMap{},
+						Outputs: resource.PropertyMap{},
+					}}, nil
+				},
+				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					calls = append(calls, "check")
+					return plugin.CheckResponse{Properties: req.News}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					calls = append(calls, "create")
+					return plugin.CreateResponse{
+						ID: "res-2",
+						Properties: resource.PropertyMap{
+							"name": resource.NewProperty("new"),
+						},
+					}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					require.Fail(t, "Update should not be called for a missing resource")
+					return plugin.UpdateResponse{}, nil
+				},
+			},
+		})
+
+		inputFile := writeHCLFile(t, "upsert.pcl", `name = "new"`)
+		cmd.SetArgs([]string{
+			"--stateless", "azure:index:myResource", "upsert", "res-1", "--yes",
+			"--input", "pcl", "--input-file", inputFile, "--output", "json",
+		})
+		require.NoError(t, cmd.Execute())
+		assert.Equal(t, []string{"read", "check", "create"}, calls)
+		assert.JSONEq(t, `{"id":"res-2","name":"new"}`, stdout.String())
+	})
 }
 
 // TestDoCmdResourceStatefulCreateConstructsSnippet mirrors the upsert-constructs-snippet test but
 // for stateful `create`: the CLI takes a name arg, mints a fresh UUID, hands the snippet to
-// runStatefulUpdate, and the completion line uses "created" rather than "upserted".
+// runStatefulUpdate, and the completion line uses the "Created" verb.
 //
 //nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
 func TestDoCmdResourceStatefulCreateConstructsSnippet(t *testing.T) {
@@ -629,7 +804,7 @@ func TestDoCmdResourceStatefulCreateConstructsSnippet(t *testing.T) {
 	) (*StatefulUpdateResult, error) {
 		called = true
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		return &testProvider{spec: doResourceSpec(false)}, nil
@@ -647,11 +822,11 @@ func TestDoCmdResourceStatefulCreateConstructsSnippet(t *testing.T) {
 	require.NoError(t, cmd.Execute())
 
 	require.True(t, called, "runStatefulUpdate should have been invoked")
-	assert.Equal(t, "myres", got.Snippet.Name)
-	assert.Equal(t, "azure:index:myResource", got.Snippet.Type)
-	assert.Contains(t, got.Snippet.Code, `name = "example"`)
-	require.NotEmpty(t, got.Snippet.UUID)
-	assert.Contains(t, stdout.String(), "created myres")
+	assert.Equal(t, "myres", got.Snippets[len(got.Snippets)-1].Name)
+	assert.Equal(t, "azure:index:myResource", got.Snippets[len(got.Snippets)-1].Type)
+	assert.Contains(t, got.Snippets[len(got.Snippets)-1].Code, `name = "example"`)
+	require.NotEmpty(t, got.Snippets[len(got.Snippets)-1].UUID)
+	assert.Contains(t, stdout.String(), "Created myres")
 	_ = stderr
 }
 
@@ -664,7 +839,7 @@ func TestDoCmdResourceStatefulCreateConstructsSnippetWithReferences(t *testing.T
 	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
 	) (*StatefulUpdateResult, error) {
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
@@ -683,9 +858,7 @@ func TestDoCmdResourceStatefulCreateConstructsSnippetWithReferences(t *testing.T
 	})
 	require.NoError(t, cmd.Execute())
 
-	assert.Equal(t, map[string]string{"source": string(referencedURN)}, got.Snippet.References)
-	_ = stdout
-	_ = stderr
+	assert.Equal(t, map[string]string{"source": string(referencedURN)}, got.Snippets[len(got.Snippets)-1].References)
 }
 
 func TestReadResourceReferences(t *testing.T) {
@@ -788,7 +961,7 @@ func TestDoCmdResourceStatefulDeleteConstructsSnippetDelete(t *testing.T) {
 	) (*StatefulUpdateResult, error) {
 		called = true
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		return &testProvider{spec: doResourceSpec(false)}, nil
@@ -803,10 +976,10 @@ func TestDoCmdResourceStatefulDeleteConstructsSnippetDelete(t *testing.T) {
 
 	require.True(t, called, "runStatefulUpdate should have been invoked")
 	assert.True(t, got.Delete)
-	assert.Equal(t, existing.UUID, got.Snippet.UUID)
-	assert.Equal(t, "myres", got.Snippet.Name)
-	assert.Equal(t, "azure:index:myResource", got.Snippet.Type)
-	assert.Contains(t, stdout.String(), "deleted myres")
+	assert.Equal(t, existing.UUID, got.Snippets[len(got.Snippets)-1].UUID)
+	assert.Equal(t, "myres", got.Snippets[len(got.Snippets)-1].Name)
+	assert.Equal(t, "azure:index:myResource", got.Snippets[len(got.Snippets)-1].Type)
+	assert.Contains(t, stdout.String(), "Deleted myres")
 	assert.Contains(t, stdout.String(), existing.UUID)
 	_ = stderr
 }
@@ -863,7 +1036,7 @@ func TestDoCmdResourceUpsertMergesInputFlags(t *testing.T) {
 	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
 	) (*StatefulUpdateResult, error) {
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		return &testProvider{spec: doResourceSpec(false)}, nil
@@ -881,8 +1054,8 @@ func TestDoCmdResourceUpsertMergesInputFlags(t *testing.T) {
 	})
 	require.NoError(t, cmd.Execute())
 
-	assert.Contains(t, got.Snippet.Code, `name = "example"`)
-	assert.Contains(t, got.Snippet.Code, "size = 3")
+	assert.Contains(t, got.Snippets[len(got.Snippets)-1].Code, `name = "example"`)
+	assert.Contains(t, got.Snippets[len(got.Snippets)-1].Code, "size = 3")
 	_ = stdout
 	_ = stderr
 }
@@ -897,7 +1070,7 @@ func TestDoCmdResourceUpsertAllowsInputFlagsWithoutFile(t *testing.T) {
 	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
 	) (*StatefulUpdateResult, error) {
 		got = req
-		return &StatefulUpdateResult{SnippetUUID: req.Snippet.UUID}, nil
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
 	}
 	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
 		return &testProvider{spec: doResourceSpec(false)}, nil
@@ -917,7 +1090,7 @@ func TestDoCmdResourceUpsertAllowsInputFlagsWithoutFile(t *testing.T) {
 
 	assert.Equal(t, `name = "example"
 size = 3
-`, got.Snippet.Code)
+`, got.Snippets[len(got.Snippets)-1].Code)
 	_ = stdout
 	_ = stderr
 }
@@ -966,13 +1139,13 @@ func TestDefaultRunStatefulUpdateDryRunUsesPreview(t *testing.T) {
 
 	result, err := DefaultRunStatefulUpdate(
 		t.Context(), pflag.NewFlagSet("test", pflag.ContinueOnError), StatefulUpdateRequest{
-			Snippet: resource.Snippet{
+			Snippets: []resource.Snippet{{
 				UUID:       "3fa85f64-5717-4562-b3fc-2c963f66afa6",
 				Name:       "myres",
 				Type:       "azure:index:myResource",
 				Code:       `name = "myres"`,
 				Descriptor: resource.PackageDescriptor{Name: "azure"},
-			},
+			}},
 			Stack:  mockStack,
 			DryRun: true,
 			Proj:   &workspace.Project{Name: tokens.PackageName("proj")},
@@ -982,7 +1155,7 @@ func TestDefaultRunStatefulUpdateDryRunUsesPreview(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.True(t, previewCalled, "dry-run upsert should call PreviewStack")
-	require.Equal(t, "3fa85f64-5717-4562-b3fc-2c963f66afa6", result.SnippetUUID)
+	require.Equal(t, []string{"3fa85f64-5717-4562-b3fc-2c963f66afa6"}, result.SnippetUUIDs)
 }
 
 //nolint:paralleltest // Uses t.Chdir
@@ -1030,13 +1203,13 @@ func TestDefaultRunStatefulUpdateYesAutoApprovesUpdate(t *testing.T) {
 
 	result, err := DefaultRunStatefulUpdate(
 		t.Context(), pflag.NewFlagSet("test", pflag.ContinueOnError), StatefulUpdateRequest{
-			Snippet: resource.Snippet{
+			Snippets: []resource.Snippet{{
 				UUID:       "3fa85f64-5717-4562-b3fc-2c963f66afa6",
 				Name:       "myres",
 				Type:       "azure:index:myResource",
 				Code:       `name = "myres"`,
 				Descriptor: resource.PackageDescriptor{Name: "azure"},
-			},
+			}},
 			Stack: mockStack,
 			Yes:   true,
 			Proj:  &workspace.Project{Name: tokens.PackageName("proj")},
@@ -1046,7 +1219,7 @@ func TestDefaultRunStatefulUpdateYesAutoApprovesUpdate(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.True(t, updateCalled, "non-dry-run upsert should call UpdateStack")
-	require.Equal(t, "3fa85f64-5717-4562-b3fc-2c963f66afa6", result.SnippetUUID)
+	require.Equal(t, []string{"3fa85f64-5717-4562-b3fc-2c963f66afa6"}, result.SnippetUUIDs)
 }
 
 //nolint:paralleltest // Uses t.Chdir
@@ -1090,11 +1263,11 @@ func TestDefaultRunStatefulUpdateDeletePassesNilSnippet(t *testing.T) {
 
 	result, err := DefaultRunStatefulUpdate(
 		t.Context(), pflag.NewFlagSet("test", pflag.ContinueOnError), StatefulUpdateRequest{
-			Snippet: resource.Snippet{
+			Snippets: []resource.Snippet{{
 				UUID: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
 				Name: "myres",
 				Type: "azure:index:myResource",
-			},
+			}},
 			Stack:  mockStack,
 			Yes:    true,
 			Delete: true,
@@ -1105,5 +1278,5 @@ func TestDefaultRunStatefulUpdateDeletePassesNilSnippet(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.True(t, updateCalled, "stateful delete should call UpdateStack")
-	require.Equal(t, "3fa85f64-5717-4562-b3fc-2c963f66afa6", result.SnippetUUID)
+	require.Equal(t, []string{"3fa85f64-5717-4562-b3fc-2c963f66afa6"}, result.SnippetUUIDs)
 }

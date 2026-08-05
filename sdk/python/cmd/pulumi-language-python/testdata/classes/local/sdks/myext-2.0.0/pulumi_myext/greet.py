@@ -46,7 +46,7 @@ def greet(name: Optional[_builtins.str] = None,
     __args__ = dict()
     __args__['name'] = name
     opts = pulumi.InvokeOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
-    __ret__ = pulumi.runtime.invoke('extbase:index:greet', __args__, opts=opts, typ=GreetResult, package_ref=_utilities.get_package()).value
+    __ret__ = pulumi.runtime.invoke('myext:index:greet', __args__, opts=opts, typ=GreetResult, package_ref=_utilities.get_package()).value
 
     return AwaitableGreetResult(
         greeting=pulumi.get(__ret__, 'greeting'))
@@ -58,6 +58,6 @@ def greet_output(name: pulumi.Input[Optional[_builtins.str]] = None,
     __args__ = dict()
     __args__['name'] = name
     opts = pulumi.InvokeOutputOptions.merge(_utilities.get_invoke_opts_defaults(), opts)
-    __ret__ = pulumi.runtime.invoke_output('extbase:index:greet', __args__, opts=opts, typ=GreetResult, package_ref=_utilities.get_package())
+    __ret__ = pulumi.runtime.invoke_output('myext:index:greet', __args__, opts=opts, typ=GreetResult, package_ref=_utilities.get_package())
     return __ret__.apply(lambda __response__: GreetResult(
         greeting=pulumi.get(__response__, 'greeting')))

@@ -2596,6 +2596,43 @@ func TestStackImportResources(t *testing.T) {
 	require.NoError(t, err, "failed to destroy stack")
 }
 
+func TestStackImportResourcesWithoutGenerateCode(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, "import", sName)
+	pDir := filepath.Join(".", "test", "import")
+	stack, err := UpsertStackLocalSource(ctx, stackName, pDir)
+	require.NoError(t, err, "failed to initialize stack")
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
+
+	randomPluginVersion := "4.16.3"
+	err = stack.Workspace().InstallPlugin(ctx, "random", randomPluginVersion)
+	require.NoError(t, err, "failed to install plugin")
+	resourcesToImport := []*optimport.ImportResource{
+		{
+			Type: "random:index/randomPassword:RandomPassword",
+			ID:   "supersecret",
+			Name: "randomPassword",
+		},
+	}
+
+	importResult, err := stack.ImportResources(ctx,
+		optimport.Resources(resourcesToImport),
+		optimport.Protect(false),
+		optimport.GenerateCode(false))
+
+	require.NoError(t, err, "failed to import resources")
+	require.Equal(t, "succeeded", importResult.Summary.Result)
+	require.Empty(t, importResult.GeneratedCode)
+	_, err = stack.Destroy(ctx)
+	require.NoError(t, err, "failed to destroy stack")
+}
+
 func TestSupportsStackOutputs(t *testing.T) {
 	t.Parallel()
 

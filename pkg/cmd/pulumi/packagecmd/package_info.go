@@ -49,6 +49,7 @@ func newPackageInfoCmd() *cobra.Command {
 	var function string
 	var parameterArgs []string
 	var asExtension bool
+	var serverURL string
 	cmd := &cobra.Command{
 		Use:   "info",
 		Short: "Show information about a package",
@@ -91,7 +92,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 
 			loadPartial := func() (*schema.PartialPackage, error) {
 				return packages.PartialPackageFromSchemaSource(cmd.Context(), pkgWorkspace.Instance, pctx, args[0],
-					parameters, registry, env.Global(), 0 /* unbounded concurrency */)
+					parameters, registry, env.Global(), 0 /* unbounded concurrency */, serverURL)
 			}
 
 			if function != "" {
@@ -109,7 +110,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			}
 
 			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, args[0], parameters,
-				registry, env.Global(), 0 /* unbounded concurrency */, asExtension)
+				registry, env.Global(), 0 /* unbounded concurrency */, asExtension, serverURL)
 			if err != nil {
 				return err
 			}
@@ -136,6 +137,9 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 	cmd.Flags().StringVarP(&module, "module", "m", "", "Module name")
 	cmd.Flags().StringVarP(&resource, "resource", "r", "", "Resource name")
 	cmd.Flags().StringVarP(&function, "function", "f", "", "Function name")
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
 	packages.AddExtensionFlag(cmd, &parameterArgs, &asExtension)
 
 	return cmd

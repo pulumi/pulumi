@@ -519,6 +519,106 @@ enabled = true
 	})
 }
 
+func TestDoCmdResourceMissingResourceNotFound(t *testing.T) {
+	t.Parallel()
+
+	t.Run("delete empty outputs with id", func(t *testing.T) {
+		t.Parallel()
+		var deleted bool
+		cmd, _, _ := newDoResourceCommand(t, &testProvider{
+			spec: doResourceSpec(false),
+			MockProvider: plugin.MockProvider{
+				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+						ID:      req.ID,
+						Inputs:  resource.PropertyMap{},
+						Outputs: resource.PropertyMap{},
+					}}, nil
+				},
+				DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					assert.Equal(t, resource.ID("res-1"), req.ID)
+					deleted = true
+					return plugin.DeleteResponse{}, nil
+				},
+			},
+		})
+		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "delete", "res-1", "--yes"})
+		require.NoError(t, cmd.Execute())
+		assert.True(t, deleted)
+	})
+
+	notFoundResponses := map[string]plugin.ReadResponse{
+		"nil outputs": {},
+		"empty outputs": {ReadResult: plugin.ReadResult{
+			Inputs:  resource.PropertyMap{},
+			Outputs: resource.PropertyMap{},
+		}},
+		"blank id": {ReadResult: plugin.ReadResult{
+			Inputs:  resource.PropertyMap{"name": resource.NewProperty("stale")},
+			Outputs: resource.PropertyMap{"name": resource.NewProperty("stale")},
+		}},
+	}
+
+	for shape, response := range notFoundResponses {
+		t.Run("delete "+shape, func(t *testing.T) {
+			t.Parallel()
+			cmd, _, _ := newDoResourceCommand(t, &testProvider{
+				spec: doResourceSpec(false),
+				MockProvider: plugin.MockProvider{
+					ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+						return response, nil
+					},
+					DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+						require.Fail(t, "Delete should not be called for a missing resource")
+						return plugin.DeleteResponse{}, nil
+					},
+				},
+			})
+			cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "delete", "res-gone", "--yes"})
+			err := cmd.Execute()
+			assert.ErrorContains(t, err, `resource "res-gone" was not found`)
+		})
+
+		t.Run("read "+shape, func(t *testing.T) {
+			t.Parallel()
+			cmd, _, _ := newDoResourceCommand(t, &testProvider{
+				spec: doResourceSpec(false),
+				MockProvider: plugin.MockProvider{
+					ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+						return response, nil
+					},
+				},
+			})
+			cmd.SetArgs([]string{"azure:index:myResource", "read", "res-gone"})
+			err := cmd.Execute()
+			assert.ErrorContains(t, err, `resource "res-gone" was not found`)
+		})
+
+		t.Run("patch "+shape, func(t *testing.T) {
+			t.Parallel()
+			cmd, _, _ := newDoResourceCommand(t, &testProvider{
+				spec: doResourceSpec(false),
+				MockProvider: plugin.MockProvider{
+					ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+						return response, nil
+					},
+					UpdateF: func(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+						require.Fail(t, "Update should not be called for a missing resource")
+						return plugin.UpdateResponse{}, nil
+					},
+				},
+			})
+			inputFile := writeHCLFile(t, "patch.pcl", `enabled = true`)
+			cmd.SetArgs([]string{
+				"--stateless", "azure:index:myResource", "patch", "res-gone", "--yes",
+				"--input", "pcl", "--input-file", inputFile,
+			})
+			err := cmd.Execute()
+			assert.ErrorContains(t, err, `resource "res-gone" was not found`)
+		})
+	}
+}
+
 func TestDoCmdResourceList(t *testing.T) {
 	t.Parallel()
 
@@ -530,7 +630,7 @@ func TestDoCmdResourceList(t *testing.T) {
 			MockProvider: plugin.MockProvider{
 				ListF: func(ctx context.Context, req plugin.ListRequest) (*plugin.ListStream, error) {
 					calls = append(calls, req)
-					assert.Equal(t, "prod", req.Query["prefix"].StringValue())
+					assert.Equal(t, "prod", req.Query.Get("prefix").AsString())
 					return plugin.NewListStream([]plugin.ListResult{{ID: "1", Name: "one"}}, "next"), nil
 				},
 			},

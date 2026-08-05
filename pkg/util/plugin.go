@@ -37,12 +37,10 @@ type knownLanguageRuntime struct {
 // previously-bundled language runtimes off the CLI release tarball, they are added here so
 // the CLI continues to know where to find them.
 var knownLanguageRuntimes = map[string]knownLanguageRuntime{
-	// The HCL language runtime lives in pulumi-labs/pulumi-hcl rather than pulumi/pulumi-hcl,
-	// so we have to point downloads at that repo explicitly.
 	"hcl": {
-		PluginDownloadURL: "github://api.github.com/pulumi-labs/pulumi-hcl",
-		// renovate: datasource=github-releases depName=pulumi-labs/pulumi-hcl extractVersion=^v(?<version>.+)$
-		Version: semver.MustParse("0.12.0"),
+		PluginDownloadURL: "github://api.github.com/pulumi/pulumi-hcl",
+		// renovate: datasource=github-releases depName=pulumi/pulumi-hcl extractVersion=^v(?<version>.+)$
+		Version: semver.MustParse("0.13.0"),
 	},
 }
 
@@ -67,7 +65,7 @@ func SetKnownPluginDownloadURL(spec *workspace.PluginDescriptor) bool {
 		// name (pulumi-hcl) that doesn't match the default pulumi-converter-<name> convention. We
 		// encode both pieces of information here so the auto-install machinery resolves the right
 		// release artifact.
-		spec.PluginDownloadURL = "github://api.github.com/pulumi-labs/pulumi-hcl"
+		spec.PluginDownloadURL = "github://api.github.com/pulumi/pulumi-hcl"
 		return true
 	}
 
