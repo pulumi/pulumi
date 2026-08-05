@@ -65,12 +65,12 @@ type nativeStore struct {
 
 // runNativeOp applies the unlock prompt policy to one keychain operation.
 //
-// Silent operations run with securityd's dialogs suppressed process-wide and
-// under the usual deadline, so neither a locked keychain nor an ACL mismatch
-// can draw UI: both come back as errSecInteractionNotAllowed, classified as
-// Locked. Prompt-permitted operations run with dialogs enabled and no
-// deadline — the user may take as long as they need to type a password —
-// after announcing the wait when the keychain is known to be locked.
+// Silent operations suppress securityd's dialogs even though the precheck
+// just read the lock state: the keychain can lock in between (sleep,
+// inactivity timer, screen lock), and suppression makes silence a property of
+// the call rather than an inference from a check that has already gone stale.
+// Prompt-permitted operations run with dialogs enabled and no deadline, since
+// the user may be typing a password.
 func runNativeOp[T any](s *nativeStore, op func() (T, error)) (T, error) {
 	if _, err := keychainPrecheck(s.allowPrompt); err != nil {
 		var zero T
