@@ -849,7 +849,9 @@ func (b *diyBackend) CreateStack(
 	}
 
 	stack := newStack(diyStackRef, b)
-	b.d.Infof(diag.Message("", "Created stack '%s'"), stack.Ref())
+	if opts == nil || !opts.Quiet {
+		b.d.Infof(diag.Message("", "Created stack '%s'"), stack.Ref())
+	}
 
 	return stack, nil
 }
