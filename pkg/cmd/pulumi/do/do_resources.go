@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -220,18 +221,20 @@ func walkBody(body *hclv2syntax.Body, visit hclv2syntax.VisitFunc) {
 // runs with DisableFlagParsing, so cobra wouldn't otherwise handle --help or arg validation for
 // this subcommand.
 func newShowResourcesCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "show-resources",
 		Short: "Show the identifiers `pulumi do` will auto-assign to resources in the current stack",
 		Long: "Show the identifiers `pulumi do` will auto-assign to resources in the current stack.\n\n" +
 			"Each identifier can be used in a --input-file expression in place of the resource's " +
 			"URN, in whatever expression syntax the chosen input format supports. Entries in " +
 			"--resources-file take precedence over the auto-assigned identifiers shown here.",
-		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runShowResources(cmd, ws, lm)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+	return cmd
 }
 
 // runShowResources opens the currently-selected stack, computes the auto-name map and prints it
