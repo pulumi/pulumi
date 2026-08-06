@@ -68,7 +68,7 @@ func TestDoCmdNoArgsPrintsHelp(t *testing.T) {
 			t.Parallel()
 
 			mlm := &cmdBackend.MockLoginManager{}
-			mws := &pkgWorkspace.MockContext{}
+			mws := newTestWorkspace(t)
 
 			var stdout bytes.Buffer
 			cmd := NewDoCmd(mlm, mws, panicLoader, testHost, panicLoadConverterPlugin, nil)
@@ -121,7 +121,7 @@ func TestDoCmdWithPkgFlagPrintsHelp(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws@4.1", source)
 		spec := schema.PackageSpec{
@@ -187,7 +187,7 @@ func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws", source)
 		spec := schema.PackageSpec{
@@ -250,7 +250,7 @@ func TestDoCmdWithPkgArgPrintsHelpWithModuleFormat(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws", source)
 		spec := schema.PackageSpec{
@@ -332,7 +332,7 @@ func TestDoCmdWithPkgArgPrintsHelpSkipsMethods(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws", source)
 		// Two functions: one is a regular invoke, the other is the implementation of a method on myResource.
@@ -406,7 +406,7 @@ func TestDoCmdWithPkgArgPrintsHelpUnderRoot(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws@4.1", source)
 		spec := schema.PackageSpec{
@@ -478,7 +478,7 @@ func TestDoCmdWithModuleArgPrintsHelp(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws@4.1", source)
 		spec := schema.PackageSpec{
@@ -529,7 +529,7 @@ func TestDoCmdWithNestedModulesPrintsHelp(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "pkg", source)
 		spec := schema.PackageSpec{
@@ -709,7 +709,7 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 				t.Parallel()
 
 				mlm := &cmdBackend.MockLoginManager{}
-				mws := &pkgWorkspace.MockContext{}
+				mws := newTestWorkspace(t)
 
 				var stdout bytes.Buffer
 				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
@@ -730,7 +730,7 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 					t.Parallel()
 
 					mlm := &cmdBackend.MockLoginManager{}
-					mws := &pkgWorkspace.MockContext{}
+					mws := newTestWorkspace(t)
 
 					var stdout bytes.Buffer
 					cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
@@ -811,7 +811,7 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 				t.Parallel()
 
 				mlm := &cmdBackend.MockLoginManager{}
-				mws := &pkgWorkspace.MockContext{}
+				mws := newTestWorkspace(t)
 
 				var stdout bytes.Buffer
 				cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
@@ -836,7 +836,7 @@ func TestDoCmdParameterizedModuleResolves(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "terraform-provider", source)
 		spec := schema.PackageSpec{
@@ -909,7 +909,7 @@ func TestCurrentStackIdentity(t *testing.T) {
 	for _, tc := range table {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			org, stk := currentStackIdentity(tc.ws)
+			org, stk := currentStackIdentity(tc.ws, false, "")
 			assert.Equal(t, tc.wantOrg, org)
 			assert.Equal(t, tc.wantStk, stk)
 		})

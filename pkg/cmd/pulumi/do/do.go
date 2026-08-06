@@ -149,6 +149,18 @@ func NewDoCmd(
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return nil, nil, fmt.Errorf("read project: %w", err)
 		}
+		usedGlobalProjectFallback := false
+		// Fall back to the auto-materialized global project under $PULUMI_HOME so that stateful
+		// `pulumi do` subcommands work without the user having to run `pulumi new` / `pulumi
+		// stack init` first. ensureGlobalProject only touches the filesystem; the matching
+		// `default` stack is created lazily by the stateful command path.
+		if proj == nil {
+			proj, root, err = ensureGlobalProject()
+			if err != nil {
+				return nil, nil, err
+			}
+			usedGlobalProjectFallback = true
+		}
 		// If we're inside a Pulumi project, the working directory the plugin host runs in should be
 		// the project's pwd, not whatever the user happened to invoke `pulumi` from. Snapshot that
 		// here so plugin.NewContext / pluginFromSource see the project-relative path; the rest of
@@ -286,6 +298,7 @@ func NewDoCmd(
 			wd:                wd,
 			proj:              proj,
 			root:              root,
+			globalFallback:    usedGlobalProjectFallback,
 			ws:                ws,
 			lm:                lm,
 			diagFwd:           diagFwd,
@@ -482,8 +495,14 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 //
 // Errors reading the workspace are swallowed: the stack identity is best-effort context for PCL
 // evaluation, not a hard requirement, and `do` must stay usable when no workspace is configured.
-func currentStackIdentity(ws pkgWorkspace.Context) (organization, stack string) {
-	w, err := ws.New("")
+func currentStackIdentity(ws pkgWorkspace.Context, globalFallback bool, root string) (organization, stack string) {
+	dir := ""
+	// The global fallback project lives outside the process cwd; read its workspace settings
+	// directly so PCL sees the selected stack the same as it would in a real project.
+	if globalFallback {
+		dir = root
+	}
+	w, err := ws.New(dir)
 	if err != nil {
 		return "", ""
 	}
@@ -527,6 +546,9 @@ type packageCommand struct {
 	wd   string
 	proj *workspace.Project
 	root string
+	// globalFallback is true only when buildSubcommand synthesized pc.proj from
+	// $PULUMI_HOME/default-global-project because no real project was found.
+	globalFallback bool
 
 	// ws / lm let configureProvider open the current stack's backend when --provider is set so it
 	// can read the referenced provider resource's Inputs. Plumbed from NewDoCmd.
@@ -552,7 +574,7 @@ func (pc *packageCommand) evalContext() functionEvalContext {
 		// When a stack is selected in the workspace, expose its organization and short name to the
 		// PCL runtime so input files can reference pulumi.organization / pulumi.stack the same way
 		// a program would.
-		ec.Organization, ec.Stack = currentStackIdentity(pc.ws)
+		ec.Organization, ec.Stack = currentStackIdentity(pc.ws, pc.globalFallback, pc.root)
 	}
 	return ec
 }
