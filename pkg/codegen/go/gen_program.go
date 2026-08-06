@@ -1257,8 +1257,13 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 
 	// Extract the command expressions from the Command tuple.
 	var cmdExprs []model.Expression
+	var cmdTemps []any
 	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
-		cmdExprs = tuple.Expressions
+		for _, expr := range tuple.Expressions {
+			expr, temps := g.lowerExpression(expr, model.StringType)
+			cmdExprs = append(cmdExprs, expr)
+			cmdTemps = append(cmdTemps, temps...)
+		}
 	}
 
 	if h.Kind == pcl.HookKindError {
@@ -1267,12 +1272,11 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 		g.Fgenf(w, "%s%s, err := ctx.RegisterErrorHook(%q, func(args *pulumi.ErrorHookArgs) (bool, error) {\n",
 			g.Indent, varName, hookName)
 		g.Indented(func() {
+			g.genTempsMultiReturn(w, cmdTemps, "bool")
 			if len(cmdExprs) > 0 {
-				g.Fgenf(w, "%sreturn exec.Command(", g.Indent)
-				g.genHookCommandArg(w, cmdExprs[0])
+				g.Fgenf(w, "%sreturn exec.Command(%v", g.Indent, cmdExprs[0])
 				for _, arg := range cmdExprs[1:] {
-					g.Fgenf(w, ", ")
-					g.genHookCommandArg(w, arg)
+					g.Fgenf(w, ", %v", arg)
 				}
 				g.Fgenf(w, ").Run() == nil, nil\n")
 			} else {
@@ -1296,12 +1300,11 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 	g.Fgenf(w, "%s%s, err := ctx.RegisterResourceHook(%q, func(args *pulumi.ResourceHookArgs) error {\n",
 		g.Indent, varName, hookName)
 	g.Indented(func() {
+		g.genTemps(w, cmdTemps)
 		if len(cmdExprs) > 0 {
-			g.Fgenf(w, "%sreturn exec.Command(", g.Indent)
-			g.genHookCommandArg(w, cmdExprs[0])
+			g.Fgenf(w, "%sreturn exec.Command(%v", g.Indent, cmdExprs[0])
 			for _, arg := range cmdExprs[1:] {
-				g.Fgenf(w, ", ")
-				g.genHookCommandArg(w, arg)
+				g.Fgenf(w, ", %v", arg)
 			}
 			g.Fgenf(w, ").Run()\n")
 		} else {
@@ -1335,14 +1338,6 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 	})
 	g.Fgenf(w, "%s}\n", g.Indent)
 	g.isErrAssigned = true
-}
-
-func (g *generator) genHookCommandArg(w io.Writer, expr model.Expression) {
-	if model.StringType.AssignableFrom(expr.Type()) {
-		g.Fgenf(w, "%v", expr)
-		return
-	}
-	g.Fgenf(w, "%v.(string)", expr)
 }
 
 var resourceType = model.NewOpaqueType("pulumi.Resource")
