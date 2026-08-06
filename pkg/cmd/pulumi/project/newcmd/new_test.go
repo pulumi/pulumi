@@ -901,7 +901,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			remote:   true,
 		},
 		{
-			answers:  []any{"Basic Pulumi Program", "Python"},
+			answers:  []any{"Basic Pulumi Program", "Python", confirmYes},
 			expected: "python",
 		},
 	}
