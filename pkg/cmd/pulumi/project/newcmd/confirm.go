@@ -15,6 +15,7 @@
 package newcmd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -29,6 +30,11 @@ const (
 	confirmYes    = "Yes, create the project"
 	confirmChange = "Change these values"
 )
+
+// errConfirmationInterrupted is the friendly error surfaced when Ctrl-C is pressed at the guided
+// confirmation select, mirroring declinedToChoose's mapping of the same interrupt at template
+// selection (see errNoTemplateSelected in template.go).
+var errConfirmationInterrupted = errors.New("no project created; please use `pulumi new` to start again")
 
 // printFields renders aligned label/value rows: label column padded to the widest
 // label, a colon, two spaces, then the value.

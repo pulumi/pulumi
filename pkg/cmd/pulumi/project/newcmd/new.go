@@ -29,6 +29,7 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -830,6 +831,9 @@ func confirmGuidedDefaults(
 
 	accepted, err := confirmDefaults(fields, configRows, opts, args.selectOne)
 	if err != nil {
+		if errors.Is(err, terminal.InterruptErr) {
+			return nil, errConfirmationInterrupted
+		}
 		return nil, err
 	}
 	result := &confirmedNew{

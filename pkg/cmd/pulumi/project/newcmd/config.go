@@ -243,7 +243,7 @@ func promptForConfig(
 			continue
 		}
 
-		templateConfigValue := parsedTemplateConfig[k]
+		tcv := parsedTemplateConfig[k]
 
 		// Prepare a default value.
 		var defaultValue string
@@ -260,16 +260,16 @@ func promptForConfig(
 			}
 		}
 		if defaultValue == "" {
-			defaultValue = templateConfigValue.Default
+			defaultValue = tcv.Default
 		}
 		if !secret {
-			secret = templateConfigValue.Secret
+			secret = tcv.Secret
 		}
 
 		// Prepare the prompt.
 		promptText := cmdConfig.PrettyKey(k)
-		if templateConfigValue.Description != "" {
-			promptText = templateConfigValue.Description + " (" + promptText + ")"
+		if tcv.Description != "" {
+			promptText = tcv.Description + " (" + promptText + ")"
 		}
 
 		// Prompt.
