@@ -472,6 +472,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					// that input interface. Wrapping it in the value constructor would not compile.
 					g.Fgenf(w, "%.v", from)
 				} else if !isFromOutput && model.ResolveOutputs(fromType).Equals(model.DynamicType) {
+					if isOutput && to.Equals(model.DynamicType) {
+						typeName = "pulumi.AnyOutput"
+					}
 					g.Fgenf(w, "%.v.(%s)", from, typeName)
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
