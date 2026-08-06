@@ -262,7 +262,10 @@ func TestDestroyStackRef_LocalNonProject_NewEnv(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	e.Env = []string{"PULUMI_DIY_BACKEND_LEGACY_LAYOUT=true"}
+	e.Env = []string{
+		"PULUMI_DIY_BACKEND_LEGACY_LAYOUT=true",
+		"DIY_BACKEND_IGNORE_DEPRECATION_ERROR=true",
+	}
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	testDestroyStackRef(e, "")
 }
@@ -273,7 +276,10 @@ func TestDestroyStackRef_LocalNonProject_OldEnv(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	e.Env = []string{"PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT=true"}
+	e.Env = []string{
+		"PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT=true",
+		"DIY_BACKEND_IGNORE_DEPRECATION_ERROR=true",
+	}
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	testDestroyStackRef(e, "")
 }
