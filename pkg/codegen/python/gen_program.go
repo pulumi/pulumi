@@ -1193,8 +1193,13 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 	hookName := h.LogicalName()
 
 	var cmdExprs []model.Expression
+	var cmdTemps []*quoteTemp
 	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
-		cmdExprs = tuple.Expressions
+		lowered, temps := g.lowerExpression(tuple, tuple.Type())
+		cmdTemps = temps
+		if loweredTuple, ok := lowered.(*model.TupleConsExpression); ok {
+			cmdExprs = loweredTuple.Expressions
+		}
 	}
 
 	if h.Kind == pcl.HookKindError {
@@ -1202,6 +1207,7 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 		// only if the command exits successfully.
 		g.Fgenf(w, "%sdef %s(args):\n", g.Indent, fnName)
 		g.Indented(func() {
+			g.genTemps(w, cmdTemps)
 			g.Fgenf(w, "%sresult = subprocess.run([", g.Indent)
 			for i, arg := range cmdExprs {
 				if i > 0 {
@@ -1218,6 +1224,7 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 
 	g.Fgenf(w, "%sdef %s(args):\n", g.Indent, fnName)
 	g.Indented(func() {
+		g.genTemps(w, cmdTemps)
 		g.Fgenf(w, "%ssubprocess.run([", g.Indent)
 		for i, arg := range cmdExprs {
 			if i > 0 {

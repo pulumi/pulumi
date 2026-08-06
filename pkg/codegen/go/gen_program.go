@@ -1268,9 +1268,11 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 			g.Indent, varName, hookName)
 		g.Indented(func() {
 			if len(cmdExprs) > 0 {
-				g.Fgenf(w, "%sreturn exec.Command(%v", g.Indent, cmdExprs[0])
+				g.Fgenf(w, "%sreturn exec.Command(", g.Indent)
+				g.genHookCommandArg(w, cmdExprs[0])
 				for _, arg := range cmdExprs[1:] {
-					g.Fgenf(w, ", %v", arg)
+					g.Fgenf(w, ", ")
+					g.genHookCommandArg(w, arg)
 				}
 				g.Fgenf(w, ").Run() == nil, nil\n")
 			} else {
@@ -1295,9 +1297,11 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 		g.Indent, varName, hookName)
 	g.Indented(func() {
 		if len(cmdExprs) > 0 {
-			g.Fgenf(w, "%sreturn exec.Command(%v", g.Indent, cmdExprs[0])
+			g.Fgenf(w, "%sreturn exec.Command(", g.Indent)
+			g.genHookCommandArg(w, cmdExprs[0])
 			for _, arg := range cmdExprs[1:] {
-				g.Fgenf(w, ", %v", arg)
+				g.Fgenf(w, ", ")
+				g.genHookCommandArg(w, arg)
 			}
 			g.Fgenf(w, ").Run()\n")
 		} else {
@@ -1331,6 +1335,14 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 	})
 	g.Fgenf(w, "%s}\n", g.Indent)
 	g.isErrAssigned = true
+}
+
+func (g *generator) genHookCommandArg(w io.Writer, expr model.Expression) {
+	if model.StringType.AssignableFrom(expr.Type()) {
+		g.Fgenf(w, "%v", expr)
+		return
+	}
+	g.Fgenf(w, "%v.(string)", expr)
 }
 
 var resourceType = model.NewOpaqueType("pulumi.Resource")
