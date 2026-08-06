@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"sync"
 
@@ -79,7 +80,13 @@ func (s *callbackServer) RegisterCallback(function callbackFunction) (*pulumirpc
 
 func (s *callbackServer) Invoke(
 	ctx context.Context, req *pulumirpc.CallbackInvokeRequest,
-) (*pulumirpc.CallbackInvokeResponse, error) {
+) (_ *pulumirpc.CallbackInvokeResponse, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("callback panicked: %v\n%s", r, debug.Stack())
+		}
+	}()
+
 	s.functionsLock.RLock()
 	function, ok := s.functions[req.Token]
 	s.functionsLock.RUnlock()
