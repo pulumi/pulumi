@@ -63,6 +63,16 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	return expr, quotes
 }
 
+func (g *generator) lowerHookCommandExpression(expr model.Expression) (model.Expression, []*quoteTemp) {
+	expr, convertDiags := pcl.RewriteConversions(expr, model.StringType)
+	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
+
+	g.diagnostics = g.diagnostics.Extend(convertDiags)
+	g.diagnostics = g.diagnostics.Extend(quoteDiags)
+
+	return expr, quotes
+}
+
 func (g *generator) GetPrecedence(expr model.Expression) int {
 	// Precedence is taken from https://docs.python.org/3/reference/expressions.html#operator-precedence.
 	switch expr := expr.(type) {

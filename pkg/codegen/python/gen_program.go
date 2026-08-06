@@ -1195,10 +1195,10 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 	var cmdExprs []model.Expression
 	var cmdTemps []*quoteTemp
 	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
-		lowered, temps := g.lowerExpression(tuple, tuple.Type())
-		cmdTemps = temps
-		if loweredTuple, ok := lowered.(*model.TupleConsExpression); ok {
-			cmdExprs = loweredTuple.Expressions
+		for _, expr := range tuple.Expressions {
+			expr, temps := g.lowerHookCommandExpression(expr)
+			cmdExprs = append(cmdExprs, expr)
+			cmdTemps = append(cmdTemps, temps...)
 		}
 	}
 
