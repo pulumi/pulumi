@@ -187,11 +187,10 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 		// Dial the resource monitor and ask it for the deployment context the interpreter needs (project,
 		// stack, organization). The interpreter wires this into the eval context so `pulumi.project` etc.
 		// resolve to the same values the main program sees.
-		dialOpts := []grpc.DialOption{
+		dialOpts := append(rpcutil.TracingInterceptorDialOptions(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
-		}
-		dialOpts = append(dialOpts, rpcutil.TracingInterceptorDialOptions()...)
+		)
 		conn, err := grpc.NewClient(resourceMonitorTarget, dialOpts...)
 		if err != nil {
 			fail(fmt.Errorf("connect to resource monitor: %w", err))

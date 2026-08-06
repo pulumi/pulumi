@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2"
@@ -95,11 +96,11 @@ func invokeTokenArgument(args []model.Expression) (
 // when present and otherwise loading the package's default version. The default version is loaded
 // (rather than failing) because the concrete version may not yet be known; see the note in
 // binder_resource.go.
-func (b *binder) loadPackageSchema(pkg string) (*packageSchema, error) {
+func (b *binder) loadPackageSchema(ctx context.Context, pkg string) (*packageSchema, error) {
 	if descriptor, ok := b.packageDescriptors[pkg]; ok {
-		return b.options.packageCache.loadPackageSchemaFromDescriptor(b.ctx, b.options.loader, descriptor)
+		return b.options.packageCache.loadPackageSchemaFromDescriptor(ctx, b.options.loader, descriptor)
 	}
-	return b.options.packageCache.loadPackageSchema(b.ctx, b.options.loader, pkg, "", "")
+	return b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
 }
 
 // annotateObjectProperties annotates the properties of an object expression with the
@@ -158,7 +159,9 @@ func annotateObjectProperties(modelType model.Type, schemaType schema.Type) {
 	}
 }
 
-func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+func (b *binder) bindInvokeSignature(
+	ctx context.Context, args []model.Expression,
+) (model.StaticFunctionSignature, hcl.Diagnostics) {
 	if len(args) < 1 {
 		return b.zeroSignature(), nil
 	}
@@ -176,9 +179,9 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 	var pkgSchema *packageSchema
 	var err error
 	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
-		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.ctx, b.options.loader, packageDescriptor)
+		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(ctx, b.options.loader, packageDescriptor)
 	} else {
-		pkgSchema, err = b.options.packageCache.loadPackageSchema(b.ctx, b.options.loader, pkg, "", "")
+		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
 	}
 	if err != nil {
 		if b.options.skipInvokeTypecheck {
