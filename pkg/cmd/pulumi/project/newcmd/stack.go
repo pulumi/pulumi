@@ -66,45 +66,73 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 	contract.Requiref(root != "", "root", "must not be empty")
 
 	if stack != "" {
-		stackName, err := buildStackName(ctx, b, stack)
-		if err != nil {
-			return nil, err
-		}
-		s, err := cmdStack.InitStack(
-			ctx, sink, ws, b, stackName, root, setCurrent, secretsProvider, useRemoteConfig, configFile)
-		if err != nil {
-			return nil, err
-		}
-		return s, nil
+		return createStack(ctx, sink, ws, b, stack, root, setCurrent, secretsProvider,
+			useRemoteConfig, configFile, false)
 	}
 
+	stackName, err := promptStackName(b, prompt, yes, opts)
+	if err != nil {
+		return nil, err
+	}
+	s, _, err := createStackWithRetry(ctx, sink, ws, b, prompt, stackName, root, setCurrent,
+		yes, opts, secretsProvider, useRemoteConfig, configFile, false)
+	return s, err
+}
+
+// promptStackName prints the org blurb and prompts for a stack name, defaulting to "dev".
+func promptStackName(
+	b backend.Backend, prompt promptForValueFunc, yes bool, opts display.Options,
+) (string, error) {
 	if b.SupportsOrganizations() {
 		// Helper used by multiple commands; uses process stdout.
 		fmt.Print("Please enter your desired stack name.\n" + //nolint:forbidigo
 			"To create a stack in an organization, " +
 			"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
 	}
+	return prompt(yes, "Stack name", "dev", false, b.ValidateStackName, opts)
+}
 
+// createStack resolves the name against the default org and creates the stack.
+func createStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, b backend.Backend,
+	stackName, root string, setCurrent bool, secretsProvider string, useRemoteConfig bool,
+	configFile string, quiet bool,
+) (backend.Stack, error) {
+	formatted, err := buildStackName(ctx, b, stackName)
+	if err != nil {
+		return nil, err
+	}
+	return cmdStack.InitStack(
+		ctx, sink, ws, b, formatted, root, setCurrent, secretsProvider, useRemoteConfig, configFile, quiet)
+}
+
+// createStackWithRetry creates the stack, re-prompting for a new name when creation fails.
+// It returns the stack and the org-resolved name it was created under. A buildStackName
+// failure stays fatal; only creation itself earns a retry.
+func createStackWithRetry(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
+	b backend.Backend, prompt promptForValueFunc, stackName, root string, setCurrent bool,
+	yes bool, opts display.Options, secretsProvider string, useRemoteConfig bool,
+	configFile string, quiet bool,
+) (backend.Stack, string, error) {
 	for {
-		stackName, err := prompt(yes, "Stack name", "dev", false, b.ValidateStackName, opts)
+		formatted, err := buildStackName(ctx, b, stackName)
 		if err != nil {
-			return nil, err
-		}
-		formattedStackName, err := buildStackName(ctx, b, stackName)
-		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		s, err := cmdStack.InitStack(
-			ctx, sink, ws, b, formattedStackName, root, setCurrent, secretsProvider, useRemoteConfig, configFile)
+			ctx, sink, ws, b, formatted, root, setCurrent, secretsProvider, useRemoteConfig, configFile, quiet)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
 				fmt.Printf("Sorry, could not create stack '%s': %v\n", stackName, err) //nolint:forbidigo
+				stackName, err = prompt(yes, "Stack name", "dev", false, b.ValidateStackName, opts)
+				if err != nil {
+					return nil, "", err
+				}
 				continue
 			}
-			return nil, err
+			return nil, "", err
 		}
-		return s, nil
+		return s, formatted, nil
 	}
 }
 

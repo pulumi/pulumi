@@ -15,10 +15,13 @@
 package newcmd
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -300,4 +303,58 @@ func TestSetFail(t *testing.T) {
 			assert.Error(t, err)
 		})
 	}
+}
+
+func TestPromptTemplateConfigSettlesWithoutPrompting(t *testing.T) {
+	t.Parallel()
+
+	prompts := 0
+	prompt := func(yes bool, valueType, defaultValue string, secret bool,
+		isValidFn func(string) error, opts display.Options,
+	) (string, error) {
+		prompts++
+		return "typed:" + valueType, nil
+	}
+
+	flagKey := config.MustMakeKey("gcp", "zone")
+	var buf bytes.Buffer
+	values, err := promptTemplateConfig(&buf, prompt, map[string]workspace.ProjectTemplateConfigValue{
+		"aws:region":  {Description: "The AWS region to deploy into", Default: "us-east-1"},
+		"gcp:zone":    {Description: "The zone"},
+		"gcp:project": {Description: "The Google Cloud project to deploy into"},
+		"auth0:token": {Description: "The token", Secret: true},
+	}, config.Map{flagKey: config.NewValue("z")}, display.Options{})
+	require.NoError(t, err)
+
+	byKey := map[string]templateConfigValue{}
+	for _, v := range values {
+		byKey[v.key.String()] = v
+	}
+	assert.Equal(t, "us-east-1", byKey["aws:region"].value, "a default settles silently")
+	assert.Equal(t, "z", byKey["gcp:zone"].value, "a flag settles silently")
+	assert.Equal(t,
+		"typed:The Google Cloud project to deploy into (gcp:project)",
+		byKey["gcp:project"].value, "no default means a prompt, with promptForConfig's prompt text")
+	assert.True(t, byKey["auth0:token"].secret)
+	assert.Equal(t, 2, prompts, "only the two no-default keys prompt")
+	assert.Equal(t, "\n", buf.String(), "one blank line before the first prompt, even with two prompts")
+}
+
+func TestPromptTemplateConfigOrdersKeys(t *testing.T) {
+	t.Parallel()
+
+	prompt := func(yes bool, valueType, defaultValue string, secret bool,
+		isValidFn func(string) error, opts display.Options,
+	) (string, error) {
+		return "v", nil
+	}
+	var buf bytes.Buffer
+	values, err := promptTemplateConfig(&buf, prompt, map[string]workspace.ProjectTemplateConfigValue{
+		"b:two": {Default: "2"}, "a:one": {Default: "1"},
+	}, nil, display.Options{})
+	require.NoError(t, err)
+	require.Len(t, values, 2)
+	assert.Equal(t, "a:one", values[0].key.String())
+	assert.Equal(t, "b:two", values[1].key.String())
+	assert.Empty(t, buf.String(), "no prompts means no blank line")
 }

@@ -2141,3 +2141,26 @@ func TestJSONCheckpointIsCompact(t *testing.T) {
 	require.NoError(t, json.Compact(&compact, data))
 	assert.Equal(t, compact.String(), string(data))
 }
+
+//nolint:paralleltest // uses process-global state
+func TestCreateStackQuiet(t *testing.T) {
+	for _, quiet := range []bool{false, true} {
+		t.Run(fmt.Sprintf("quiet=%v", quiet), func(t *testing.T) {
+			tmpDir := t.TempDir()
+			ctx := t.Context()
+			var buf bytes.Buffer
+			sink := diag.DefaultSink(&buf, io.Discard, diag.FormatOptions{Color: colors.Never})
+			b, err := New(ctx, sink, "file://"+filepath.ToSlash(tmpDir), &workspace.Project{Name: "testproj"})
+			require.NoError(t, err)
+			ref, err := b.ParseStackReference("quietstack")
+			require.NoError(t, err)
+			_, err = b.CreateStack(ctx, ref, "", nil, &backend.CreateStackOptions{Quiet: quiet})
+			require.NoError(t, err)
+			if quiet {
+				assert.NotContains(t, buf.String(), "Created stack")
+			} else {
+				assert.Contains(t, buf.String(), "Created stack 'quietstack'")
+			}
+		})
+	}
+}

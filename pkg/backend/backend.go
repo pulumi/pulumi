@@ -481,6 +481,10 @@ type CreateStackOptions struct {
 	// Config is the optional cloud stack config to use instead of reading from a local file on disk.
 	// This is only used by the Service backend.
 	Config *apitype.StackConfig
+
+	// Quiet suppresses the backend's own "Created stack" announcement so the
+	// caller can own the creation summary.
+	Quiet bool
 }
 
 // TarReaderCloser is a [tar.Reader] that owns it's backing memory.

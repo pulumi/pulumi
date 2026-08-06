@@ -17,6 +17,7 @@ package newcmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"maps"
 	"sort"
 	"strings"
@@ -242,7 +243,7 @@ func promptForConfig(
 			continue
 		}
 
-		templateConfigValue := parsedTemplateConfig[k]
+		tcv := parsedTemplateConfig[k]
 
 		// Prepare a default value.
 		var defaultValue string
@@ -259,16 +260,16 @@ func promptForConfig(
 			}
 		}
 		if defaultValue == "" {
-			defaultValue = templateConfigValue.Default
+			defaultValue = tcv.Default
 		}
 		if !secret {
-			secret = templateConfigValue.Secret
+			secret = tcv.Secret
 		}
 
 		// Prepare the prompt.
 		promptText := cmdConfig.PrettyKey(k)
-		if templateConfigValue.Description != "" {
-			promptText = templateConfigValue.Description + " (" + promptText + ")"
+		if tcv.Description != "" {
+			promptText = tcv.Description + " (" + promptText + ")"
 		}
 
 		// Prompt.
@@ -351,4 +352,137 @@ func SaveConfig(
 	maps.Copy(ps.Config, c)
 
 	return cmdStack.SaveProjectStack(ctx, stack, ps, configFile)
+}
+
+// templateConfigValue is one template config entry, settled by a flag, a default,
+// or a prompt, held as plaintext until the stack exists to encrypt against.
+type templateConfigValue struct {
+	key        config.Key
+	value      string
+	secret     bool
+	promptText string // promptForConfig's prompt text: "Description (pretty:key)"
+	// flagSettled is true when value came from --config rather than a default or a
+	// prompt: like the sequential path, a flag-settled key is never re-prompted, on
+	// pain of the typed answer being silently discarded in favor of the flag's value.
+	flagSettled bool
+}
+
+// promptTemplateConfig settles every config value a template declares: a command-line
+// value or template default is taken silently; a key with neither is prompted for,
+// with one blank line printed to w before the first question. Values stay plaintext
+// so they can be collected before the stack exists.
+func promptTemplateConfig(
+	w io.Writer,
+	prompt promptForValueFunc,
+	templateConfig map[string]workspace.ProjectTemplateConfigValue,
+	commandLineConfig config.Map,
+	opts display.Options,
+) ([]templateConfigValue, error) {
+	parsed := make(map[config.Key]workspace.ProjectTemplateConfigValue, len(templateConfig))
+	for k, v := range templateConfig {
+		parsedKey, err := cmdConfig.ParseConfigKey(pkgWorkspace.Instance, k, false)
+		if err != nil {
+			return nil, err
+		}
+		parsed[parsedKey] = v
+	}
+
+	var keys config.KeyArray
+	for k := range parsed {
+		keys = append(keys, k)
+	}
+	sort.Sort(keys)
+
+	asked := false
+	values := make([]templateConfigValue, 0, len(keys))
+	for _, k := range keys {
+		tcv := parsed[k]
+		promptText := cmdConfig.PrettyKey(k)
+		if tcv.Description != "" {
+			promptText = tcv.Description + " (" + promptText + ")"
+		}
+		if flagValue, ok := commandLineConfig[k]; ok {
+			plain, err := flagValue.Value(config.NopDecrypter)
+			if err != nil {
+				return nil, err
+			}
+			values = append(values, templateConfigValue{
+				key: k, value: plain, secret: tcv.Secret, promptText: promptText, flagSettled: true,
+			})
+			continue
+		}
+		value := tcv.Default
+		if value == "" {
+			if !asked {
+				fmt.Fprintln(w)
+				asked = true
+			}
+			v, err := prompt(false /*yes*/, promptText, "", tcv.Secret, nil, opts)
+			if err != nil {
+				return nil, err
+			}
+			value = v
+		}
+		values = append(values, templateConfigValue{
+			key: k, value: value, secret: tcv.Secret, promptText: promptText,
+		})
+	}
+	return values, nil
+}
+
+// saveTemplateConfig encrypts secret values against the new stack's secrets manager and
+// saves the collected config — promptForConfig's save half, run once the stack exists.
+// commandLineConfig is saved as-is (original structure, e.g. a --config-path value, and
+// already-secure values preserved): this mirrors promptForConfig's own command-line pass,
+// so a key wins outright whether or not the template declares it, and its shape survives
+// intact rather than going through the flattened plaintext values collects.
+func saveTemplateConfig(
+	ctx context.Context, sink diag.Sink, ssml cmdStack.SecretsManagerLoader, ws pkgWorkspace.Context,
+	project *workspace.Project, s backend.Stack, values []templateConfigValue, commandLineConfig config.Map,
+	configFile string,
+) error {
+	if len(values) == 0 && len(commandLineConfig) == 0 {
+		return nil
+	}
+
+	ps, err := cmdStack.LoadProjectStack(ctx, sink, project, s, configFile)
+	if err != nil {
+		return fmt.Errorf("loading stack config: %w", err)
+	}
+	sm, state, err := ssml.GetSecretsManager(ctx, s, ps)
+	if err != nil {
+		return err
+	}
+	if state != cmdStack.SecretsManagerUnchanged {
+		if err = cmdStack.SaveProjectStack(ctx, s, ps, configFile); err != nil {
+			return fmt.Errorf("saving stack config: %w", err)
+		}
+	}
+	encrypter := sm.Encrypter()
+
+	c := make(config.Map, len(values)+len(commandLineConfig))
+	maps.Copy(c, commandLineConfig)
+	for _, v := range values {
+		if _, ok := c[v.key]; ok {
+			// A command-line value for this key already won.
+			continue
+		}
+		if v.value == "" {
+			// Don't add empty values to the config.
+			continue
+		}
+		if v.secret {
+			enc, err := encrypter.EncryptValue(ctx, v.value)
+			if err != nil {
+				return err
+			}
+			c[v.key] = config.NewSecureValue(enc)
+		} else {
+			c[v.key] = config.NewValue(v.value)
+		}
+	}
+	if len(c) == 0 {
+		return nil
+	}
+	return SaveConfig(ctx, sink, ws, s, c, configFile)
 }

@@ -29,6 +29,7 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -37,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -50,6 +52,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -69,6 +72,16 @@ type languageTemplateFunc func(ctx context.Context, language plugin.LanguageRunt
 
 const aiRetiredMessage = "Pulumi AI project generation has been retired. Run 'pulumi new' to choose a template, " +
 	"or 'pulumi neo -p \"prompt\"'."
+
+// confirmedNew carries the values the confirmation settled, ready to apply without
+// further prompting. nil means the confirmation path did not run.
+type confirmedNew struct {
+	name, description string
+	stackName         string // org-resolved; empty when no stack row was shown
+	config            []templateConfigValue
+	commandLineConfig config.Map // the raw --config values; saved as-is, structure and all
+	showStack         bool
+}
 
 type newArgs struct {
 	configArray          []string
@@ -274,56 +287,58 @@ func runNew(ctx context.Context, args newArgs) error {
 		args.name = projectName
 	}
 
-	// Show instructions, if we're going to show at least one prompt.
-	hasAtLeastOnePrompt := (args.name == "") || (args.description == "") || (!args.generateOnly && args.stack == "")
-	if !args.yes && hasAtLeastOnePrompt {
-		fmt.Fprintln(args.stdout, "This command will walk you through creating a new Pulumi project.")
-		fmt.Fprintln(args.stdout)
-		fmt.Fprintln(args.stdout,
-			opts.Color.Colorize(
-				colors.Highlight("Enter a value or leave blank to accept the (default), and press <ENTER>.",
-					"<ENTER>", colors.BrightCyan+colors.Bold),
-			))
-		fmt.Fprintln(args.stdout,
-			opts.Color.Colorize(
-				colors.Highlight("Press ^C at any time to quit.", "^C", colors.BrightCyan+colors.Bold),
-			))
-		fmt.Fprintln(args.stdout)
+	confirmed, err := confirmGuidedDefaults(ctx, b, s, template, args, opts, cwd)
+	if err != nil {
+		return err
+	}
+	if confirmed != nil {
+		args.name = confirmed.name
+		args.description = confirmed.description
 	}
 
-	// Prompt for the project name, if it wasn't already specified.
-	if args.name == "" {
-		defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
-		err := validateProjectName(
-			ctx, b, orgName, defaultValue, args.generateOnly, opts.WithIsInteractive(false),
-		)
-		if err != nil {
-			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
-			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
-			// See https://github.com/pulumi/pulumi/issues/8747.
-			if args.yes {
-				return fmt.Errorf("'%s' is not a valid project name. %w", defaultValue, err)
+	if confirmed == nil {
+		// Show instructions, if we're going to show at least one prompt.
+		hasAtLeastOnePrompt := (args.name == "") || (args.description == "") || (!args.generateOnly && args.stack == "")
+		if !args.yes && hasAtLeastOnePrompt {
+			printPreamble(args.stdout, opts)
+		}
+
+		// Prompt for the project name, if it wasn't already specified.
+		if args.name == "" {
+			defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(
+				args.name, template.ProjectName, filepath.Base(cwd),
+			)
+			err := validateProjectName(
+				ctx, b, orgName, defaultValue, args.generateOnly, opts.WithIsInteractive(false),
+			)
+			if err != nil {
+				// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
+				// this case it can lead to a confusing error message because we set the defaultValue to "" below.
+				// See https://github.com/pulumi/pulumi/issues/8747.
+				if args.yes {
+					return fmt.Errorf("'%s' is not a valid project name. %w", defaultValue, err)
+				}
+			}
+			validate := func(s string) error {
+				return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts)
+			}
+			args.name, err = args.prompt(args.yes, "Project name", defaultValue, false, validate, opts)
+			if err != nil {
+				return err
 			}
 		}
-		validate := func(s string) error {
-			return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts)
-		}
-		args.name, err = args.prompt(args.yes, "Project name", defaultValue, false, validate, opts)
-		if err != nil {
-			return err
-		}
-	}
 
-	// Prompt for the project description, if it wasn't already specified.
-	if args.description == "" {
-		defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
-			args.description, template.ProjectDescription, template.Description,
-		)
-		args.description, err = args.prompt(
-			args.yes, "Project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts,
-		)
-		if err != nil {
-			return err
+		// Prompt for the project description, if it wasn't already specified.
+		if args.description == "" {
+			defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
+				args.description, template.ProjectDescription, template.Description,
+			)
+			args.description, err = args.prompt(
+				args.yes, "Project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts,
+			)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -335,8 +350,10 @@ func runNew(ctx context.Context, args newArgs) error {
 		return err
 	}
 
-	fmt.Fprintf(args.stdout, "Created project '%s'\n", args.name)
-	fmt.Fprintln(args.stdout)
+	if confirmed == nil {
+		fmt.Fprintf(args.stdout, "Created project '%s'\n", args.name)
+		fmt.Fprintln(args.stdout)
+	}
 
 	// Load the project, update the name & description, remove the template section, and save it.
 	proj, root, err := ws.ReadProject("")
@@ -383,14 +400,24 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Create the stack, if needed.
+	var createdStackName string
 	if !args.generateOnly && s == nil {
-		if s, err = PromptAndCreateStack(ctx, cmdutil.Diag(), ws, b, args.prompt,
-			args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider,
-			args.remoteStackConfig, ""); err != nil {
-			return err
+		if confirmed != nil && confirmed.showStack {
+			s, createdStackName, err = createStackWithRetry(ctx, cmdutil.Diag(), ws, b, args.prompt,
+				confirmed.stackName, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider,
+				args.remoteStackConfig, "", true /*quiet*/)
+			if err != nil {
+				return err
+			}
+		} else {
+			if s, err = PromptAndCreateStack(ctx, cmdutil.Diag(), ws, b, args.prompt,
+				args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider,
+				args.remoteStackConfig, ""); err != nil {
+				return err
+			}
+			// The backend will print "Created stack '<stack>'" on success.
+			fmt.Fprintln(args.stdout)
 		}
-		// The backend will print "Created stack '<stack>'" on success.
-		fmt.Fprintln(args.stdout)
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
@@ -459,24 +486,17 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Prompt for config values (if needed) and save.
 	if !args.generateOnly {
-		err = HandleConfig(
-			ctx,
-			cmdutil.Diag(),
-			ssml,
-			ws,
-			args.prompt,
-			proj,
-			s,
-			args.templateNameOrURL,
-			template,
-			args.configArray,
-			args.yes,
-			args.configPath,
-			opts,
-			"",
-		)
-		if err != nil {
-			return err
+		if confirmed != nil && s != nil && confirmed.showStack {
+			if err = saveTemplateConfig(ctx, cmdutil.Diag(), ssml, ws, proj, s,
+				confirmed.config, confirmed.commandLineConfig, ""); err != nil {
+				return err
+			}
+		} else {
+			err = HandleConfig(ctx, cmdutil.Diag(), ssml, ws, args.prompt, proj, s,
+				args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts, "")
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -510,6 +530,17 @@ func runNew(ctx context.Context, args newArgs) error {
 		)+
 			" "+cmdutil.EmojiOr("✨", ""))
 	fmt.Fprintln(args.stdout)
+
+	if confirmed != nil {
+		rows := []field{{"Project", args.name}}
+		if createdStackName != "" {
+			rows = append(rows, field{"Stack", createdStackName})
+		} else if s != nil {
+			rows = append(rows, field{"Stack", s.Ref().String()})
+		}
+		printFields(args.stdout, opts.Color, "    ", rows)
+		fmt.Fprintln(args.stdout)
+	}
 
 	// Print out next steps.
 	printNextSteps(args.stdout, proj, originalCwd, cwd, args.generateOnly, opts)
@@ -707,6 +738,152 @@ func NewNewCmd() *cobra.Command {
 	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
 
 	return cmd
+}
+
+// printPreamble prints the guided flow's opening instructions.
+func printPreamble(w io.Writer, opts display.Options) {
+	fmt.Fprintln(w, "This command will walk you through creating a new Pulumi project.")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w,
+		opts.Color.Colorize(
+			colors.Highlight("Enter a value or leave blank to accept the (default), and press <ENTER>.",
+				"<ENTER>", colors.BrightCyan+colors.Bold),
+		))
+	fmt.Fprintln(w,
+		opts.Color.Colorize(
+			colors.Highlight("Press ^C at any time to quit.", "^C", colors.BrightCyan+colors.Bold),
+		))
+	fmt.Fprintln(w)
+}
+
+// confirmGuidedDefaults runs the guided path's confirmation: settle every value —
+// project name, description, stack, template config — then show the block and ask.
+// A nil result means the gate failed and the sequential prompts should run instead.
+func confirmGuidedDefaults(
+	ctx context.Context, b backend.Backend, s backend.Stack,
+	template cmdTemplates.ProjectTemplate, args newArgs, opts display.Options, cwd string,
+) (*confirmedNew, error) {
+	if !args.useGuidedFlow() {
+		return nil, nil
+	}
+	nameSupplied := args.name != ""
+	descriptionSupplied := args.description != ""
+	showStack := !args.generateOnly && args.stack == "" && s == nil
+	if nameSupplied && descriptionSupplied && !showStack {
+		return nil, nil
+	}
+
+	name := args.name
+	if !nameSupplied {
+		name = pkgWorkspace.ValueOrSanitizedDefaultProjectName("", template.ProjectName, filepath.Base(cwd))
+		if err := validateProjectName(
+			ctx, b, "" /*orgName*/, name, args.generateOnly, opts.WithIsInteractive(false),
+		); err != nil {
+			// The sequential prompts already handle an unusable default coherently.
+			return nil, nil
+		}
+	}
+	description := args.description
+	if !descriptionSupplied {
+		description = pkgWorkspace.ValueOrDefaultProjectDescription(
+			"", template.ProjectDescription, template.Description)
+	}
+	stackName := ""
+	if showStack {
+		var err error
+		if stackName, err = buildStackName(ctx, b, "dev"); err != nil {
+			return nil, err
+		}
+	}
+
+	var configValues []templateConfigValue
+	var commandLineConfig config.Map
+	if showStack {
+		var err error
+		if commandLineConfig, err = ParseConfig(args.configArray, args.configPath); err != nil {
+			return nil, err
+		}
+		if configValues, err = promptTemplateConfig(
+			args.stdout, args.prompt, template.Config, commandLineConfig, opts,
+		); err != nil {
+			return nil, err
+		}
+	}
+
+	fields := make([]field, 0, 3)
+	if !nameSupplied {
+		fields = append(fields, field{"Project name", name})
+	}
+	if !descriptionSupplied {
+		fields = append(fields, field{"Description", description})
+	}
+	if showStack {
+		fields = append(fields, field{"Stack name", stackName})
+	}
+	configRows := make([]field, 0, len(configValues))
+	for _, v := range configValues {
+		value := v.value
+		if v.secret {
+			value = "[secret]"
+		}
+		configRows = append(configRows, field{cmdConfig.PrettyKey(v.key), value})
+	}
+
+	accepted, err := confirmDefaults(fields, configRows, opts, args.selectOne)
+	if err != nil {
+		if errors.Is(err, terminal.InterruptErr) {
+			return nil, errConfirmationInterrupted
+		}
+		return nil, err
+	}
+	result := &confirmedNew{
+		name: name, description: description, stackName: stackName,
+		config: configValues, commandLineConfig: commandLineConfig, showStack: showStack,
+	}
+	if accepted {
+		return result, nil
+	}
+
+	// Declined: every prompt, in today's order, pre-filled with the values just shown.
+	printPreamble(args.stdout, opts)
+	if !nameSupplied {
+		validate := func(s string) error {
+			return validateProjectName(ctx, b, "" /*orgName*/, s, args.generateOnly, opts)
+		}
+		if result.name, err = args.prompt(false, "Project name", name, false, validate, opts); err != nil {
+			return nil, err
+		}
+	}
+	if !descriptionSupplied {
+		if result.description, err = args.prompt(
+			false, "Project description", description, false, pkgWorkspace.ValidateProjectDescription, opts,
+		); err != nil {
+			return nil, err
+		}
+	}
+	if showStack {
+		if b.SupportsOrganizations() {
+			fmt.Fprint(args.stdout, "Please enter your desired stack name.\n"+
+				"To create a stack in an organization, "+
+				"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
+		}
+		if result.stackName, err = args.prompt(
+			false, "Stack name", stackName, false, b.ValidateStackName, opts,
+		); err != nil {
+			return nil, err
+		}
+	}
+	for i, v := range result.config {
+		if v.flagSettled {
+			// Never re-prompted, same as the sequential path: a typed answer here
+			// would silently lose to the flag value at save time.
+			continue
+		}
+		if result.config[i].value, err = args.prompt(false, v.promptText, v.value, v.secret, nil, opts); err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
 
 func validateProjectName(ctx context.Context, b backend.Backend,
