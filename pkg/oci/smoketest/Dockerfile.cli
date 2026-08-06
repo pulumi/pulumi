@@ -26,6 +26,9 @@ COPY pulumi-language-oci-linux /usr/local/bin/pulumi-language-oci
 COPY pulumi-language-go-linux /usr/local/bin/pulumi-language-go
 COPY pulumi-language-nodejs-linux /usr/local/bin/pulumi-language-nodejs
 COPY pulumi-language-python-linux /usr/local/bin/pulumi-language-python
+# pulumi-language-python startup-checks for its exec shim beside it (even for codegen, which
+# never runs it). A script, not a runtime — the engine image stays python3-free.
+COPY pulumi-language-python-exec /usr/local/bin/pulumi-language-python-exec
 COPY registry-proxy-linux /usr/local/bin/registry-proxy
 COPY pulumi-pod-shim-linux /usr/local/bin/pulumi-pod-shim
 # This branch's language SDKs, for program images to borrow (COPY --from this image)

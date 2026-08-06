@@ -89,6 +89,9 @@ echo "==> cross-compiling engine binaries (linux/amd64, linux/arm64)"
 
 echo "==> cross-compiling dev-language hosts for SDK generation (linux/amd64, linux/arm64)"
 $DELEGATE_BUILDS
+# pulumi-language-python won't boot without its exec shim beside it (a startup os.Stat, even
+# for codegen, which never runs it). A checked-in script, arch-independent — copy, don't build.
+cp "\$ROOT_DIR/sdk/python/cmd/pulumi-language-python-exec" "\$WORK/pulumi-language-python-exec"
 echo "==> cross-compiling registry-proxy (linux/amd64, linux/arm64)"
 ( cd "\$PROXY_DIR" && GOWORK=off GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o "\$WORK/registry-proxy-linux-amd64" . )
 ( cd "\$PROXY_DIR" && GOWORK=off GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o "\$WORK/registry-proxy-linux-arm64" . )

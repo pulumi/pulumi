@@ -25,6 +25,9 @@ COPY pulumi-language-oci-linux-$TARGETARCH /usr/local/bin/pulumi-language-oci
 COPY pulumi-language-go-linux-$TARGETARCH /usr/local/bin/pulumi-language-go
 COPY pulumi-language-nodejs-linux-$TARGETARCH /usr/local/bin/pulumi-language-nodejs
 COPY pulumi-language-python-linux-$TARGETARCH /usr/local/bin/pulumi-language-python
+# pulumi-language-python startup-checks for its exec shim beside it (even for codegen, which
+# never runs it). A script, arch-independent — the engine image stays python3-free.
+COPY pulumi-language-python-exec /usr/local/bin/pulumi-language-python-exec
 COPY registry-proxy-linux-$TARGETARCH /usr/local/bin/registry-proxy
 # The forwarder shim: the proxy embeds it into the provider images it synthesizes
 # (PULUMI_POD_SHIM_BIN names this path), adapting plugins that predate the SDK bind

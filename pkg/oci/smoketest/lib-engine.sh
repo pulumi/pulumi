@@ -12,9 +12,12 @@
 # The dev-language hosts the OCI host delegates SDK generation to, as
 # <module-dir>:<binary-name>. Only their *codegen* is used here (GeneratePackage is
 # in-process: it binds the schema and writes files, never shelling out to go/node/
-# python), so the binary alone is enough and the engine image stays toolchain-free.
-# They are built from this branch rather than fetched from a release, so the codegen
-# and the SDK it generates cannot skew apart.
+# python), so no language *runtime* is needed and the engine image stays toolchain-free.
+# One companion file is the exception: pulumi-language-python refuses to start unless its
+# pulumi-language-python-exec shim sits beside it (a startup os.Stat — main.go:158) — even
+# for codegen, which never runs it — so we stage that script too (staged below the loop; it
+# is inert here, no python3). They are built from this branch rather than fetched from a
+# release, so the codegen and the SDK it generates cannot skew apart.
 DELEGATE_HOSTS="
 sdk/go/pulumi-language-go:pulumi-language-go
 sdk/nodejs/cmd/pulumi-language-nodejs:pulumi-language-nodejs
@@ -54,6 +57,11 @@ build_engine_image() {
     ( cd "$root/$dir" && GOWORK=off GOOS=linux GOARCH="$GOARCH" CGO_ENABLED=0 \
         go build -o "$WORK/cli/$bin-linux" . )
   done
+
+  # pulumi-language-python won't boot without its exec shim beside it (see the DELEGATE_HOSTS
+  # note). It is a checked-in script, not a compiled binary, so copy rather than build it.
+  # Inert in the engine image (no python3); a program image runs its own copy.
+  cp "$root/sdk/python/cmd/pulumi-language-python-exec" "$WORK/cli/pulumi-language-python-exec"
 
   # This branch's language SDKs, baked at /opt/pulumi-sdk so program images can borrow
   # them (COPY --from the engine image) until released SDKs carry the bind/advertise
