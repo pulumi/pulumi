@@ -81,15 +81,10 @@ func autoResourceNames(snap *deploy.Snapshot) map[string]string {
 		if sdkproviders.IsProviderType(s.Type) {
 			continue
 		}
-		// Extract the trailing segment of the type token (e.g. "Bucket" from "aws:s3/bucket:Bucket").
-		typeName := string(s.Type)
-		if i := strings.LastIndex(typeName, ":"); i >= 0 {
-			typeName = typeName[i+1:]
-		}
 		entries = append(entries, entry{
 			urn:      s.URN,
 			parent:   s.Parent,
-			typeName: typeName,
+			typeName: string(s.Type.Name()),
 			name:     s.URN.Name(),
 		})
 	}
