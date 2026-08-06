@@ -22,24 +22,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// Attended reports whether anyone can answer a dialog the credential provider
-// draws on the desktop session. Deliberately not a TTY test: `pulumi up | tee
-// log` is attended, `ssh host pulumi whoami` is not.
-func Attended() bool { return someoneCanAnswerAPasswordDialog() }
-
-func someoneCanAnswerAPasswordDialog() bool {
+func Attended() bool {
 	if cmdutil.DisableInteractive {
 		return false
 	}
-	if ciutil.IsCI() || os.Getenv("CI") != "" {
-		return false
-	}
-	return desktopSessionCanDrawDialogs()
+	return !ciutil.IsCI()
+}
+
+func someoneCanAnswerAPasswordDialog() bool {
+	return Attended() && desktopSessionCanDrawDialogs()
 }
 
 func desktopSessionCanDrawDialogs() bool {
-	if runtime.GOOS != "linux" {
+	switch runtime.GOOS {
+	case "linux":
+		return os.Getenv("WAYLAND_DISPLAY") != "" || os.Getenv("DISPLAY") != ""
+	case "darwin":
+		return os.Getenv("SSH_CONNECTION") == "" && os.Getenv("SSH_TTY") == ""
+	default:
 		return true
 	}
-	return os.Getenv("WAYLAND_DISPLAY") != "" || os.Getenv("DISPLAY") != ""
 }

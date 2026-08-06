@@ -49,22 +49,46 @@ func TestDetectionWithoutAStatedPreference(t *testing.T) {
 	t.Setenv("DISPLAY", ":0")
 	assert.False(t, someoneCanAnswerAPasswordDialog(), "CI has nobody to answer a dialog")
 
-	// The test host may itself be CI, so neutralise every detector before
-	// asserting on the display branch.
+	// The test host may itself be CI or an SSH session, so neutralise every
+	// detector before asserting on the session branch.
 	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("CI", "")
 	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
 	t.Setenv("DISPLAY", "")
 	t.Setenv("WAYLAND_DISPLAY", "")
-	if runtime.GOOS == "linux" {
+	t.Setenv("SSH_CONNECTION", "")
+	t.Setenv("SSH_TTY", "")
+	switch runtime.GOOS {
+	case "linux":
 		assert.False(t, someoneCanAnswerAPasswordDialog(), "no display means no dialog can be shown")
 		t.Setenv("WAYLAND_DISPLAY", "wayland-0")
 		assert.True(t, someoneCanAnswerAPasswordDialog(), "a Wayland session can show one")
 		t.Setenv("WAYLAND_DISPLAY", "")
 		t.Setenv("DISPLAY", ":0")
 		assert.True(t, someoneCanAnswerAPasswordDialog(), "an X session can show one")
-	} else {
+	case "darwin":
+		assert.True(t, someoneCanAnswerAPasswordDialog(), "the console session can show a keychain dialog")
+		t.Setenv("SSH_CONNECTION", "10.0.0.1 50022 10.0.0.2 22")
+		assert.False(t, someoneCanAnswerAPasswordDialog(), "an SSH session cannot see a keychain dialog")
+	default:
 		assert.True(t, someoneCanAnswerAPasswordDialog(),
-			"macOS and Windows refuse UI themselves rather than reading a display variable")
+			"Windows never prompts, so any session may proceed")
+	}
+}
+
+//nolint:paralleltest // mutates interactivity globals and the environment
+func TestWarningsHaveAnAudienceWhenNoDialogCanBeShown(t *testing.T) {
+	disableInteractive(t, false)
+	t.Setenv("GITHUB_ACTIONS", "")
+	t.Setenv("CI", "")
+	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
+	t.Setenv("DISPLAY", "")
+	t.Setenv("WAYLAND_DISPLAY", "")
+	t.Setenv("SSH_CONNECTION", "10.0.0.1 50022 10.0.0.2 22")
+	t.Setenv("SSH_TTY", "/dev/ttys000")
+
+	assert.True(t, Attended(), "an SSH user reads stderr")
+	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+		assert.False(t, someoneCanAnswerAPasswordDialog())
 	}
 }
