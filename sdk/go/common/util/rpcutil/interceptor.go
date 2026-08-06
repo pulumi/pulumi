@@ -52,7 +52,7 @@ func TracingServerInterceptorOptions(parentSpan opentracing.Span, options ...otg
 }
 
 func TracingServerInterceptorOptionsWithOTelParent(
-	parentSpan opentracing.Span, otelParent trace.Span, options ...otgrpc.Option,
+	parentSpan opentracing.Span, otelParent func() trace.Span, options ...otgrpc.Option,
 ) []grpc.ServerOption {
 	return []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
@@ -220,7 +220,7 @@ func captureStackTrace(skip int) string {
 	return stackBuilder.String()
 }
 
-func otelUnaryServerInterceptor(fallbackParent trace.Span) grpc.UnaryServerInterceptor {
+func otelUnaryServerInterceptor(fallbackParent func() trace.Span) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req any,
@@ -238,7 +238,7 @@ func otelUnaryServerInterceptor(fallbackParent trace.Span) grpc.UnaryServerInter
 	}
 }
 
-func otelStreamServerInterceptor(fallbackParent trace.Span) grpc.StreamServerInterceptor {
+func otelStreamServerInterceptor(fallbackParent func() trace.Span) grpc.StreamServerInterceptor {
 	return func(
 		srv any,
 		ss grpc.ServerStream,
@@ -257,14 +257,15 @@ func otelStreamServerInterceptor(fallbackParent trace.Span) grpc.StreamServerInt
 	}
 }
 
-func withFallbackParent(ctx context.Context, fallbackParent trace.Span) context.Context {
-	if fallbackParent == nil || !fallbackParent.SpanContext().IsValid() {
+func withFallbackParent(ctx context.Context, fallbackParent func() trace.Span) context.Context {
+	if fallbackParent == nil || trace.SpanContextFromContext(ctx).IsValid() {
 		return ctx
 	}
-	if trace.SpanContextFromContext(ctx).IsValid() {
+	parent := fallbackParent()
+	if parent == nil || !parent.SpanContext().IsValid() {
 		return ctx
 	}
-	return trace.ContextWithSpan(ctx, fallbackParent)
+	return trace.ContextWithSpan(ctx, parent)
 }
 
 // serverStreamWithContext wraps a grpc.ServerStream to provide a custom context.
