@@ -6,20 +6,20 @@ import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
 export interface Alpha {
-    __type: "Alpha";
     payload?: string;
+    type__: "Alpha";
     weight?: number;
 }
 
 export interface Beta {
-    __type: "Beta";
     payload?: string;
     tint?: string;
+    type__: "Beta";
 }
 
 export interface Gamma {
-    __type: "Gamma";
     active?: boolean;
     payload?: string;
+    type__: "Gamma";
 }
 

@@ -6,19 +6,19 @@ import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
 export interface AlphaArgs {
-    __type: pulumi.Input<"Alpha">;
     payload?: pulumi.Input<string | undefined>;
+    type__: pulumi.Input<"Alpha">;
     weight?: pulumi.Input<number | undefined>;
 }
 
 export interface BetaArgs {
-    __type: pulumi.Input<"Beta">;
     payload?: pulumi.Input<string | undefined>;
     tint?: pulumi.Input<string | undefined>;
+    type__: pulumi.Input<"Beta">;
 }
 
 export interface GammaArgs {
-    __type: pulumi.Input<"Gamma">;
     active?: pulumi.Input<boolean | undefined>;
     payload?: pulumi.Input<string | undefined>;
+    type__: pulumi.Input<"Gamma">;
 }

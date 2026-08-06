@@ -3,23 +3,23 @@ import * as discriminated_union_internal from "@pulumi/discriminated-union-inter
 
 const example1 = new discriminated_union_internal.Example("example1", {
     unionOf: {
-        __type: "Alpha",
+        type__: "Alpha",
         payload: "p1",
         weight: 1,
     },
     secretUnion: {
-        __type: "Beta",
+        type__: "Beta",
         payload: "s1",
         tint: "blue",
     },
 });
 const example2 = new discriminated_union_internal.Example("example2", {unionOf: {
-    __type: "Beta",
+    type__: "Beta",
     payload: "p2",
     tint: "red",
 }});
 const example3 = new discriminated_union_internal.Example("example3", {unionOf: {
-    __type: "Gamma",
+    type__: "Gamma",
     payload: "p3",
     active: true,
 }});

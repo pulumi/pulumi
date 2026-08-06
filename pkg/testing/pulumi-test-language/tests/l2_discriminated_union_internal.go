@@ -23,10 +23,11 @@ import (
 
 func init() {
 	// Exercises a discriminated union whose discriminator property is named
-	// "__type" (the Jackson wire convention real services use), plus a
-	// schema-secret union property. The "__" prefix collides with identifier
-	// rules in several languages, which the benign discriminator names in the
-	// other union tests never exercise.
+	// "type__", plus a schema-secret union property. Providers that surface a
+	// wire format with a reserved discriminator key (Jackson's "__type") must
+	// spell it with a trailing underscore in the schema, because a leading one
+	// breaks Go and Python codegen. The benign discriminator names in the other
+	// union tests never exercise underscore-adjacent identifiers at all.
 	LanguageTests["l2-discriminated-union-internal"] = LanguageTest{
 		Providers: []func() plugin.Provider{
 			func() plugin.Provider { return &providers.DiscriminatedUnionInternalProvider{} },
@@ -37,12 +38,12 @@ func init() {
 				RequireStackResource(l, err, changes)
 
 				alpha := resource.PropertyMap{
-					"__type":  resource.NewProperty("Alpha"),
+					"type__":  resource.NewProperty("Alpha"),
 					"payload": resource.NewProperty("p1"),
 					"weight":  resource.NewProperty(1.0),
 				}
 				betaSecret := resource.PropertyMap{
-					"__type":  resource.NewProperty("Beta"),
+					"type__":  resource.NewProperty("Beta"),
 					"payload": resource.NewProperty("s1"),
 					"tint":    resource.NewProperty("blue"),
 				}
@@ -56,7 +57,7 @@ func init() {
 				example2 := RequireSingleNamedResource(l, snapshot.Resources, "example2")
 				require.Equal(l, resource.PropertyMap{
 					"unionOf": resource.NewProperty(resource.PropertyMap{
-						"__type":  resource.NewProperty("Beta"),
+						"type__":  resource.NewProperty("Beta"),
 						"payload": resource.NewProperty("p2"),
 						"tint":    resource.NewProperty("red"),
 					}),
@@ -65,7 +66,7 @@ func init() {
 				example3 := RequireSingleNamedResource(l, snapshot.Resources, "example3")
 				require.Equal(l, resource.PropertyMap{
 					"unionOf": resource.NewProperty(resource.PropertyMap{
-						"__type":  resource.NewProperty("Gamma"),
+						"type__":  resource.NewProperty("Gamma"),
 						"payload": resource.NewProperty("p3"),
 						"active":  resource.NewProperty(true),
 					}),

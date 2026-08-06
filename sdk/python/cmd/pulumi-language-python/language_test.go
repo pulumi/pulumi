@@ -224,10 +224,6 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skip("pulumi#21830: Expected to fail")
 					}
 
-					if tt == "l2-discriminated-union-internal" {
-						t.Skip("pulumi#16744: the __type parameter is name-mangled in generated argument classes")
-					}
-
 					if config.typechecker == "pyright" &&
 						(tt == "l3-component-simple" ||
 							tt == "l3-rewrite-conversions" ||

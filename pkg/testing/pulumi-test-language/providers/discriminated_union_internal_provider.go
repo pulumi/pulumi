@@ -29,13 +29,14 @@ import (
 )
 
 // DiscriminatedUnionInternalProvider exercises a discriminated union whose
-// discriminator property is named "__type". The "__" prefix is the Jackson
-// wire convention used by real services (e.g. pulumi-pulumiservice), and it
-// collides with identifier rules in several languages: Go renders it as an
-// unexported struct field, Python name-mangles the constructor parameter,
-// and the engine treats "__"-prefixed keys as internal in some paths. It
-// also carries a schema-secret union property to exercise secret + union
-// codegen together.
+// discriminator property is named "type__". Providers that surface a wire
+// format with a reserved discriminator key (e.g. Jackson's "__type", as used
+// by pulumi-pulumiservice) cannot put the leading-underscore name in a schema:
+// Go renders it as an unexported struct field and Python name-mangles the
+// constructor parameter. The trailing-underscore spelling is the escape hatch
+// such providers translate to, so codegen must handle it in every language.
+// The type also carries a schema-secret union property to exercise secret +
+// union codegen together.
 type DiscriminatedUnionInternalProvider struct {
 	plugin.UnimplementedProvider
 }
@@ -57,8 +58,9 @@ func (p *DiscriminatedUnionInternalProvider) GetSchema(
 	intT := schema.TypeSpec{Type: "integer"}
 	boolT := schema.TypeSpec{Type: "boolean"}
 
-	// Three variants, tagged by a "__type" property whose value is the
-	// variant's type name, mirroring the Jackson @JsonTypeInfo convention.
+	// Three variants, tagged by a "type__" property whose value is the
+	// variant's type name, the schema-safe spelling of the Jackson
+	// @JsonTypeInfo "__type" wire key.
 	type variantDef struct {
 		token string
 		extra map[string]schema.PropertySpec
@@ -75,7 +77,7 @@ func (p *DiscriminatedUnionInternalProvider) GetSchema(
 	mapping := map[string]string{}
 	for _, v := range variants {
 		props := map[string]schema.PropertySpec{
-			"__type":  {TypeSpec: stringT, Const: v.token},
+			"type__":  {TypeSpec: stringT, Const: v.token},
 			"payload": {TypeSpec: stringT},
 		}
 		maps.Copy(props, v.extra)
@@ -83,7 +85,7 @@ func (p *DiscriminatedUnionInternalProvider) GetSchema(
 			ObjectTypeSpec: schema.ObjectTypeSpec{
 				Type:       "object",
 				Properties: props,
-				Required:   []string{"__type"},
+				Required:   []string{"type__"},
 			},
 		}
 		ref := fmt.Sprintf("#/types/%s:index:%s", p.pkg(), v.token)
@@ -94,7 +96,7 @@ func (p *DiscriminatedUnionInternalProvider) GetSchema(
 	union := schema.TypeSpec{
 		OneOf: oneOf,
 		Discriminator: &schema.DiscriminatorSpec{
-			PropertyName: "__type",
+			PropertyName: "type__",
 			Mapping:      mapping,
 		},
 	}
