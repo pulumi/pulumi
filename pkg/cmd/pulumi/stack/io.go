@@ -342,7 +342,9 @@ func InitStack(
 	if err != nil {
 		return nil, err
 	}
-	return CreateStack(ctx, sink, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useRemoteConfig, configFile, quiet)
+	return CreateStack(
+		ctx, sink, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useRemoteConfig, configFile, quiet,
+	)
 }
 
 // ErrSaveStackConfig wraps `SaveProjectStack` errors that occur in `CreateStack` after the
