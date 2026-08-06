@@ -163,7 +163,7 @@ func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, 
 			return nil, err
 		}
 
-		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false, configFile)
+		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false, configFile, false)
 	}
 
 	return nil, backenderr.StackNotFoundError{StackName: stackName}
@@ -306,7 +306,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 			return nil, parseErr
 		}
 
-		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false, configFile)
+		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false, configFile, false)
 	}
 
 	// With the stack name selected, look it up from the backend.
@@ -336,13 +336,13 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 // InitStack creates the stack.
 func InitStack(
 	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, b backend.Backend, stackName string,
-	root string, setCurrent bool, secretsProvider string, useRemoteConfig bool, configFile string,
+	root string, setCurrent bool, secretsProvider string, useRemoteConfig bool, configFile string, quiet bool,
 ) (backend.Stack, error) {
 	stackRef, err := b.ParseStackReference(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return CreateStack(ctx, sink, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useRemoteConfig, configFile)
+	return CreateStack(ctx, sink, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useRemoteConfig, configFile, quiet)
 }
 
 // ErrSaveStackConfig wraps `SaveProjectStack` errors that occur in `CreateStack` after the
@@ -355,7 +355,7 @@ var ErrSaveStackConfig = errors.New("saving stack config")
 func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	b backend.Backend, stackRef backend.StackReference,
 	root string, teams []string, setCurrent bool,
-	secretsProvider string, useRemoteConfig bool, configFile string,
+	secretsProvider string, useRemoteConfig bool, configFile string, quiet bool,
 ) (backend.Stack, error) {
 	ps, needsSave, sm, err := createSecretsManagerForNewStack(ctx, sink, ws, b, stackRef, secretsProvider, configFile)
 	if err != nil {
@@ -393,6 +393,7 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 
 	opts := backend.CreateStackOptions{
 		Teams: teams,
+		Quiet: quiet,
 	}
 
 	var escEnvironment string

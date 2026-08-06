@@ -205,7 +205,7 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 
 	teams := sanitizeTeams(cmd.teams)
 	newStack, err := CreateStack(ctx, cmdutil.Diag(), ws, b, stackRef, root, teams,
-		!cmd.noSelect, cmd.secretsProvider, cmd.remoteConfig, "")
+		!cmd.noSelect, cmd.secretsProvider, cmd.remoteConfig, "", false)
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
 			return fmt.Errorf("stack %s uses the %s backend: "+

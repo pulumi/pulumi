@@ -459,6 +459,7 @@ func (cmd *stackMigrateCmd) Run(
 		cmd.secretsProvider,
 		false,
 		"",
+		false,
 	)
 	if err != nil {
 		// Only adopt-and-rollback when ErrSaveStackConfig signals b.CreateStack succeeded.

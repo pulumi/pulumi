@@ -71,7 +71,7 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 			return nil, err
 		}
 		s, err := cmdStack.InitStack(
-			ctx, sink, ws, b, stackName, root, setCurrent, secretsProvider, useRemoteConfig, configFile)
+			ctx, sink, ws, b, stackName, root, setCurrent, secretsProvider, useRemoteConfig, configFile, false)
 		if err != nil {
 			return nil, err
 		}
@@ -95,7 +95,7 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 			return nil, err
 		}
 		s, err := cmdStack.InitStack(
-			ctx, sink, ws, b, formattedStackName, root, setCurrent, secretsProvider, useRemoteConfig, configFile)
+			ctx, sink, ws, b, formattedStackName, root, setCurrent, secretsProvider, useRemoteConfig, configFile, false)
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
