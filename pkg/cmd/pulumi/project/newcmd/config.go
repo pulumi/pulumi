@@ -361,6 +361,10 @@ type templateConfigValue struct {
 	value      string
 	secret     bool
 	promptText string // promptForConfig's prompt text: "Description (pretty:key)"
+	// flagSettled is true when value came from --config rather than a default or a
+	// prompt: like the sequential path, a flag-settled key is never re-prompted, on
+	// pain of the typed answer being silently discarded in favor of the flag's value.
+	flagSettled bool
 }
 
 // promptTemplateConfig settles every config value a template declares: a command-line
@@ -403,7 +407,7 @@ func promptTemplateConfig(
 				return nil, err
 			}
 			values = append(values, templateConfigValue{
-				key: k, value: plain, secret: tcv.Secret, promptText: promptText,
+				key: k, value: plain, secret: tcv.Secret, promptText: promptText, flagSettled: true,
 			})
 			continue
 		}
@@ -428,13 +432,16 @@ func promptTemplateConfig(
 
 // saveTemplateConfig encrypts secret values against the new stack's secrets manager and
 // saves the collected config — promptForConfig's save half, run once the stack exists.
-//
-//nolint:unused
+// commandLineConfig is saved as-is (original structure, e.g. a --config-path value, and
+// already-secure values preserved): this mirrors promptForConfig's own command-line pass,
+// so a key wins outright whether or not the template declares it, and its shape survives
+// intact rather than going through the flattened plaintext values collects.
 func saveTemplateConfig(
 	ctx context.Context, sink diag.Sink, ssml cmdStack.SecretsManagerLoader, ws pkgWorkspace.Context,
-	project *workspace.Project, s backend.Stack, values []templateConfigValue, configFile string,
+	project *workspace.Project, s backend.Stack, values []templateConfigValue, commandLineConfig config.Map,
+	configFile string,
 ) error {
-	if len(values) == 0 {
+	if len(values) == 0 && len(commandLineConfig) == 0 {
 		return nil
 	}
 
@@ -453,8 +460,13 @@ func saveTemplateConfig(
 	}
 	encrypter := sm.Encrypter()
 
-	c := make(config.Map)
+	c := make(config.Map, len(values)+len(commandLineConfig))
+	maps.Copy(c, commandLineConfig)
 	for _, v := range values {
+		if _, ok := c[v.key]; ok {
+			// A command-line value for this key already won.
+			continue
+		}
 		if v.value == "" {
 			// Don't add empty values to the config.
 			continue

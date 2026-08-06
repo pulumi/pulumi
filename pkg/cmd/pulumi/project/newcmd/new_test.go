@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"iter"
 	"net/http"
@@ -34,11 +35,14 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -1007,6 +1011,354 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 	proj := loadProject(t, tempdir)
 	require.Len(t, proj.Runtime.Options(), 1)
 	require.Equal(t, "someValue", proj.Runtime.Options()["someOption"])
+}
+
+// runtimeOptionsNone is a promptRuntimeOptions that reports no additional runtime options,
+// hoisted so the guided confirmation flow tests below don't each redefine it.
+func runtimeOptionsNone(ctx *plugin.Context, language plugin.LanguageRuntime, info *workspace.ProjectRuntimeInfo,
+	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc,
+) (map[string]any, error) {
+	return nil, nil
+}
+
+// countingPrompt answers prompts from a map by valueType, falling back to the default,
+// and records every prompt it is asked.
+func countingPrompt(answers map[string]string, log *[]string) promptForValueFunc {
+	return func(yes bool, valueType, defaultValue string, secret bool,
+		isValidFn func(string) error, opts display.Options,
+	) (string, error) {
+		*log = append(*log, valueType+"="+defaultValue)
+		value, ok := answers[valueType]
+		if !ok {
+			value = defaultValue
+		}
+		if isValidFn != nil {
+			if err := isValidFn(value); err != nil {
+				return "", err
+			}
+		}
+		return value, nil
+	}
+}
+
+// guidedRepoTemplate points the template source at a local one-template repo whose Pulumi.yaml is
+// the given body, mirroring useLocalTemplateRepo but for a single template with a custom body (the
+// guided confirmation tests need a template that declares its own config block).
+func guidedRepoTemplate(t *testing.T, name, body string) {
+	t.Helper()
+
+	repo := t.TempDir()
+	writeLocalTemplate(t, repo, name, body)
+	git := func(cliArgs ...string) {
+		cmd := exec.Command("git", cliArgs...)
+		cmd.Dir = repo
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "git %v: %s", cliArgs, out)
+	}
+	git("init", "--initial-branch=master")
+	git("add", ".")
+	git("-c", "user.name=test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false",
+		"commit", "-m", "init")
+	t.Setenv(env.TemplateGitRepository.Var().Name(), repo)
+	t.Setenv(env.TemplateBranch.Var().Name(), "master")
+	t.Setenv(env.TemplatePath.Var().Name(), filepath.Join(t.TempDir(), "templates"))
+}
+
+// guidedConfigTemplateYAML is the template body shared by the guided confirmation flow tests: a
+// runtime with no install-time dependencies (so the full, non-generate-only flow stays offline),
+// and one config key with a default so the "accept" path never has to prompt for it.
+const guidedConfigTemplateYAML = `name: ${PROJECT}
+description: ${DESCRIPTION}
+runtime: yaml
+template:
+  description: A guided test template
+  config:
+    aws:region:
+      description: The AWS region to deploy into
+      default: us-east-1
+`
+
+// guidedNewTestBackend builds the mock backend the guided confirmation flow tests share: an
+// org-backed backend whose stack creation, secrets manager, and config-save calls all resolve
+// locally so the whole runNew flow runs offline. created records every stack name CreateStack saw.
+func guidedNewTestBackend(t *testing.T) (*backend.MockBackend, *[]string) {
+	t.Helper()
+
+	created := &[]string{}
+	b := stackCreationBackend(t, 0, created)
+	b.GetDefaultOrgF = func(ctx context.Context) (string, error) { return "my-org", nil }
+	b.SupportsOrganizationsF = func() bool { return true }
+	b.DoesProjectExistF = func(ctx context.Context, org, name string) (bool, error) { return false, nil }
+	b.NameF = func() string { return "mock" }
+	b.URLF = func() string { return "mock://guided" }
+	b.SetCurrentProjectF = func(proj *workspace.Project) {}
+	b.GetStackF = func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+		return nil, nil
+	}
+	b.GetLatestConfigurationF = func(ctx context.Context, s backend.Stack) (backend.LatestConfiguration, error) {
+		return backend.LatestConfiguration{}, backenderr.ErrNoPreviousDeployment
+	}
+	b.ParseStackReferenceF = func(s string) (backend.StackReference, error) {
+		parts := strings.Split(s, "/")
+		return &backend.MockStackReference{
+			NameV:               tokens.MustParseStackName(parts[len(parts)-1]),
+			StringV:             s,
+			FullyQualifiedNameV: tokens.QName(s),
+		}, nil
+	}
+	mockSecretsManager := func(ctx context.Context, ps *workspace.ProjectStack) (secrets.Manager, error) {
+		return &secrets.MockSecretsManager{
+			TypeF:  func() string { return "mock" },
+			StateF: func() json.RawMessage { return nil },
+			EncrypterF: func() config.Encrypter {
+				return &secrets.MockEncrypter{EncryptValueF: func(s string) string { return s }}
+			},
+			DecrypterF: func() config.Decrypter {
+				return &secrets.MockDecrypter{DecryptValueF: func(s string) string { return s }}
+			},
+		}, nil
+	}
+	b.CreateStackF = func(ctx context.Context, ref backend.StackReference, root string,
+		initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+	) (backend.Stack, error) {
+		*created = append(*created, ref.String())
+		return &backend.MockStack{
+			RefF:                  func() backend.StackReference { return ref },
+			BackendF:              func() backend.Backend { return b },
+			SnapshotF:             func(ctx context.Context, sp secrets.Provider) (*deploy.Snapshot, error) { return nil, nil },
+			DefaultSecretManagerF: mockSecretsManager,
+		}, nil
+	}
+	b.GetReadOnlyCloudRegistryF = func() registry.Registry {
+		return &backend.MockCloudRegistry{Mock: registry.Mock{
+			ListTemplatesF: func(ctx context.Context, opts registry.ListTemplatesOptions,
+			) iter.Seq2[apitype.ListTemplatesResponse, error] {
+				return singlePage()
+			},
+		}}
+	}
+	return b, created
+}
+
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestGuidedNewAcceptSkipsAllPrompts(t *testing.T) {
+	guidedRepoTemplate(t, "aws-python", guidedConfigTemplateYAML)
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+
+	b, created := guidedNewTestBackend(t)
+	mockCurrentBackend(t, b)
+
+	var prompts []string
+	selectOne, _ := scriptedSelect(t, "AWS", "Python", confirmYes)
+	var out bytes.Buffer
+	args := newArgs{
+		interactive: true,
+		// aws:profile isn't declared by the template's config block at all: it must still
+		// reach the saved stack config, alongside the declared aws:region.
+		configArray:          []string{"aws:profile=work"},
+		prompt:               countingPrompt(nil, &prompts),
+		promptRuntimeOptions: runtimeOptionsNone,
+		languageTemplate:     languageTemplateMock,
+		selectOne:            selectOne,
+		secretsProvider:      "default",
+		stdout:               &out,
+	}
+
+	err := runNew(t.Context(), args)
+	require.NoError(t, err)
+
+	assert.Empty(t, prompts, "accepting the block must not prompt for anything")
+	require.Equal(t, []string{"my-org/dev"}, *created)
+	assert.Contains(t, out.String(), "Stack name:    my-org/dev")
+	assert.Contains(t, out.String(), "aws:region:  us-east-1")
+	assert.NotContains(t, out.String(), "Created project")
+	assert.Contains(t, out.String(), "Project:  "+filepath.Base(tempdir))
+	assert.Contains(t, out.String(), "Stack:    my-org/dev")
+	proj := loadProject(t, tempdir)
+	assert.Equal(t, "A guided test template", *proj.Description)
+
+	projStack, err := workspace.LoadProjectStack(nil /*sink*/, proj, filepath.Join(tempdir, "Pulumi.dev.yaml"))
+	require.NoError(t, err)
+	region, ok := projStack.Config[config.MustMakeKey("aws", "region")]
+	require.True(t, ok, "the declared key with a default must still be saved")
+	regionValue, err := region.Value(config.NopDecrypter)
+	require.NoError(t, err)
+	assert.Equal(t, "us-east-1", regionValue)
+	profile, ok := projStack.Config[config.MustMakeKey("aws", "profile")]
+	require.True(t, ok, "a --config key the template doesn't declare must not be dropped")
+	profileValue, err := profile.Value(config.NopDecrypter)
+	require.NoError(t, err)
+	assert.Equal(t, "work", profileValue)
+}
+
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestGuidedNewDeclineRepromptsPrefilled(t *testing.T) {
+	guidedRepoTemplate(t, "aws-python", guidedConfigTemplateYAML)
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+
+	b, created := guidedNewTestBackend(t)
+	mockCurrentBackend(t, b)
+
+	selectOne, _ := scriptedSelect(t, "AWS", "Python", confirmChange)
+	var prompts []string
+	var out bytes.Buffer
+	args := newArgs{
+		interactive:          true,
+		prompt:               countingPrompt(map[string]string{"Stack name": "prod"}, &prompts),
+		promptRuntimeOptions: runtimeOptionsNone,
+		languageTemplate:     languageTemplateMock,
+		selectOne:            selectOne,
+		secretsProvider:      "default",
+		stdout:               &out,
+	}
+
+	err := runNew(t.Context(), args)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{
+		"Project name=" + filepath.Base(tempdir),
+		"Project description=A guided test template",
+		"Stack name=my-org/dev",
+		"The AWS region to deploy into (aws:region)=us-east-1",
+	}, prompts, "every reprompt must be pre-filled with the value the block just showed")
+	assert.Equal(t, []string{"my-org/prod"}, *created, "a bare typed name still org-resolves")
+
+	proj := loadProject(t, tempdir)
+	projStack, err := workspace.LoadProjectStack(nil /*sink*/, proj, filepath.Join(tempdir, "Pulumi.prod.yaml"))
+	require.NoError(t, err)
+	region, ok := projStack.Config[config.MustMakeKey("aws", "region")]
+	require.True(t, ok, "the pre-filled config value must still land once re-confirmed")
+	regionValue, err := region.Value(config.NopDecrypter)
+	require.NoError(t, err)
+	assert.Equal(t, "us-east-1", regionValue)
+}
+
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestGuidedNewDeclineDoesNotReofferFlagSettledConfig(t *testing.T) {
+	guidedRepoTemplate(t, "aws-python", guidedConfigTemplateYAML)
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+
+	b, created := guidedNewTestBackend(t)
+	mockCurrentBackend(t, b)
+
+	selectOne, _ := scriptedSelect(t, "AWS", "Python", confirmChange)
+	var prompts []string
+	var out bytes.Buffer
+	args := newArgs{
+		interactive: true,
+		// aws:region has a template default of us-east-1, but a --config value wins:
+		// it must show in the block and never be re-offered on decline.
+		configArray:          []string{"aws:region=eu-west-1"},
+		prompt:               countingPrompt(nil, &prompts),
+		promptRuntimeOptions: runtimeOptionsNone,
+		languageTemplate:     languageTemplateMock,
+		selectOne:            selectOne,
+		secretsProvider:      "default",
+		stdout:               &out,
+	}
+
+	err := runNew(t.Context(), args)
+	require.NoError(t, err)
+
+	assert.Contains(t, out.String(), "aws:region:  eu-west-1", "the block must show the flag value")
+	assert.Equal(t, []string{
+		"Project name=" + filepath.Base(tempdir),
+		"Project description=A guided test template",
+		"Stack name=my-org/dev",
+	}, prompts, "a flag-settled key must never be re-prompted, on decline or otherwise")
+	require.Equal(t, []string{"my-org/dev"}, *created)
+
+	proj := loadProject(t, tempdir)
+	projStack, err := workspace.LoadProjectStack(nil /*sink*/, proj, filepath.Join(tempdir, "Pulumi.dev.yaml"))
+	require.NoError(t, err)
+	region, ok := projStack.Config[config.MustMakeKey("aws", "region")]
+	require.True(t, ok)
+	regionValue, err := region.Value(config.NopDecrypter)
+	require.NoError(t, err)
+	assert.Equal(t, "eu-west-1", regionValue)
+}
+
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestGuidedNewNoDefaultConfigAskedBeforeBlock(t *testing.T) {
+	const noDefaultConfigTemplateYAML = `name: ${PROJECT}
+description: ${DESCRIPTION}
+runtime: yaml
+template:
+  description: A guided GCP test template
+  config:
+    gcp:project:
+      description: The Google Cloud project to deploy into
+`
+	guidedRepoTemplate(t, "gcp-python", noDefaultConfigTemplateYAML)
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+
+	b, created := guidedNewTestBackend(t)
+	mockCurrentBackend(t, b)
+
+	selectOne, _ := scriptedSelect(t, "Google Cloud", "Python", confirmYes)
+	var prompts []string
+	var out bytes.Buffer
+	args := newArgs{
+		interactive: true,
+		prompt: countingPrompt(map[string]string{
+			"The Google Cloud project to deploy into (gcp:project)": "proj-123",
+		}, &prompts),
+		promptRuntimeOptions: runtimeOptionsNone,
+		languageTemplate:     languageTemplateMock,
+		selectOne:            selectOne,
+		secretsProvider:      "default",
+		stdout:               &out,
+	}
+
+	err := runNew(t.Context(), args)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"The Google Cloud project to deploy into (gcp:project)="}, prompts,
+		"a key with no default must be prompted for with an empty default, before the block")
+	assert.Contains(t, out.String(), "gcp:project:  proj-123")
+	require.Equal(t, []string{"my-org/dev"}, *created)
+}
+
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestGuidedNewCollidingDefaultNameFallsThrough(t *testing.T) {
+	guidedRepoTemplate(t, "aws-python", guidedConfigTemplateYAML)
+	tempdir := tempProjectDir(t)
+	t.Chdir(tempdir)
+	defaultName := filepath.Base(tempdir)
+
+	b, created := guidedNewTestBackend(t)
+	b.DoesProjectExistF = func(ctx context.Context, org, name string) (bool, error) {
+		return name == defaultName, nil
+	}
+	mockCurrentBackend(t, b)
+
+	// selects: "AWS", "Python" — and nothing else: scriptedSelect fails the test on an
+	// unexpected confirmation select, proving the flow fell through to sequential prompts.
+	selectOne, _ := scriptedSelect(t, "AWS", "Python")
+	var prompts []string
+	var out bytes.Buffer
+	args := newArgs{
+		interactive:          true,
+		prompt:               countingPrompt(map[string]string{"Project name": "fresh-name"}, &prompts),
+		promptRuntimeOptions: runtimeOptionsNone,
+		languageTemplate:     languageTemplateMock,
+		selectOne:            selectOne,
+		secretsProvider:      "default",
+		stdout:               &out,
+	}
+
+	err := runNew(t.Context(), args)
+	require.NoError(t, err)
+
+	require.NotEmpty(t, prompts)
+	assert.Equal(t, "Project name="+defaultName, prompts[0],
+		"the sequential prompts must run, starting with the project name")
+	assert.NotContains(t, out.String(), "Project name:  ")
+	require.Equal(t, []string{"my-org/dev"}, *created)
 }
 
 //nolint:paralleltest // Sets a mock login manager
