@@ -19,11 +19,8 @@ import grpc
 import pytest
 
 import pulumi
-from pulumi.resource import (
-    ResourceTransformArgs,
-    StateMigrationArgs,
-    StateMigrationResult,
-)
+from pulumi.resource import ResourceTransformArgs
+from pulumi.state_migration import StateMigrationContext
 from pulumi.runtime import resource as runtime_resource
 from pulumi.runtime import settings
 from pulumi.runtime._callbacks import _CallbackServicer
@@ -158,21 +155,19 @@ async def test_callback_servicer_state_migration():
         {"urn": child_b_urn, "type": "pkg:m:typA", "custom": True, "id": "id-b"},
     ]
 
-    def migrate_fold(args: StateMigrationArgs):
-        assert args.urn == comp_urn
-        assert args.old_state == old_state
-        new_state = [dict(args.old_state[0]), dict(args.old_state[1])]
-        new_state[1]["urn"] = child_c_urn
-        return StateMigrationResult(
-            new_state=new_state,
-            successors={child_a_urn: child_c_urn, child_b_urn: child_c_urn},
-        )
+    def migrate_fold(ctx: StateMigrationContext):
+        assert ctx.urn == comp_urn
+        assert ctx.old_state == old_state
+        child_c = ctx.rename(child_a_urn, child_c_urn)
+        ctx.merge(child_b_urn, into=child_c)
+        return ctx.result()
 
-    async def migrate_noop(args: StateMigrationArgs):
+    async def migrate_noop(ctx: StateMigrationContext):
         await asyncio.sleep(0)
         future = asyncio.get_running_loop().create_future()
         asyncio.get_running_loop().call_soon(future.set_result, "done")
         assert await future == "done"
+        assert ctx.old_state == old_state
         return None
 
     async with monitor_servicer_stub(ResourceMonitorServicer()) as monitor_stub:
@@ -276,17 +271,17 @@ async def test_state_migration_rejects_pulumi_runtime_operations():
         ),
     )
 
-    def construct_resource(args: StateMigrationArgs):
+    def construct_resource(args: StateMigrationContext):
         pulumi.ComponentResource("test:index:Component", "inside-migration")
 
-    async def invoke(args: StateMigrationArgs):
+    async def invoke(args: StateMigrationContext):
         await asyncio.sleep(0)
         await pulumi.runtime.invoke_async("test:index:getThing", {})
 
-    def invoke_output(args: StateMigrationArgs):
+    def invoke_output(args: StateMigrationContext):
         pulumi.runtime.invoke_output("test:index:getThing", {})
 
-    def register_transform(args: StateMigrationArgs):
+    def register_transform(args: StateMigrationContext):
         pulumi.runtime.register_resource_transform(lambda transform_args: None)
 
     migrations = [

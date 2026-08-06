@@ -84,8 +84,11 @@ from .resource import (
     ResourceTransform,
     ResourceTransformArgs,
     ResourceTransformResult,
+)
+
+from .state_migration import (
     StateMigration,
-    StateMigrationArgs,
+    StateMigrationContext,
     StateMigrationResult,
 )
 
@@ -195,7 +198,7 @@ __all__ = [
     "ResourceTransformArgs",
     "ResourceTransformResult",
     "StateMigration",
-    "StateMigrationArgs",
+    "StateMigrationContext",
     "StateMigrationResult",
     # output
     "Output",

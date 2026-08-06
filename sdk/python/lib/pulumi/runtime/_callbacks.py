@@ -55,9 +55,9 @@ if TYPE_CHECKING:
         Alias,
         ResourceOptions,
         ResourceTransform,
-        StateMigration,
     )
     from ..resource_hooks import ErrorHook, ResourceHook
+    from ..state_migration import StateMigration
 
 
 _CallbackFunction = Callable[[bytes], Awaitable[Message]]
@@ -222,8 +222,8 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
         if token is not None:
             return callback_pb2.Callback(token=token, target=self._target)
 
-        from ..resource import (
-            StateMigrationArgs,
+        from ..state_migration import (
+            StateMigrationContext,
             StateMigrationResult,
         )
 
@@ -232,7 +232,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
                 resource_pb2.StateMigrationRequest.FromString(s)
             )
 
-            args = StateMigrationArgs(
+            args = StateMigrationContext(
                 urn=request.urn,
                 old_state=json.loads(request.old_state),
             )

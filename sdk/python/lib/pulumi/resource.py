@@ -28,6 +28,7 @@ from collections.abc import Callable
 from collections.abc import Awaitable, Mapping, Sequence
 from . import _types
 from .resource_hooks import ResourceHookBinding
+from .state_migration import StateMigration
 from .runtime import known_types
 from .runtime._state_migration_context import _ensure_not_in_state_migration
 from .runtime.resource import (
@@ -339,76 +340,6 @@ optionally return back alternate values for the `props` and/or `opts` prior to t
 actually being created.  The effect will be as though those props and opts were passed in place
 of the original call to the `Resource` constructor.  If the transform returns None,
 this indicates that the resource will not be transformed.
-"""
-
-
-class StateMigrationArgs:
-    """
-    StateMigrationArgs is the argument bag passed to a state migration callback. It carries the
-    prior state of the resource the migration is attached to, plus the prior state of all
-    resources transitively parented to it, in the checkpoint (state file) format.
-    """
-
-    urn: str
-    """
-    The URN of the resource the migration is attached to.
-    """
-
-    old_state: list[dict[str, Any]]
-    """
-    The prior state of the resource and its descendants: a list of resources in the checkpoint
-    format, the resource itself first.
-    """
-
-    def __init__(self, urn: str, old_state: list[dict[str, Any]]) -> None:
-        self.urn = urn
-        self.old_state = old_state
-
-
-class StateMigrationResult:
-    """
-    StateMigrationResult is the result that must be returned by a state migration callback when
-    it changes the state. Every resource present in the old state must either be returned in
-    `new_state` or have an entry in `successors`.
-    """
-
-    new_state: list[dict[str, Any]]
-    """
-    The migrated state: a list of resources in the checkpoint format that replaces the old state.
-    """
-
-    successors: Optional[dict[str, str]]
-    """
-    Maps each old URN removed from the state to the URN in `new_state` that succeeds it. Multiple
-    old URNs may map to the same successor. A resource cannot be removed without a successor.
-    """
-
-    def __init__(
-        self,
-        new_state: list[dict[str, Any]],
-        successors: Optional[dict[str, str]] = None,
-    ) -> None:
-        self.new_state = new_state
-        self.successors = successors
-
-
-StateMigration = Callable[
-    [StateMigrationArgs],
-    Optional[Union[Awaitable[Optional[StateMigrationResult]], StateMigrationResult]],
-]
-"""
-StateMigration is the callback signature for the `state_migrations` resource option. A state
-migration is passed the prior state of the resource it is attached to plus the prior state of
-all resources transitively parented to it, and can return a transformed state that the engine
-splices into its view of the prior state before any diffing. Returning None indicates that the
-state is already in the desired shape and should be left unchanged. Migrations are considered
-during normal updates when prior state exists and must be written to be idempotent. The callback
-receives plaintext values for secrets in the entire subtree and must not perform Pulumi runtime
-operations or await unresolved Outputs. Every resource omitted from the returned state must
-identify a returned successor so the engine can preserve references to it. Provider resource
-states must be returned unchanged.
-
-This is experimental.
 """
 
 

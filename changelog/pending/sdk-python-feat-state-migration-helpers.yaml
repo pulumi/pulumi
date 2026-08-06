@@ -1,0 +1,4 @@
+component: sdk/python
+kind: feat
+body: Add helpers for safely constructing component state migration results
+time: 2026-08-06T19:35:51+02:00
