@@ -50,9 +50,6 @@ func (fs *forSpiller) spillExpression(x model.Expression) (model.Expression, hcl
 	if !ok {
 		return x, nil
 	}
-	// ponytail: only list comprehensions over list collections are lowered;
-	// map collections and map results still fall through to genNYI. Extend
-	// here when a converter example needs them.
 	if f.Key != nil || f.Group {
 		return x, nil
 	}
