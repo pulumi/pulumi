@@ -1781,7 +1781,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	var messages []apitype.Message
 	var isNeoIntegrationEnabled bool
 
-	if b.Capabilities(ctx).BeginUpdate && os.Getenv("PULUMI_BEGIN_UPDATE") == "true" {
+	if b.Capabilities(ctx).BeginUpdate && os.Getenv("PULUMI_DISABLE_BEGIN_UPDATE") != "true" {
 		logging.V(7).Infof("Using combined begin-update endpoint for %s", stackRef)
 		resp, err := b.client.BeginUpdate(
 			ctx, action, stackID, op.Proj, op.StackConfiguration.Config,
