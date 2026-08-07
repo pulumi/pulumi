@@ -15,9 +15,16 @@
 package newcmd
 
 import (
+	"bytes"
+	"errors"
 	"testing"
 
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 )
 
 func TestSanitizeTemplate(t *testing.T) {
@@ -40,4 +47,213 @@ func TestSanitizeTemplate(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestChooseTemplateNonInteractiveReturnsNil(t *testing.T) {
+	t.Parallel()
+
+	got, err := ChooseTemplate(
+		[]cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}},
+		display.Options{IsInteractive: false},
+	)
+	require.NoError(t, err)
+	assert.Nil(t, got)
+}
+
+// fakeSource is a templateSource with independently controllable fetches.
+type fakeSource struct {
+	project     []cmdTemplates.Template
+	database    []cmdTemplates.Template
+	vcsOrgs     []string
+	all         []cmdTemplates.Template
+	projectErr  error
+	databaseErr error
+	allErr      error
+}
+
+func (f fakeSource) ProjectTemplates() ([]cmdTemplates.Template, error) {
+	return f.project, f.projectErr
+}
+
+func (f fakeSource) DatabaseTemplates() ([]cmdTemplates.Template, error) {
+	return f.database, f.databaseErr
+}
+
+func (f fakeSource) VcsTemplateSourceOrgs() []string             { return f.vcsOrgs }
+func (f fakeSource) Templates() ([]cmdTemplates.Template, error) { return f.all, f.allErr }
+
+// sourceOf builds a fakeSource whose project fetch carries every template, as the local checkout
+// does when nothing has been published to the registry.
+func sourceOf(templates ...cmdTemplates.Template) fakeSource {
+	return fakeSource{project: templates, all: templates}
+}
+
+// unsplitSource stands in for a [cmdTemplates.Source] created to resolve a named template, whose
+// cloud listing ran unsplit. Its guided fetches hold nothing and asking for them would only block
+// on a listing the caller does not need, so reaching for one fails the test.
+type unsplitSource struct{ all []cmdTemplates.Template }
+
+const unsplitGuidedFetchMsg = "a source resolving a named template must not be asked for the guided fetches"
+
+func (s unsplitSource) Templates() ([]cmdTemplates.Template, error) { return s.all, nil }
+
+func (s unsplitSource) ProjectTemplates() ([]cmdTemplates.Template, error) {
+	panic(unsplitGuidedFetchMsg)
+}
+
+func (s unsplitSource) DatabaseTemplates() ([]cmdTemplates.Template, error) {
+	panic(unsplitGuidedFetchMsg)
+}
+
+func (s unsplitSource) VcsTemplateSourceOrgs() []string { panic(unsplitGuidedFetchMsg) }
+
+func TestUseGuidedFlowOnlyWhenNothingIsNamedAndWeCanPrompt(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		args newArgs
+		want bool
+	}{
+		{"nothing named", newArgs{interactive: true}, true},
+		{"template named", newArgs{interactive: true, templateNameOrURL: "aws-typescript"}, false},
+		{
+			"url named",
+			newArgs{interactive: true, templateNameOrURL: "https://github.com/pulumi/examples"},
+			false,
+		},
+		{"auto-accept", newArgs{interactive: true, yes: true}, false},
+		{"non-interactive", newArgs{yes: true}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, tt.args.useGuidedFlow())
+		})
+	}
+}
+
+// guidedArgs is an invocation that names no template, so template selection takes the guided flow.
+var guidedArgs = newArgs{interactive: true}
+
+func TestResolveTemplateFallsBackToFlatWhenNothingIsCurated(t *testing.T) {
+	t.Parallel()
+
+	// A name the catalog can't decompose yields no providers, so guided must defer to the flat list.
+	sel, offered := scriptedSelect(t, "second-name    ")
+	var notice bytes.Buffer
+	got, err := resolveTemplate(
+		sourceOf(fakeTemplate{name: "unparseable"}, fakeTemplate{name: "second-name"}),
+		guidedArgs, display.Options{Stdout: &notice}, sel,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "second-name", got.Name())
+
+	require.Len(t, *offered, 1, "the flat list is the only prompt shown")
+	assert.Contains(t, notice.String(), "Falling back to the full template list.")
+}
+
+func TestResolveTemplateFallbackHandlesTinyTemplateSets(t *testing.T) {
+	t.Parallel()
+
+	sel := func(string, []string, display.Options) (int, error) {
+		t.Error("no prompt may be shown for zero or one template")
+		return 0, nil
+	}
+
+	_, err := resolveTemplate(fakeSource{}, guidedArgs, display.Options{}, sel)
+	assert.ErrorContains(t, err, "no templates")
+
+	got, err := resolveTemplate(
+		sourceOf(fakeTemplate{name: "unparseable"}), guidedArgs, display.Options{}, sel)
+	require.NoError(t, err)
+	assert.Equal(t, "unparseable", got.Name(), "a single template is chosen without prompting")
+}
+
+func TestResolveTemplateBrowseAllListsInline(t *testing.T) {
+	t.Parallel()
+
+	sel, _ := scriptedSelect(t, optionBrowseAll, "aws-typescript    ")
+
+	got, err := resolveTemplate(
+		sourceOf(fakeTemplate{name: "aws-typescript"}), guidedArgs, display.Options{}, sel)
+	require.NoError(t, err)
+	assert.Equal(t, "aws-typescript", got.Name())
+}
+
+func TestResolveTemplateMapsInterruptToNoTemplateSelected(t *testing.T) {
+	t.Parallel()
+
+	sel := func(string, []string, display.Options) (int, error) {
+		return 0, terminal.InterruptErr
+	}
+
+	got, err := resolveTemplate(
+		sourceOf(fakeTemplate{name: "aws-typescript"}), guidedArgs, display.Options{}, sel)
+	assert.Nil(t, got)
+	assert.ErrorContains(t, err, "no template selected")
+}
+
+func TestResolveTemplateReturnsGuidedTemplate(t *testing.T) {
+	t.Parallel()
+
+	sel, _ := scriptedSelect(t, "AWS", "TypeScript")
+
+	got, err := resolveTemplate(
+		sourceOf(fakeTemplate{name: "aws-typescript"}), guidedArgs, display.Options{}, sel)
+	require.NoError(t, err)
+	assert.Equal(t, "aws-typescript", got.Name())
+}
+
+func TestResolveTemplatePropagatesErrors(t *testing.T) {
+	t.Parallel()
+
+	sel := func(string, []string, display.Options) (int, error) {
+		return 0, errors.New("boom")
+	}
+
+	_, err := resolveTemplate(
+		sourceOf(fakeTemplate{name: "aws-typescript"}), guidedArgs, display.Options{}, sel)
+	assert.ErrorContains(t, err, "boom")
+}
+
+// A named template or `--yes` skips the guided prompts, and neither reads the split fetches that
+// only a browsing source can answer.
+func TestResolveTemplateWithoutGuidedFlowUsesTheFullSetOnly(t *testing.T) {
+	t.Parallel()
+
+	src := unsplitSource{all: []cmdTemplates.Template{
+		fakeTemplate{name: "aws-go"},
+		fakeTemplate{name: "gcp-go"},
+	}}
+
+	sel, offered := scriptedSelect(t, "gcp-go    ")
+	got, err := resolveTemplate(
+		src, newArgs{interactive: true, templateNameOrURL: "gcp"}, display.Options{}, sel)
+	require.NoError(t, err)
+	assert.Equal(t, "gcp-go", got.Name())
+	require.Len(t, *offered, 1, "a named template disambiguates against the flat list")
+
+	noPrompt := func(string, []string, display.Options) (int, error) {
+		t.Error("--yes must never prompt")
+		return 0, nil
+	}
+	got, err = resolveTemplate(src, newArgs{yes: true}, display.Options{}, noPrompt)
+	require.NoError(t, err)
+	assert.Nil(t, got, "--yes takes no template rather than guessing among several")
+}
+
+func TestSortedForDisplaySortsAndMarksBroken(t *testing.T) {
+	t.Parallel()
+
+	sorted := sortedForDisplay([]cmdTemplates.Template{
+		fakeTemplate{name: "zeta"},
+		fakeTemplate{name: "broken", err: errors.New("boom")},
+		fakeTemplate{name: "alpha"},
+	})
+	require.Len(t, sorted, 3)
+	assert.Equal(t, "alpha", sorted[0].Name())
+	assert.Equal(t, "zeta", sorted[1].Name())
+	assert.Equal(t, "broken", sorted[2].Name(), "broken templates sort to the end")
+	assert.Contains(t, templateLabeler(sorted)(sorted[2]), BrokenTemplateDescription)
 }
