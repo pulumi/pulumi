@@ -1722,7 +1722,13 @@ func (g *generator) genRelativeTraversal(w io.Writer,
 				if key.AsString() == "id" && shouldConvert {
 					g.Fgenf(w, ".ID()")
 				} else {
-					g.Fgenf(w, ".%s", Title(key.AsString()))
+					name := Title(key.AsString())
+					// SDK gen renames fields that would collide with generated
+					// methods (e.g. ElementType) by appending "_"; mirror that.
+					if isReservedResourceField("", name) {
+						name += "_"
+					}
+					g.Fgenf(w, ".%s", name)
 				}
 			}
 		case cty.Number:

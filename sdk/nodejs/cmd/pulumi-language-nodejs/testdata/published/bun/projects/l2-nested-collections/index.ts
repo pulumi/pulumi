@@ -9,3 +9,4 @@ const foo = new nestedcollections.Foo("foo", {});
 const elem = new nestedcollections.elementtype.ElementType("elem", {});
 export const secondProp = foo.conditionSets[0][0][1].prop;
 export const leaf = foo.privateEndpoint.outer.inner.leaf;
+export const elementType = elem.elementType.apply(elementType => elementType?.elementType);
