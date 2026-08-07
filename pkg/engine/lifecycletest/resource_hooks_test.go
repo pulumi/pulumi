@@ -569,7 +569,7 @@ func TestResourceHookComponentAfterDelete(t *testing.T) {
 					require.NoError(t, err)
 					return plugin.ConstructResponse{
 						URN:     res.URN,
-						Outputs: outs,
+						Outputs: resource.FromResourcePropertyMap(outs),
 					}, nil
 				},
 			}, nil
@@ -1163,7 +1163,7 @@ func TestResourceHookComponent(t *testing.T) {
 					require.NoError(t, err)
 					return plugin.ConstructResponse{
 						URN:     res.URN,
-						Outputs: outs,
+						Outputs: resource.FromResourcePropertyMap(outs),
 					}, nil
 				},
 			}, nil

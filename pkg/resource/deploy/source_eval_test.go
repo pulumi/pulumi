@@ -1264,9 +1264,9 @@ func TestRegistrationObserverRemoteComponentNotResolvedOnRegister(t *testing.T) 
 		) (plugin.ConstructResponse, error) {
 			return plugin.ConstructResponse{
 				URN: resource.NewURN(runInfo.Target.Name.Q(), runInfo.Proj.Name, "", req.Type, req.Name),
-				Outputs: resource.PropertyMap{
-					"constructed": resource.NewProperty("v"),
-				},
+				Outputs: property.NewMap(map[string]property.Value{
+					"constructed": property.New("v"),
+				}),
 			}, nil
 		},
 	}

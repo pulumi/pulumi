@@ -470,9 +470,9 @@ func (p *ComponentProvider) constructComponentCustomRefOutput(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]any{
-			"value": value,
-			"ref":   refPropVal,
+		Outputs: property.NewMap(map[string]property.Value{
+			"value": property.New(value),
+			"ref":   resource.FromResourcePropertyValue(refPropVal),
 		}),
 	}, nil
 }
@@ -575,9 +575,9 @@ func (p *ComponentProvider) constructComponentCustomRefInputOutput(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]any{
-			"inputRef":  inputRefPropVal,
-			"outputRef": outputRefPropVal,
+		Outputs: property.NewMap(map[string]property.Value{
+			"inputRef":  resource.FromResourcePropertyValue(inputRefPropVal),
+			"outputRef": resource.FromResourcePropertyValue(outputRefPropVal),
 		}),
 	}, nil
 }
@@ -631,8 +631,8 @@ func (p *ComponentProvider) constructComponentCallable(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]any{
-			"value": value,
+		Outputs: property.NewMap(map[string]property.Value{
+			"value": property.New(value),
 		}),
 	}, nil
 }
@@ -687,8 +687,8 @@ func (p *ComponentProvider) constructComponentForeignChild(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]any{
-			"value": value,
+		Outputs: property.NewMap(map[string]property.Value{
+			"value": property.New(value),
 		}),
 	}, nil
 }

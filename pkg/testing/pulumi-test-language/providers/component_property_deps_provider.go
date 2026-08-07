@@ -394,7 +394,7 @@ func (p *ComponentPropertyDepsProvider) Construct(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(component.Urn),
-		Outputs: resource.NewPropertyMapFromMap(map[string]any{
+		Outputs: property.NewMap(map[string]property.Value{
 			"propertyDeps": p.convertMapToObjectProperty(req.Options.PropertyDependencies),
 		}),
 	}, nil
@@ -410,19 +410,19 @@ func (p *ComponentPropertyDepsProvider) Call(
 
 	return plugin.CallResponse{
 		Return: property.NewMap(map[string]property.Value{
-			"result": resource.FromResourcePropertyValue(p.convertMapToObjectProperty(req.Options.ArgDependencies)),
+			"result": p.convertMapToObjectProperty(req.Options.ArgDependencies),
 		}),
 	}, nil
 }
 
 func (p *ComponentPropertyDepsProvider) convertMapToObjectProperty(
 	m map[resource.PropertyKey][]resource.URN,
-) resource.PropertyValue {
+) property.Value {
 	fields := make(map[string]any)
 	for key, urns := range m {
 		fields[string(key)] = urns
 	}
-	return resource.NewProperty(resource.NewPropertyMapFromMap(fields))
+	return resource.FromResourcePropertyValue(resource.NewProperty(resource.NewPropertyMapFromMap(fields)))
 }
 
 func (p *ComponentPropertyDepsProvider) convertMapToStruct(
