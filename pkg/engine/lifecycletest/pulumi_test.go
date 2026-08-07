@@ -2392,7 +2392,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 
 					return plugin.ConstructResponse{
 						URN:     resp.URN,
-						Outputs: outs,
+						Outputs: resource.FromResourcePropertyMap(outs),
 					}, nil
 				},
 			}, nil

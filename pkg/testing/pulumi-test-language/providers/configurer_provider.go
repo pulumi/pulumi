@@ -363,10 +363,10 @@ func (p *ConfigurerProvider) Construct(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.PropertyMap{
-			"providerConfig":   resource.NewProperty(providerConfig),
-			"innerProviderRef": innerRef,
-		},
+		Outputs: property.NewMap(map[string]property.Value{
+			"providerConfig":   property.New(providerConfig),
+			"innerProviderRef": resource.FromResourcePropertyValue(innerRef),
+		}),
 	}, nil
 }
 

@@ -970,7 +970,7 @@ type ConstructResult struct {
 	// The URN of the constructed component resource.
 	URN resource.URN
 	// The output properties of the component resource.
-	Outputs resource.PropertyMap
+	Outputs property.Map
 	// The resources that each output property depends on.
 	OutputDependencies map[resource.PropertyKey][]resource.URN
 }
