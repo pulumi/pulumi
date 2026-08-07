@@ -345,8 +345,8 @@ func newDIYBackend(
 
 	// If we're not in project mode and the user hasn't disabled the warning, warn that legacy mode is deprecated and
 	// due to be removed.
-	if !projectMode && !opts.Env.GetBool(env.DIYBackendIgnoreDeprecationWarning) {
-		d.Warningf(diag.Message("", `
+	if !projectMode && !opts.Env.GetBool(env.DIYBackendIgnoreDeprecationError) {
+		return nil, errors.New(`
 ================================================================================
 Legacy DIY state is deprecated, please upgrade your state to project mode using:
 'pulumi state upgrade'
@@ -354,8 +354,8 @@ Legacy DIY state is deprecated, please upgrade your state to project mode using:
 It is due to be removed in a future release before the end of this year (2026).
 If you have any feedback or concerns, please let us know by commenting on the
 issue at https://github.com/pulumi/pulumi/issues/19566.
-Set PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_WARNING=1 to disable this warning.
-================================================================================`))
+Set PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR=1 to disable this error.
+================================================================================`)
 	}
 
 	// If we're not in project mode, or we've disabled the warning, we're done.
