@@ -211,8 +211,6 @@ class TestAddDependency(unittest.IsolatedAsyncioTestCase):
     async def test_cycle_through_parent_is_reported(self):
         cyclic_child = _FakeCustomResource("cyclic-child")
         sibling = _FakeCustomResource("sibling")
-        # `sibling` is listed first so that the traversal reaches it, and would
-        # await its URN, before it walks as far as the cycle.
         parent = _FakeComponentResource("parent", [sibling, cyclic_child])
 
         with self.assertRaises(RuntimeError):
