@@ -7,7 +7,7 @@ import warnings
 import sys
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Literal, Mapping, Optional, Sequence, Union, overload
 if sys.version_info >= (3, 11):
     from typing import NotRequired, TypedDict, TypeAlias
 else:
@@ -45,7 +45,7 @@ class GetIntegrationRuntimeObjectMetadatumResult:
 
     @_builtins.property
     @pulumi.getter
-    def value(self) -> Optional[Sequence[Any]]:
+    def value(self) -> Optional[Sequence[Union['outputs.SsisEnvironmentResponse', 'outputs.SsisFolderResponse', 'outputs.SsisPackageResponse', 'outputs.SsisProjectResponse']]]:
         """
         List of SSIS object metadata.
         """

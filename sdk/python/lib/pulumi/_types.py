@@ -296,6 +296,7 @@ _PULUMI_INPUT_TYPE = "_pulumi_input_type"
 _PULUMI_OUTPUT_TYPE = "_pulumi_output_type"
 _PULUMI_PYTHON_TO_PULUMI_TABLE = "_pulumi_python_to_pulumi_table"
 _PULUMI_DEPRECATED_CALLABLE = "_pulumi_deprecated_callable"
+_PULUMI_DISCRIMINATOR = "_pulumi_discriminator"
 _TRANSLATE_PROPERTY = "_translate_property"
 
 
@@ -305,6 +306,35 @@ def is_input_type(cls: type) -> bool:
 
 def is_output_type(cls: type) -> bool:
     return hasattr(cls, _PULUMI_OUTPUT_TYPE)
+
+
+def discriminated_union_case(property_name: str, tag: str) -> Callable[[type], type]:
+    """
+    Marks a class as one case of a discriminated union. `property_name` is the Pulumi name of
+    the union's discriminator property and `tag` is the value of that property which selects
+    this case.
+
+    A union type annotation whose members all carry this marker is a discriminated union, and
+    the Pulumi runtime translates values of that union by dispatching on the tag rather than
+    by matching the shape of the value.
+    """
+
+    def decorator(cls: type) -> type:
+        setattr(cls, _PULUMI_DISCRIMINATOR, (property_name, tag))
+        return cls
+
+    return decorator
+
+
+def discriminator_of(cls: Any) -> Optional[tuple[str, str]]:
+    """
+    Returns the (discriminator property name, tag) pair of a discriminated union case, or None
+    if `cls` is not one. The marker is read off the class itself rather than off its bases, so
+    that a subclass does not silently inherit another case's tag.
+    """
+    if not isinstance(cls, type):
+        return None
+    return cls.__dict__.get(_PULUMI_DISCRIMINATOR)
 
 
 class _MISSING_TYPE:
@@ -717,6 +747,91 @@ def _is_optional_type(tp):
     if _is_union_type(tp):
         return any(_is_optional_type(tt) for tt in typing.get_args(tp))
     return False
+
+
+@functools.cache
+def discriminated_union_cases(typ: Any) -> Optional[tuple[str, dict[str, type]]]:
+    """
+    Returns the (discriminator property name, tag to case type mapping) of a discriminated union
+    type annotation, or None if `typ` is not one.
+
+    A union qualifies when it holds at least two input or output types, every one of them is
+    marked with `@discriminated_union_case`, and they all agree on the discriminator property
+    name. Members that are not input or output types, such as the `None`, `Awaitable` and
+    `Output` members of an `Input[...]` annotation, or the `TypedDict` alternative of an input
+    class, are ignored: they carry no metadata of their own and the marked classes describe the
+    union completely.
+    """
+    if not _is_union_type(typ):
+        return None
+
+    property_name: Optional[str] = None
+    cases: dict[str, type] = {}
+    count = 0
+    for arg in typing.get_args(typ):
+        if not isinstance(arg, type) or not (is_input_type(arg) or is_output_type(arg)):
+            continue
+        count += 1
+        marker = discriminator_of(arg)
+        if marker is None:
+            return None
+        name, tag = marker
+        if property_name is None:
+            property_name = name
+        elif property_name != name:
+            return None
+        # Two cases claiming the same tag would make dispatch ambiguous.
+        if tag in cases:
+            return None
+        cases[tag] = arg
+
+    if property_name is None or count < 2:
+        return None
+    return (property_name, cases)
+
+
+def py_name_for(cls: type, pulumi_name: str) -> Optional[str]:
+    """
+    Returns the Python name of the property of `cls` whose Pulumi name is `pulumi_name`.
+    """
+    for python_name, name, _ in _py_properties(cls):
+        if name == pulumi_name:
+            return python_name
+    return None
+
+
+def _lookup(value: abc.Mapping, key: str) -> Any:
+    # An output type is a dict subclass that warns when a Pulumi name is read through `get` or
+    # `[]`, to steer users towards its property getters. Read the underlying dict directly so
+    # that looking for the discriminator does not warn.
+    if isinstance(value, dict):
+        return dict.get(value, key, MISSING)
+    return value.get(key, MISSING)
+
+
+def select_discriminated_union_case(
+    cases: tuple[str, dict[str, type]], value: abc.Mapping
+) -> Optional[type]:
+    """
+    Returns the case type that `value` selects, or None if the discriminator property is absent
+    or holds a tag that is not in the mapping.
+
+    `value` may be keyed either by Pulumi names, as it is when it comes back from the engine, or
+    by Python names, as it is when the user writes a dict or passes a generated type through.
+    """
+    property_name, mapping = cases
+    tag = _lookup(value, property_name)
+    if tag is MISSING:
+        for case in mapping.values():
+            python_name = py_name_for(case, property_name)
+            if python_name is None:
+                continue
+            tag = _lookup(value, python_name)
+            if tag is not MISSING:
+                break
+    if not isinstance(tag, str):
+        return None
+    return mapping.get(tag)
 
 
 def _globals_for_cls(cls: type) -> Optional[dict[str, Any]]:

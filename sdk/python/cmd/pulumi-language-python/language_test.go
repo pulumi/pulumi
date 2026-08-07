@@ -219,9 +219,15 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skip("Skipping non-default provider tests")
 					}
 
-					if (config.name == "default" || config.name == "toml") &&
-						(tt == "l2-discriminated-union" || tt == "l2-discriminated-union-many") {
-						t.Skip("pulumi#21830: Expected to fail")
+					// The last resource of this test assigns one resource's output straight
+					// into another resource's input, where the output's union is a subset of
+					// the input's. mypy reports `Argument "union_of" to "Example" has
+					// incompatible type`, listing __await__ among the mismatched members of
+					// Output[...]: it will not accept Output[Union[subset]] for a parameter
+					// typed with the wider union. pyright accepts it, so the toml and classes
+					// configs still cover this test.
+					if config.name == "default" && tt == "l2-discriminated-union-many" {
+						t.Skip("mypy rejects assigning an output typed with a subset union into a wider union input")
 					}
 
 					if config.typechecker == "pyright" &&

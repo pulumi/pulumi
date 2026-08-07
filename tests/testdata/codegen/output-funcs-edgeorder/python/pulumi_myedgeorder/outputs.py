@@ -7,7 +7,7 @@ import warnings
 import sys
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Literal, Mapping, Optional, Sequence, Union, overload
 if sys.version_info >= (3, 11):
     from typing import NotRequired, TypedDict, TypeAlias
 else:
@@ -87,7 +87,7 @@ class BillingMeterDetailsResponse(dict):
     """
     def __init__(__self__, *,
                  frequency: _builtins.str,
-                 meter_details: Any,
+                 meter_details: Union['outputs.Pav2MeterDetailsResponse', 'outputs.PurchaseMeterDetailsResponse'],
                  metering_type: _builtins.str,
                  name: _builtins.str):
         """
@@ -113,7 +113,7 @@ class BillingMeterDetailsResponse(dict):
 
     @_builtins.property
     @pulumi.getter(name="meterDetails")
-    def meter_details(self) -> Any:
+    def meter_details(self) -> Union['outputs.Pav2MeterDetailsResponse', 'outputs.PurchaseMeterDetailsResponse']:
         """
         Represents MeterDetails
         """
@@ -611,12 +611,13 @@ class LinkResponse(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("billingType", "Pav2")
 class Pav2MeterDetailsResponse(dict):
     """
     Billing type PAV2 meter details
     """
     def __init__(__self__, *,
-                 billing_type: _builtins.str,
+                 billing_type: Literal["Pav2"],
                  charging_type: _builtins.str,
                  meter_guid: _builtins.str,
                  multiplier: _builtins.float):
@@ -636,7 +637,7 @@ class Pav2MeterDetailsResponse(dict):
 
     @_builtins.property
     @pulumi.getter(name="billingType")
-    def billing_type(self) -> _builtins.str:
+    def billing_type(self) -> Literal["Pav2"]:
         """
         Represents billing type.
         Expected value is 'Pav2'.
@@ -969,12 +970,13 @@ class ProductResponse(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("billingType", "Purchase")
 class PurchaseMeterDetailsResponse(dict):
     """
     Billing type Purchase meter details
     """
     def __init__(__self__, *,
-                 billing_type: _builtins.str,
+                 billing_type: Literal["Purchase"],
                  charging_type: _builtins.str,
                  multiplier: _builtins.float,
                  product_id: _builtins.str,
@@ -1000,7 +1002,7 @@ class PurchaseMeterDetailsResponse(dict):
 
     @_builtins.property
     @pulumi.getter(name="billingType")
-    def billing_type(self) -> _builtins.str:
+    def billing_type(self) -> Literal["Purchase"]:
         """
         Represents billing type.
         Expected value is 'Purchase'.

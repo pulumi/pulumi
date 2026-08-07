@@ -7,7 +7,7 @@ import warnings
 import sys
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Literal, Mapping, Optional, Sequence, Union, overload
 if sys.version_info >= (3, 11):
     from typing import NotRequired, TypedDict, TypeAlias
 else:
@@ -87,12 +87,13 @@ class SsisEnvironmentReferenceResponse(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("type", "Environment")
 class SsisEnvironmentResponse(dict):
     """
     Ssis environment.
     """
     def __init__(__self__, *,
-                 type: _builtins.str,
+                 type: Literal["Environment"],
                  description: Optional[_builtins.str] = None,
                  folder_id: Optional[_builtins.float] = None,
                  id: Optional[_builtins.float] = None,
@@ -123,7 +124,7 @@ class SsisEnvironmentResponse(dict):
 
     @_builtins.property
     @pulumi.getter
-    def type(self) -> _builtins.str:
+    def type(self) -> Literal["Environment"]:
         """
         The type of SSIS object metadata.
         Expected value is 'Environment'.
@@ -172,12 +173,13 @@ class SsisEnvironmentResponse(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("type", "Folder")
 class SsisFolderResponse(dict):
     """
     Ssis folder.
     """
     def __init__(__self__, *,
-                 type: _builtins.str,
+                 type: Literal["Folder"],
                  description: Optional[_builtins.str] = None,
                  id: Optional[_builtins.float] = None,
                  name: Optional[_builtins.str] = None):
@@ -200,7 +202,7 @@ class SsisFolderResponse(dict):
 
     @_builtins.property
     @pulumi.getter
-    def type(self) -> _builtins.str:
+    def type(self) -> Literal["Folder"]:
         """
         The type of SSIS object metadata.
         Expected value is 'Folder'.
@@ -233,12 +235,13 @@ class SsisFolderResponse(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("type", "Package")
 class SsisPackageResponse(dict):
     """
     Ssis Package.
     """
     def __init__(__self__, *,
-                 type: _builtins.str,
+                 type: Literal["Package"],
                  description: Optional[_builtins.str] = None,
                  folder_id: Optional[_builtins.float] = None,
                  id: Optional[_builtins.float] = None,
@@ -277,7 +280,7 @@ class SsisPackageResponse(dict):
 
     @_builtins.property
     @pulumi.getter
-    def type(self) -> _builtins.str:
+    def type(self) -> Literal["Package"]:
         """
         The type of SSIS object metadata.
         Expected value is 'Package'.
@@ -498,12 +501,13 @@ class SsisParameterResponse(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("type", "Project")
 class SsisProjectResponse(dict):
     """
     Ssis project.
     """
     def __init__(__self__, *,
-                 type: _builtins.str,
+                 type: Literal["Project"],
                  description: Optional[_builtins.str] = None,
                  environment_refs: Optional[Sequence['outputs.SsisEnvironmentReferenceResponse']] = None,
                  folder_id: Optional[_builtins.float] = None,
@@ -542,7 +546,7 @@ class SsisProjectResponse(dict):
 
     @_builtins.property
     @pulumi.getter
-    def type(self) -> _builtins.str:
+    def type(self) -> Literal["Project"]:
         """
         The type of SSIS object metadata.
         Expected value is 'Project'.

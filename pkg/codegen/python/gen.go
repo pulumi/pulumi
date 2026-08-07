@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"net/url"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -133,6 +134,29 @@ type modContext struct {
 
 	// Controls what types are used for inputs, see PackageInfo.InputTypes.
 	inputTypes string
+
+	// The discriminated union cases of the whole package, keyed by object type token and shared by
+	// every module.
+	unionCases map[string]discriminatedUnionCase
+}
+
+// unionCase returns the discriminated union case an object type stands for, if any.
+func (mod *modContext) unionCase(obj *schema.ObjectType) *discriminatedUnionCase {
+	c, ok := mod.unionCases[plainObjectShape(obj).Token]
+	if !ok {
+		return nil
+	}
+	return &c
+}
+
+// literalFor returns the type string options to render a property of a discriminated union member
+// with. The discriminator property is rendered as a Literal of the member's tag so that type
+// checkers can tell the members of the union apart.
+func (unionCase *discriminatedUnionCase) literalFor(prop *schema.Property, opts typeStringOpts) typeStringOpts {
+	if unionCase != nil && prop.Name == unionCase.propertyName {
+		opts.literal = unionCase.tag
+	}
+	return opts
 }
 
 func (mod *modContext) isTopLevel() bool {
@@ -452,6 +476,18 @@ func typingImports() []string {
 	}
 }
 
+// typingImports returns the `typing` names the module's files import. `Literal` is only imported by
+// modules that hold a discriminated union member, whose discriminator property is typed as one.
+func (mod *modContext) typingImports() []string {
+	imports := typingImports()
+	for _, t := range mod.types {
+		if mod.unionCase(t) != nil {
+			return append([]string{"Any", "Literal"}, imports[1:]...)
+		}
+	}
+	return imports
+}
+
 func (mod *modContext) generateCommonImports(w io.Writer, imports imports, typingImports []string) {
 	fmt.Fprintf(w, "import warnings\n")
 	if typedDictEnabled(mod.inputTypes) {
@@ -481,14 +517,14 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool, imports imports) {
 
 	// If needed, emit the standard Pulumi SDK import statement.
 	if needsSDK {
-		typings := typingImports()
+		typings := mod.typingImports()
 		mod.generateCommonImports(w, imports, typings)
 	}
 }
 
 func (mod *modContext) genFunctionHeader(w io.Writer, function *schema.Function, imports imports) {
 	genStandardHeader(w, mod.tool)
-	typings := typingImports()
+	typings := mod.typingImports()
 	if function.Outputs == nil || len(function.Outputs.Properties) == 0 {
 		typings = append(typings, "Awaitable")
 	}
@@ -1401,7 +1437,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	// Produce an args class.
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
-	err := mod.genType(w, resourceArgsName, argsComment, res.InputProperties, true, false)
+	err := mod.genType(w, resourceArgsName, argsComment, res.InputProperties, true, false, nil)
 	if err != nil {
 		return "", err
 	}
@@ -1414,7 +1450,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		len(res.StateInputs.Properties) > 0
 	if hasStateInputs {
 		stateComment := fmt.Sprintf("Input properties used for looking up and filtering %s resources.", name)
-		err = mod.genType(w, fmt.Sprintf("_%sState", name), stateComment, res.StateInputs.Properties, true, false)
+		err = mod.genType(w, fmt.Sprintf("_%sState", name), stateComment, res.StateInputs.Properties, true, false, nil)
 		if err != nil {
 			return "", err
 		}
@@ -2721,6 +2757,172 @@ type typeStringOpts struct {
 	forDict bool
 	// Whether these types are going to be used in the docs
 	forDocs bool
+	// When set, a string type is rendered as a Literal of this value rather than as `str`. It is
+	// used for the discriminator property of a discriminated union member, so that type checkers
+	// can tell the members apart by their tag.
+	literal string
+}
+
+const typeRefPrefix = "#/types/"
+
+// plainObjectShape returns the non-input shape of an object type.
+func plainObjectShape(obj *schema.ObjectType) *schema.ObjectType {
+	if obj.PlainShape != nil {
+		return obj.PlainShape
+	}
+	return obj
+}
+
+// discriminatedUnionMembers resolves a union's discriminator mapping to the object types it
+// selects, keyed by tag. It reports false when the union is not a well-formed discriminated union
+// of object types, in which case the union is generated the way it always was.
+func discriminatedUnionMembers(t *schema.UnionType) (map[string]*schema.ObjectType, bool) {
+	if t.Discriminator == "" || len(t.Mapping) == 0 {
+		return nil, false
+	}
+
+	byToken := map[string]*schema.ObjectType{}
+	for _, e := range t.ElementTypes {
+		obj, ok := codegen.UnwrapType(e).(*schema.ObjectType)
+		if !ok {
+			return nil, false
+		}
+		plain := plainObjectShape(obj)
+		byToken[plain.Token] = plain
+	}
+
+	members := map[string]*schema.ObjectType{}
+	for tag, ref := range t.Mapping {
+		token, found := strings.CutPrefix(ref, typeRefPrefix)
+		if !found {
+			return nil, false
+		}
+		obj, ok := byToken[token]
+		if !ok {
+			// Refs may percent-encode characters that are legal in a token.
+			unescaped, err := url.PathUnescape(token)
+			if err != nil {
+				return nil, false
+			}
+			if obj, ok = byToken[unescaped]; !ok {
+				return nil, false
+			}
+		}
+		members[tag] = obj
+	}
+
+	// Every element must be reachable through the mapping, otherwise dispatching on the tag would
+	// not cover the whole union.
+	if len(members) != len(byToken) {
+		return nil, false
+	}
+	return members, true
+}
+
+// isDiscriminatedUnion reports whether a value of the union can be told apart by its discriminator
+// tag, which is what lets the union be given a precise type rather than degrading to `Any`.
+func isDiscriminatedUnion(t *schema.UnionType) bool {
+	_, ok := discriminatedUnionMembers(t)
+	return ok
+}
+
+// discriminatedUnionCase is the discriminator property and the tag that together select one member
+// of a discriminated union.
+type discriminatedUnionCase struct {
+	propertyName string
+	tag          string
+}
+
+// discriminatedUnionCases maps the token of every object type that is a member of a discriminated
+// union to the case it stands for. A type that different unions tag differently, or that they
+// discriminate on different properties, is left out, because no single tag describes it.
+func discriminatedUnionCases(pkg *schema.Package) map[string]discriminatedUnionCase {
+	cases := map[string]discriminatedUnionCase{}
+	conflicting := codegen.StringSet{}
+
+	seen := codegen.Set{}
+	visit := func(properties []*schema.Property) {
+		for _, p := range properties {
+			codegen.VisitType(p.Type, func(t schema.Type) {
+				union, ok := t.(*schema.UnionType)
+				if !ok || seen.Has(union) {
+					return
+				}
+				seen.Add(union)
+				members, ok := discriminatedUnionMembers(union)
+				if !ok {
+					return
+				}
+				for tag, member := range members {
+					c := discriminatedUnionCase{propertyName: union.Discriminator, tag: tag}
+					if existing, ok := cases[member.Token]; ok && existing != c {
+						conflicting.Add(member.Token)
+					}
+					cases[member.Token] = c
+				}
+			})
+		}
+	}
+
+	visit(pkg.Config)
+	if pkg.Provider != nil {
+		visit(pkg.Provider.InputProperties)
+		visit(pkg.Provider.Properties)
+	}
+	for _, r := range pkg.Resources {
+		visit(r.InputProperties)
+		visit(r.Properties)
+		if r.StateInputs != nil {
+			visit(r.StateInputs.Properties)
+		}
+		for _, m := range r.Methods {
+			if m.Function == nil {
+				continue
+			}
+			if m.Function.Inputs != nil {
+				visit(m.Function.Inputs.Properties)
+			}
+			if obj, ok := m.Function.ReturnType.(*schema.ObjectType); ok && obj != nil {
+				visit(obj.Properties)
+			}
+		}
+	}
+	for _, f := range pkg.Functions {
+		if f.Inputs != nil {
+			visit(f.Inputs.Properties)
+		}
+		if obj, ok := f.ReturnType.(*schema.ObjectType); ok && obj != nil {
+			visit(obj.Properties)
+		}
+	}
+	for _, t := range pkg.Types {
+		if obj, ok := t.(*schema.ObjectType); ok {
+			visit(obj.Properties)
+		}
+	}
+
+	for _, token := range conflicting.SortedValues() {
+		delete(cases, token)
+	}
+	return cases
+}
+
+// unionElementsString renders a union as `Union[...]` over the distinct renderings of its members.
+func (mod *modContext) unionElementsString(t *schema.UnionType, opts typeStringOpts) string {
+	elementTypeSet := codegen.NewStringSet()
+	elements := slice.Prealloc[string](len(t.ElementTypes))
+	for _, e := range t.ElementTypes {
+		et := mod.typeString(e, opts)
+		if !elementTypeSet.Has(et) {
+			elementTypeSet.Add(et)
+			elements = append(elements, et)
+		}
+	}
+
+	if len(elements) == 1 {
+		return elements[0]
+	}
+	return fmt.Sprintf("Union[%s]", strings.Join(elements, ", "))
 }
 
 func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
@@ -2813,27 +3015,23 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 					return mod.typeString(typ.ElementType, opts)
 				}
 			}
+			// A discriminated union of object types keeps its members on the output side too: the
+			// runtime tells them apart by the discriminator tag, so there is no need to degrade to
+			// `Any` the way an undiscriminated union still does.
+			if isDiscriminatedUnion(t) {
+				return mod.unionElementsString(t, opts)
+			}
 			if t.DefaultType != nil {
 				return mod.typeString(t.DefaultType, opts)
 			}
 			return "Any"
 		}
 
-		elementTypeSet := codegen.NewStringSet()
-		elements := slice.Prealloc[string](len(t.ElementTypes))
-		for _, e := range t.ElementTypes {
-			et := mod.typeString(e, opts)
-			if !elementTypeSet.Has(et) {
-				elementTypeSet.Add(et)
-				elements = append(elements, et)
-			}
-		}
-
-		if len(elements) == 1 {
-			return elements[0]
-		}
-		return fmt.Sprintf("Union[%s]", strings.Join(elements, ", "))
+		return mod.unionElementsString(t, opts)
 	default:
+		if opts.literal != "" && t == schema.StringType {
+			return fmt.Sprintf("Literal[%s]", strconv.Quote(opts.literal))
+		}
 		builtin := func(name string, forDocs bool) string {
 			if forDocs {
 				return name
@@ -2945,15 +3143,19 @@ func InitParamName(name string) string {
 func (mod *modContext) genObjectType(w io.Writer, obj *schema.ObjectType, input bool) error {
 	name := mod.unqualifiedObjectTypeName(obj, input)
 	resourceOutputType := !input && mod.details(obj).resourceOutputType
+	unionCase := mod.unionCase(obj)
 	if input && typedDictEnabled(mod.inputTypes) {
-		if err := mod.genDictType(w, name, obj.Comment, obj.Properties); err != nil {
+		if err := mod.genDictType(w, name, obj.Comment, obj.Properties, unionCase); err != nil {
 			return err
 		}
 	}
-	return mod.genType(w, name, obj.Comment, obj.Properties, input, resourceOutputType)
+	return mod.genType(w, name, obj.Comment, obj.Properties, input, resourceOutputType, unionCase)
 }
 
-func (mod *modContext) genType(w io.Writer, name, comment string, properties []*schema.Property, input, resourceOutput bool) error {
+func (mod *modContext) genType(
+	w io.Writer, name, comment string, properties []*schema.Property,
+	input, resourceOutput bool, unionCase *discriminatedUnionCase,
+) error {
 	// Sort required props first.
 	props := make([]*schema.Property, len(properties))
 	copy(props, properties)
@@ -2979,6 +3181,9 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 
 	name = pythonCase(name)
 	fmt.Fprintf(w, "%s\n", decorator)
+	if unionCase != nil {
+		fmt.Fprintf(w, "@pulumi.discriminated_union_case(%q, %q)\n", unionCase.propertyName, unionCase.tag)
+	}
 	fmt.Fprintf(w, "class %s%s:\n", name, suffix)
 	if !input && comment != "" {
 		docRef := schema.DocRef{}
@@ -3037,9 +3242,10 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	}
 	for _, prop := range props {
 		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, typeStringOpts{input: input})
+		opts := unionCase.literalFor(prop, typeStringOpts{input: input})
+		ty := mod.typeString(prop.Type, opts)
 		if prop.DefaultValue != nil {
-			ty = mod.typeString(codegen.OptionalType(prop), typeStringOpts{input: input})
+			ty = mod.typeString(codegen.OptionalType(prop), opts)
 		}
 
 		var defaultValue string
@@ -3105,7 +3311,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 
 	// Generate properties. Input types have getters and setters, output types only have getters.
 	if err := mod.genProperties(w, props, input /*setters*/, "", func(prop *schema.Property) string {
-		return mod.typeString(prop.Type, typeStringOpts{input: input})
+		return mod.typeString(prop.Type, unionCase.literalFor(prop, typeStringOpts{input: input}))
 	}); err != nil {
 		return err
 	}
@@ -3114,7 +3320,9 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	return nil
 }
 
-func (mod *modContext) genDictType(w io.Writer, name, comment string, properties []*schema.Property) error {
+func (mod *modContext) genDictType(
+	w io.Writer, name, comment string, properties []*schema.Property, unionCase *discriminatedUnionCase,
+) error {
 	// Sort required props first.
 	props := make([]*schema.Property, len(properties))
 	copy(props, properties)
@@ -3145,7 +3353,7 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 
 	for _, prop := range props {
 		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, typeStringOpts{input: true, forDict: true})
+		ty := mod.typeString(prop.Type, unionCase.literalFor(prop, typeStringOpts{input: true, forDict: true}))
 		fmt.Fprintf(w, "%s%s: %s\n", indent, pname, ty)
 		if prop.Comment != "" {
 			propComment, err := mod.genComment(prop.Comment, docRef, false /*filterExamples*/)
@@ -3244,6 +3452,8 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	// modules map will contain modContext entries for all modules in current package (pkg)
 	modules := map[string]*modContext{}
 
+	unionCases := discriminatedUnionCases(pkg)
+
 	var getMod func(modName string, p schema.PackageReference) *modContext
 	getMod = func(modName string, p schema.PackageReference) *modContext {
 		mod, ok := modules[modName]
@@ -3257,6 +3467,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 				compatibility:                info.Compatibility,
 				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
 				inputTypes:                   info.InputTypes,
+				unionCases:                   unionCases,
 			}
 
 			if modName != "" && codegen.PkgEquals(p, pkg.Reference()) {
