@@ -254,7 +254,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				fmt.Fprintf(cmd.OutOrStdout(), "Logged in to %s (%s)\n", be.Name(), be.URL())
 			}
 
-			return nil
+			return offerFirstStep(ctx, be, cwd, cmd.OutOrStdout(), displayOptions, cmdutil.Interactive())
 		},
 	}
 
