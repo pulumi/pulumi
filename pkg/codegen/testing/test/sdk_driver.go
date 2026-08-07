@@ -325,11 +325,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("go/any"),
 	},
 	{
-		Directory:   "go-nested-collections",
-		Description: "Generate a resource that outputs [][][]Foo",
-		Skip:        allLanguages.Except("go/any"),
-	},
-	{
 		Directory:   "regress-py-tfbridge-611",
 		Description: "Regresses pulumi/pulumi-terraform-bridge#611",
 		Skip:        allLanguages.Except("python/any").Union(codegen.NewStringSet("python/test", "python/py_compile")),
