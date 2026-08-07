@@ -1,0 +1,4 @@
+component: programgen/go
+kind: fix
+body: 'List comprehensions (`for` expressions) over lists are now generated as Go loops instead of `"TODO: For expression"`'
+time: 2026-08-07T10:51:08.245068+02:00
