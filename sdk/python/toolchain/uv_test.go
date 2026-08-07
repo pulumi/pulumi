@@ -17,7 +17,9 @@ package toolchain
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -376,4 +378,77 @@ dependencies = []
 	err = uv.LinkPackages(t.Context(), map[string]string{"nope": "." + string(filepath.Separator) + "nope"})
 
 	require.ErrorContains(t, err, "expected version to start with a number, but no leading ASCII digits were found")
+}
+
+// TestUvWorkspaceListPackages verifies that in a uv workspace, ListPackages only returns the
+// dependencies of the current workspace member, not those of sibling members. In a workspace the
+// shared uv.lock contains every member's dependencies, but `uv sync` only installs the current
+// member's dependencies, so reporting all of them would cause plugin discovery to look for metadata
+// that isn't installed. Regression test for https://github.com/pulumi/pulumi/issues/24014.
+func TestUvWorkspaceListPackages(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on Windows
+		t.Skip("Skipping tests on Windows")
+	}
+	t.Parallel()
+
+	root := t.TempDir()
+	memberA := filepath.Join(root, "members", "a")
+	memberB := filepath.Join(root, "members", "b")
+	require.NoError(t, os.MkdirAll(memberA, 0o755))
+	require.NoError(t, os.MkdirAll(memberB, 0o755))
+
+	writePyproject := func(dir, contents string) {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "pyproject.toml"), []byte(contents), 0o600))
+	}
+	writePyproject(root, `[project]
+name = "ws-root"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["members/*"]
+`)
+	// iniconfig and packaging are tiny, dependency-free packages, pinned so no resolution surprises.
+	writePyproject(memberA, `[project]
+name = "member-a"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = ["iniconfig==2.0.0"]
+`)
+	writePyproject(memberB, `[project]
+name = "member-b"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = ["packaging==24.0"]
+`)
+
+	lockCmd := exec.Command("uv", "lock")
+	lockCmd.Dir = root
+	out, err := lockCmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	listFor := func(programDir string) map[string]string {
+		opts := PythonOptions{Toolchain: Uv, Root: programDir, ProgramDir: programDir}
+		tc, err := ResolveToolchain(opts)
+		require.NoError(t, err)
+		packages, err := tc.ListPackages(t.Context(), true /* transitive */)
+		require.NoError(t, err)
+		versions := make(map[string]string, len(packages))
+		for _, p := range packages {
+			versions[p.Name] = p.Version
+		}
+		return versions
+	}
+
+	namesA := listFor(memberA)
+	require.Contains(t, namesA, "iniconfig")
+	require.NotContains(t, namesA, "packaging", "member A must not see member B's dependencies")
+
+	namesB := listFor(memberB)
+	require.Contains(t, namesB, "packaging")
+	require.NotContains(t, namesB, "iniconfig", "member B must not see member A's dependencies")
+	// The version must be a bare version, with the "==" operator from `uv export` stripped.
+	require.Equal(t, "24.0", namesB["packaging"])
 }
