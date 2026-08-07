@@ -39,12 +39,8 @@ func MultiArgumentInvokeOutput(ctx *pulumi.Context, first pulumi.StringInput, se
 		First:  first,
 		Second: second,
 	}
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (MultiArgumentInvokeResultOutput, error) {
-			args := v.(multiArgumentInvokeArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			return ctx.InvokeOutput("multi-argument-invoke:index:multiArgumentInvoke", args, MultiArgumentInvokeResultOutput{}, options).(MultiArgumentInvokeResultOutput), nil
-		}).(MultiArgumentInvokeResultOutput)
+	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+	return ctx.InvokeOutput("multi-argument-invoke:index:multiArgumentInvoke", args, MultiArgumentInvokeResultOutput{}, options).(MultiArgumentInvokeResultOutput)
 }
 
 type multiArgumentInvokeOutputArgs struct {

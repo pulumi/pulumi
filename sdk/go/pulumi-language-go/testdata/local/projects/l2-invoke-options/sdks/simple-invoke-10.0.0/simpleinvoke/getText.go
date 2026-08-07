@@ -30,12 +30,8 @@ type GetTextResult struct {
 }
 
 func GetTextOutput(ctx *pulumi.Context, args GetTextOutputArgs, opts ...pulumi.InvokeOption) GetTextResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (GetTextResultOutput, error) {
-			args := v.(GetTextArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			return ctx.InvokeOutput("simple-invoke:index:getText", args, GetTextResultOutput{}, options).(GetTextResultOutput), nil
-		}).(GetTextResultOutput)
+	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+	return ctx.InvokeOutput("simple-invoke:index:getText", args, GetTextResultOutput{}, options).(GetTextResultOutput)
 }
 
 type GetTextOutputArgs struct {
