@@ -3922,7 +3922,11 @@ func (pkg *pkgContext) nestedTypeToType(typ schema.Type) (string, bool) {
 		}
 		return "", false
 	case *schema.ObjectType:
-		return pkg.resolveObjectType(t), true
+		name := pkg.resolveObjectType(t)
+		if t.IsInputShape() {
+			name = strings.TrimSuffix(name, "Args")
+		}
+		return name, true
 	case *schema.EnumType:
 		return pkg.resolveEnumType(t), true
 	case *schema.UnionType:

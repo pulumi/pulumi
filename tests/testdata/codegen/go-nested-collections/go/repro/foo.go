@@ -14,8 +14,9 @@ import (
 type Foo struct {
 	pulumi.CustomResourceState
 
-	ConditionSets   BarArrayArrayArrayOutput     `pulumi:"conditionSets"`
-	PrivateEndpoint pulumi.StringMapMapMapOutput `pulumi:"privateEndpoint"`
+	ConditionSets    BarArrayArrayArrayOutput         `pulumi:"conditionSets"`
+	PrivateEndpoint  pulumi.StringMapMapMapOutput     `pulumi:"privateEndpoint"`
+	ScalingResources ScalingResourceMapMapArrayOutput `pulumi:"scalingResources"`
 }
 
 // NewFoo registers a new resource with the given unique name, arguments, and options.
@@ -58,10 +59,12 @@ func (FooState) ElementType() reflect.Type {
 }
 
 type fooArgs struct {
+	ScalingResources []map[string]map[string]ScalingResource `pulumi:"scalingResources"`
 }
 
 // The set of arguments for constructing a Foo resource.
 type FooArgs struct {
+	ScalingResources ScalingResourceMapMapArrayInput
 }
 
 func (FooArgs) ElementType() reflect.Type {
@@ -157,6 +160,10 @@ func (o FooOutput) ConditionSets() BarArrayArrayArrayOutput {
 
 func (o FooOutput) PrivateEndpoint() pulumi.StringMapMapMapOutput {
 	return o.ApplyT(func(v *Foo) pulumi.StringMapMapMapOutput { return v.PrivateEndpoint }).(pulumi.StringMapMapMapOutput)
+}
+
+func (o FooOutput) ScalingResources() ScalingResourceMapMapArrayOutput {
+	return o.ApplyT(func(v *Foo) ScalingResourceMapMapArrayOutput { return v.ScalingResources }).(ScalingResourceMapMapArrayOutput)
 }
 
 type FooArrayOutput struct{ *pulumi.OutputState }

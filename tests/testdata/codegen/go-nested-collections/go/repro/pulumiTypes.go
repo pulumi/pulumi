@@ -55,6 +55,100 @@ func (o BarArrayOutput) Index(i pulumi.IntInput) BarOutput {
 	}).(BarOutput)
 }
 
+type ScalingResource struct {
+	Name string `pulumi:"name"`
+}
+
+// ScalingResourceInput is an input type that accepts ScalingResourceArgs and ScalingResourceOutput values.
+// You can construct a concrete instance of `ScalingResourceInput` via:
+//
+//	ScalingResourceArgs{...}
+type ScalingResourceInput interface {
+	pulumi.Input
+
+	ToScalingResourceOutput() ScalingResourceOutput
+	ToScalingResourceOutputWithContext(context.Context) ScalingResourceOutput
+}
+
+type ScalingResourceArgs struct {
+	Name pulumi.StringInput `pulumi:"name"`
+}
+
+func (ScalingResourceArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*ScalingResource)(nil)).Elem()
+}
+
+func (i ScalingResourceArgs) ToScalingResourceOutput() ScalingResourceOutput {
+	return i.ToScalingResourceOutputWithContext(context.Background())
+}
+
+func (i ScalingResourceArgs) ToScalingResourceOutputWithContext(ctx context.Context) ScalingResourceOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ScalingResourceOutput)
+}
+
+// ScalingResourceMapInput is an input type that accepts ScalingResourceMap and ScalingResourceMapOutput values.
+// You can construct a concrete instance of `ScalingResourceMapInput` via:
+//
+//	ScalingResourceMap{ "key": ScalingResourceArgs{...} }
+type ScalingResourceMapInput interface {
+	pulumi.Input
+
+	ToScalingResourceMapOutput() ScalingResourceMapOutput
+	ToScalingResourceMapOutputWithContext(context.Context) ScalingResourceMapOutput
+}
+
+type ScalingResourceMap map[string]ScalingResourceInput
+
+func (ScalingResourceMap) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]ScalingResource)(nil)).Elem()
+}
+
+func (i ScalingResourceMap) ToScalingResourceMapOutput() ScalingResourceMapOutput {
+	return i.ToScalingResourceMapOutputWithContext(context.Background())
+}
+
+func (i ScalingResourceMap) ToScalingResourceMapOutputWithContext(ctx context.Context) ScalingResourceMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ScalingResourceMapOutput)
+}
+
+type ScalingResourceOutput struct{ *pulumi.OutputState }
+
+func (ScalingResourceOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ScalingResource)(nil)).Elem()
+}
+
+func (o ScalingResourceOutput) ToScalingResourceOutput() ScalingResourceOutput {
+	return o
+}
+
+func (o ScalingResourceOutput) ToScalingResourceOutputWithContext(ctx context.Context) ScalingResourceOutput {
+	return o
+}
+
+func (o ScalingResourceOutput) Name() pulumi.StringOutput {
+	return o.ApplyT(func(v ScalingResource) string { return v.Name }).(pulumi.StringOutput)
+}
+
+type ScalingResourceMapOutput struct{ *pulumi.OutputState }
+
+func (ScalingResourceMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]ScalingResource)(nil)).Elem()
+}
+
+func (o ScalingResourceMapOutput) ToScalingResourceMapOutput() ScalingResourceMapOutput {
+	return o
+}
+
+func (o ScalingResourceMapOutput) ToScalingResourceMapOutputWithContext(ctx context.Context) ScalingResourceMapOutput {
+	return o
+}
+
+func (o ScalingResourceMapOutput) MapIndex(k pulumi.StringInput) ScalingResourceOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) ScalingResource {
+		return vs[0].(map[string]ScalingResource)[vs[1].(string)]
+	}).(ScalingResourceOutput)
+}
+
 type BarArrayArrayOutput struct{ *pulumi.OutputState }
 
 func (BarArrayArrayOutput) ElementType() reflect.Type {
@@ -95,9 +189,107 @@ func (o BarArrayArrayArrayOutput) Index(i pulumi.IntInput) BarArrayArrayOutput {
 	}).(BarArrayArrayOutput)
 }
 
+type ScalingResourceMapMap map[string]ScalingResourceMapInput
+
+func (ScalingResourceMapMap) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]map[string]ScalingResource)(nil)).Elem()
+}
+
+func (i ScalingResourceMapMap) ToScalingResourceMapMapOutput() ScalingResourceMapMapOutput {
+	return i.ToScalingResourceMapMapOutputWithContext(context.Background())
+}
+
+func (i ScalingResourceMapMap) ToScalingResourceMapMapOutputWithContext(ctx context.Context) ScalingResourceMapMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ScalingResourceMapMapOutput)
+}
+
+// ScalingResourceMapMapInput is an input type that accepts ScalingResourceMapMap and ScalingResourceMapMapOutput values.
+// You can construct a concrete instance of `ScalingResourceMapMapInput` via:
+//
+//	ScalingResourceMapMap{ "key": ScalingResourceMap{ "key": ScalingResourceArgs{...} } }
+type ScalingResourceMapMapInput interface {
+	pulumi.Input
+
+	ToScalingResourceMapMapOutput() ScalingResourceMapMapOutput
+	ToScalingResourceMapMapOutputWithContext(context.Context) ScalingResourceMapMapOutput
+}
+
+type ScalingResourceMapMapOutput struct{ *pulumi.OutputState }
+
+func (ScalingResourceMapMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]map[string]ScalingResource)(nil)).Elem()
+}
+
+func (o ScalingResourceMapMapOutput) ToScalingResourceMapMapOutput() ScalingResourceMapMapOutput {
+	return o
+}
+
+func (o ScalingResourceMapMapOutput) ToScalingResourceMapMapOutputWithContext(ctx context.Context) ScalingResourceMapMapOutput {
+	return o
+}
+
+func (o ScalingResourceMapMapOutput) MapIndex(k pulumi.StringInput) ScalingResourceMapOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) map[string]ScalingResource {
+		return vs[0].(map[string]map[string]ScalingResource)[vs[1].(string)]
+	}).(ScalingResourceMapOutput)
+}
+
+type ScalingResourceMapMapArray []ScalingResourceMapMapInput
+
+func (ScalingResourceMapMapArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]map[string]map[string]ScalingResource)(nil)).Elem()
+}
+
+func (i ScalingResourceMapMapArray) ToScalingResourceMapMapArrayOutput() ScalingResourceMapMapArrayOutput {
+	return i.ToScalingResourceMapMapArrayOutputWithContext(context.Background())
+}
+
+func (i ScalingResourceMapMapArray) ToScalingResourceMapMapArrayOutputWithContext(ctx context.Context) ScalingResourceMapMapArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ScalingResourceMapMapArrayOutput)
+}
+
+// ScalingResourceMapMapArrayInput is an input type that accepts ScalingResourceMapMapArray and ScalingResourceMapMapArrayOutput values.
+// You can construct a concrete instance of `ScalingResourceMapMapArrayInput` via:
+//
+//	ScalingResourceMapMapArray{ ScalingResourceMapMap{ "key": ScalingResourceMap{ "key": ScalingResourceArgs{...} } } }
+type ScalingResourceMapMapArrayInput interface {
+	pulumi.Input
+
+	ToScalingResourceMapMapArrayOutput() ScalingResourceMapMapArrayOutput
+	ToScalingResourceMapMapArrayOutputWithContext(context.Context) ScalingResourceMapMapArrayOutput
+}
+
+type ScalingResourceMapMapArrayOutput struct{ *pulumi.OutputState }
+
+func (ScalingResourceMapMapArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]map[string]map[string]ScalingResource)(nil)).Elem()
+}
+
+func (o ScalingResourceMapMapArrayOutput) ToScalingResourceMapMapArrayOutput() ScalingResourceMapMapArrayOutput {
+	return o
+}
+
+func (o ScalingResourceMapMapArrayOutput) ToScalingResourceMapMapArrayOutputWithContext(ctx context.Context) ScalingResourceMapMapArrayOutput {
+	return o
+}
+
+func (o ScalingResourceMapMapArrayOutput) Index(i pulumi.IntInput) ScalingResourceMapMapOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) map[string]map[string]ScalingResource {
+		return vs[0].([]map[string]map[string]ScalingResource)[vs[1].(int)]
+	}).(ScalingResourceMapMapOutput)
+}
+
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ScalingResourceInput)(nil)).Elem(), ScalingResourceArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ScalingResourceMapInput)(nil)).Elem(), ScalingResourceMap{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ScalingResourceMapMapInput)(nil)).Elem(), ScalingResourceMapMap{})
+	pulumi.RegisterInputType(reflect.TypeOf((*ScalingResourceMapMapArrayInput)(nil)).Elem(), ScalingResourceMapMapArray{})
 	pulumi.RegisterOutputType(BarOutput{})
 	pulumi.RegisterOutputType(BarArrayOutput{})
+	pulumi.RegisterOutputType(ScalingResourceOutput{})
+	pulumi.RegisterOutputType(ScalingResourceMapOutput{})
 	pulumi.RegisterOutputType(BarArrayArrayOutput{})
 	pulumi.RegisterOutputType(BarArrayArrayArrayOutput{})
+	pulumi.RegisterOutputType(ScalingResourceMapMapOutput{})
+	pulumi.RegisterOutputType(ScalingResourceMapMapArrayOutput{})
 }
