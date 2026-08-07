@@ -35,6 +35,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/blang/semver"
@@ -239,6 +240,10 @@ type Client struct {
 
 	// If true, do not probe the backend with GET /api/capabilities and assume no capabilities.
 	DisableCapabilityProbing bool
+
+	capabilitiesOnce sync.Once
+	capabilities     *apitype.CapabilitiesResponse
+	capabilitiesErr  error
 }
 
 // newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
@@ -2696,17 +2701,22 @@ func (pc *Client) GetCapabilities(ctx context.Context) (*apitype.CapabilitiesRes
 		return &apitype.CapabilitiesResponse{}, nil
 	}
 
-	var resp apitype.CapabilitiesResponse
-	err := pc.restCall(ctx, http.MethodGet, "/api/capabilities", nil, nil, &resp)
-	if is404(err) {
-		// The client continues to support legacy backends. They do not support /api/capabilities and are
-		// assumed here to have no additional capabilities.
-		return &apitype.CapabilitiesResponse{}, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("querying capabilities failed: %w", err)
-	}
-	return &resp, nil
+	pc.capabilitiesOnce.Do(func() {
+		var resp apitype.CapabilitiesResponse
+		err := pc.restCall(ctx, http.MethodGet, "/api/capabilities", nil, nil, &resp)
+		if is404(err) {
+			// The client continues to support legacy backends. They do not support /api/capabilities and are
+			// assumed here to have no additional capabilities.
+			pc.capabilities = &apitype.CapabilitiesResponse{}
+			return
+		}
+		if err != nil {
+			pc.capabilitiesErr = fmt.Errorf("querying capabilities failed: %w", err)
+			return
+		}
+		pc.capabilities = &resp
+	})
+	return pc.capabilities, pc.capabilitiesErr
 }
 
 func getSearchPath(orgName string) string {
