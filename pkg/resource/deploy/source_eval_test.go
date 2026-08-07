@@ -2821,7 +2821,7 @@ func TestSourceEvalServeOptions(t *testing.T) {
 	t.Parallel()
 	require.Len(
 		t,
-		sourceEvalServeOptions(nil, opentracing.SpanFromContext(t.Context()), "" /* logFile */),
+		sourceEvalServeOptions(nil, opentracing.SpanFromContext(t.Context()), nil, "" /* logFile */),
 		2,
 	)
 
@@ -2829,7 +2829,7 @@ func TestSourceEvalServeOptions(t *testing.T) {
 		t,
 		sourceEvalServeOptions(&plugin.Context{
 			DebugTraceMutex: &sync.Mutex{},
-		}, opentracing.SpanFromContext(t.Context()), "logFile.log"),
+		}, opentracing.SpanFromContext(t.Context()), nil, "logFile.log"),
 		4,
 	)
 }
