@@ -286,7 +286,7 @@ func newDefaultHTTPClient(client *http.Client, apiURL string, d diag.Sink) *defa
 	if u, err := url.Parse(apiURL); err == nil {
 		apiHost = u.Host
 	}
-	return &defaultHTTPClient{client: client, apiHost: apiHost, diag: d}
+	return &defaultHTTPClient{client: client, apiHost: apiHost, warner: &retryWaitWarner{diag: d}}
 }
 
 // WithRefresh wires an OAuth refresh token + a credentials-writeback callback into this client.
