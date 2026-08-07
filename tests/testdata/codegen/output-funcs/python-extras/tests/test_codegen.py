@@ -69,7 +69,8 @@ class MyMocks(pulumi.runtime.Mocks):
 
         if args.token == 'mypkg::getIntegrationRuntimeObjectMetadatum':
             return {'nextLink': 'my-next-link',
-                    'value': [args.args]}
+                    'value': [{'type': 'Environment',
+                               'variables': []}]}
 
         if args.token == 'mypkg::listStorageAccountKeys':
 
@@ -182,15 +183,14 @@ def test_get_integration_runtime_object_metadatum(my_mocks):
 
             {
                 'next_link': 'my-next-link',
-                'value': [{
-                    'factoryName': 'my-factory-name',
-                    'integrationRuntimeName': 'my-integration-runtime-name',
-                    'metadataPath': 'metadata-path',
-                    'resourceGroupName': 'resource-group-name'
-                }],
+                'value': [{'type': 'Environment',
+                           'variables': []}],
             },
 
-            lambda r: {'next_link': r.next_link, 'value': r.value}
+            lambda r: {
+                'next_link': r.next_link,
+                'value': [{'type': v.type, 'variables': v.variables} for v in r.value],
+            }
         )])
 
 
