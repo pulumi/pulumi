@@ -183,7 +183,7 @@ func NonStrictBindOptions() []BindOption {
 // bindInputFile is the binder setup shared by BindFunction and BindResource: it constructs a binder, registers the
 // standard PCL builtins, walks the file's top-level attributes, and returns the bound arguments along with each
 // input's name range (for diagnostic Subjects).
-func bindInputFile(file *syntax.File, opts ...BindOption) (
+func bindInputFile(ctx context.Context, file *syntax.File, opts ...BindOption) (
 	*binder, []*model.Attribute, map[string]hcl.Range, hcl.Diagnostics,
 ) {
 	var options bindOptions
@@ -207,7 +207,10 @@ func bindInputFile(file *syntax.File, opts ...BindOption) (
 	for name, fn := range pulumiBuiltins(options) {
 		b.root.DefineFunction(name, fn)
 	}
-	b.root.DefineFunction(Invoke, model.NewFunction(model.GenericFunctionSignature(b.bindInvokeSignature)))
+	b.root.DefineFunction(Invoke, model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			return b.bindInvokeSignature(ctx, args)
+		})))
 	b.root.DefineFunction(Call, model.NewFunction(model.GenericFunctionSignature(b.bindCallSignature)))
 
 	var diagnostics hcl.Diagnostics
@@ -240,10 +243,11 @@ func bindInputFile(file *syntax.File, opts ...BindOption) (
 // type the inputs were typechecked against. The model type is used downstream (e.g. by RewriteConversions during
 // evaluation) so that conversions reference the same type instances the binder built.
 func BindFunction(
+	ctx context.Context,
 	file *syntax.File, fn *schema.Function,
 	opts ...BindOption,
 ) ([]*model.Attribute, model.Type, hcl.Diagnostics) {
-	b, args, inputRanges, diagnostics := bindInputFile(file, opts...)
+	b, args, inputRanges, diagnostics := bindInputFile(ctx, file, opts...)
 
 	argProperties := make(map[string]model.Type, len(args))
 	for _, item := range args {
@@ -278,10 +282,11 @@ func BindFunction(
 // inputs were typechecked against. The model type is used downstream (e.g. by RewriteConversions during evaluation)
 // so that conversions reference the same type instances the binder built.
 func BindResource(
+	ctx context.Context,
 	file *syntax.File, res *schema.Resource,
 	opts ...BindOption,
 ) ([]*model.Attribute, model.Type, hcl.Diagnostics) {
-	b, args, inputRanges, diagnostics := bindInputFile(file, opts...)
+	b, args, inputRanges, diagnostics := bindInputFile(ctx, file, opts...)
 
 	// resolveInputUnions expects a name → expression map; rebuild it from args rather than tracking the same thing
 	// twice during attribute binding.
@@ -306,6 +311,7 @@ func BindResource(
 // this binds the full resource shape, including options and range, so the resulting program can be
 // evaluated through the normal resource registration path.
 func BindResourceProgram(
+	ctx context.Context,
 	file *syntax.File, name, token string,
 	loader schema.Loader,
 	opts ...BindOption,
@@ -343,16 +349,17 @@ func BindResourceProgram(
 		Bytes:  file.Bytes,
 		Tokens: file.Tokens,
 	}
-	return BindProgram([]*syntax.File{resourceFile}, loader, opts...)
+	return BindProgramWithContext(ctx, []*syntax.File{resourceFile}, loader, opts...)
 }
 
 // BindResourceList binds a PCL file as a resource list input and returns the bound arguments. This is used for `do` to
 // type check and evaluate resource list inputs.
 func BindResourceList(
+	ctx context.Context,
 	file *syntax.File, res *schema.Resource,
 	opts ...BindOption,
 ) ([]*model.Attribute, model.Type, hcl.Diagnostics) {
-	b, args, inputRanges, diagnostics := bindInputFile(file, opts...)
+	b, args, inputRanges, diagnostics := bindInputFile(ctx, file, opts...)
 
 	if res.ListInputs == nil {
 		diagnostics = append(diagnostics, &hcl.Diagnostic{
@@ -437,9 +444,14 @@ func typecheckObjectArgs(
 // loader resolves any packages the program references; the caller owns its lifetime. A program that references
 // no packages can pass a non-resolving loader (see [schema.NewNullLoader]).
 func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption) (*Program, hcl.Diagnostics, error) {
+	return BindProgramWithContext(context.TODO(), files, loader, opts...)
+}
+
+func BindProgramWithContext(
+	ctx context.Context, files []*syntax.File, loader schema.Loader, opts ...BindOption,
+) (*Program, hcl.Diagnostics, error) {
 	contract.Requiref(loader != nil, "loader", "must not be nil")
 
-	ctx := context.TODO()
 	options := bindOptions{loader: loader}
 	for _, o := range opts {
 		o(&options)
@@ -468,7 +480,10 @@ func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption)
 		b.root.DefineFunction(name, fn)
 	}
 	// Define the invoke function.
-	b.root.DefineFunction(Invoke, model.NewFunction(model.GenericFunctionSignature(b.bindInvokeSignature)))
+	b.root.DefineFunction(Invoke, model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			return b.bindInvokeSignature(ctx, args)
+		})))
 	// Define the call function.
 	b.root.DefineFunction(Call, model.NewFunction(model.GenericFunctionSignature(b.bindCallSignature)))
 	// Define any external scope variables supplied by the caller (e.g. resources owned by another source that
@@ -510,7 +525,7 @@ func BindProgram(files []*syntax.File, loader schema.Loader, opts ...BindOption)
 
 	// Normalize positional multi-argument invokes into their object-argument form so that downstream
 	// code only ever observes the object form. See invoke_positional.go.
-	diagnostics = diagnostics.Extend(b.rewritePositionalInvokes())
+	diagnostics = diagnostics.Extend(b.rewritePositionalInvokes(ctx))
 
 	return &Program{
 		Nodes:  b.nodes,

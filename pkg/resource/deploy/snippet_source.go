@@ -70,12 +70,13 @@ func NewSnippetSource(ctx context.Context,
 }
 
 // ValidateSnippet parses and binds a PCL resource snippet against its package schema.
-func ValidateSnippet(s resource.Snippet, loader schema.ReferenceLoader) error {
-	_, _, err := bindSnippetProgram(&s, loader)
+func ValidateSnippet(ctx context.Context, s resource.Snippet, loader schema.ReferenceLoader) error {
+	_, _, err := bindSnippetProgram(ctx, &s, loader)
 	return err
 }
 
 func bindSnippetProgram(
+	ctx context.Context,
 	snippet *resource.Snippet,
 	loader schema.ReferenceLoader,
 ) (*pcl.Program, map[string]*schema.PackageDescriptor, error) {
@@ -130,7 +131,7 @@ func bindSnippetProgram(
 		bindOpts = append(bindOpts, pcl.ExtraScopeVariables(extras))
 	}
 	program, diags, err := pcl.BindResourceProgram(
-		parser.Files[0], snippet.Name, snippet.Type, loader, bindOpts...)
+		ctx, parser.Files[0], snippet.Name, snippet.Type, loader, bindOpts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("bind snippet: %w", err)
 	}
@@ -153,7 +154,7 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 			fail(err)
 			return
 		}
-		program, packageDescriptors, err := bindSnippetProgram(s.snippet, s.loader)
+		program, packageDescriptors, err := bindSnippetProgram(s.ctx, s.snippet, s.loader)
 		if err != nil {
 			fail(err)
 			return
@@ -186,11 +187,11 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 		// Dial the resource monitor and ask it for the deployment context the interpreter needs (project,
 		// stack, organization). The interpreter wires this into the eval context so `pulumi.project` etc.
 		// resolve to the same values the main program sees.
-		conn, err := grpc.NewClient(
-			resourceMonitorTarget,
+		dialOpts := append(rpcutil.TracingInterceptorDialOptions(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
+		conn, err := grpc.NewClient(resourceMonitorTarget, dialOpts...)
 		if err != nil {
 			fail(fmt.Errorf("connect to resource monitor: %w", err))
 			return

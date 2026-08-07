@@ -247,7 +247,7 @@ func newDeployment(
 
 	// Set up a goroutine that will signal cancellation to the source if the caller context
 	// is cancelled.
-	cancelCtx, cancelFunc := context.WithCancel(context.Background())
+	cancelCtx, cancelFunc := context.WithCancel(context.WithoutCancel(baseCtx))
 	go deploy.PanicRecovery(panicErrsChannel, func() {
 		<-ctx.Cancel.Canceled()
 		logging.V(7).Infof("engine.newDeployment(...): received cancellation signal")

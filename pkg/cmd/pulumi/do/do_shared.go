@@ -445,7 +445,7 @@ func evaluateFunctionFile(
 	inputFlags map[string]inputFlagValue,
 ) (resource.PropertyMap, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
-		attrs, inputType, diags := pcl.BindFunction(file, fn)
+		attrs, inputType, diags := pcl.BindFunction(ctx, file, fn)
 		var properties []*schema.Property
 		if fn.Inputs != nil {
 			properties = fn.Inputs.Properties
@@ -466,7 +466,7 @@ func evaluateResourceFile(
 	bindOpts ...pcl.BindOption,
 ) (resource.PropertyMap, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
-		attrs, inputType, diags := pcl.BindResource(file, res, bindOpts...)
+		attrs, inputType, diags := pcl.BindResource(ctx, file, res, bindOpts...)
 		return attrs, inputType, res.InputProperties, diags
 	}
 	return evaluateFile(
