@@ -1,0 +1,6 @@
+component: cli
+kind: feat
+body: Harden the CLI process on Linux against ptrace and core dumps to keep credentials
+    out of reach of other processes
+custom:
+    PR: "24207"

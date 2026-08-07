@@ -21,6 +21,7 @@ import (
 	"runtime/debug"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 
 	"go.uber.org/automaxprocs/maxprocs"
@@ -58,6 +59,10 @@ func panicHandler(finished *bool) {
 
 func main() {
 	maxprocs.Set() //nolint:errcheck
+
+	// Best effort: keeps decrypted credential material out of reach of ptrace
+	// and /proc/pid/mem.
+	securestore.HardenProcess()
 
 	finished := new(bool)
 	defer panicHandler(finished)
