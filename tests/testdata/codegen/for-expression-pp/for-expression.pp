@@ -7,3 +7,7 @@ output prefixed {
 output filtered {
 	value = [for n in names : n if n != "beta"]
 }
+
+output indexed {
+	value = [for i, n in names : "${i}:${n}"]
+}

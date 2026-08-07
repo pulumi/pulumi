@@ -25,6 +25,11 @@ func main() {
 			}
 		}
 		ctx.Export("filtered", pulumi.ToStringArray(forResult1))
+		var forResult2 []string
+		for i, n := range names {
+			forResult2 = append(forResult2, fmt.Sprintf("%v:%v", i, n))
+		}
+		ctx.Export("indexed", pulumi.ToStringArray(forResult2))
 		return nil
 	})
 }
