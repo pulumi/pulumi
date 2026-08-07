@@ -374,13 +374,15 @@ func TestDoCmdResourceUpsertConvertsReferences(t *testing.T) {
 			) {
 				assert.Equal(t, "upsert.yaml", filepath.Base(req.Filename))
 				assert.Equal(t, "name: ${source-name.name}\n", string(req.Source))
-				require.Len(t, req.Resources, 1)
+				require.Len(t, req.Resources, 2)
 				ref := req.Resources["source-name"]
 				assert.Equal(t, "azure:index:myResource", ref.Token)
 				require.NotNil(t, ref.Package)
 				assert.Equal(t, "azure", ref.Package.Package)
 				assert.Equal(t, "1.2.3", ref.Package.Version)
 				assert.Equal(t, "https://example.com/azure", ref.Package.DownloadUrl)
+				assert.Equal(t, req.Resources["source-name"], req.Resources["source"],
+					"auto-assigned identifier should describe the same resource")
 				return &plugin.ConvertSnippetResponse{
 					Filename: "upsert.pp",
 					Source:   []byte("name = sourceName.name\n"),

@@ -401,6 +401,7 @@ e.g. pulumi do --package "name@version param1 \"multi word param\""
 
 Resource operations: list, create, read, patch, delete
 Functions are invoked directly by name.
+Built-in commands: show-resources
 
 Provider plugins are auto-installed on first use; you don't need to run
 'pulumi plugin install' ahead of time. Run 'pulumi plugin list' to see what is
@@ -419,6 +420,20 @@ value as a literal, while --<property>+ <value> parses the value as an
 expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// `show-resources` is a stack-scoped built-in that doesn't load a provider. The
+			// parent runs with DisableFlagParsing (provider schemas contribute unknown flags),
+			// so we intercept the token here and execute a real cobra subcommand for it — that
+			// restores standard --help and arg-validation behavior for `show-resources`.
+			showResourcesArgs, isShowResources := showResourcesArgs(args)
+			if isShowResources {
+				sub := newShowResourcesCommand(ws, lm)
+				sub.SetContext(cmd.Context())
+				sub.SetOut(cmd.OutOrStdout())
+				sub.SetErr(cmd.ErrOrStderr())
+				sub.SetIn(cmd.InOrStdin())
+				sub.SetArgs(showResourcesArgs)
+				return sub.Execute()
+			}
 			subcmd, cleanup, err := buildSubcommand(cmd, args)
 			if cleanup != nil {
 				defer cleanup()
@@ -472,6 +487,27 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 			"param1 \\\"multi word param\\\"\"")
 
 	return cmd
+}
+
+func showResourcesArgs(args []string) ([]string, bool) {
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; {
+		case a == "show-resources":
+			return args[i+1:], true
+		case a == "--package" || strings.HasPrefix(a, "--package="):
+			return nil, false
+		case a == "--output":
+			i++
+		case strings.HasPrefix(a, "--output="):
+		case a == "--dry-run" || a == "--show-secrets" || a == "--stateless" ||
+			strings.HasPrefix(a, "--dry-run=") ||
+			strings.HasPrefix(a, "--show-secrets=") ||
+			strings.HasPrefix(a, "--stateless="):
+		default:
+			return nil, false
+		}
+	}
+	return nil, false
 }
 
 // currentStackIdentity reads the workspace's currently selected stack and splits it into an organization
