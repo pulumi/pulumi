@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import unittest
 
 from pulumi.output import Unknown, UNKNOWN
+from pulumi.resource import ComponentResource, CustomResource
 from pulumi.runtime import rpc
 
 
@@ -180,3 +182,40 @@ class TestContainsUnknowns(unittest.TestCase):
         resource_props_preview = resource_props.copy()
         resource_props_preview["arn"] = UNKNOWN
         self.assertTrue(rpc.contains_unknowns(resource_props_preview))
+
+
+class _NeverResolvingUrn:
+    def future(self):
+        return asyncio.get_event_loop().create_future()
+
+
+class _FakeCustomResource(CustomResource):
+    def __init__(self, name: str):
+        self.__dict__["_type"] = "test:index:custom"
+        self.__dict__["_name"] = name
+        self.__dict__["urn"] = _NeverResolvingUrn()
+
+
+class _FakeComponentResource(ComponentResource):
+    def __init__(self, name: str, children: list):
+        self.__dict__["_type"] = "test:index:component"
+        self.__dict__["_name"] = name
+        self.__dict__["_remote"] = False
+        self.__dict__["_childResources"] = children
+        self.__dict__["urn"] = _NeverResolvingUrn()
+
+
+class TestAddDependency(unittest.IsolatedAsyncioTestCase):
+    """Regression test for https://github.com/pulumi/pulumi/issues/13551"""
+
+    async def test_cycle_through_parent_is_reported(self):
+        cyclic_child = _FakeCustomResource("cyclic-child")
+        sibling = _FakeCustomResource("sibling")
+        # `sibling` is listed first so that the traversal reaches it, and would
+        # await its URN, before it walks as far as the cycle.
+        parent = _FakeComponentResource("parent", [sibling, cyclic_child])
+
+        with self.assertRaises(RuntimeError):
+            await asyncio.wait_for(
+                rpc._add_dependency({}, parent, cyclic_child), timeout=30
+            )

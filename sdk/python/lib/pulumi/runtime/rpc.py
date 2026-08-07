@@ -292,7 +292,11 @@ async def _add_dependency(
 
     # Note that a recursive algorithm here would be cleaner, but that results in a
     # RecursionError with deeply nested hierarchies of ComponentResources.
+    # The traversal below must not await: awaiting a URN part way through can
+    # deadlock against a cycle that has not been walked yet. Collect the
+    # resources to await and await them once the whole graph has been checked.
     res_list = [(res, from_resource)]
+    awaitable: list[Resource] = []
     while len(res_list) > 0:
         res, from_resource = res_list.pop(0)
         if not isinstance(res, Resource):
@@ -329,9 +333,12 @@ async def _add_dependency(
             for child in child_resources:
                 res_list.append((child, from_resource))
         else:
-            urn = await res.urn.future()
-            if urn:
-                deps[urn] = res
+            awaitable.append(res)
+
+    for res in awaitable:
+        urn = await res.urn.future()
+        if urn:
+            deps[urn] = res
 
 
 async def _expand_dependencies(
