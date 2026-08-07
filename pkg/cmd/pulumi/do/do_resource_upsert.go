@@ -196,9 +196,7 @@ type statefulSnippetUpdate struct {
 func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args statefulSnippetUpdate) error {
 	contract.Assertf(pc.runStatefulUpdate != nil, "stateful snippet update is not wired up in this build")
 
-	if pc.proj == nil {
-		return fmt.Errorf("`%s` requires a Pulumi project (run inside a project directory)", cmd.Name())
-	}
+	contract.Assertf(pc.proj != nil, "project must be set (the global fallback should have supplied one)")
 	if err := pc.requireYesIfNonInteractive(args.yes); err != nil {
 		return err
 	}
@@ -209,13 +207,9 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	// stack is threaded through to runStatefulUpdate so it doesn't re-load. We also use the same
 	// snapshot to resolve resource-reference package metadata before conversion.
 	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
-	stack, err := cmdStack.RequireStack(
-		ctx, pc.diagFwd, pc.ws, pc.lm,
-		"",                                 /*stackName — use currently selected*/
-		cmdStack.LoadOnly, displayOpts, "", /*configFile*/
-	)
+	stack, err := pc.loadStackForStateful(ctx, displayOpts)
 	if err != nil {
-		return fmt.Errorf("load stack: %w", err)
+		return err
 	}
 	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
 	if err != nil {
@@ -326,22 +320,16 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 ) error {
 	contract.Assertf(pc.runStatefulUpdate != nil, "stateful snippet update is not wired up in this build")
 
-	if pc.proj == nil {
-		return fmt.Errorf("`%s` requires a Pulumi project (run inside a project directory)", cmd.Name())
-	}
+	contract.Assertf(pc.proj != nil, "project must be set (the global fallback should have supplied one)")
 	if err := pc.requireYesIfNonInteractive(yes); err != nil {
 		return err
 	}
 
 	ctx := cmd.Context()
 	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
-	stack, err := cmdStack.RequireStack(
-		ctx, pc.diagFwd, pc.ws, pc.lm,
-		"",                                 /*stackName — use currently selected*/
-		cmdStack.LoadOnly, displayOpts, "", /*configFile*/
-	)
+	stack, err := pc.loadStackForStateful(ctx, displayOpts)
 	if err != nil {
-		return fmt.Errorf("load stack: %w", err)
+		return err
 	}
 	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
 	if err != nil {
