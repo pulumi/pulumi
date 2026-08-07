@@ -1394,8 +1394,6 @@ func TestConstructProviderExplicitPython(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTestManualLifeCycle calls t.Parallel()
 func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
-	t.Skip("Temporarily skipping flakey test - pulumi/pulumi#14708")
-
 	stdout := &bytes.Buffer{}
 	pt := integration.ProgramTestManualLifeCycle(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("python", "implicit-dependency-cycles"),
