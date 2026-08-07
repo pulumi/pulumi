@@ -218,9 +218,9 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 
 					return plugin.ConstructResponse{
 						URN: resource.NewURN("", "", "", req.Type, req.Name),
-						Outputs: resource.PropertyMap{
-							"output": resource.NewProperty("output"),
-						},
+						Outputs: property.NewMap(map[string]property.Value{
+							"output": property.New("output"),
+						}),
 						OutputDependencies: map[resource.PropertyKey][]resource.URN{
 							"output": {"urn:pulumi:stack::m::typA::resB"},
 						},

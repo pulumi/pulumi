@@ -2808,7 +2808,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				"resource monitor shut down while waiting for construct to complete")
 		}
 
-		result = &RegisterResult{State: &pkgresource.State{URN: constructResult.URN, Outputs: constructResult.Outputs}}
+		result = &RegisterResult{
+			State: &pkgresource.State{
+				URN:     constructResult.URN,
+				Outputs: resource.ToResourcePropertyMap(constructResult.Outputs),
+			},
+		}
 
 		// The provider may have returned OutputValues in "Outputs", we need to downgrade them to Computed or
 		// Secret but also add them to the outputDeps map.

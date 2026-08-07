@@ -2210,7 +2210,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	logging.V(7).Infof("%s success: #outputs=%d", label, len(outputs))
 	return ConstructResponse{
 		URN:                resource.URN(resp.GetUrn()),
-		Outputs:            outputs,
+		Outputs:            resource.FromResourcePropertyMap(outputs),
 		OutputDependencies: outputDependencies,
 	}, nil
 }

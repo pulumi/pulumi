@@ -969,7 +969,7 @@ func (p *providerServer) Construct(ctx context.Context,
 
 	opts := p.marshalOptions("outputs")
 	opts.KeepOutputValues = req.AcceptsOutputValues
-	outputs, err := MarshalProperties(resp.Outputs, opts)
+	outputs, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Outputs), opts)
 	if err != nil {
 		return nil, err
 	}
