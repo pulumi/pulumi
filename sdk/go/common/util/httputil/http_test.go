@@ -233,6 +233,41 @@ func TestRetry503MaintenanceRetriesBeyondMaxRetryCount(t *testing.T) {
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 }
 
+func TestRetry503MaintenanceRoundsPreserveRetryBudget(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		switch {
+		case tries <= 5:
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(http.StatusServiceUnavailable)
+		case tries <= 7:
+			w.WriteHeader(http.StatusInternalServerError)
+		default:
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	maxRetryCount := 3
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+		Delay:         &delay,
+		MaxRetryCount: &maxRetryCount,
+	})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	// The full 5xx budget is still available after the maintenance rounds.
+	assert.Equal(t, 8, tries)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+}
+
 func TestRetry503HonorsRetryAfter(t *testing.T) {
 	t.Parallel()
 

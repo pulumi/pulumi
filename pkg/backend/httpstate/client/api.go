@@ -392,28 +392,66 @@ func (t *tracingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 // using the specified *http.Client, with retry support.
 type defaultHTTPClient struct {
 	client *http.Client
-	// diag, if non-nil, surfaces long server-directed retry waits to the user.
-	diag diag.Sink
+	warner *retryWaitWarner
 }
 
-// serverWaitWarningThreshold is the shortest server-directed wait surfaced to the
-// user; shorter blips stay silent.
-const serverWaitWarningThreshold = 10 * time.Second
+const (
+	// serverWaitWarningThreshold is the cumulative server-directed wait after
+	// which the user is told the client is waiting; shorter blips stay silent.
+	serverWaitWarningThreshold = 10 * time.Second
+	// serverWaitRewarnInterval paces repeat warnings while waits continue.
+	serverWaitRewarnInterval = time.Minute
+)
 
-// onRetryWaitWarner returns an OnRetryWait callback that tells the user about long
-// server-directed waits, such as sitting out a maintenance window.
-func onRetryWaitWarner(d diag.Sink) func(delay time.Duration, res *http.Response) {
-	return func(delay time.Duration, res *http.Response) {
-		if d == nil || delay < serverWaitWarningThreshold {
-			return
-		}
-		if res.StatusCode == http.StatusServiceUnavailable {
-			d.Warningf(diag.Message("", /*urn*/
-				"the service is temporarily unavailable; retrying in %v... ^C to stop"), delay)
-			return
-		}
-		d.Warningf(diag.Message("", /*urn*/
-			"the request was rate-limited; retrying in %v... ^C to stop"), delay)
+// retryWaitWarner tells the user about server-directed retry waits, such as
+// sitting out a maintenance window. State is shared across a client's requests
+// so concurrent waiters produce one warning per interval, not one each.
+type retryWaitWarner struct {
+	diag diag.Sink
+
+	mu       sync.Mutex
+	waited   time.Duration
+	lastWarn time.Time
+	warned   bool
+}
+
+func (w *retryWaitWarner) onRetryWait(delay time.Duration, res *http.Response) {
+	if w == nil || w.diag == nil {
+		return
+	}
+	w.mu.Lock()
+	w.waited += delay
+	if w.waited < serverWaitWarningThreshold ||
+		(w.warned && time.Since(w.lastWarn) < serverWaitRewarnInterval) {
+		w.mu.Unlock()
+		return
+	}
+	w.warned = true
+	w.lastWarn = time.Now()
+	w.mu.Unlock()
+
+	cause := "the service is temporarily unavailable"
+	if res.StatusCode != http.StatusServiceUnavailable {
+		cause = "the request was rate-limited"
+	}
+	suffix := "; retrying... ^C to stop"
+	if delay >= serverWaitWarningThreshold {
+		suffix = fmt.Sprintf("; retrying in %v... ^C to stop", delay)
+	}
+	w.diag.Warningf(diag.Message("" /*urn*/, cause+suffix))
+}
+
+func (w *retryWaitWarner) onSuccess() {
+	if w == nil || w.diag == nil {
+		return
+	}
+	w.mu.Lock()
+	warned := w.warned
+	w.warned = false
+	w.waited = 0
+	w.mu.Unlock()
+	if warned {
+		w.diag.Infoerrf(diag.Message("" /*urn*/, "the service is available again; resuming"))
 	}
 }
 
@@ -460,9 +498,13 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 
 		MaxRetryCount:         ptr(4),
 		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
-		OnRetryWait:           onRetryWaitWarner(c.diag),
+		OnRetryWait:           c.warner.onRetryWait,
 	}
-	return httputil.DoWithRetryOpts(req, &tracingClient, opts)
+	res, err := httputil.DoWithRetryOpts(req, &tracingClient, opts)
+	if err == nil && res.StatusCode < 400 {
+		c.warner.onSuccess()
+	}
+	return res, err
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.

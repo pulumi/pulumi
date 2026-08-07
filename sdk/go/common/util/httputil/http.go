@@ -115,6 +115,10 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 		maxRetryCount = *opts.MaxRetryCount
 	}
 
+	// Maintenance rounds (503 + Retry-After) don't count against the retry
+	// budget; attempts below subtracts them from retry.Until's try counter.
+	maintenanceRounds := 0
+
 	acceptor := retry.Acceptor{
 		// If the opts field is nil, retry.Until will provide defaults.
 		Delay:    opts.Delay,
@@ -122,6 +126,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 		MaxDelay: opts.MaxDelay,
 
 		Accept: func(try int, _ time.Duration) (bool, any, error) {
+			attempts := try - maintenanceRounds
 			if try > 0 && req.GetBody != nil {
 				// Reset request body, if present, for retries.
 				rc, bodyErr := req.GetBody()
@@ -159,6 +164,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 			// signaling. Pacing for zero delays comes from the acceptor's backoff.
 			if resErr == nil && res.StatusCode == http.StatusServiceUnavailable {
 				if delay, ok := retryAfterHeaderDelay(res, time.Now()); ok {
+					maintenanceRounds++
 					contract.IgnoreClose(res.Body)
 					if delay > 0 {
 						if opts.OnRetryWait != nil {
@@ -176,7 +182,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 
 			// 429s are retried like 5xxs, but honor the server's Retry-After (capped)
 			// before the regular backoff.
-			if resErr == nil && res.StatusCode == http.StatusTooManyRequests && try < maxRetryCount-1 {
+			if resErr == nil && res.StatusCode == http.StatusTooManyRequests && attempts < maxRetryCount-1 {
 				delay := retryAfterDelay(res, time.Now())
 				contract.IgnoreClose(res.Body)
 				if delay > 0 {
@@ -196,7 +202,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 				return true, res, nil
 			}
 
-			if try >= (maxRetryCount - 1) {
+			if attempts >= (maxRetryCount - 1) {
 				return true, res, resErr
 			}
 
