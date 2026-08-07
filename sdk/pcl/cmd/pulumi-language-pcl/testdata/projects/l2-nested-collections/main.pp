@@ -13,3 +13,7 @@ output "secondProp" {
 output "leaf" {
     value = foo.privateEndpoint["outer"]["inner"]["leaf"]
 }
+
+output "elementType" {
+    value = elem.elementType.elementType
+}

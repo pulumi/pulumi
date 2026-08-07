@@ -71,6 +71,7 @@ func init() {
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					AssertPropertyMapMember(l, stack.Outputs, "secondProp", resource.NewProperty("second"))
 					AssertPropertyMapMember(l, stack.Outputs, "leaf", resource.NewProperty("deep"))
+					AssertPropertyMapMember(l, stack.Outputs, "elementType", resource.NewProperty("nested"))
 				},
 			},
 		},

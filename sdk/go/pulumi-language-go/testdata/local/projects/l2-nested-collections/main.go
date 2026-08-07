@@ -16,7 +16,7 @@ func main() {
 		}
 		// A resource whose `elementType` property collides with the `ElementType()` method that
 		// generated Go SDK types must implement.
-		_, err = elementtype.NewElementType(ctx, "elem", nil)
+		elem, err := elementtype.NewElementType(ctx, "elem", nil)
 		if err != nil {
 			return err
 		}
@@ -26,6 +26,7 @@ func main() {
 		ctx.Export("leaf", foo.PrivateEndpoint.ApplyT(func(privateEndpoint map[string]map[string]map[string]string) (string, error) {
 			return privateEndpoint["outer"]["inner"]["leaf"], nil
 		}).(pulumi.StringOutput))
+		ctx.Export("elementType", elem.ElementType_.ElementTypeProp())
 		return nil
 	})
 }

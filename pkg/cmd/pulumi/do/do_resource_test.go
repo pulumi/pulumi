@@ -89,7 +89,7 @@ func newDoResourceCommand(
 	t.Helper()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		return provider, nil
