@@ -351,8 +351,78 @@ func (srv *analyzerServer) AnalyzeStack(ctx context.Context, req *pulumirpc.Anal
 	AnalyzeResponse,
 	error,
 ) {
-	// TODO: Implement stack analysis
-	return &pulumirpc.AnalyzeResponse{}, nil
+	var ds []*pulumirpc.AnalyzeDiagnostic
+	policyManager := &policyManager{}
+
+	resources := make([]AnalyzerResource, 0, len(req.GetResources()))
+	for _, r := range req.GetResources() {
+		pm, err := plugin.UnmarshalProperties(r.GetProperties(), plugin.MarshalOptions{
+			Label:            srv.policyPack.Name() + ".analyzeStack",
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal properties for resource %q: %w", r.GetUrn(), err)
+		}
+		resources = append(resources, AnalyzerResource{
+			Type:                 r.GetType(),
+			Properties:           resource.FromResourcePropertyMap(pm),
+			URN:                  r.GetUrn(),
+			Name:                 r.GetName(),
+			Options:              pulumi.ResourceOptions{},
+			Provider:             AnalyzerProviderResource{},
+			Parent:               r.GetParent(),
+			Dependencies:         r.GetDependencies(),
+			PropertyDependencies: nil, /* TODO */
+		})
+	}
+
+	for _, p := range srv.policyPack.Policies() {
+		p, ok := p.(StackValidationPolicy)
+		if !ok {
+			continue
+		}
+		config, hasConfig := srv.config[p.Name()]
+
+		enforcementLevel := p.EnforcementLevel()
+		if hasConfig {
+			enforcementLevel = config.EnforcementLevel
+		}
+
+		if enforcementLevel == EnforcementLevelDisabled {
+			continue
+		}
+
+		policyManager.reportViolation = func(message string, urn string) {
+			violationMessage := p.Description()
+			if message != "" {
+				violationMessage += "\n" + message
+			}
+
+			ds = append(ds, &pulumirpc.AnalyzeDiagnostic{
+				PolicyName:        p.Name(),
+				PolicyPackName:    srv.policyPack.Name(),
+				PolicyPackVersion: srv.policyPack.Version().String(),
+				Description:       p.Description(),
+				Message:           violationMessage,
+				EnforcementLevel:  pulumirpc.EnforcementLevel(enforcementLevel),
+				Urn:               urn,
+			})
+		}
+
+		args := StackValidationArgs{
+			Manager:   policyManager,
+			Resources: resources,
+		}
+
+		if err := p.Validate(ctx, args); err != nil {
+			return nil, fmt.Errorf("failed to validate stack with policy %q: %w", p.Name(), err)
+		}
+	}
+
+	return &pulumirpc.AnalyzeResponse{Diagnostics: ds}, nil
 }
 
 func (srv *analyzerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbempty.Empty, error) {
