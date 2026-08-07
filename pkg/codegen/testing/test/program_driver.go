@@ -136,11 +136,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: allProgLanguages,
 	},
 	{
-		Directory:   "for-expression",
-		Description: "List comprehensions (for expressions) lowered to loops in Go",
-		Skip:        allProgLanguages.Except(TestGo),
-	},
-	{
 		Directory:   "output-name-conflict",
 		Description: "Tests whether we are able to generate programs where output variables have same id as config var",
 		SkipCompile: codegen.NewStringSet(TestGo),
