@@ -1,0 +1,4 @@
+component: sdkgen/go
+kind: fix
+body: Generate the missing Go input types for resource input properties that are deeply nested collections of object types
+time: 2026-08-07T16:34:06.392981+02:00

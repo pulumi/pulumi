@@ -3922,6 +3922,11 @@ func (pkg *pkgContext) nestedTypeToType(typ schema.Type) (string, bool) {
 		}
 		return "", false
 	case *schema.ObjectType:
+		// Nested collection types are always named after the plain shape (e.g. BarArray,
+		// not BarArgsArray), so input and plain chains resolve to the same names.
+		if t.IsInputShape() {
+			t = t.PlainShape
+		}
 		return pkg.resolveObjectType(t), true
 	case *schema.EnumType:
 		return pkg.resolveEnumType(t), true

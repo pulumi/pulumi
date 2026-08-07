@@ -33,8 +33,8 @@ export class Foo extends pulumi.CustomResource {
         return obj['__pulumiType'] === Foo.__pulumiType;
     }
 
-    declare public /*out*/ readonly conditionSets: pulumi.Output<outputs.Bar[][][]>;
-    declare public /*out*/ readonly privateEndpoint: pulumi.Output<{[key: string]: {[key: string]: {[key: string]: string}}}>;
+    declare public readonly conditionSets: pulumi.Output<outputs.Bar[][][]>;
+    declare public readonly privateEndpoint: pulumi.Output<{[key: string]: {[key: string]: {[key: string]: string}}}>;
 
     /**
      * Create a Foo resource with the given unique name, arguments, and options.
@@ -47,8 +47,8 @@ export class Foo extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["conditionSets"] = undefined /*out*/;
-            resourceInputs["privateEndpoint"] = undefined /*out*/;
+            resourceInputs["conditionSets"] = args?.conditionSets;
+            resourceInputs["privateEndpoint"] = args?.privateEndpoint;
         } else {
             resourceInputs["conditionSets"] = undefined /*out*/;
             resourceInputs["privateEndpoint"] = undefined /*out*/;
@@ -62,4 +62,6 @@ export class Foo extends pulumi.CustomResource {
  * The set of arguments for constructing a Foo resource.
  */
 export interface FooArgs {
+    conditionSets?: pulumi.Input<pulumi.Input<pulumi.Input<pulumi.Input<inputs.BarArgs>[]>[]>[] | undefined>;
+    privateEndpoint?: pulumi.Input<{[key: string]: pulumi.Input<{[key: string]: pulumi.Input<{[key: string]: pulumi.Input<string>}>}>} | undefined>;
 }
