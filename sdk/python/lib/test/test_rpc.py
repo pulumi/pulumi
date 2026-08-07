@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import asyncio
+import os
 import unittest
+from unittest import mock
 
 from pulumi.output import Unknown, UNKNOWN
 from pulumi.resource import ComponentResource, CustomResource
@@ -213,7 +215,8 @@ class TestAddDependency(unittest.IsolatedAsyncioTestCase):
         sibling = _FakeCustomResource("sibling")
         parent = _FakeComponentResource("parent", [sibling, cyclic_child])
 
-        with self.assertRaises(RuntimeError):
+        env = {rpc.ERROR_ON_DEPENDENCY_CYCLES_VAR: "true"}
+        with mock.patch.dict(os.environ, env), self.assertRaises(RuntimeError):
             await asyncio.wait_for(
                 rpc._add_dependency({}, parent, cyclic_child), timeout=30
             )
