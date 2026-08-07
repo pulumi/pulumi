@@ -1,6 +1,6 @@
 component: programgen/go
 kind: fix
-body: List comprehensions (`for` expressions) over lists are now generated as Go loops
+body: '`for` expressions are now generated as Go loops'
 time: 2026-08-07T10:51:08.245068+02:00
 custom:
     PR: "24228"

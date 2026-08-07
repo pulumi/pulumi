@@ -2370,29 +2370,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType 
 			g.Fgenf(w, "%s = append(%s, %.v)\n", t.Name, t.Name, t.Value.Each)
 			g.Fgenf(w, "}\n")
 		case *forTemp:
-			f := t.Value
-			argTyp := g.argumentTypeName(f.Value.Type(), false)
-			if strings.Contains(argTyp, ".") {
-				if argTyp == "pulumi.IDInput" {
-					argTyp = "pulumi.ID"
-				}
-				g.Fgenf(w, "var %s %sArray\n", t.Name, argTyp)
-			} else {
-				g.Fgenf(w, "var %s []%s\n", t.Name, argTyp)
-			}
-			keyVar := "_"
-			if f.KeyVariable != nil {
-				keyVar = makeValidIdentifier(f.KeyVariable.Name)
-			}
-			g.Fgenf(w, "for %s, %s := range %.v {\n", keyVar, makeValidIdentifier(f.ValueVariable.Name), f.Collection)
-			if f.Condition != nil {
-				g.Fgenf(w, "if %.v {\n", f.Condition)
-			}
-			g.Fgenf(w, "%s = append(%s, %.v)\n", t.Name, t.Name, f.Value)
-			if f.Condition != nil {
-				g.Fgenf(w, "}\n")
-			}
-			g.Fgenf(w, "}\n")
+			g.genForTemp(w, t)
 		case *optionalTemp:
 			g.Fgenf(w, "%s := %.v\n", t.Name, t.Value)
 		case *inlineInvokeTemp:

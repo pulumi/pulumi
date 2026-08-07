@@ -11,3 +11,20 @@ output filtered {
 output indexed {
 	value = [for i, n in names : "${i}:${n}"]
 }
+
+tags = {
+	"Environment" = "production"
+	"Team"        = "infra"
+}
+
+output tagList {
+	value = [for k, v in tags : "${k}=${v}"]
+}
+
+output prefixedMap {
+	value = {for n in names : n => "prefix-${n}"}
+}
+
+output filteredTags {
+	value = {for k, v in tags : k => v if k != "Team"}
+}
