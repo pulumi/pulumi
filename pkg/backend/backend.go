@@ -369,6 +369,11 @@ type UpdateOptions struct {
 	SkipPreview bool
 	// PreviewOnly, when true, causes only the preview step to be run, without running the Update.
 	PreviewOnly bool
+
+	// OnPermalink, when set, is invoked with the operation's permalink, UpdateID, and
+	// version once the permalink is known. Only backends that mint permalinks call it
+	// (currently the Pulumi Cloud backend); version is only meaningful when preview is false.
+	OnPermalink func(url string, updateID string, version int, preview bool)
 }
 
 // CancellationScope provides a scoped source of cancellation and termination requests.
