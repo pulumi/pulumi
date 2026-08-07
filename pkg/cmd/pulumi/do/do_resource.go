@@ -103,6 +103,7 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 		cmd.AddCommand(pc.newStatefulResourceCreateCommand(res))
 		cmd.AddCommand(pc.newStatefulResourceUpsertCommand(res))
 	}
+	cmd.AddCommand(pc.newResourceGetCommand(res))
 	cmd.AddCommand(pc.newResourceReadCommand(res))
 	cmd.AddCommand(pc.newResourcePatchCommand(res))
 	cmd.AddCommand(pc.newResourceDeleteCommand(res))

@@ -17,6 +17,7 @@ package do
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -24,6 +25,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -787,6 +789,74 @@ size = 2
 		require.NoError(t, cmd.Execute())
 		assert.Equal(t, []string{"read", "check", "create"}, calls)
 		assert.JSONEq(t, `{"id":"res-2","name":"new"}`, stdout.String())
+	})
+}
+
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourceStatefulGet(t *testing.T) {
+	snippet := resource.Snippet{
+		UUID: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+		Name: "myres", Type: "azure:index:myResource",
+		Code:       `name = "example"`,
+		Descriptor: resource.PackageDescriptor{Name: "azure"},
+	}
+	newGetCommand := func(t *testing.T, snap *deploy.Snapshot) (*cobra.Command, *bytes.Buffer) {
+		mws, mlm := installMockUpsertBackend(t, snap)
+		stub := func(_ context.Context, _ *pflag.FlagSet, _ StatefulUpdateRequest,
+		) (*StatefulUpdateResult, error) {
+			require.Fail(t, "runStatefulUpdate should not be invoked by get")
+			return nil, nil
+		}
+		loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+			return &testProvider{spec: doResourceSpec(false)}, nil
+		}
+		var stdout bytes.Buffer
+		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+		cmd.SetOut(&stdout)
+		cmd.SetErr(io.Discard)
+		return cmd, &stdout
+	}
+
+	t.Run("shows the tracked ID and outputs", func(t *testing.T) {
+		cmd, stdout := newGetCommand(t, &deploy.Snapshot{
+			Snippets: []resource.Snippet{snippet},
+			Resources: []*pkgresource.State{{
+				Type:      tokens.Type("azure:index:myResource"),
+				URN:       resource.URN("urn:pulumi:dev::proj::azure:index:myResource::myres"),
+				Custom:    true,
+				ID:        "res-123",
+				SnippetID: snippet.UUID,
+				Outputs: resource.PropertyMap{
+					"name":     resource.NewProperty("example"),
+					"size":     resource.NewProperty(3.0),
+					"internal": resource.NewProperty("filtered"),
+				},
+			}},
+		})
+		cmd.SetArgs([]string{"azure:index:myResource", "get", "myres", "--output", "json"})
+		require.NoError(t, cmd.Execute())
+		assert.JSONEq(t, `{"id":"res-123","name":"example","size":3}`, stdout.String())
+	})
+
+	t.Run("errors when the resource is not in the stack", func(t *testing.T) {
+		cmd, _ := newGetCommand(t, &deploy.Snapshot{})
+		cmd.SetArgs([]string{"azure:index:myResource", "get", "myres"})
+		err := cmd.Execute()
+		require.ErrorContains(t, err, `resource azure:index:myResource "myres" does not exist in stack`)
+	})
+
+	t.Run("errors when the snippet has no tracked state", func(t *testing.T) {
+		cmd, _ := newGetCommand(t, &deploy.Snapshot{Snippets: []resource.Snippet{snippet}})
+		cmd.SetArgs([]string{"azure:index:myResource", "get", "myres"})
+		err := cmd.Execute()
+		require.ErrorContains(t, err, `no state is tracked yet for azure:index:myResource "myres"`)
+	})
+
+	t.Run("errors in stateless mode", func(t *testing.T) {
+		cmd, _, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(false)})
+		cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "get", "myres"})
+		err := cmd.Execute()
+		require.ErrorContains(t, err, "not available with --stateless")
 	})
 }
 
