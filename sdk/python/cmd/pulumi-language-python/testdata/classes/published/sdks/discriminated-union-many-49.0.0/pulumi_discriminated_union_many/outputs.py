@@ -6,7 +6,7 @@ import builtins as _builtins
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Literal, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
@@ -23,6 +23,7 @@ __all__ = [
 ]
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("discriminantKind", "variant1")
 class Variant1(dict):
     @staticmethod
     def __key_warning(key: str):
@@ -42,7 +43,7 @@ class Variant1(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 discriminant_kind: _builtins.str,
+                 discriminant_kind: Literal["variant1"],
                  extra: Optional[_builtins.str] = None,
                  payload: Optional[_builtins.str] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant1')
@@ -53,7 +54,7 @@ class Variant1(dict):
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> _builtins.str:
+    def discriminant_kind(self) -> Literal["variant1"]:
         return pulumi.get(self, "discriminant_kind")
 
     @_builtins.property
@@ -68,6 +69,7 @@ class Variant1(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("discriminantKind", "variant10")
 class Variant10(dict):
     @staticmethod
     def __key_warning(key: str):
@@ -87,7 +89,7 @@ class Variant10(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 discriminant_kind: _builtins.str,
+                 discriminant_kind: Literal["variant10"],
                  note: Optional[_builtins.str] = None,
                  payload: Optional[_builtins.str] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant10')
@@ -98,7 +100,7 @@ class Variant10(dict):
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> _builtins.str:
+    def discriminant_kind(self) -> Literal["variant10"]:
         return pulumi.get(self, "discriminant_kind")
 
     @_builtins.property
@@ -113,6 +115,7 @@ class Variant10(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("discriminantKind", "variant2")
 class Variant2(dict):
     @staticmethod
     def __key_warning(key: str):
@@ -132,7 +135,7 @@ class Variant2(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 discriminant_kind: _builtins.str,
+                 discriminant_kind: Literal["variant2"],
                  extra: Optional[_builtins.str] = None,
                  payload: Optional[_builtins.str] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant2')
@@ -143,7 +146,7 @@ class Variant2(dict):
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> _builtins.str:
+    def discriminant_kind(self) -> Literal["variant2"]:
         return pulumi.get(self, "discriminant_kind")
 
     @_builtins.property
@@ -158,6 +161,7 @@ class Variant2(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("discriminantKind", "variant3")
 class Variant3(dict):
     @staticmethod
     def __key_warning(key: str):
@@ -177,7 +181,7 @@ class Variant3(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 discriminant_kind: _builtins.str,
+                 discriminant_kind: Literal["variant3"],
                  count: Optional[_builtins.int] = None,
                  payload: Optional[_builtins.str] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant3')
@@ -188,7 +192,7 @@ class Variant3(dict):
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> _builtins.str:
+    def discriminant_kind(self) -> Literal["variant3"]:
         return pulumi.get(self, "discriminant_kind")
 
     @_builtins.property
@@ -203,6 +207,7 @@ class Variant3(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("discriminantKind", "variant4")
 class Variant4(dict):
     @staticmethod
     def __key_warning(key: str):
@@ -222,7 +227,7 @@ class Variant4(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 discriminant_kind: _builtins.str,
+                 discriminant_kind: Literal["variant4"],
                  enabled: Optional[_builtins.bool] = None,
                  payload: Optional[_builtins.str] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant4')
@@ -233,7 +238,7 @@ class Variant4(dict):
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> _builtins.str:
+    def discriminant_kind(self) -> Literal["variant4"]:
         return pulumi.get(self, "discriminant_kind")
 
     @_builtins.property
@@ -248,6 +253,7 @@ class Variant4(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("discriminantKind", "variant5")
 class Variant5(dict):
     @staticmethod
     def __key_warning(key: str):
@@ -267,7 +273,7 @@ class Variant5(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 discriminant_kind: _builtins.str,
+                 discriminant_kind: Literal["variant5"],
                  label: Optional[_builtins.str] = None,
                  payload: Optional[_builtins.str] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant5')
@@ -278,7 +284,7 @@ class Variant5(dict):
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> _builtins.str:
+    def discriminant_kind(self) -> Literal["variant5"]:
         return pulumi.get(self, "discriminant_kind")
 
     @_builtins.property
@@ -293,6 +299,7 @@ class Variant5(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("discriminantKind", "variant6")
 class Variant6(dict):
     @staticmethod
     def __key_warning(key: str):
@@ -312,7 +319,7 @@ class Variant6(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 discriminant_kind: _builtins.str,
+                 discriminant_kind: Literal["variant6"],
                  code: Optional[_builtins.int] = None,
                  payload: Optional[_builtins.str] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant6')
@@ -323,7 +330,7 @@ class Variant6(dict):
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> _builtins.str:
+    def discriminant_kind(self) -> Literal["variant6"]:
         return pulumi.get(self, "discriminant_kind")
 
     @_builtins.property
@@ -338,6 +345,7 @@ class Variant6(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("discriminantKind", "variant7")
 class Variant7(dict):
     @staticmethod
     def __key_warning(key: str):
@@ -357,7 +365,7 @@ class Variant7(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 discriminant_kind: _builtins.str,
+                 discriminant_kind: Literal["variant7"],
                  message: Optional[_builtins.str] = None,
                  payload: Optional[_builtins.str] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant7')
@@ -368,7 +376,7 @@ class Variant7(dict):
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> _builtins.str:
+    def discriminant_kind(self) -> Literal["variant7"]:
         return pulumi.get(self, "discriminant_kind")
 
     @_builtins.property
@@ -383,6 +391,7 @@ class Variant7(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("discriminantKind", "variant8")
 class Variant8(dict):
     @staticmethod
     def __key_warning(key: str):
@@ -402,7 +411,7 @@ class Variant8(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 discriminant_kind: _builtins.str,
+                 discriminant_kind: Literal["variant8"],
                  payload: Optional[_builtins.str] = None,
                  size: Optional[_builtins.int] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant8')
@@ -413,7 +422,7 @@ class Variant8(dict):
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> _builtins.str:
+    def discriminant_kind(self) -> Literal["variant8"]:
         return pulumi.get(self, "discriminant_kind")
 
     @_builtins.property
@@ -428,6 +437,7 @@ class Variant8(dict):
 
 
 @pulumi.output_type
+@pulumi.discriminated_union_case("discriminantKind", "variant9")
 class Variant9(dict):
     @staticmethod
     def __key_warning(key: str):
@@ -447,7 +457,7 @@ class Variant9(dict):
         return super().get(key, default)
 
     def __init__(__self__, *,
-                 discriminant_kind: _builtins.str,
+                 discriminant_kind: Literal["variant9"],
                  flag: Optional[_builtins.bool] = None,
                  payload: Optional[_builtins.str] = None):
         pulumi.set(__self__, "discriminant_kind", 'variant9')
@@ -458,7 +468,7 @@ class Variant9(dict):
 
     @_builtins.property
     @pulumi.getter(name="discriminantKind")
-    def discriminant_kind(self) -> _builtins.str:
+    def discriminant_kind(self) -> Literal["variant9"]:
         return pulumi.get(self, "discriminant_kind")
 
     @_builtins.property

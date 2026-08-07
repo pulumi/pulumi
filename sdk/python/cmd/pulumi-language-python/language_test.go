@@ -219,9 +219,13 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skip("Skipping non-default provider tests")
 					}
 
-					if (config.name == "default" || config.name == "toml") &&
-						(tt == "l2-discriminated-union" || tt == "l2-discriminated-union-many") {
-						t.Skip("pulumi#21830: Expected to fail")
+					// The last resource of this test assigns a resource output straight into
+					// another resource's input. mypy rejects that for any object type whose
+					// input is typed with TypedDicts, because a generated output type is a
+					// plain dict subclass rather than the TypedDict. pyright accepts it, so the
+					// toml config, which uses the same input types, still covers this test.
+					if false && config.name == "default" && tt == "l2-discriminated-union-many" {
+						t.Skip("mypy rejects assigning a resource output into a TypedDict-typed input")
 					}
 
 					if config.typechecker == "pyright" &&

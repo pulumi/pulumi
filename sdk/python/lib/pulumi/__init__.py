@@ -131,6 +131,7 @@ from .type_token import get_type_token, type_token
 
 from ._types import (
     MISSING,
+    discriminated_union_case,
     input_type,
     output_type,
     property,  # noqa: A004 shadowing builtin
@@ -227,6 +228,7 @@ __all__ = [
     "type_token",
     # _types
     "MISSING",
+    "discriminated_union_case",
     "input_type",
     "output_type",
     "property",

@@ -6,7 +6,7 @@ import builtins as _builtins
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union, overload
+from typing import Any, Literal, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
 from ._inputs import *
@@ -109,6 +109,6 @@ class SubsetExample(pulumi.CustomResource):
 
     @_builtins.property
     @pulumi.getter(name="unionOf")
-    def union_of(self) -> pulumi.Output[Optional[Any]]:
+    def union_of(self) -> pulumi.Output[Optional[Union['outputs.Variant1', 'outputs.Variant2', 'outputs.Variant3']]]:
         return pulumi.get(self, "union_of")
 

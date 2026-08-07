@@ -715,6 +715,15 @@ async def serialize_property(
         # If we have type information, we'll use it to do name translations rather than using
         # any passed-in input_transformer.
         if typ is not None:
+            # A discriminated union carries no metadata of its own, so resolve it to the case the
+            # value's discriminator tag selects and use that case's metadata. Dispatching on the
+            # tag rather than on the shape of the value keeps cases that share a shape distinct.
+            union_cases = _types.discriminated_union_cases(typ)
+            if union_cases is not None:
+                case = _types.select_discriminated_union_case(union_cases, value)
+                if case is not None:
+                    typ = case
+
             if _types.is_input_type(typ):
                 # If it's intended to be an input type, translate using the type's metadata.
                 py_name_to_pulumi_name = _types.input_type_py_to_pulumi_names(typ)
@@ -1289,6 +1298,16 @@ def translate_output_properties(
         typ = None
 
     if isinstance(output, dict):
+        # A discriminated union carries no metadata of its own, so resolve it to the case the
+        # value's discriminator tag selects. Dispatching on the tag rather than on the shape of
+        # the value keeps cases that share a shape distinct. A value whose tag is absent or
+        # unknown, which is what an SDK older than the provider sees, is left untyped rather than
+        # rejected.
+        if typ is not None:
+            union_cases = _types.discriminated_union_cases(typ)
+            if union_cases is not None:
+                typ = _types.select_discriminated_union_case(union_cases, output)
+
         # Function called to lookup a type for a given key.
         # The default always returns None.
         get_type: Callable[[str], Optional[type]] = lambda k: None
