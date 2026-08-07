@@ -325,10 +325,6 @@ async def _add_dependency(
         # Rather than adding the component resource itself, each child resource
         # is added as a dependency.
         if isinstance(res, ComponentResource) and not res._remote:
-            # Copy the set before iterating so that any concurrent child additions during
-            # the dependency computation (which is async, so can be interleaved with other
-            # operations including child resource construction which adds children to this
-            # resource) do not trigger modification during iteration errors.
             child_resources = res._childResources.copy()
             for child in child_resources:
                 res_list.append((child, from_resource))
