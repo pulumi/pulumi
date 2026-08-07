@@ -28,6 +28,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
+// singlePage answers a template listing with one page holding the given templates.
+func singlePage(templates ...apitype.TemplateMetadata) iter.Seq2[apitype.ListTemplatesResponse, error] {
+	return func(yield func(apitype.ListTemplatesResponse, error) bool) {
+		yield(apitype.ListTemplatesResponse{Templates: templates}, nil)
+	}
+}
+
 type mockRegistry struct {
 	getPackage func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
@@ -37,7 +44,7 @@ type mockRegistry struct {
 	getTemplate func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.TemplateMetadata, error)
-	listTemplates func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.TemplateMetadata, error]
+	listTemplates func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.ListTemplatesResponse, error]
 
 	downloadTemplate func(ctx context.Context, downloadURL string) (io.ReadCloser, error)
 }
@@ -60,7 +67,7 @@ func (r mockRegistry) GetTemplate(
 
 func (r mockRegistry) ListTemplates(
 	ctx context.Context, opts ListTemplatesOptions,
-) iter.Seq2[apitype.TemplateMetadata, error] {
+) iter.Seq2[apitype.ListTemplatesResponse, error] {
 	return r.listTemplates(ctx, opts)
 }
 

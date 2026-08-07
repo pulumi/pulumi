@@ -64,7 +64,7 @@ func (r *cloudRegistry) GetPackage(
 
 func (r *cloudRegistry) ListTemplates(
 	ctx ctx.Context, opts registry.ListTemplatesOptions,
-) iter.Seq2[apitype.TemplateMetadata, error] {
+) iter.Seq2[apitype.ListTemplatesResponse, error] {
 	return r.cl.ListTemplates(ctx, opts)
 }
 
