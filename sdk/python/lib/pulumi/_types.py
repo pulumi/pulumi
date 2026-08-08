@@ -593,6 +593,23 @@ def output_type_from_dict(cls: type[T], output: dict[str, Any]) -> T:
     return cls(**args)  # type: ignore
 
 
+def input_type_from_dict(cls: type[T], d: dict[str, Any]) -> T:
+    """
+    Constructs an input type from a dict without invoking __init__ or property
+    setters. Used during deserialization of provider-returned values to avoid
+    triggering spurious deprecation warnings that would fire from __init__ for
+    user-supplied values.
+    """
+    assert isinstance(d, dict)
+    assert is_input_type(cls)
+    obj = cls.__new__(cls)
+    for py_name, pulumi_name, _ in _py_properties(cls):  # type: ignore[arg-type] # https://github.com/python/mypy/issues/11470
+        value = d.get(pulumi_name)
+        if value is not None:
+            set(obj, py_name, value)
+    return obj
+
+
 @overload
 def getter(*, name: Optional[str] = None) -> Callable[[C], C]: ...
 @overload
