@@ -93,8 +93,6 @@ func (p *NestedCollectionsProvider) GetSchema(
 			},
 		},
 		Resources: map[string]schema.ResourceSpec{
-			// The nested collections are output-only: Go codegen does not yet generate
-			// the input types for collections nested this deeply.
 			"nestedcollections:index:Foo": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
@@ -103,6 +101,10 @@ func (p *NestedCollectionsProvider) GetSchema(
 						"privateEndpoint": privateEndpoint,
 					},
 					Required: []string{"conditionSets", "privateEndpoint"},
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"conditionSets":   conditionSets,
+					"privateEndpoint": privateEndpoint,
 				},
 			},
 		},

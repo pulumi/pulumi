@@ -17,6 +17,58 @@ type Bar struct {
 	Prop string `pulumi:"prop"`
 }
 
+// BarInput is an input type that accepts BarArgs and BarOutput values.
+// You can construct a concrete instance of `BarInput` via:
+//
+//	BarArgs{...}
+type BarInput interface {
+	pulumi.Input
+
+	ToBarOutput() BarOutput
+	ToBarOutputWithContext(context.Context) BarOutput
+}
+
+type BarArgs struct {
+	Prop pulumi.StringInput `pulumi:"prop"`
+}
+
+func (BarArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*Bar)(nil)).Elem()
+}
+
+func (i BarArgs) ToBarOutput() BarOutput {
+	return i.ToBarOutputWithContext(context.Background())
+}
+
+func (i BarArgs) ToBarOutputWithContext(ctx context.Context) BarOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BarOutput)
+}
+
+// BarArrayInput is an input type that accepts BarArray and BarArrayOutput values.
+// You can construct a concrete instance of `BarArrayInput` via:
+//
+//	BarArray{ BarArgs{...} }
+type BarArrayInput interface {
+	pulumi.Input
+
+	ToBarArrayOutput() BarArrayOutput
+	ToBarArrayOutputWithContext(context.Context) BarArrayOutput
+}
+
+type BarArray []BarInput
+
+func (BarArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]Bar)(nil)).Elem()
+}
+
+func (i BarArray) ToBarArrayOutput() BarArrayOutput {
+	return i.ToBarArrayOutputWithContext(context.Background())
+}
+
+func (i BarArray) ToBarArrayOutputWithContext(ctx context.Context) BarArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BarArrayOutput)
+}
+
 type BarOutput struct{ *pulumi.OutputState }
 
 func (BarOutput) ElementType() reflect.Type {
@@ -55,6 +107,31 @@ func (o BarArrayOutput) Index(i pulumi.IntInput) BarOutput {
 	}).(BarOutput)
 }
 
+type BarArrayArray []BarArrayInput
+
+func (BarArrayArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[][]Bar)(nil)).Elem()
+}
+
+func (i BarArrayArray) ToBarArrayArrayOutput() BarArrayArrayOutput {
+	return i.ToBarArrayArrayOutputWithContext(context.Background())
+}
+
+func (i BarArrayArray) ToBarArrayArrayOutputWithContext(ctx context.Context) BarArrayArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BarArrayArrayOutput)
+}
+
+// BarArrayArrayInput is an input type that accepts BarArrayArray and BarArrayArrayOutput values.
+// You can construct a concrete instance of `BarArrayArrayInput` via:
+//
+//	BarArrayArray{ BarArray{ BarArgs{...} } }
+type BarArrayArrayInput interface {
+	pulumi.Input
+
+	ToBarArrayArrayOutput() BarArrayArrayOutput
+	ToBarArrayArrayOutputWithContext(context.Context) BarArrayArrayOutput
+}
+
 type BarArrayArrayOutput struct{ *pulumi.OutputState }
 
 func (BarArrayArrayOutput) ElementType() reflect.Type {
@@ -73,6 +150,31 @@ func (o BarArrayArrayOutput) Index(i pulumi.IntInput) BarArrayOutput {
 	return pulumi.All(o, i).ApplyT(func(vs []interface{}) []Bar {
 		return vs[0].([][]Bar)[vs[1].(int)]
 	}).(BarArrayOutput)
+}
+
+type BarArrayArrayArray []BarArrayArrayInput
+
+func (BarArrayArrayArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[][][]Bar)(nil)).Elem()
+}
+
+func (i BarArrayArrayArray) ToBarArrayArrayArrayOutput() BarArrayArrayArrayOutput {
+	return i.ToBarArrayArrayArrayOutputWithContext(context.Background())
+}
+
+func (i BarArrayArrayArray) ToBarArrayArrayArrayOutputWithContext(ctx context.Context) BarArrayArrayArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(BarArrayArrayArrayOutput)
+}
+
+// BarArrayArrayArrayInput is an input type that accepts BarArrayArrayArray and BarArrayArrayArrayOutput values.
+// You can construct a concrete instance of `BarArrayArrayArrayInput` via:
+//
+//	BarArrayArrayArray{ BarArrayArray{ BarArray{ BarArgs{...} } } }
+type BarArrayArrayArrayInput interface {
+	pulumi.Input
+
+	ToBarArrayArrayArrayOutput() BarArrayArrayArrayOutput
+	ToBarArrayArrayArrayOutputWithContext(context.Context) BarArrayArrayArrayOutput
 }
 
 type BarArrayArrayArrayOutput struct{ *pulumi.OutputState }
@@ -96,6 +198,10 @@ func (o BarArrayArrayArrayOutput) Index(i pulumi.IntInput) BarArrayArrayOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*BarInput)(nil)).Elem(), BarArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BarArrayInput)(nil)).Elem(), BarArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BarArrayArrayInput)(nil)).Elem(), BarArrayArray{})
+	pulumi.RegisterInputType(reflect.TypeOf((*BarArrayArrayArrayInput)(nil)).Elem(), BarArrayArrayArray{})
 	pulumi.RegisterOutputType(BarOutput{})
 	pulumi.RegisterOutputType(BarArrayOutput{})
 	pulumi.RegisterOutputType(BarArrayArrayOutput{})

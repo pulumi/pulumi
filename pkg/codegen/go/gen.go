@@ -3922,6 +3922,9 @@ func (pkg *pkgContext) nestedTypeToType(typ schema.Type) (string, bool) {
 		}
 		return "", false
 	case *schema.ObjectType:
+		if t.IsInputShape() {
+			t = t.PlainShape
+		}
 		return pkg.resolveObjectType(t), true
 	case *schema.EnumType:
 		return pkg.resolveEnumType(t), true
