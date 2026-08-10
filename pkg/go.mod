@@ -78,7 +78,7 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/go-git/go-git/v6 v6.0.0-alpha.4
 	github.com/go-test/deep v1.1.1
-	github.com/godbus/dbus/v5 v5.1.0
+	github.com/godbus/dbus/v5 v5.2.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/go-github/v55 v55.0.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
