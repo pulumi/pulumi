@@ -381,7 +381,8 @@ func TestDoCmdResourceUpsertConvertsReferences(t *testing.T) {
 				assert.Equal(t, "azure", ref.Package.Package)
 				assert.Equal(t, "1.2.3", ref.Package.Version)
 				assert.Equal(t, "https://example.com/azure", ref.Package.DownloadUrl)
-				assert.Equal(t, req.Resources["source-name"], req.Resources["source"],
+				autoName := hashedResourceIdent("source", referencedURN)
+				assert.Equal(t, req.Resources["source-name"], req.Resources[autoName],
 					"auto-assigned identifier should describe the same resource")
 				return &plugin.ConvertSnippetResponse{
 					Filename: "upsert.pp",

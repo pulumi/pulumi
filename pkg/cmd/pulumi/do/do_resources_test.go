@@ -32,7 +32,23 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func TestAutoResourceNames_PrefersBareName(t *testing.T) {
+func TestAutoResourceNames_PrefersPlainSnippetName(t *testing.T) {
+	t.Parallel()
+	bucket := resource.URN("urn:pulumi:dev::proj::aws:s3/bucket:Bucket::myBucket")
+	names := autoResourceNames(&deploy.Snapshot{
+		Snippets: []resource.Snippet{{
+			UUID: "snippet-1",
+			Name: "plainBucket",
+			Type: string(bucket.Type()),
+		}},
+		Resources: []*pkgresource.State{
+			{Type: bucket.Type(), URN: bucket, Custom: true, SnippetID: "snippet-1"},
+		},
+	})
+	assert.Equal(t, map[string]string{"plainBucket": string(bucket)}, names)
+}
+
+func TestAutoResourceNames_HashesNonSnippetResources(t *testing.T) {
 	t.Parallel()
 	bucket := resource.URN("urn:pulumi:dev::proj::aws:s3/bucket:Bucket::myBucket")
 	names := autoResourceNames(&deploy.Snapshot{
@@ -40,7 +56,7 @@ func TestAutoResourceNames_PrefersBareName(t *testing.T) {
 			{Type: bucket.Type(), URN: bucket, Custom: true},
 		},
 	})
-	assert.Equal(t, map[string]string{"myBucket": string(bucket)}, names)
+	assert.Equal(t, map[string]string{hashedResourceIdent("myBucket", bucket): string(bucket)}, names)
 }
 
 func TestAutoResourceNames_SkipsProvidersAndStackAndDeletes(t *testing.T) {
@@ -57,24 +73,28 @@ func TestAutoResourceNames_SkipsProvidersAndStackAndDeletes(t *testing.T) {
 			{Type: tombstone.Type(), URN: tombstone, Custom: true, Delete: true},
 		},
 	})
-	assert.Equal(t, map[string]string{"myBucket": string(bucket)}, names)
+	assert.Equal(t, map[string]string{hashedResourceIdent("myBucket", bucket): string(bucket)}, names)
 }
 
-func TestAutoResourceNames_DisambiguatesConflicts(t *testing.T) {
+func TestAutoResourceNames_SnippetConflictAppendsHash(t *testing.T) {
 	t.Parallel()
-	// Two resources with the same URN.Name() but different types — the first (in URN order)
-	// takes the bare name, the second falls through to the type-qualified candidate.
+	// Two snippet resources with the same snippet name: the first in URN order takes the
+	// plain snippet name, the second falls back directly to the hash-suffixed snippet name.
 	a := resource.URN("urn:pulumi:dev::proj::aws:s3/bucket:Bucket::shared")
 	b := resource.URN("urn:pulumi:dev::proj::aws:ec2/vpc:Vpc::shared")
 	names := autoResourceNames(&deploy.Snapshot{
+		Snippets: []resource.Snippet{
+			{UUID: "snippet-a", Name: "shared", Type: string(a.Type())},
+			{UUID: "snippet-b", Name: "shared", Type: string(b.Type())},
+		},
 		Resources: []*pkgresource.State{
-			{Type: a.Type(), URN: a, Custom: true},
-			{Type: b.Type(), URN: b, Custom: true},
+			{Type: a.Type(), URN: a, Custom: true, SnippetID: "snippet-a"},
+			{Type: b.Type(), URN: b, Custom: true, SnippetID: "snippet-b"},
 		},
 	})
 	// URN order: "aws:ec2..." < "aws:s3...", so Vpc wins the bare name.
 	assert.Equal(t, string(b), names["shared"])
-	assert.Equal(t, string(a), names["Bucket_shared"])
+	assert.Equal(t, string(a), names[hashedResourceIdent("shared", a)])
 	require.Len(t, names, 2)
 }
 
@@ -85,7 +105,7 @@ func TestAutoResourceNames_SanitizesInvalidIdentifierChars(t *testing.T) {
 	names := autoResourceNames(&deploy.Snapshot{
 		Resources: []*pkgresource.State{{Type: u.Type(), URN: u, Custom: true}},
 	})
-	assert.Equal(t, map[string]string{"my_bucket_v2": string(u)}, names)
+	assert.Equal(t, map[string]string{hashedResourceIdent("my-bucket.v2", u): string(u)}, names)
 }
 
 func TestAutoResourceNames_StableUnderUnrelatedInsertion(t *testing.T) {
@@ -103,7 +123,8 @@ func TestAutoResourceNames_StableUnderUnrelatedInsertion(t *testing.T) {
 			{Type: b.Type(), URN: b, Custom: true},
 		},
 	})
-	assert.Equal(t, before["a"], after["a"], "existing identifier must not shift when unrelated resource is added")
+	assert.Equal(t, before[hashedResourceIdent("a", a)], after[hashedResourceIdent("a", a)],
+		"existing identifier must not shift when unrelated resource is added")
 }
 
 func TestMergeResourceNames_UserWins(t *testing.T) {

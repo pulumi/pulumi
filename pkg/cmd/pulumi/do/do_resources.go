@@ -46,13 +46,11 @@ import (
 // autoResourceNames returns a deterministic identifier→URN map derived from the given snapshot.
 // Callers merge this with the user's --resources-file, letting user entries win on collisions.
 //
-// Stability rules:
-//   - Iteration is in URN order, so unrelated changes to the snapshot never perturb a resource that
-//     already has a name.
-//   - Each resource's candidate list is a pure function of its own URN and parent chain, not of
-//     what other resources exist. Conflict resolution is greedy first-writer-wins; the fallback
-//     candidate embeds a hash of the URN so termination is guaranteed and the fallback name is
-//     also stable across runs.
+// Naming rules:
+//   - Resources produced by a snippet try to use the snippet's plain name.
+//   - All other resources, and snippet resources whose plain name is already taken, use the
+//     sanitized base name plus a hash of the URN.
+//   - Iteration is in URN order, so conflict resolution is deterministic.
 //
 // Renames can still happen when the resource that previously held a preferred name is deleted —
 // the next run may hand that shorter name to a resource that previously fell through to a longer
@@ -63,10 +61,13 @@ func autoResourceNames(snap *deploy.Snapshot) map[string]string {
 	}
 
 	type entry struct {
-		urn      resource.URN
-		parent   resource.URN
-		typeName string
-		name     string
+		urn         resource.URN
+		name        string
+		snippetName string
+	}
+	snippets := map[string]string{}
+	for _, s := range snap.Snippets {
+		snippets[s.UUID] = s.Name
 	}
 	var entries []entry
 	for _, s := range snap.Resources {
@@ -82,46 +83,52 @@ func autoResourceNames(snap *deploy.Snapshot) map[string]string {
 		if sdkproviders.IsProviderType(s.Type) {
 			continue
 		}
+		snippetName := ""
+		if s.SnippetID != "" {
+			snippetName = snippets[s.SnippetID]
+		}
 		entries = append(entries, entry{
-			urn:      s.URN,
-			parent:   s.Parent,
-			typeName: string(s.Type.Name()),
-			name:     s.URN.Name(),
+			urn:         s.URN,
+			name:        s.URN.Name(),
+			snippetName: snippetName,
 		})
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].urn < entries[j].urn })
 
 	assigned := map[string]string{} // ident -> urn
 	for _, e := range entries {
-		candidates := []string{
-			sanitizeIdent(e.name),
-			sanitizeIdent(e.typeName + "_" + e.name),
+		if e.snippetName != "" {
+			if c := sanitizeIdent(e.snippetName); c != "" {
+				if _, taken := assigned[c]; !taken {
+					assigned[c] = string(e.urn)
+					continue
+				}
+			}
 		}
-		if e.parent != "" {
-			p := e.parent.Name()
-			candidates = append(candidates,
-				sanitizeIdent(p+"_"+e.name),
-				sanitizeIdent(p+"_"+e.typeName+"_"+e.name),
-			)
-		}
-		// Guaranteed-unique fallback: sanitized name + short hash of the URN. The URN is unique
-		// per resource so this candidate never collides with another resource's fallback, and it's
-		// stable across runs.
-		hash := sha256.Sum256([]byte(e.urn))
-		candidates = append(candidates, sanitizeIdent(e.name)+"_"+hex.EncodeToString(hash[:6]))
 
-		for _, c := range candidates {
-			if c == "" {
-				continue
-			}
-			if _, taken := assigned[c]; taken {
-				continue
-			}
-			assigned[c] = string(e.urn)
-			break
+		baseName := e.name
+		if e.snippetName != "" {
+			baseName = e.snippetName
 		}
+		c := hashedResourceIdent(baseName, e.urn)
+		if c == "" {
+			continue
+		}
+		if _, taken := assigned[c]; taken {
+			continue
+		}
+		assigned[c] = string(e.urn)
 	}
 	return assigned
+}
+
+func hashedResourceIdent(name string, urn resource.URN) string {
+	base := sanitizeIdent(name)
+	if base == "" {
+		return ""
+	}
+	hash := sha256.Sum256([]byte(urn))
+	return base + "_" + hex.EncodeToString(hash[:6])
 }
 
 // mergeResourceNames overlays user on top of auto, with user entries winning. When a user maps an
