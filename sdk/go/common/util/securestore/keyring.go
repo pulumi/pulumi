@@ -34,7 +34,7 @@ const (
 // Secret Service calls can hang on D-Bus activation or invisible prompts.
 // Bounds only calls that never wait on the user — the interactive unlock has
 // no deadline — and failures still return immediately.
-const opTimeout = 3 * time.Second
+const opTimeout = 1 * time.Second
 
 // On timeout the goroutine is abandoned; the buffered channel lets it exit
 // once fn returns. Only a permanently hung fn leaks it, acceptable in a CLI.
