@@ -218,12 +218,13 @@ function pendingRegistrationsMessage(pending: Map<Resource, state.PendingResourc
         message += fallbackCycleMessage(pending);
     }
 
-    return (
-        message +
-        "\n\n" +
-        "Re-run your program with the `PULUMI_DEBUG_PROMISE_LEAKS` environment variable set for\n" +
-        "additional debug information about the leaked promises."
-    );
+    if (!debugPromiseLeaks) {
+        message +=
+            "\n\n" +
+            "Re-run your program with the `PULUMI_DEBUG_PROMISE_LEAKS` environment variable set for\n" +
+            "additional debug information about the leaked promises.";
+    }
+    return message;
 }
 
 /**
