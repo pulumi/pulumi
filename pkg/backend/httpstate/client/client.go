@@ -1607,6 +1607,69 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	return resp.Version, resp.Token, resp.JournalVersion, nil
 }
 
+// BeginUpdate combines CreateUpdate, StartUpdate, ExportStackDeployment, and GetStack into a
+// single API call to reduce latency. Returns all data needed to start the engine execution.
+// This is only supported on backends with the "begin-update" capability.
+func (pc *Client) BeginUpdate(
+	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
+	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
+	tags map[apitype.StackTagName]string, dryRun bool,
+) (*apitype.BeginUpdateResponse, error) {
+	if err := validation.ValidateStackTags(tags); err != nil {
+		return nil, fmt.Errorf("validating stack properties: %w", err)
+	}
+
+	wireConfig := make(map[string]apitype.ConfigValue)
+	for k, cv := range cfg {
+		v, err := cv.Value(config.NopDecrypter)
+		contract.AssertNoErrorf(err, "error fetching config value for key %v", k)
+
+		wireConfig[k.String()] = apitype.ConfigValue{
+			String: v,
+			Secret: cv.Secure(),
+			Object: cv.Object(),
+		}
+	}
+
+	description := ""
+	if proj.Description != nil {
+		description = *proj.Description
+	}
+
+	updateRequest := apitype.UpdateProgramRequest{
+		Name:        string(proj.Name),
+		Runtime:     proj.Runtime.Name(),
+		Main:        proj.Main,
+		Description: description,
+		Config:      wireConfig,
+		Options: apitype.UpdateOptions{
+			LocalPolicyPackPaths: engine.ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks),
+			Color:                colors.Raw,
+			DryRun:               dryRun,
+			Parallel:             opts.Parallel,
+		},
+		Metadata: m,
+	}
+
+	req := apitype.BeginUpdateRequest{
+		UpdateKind: kind,
+		Program:    updateRequest,
+		Tags:       tags,
+	}
+
+	if !env.DisableJournaling.Value() {
+		req.JournalVersion = 1
+	}
+
+	var resp apitype.BeginUpdateResponse
+	path := getStackPath(stack, "begin-update")
+	if err := pc.restCall(ctx, "POST", path, nil, &req, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
 // ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.
 func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string, inContToken *string) (
 	apitype.ListPolicyGroupsResponse, *string, error,
@@ -3372,7 +3435,7 @@ func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apit
 
 func (pc *Client) ListTemplates(
 	ctx context.Context, opts registry.ListTemplatesOptions,
-) iter.Seq2[apitype.TemplateMetadata, error] {
+) iter.Seq2[apitype.ListTemplatesResponse, error] {
 	query := url.Values{}
 	query.Set("limit", "499")
 	if opts.Name != "" {
@@ -3384,9 +3447,12 @@ func (pc *Client) ListTemplates(
 	if opts.Search != "" {
 		query.Set("search", opts.Search)
 	}
+	for _, backing := range opts.Backing {
+		query.Add("backing", string(backing))
+	}
 
 	var continuationToken *string
-	return func(f func(apitype.TemplateMetadata, error) bool) {
+	return func(f func(apitype.ListTemplatesResponse, error) bool) {
 		for {
 			pageQuery := query
 			if continuationToken != nil {
@@ -3398,13 +3464,11 @@ func (pc *Client) ListTemplates(
 			var resp apitype.ListTemplatesResponse
 			err := pc.restCall(ctx, "GET", "/api/registry/templates?"+pageQuery.Encode(), nil, nil, &resp)
 			if err != nil {
-				f(apitype.TemplateMetadata{}, err)
+				f(apitype.ListTemplatesResponse{}, err)
 				return
 			}
-			for _, v := range resp.Templates {
-				if !f(v, nil) {
-					return
-				}
+			if !f(resp, nil) {
+				return
 			}
 			continuationToken = resp.ContinuationToken
 			if continuationToken == nil {

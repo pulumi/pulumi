@@ -598,7 +598,7 @@ func persistValidatedSnippets(
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := deploy.ValidateSnippet(snippet, loader); err != nil {
+		if err := deploy.ValidateSnippet(ctx, snippet, loader); err != nil {
 			return err
 		}
 	}

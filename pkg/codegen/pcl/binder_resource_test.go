@@ -202,6 +202,7 @@ options {
 	require.False(t, parser.Diagnostics.HasErrors())
 
 	program, diags, err := BindResourceProgram(
+		t.Context(),
 		parser.Files[0],
 		"example",
 		"foo:index:Foo",

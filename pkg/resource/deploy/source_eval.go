@@ -35,6 +35,8 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	slicesfx "github.com/pgavlin/fx/v2/slices"
+	"go.opentelemetry.io/otel"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -61,6 +63,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -148,6 +151,10 @@ type evalSource struct {
 
 	// the function to run the evaluation with.
 	runner func(resourceMonitorTarget string) *promise.Promise[struct{}]
+
+	// the span covering the currently-running program evaluation, if any. The resource monitor uses it as the
+	// fallback parent for incoming calls that carry no trace context of their own.
+	runSpan atomic.Pointer[oteltrace.Span]
 }
 
 func (src *evalSource) Close() error {
@@ -348,11 +355,18 @@ func (iter *evalSourceIterator) forkRun(
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
 	go PanicRecovery(iter.panicErrs, func() {
+		_, runSpan := cmdutil.StartSpan(iter.src.plugctx.Base(), otel.Tracer("pulumi-cli"), "run-program")
+		iter.src.runSpan.Store(&runSpan)
+
 		// Next, launch the language plugin.
 		run := iter.src.runner(iter.mon.Address())
 
 		// Communicate the error, if it exists, or nil if the program exited cleanly.
 		_, err := run.Result(context.TODO())
+
+		iter.src.runSpan.Store(nil)
+		runSpan.End()
+
 		if err != nil {
 			logging.V(5).Infof("Program exited with error: %s", err)
 		} else {
@@ -545,6 +559,13 @@ func newResourceMonitor(
 		componentAliases:        map[resource.URN][]resource.URN{},
 	}
 
+	otelParent := func() oteltrace.Span {
+		if s := src.runSpan.Load(); s != nil {
+			return *s
+		}
+		return oteltrace.SpanFromContext(src.plugctx.Base())
+	}
+
 	// Fire up a gRPC server and start listening for incomings.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: resmon.cancel,
@@ -552,7 +573,7 @@ func newResourceMonitor(
 			pulumirpc.RegisterResourceMonitorServer(srv, resmon)
 			return nil
 		},
-		Options: sourceEvalServeOptions(src.plugctx, tracingSpan, env.DebugGRPC.Value()),
+		Options: sourceEvalServeOptions(src.plugctx, tracingSpan, otelParent, env.DebugGRPC.Value()),
 	})
 	if err != nil {
 		return nil, err
@@ -637,9 +658,12 @@ func (rm *resmon) Cancel(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func sourceEvalServeOptions(ctx *plugin.Context, tracingSpan opentracing.Span, logFile string) []grpc.ServerOption {
-	serveOpts := rpcutil.TracingServerInterceptorOptions(
+func sourceEvalServeOptions(
+	ctx *plugin.Context, tracingSpan opentracing.Span, otelParent func() oteltrace.Span, logFile string,
+) []grpc.ServerOption {
+	serveOpts := rpcutil.TracingServerInterceptorOptionsWithOTelParent(
 		tracingSpan,
+		otelParent,
 		otgrpc.SpanDecorator(decorateResourceSpans),
 	)
 	if logFile != "" {

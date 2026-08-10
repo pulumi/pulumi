@@ -45,7 +45,7 @@ func TestDoCmdWithFunctionHelpArgPrintsHelp(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -154,7 +154,7 @@ func TestDoCmdFunctionInvoke(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -239,7 +239,7 @@ func TestDoCmdFunctionInvokeFiltersOutputsToSchema(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -293,7 +293,7 @@ func TestDoCmdFunctionInvokeFiltersNestedObjectsInCollections(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -392,7 +392,7 @@ func TestDoCmdFunctionInvokeReturnType(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -439,7 +439,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchema(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -523,7 +523,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchemaSecrets(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -619,7 +619,7 @@ func TestDoCmdFunctionInvokeNestedModule(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "pkg", source)
 		spec := schema.PackageSpec{
@@ -682,7 +682,7 @@ func TestDoCmdFunctionInvoke_MissingRequiredInput(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -743,7 +743,7 @@ func TestDoCmdFunctionInvoke_NoInputFileWithRequired(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -859,7 +859,7 @@ param3 = {
 			t.Parallel()
 
 			mlm := &cmdBackend.MockLoginManager{}
-			mws := &pkgWorkspace.MockContext{}
+			mws := newTestWorkspace(t)
 			loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 				assert.Equal(t, "azure", source)
 				spec := schema.PackageSpec{
@@ -924,7 +924,7 @@ func TestDoCmdFunctionInvokeInputFileForInputlessFunction(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -969,7 +969,7 @@ func TestDoCmdFunctionInvokeInputFileRejectsHCLBlocks(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -1022,7 +1022,7 @@ func TestDoCmdFunctionInvokeInputFileSchemaConversions(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1087,7 +1087,7 @@ func TestDoCmdFunctionInvokeDryRun(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1172,7 +1172,7 @@ func TestDoCmdFunctionInvokeWithBuiltinFunctions(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1231,73 +1231,6 @@ param2 = max(1, length(split(":", "a:b:c")), 6)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
-}
-
-func TestDoCmdFunctionInvokeWithUnsupportedBuiltinFunction(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "project",
-			input:    `param1 = project()`,
-			expected: "project is not supported",
-		},
-		{
-			name:     "rootDirectory",
-			input:    `param1 = rootDirectory()`,
-			expected: "rootDirectory is not supported",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			mlm := &cmdBackend.MockLoginManager{}
-			mws := &pkgWorkspace.MockContext{}
-			loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
-				spec := schema.PackageSpec{
-					Name: "azure",
-					Functions: map[string]schema.FunctionSpec{
-						"azure:index:myFunction": {
-							Inputs: &schema.ObjectTypeSpec{
-								Properties: map[string]schema.PropertySpec{
-									"param1": {
-										TypeSpec: schema.TypeSpec{
-											Type: "string",
-										},
-									},
-								},
-							},
-							Outputs: &schema.ObjectTypeSpec{
-								Properties: map[string]schema.PropertySpec{
-									"output1": {TypeSpec: schema.TypeSpec{Type: "string"}},
-									"output2": {TypeSpec: schema.TypeSpec{Type: "number"}},
-									"output3": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
-								},
-							},
-						},
-					},
-				}
-				return &testProvider{spec: spec}, nil
-			}
-
-			var stdout bytes.Buffer
-			cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
-			cmd.SetOut(&stdout)
-			cmd.SetErr(&stdout)
-
-			inputFile := writeHCLFile(t, "inputs.pcl", tt.input)
-
-			cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
-			err := cmd.Execute()
-			require.ErrorContains(t, err, tt.expected)
-		})
-	}
 }
 
 func TestDoCmdFunctionInvokeWithProjectContext(t *testing.T) {
@@ -1382,7 +1315,7 @@ func TestDoCmdFunctionInvokeWithConfiguration(t *testing.T) {
 
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1490,7 +1423,7 @@ func TestDoCmdFunctionInvokeNestedResults(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1570,7 +1503,7 @@ func TestDoCmdFunctionInvokeShowSecrets(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1640,7 +1573,7 @@ func TestDoCmdFunctionInvokeAssetArchiveResults(t *testing.T) {
 	require.NoError(t, err)
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -1722,7 +1655,7 @@ func TestDoCmdFunctionInvokeWithParameterizedPackage(t *testing.T) {
 	subpackageVersion := semver.MustParse("1.2.3")
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		// shlex-split takes only the first token as the plugin source; the rest go to Parameterize.
 		assert.Equal(t, "terraform-provider", source)
@@ -1823,7 +1756,7 @@ func TestDoCmdFunctionInvokeWithYAMLInputFile(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
 		// `do` forwards to the converter as its TargetLoader.
@@ -1952,7 +1885,7 @@ func TestDoCmdFunctionInvokeYAMLInputByDefault(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
 		// `do` forwards to the converter as its TargetLoader.
@@ -2035,7 +1968,7 @@ func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
 		// `do` forwards to the converter as its TargetLoader.
@@ -2137,7 +2070,7 @@ func TestDoCmdFunctionInvokeParameterizedSchemaWithoutArgs(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -2180,7 +2113,7 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
 		// `do` forwards to the converter as its TargetLoader.
@@ -2271,7 +2204,7 @@ func TestDoCmdFunctionInvokeWithUnknownInputFormat(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
@@ -2329,7 +2262,7 @@ func TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
@@ -2388,7 +2321,7 @@ func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
@@ -2455,7 +2388,7 @@ func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	host := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		return &plugin.MockHost{}, nil
 	}
@@ -2520,7 +2453,7 @@ func TestDoCmdFunctionInvokeWithFlags(t *testing.T) {
 
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
@@ -2595,7 +2528,7 @@ func TestDoCmdFunctionInvokeWithYAMLFlags(t *testing.T) {
 
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	yamlHost := func(_ context.Context, d, statusD diag.Sink) (plugin.Host, error) {
 		// Serve the standard schema loader so the context exposes a non-empty LoaderAddr, which
 		// `do` forwards to the converter as its TargetLoader.
@@ -2814,7 +2747,7 @@ func TestDoCmdFunctionInvokeWithPlainFlagsSkipsConverter(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
-	mws := &pkgWorkspace.MockContext{}
+	mws := newTestWorkspace(t)
 	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{

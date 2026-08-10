@@ -219,7 +219,8 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skip("Skipping non-default provider tests")
 					}
 
-					if (config.name == "default" || config.name == "toml") && tt == "l2-discriminated-union" {
+					if (config.name == "default" || config.name == "toml") &&
+						(tt == "l2-discriminated-union" || tt == "l2-discriminated-union-many") {
 						t.Skip("pulumi#21830: Expected to fail")
 					}
 

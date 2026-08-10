@@ -335,7 +335,7 @@ func needsSaveProjectStackAfterSecretManger(
 }
 
 func ValidateSecretsProvider(typ string) error {
-	kind := strings.SplitN(typ, ":", 2)[0]
+	kind, _, _ := strings.Cut(typ, ":")
 	supportedKinds := []string{"default", "passphrase", "awskms", "azurekeyvault", "gcpkms", "hashivault"}
 	if slices.Contains(supportedKinds, kind) {
 		return nil

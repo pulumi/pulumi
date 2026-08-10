@@ -26,7 +26,6 @@ func main() {
 		var fromModule []*eks.Example
 		for index := 0; index < 10; index++ {
 			key0 := index
-			_ := index
 			__res, err := eks.NewExample(ctx, fmt.Sprintf("fromModule-%v", key0), &eks.ExampleArgs{
 				AssociatedMain: main.Id,
 			})

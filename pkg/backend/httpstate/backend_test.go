@@ -30,6 +30,9 @@ import (
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -52,14 +55,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // testJWT is a test JWT token used in tests.
 //
 //nolint:lll // JWT token is long
 const testJWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+
+func TestCommandNameContext(t *testing.T) {
+	t.Parallel()
+
+	_, ok := commandNameFromContext(t.Context())
+	assert.False(t, ok)
+
+	ctx := ContextWithCommandName(t.Context(), "pulumi new")
+	name, ok := commandNameFromContext(ctx)
+	assert.True(t, ok)
+	assert.Equal(t, "pulumi new", name)
+}
 
 //nolint:paralleltest // mutates global configuration
 func TestEnabledFullyQualifiedStackNames(t *testing.T) {

@@ -48,14 +48,20 @@ func OpenTracingServerInterceptorOptions(parentSpan opentracing.Span, options ..
 // Configures interceptors to propagate OpenTracing and OpenTelemetry metadata through headers.
 // If parentSpan is non-nil, it becomes the default parent for orphan spans.
 func TracingServerInterceptorOptions(parentSpan opentracing.Span, options ...otgrpc.Option) []grpc.ServerOption {
+	return TracingServerInterceptorOptionsWithOTelParent(parentSpan, nil, options...)
+}
+
+func TracingServerInterceptorOptionsWithOTelParent(
+	parentSpan opentracing.Span, otelParent func() trace.Span, options ...otgrpc.Option,
+) []grpc.ServerOption {
 	return []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
-			otelUnaryServerInterceptor(),
+			otelUnaryServerInterceptor(otelParent),
 			OpenTracingServerInterceptor(parentSpan, options...),
 			stackTraceUnaryServerInterceptor(),
 		),
 		grpc.ChainStreamInterceptor(
-			otelStreamServerInterceptor(),
+			otelStreamServerInterceptor(otelParent),
 			OpenTracingStreamServerInterceptor(parentSpan, options...),
 			stackTraceStreamServerInterceptor(),
 		),
@@ -66,11 +72,11 @@ func TracingServerInterceptorOptions(parentSpan opentracing.Span, options ...otg
 func OTelServerInterceptorOptions() []grpc.ServerOption {
 	return []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(
-			otelUnaryServerInterceptor(),
+			otelUnaryServerInterceptor(nil),
 			stackTraceUnaryServerInterceptor(),
 		),
 		grpc.ChainStreamInterceptor(
-			otelStreamServerInterceptor(),
+			otelStreamServerInterceptor(nil),
 			stackTraceStreamServerInterceptor(),
 		),
 	}
@@ -214,7 +220,7 @@ func captureStackTrace(skip int) string {
 	return stackBuilder.String()
 }
 
-func otelUnaryServerInterceptor() grpc.UnaryServerInterceptor {
+func otelUnaryServerInterceptor(fallbackParent func() trace.Span) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req any,
@@ -222,6 +228,7 @@ func otelUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		handler grpc.UnaryHandler,
 	) (any, error) {
 		ctx = extractOTelContext(ctx)
+		ctx = withFallbackParent(ctx, fallbackParent)
 		ctx, span := startServerSpan(ctx, info.FullMethod)
 		defer span.End()
 
@@ -231,7 +238,7 @@ func otelUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-func otelStreamServerInterceptor() grpc.StreamServerInterceptor {
+func otelStreamServerInterceptor(fallbackParent func() trace.Span) grpc.StreamServerInterceptor {
 	return func(
 		srv any,
 		ss grpc.ServerStream,
@@ -239,6 +246,7 @@ func otelStreamServerInterceptor() grpc.StreamServerInterceptor {
 		handler grpc.StreamHandler,
 	) error {
 		ctx := extractOTelContext(ss.Context())
+		ctx = withFallbackParent(ctx, fallbackParent)
 		ctx, span := startServerSpan(ctx, info.FullMethod)
 		defer span.End()
 
@@ -247,6 +255,17 @@ func otelStreamServerInterceptor() grpc.StreamServerInterceptor {
 		setSpanStatus(span, err)
 		return err
 	}
+}
+
+func withFallbackParent(ctx context.Context, fallbackParent func() trace.Span) context.Context {
+	if fallbackParent == nil || trace.SpanContextFromContext(ctx).IsValid() {
+		return ctx
+	}
+	parent := fallbackParent()
+	if parent == nil || !parent.SpanContext().IsValid() {
+		return ctx
+	}
+	return trace.ContextWithSpan(ctx, parent)
 }
 
 // serverStreamWithContext wraps a grpc.ServerStream to provide a custom context.
