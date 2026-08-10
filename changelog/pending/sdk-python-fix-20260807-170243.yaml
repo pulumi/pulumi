@@ -1,0 +1,6 @@
+component: sdk/python
+kind: fix
+body: Serialize typed object stack outputs with their wire-format (camelCase) property names, matching other language SDKs
+time: 2026-08-07T17:02:43.463445+02:00
+custom:
+  PR: "24246"
