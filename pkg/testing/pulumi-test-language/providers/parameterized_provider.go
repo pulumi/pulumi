@@ -184,7 +184,7 @@ func (p *ParameterizedProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -197,24 +197,24 @@ func (p *ParameterizedProvider) CheckConfig(
 	}
 
 	// assert that the version is the parameterized version
-	if version.StringValue() != p.parameterVersion {
+	if version.AsString() != p.parameterVersion {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version in CheckConfig is not the parameterized version"),
 		}, nil
 	}
 
 	// Optionally expect the text config
-	text, ok := req.News["text"]
+	text, ok := req.News.GetOk("text")
 	if ok {
 		if !text.IsString() {
 			return plugin.CheckConfigResponse{
 				Failures: makeCheckFailure("text", "text is not a string"),
 			}, nil
 		}
-		p.config = text.StringValue()
+		p.config = text.AsString()
 	}
 
-	if len(req.News) > 2 {
+	if req.News.Len() > 2 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil

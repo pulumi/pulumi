@@ -296,15 +296,15 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		URN:           urn,
 		Name:          req.Name,
 		Type:          tokens.Type(req.Type),
-		Olds:          state,
-		News:          inputs,
+		Olds:          resource.FromResourcePropertyMap(state),
+		News:          resource.FromResourcePropertyMap(inputs),
 		AllowUnknowns: true,
 	})
 	if err != nil {
 		return nil, p.checkNYI("CheckConfig", err)
 	}
 
-	rpcInputs, err := MarshalProperties(resp.Properties, p.marshalOptions("inputs"))
+	rpcInputs, err := MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), p.marshalOptions("inputs"))
 	if err != nil {
 		return nil, err
 	}

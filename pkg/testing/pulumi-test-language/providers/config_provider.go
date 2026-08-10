@@ -143,24 +143,24 @@ func (p *ConfigProvider) CheckConfig(
 ) (plugin.CheckConfigResponse, error) {
 	// We should have the version but also name and pluginDownloadURL
 
-	check := func(required bool, key resource.PropertyKey, expected string) *plugin.CheckConfigResponse {
-		value, ok := req.News[key]
+	check := func(required bool, key string, expected string) *plugin.CheckConfigResponse {
+		value, ok := req.News.GetOk(key)
 		if !ok {
 			if required {
 				return &plugin.CheckConfigResponse{
-					Failures: makeCheckFailure(key, fmt.Sprintf("missing %s", key)),
+					Failures: makeCheckFailure(resource.PropertyKey(key), "missing "+key),
 				}
 			}
 			return nil
 		}
 		if !value.IsString() {
 			return &plugin.CheckConfigResponse{
-				Failures: makeCheckFailure(key, fmt.Sprintf("%s is not a string", key)),
+				Failures: makeCheckFailure(resource.PropertyKey(key), key+" is not a string"),
 			}
 		}
-		if expected != "" && value.StringValue() != expected {
+		if expected != "" && value.AsString() != expected {
 			return &plugin.CheckConfigResponse{
-				Failures: makeCheckFailure(key, fmt.Sprintf("%s is not %s", key, expected)),
+				Failures: makeCheckFailure(resource.PropertyKey(key), fmt.Sprintf("%s is not %s", key, expected)),
 			}
 		}
 		return nil
@@ -181,7 +181,7 @@ func (p *ConfigProvider) CheckConfig(
 		return *ok, nil
 	}
 
-	if len(req.News) > 3 {
+	if req.News.Len() > 3 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil

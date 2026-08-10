@@ -209,17 +209,17 @@ func (p *ConfigurerProvider) GetMappings(
 func (p *ConfigurerProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "missing version")}, nil
 	}
-	if !version.IsString() || version.StringValue() != configurerVersion {
+	if !version.IsString() || version.AsString() != configurerVersion {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "unexpected version"),
 		}, nil
 	}
 	// Expect version and optionally config.
-	if len(req.News) > 2 {
+	if req.News.Len() > 2 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil

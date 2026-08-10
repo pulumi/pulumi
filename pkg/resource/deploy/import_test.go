@@ -202,7 +202,7 @@ func TestImporter(t *testing.T) {
 									// The registry's FilterProviderConfig strips internal fields
 									// but passes through user config like "region".
 									assert.Equal(t, resource.NewProperty("eu-west-1"),
-										req.News["region"])
+										req.News.Get("region"))
 									return plugin.CheckConfigResponse{}, expectedErr
 								},
 							}, nil
@@ -247,7 +247,7 @@ func TestImporter(t *testing.T) {
 									// The inputs come from the declared provider entry, not the
 									// referencing import, which carries none.
 									assert.Equal(t, resource.NewProperty("eu-west-1"),
-										req.News["region"])
+										req.News.Get("region"))
 									return plugin.CheckConfigResponse{}, expectedErr
 								},
 							}, nil

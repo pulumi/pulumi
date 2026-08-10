@@ -184,12 +184,12 @@ type CheckConfigRequest struct {
 	URN           resource.URN
 	Name          string
 	Type          tokens.Type
-	Olds, News    resource.PropertyMap
+	Olds, News    property.Map
 	AllowUnknowns bool
 }
 
 type CheckConfigResponse struct {
-	Properties resource.PropertyMap
+	Properties property.Map
 	Failures   []CheckFailure
 }
 

@@ -247,7 +247,7 @@ func (p *ComponentPropertyDepsProvider) CheckConfig(
 	_ context.Context,
 	req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "missing version"),
@@ -260,13 +260,13 @@ func (p *ComponentPropertyDepsProvider) CheckConfig(
 		}, nil
 	}
 
-	if version.StringValue() != "1.33.7" {
+	if version.AsString() != "1.33.7" {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "version is not 1.33.7"),
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
