@@ -118,23 +118,17 @@ func NewTemplateMatcher(urlInfo *registry.URLInfo, templateName string) func(Tem
 	}
 }
 
-// defaultRegistry is the registry the cloud fetches share. It resolves its backend lazily and
-// only once, so fetches that list concurrently pay for a single backend lookup.
+// Sharing one registry across fetches costs one backend lookup, not one per fetch.
 func defaultRegistry(ctx context.Context, e env.Env) registry.Registry {
 	return cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), e)
 }
 
-// listRegistry runs one registry listing with the options its scheduler chose; which fetch asks
-// for what lives in [newImpl].
 func (f *fetch) listRegistry(
 	ctx context.Context, r registry.Registry, opts registry.ListTemplatesOptions, c *cleanup,
 ) {
 	f.listRegistryMatching(ctx, r, opts, func(TemplateMatchable) bool { return true }, c)
 }
 
-// resolveRegistryName resolves a template name, URL, or partial URL against the registry. A name
-// pinned to a version is looked up directly; anything else runs an unfiltered listing and keeps
-// the matches.
 func (f *fetch) resolveRegistryName(
 	ctx context.Context, r registry.Registry, templateName string, c *cleanup,
 ) {
@@ -160,8 +154,6 @@ func (f *fetch) listRegistryMatching(
 			return
 		}
 
-		// The totals describe every organization the caller belongs to, not the page, so every
-		// page carries the same answer. Recording into this fetch keeps listings from contending.
 		f.addVcsOrgs(page.VcsTemplateSourceTotals)
 
 		for _, template := range page.Templates {

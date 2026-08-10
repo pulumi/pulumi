@@ -651,8 +651,6 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
 			) iter.Seq2[apitype.ListTemplatesResponse, error] {
-				// Browsing splits the listing, so each fetch names one backing and the service
-				// answers with the templates that have it.
 				byBacking := map[apitype.TemplateBacking][]apitype.TemplateMetadata{
 					apitype.TemplateBackingRegistry: {{
 						Name:      "just/has/slashes",
@@ -703,8 +701,6 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, templates, 3)
 
-	// The fetches are concatenated in the order they are declared, so the registry-backed template
-	// leads.
 	assert.Equal(t, "just/has/slashes", templates[0].Name())
 	assert.Equal(t, "just/has/slashes [pulumi-org]", templates[0].DisplayName())
 	assert.Equal(t, "name", templates[1].Name())
@@ -713,7 +709,6 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 	assert.Equal(t, "name [gl-org/repo]", templates[2].DisplayName())
 }
 
-// mockRegistrySource wires a ListTemplates implementation into a source that browses.
 func mockRegistrySource(
 	t *testing.T,
 	list func(context.Context, registry.ListTemplatesOptions) iter.Seq2[apitype.ListTemplatesResponse, error],
@@ -743,8 +738,7 @@ func mockRegistrySource(
 
 //nolint:paralleltest // replaces global backend instance
 func TestVcsTemplateSourceOrgsAreReadOffTheListing(t *testing.T) {
-	// The totals ride on every page of every listing, so both browse fetches report the same
-	// organizations; observing them twice must not double-count.
+	// Both browse fetches see the same totals; observing them twice must not double-count.
 	source := mockRegistrySource(t, func(
 		ctx context.Context, opts registry.ListTemplatesOptions,
 	) iter.Seq2[apitype.ListTemplatesResponse, error] {
@@ -764,8 +758,6 @@ func TestVcsTemplateSourceOrgsAreReadOffTheListing(t *testing.T) {
 
 //nolint:paralleltest // replaces global backend instance
 func TestBothFetchesListingEverythingIsNotDuplicated(t *testing.T) {
-	// A service that predates the backing filter ignores it and answers every fetch with
-	// everything it has.
 	source := mockRegistrySource(t, func(
 		ctx context.Context, opts registry.ListTemplatesOptions,
 	) iter.Seq2[apitype.ListTemplatesResponse, error] {
@@ -863,7 +855,6 @@ func testContext(t *testing.T) context.Context {
 
 func ptr[T any](v T) *T { return &v }
 
-// singlePage answers a template listing with one page holding the given templates.
 func singlePage(templates ...apitype.TemplateMetadata) iter.Seq2[apitype.ListTemplatesResponse, error] {
 	return func(yield func(apitype.ListTemplatesResponse, error) bool) {
 		yield(apitype.ListTemplatesResponse{Templates: templates}, nil)
