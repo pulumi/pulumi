@@ -50,20 +50,16 @@ func (o Outcome) String() string {
 // One command probes several times, so without memoizing, each probe of a
 // locked store raises its own dialog — re-asking after a decline.
 func memoizePrecheck(probe func(allowPrompt bool) (Outcome, error)) func(bool) (Outcome, error) {
-	var (
-		once [2]sync.Once
-		res  [2]struct {
-			outcome Outcome
-			err     error
-		}
-	)
+	type memo struct {
+		once    sync.Once
+		outcome Outcome
+		err     error
+	}
+	memos := map[bool]*memo{false: {}, true: {}}
 	return func(allowPrompt bool) (Outcome, error) {
-		i := 0
-		if allowPrompt {
-			i = 1
-		}
-		once[i].Do(func() { res[i].outcome, res[i].err = probe(allowPrompt) })
-		return res[i].outcome, res[i].err
+		m := memos[allowPrompt]
+		m.once.Do(func() { m.outcome, m.err = probe(allowPrompt) })
+		return m.outcome, m.err
 	}
 }
 

@@ -188,6 +188,8 @@ func TestResolveModes(t *testing.T) {
 	assert.Equal(t, BackendPlaintext, st.Backend())
 	_, err = st.GetKey()
 	assert.True(t, errors.Is(err, ErrUnavailable))
+	_, err = st.GetOrCreateKey()
+	assert.True(t, errors.Is(err, ErrUnavailable))
 	require.NoError(t, st.DeleteKey())
 
 	st, err = Resolve(ModeDefault, "")
@@ -257,9 +259,6 @@ func (r *raceLosingStore) get() (string, error) {
 	if r.gets == 1 {
 		// Mirrors `security find-generic-password` reporting "not found" just
 		// before `add-generic-password` collides.
-		return "", ErrKeyNotFound
-	}
-	if r.gets == 2 {
 		return "", ErrKeyNotFound
 	}
 	return r.winner, nil

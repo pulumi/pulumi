@@ -41,6 +41,10 @@ type envelope struct {
 	Data    string `json:"data"`
 }
 
+// aad is the "additional authenticated data" passed to the AEAD cipher: the
+// envelope metadata stays readable in the JSON, but it is bound into the
+// authentication tag, so tampering with the stored version, backend, or
+// algorithm makes decryption fail.
 func aad(version int, backend Backend, algo string) []byte {
 	return fmt.Appendf(nil, "%d|%s|%s", version, backend, algo)
 }

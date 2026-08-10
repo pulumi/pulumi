@@ -54,20 +54,21 @@ type Mode int
 const (
 	// No explicit choice: plaintext for writes until encryption is the default.
 	ModeDefault Mode = iota
-	// Best available backend, else plaintext.
+	// Best available secure backend, else plaintext.
 	ModeAuto
-	// Require a backend, error when none is usable.
+	// Require a secure backend, error when none is usable.
 	ModeOS
 	ModePlaintext
 )
 
 var (
 	ErrUnavailable = errors.New("no usable OS credential protection")
-	// Nothing the user does locally will read this data.
+	// The envelope names a credential store this platform does not have, so
+	// no local action (unlocking, retrying) can decrypt the data.
 	ErrBackendUnsupported = fmt.Errorf("%w: no such credential store on this platform", ErrUnavailable)
 	// Wraps ErrUnavailable: same effect, named cause.
 	ErrLocked = fmt.Errorf("%w: the OS credential store is locked", ErrUnavailable)
-	// Never a reason to fall back — that would contradict what the user said.
+	// Unlike ErrLocked this does not wrap ErrUnavailable; see Resolve.
 	ErrDeclined    = errors.New("the OS credential store was not unlocked")
 	ErrKeyNotFound = errors.New("no key stored in the OS credential store")
 	ErrWrongKey    = errors.New("data cannot be decrypted with the stored key")
@@ -148,6 +149,10 @@ func Resolve(mode Mode, pulumiHome string) (*Store, error) {
 		switch outcome {
 		case Ready:
 		case Declined:
+			// The user refused the unlock prompt: trying further backends or
+			// falling back to plaintext would contradict that, so this is an
+			// error even under ModeAuto (ErrDeclined does not wrap
+			// ErrUnavailable, the fall-back signal).
 			logging.V(7).Infof("secure store backend %q: %s", cand.id, outcome)
 			return nil, err
 		case Absent, Locked:
@@ -229,14 +234,12 @@ var createKeyMu sync.Mutex
 // cleanly reports none exists. Regenerating on a transient error would
 // permanently orphan the user's encrypted data.
 func (s *Store) GetOrCreateKey() ([]byte, error) {
-	key, err := s.GetKey()
-	if err == nil {
-		return key, nil
+	if s.b.id == BackendPlaintext {
+		return nil, ErrUnavailable
 	}
 	createKeyMu.Lock()
 	defer createKeyMu.Unlock()
-	// Re-check under the lock: a concurrent caller may have created the key.
-	key, err = s.GetKey()
+	key, err := s.GetKey()
 	switch {
 	case err == nil:
 		return key, nil
