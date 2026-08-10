@@ -1,0 +1,4 @@
+component: cli/display
+kind: fix
+body: Show the value being added when a refresh or provider diff reports an added property
+time: 2026-08-10T14:14:38.519316+02:00
