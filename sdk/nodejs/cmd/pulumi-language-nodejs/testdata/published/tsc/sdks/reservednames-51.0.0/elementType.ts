@@ -33,7 +33,7 @@ export class ElementType extends pulumi.CustomResource {
         return obj['__pulumiType'] === ElementType.__pulumiType;
     }
 
-    declare public /*out*/ readonly elementType: pulumi.Output<outputs.ElementType>;
+    declare public readonly elementType: pulumi.Output<outputs.ElementType>;
 
     /**
      * Create a ElementType resource with the given unique name, arguments, and options.
@@ -42,11 +42,14 @@ export class ElementType extends pulumi.CustomResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: ElementTypeArgs, opts?: pulumi.CustomResourceOptions) {
+    constructor(name: string, args: ElementTypeArgs, opts?: pulumi.CustomResourceOptions) {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["elementType"] = undefined /*out*/;
+            if (args?.elementType === undefined && !opts.urn) {
+                throw new Error("Missing required property 'elementType'");
+            }
+            resourceInputs["elementType"] = args?.elementType;
         } else {
             resourceInputs["elementType"] = undefined /*out*/;
         }
@@ -59,4 +62,5 @@ export class ElementType extends pulumi.CustomResource {
  * The set of arguments for constructing a ElementType resource.
  */
 export interface ElementTypeArgs {
+    elementType: pulumi.Input<inputs.ElementTypeArgs>;
 }

@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 
+	"errors"
 	"example.com/pulumi-reservednames/sdk/go/v51/reservednames/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -21,9 +22,12 @@ type ElementType struct {
 func NewElementType(ctx *pulumi.Context,
 	name string, args *ElementTypeArgs, opts ...pulumi.ResourceOption) (*ElementType, error) {
 	if args == nil {
-		args = &ElementTypeArgs{}
+		return nil, errors.New("missing one or more required arguments")
 	}
 
+	if args.ElementType_ == nil {
+		return nil, errors.New("invalid value for required argument 'ElementType_'")
+	}
 	opts = internal.PkgResourceDefaultOpts(opts)
 	var resource ElementType
 	err := ctx.RegisterResource("reservednames:index:ElementType", name, args, &resource, opts...)
@@ -57,10 +61,12 @@ func (ElementTypeState) ElementType() reflect.Type {
 }
 
 type elementTypeArgs struct {
+	ElementType_ ElementTypeType `pulumi:"elementType"`
 }
 
 // The set of arguments for constructing a ElementType resource.
 type ElementTypeArgs struct {
+	ElementType_ ElementTypeTypeInput
 }
 
 func (ElementTypeArgs) ElementType() reflect.Type {

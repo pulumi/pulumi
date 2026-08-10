@@ -17,6 +17,33 @@ type ElementTypeType struct {
 	ElementType_ string `pulumi:"elementType"`
 }
 
+// ElementTypeTypeInput is an input type that accepts ElementTypeTypeArgs and ElementTypeTypeOutput values.
+// You can construct a concrete instance of `ElementTypeTypeInput` via:
+//
+//	ElementTypeTypeArgs{...}
+type ElementTypeTypeInput interface {
+	pulumi.Input
+
+	ToElementTypeTypeOutput() ElementTypeTypeOutput
+	ToElementTypeTypeOutputWithContext(context.Context) ElementTypeTypeOutput
+}
+
+type ElementTypeTypeArgs struct {
+	ElementType_ pulumi.StringInput `pulumi:"elementType"`
+}
+
+func (ElementTypeTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*ElementTypeType)(nil)).Elem()
+}
+
+func (i ElementTypeTypeArgs) ToElementTypeTypeOutput() ElementTypeTypeOutput {
+	return i.ToElementTypeTypeOutputWithContext(context.Background())
+}
+
+func (i ElementTypeTypeArgs) ToElementTypeTypeOutputWithContext(ctx context.Context) ElementTypeTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ElementTypeTypeOutput)
+}
+
 type ElementTypeTypeOutput struct{ *pulumi.OutputState }
 
 func (ElementTypeTypeOutput) ElementType() reflect.Type {
@@ -36,5 +63,6 @@ func (o ElementTypeTypeOutput) GetElementType_() pulumi.StringOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*ElementTypeTypeInput)(nil)).Elem(), ElementTypeTypeArgs{})
 	pulumi.RegisterOutputType(ElementTypeTypeOutput{})
 }

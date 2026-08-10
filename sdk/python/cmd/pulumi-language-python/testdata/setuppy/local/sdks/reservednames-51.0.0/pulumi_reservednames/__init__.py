@@ -8,6 +8,7 @@ import typing
 # Export this package's modules as members:
 from .element_type import *
 from .provider import *
+from ._inputs import *
 from . import outputs
 _utilities.register(
     resource_modules="""

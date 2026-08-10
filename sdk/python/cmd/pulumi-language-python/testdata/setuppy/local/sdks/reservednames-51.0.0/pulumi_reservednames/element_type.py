@@ -14,16 +14,27 @@ else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
 from . import outputs
+from ._inputs import *
 
-__all__ = ['ElementTypeArgs', 'ElementType']
+__all__ = ['ElementTypeInitArgs', 'ElementType']
 
 @pulumi.input_type
-class ElementTypeArgs:
-    def __init__(__self__):
+class ElementTypeInitArgs:
+    def __init__(__self__, *,
+                 element_type: pulumi.Input['ElementTypeArgs']):
         """
         The set of arguments for constructing a ElementType resource.
         """
-        pass
+        pulumi.set(__self__, "element_type", element_type)
+
+    @_builtins.property
+    @pulumi.getter(name="elementType")
+    def element_type(self) -> pulumi.Input['ElementTypeArgs']:
+        return pulumi.get(self, "element_type")
+
+    @element_type.setter
+    def element_type(self, value: pulumi.Input['ElementTypeArgs']):
+        pulumi.set(self, "element_type", value)
 
 
 @pulumi.type_token("reservednames:index:ElementType")
@@ -32,6 +43,7 @@ class ElementType(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 element_type: pulumi.Input[Optional[Union['ElementTypeArgs', 'ElementTypeArgsDict']]] = None,
                  __props__=None):
         """
         Create a ElementType resource with the given unique name, props, and options.
@@ -43,18 +55,18 @@ class ElementType(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[ElementTypeArgs] = None,
+                 args: ElementTypeInitArgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
         Create a ElementType resource with the given unique name, props, and options.
 
         :param str resource_name: The name of the resource.
-        :param ElementTypeArgs args: The arguments to use to populate this resource's properties.
+        :param ElementTypeInitArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
-        resource_args, opts = _utilities.get_resource_args_opts(ElementTypeArgs, pulumi.ResourceOptions, *args, **kwargs)
+        resource_args, opts = _utilities.get_resource_args_opts(ElementTypeInitArgs, pulumi.ResourceOptions, *args, **kwargs)
         if resource_args is not None:
             __self__._internal_init(resource_name, opts, **resource_args.__dict__)
         else:
@@ -63,6 +75,7 @@ class ElementType(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 element_type: pulumi.Input[Optional[Union['ElementTypeArgs', 'ElementTypeArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -70,9 +83,11 @@ class ElementType(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = ElementTypeArgs.__new__(ElementTypeArgs)
+            __props__ = ElementTypeInitArgs.__new__(ElementTypeInitArgs)
 
-            __props__.__dict__["element_type"] = None
+            if element_type is None and not opts.urn:
+                raise TypeError("Missing required property 'element_type'")
+            __props__.__dict__["element_type"] = element_type
         super(ElementType, __self__).__init__(
             'reservednames:index:ElementType',
             resource_name,
@@ -93,7 +108,7 @@ class ElementType(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = ElementTypeArgs.__new__(ElementTypeArgs)
+        __props__ = ElementTypeInitArgs.__new__(ElementTypeInitArgs)
 
         __props__.__dict__["element_type"] = None
         return ElementType(resource_name, opts=opts, __props__=__props__)

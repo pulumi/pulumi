@@ -81,6 +81,14 @@ func (p *ReservedNamesProvider) GetSchema(
 					},
 					Required: []string{"elementType"},
 				},
+				InputProperties: map[string]schema.PropertySpec{
+					"elementType": {
+						TypeSpec: schema.TypeSpec{
+							Ref: "#/types/reservednames:index:ElementType",
+						},
+					},
+				},
+				RequiredInputs: []string{"elementType"},
 			},
 		},
 	}
@@ -109,14 +117,9 @@ func (p *ReservedNamesProvider) Create(
 		id = ""
 	}
 
-	outputs := req.Properties.Copy()
-	outputs["elementType"] = resource.NewProperty(resource.PropertyMap{
-		"elementType": resource.NewProperty("nested"),
-	})
-
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: outputs,
+		Properties: req.Properties.Copy(),
 		Status:     resource.StatusOK,
 	}, nil
 }

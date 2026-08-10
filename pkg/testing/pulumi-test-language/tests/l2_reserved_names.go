@@ -45,7 +45,8 @@ func init() {
 					want := resource.NewPropertyMapFromMap(map[string]any{
 						"elementType": map[string]any{"elementType": "nested"},
 					})
-					assert.Equal(l, want, elem.Outputs, "expected the computed elementType output")
+					assert.Equal(l, want, elem.Inputs, "expected the elementType input")
+					assert.Equal(l, want, elem.Outputs, "expected the echoed elementType output")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					AssertPropertyMapMember(l, stack.Outputs, "elementType", resource.NewProperty("nested"))
