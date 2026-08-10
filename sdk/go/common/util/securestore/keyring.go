@@ -32,9 +32,12 @@ const (
 )
 
 // Secret Service calls can hang on D-Bus activation or invisible prompts.
+// Bounds only calls that never wait on the user — the interactive unlock has
+// no deadline — and failures still return immediately.
 const opTimeout = 3 * time.Second
 
-// The abandoned goroutine may leak for the process lifetime, acceptable in a CLI.
+// On timeout the goroutine is abandoned; the buffered channel lets it exit
+// once fn returns. Only a permanently hung fn leaks it, acceptable in a CLI.
 func withTimeout[T any](fn func() (T, error)) (T, error) {
 	type result struct {
 		v   T

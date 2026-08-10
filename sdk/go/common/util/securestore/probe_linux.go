@@ -144,7 +144,7 @@ func unlockWithoutDrawingUI(conn *dbus.Conn) error {
 	if promptPath != "" && promptPath != "/" {
 		_ = conn.Object(secretServiceBusName, promptPath).Call("org.freedesktop.Secret.Prompt.Dismiss", 0).Err
 	}
-	return errors.New("it needs a password prompt, and none can be shown here")
+	return errors.New("unlocking the credential store needs a password prompt, and none can be shown here")
 }
 
 func confirmUnlocked(conn *dbus.Conn) error {
@@ -204,7 +204,8 @@ func unlockAndWaitForUser(conn *dbus.Conn) error {
 	// take down is one we are abandoning ourselves.
 	defer func() { _ = prompt.Call("org.freedesktop.Secret.Prompt.Dismiss", 0).Err }()
 	shown := showDialogNonBlocking(prompt)
-	notifyWaitingForUnlock()
+	fmt.Fprintln(os.Stderr,
+		"Pulumi needs the key protecting your credentials: answer your keyring's password prompt to continue.")
 
 	for {
 		select {
@@ -250,11 +251,6 @@ func providerVanished(sig *dbus.Signal) bool {
 	name, _ := sig.Body[0].(string)
 	newOwner, _ := sig.Body[2].(string)
 	return name == secretServiceBusName && newOwner == ""
-}
-
-var notifyWaitingForUnlock = func() {
-	fmt.Fprintln(os.Stderr,
-		"Pulumi needs the key protecting your credentials: answer your keyring's password prompt to continue.")
 }
 
 func nameOwnerProcess(conn *dbus.Conn, owner string) string {

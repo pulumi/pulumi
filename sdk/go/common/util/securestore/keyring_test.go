@@ -21,10 +21,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/zalando/go-keyring"
 )
 
+//nolint:paralleltest // keyring.MockInit swaps go-keyring's global provider
 func TestGetCacheServesTheProbeFetchExactlyOnce(t *testing.T) {
-	t.Parallel()
+	keyring.MockInit()
 	cache := &getCache{}
 	cache.mu.Lock()
 	cache.valid, cache.value = true, "from-the-probe"
@@ -41,8 +43,9 @@ func TestGetCacheServesTheProbeFetchExactlyOnce(t *testing.T) {
 	assert.False(t, valid, "the cached fetch must not be served twice")
 }
 
+//nolint:paralleltest // keyring.MockInit swaps go-keyring's global provider
 func TestWritesInvalidateTheCachedFetch(t *testing.T) {
-	t.Parallel()
+	keyring.MockInit()
 	for _, write := range []struct {
 		name string
 		do   func(keyringStore) error
