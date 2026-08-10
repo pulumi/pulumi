@@ -46,24 +46,6 @@ import (
 const expectedRegistryFormatError = "Expected: registry://templates/source/publisher/name[@version], " +
 	"source/publisher/name[@version], publisher/name[@version], or name[@version]"
 
-// asPages presents a stream of templates as the pages a registry listing yields, one template per
-// page.
-func asPages(s iter.Seq2[apitype.TemplateMetadata, error]) iter.Seq2[apitype.ListTemplatesResponse, error] {
-	return func(yield func(apitype.ListTemplatesResponse, error) bool) {
-		for t, err := range s {
-			if err != nil {
-				if !yield(apitype.ListTemplatesResponse{}, err) {
-					return
-				}
-				continue
-			}
-			if !yield(apitype.ListTemplatesResponse{Templates: []apitype.TemplateMetadata{t}}, nil) {
-				return
-			}
-		}
-	}
-}
-
 //nolint:paralleltest // replaces global backend instance
 func TestFilterOnName(t *testing.T) {
 	template1 := &apitype.PulumiTemplateRemote{
@@ -144,21 +126,14 @@ func TestFilterOnName(t *testing.T) {
 			ctx context.Context, opts registry.ListTemplatesOptions,
 		) iter.Seq2[apitype.ListTemplatesResponse, error] {
 			assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-			return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
-				if !yield(apitype.TemplateMetadata{
-					Name:      "name1",
-					Publisher: "publisher1",
-					Source:    "source1",
-				}, nil) {
-					return
-				}
-				if !yield(apitype.TemplateMetadata{
-					Name:      "name2",
-					Publisher: "publisher2",
-					Source:    "source2",
-				}, nil) {
-					return
-				}
+			return singlePage(apitype.TemplateMetadata{
+				Name:      "name1",
+				Publisher: "publisher1",
+				Source:    "source1",
+			}, apitype.TemplateMetadata{
+				Name:      "name2",
+				Publisher: "publisher2",
+				Source:    "source2",
 			})
 		}
 		mockBackend := &backend.MockBackend{
@@ -265,8 +240,8 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 				ProjectName:        "template3",
 				ProjectDescription: "An ASP.NET application running a simple container in a EKS Cluster",
 			}},
-			orgTemplate{t: template1, org: "org1", source: source, backend: mockBackend},
-			orgTemplate{t: template2, org: "org1", source: source, backend: mockBackend},
+			orgTemplate{t: template1, org: "org1", cleanup: &source.cleanup, backend: mockBackend},
+			orgTemplate{t: template2, org: "org1", cleanup: &source.cleanup, backend: mockBackend},
 		},
 		template)
 }
@@ -322,9 +297,9 @@ func TestSurfaceListTemplateErrors_RegistryTemplates(t *testing.T) {
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
 			) iter.Seq2[apitype.ListTemplatesResponse, error] {
-				return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
-					yield(apitype.TemplateMetadata{}, somethingWentWrong)
-				})
+				return func(yield func(apitype.ListTemplatesResponse, error) bool) {
+					yield(apitype.ListTemplatesResponse{}, somethingWentWrong)
+				}
 			},
 		},
 	}
@@ -397,7 +372,7 @@ func TestSurfaceOnEmptyError_OrgTemplates(t *testing.T) {
 
 	_, err := source.Templates()
 	var expected TemplateNotFoundError
-	assert.ErrorAsf(t, err, &expected, "what's in %#v", source.errorOnEmpty)
+	assert.ErrorAsf(t, err, &expected, "what's in %#v", source.project.errsOnEmpty)
 }
 
 //nolint:paralleltest // replaces global backend instance
@@ -409,7 +384,7 @@ func TestSurfaceOnEmptyError_RegistryTemplates(t *testing.T) {
 			ListTemplatesF: func(
 				_ context.Context, opts registry.ListTemplatesOptions,
 			) iter.Seq2[apitype.ListTemplatesResponse, error] {
-				return asPages(func(func(apitype.TemplateMetadata, error) bool) {})
+				return singlePage()
 			},
 		},
 	}
@@ -443,7 +418,7 @@ func TestSurfaceOnEmptyError_RegistryTemplates(t *testing.T) {
 
 	_, err := source.Templates()
 	var expected TemplateNotFoundError
-	assert.ErrorAsf(t, err, &expected, "what's in %#v", source.errorOnEmpty)
+	assert.ErrorAsf(t, err, &expected, "what's in %#v", source.project.errsOnEmpty)
 }
 
 //nolint:paralleltest // replaces global backend instance
@@ -513,7 +488,7 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 	template, err := source.Templates()
 	require.NoError(t, err)
 	assert.Equal(t,
-		[]Template{orgTemplate{t: template1, org: "org1", source: source, backend: mockBackend}},
+		[]Template{orgTemplate{t: template1, org: "org1", cleanup: &source.cleanup, backend: mockBackend}},
 		template)
 	t.Cleanup(func() {
 		require.NoError(t, source.Close())
@@ -580,11 +555,9 @@ func createMockRegistrySource(
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
 			) iter.Seq2[apitype.ListTemplatesResponse, error] {
-				return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
-					yield(apitype.TemplateMetadata{
-						Name:        "name1",
-						DownloadURL: "example.com/download/name",
-					}, nil)
+				return singlePage(apitype.TemplateMetadata{
+					Name:        "name1",
+					DownloadURL: "example.com/download/name",
 				})
 			},
 			DownloadTemplateF: downloadFunc,
@@ -678,32 +651,26 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
 			) iter.Seq2[apitype.ListTemplatesResponse, error] {
-				assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-				return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
-					if !yield(apitype.TemplateMetadata{
+				byBacking := map[apitype.TemplateBacking][]apitype.TemplateMetadata{
+					apitype.TemplateBackingRegistry: {{
+						Name:      "just/has/slashes",
+						Source:    "private",
+						Publisher: "pulumi-org",
+					}},
+					apitype.TemplateBackingVcs: {{
 						Name:      "gh-org/repo/name",
 						Source:    "github",
 						Publisher: "pulumi-org",
 						RepoSlug:  ptr("gh-org/repo"),
-					}, nil) {
-						return
-					}
-					if !yield(apitype.TemplateMetadata{
+					}, {
 						Name:      "gl-org/repo/name",
 						Source:    "gitlab",
 						Publisher: "pulumi-org",
 						RepoSlug:  ptr("gl-org/repo"),
-					}, nil) {
-						return
-					}
-					if !yield(apitype.TemplateMetadata{
-						Name:      "just/has/slashes",
-						Source:    "private",
-						Publisher: "pulumi-org",
-					}, nil) {
-						return
-					}
-				})
+					}},
+				}
+				require.Len(t, opts.Backing, 1)
+				return singlePage(byBacking[opts.Backing[0]]...)
 			},
 		},
 	}
@@ -734,12 +701,77 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, templates, 3)
 
-	assert.Equal(t, "name", templates[0].Name())
-	assert.Equal(t, "name [gh-org/repo]", templates[0].DisplayName())
+	assert.Equal(t, "just/has/slashes", templates[0].Name())
+	assert.Equal(t, "just/has/slashes [pulumi-org]", templates[0].DisplayName())
 	assert.Equal(t, "name", templates[1].Name())
-	assert.Equal(t, "name [gl-org/repo]", templates[1].DisplayName())
-	assert.Equal(t, "just/has/slashes", templates[2].Name())
-	assert.Equal(t, "just/has/slashes [pulumi-org]", templates[2].DisplayName())
+	assert.Equal(t, "name [gh-org/repo]", templates[1].DisplayName())
+	assert.Equal(t, "name", templates[2].Name())
+	assert.Equal(t, "name [gl-org/repo]", templates[2].DisplayName())
+}
+
+func mockRegistrySource(
+	t *testing.T,
+	list func(context.Context, registry.ListTemplatesOptions) iter.Seq2[apitype.ListTemplatesResponse, error],
+) *Source {
+	t.Helper()
+	mockBackend := &backend.MockBackend{
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{Mock: registry.Mock{ListTemplatesF: list}}
+		},
+	}
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
+	return newImpl(testContext(t), "", ScopeAll, TemplateKindPulumiProject,
+		templateRepository(TemplateRepository{}, TemplateNotFoundError{}),
+		env.NewEnv(env.MapStore{"PULUMI_DISABLE_REGISTRY_RESOLVE": "false"}))
+}
+
+//nolint:paralleltest // replaces global backend instance
+func TestVcsTemplateSourceOrgsAreReadOffTheListing(t *testing.T) {
+	// Both browse fetches see the same totals; observing them twice must not double-count.
+	source := mockRegistrySource(t, func(
+		ctx context.Context, opts registry.ListTemplatesOptions,
+	) iter.Seq2[apitype.ListTemplatesResponse, error] {
+		return func(yield func(apitype.ListTemplatesResponse, error) bool) {
+			yield(apitype.ListTemplatesResponse{
+				VcsTemplateSourceTotals: []apitype.OrgVcsTemplateSourceTotal{
+					{OrgLogin: "acme", Total: 2},
+					{OrgLogin: "globex", Total: 1},
+				},
+			}, nil)
+		}
+	})
+
+	assert.Equal(t, []string{"acme", "globex"}, source.VcsTemplateSourceOrgs(),
+		"an org with collections is named even though no fetch carries its templates")
+}
+
+//nolint:paralleltest // replaces global backend instance
+func TestBothFetchesListingEverythingIsNotDuplicated(t *testing.T) {
+	source := mockRegistrySource(t, func(
+		ctx context.Context, opts registry.ListTemplatesOptions,
+	) iter.Seq2[apitype.ListTemplatesResponse, error] {
+		return singlePage(
+			apitype.TemplateMetadata{Name: "vpc", Source: "private", Publisher: "acme"},
+			apitype.TemplateMetadata{Name: "org/repo/eks", Source: "github", Publisher: "acme", RepoSlug: ptr("org/repo")},
+		)
+	})
+
+	templates, err := source.Templates()
+	require.NoError(t, err)
+	require.Len(t, templates, 2, "each template is listed once even when both fetches return it")
+	assert.Equal(t, "vpc", templates[0].Name())
+	assert.Equal(t, "eks", templates[1].Name())
 }
 
 //nolint:paralleltest // replaces global backend instance
@@ -751,32 +783,22 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 				ctx context.Context, opts registry.ListTemplatesOptions,
 			) iter.Seq2[apitype.ListTemplatesResponse, error] {
 				assert.Equal(t, registry.ListTemplatesOptions{}, opts)
-				return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
-					if !yield(apitype.TemplateMetadata{
-						Name:        "gh-org/repo/target",
-						Source:      "github",
-						Description: ptr("This is from GH"),
-						Publisher:   "pulumi-org",
-						RepoSlug:    ptr("gh-org/repo"),
-					}, nil) {
-						return
-					}
-					if !yield(apitype.TemplateMetadata{
-						Name:      "gl-org/repo/name",
-						Source:    "gitlab",
-						Publisher: "pulumi-org",
-						RepoSlug:  ptr("gl-org/repo"),
-					}, nil) {
-						return
-					}
-					if !yield(apitype.TemplateMetadata{
-						Name:        "target",
-						Source:      "private",
-						Description: ptr("This is from the registry"),
-						Publisher:   "pulumi-org",
-					}, nil) {
-						return
-					}
+				return singlePage(apitype.TemplateMetadata{
+					Name:        "gh-org/repo/target",
+					Source:      "github",
+					Description: ptr("This is from GH"),
+					Publisher:   "pulumi-org",
+					RepoSlug:    ptr("gh-org/repo"),
+				}, apitype.TemplateMetadata{
+					Name:      "gl-org/repo/name",
+					Source:    "gitlab",
+					Publisher: "pulumi-org",
+					RepoSlug:  ptr("gl-org/repo"),
+				}, apitype.TemplateMetadata{
+					Name:        "target",
+					Source:      "private",
+					Description: ptr("This is from the registry"),
+					Publisher:   "pulumi-org",
 				})
 			},
 		},
@@ -833,6 +855,12 @@ func testContext(t *testing.T) context.Context {
 
 func ptr[T any](v T) *T { return &v }
 
+func singlePage(templates ...apitype.TemplateMetadata) iter.Seq2[apitype.ListTemplatesResponse, error] {
+	return func(yield func(apitype.ListTemplatesResponse, error) bool) {
+		yield(apitype.ListTemplatesResponse{Templates: templates}, nil)
+	}
+}
+
 //nolint:paralleltest // replaces global backend instance
 func TestRegistryTemplateResolution(t *testing.T) {
 	ctx := testContext(t)
@@ -842,31 +870,26 @@ func TestRegistryTemplateResolution(t *testing.T) {
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
 			) iter.Seq2[apitype.ListTemplatesResponse, error] {
-				return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
-					yield(apitype.TemplateMetadata{
-						Name:        "csharp-documented",
-						Source:      "private",
-						Publisher:   "pulumi_local",
-						Description: ptr("A C# template"),
-					}, nil)
-					yield(apitype.TemplateMetadata{
-						Name:      "csharp-documented",
-						Source:    "github",
-						Publisher: "different-org",
-					}, nil)
-					yield(apitype.TemplateMetadata{
-						Name:        "gh-org/repo/target",
-						Source:      "github",
-						Publisher:   "pulumi-org",
-						RepoSlug:    ptr("gh-org/repo"),
-						Description: ptr("A template from VCS"),
-					}, nil)
-					yield(apitype.TemplateMetadata{
-						Name:        "whatever-template",
-						Source:      "private",
-						Publisher:   "test-org",
-						Description: ptr("A template with special chars"),
-					}, nil)
+				return singlePage(apitype.TemplateMetadata{
+					Name:        "csharp-documented",
+					Source:      "private",
+					Publisher:   "pulumi_local",
+					Description: ptr("A C# template"),
+				}, apitype.TemplateMetadata{
+					Name:      "csharp-documented",
+					Source:    "github",
+					Publisher: "different-org",
+				}, apitype.TemplateMetadata{
+					Name:        "gh-org/repo/target",
+					Source:      "github",
+					Publisher:   "pulumi-org",
+					RepoSlug:    ptr("gh-org/repo"),
+					Description: ptr("A template from VCS"),
+				}, apitype.TemplateMetadata{
+					Name:        "whatever-template",
+					Source:      "private",
+					Publisher:   "test-org",
+					Description: ptr("A template with special chars"),
 				})
 			},
 		},
@@ -1066,13 +1089,11 @@ func TestVersionedTemplateResolution(t *testing.T) {
 			ListTemplatesF: func(
 				ctx context.Context, opts registry.ListTemplatesOptions,
 			) iter.Seq2[apitype.ListTemplatesResponse, error] {
-				return asPages(func(yield func(apitype.TemplateMetadata, error) bool) {
-					yield(apitype.TemplateMetadata{
-						Name:        "my-template",
-						Source:      "private",
-						Publisher:   "my-org",
-						Description: ptr("Latest version"),
-					}, nil)
+				return singlePage(apitype.TemplateMetadata{
+					Name:        "my-template",
+					Source:      "private",
+					Publisher:   "my-org",
+					Description: ptr("Latest version"),
 				})
 			},
 		},
