@@ -17,11 +17,9 @@ utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
 
 // Export sub-modules:
-import * as elementtype from "./elementtype";
 import * as types from "./types";
 
 export {
-    elementtype,
     types,
 };
 

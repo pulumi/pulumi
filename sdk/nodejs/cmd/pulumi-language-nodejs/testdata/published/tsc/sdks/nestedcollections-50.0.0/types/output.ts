@@ -9,9 +9,3 @@ export interface Bar {
     prop: string;
 }
 
-export namespace elementType {
-    export interface ElementType {
-        elementType: string;
-    }
-
-}
