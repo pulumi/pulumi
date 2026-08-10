@@ -745,7 +745,7 @@ func GenEnum(
 			safeEnum(member)
 		} else {
 			unsafeEnum(from)
-			knownVal := strings.Split(strings.Split(known.GoString(), "(")[1], ")")[0]
+			knownVal, _, _ := strings.Cut(strings.Split(known.GoString(), "(")[1], ")")
 			diag := &hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  fmt.Sprintf("%v is not a valid value of the enum \"%v\"", knownVal, t.Token),
