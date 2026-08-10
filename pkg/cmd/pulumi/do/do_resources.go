@@ -77,9 +77,7 @@ func autoResourceNames(snap *deploy.Snapshot) map[string]string {
 		if s.Type == tokens.RootStackType {
 			continue
 		}
-		// Skip provider resources — they're engine bookkeeping, not something a user would
-		// reference by name from an input expression. Users who need a provider URN pass it
-		// via --provider instead.
+		// Skip provider resources — they're generally not used for their outputs.
 		if sdkproviders.IsProviderType(s.Type) {
 			continue
 		}
@@ -98,11 +96,10 @@ func autoResourceNames(snap *deploy.Snapshot) map[string]string {
 	assigned := map[string]string{} // ident -> urn
 	for _, e := range entries {
 		if e.snippetName != "" {
-			if c := sanitizeIdent(e.snippetName); c != "" {
-				if _, taken := assigned[c]; !taken {
-					assigned[c] = string(e.urn)
-					continue
-				}
+			c := sanitizeIdent(e.snippetName)
+			if _, taken := assigned[c]; !taken {
+				assigned[c] = string(e.urn)
+				continue
 			}
 		}
 
@@ -110,25 +107,23 @@ func autoResourceNames(snap *deploy.Snapshot) map[string]string {
 		if e.snippetName != "" {
 			baseName = e.snippetName
 		}
-		c := hashedResourceIdent(baseName, e.urn)
-		if c == "" {
-			continue
-		}
-		if _, taken := assigned[c]; taken {
-			continue
-		}
+		c := availableHashedResourceIdent(baseName, e.urn, assigned)
 		assigned[c] = string(e.urn)
 	}
 	return assigned
 }
 
-func hashedResourceIdent(name string, urn resource.URN) string {
+func availableHashedResourceIdent(name string, urn resource.URN, assigned map[string]string) string {
 	base := sanitizeIdent(name)
-	if base == "" {
-		return ""
+	hashBytes := sha256.Sum256([]byte(urn))
+	hash := hex.EncodeToString(hashBytes[:])
+	for chars := 6; chars <= len(hash); chars++ {
+		c := base + "_" + hash[:chars]
+		if _, taken := assigned[c]; !taken {
+			return c
+		}
 	}
-	hash := sha256.Sum256([]byte(urn))
-	return base + "_" + hex.EncodeToString(hash[:6])
+	return base + "_" + hash
 }
 
 // mergeResourceNames overlays user on top of auto, with user entries winning. When a user maps an

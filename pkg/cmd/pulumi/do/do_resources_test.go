@@ -56,7 +56,7 @@ func TestAutoResourceNames_HashesNonSnippetResources(t *testing.T) {
 			{Type: bucket.Type(), URN: bucket, Custom: true},
 		},
 	})
-	assert.Equal(t, map[string]string{hashedResourceIdent("myBucket", bucket): string(bucket)}, names)
+	assert.Equal(t, map[string]string{availableHashedResourceIdent("myBucket", bucket, nil): string(bucket)}, names)
 }
 
 func TestAutoResourceNames_SkipsProvidersAndStackAndDeletes(t *testing.T) {
@@ -73,7 +73,7 @@ func TestAutoResourceNames_SkipsProvidersAndStackAndDeletes(t *testing.T) {
 			{Type: tombstone.Type(), URN: tombstone, Custom: true, Delete: true},
 		},
 	})
-	assert.Equal(t, map[string]string{hashedResourceIdent("myBucket", bucket): string(bucket)}, names)
+	assert.Equal(t, map[string]string{availableHashedResourceIdent("myBucket", bucket, nil): string(bucket)}, names)
 }
 
 func TestAutoResourceNames_SnippetConflictAppendsHash(t *testing.T) {
@@ -94,7 +94,30 @@ func TestAutoResourceNames_SnippetConflictAppendsHash(t *testing.T) {
 	})
 	// URN order: "aws:ec2..." < "aws:s3...", so Vpc wins the bare name.
 	assert.Equal(t, string(b), names["shared"])
-	assert.Equal(t, string(a), names[hashedResourceIdent("shared", a)])
+	assert.Equal(t, string(a), names[availableHashedResourceIdent("shared", a, nil)])
+	require.Len(t, names, 2)
+}
+
+func TestAutoResourceNames_ExtendsTakenHash(t *testing.T) {
+	t.Parallel()
+	bucket := resource.URN("urn:pulumi:dev::proj::aws:s3/bucket:Bucket::bucket")
+	conflict := resource.URN("urn:pulumi:dev::proj::aws:ec2/vpc:Vpc::vpc")
+	shortHashName := availableHashedResourceIdent("bucket", bucket, nil)
+
+	names := autoResourceNames(&deploy.Snapshot{
+		Snippets: []resource.Snippet{{
+			UUID: "snippet-conflict",
+			Name: shortHashName,
+			Type: string(conflict.Type()),
+		}},
+		Resources: []*pkgresource.State{
+			{Type: bucket.Type(), URN: bucket, Custom: true},
+			{Type: conflict.Type(), URN: conflict, Custom: true, SnippetID: "snippet-conflict"},
+		},
+	})
+
+	assert.Equal(t, string(conflict), names[shortHashName])
+	assert.Equal(t, string(bucket), names["bucket_d22a6ac"])
 	require.Len(t, names, 2)
 }
 
@@ -105,7 +128,7 @@ func TestAutoResourceNames_SanitizesInvalidIdentifierChars(t *testing.T) {
 	names := autoResourceNames(&deploy.Snapshot{
 		Resources: []*pkgresource.State{{Type: u.Type(), URN: u, Custom: true}},
 	})
-	assert.Equal(t, map[string]string{hashedResourceIdent("my-bucket.v2", u): string(u)}, names)
+	assert.Equal(t, map[string]string{availableHashedResourceIdent("my-bucket.v2", u, nil): string(u)}, names)
 }
 
 func TestAutoResourceNames_StableUnderUnrelatedInsertion(t *testing.T) {
@@ -123,7 +146,7 @@ func TestAutoResourceNames_StableUnderUnrelatedInsertion(t *testing.T) {
 			{Type: b.Type(), URN: b, Custom: true},
 		},
 	})
-	assert.Equal(t, before[hashedResourceIdent("a", a)], after[hashedResourceIdent("a", a)],
+	assert.Equal(t, before[availableHashedResourceIdent("a", a, nil)], after[availableHashedResourceIdent("a", a, nil)],
 		"existing identifier must not shift when unrelated resource is added")
 }
 
