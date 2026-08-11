@@ -31,12 +31,8 @@ type IdentityResult struct {
 }
 
 func IdentityOutput(ctx *pulumi.Context, args IdentityOutputArgs, opts ...pulumi.InvokeOption) IdentityResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (IdentityResultOutput, error) {
-			args := v.(IdentityArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			return ctx.InvokeOutput("component:index:identity", args, IdentityResultOutput{}, options).(IdentityResultOutput), nil
-		}).(IdentityResultOutput)
+	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+	return ctx.InvokeOutput("component:index:identity", args, IdentityResultOutput{}, options).(IdentityResultOutput)
 }
 
 type IdentityOutputArgs struct {

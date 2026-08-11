@@ -40,12 +40,8 @@ type InvokeResult struct {
 }
 
 func InvokeOutput(ctx *pulumi.Context, args InvokeOutputArgs, opts ...pulumi.InvokeOption) InvokeResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (InvokeResultOutput, error) {
-			args := v.(InvokeArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			return ctx.InvokeOutput("primitive:index:invoke", args, InvokeResultOutput{}, options).(InvokeResultOutput), nil
-		}).(InvokeResultOutput)
+	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+	return ctx.InvokeOutput("primitive:index:invoke", args, InvokeResultOutput{}, options).(InvokeResultOutput)
 }
 
 type InvokeOutputArgs struct {

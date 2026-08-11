@@ -30,12 +30,8 @@ type ConcatWorldResult struct {
 }
 
 func ConcatWorldOutput(ctx *pulumi.Context, args ConcatWorldOutputArgs, opts ...pulumi.InvokeOption) ConcatWorldResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (ConcatWorldResultOutput, error) {
-			args := v.(ConcatWorldArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			return ctx.InvokeOutput("module-format:mod_concatWorld:concatWorld", args, ConcatWorldResultOutput{}, options).(ConcatWorldResultOutput), nil
-		}).(ConcatWorldResultOutput)
+	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+	return ctx.InvokeOutput("module-format:mod_concatWorld:concatWorld", args, ConcatWorldResultOutput{}, options).(ConcatWorldResultOutput)
 }
 
 type ConcatWorldOutputArgs struct {
