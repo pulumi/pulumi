@@ -19,10 +19,16 @@ package securestore
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
 )
+
+// A discrete TPM chip can take hundreds of milliseconds per command, wrap and
+// unwrap issue several, and other TPM clients' commands may be queued ahead
+// of ours. Generous, but still bounds a hung device.
+const tpmOpTimeout = 10 * time.Second
 
 // tpmWrapper is a keyWrapper that seals the key to the machine's TPM 2.0, so
 // the persisted item is a sealed blob that is useless off the originating
@@ -32,7 +38,7 @@ import (
 // TPM NV space or persistent handles are consumed.
 //
 // The transport is opened per operation and closed before returning, and
-// every operation is bounded by withTimeout.
+// every operation is bounded by withTimeout(tpmOpTimeout, ...).
 type tpmWrapper struct{}
 
 func (tpmWrapper) kind() wrapKind { return wrapTPM }
@@ -41,7 +47,7 @@ func (tpmWrapper) kind() wrapKind { return wrapTPM }
 // transport is the real probe; the cheap GetCapability call additionally
 // proves the device answers TPM 2.0 commands.
 func (tpmWrapper) available() error {
-	_, err := withTimeout(func() (struct{}, error) {
+	_, err := withTimeout(tpmOpTimeout, func() (struct{}, error) {
 		tpm, err := openTPM()
 		if err != nil {
 			return struct{}{}, err
@@ -69,9 +75,9 @@ func (tpmWrapper) available() error {
 // noDA is deliberately left false so failed unseal attempts count toward the
 // TPM's dictionary-attack protection.
 //
-// TODO: this silent tier intentionally uses empty auth. A PIN-protected
-// presence mode will later set a real authValue (and revisit DA settings)
-// so unsealing requires user interaction.
+// The empty auth is deliberate for this silent tier; a future PIN-protected
+// presence mode would set a real authValue (and revisit DA settings) so
+// unsealing requires user interaction.
 func sealedDataTemplate() tpm2.TPMTPublic {
 	return tpm2.TPMTPublic{
 		Type:    tpm2.TPMAlgKeyedHash,
@@ -113,7 +119,7 @@ func flushHandle(tpm transport.TPM, h tpm2.TPMHandle) {
 // object, and the resulting private+public blobs are serialized with
 // encodeSealedBlob. Only the TPM that created the blob can unseal it.
 func (tpmWrapper) wrap(key []byte) ([]byte, error) {
-	return withTimeout(func() ([]byte, error) {
+	return withTimeout(tpmOpTimeout, func() ([]byte, error) {
 		tpm, err := openTPM()
 		if err != nil {
 			return nil, fmt.Errorf("%w: no usable TPM: %v", ErrUnavailable, err)
@@ -162,7 +168,7 @@ func (tpmWrapper) unwrap(blob []byte) ([]byte, error) {
 		return nil, fmt.Errorf("stored key is corrupt (bad TPM public blob): %w", err)
 	}
 
-	return withTimeout(func() ([]byte, error) {
+	return withTimeout(tpmOpTimeout, func() ([]byte, error) {
 		tpm, err := openTPM()
 		if err != nil {
 			return nil, fmt.Errorf("%w: no usable TPM: %v", ErrUnavailable, err)

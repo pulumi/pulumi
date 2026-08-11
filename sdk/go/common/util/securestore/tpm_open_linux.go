@@ -17,6 +17,8 @@
 package securestore
 
 import (
+	"errors"
+
 	"github.com/google/go-tpm/tpm2/transport"
 	"github.com/google/go-tpm/tpm2/transport/linuxtpm"
 )
@@ -26,9 +28,14 @@ import (
 // so we cannot collide with other TPM clients. /dev/tpm0 is the raw device
 // fallback for old kernels without the resource manager.
 func openTPM() (transport.TPMCloser, error) {
-	tpm, err := linuxtpm.Open("/dev/tpmrm0")
-	if err == nil {
+	tpm, rmErr := linuxtpm.Open("/dev/tpmrm0")
+	if rmErr == nil {
 		return tpm, nil
 	}
-	return linuxtpm.Open("/dev/tpm0")
+	tpm, rawErr := linuxtpm.Open("/dev/tpm0")
+	if rawErr == nil {
+		return tpm, nil
+	}
+	// Both errors name their device path, so report both.
+	return nil, errors.Join(rmErr, rawErr)
 }
