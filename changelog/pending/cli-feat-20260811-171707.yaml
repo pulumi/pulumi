@@ -2,3 +2,5 @@ component: cli
 kind: feat
 body: Support combining --diff with --output json on up, preview, destroy, and refresh to include each resource's property diff in the structured summary
 time: 2026-08-11T17:17:07.692676+02:00
+custom:
+    PR: "24269"
