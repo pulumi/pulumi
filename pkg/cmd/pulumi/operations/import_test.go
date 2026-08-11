@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	resourcestack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -623,7 +624,9 @@ func TestParseImportFileUnknownValues(t *testing.T) {
 	t.Parallel()
 
 	// The placeholder `pulumi preview --import-file` writes out for a value that wasn't known yet.
-	const unknown = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+	unknown, err := resourcestack.SerializePropertyValue(
+		t.Context(), resource.MakeComputed(resource.NewProperty("")), sdkconfig.NopEncrypter, false)
+	require.NoError(t, err)
 
 	providerURN := resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::my-prov")
 	f := importFile{
@@ -645,7 +648,7 @@ func TestParseImportFileUnknownValues(t *testing.T) {
 			},
 		},
 	}
-	_, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+	_, _, err = parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
 	assert.ErrorContains(t, err, "the providerInputs for resource 'thing' of type 'aws:s3:Bucket' contain unknown values")
 }
 
