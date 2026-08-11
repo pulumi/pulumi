@@ -7,6 +7,8 @@ import (
 	"maps"
 	"slices"
 	"sync"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type FSA[Cursor any] struct {
@@ -15,7 +17,7 @@ type FSA[Cursor any] struct {
 
 func New[Cursor any]() FSA[Cursor] {
 	return FSA[Cursor]{&fsa[Cursor]{
-		cursors: map[nodeID]*cursor[Cursor]{},
+		cursors: map[cursorID]*cursor[Cursor]{},
 		nodes:   map[nodeID]*node[Cursor]{},
 		edges:   map[edgeID]ConditionFunc[Cursor]{},
 	}}
@@ -71,31 +73,78 @@ func (fsa FSA[Cursor]) NewCursor(c Cursor, n Node) {
 	fsa.m.Lock()
 	defer fsa.m.Unlock()
 	fsa.idCounter++
-	fsa.cursors[n.id] = &cursor[Cursor]{c, 0}
+	id := cursorID(fsa.idCounter)
+	fsa.cursors[id] = &cursor[Cursor]{n.id, c, 0}
+
+	// If we are mid-progress, make sure our cursor is progressed.
+	if fsa.currentRun != nil {
+		fsa.currentRun.newCursors <- id
+	}
 }
 
-type Step[Cursor any] struct {
-	Cursor Cursor                        // The cursor the step is for
-	Do     func(context.Context, Cursor) // The function the user must call to complete it
+// TODO[https://github.com/golang/go/issues/75757]: Should be a type alias
+type Runner func(context.Context, func(context.Context)) error
+
+// A runner that runs all processes sync.
+var SyncRunner Runner = func(ctx context.Context, f func(context.Context)) error {
+	f(ctx)
+	return nil
 }
 
-// Iterate the FSA, supplying steps to call.
+// Iterate the FSA, supplying steps to the passed in [Runner].
 //
-// Steps may be either a node or condition function
-func (fsa FSA[Cursor]) Progress(ctx context.Context) error {
+// Cursors progress unordered, unless one cursor may overwrite another which could escape. A cursor that may escape is
+// *guaranteed* to do so:
+//
+// Given A->B->C with cursors X & Y on A & B, respectively. If Y can progress to C and X can progress to B, then Y is
+// guaranteed the opportunity to progress before X overwrites it.
+func (fsa FSA[Cursor]) Progress(ctx context.Context, runner Runner) error {
 	fsa.m.Lock()
 	defer fsa.m.Unlock()
-	toProgress := slices.Sorted(maps.Keys(fsa.cursors))
+	fsa.generation++ // Invalidate previous generations parking
 
-	fsa.generation++ // Invalidate previous generations
+	retErr := make(chan error)
+	contract.Assertf(fsa.currentRun == nil, "We can only progress one run at a time")
+
+	newCursors := make(chan cursorID)
+	fsa.currentRun = &run[Cursor]{newCursors: newCursors}
+	defer func() { fsa.currentRun = nil }()
+
+	// Load our existing cursors
+	startingCursors := slices.Sorted(maps.Keys(fsa.cursors))
+	go func() {
+		for _, id := range startingCursors {
+			newCursors <- id
+		}
+	}()
+
+	// Run our FSA
+	go func() {
+		select {
+		case <-ctx.Done():
+			retErr <- ctx.Err()
+			return
+		case id := <-newCursors:
+
+		}
+	}()
+
+	for {
+		select {
+		case err, _ := <-retErr:
+			return err
+		case TODO:
+			// Dispatch the runner from the main thread so single threaded runners get good stack traces
+		}
+	}
+
+	toProgress := slices.Sorted(maps.Keys(fsa.cursors))
 
 progressNode:
 	for len(toProgress) > 0 {
 		inProgress := toProgress[len(toProgress)-1]
 		toProgress = toProgress[:len(toProgress)-1]
 		c := fsa.nodes[inProgress]
-
-		fmt.Printf("Progressing %#v\n", fsa.cursors[inProgress])
 
 		if len(c.edges) == 0 {
 			// The cursor is terminal, but not blocked
@@ -104,11 +153,11 @@ progressNode:
 		for _, e := range c.edges {
 			var result ConditionResult
 			var err error
-			func() {
+			runner(ctx, func(ctx context.Context) {
 				fsa.m.Unlock()
 				defer fsa.m.Lock()
 				result, err = fsa.edges[e.e](ctx, fsa, Node{inProgress}, Node{e.n})
-			}()
+			})
 			if err != nil {
 				return err
 			}
@@ -120,11 +169,11 @@ progressNode:
 			case ConditionPass:
 				// We are now going to try to move down this path
 				c := fsa.cursors[inProgress]
-				func() {
+				runner(ctx, func(ctx context.Context) {
 					fsa.m.Unlock()
 					defer fsa.m.Lock()
 					err = fsa.nodes[e.n].f(ctx, fsa, Edge{e.e}, c.c)
-				}()
+				})
 				if err != nil {
 					return err
 				}
@@ -173,13 +222,13 @@ func (fsa FSA[Cursor]) cursorsInner(yield func(Cursor, Node) bool, onlyParked bo
 		if !ok || (onlyParked && (c.parked == 0 || c.parked < fsa.generation)) {
 			continue
 		}
-		{
+		func() {
 			fsa.m.Unlock()
 			defer fsa.m.Lock()
-			if !yield(c.c, Node{n}) {
+			if !yield(c.c, Node{c.node}) {
 				return
 			}
-		}
+		}()
 	}
 }
 
@@ -191,9 +240,15 @@ type fsa[Cursor any] struct {
 
 	generation uint64
 
-	cursors map[nodeID]*cursor[Cursor]
+	cursors map[cursorID]*cursor[Cursor]
 	nodes   map[nodeID]*node[Cursor]
 	edges   map[edgeID]ConditionFunc[Cursor]
+
+	currentRun *run[Cursor]
+}
+
+type run[Cursor any] struct {
+	newCursors chan<- cursorID
 }
 
 type node[Cursor any] struct {
@@ -205,9 +260,11 @@ type node[Cursor any] struct {
 }
 
 type cursor[Cursor any] struct {
+	node   nodeID
 	c      Cursor
 	parked uint64 // 0 means not parked, otherwise its the cycle where cursor was parked
 }
 
-type nodeID uint64 // A UUID for the node
-type edgeID uint64 // A UUID for the edge
+type nodeID uint64   // A UUID for the node
+type edgeID uint64   // A UUID for the edge
+type cursorID uint64 // A UUID for the cursor
