@@ -619,6 +619,36 @@ func TestParseImportFileProviderInputs(t *testing.T) {
 	assert.Equal(t, resource.NewProperty("6.0.0"), imports[0].ProviderInputs["version"])
 }
 
+func TestParseImportFileUnknownValues(t *testing.T) {
+	t.Parallel()
+
+	// The placeholder `pulumi preview --import-file` writes out for a value that wasn't known yet.
+	const unknown = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+
+	providerURN := resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::my-prov")
+	f := importFile{
+		NameTable: map[string]resource.URN{
+			"my-prov": providerURN,
+		},
+		Resources: []importSpec{
+			{
+				Name:     "thing",
+				ID:       "thing-id",
+				Type:     "aws:s3:Bucket",
+				Provider: "my-prov",
+			},
+		},
+		ProviderInputs: map[string]map[string]any{
+			"my-prov": {
+				"region":  unknown,
+				"version": "6.0.0",
+			},
+		},
+	}
+	_, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+	assert.ErrorContains(t, err, "the providerInputs for resource 'thing' of type 'aws:s3:Bucket' contain unknown values")
+}
+
 func ptr[T any](v T) *T {
 	return &v
 }

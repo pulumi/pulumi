@@ -662,6 +662,20 @@ func parseImportFile(
 			}
 		}
 
+		// Unknown values round-trip through the import file as computed properties. They come from a
+		// `pulumi preview --import-file` run where a value wasn't resolvable yet, and importing them
+		// writes the unknown placeholder into the state, leaving the resource unusable.
+		for field, props := range map[string]resource.PropertyMap{
+			"inputs":         imp.Inputs,
+			"outputs":        imp.Outputs,
+			"providerInputs": imp.ProviderInputs,
+		} {
+			if props.ContainsUnknowns() {
+				pusherrf("the %v for %v contain unknown values; fill them in before importing",
+					field, describeResource(i, spec))
+			}
+		}
+
 		imports[i] = imp
 	}
 

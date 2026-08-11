@@ -1,0 +1,4 @@
+component: cli/import
+kind: fix
+body: Reject import files containing unknown values instead of writing them into state
+time: 2026-08-11T14:51:23.589206+02:00
