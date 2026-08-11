@@ -29,6 +29,8 @@ import (
 var editFlagNames = []string{
 	flagGitHubRepo, flagRepo, flagVCSProvider, flagGitURL, flagBranch, flagCommit, flagFolder,
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter, flagClearPathFilters,
+	flagDeployTags, flagTagFilter, flagClearTagFilters, flagReviewStackLabel, flagClearReviewStackLabel,
+	flagInstallationID, flagDeployPullRequest,
 	flagRunnerPool, flagExecutorImage, flagExecutorRootPath,
 	flagPreRunCommand, flagClearPreRunCommands, flagEnv, flagSecretEnv, flagRemoveEnv, flagClearEnv,
 	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy,
@@ -45,12 +47,15 @@ var vcsEditFlags = []string{
 	flagGitHubRepo, flagRepo, flagVCSProvider,
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate,
 	flagPathFilter, flagClearPathFilters,
+	flagDeployTags, flagTagFilter, flagClearTagFilters,
+	flagReviewStackLabel, flagClearReviewStackLabel,
+	flagInstallationID, flagDeployPullRequest,
 }
 
 // clearEditFlags are presence-only: passing one with an explicit false value is rejected rather
 // than silently ignored.
 var clearEditFlags = []string{
-	flagClearPathFilters,
+	flagClearPathFilters, flagClearTagFilters, flagClearReviewStackLabel,
 	flagClearPreRunCommands, flagClearEnv,
 	flagOIDCAWSClear, flagOIDCAzureClear, flagOIDCGCPClear,
 }
@@ -88,6 +93,10 @@ func clearFlagValue(args deploymentSettingsEditArgs, flag string) bool {
 	switch flag {
 	case flagClearPathFilters:
 		return args.clearPathFilters
+	case flagClearTagFilters:
+		return args.clearTagFilters
+	case flagClearReviewStackLabel:
+		return args.clearReviewStackLabels
 	case flagClearPreRunCommands:
 		return args.clearPreRunCommands
 	case flagClearEnv:
@@ -174,6 +183,13 @@ func resolveEditVCS(
 			vcs.Provider, requestedProviderOrigin(args, requested))
 	}
 
+	for _, f := range []string{flagReviewStackLabel, flagClearReviewStackLabel} {
+		if changed(f) && vcs.Provider != apitype.VCSProviderGitHub {
+			return nil, fmt.Errorf("--%s is only supported on github sources, and this stack's source is %s",
+				f, vcs.Provider)
+		}
+	}
+
 	if changed(flagRepo) {
 		vcs.Repository = args.repo
 	}
@@ -194,6 +210,60 @@ func resolveEditVCS(
 	}
 	if changed(flagClearPathFilters) {
 		vcs.Paths = nil
+	}
+	if changed(flagDeployTags) {
+		vcs.DeployTags = args.deployTags
+	}
+	if changed(flagTagFilter) {
+		vcs.TagFilters = args.tagFilters
+	}
+	if changed(flagClearTagFilters) {
+		vcs.TagFilters = nil
+	}
+	if changed(flagReviewStackLabel) {
+		vcs.ReviewStackLabels = args.reviewStackLabels
+	}
+	if changed(flagClearReviewStackLabel) {
+		vcs.ReviewStackLabels = nil
+	}
+	if changed(flagInstallationID) {
+		vcs.InstallationID = args.installationID
+	}
+	if changed(flagDeployPullRequest) {
+		vcs.DeployPullRequest = nil
+		if args.deployPullRequest > 0 {
+			pr := args.deployPullRequest
+			vcs.DeployPullRequest = &pr
+		}
+	}
+
+	// Both checks run against the merged object rather than the flags, so they also catch a flag that
+	// conflicts with what the stack already stores. The messages name the stored setting in that case,
+	// since naming a flag the user never passed sends them looking for it.
+	if vcs.DeployCommits && vcs.DeployTags {
+		switch {
+		case changed(flagPushToDeploy) && !changed(flagDeployTags):
+			return nil, fmt.Errorf("this stack deploys on tags; pass --%s=false to deploy on commits instead",
+				flagDeployTags)
+		case changed(flagDeployTags) && !changed(flagPushToDeploy):
+			return nil, fmt.Errorf("this stack deploys on commits; pass --%s=false to deploy on tags instead",
+				flagPushToDeploy)
+		default:
+			return nil, fmt.Errorf("--%s and --%s are mutually exclusive", flagPushToDeploy, flagDeployTags)
+		}
+	}
+
+	// The service silently discards deployPullRequest when any of the three standard triggers is on.
+	// Asking for a pull request number that would be discarded is refused; turning a trigger on for a
+	// stack that merely stores one drops it, which is what the service does with it anyway.
+	if vcs.DeployPullRequest != nil &&
+		(vcs.DeployCommits || vcs.PreviewPullRequests || vcs.PullRequestTemplate) {
+		if changed(flagDeployPullRequest) && args.deployPullRequest > 0 {
+			return nil, fmt.Errorf(
+				"--%s is only honored when --%s, --%s and --%s are all off; the service discards it otherwise",
+				flagDeployPullRequest, flagPushToDeploy, flagPreviewPRs, flagPRTemplate)
+		}
+		vcs.DeployPullRequest = nil
 	}
 
 	return &vcs, nil
@@ -265,6 +335,9 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 		if _, err := parseVCSProvider(args.vcsProvider); err != nil {
 			return err
 		}
+	}
+	if args.flagsChanged(flagDeployPullRequest) && args.deployPullRequest < 0 {
+		return fmt.Errorf("--%s must not be negative; pass 0 to clear it", flagDeployPullRequest)
 	}
 	return nil
 }
