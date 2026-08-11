@@ -196,8 +196,6 @@ func runNew(ctx context.Context, args newArgs) error {
 		args.templateNameOrURL, scope, cmdTemplates.TemplateKindPulumiProject, env.Global())
 	defer contract.IgnoreClose(templateSource)
 
-	// The guided flow renders its first prompt without waiting on the VCS collections the service
-	// has to fetch upstream, and only waits for them once a selection needs them.
 	cmdTemplate, err := resolveTemplate(templateSource, args, opts, args.selectOne)
 	if err != nil {
 		return err

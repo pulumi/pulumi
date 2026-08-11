@@ -41,7 +41,7 @@ type vocab struct {
 	id, displayName string
 }
 
-// languages is the closed vocabulary of languages the guided flow recognizes, ordered by observed
+// languages is the closed vocabulary of languages the guided flow recognizes, roughly ordered by
 // `pulumi new` usage share, most-used first.
 var languages = []vocab{
 	{"typescript", "TypeScript"},
@@ -49,6 +49,7 @@ var languages = []vocab{
 	{"go", "Go"},
 	{"csharp", "C#"},
 	{"yaml", "YAML"},
+	{"hcl", "HCL"},
 	{"java", "Java"},
 	{"java-gradle", "Java (Gradle)"},
 	{"javascript", "JavaScript"},
@@ -56,7 +57,6 @@ var languages = []vocab{
 	{"fsharp", "F#"},
 	{"scala", "Scala"},
 	{"visualbasic", "Visual Basic"},
-	{"hcl", "HCL"},
 }
 
 // providers is the closed set of providers the guided flow offers, in prompt order. The

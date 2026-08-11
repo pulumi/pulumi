@@ -129,8 +129,8 @@ func TestNoneLanguageOrder(t *testing.T) {
 
 	displayNames := languageNames(t, testCatalog(), "none")
 	assert.Equal(t, []string{
-		"TypeScript", "Python", "Go", "C#", "YAML", "Java (Maven)",
-		"Java (Gradle)", "JavaScript", "Bun", "F#", "Visual Basic", "HCL",
+		"TypeScript", "Python", "Go", "C#", "YAML", "HCL", "Java (Maven)",
+		"Java (Gradle)", "JavaScript", "Bun", "F#", "Visual Basic",
 	}, displayNames)
 }
 
@@ -148,7 +148,7 @@ func TestLanguageOrderByUsage(t *testing.T) {
 
 	displayNames := languageNames(t, testCatalog(), "aws")
 	assert.Equal(t, []string{
-		"TypeScript", "Python", "Go", "C#", "YAML", "Java", "Bun", "F#", "Scala", "Visual Basic", "HCL",
+		"TypeScript", "Python", "Go", "C#", "YAML", "HCL", "Java", "Bun", "F#", "Scala", "Visual Basic",
 	}, displayNames)
 }
 

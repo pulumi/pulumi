@@ -57,9 +57,8 @@ func sortedForDisplay(templates []cmdTemplates.Template) []cmdTemplates.Template
 	return sorted
 }
 
-// templateSource is the subset of [cmdTemplates.Source] template selection needs. The first three
-// are the fetches quick enough to build the guided flow's first screen from; Templates is every
-// template there is, and reaching it means waiting on the slowest fetch.
+// templateSource is the subset of [cmdTemplates.Source] template selection needs. Only Templates
+// waits on the slowest fetch.
 type templateSource interface {
 	ProjectTemplates() ([]cmdTemplates.Template, error)
 	DatabaseTemplates() ([]cmdTemplates.Template, error)
@@ -67,15 +66,14 @@ type templateSource interface {
 	Templates() ([]cmdTemplates.Template, error)
 }
 
-// useGuidedFlow reports whether the guided provider/language prompts apply. They need a user to
-// prompt, and they only help when nothing has narrowed the choice already: a named template or
-// URL has, and `--yes` must never prompt at all.
+// useGuidedFlow reports whether the guided provider/language prompts apply: they only help when
+// nothing has narrowed the choice already.
 func (args newArgs) useGuidedFlow() bool {
 	return args.templateNameOrURL == "" && !args.yes && args.interactive
 }
 
 // declinedToChoose maps a cancelled prompt to the sentinel callers report, leaving real failures
-// alone. Every path that can put a template prompt on screen ends in this.
+// alone.
 func declinedToChoose(
 	template cmdTemplates.Template, err error,
 ) (cmdTemplates.Template, error) {
@@ -86,26 +84,24 @@ func declinedToChoose(
 }
 
 // resolveTemplate works out which template this invocation should instantiate, prompting through
-// sel as needed. It owns the whole decision, so a test that replaces sel exercises the same
-// branching the CLI does.
+// selector as needed.
 func resolveTemplate(
-	src templateSource, args newArgs, opts display.Options, sel selectFunc,
+	src templateSource, args newArgs, opts display.Options, selector selectFunc,
 ) (cmdTemplates.Template, error) {
 	if args.useGuidedFlow() {
-		return declinedToChoose(chooseGuidedFromSource(src, opts, sel))
+		return declinedToChoose(chooseGuidedFromSource(src, opts, selector))
 	}
 	all, err := src.Templates()
 	if err != nil {
 		return nil, err
 	}
-	return declinedToChoose(pickFromSet(all, args.yes, opts, sel))
+	return declinedToChoose(pickFromSet(all, args.yes, opts, selector))
 }
 
-// pickFromSet chooses a template from the complete set. A lone template needs no prompt, `--yes`
-// never prompts and takes no template rather than guessing among several, and anything else goes
-// to the flat list.
+// pickFromSet chooses a template from the complete set. `--yes` never prompts, and takes no
+// template rather than guessing among several.
 func pickFromSet(
-	templates []cmdTemplates.Template, yes bool, opts display.Options, sel selectFunc,
+	templates []cmdTemplates.Template, yes bool, opts display.Options, selector selectFunc,
 ) (cmdTemplates.Template, error) {
 	switch {
 	case len(templates) == 1:
@@ -115,7 +111,7 @@ func pickFromSet(
 	case len(templates) == 0:
 		return nil, errors.New("no templates")
 	}
-	return chooseTemplateFromList(sortedForDisplay(templates), opts, sel)
+	return chooseTemplateFromList(sortedForDisplay(templates), opts, selector)
 }
 
 func templateLabeler(templates []cmdTemplates.Template) func(cmdTemplates.Template) string {

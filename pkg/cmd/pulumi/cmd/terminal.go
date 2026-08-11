@@ -52,7 +52,7 @@ func OptimalPageSize(opts OptimalPageSizeOpts) int {
 	} else if _, height, err := term.GetSize(0); err == nil {
 		pageSize = height
 	}
-	// Subtract the buffer before clamping to Nopts, or short lists lose rows to chrome they don't share space with.
+	// Subtract the buffer from the terminal height, not from the option count.
 	const buffer = 5
 	if pageSize > buffer {
 		pageSize = pageSize - buffer

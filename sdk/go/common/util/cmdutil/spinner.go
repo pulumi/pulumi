@@ -58,12 +58,8 @@ func NewSpinnerAndTicker(prefix string, ttyFrames []string,
 }
 
 // SpinUntilStopped ticks spinner on every tick of ticker until the returned stop function is
-// called. Stopping halts the ticker, waits for any in-flight tick to finish and resets the
-// spinner, so it is safe to write to stdout once stop returns. Calling stop again is a no-op.
-//
-// Callers decide whether to announce the spinner immediately by calling [Spinner.Tick] before
-// handing it over: a slow operation that should always be reported wants that first tick, while
-// one that usually finishes before the first tick wants to stay silent.
+// called. Stopping waits for any in-flight tick to finish before resetting the spinner, so it is
+// safe to write to stdout once stop returns. Calling stop again is a no-op.
 func SpinUntilStopped(spinner Spinner, ticker *time.Ticker) (stop func()) {
 	done := make(chan struct{})
 	stopped := make(chan struct{})

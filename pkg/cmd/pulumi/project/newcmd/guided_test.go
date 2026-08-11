@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"slices"
 	"testing"
 
@@ -503,7 +504,7 @@ func TestGuidedLazyFetchRunsOncePerFlow(t *testing.T) {
 		project:  local,
 		vcsOrgs:  []string{"acme"},
 		fetchAll: fetch,
-	}, display.Options{}, sel)
+	}, display.Options{Stdout: io.Discard}, sel)
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	assert.Equal(t, "vpc", got.Name())

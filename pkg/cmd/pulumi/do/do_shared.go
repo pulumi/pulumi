@@ -63,8 +63,6 @@ func startSpinner(prefix string) func() {
 	spinner, ticker := cmdutil.NewSpinnerAndTicker(
 		prefix, nil, cmdutil.GetGlobalColorization(), 8 /*timesPerSecond*/, !cmdutil.Interactive(),
 	)
-	// Announce the operation right away: the dot spinner only ticks every 20 seconds, so without
-	// this a shorter operation would report nothing at all.
 	spinner.Tick()
 	return cmdutil.SpinUntilStopped(spinner, ticker)
 }

@@ -16,7 +16,6 @@ package display
 
 import (
 	"io"
-	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -83,12 +82,4 @@ type Options struct {
 func (opts Options) WithIsInteractive(isInteractive bool) Options {
 	opts.IsInteractive = isInteractive
 	return opts
-}
-
-// StdoutOrDefault returns Stdout, applying its documented os.Stdout default when unset.
-func (opts Options) StdoutOrDefault() io.Writer {
-	if opts.Stdout != nil {
-		return opts.Stdout
-	}
-	return os.Stdout
 }

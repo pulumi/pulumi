@@ -89,8 +89,7 @@ func sourceOf(templates ...cmdTemplates.Template) fakeSource {
 }
 
 // unsplitSource stands in for a [cmdTemplates.Source] created to resolve a named template, whose
-// cloud listing ran unsplit. Its guided fetches hold nothing and asking for them would only block
-// on a listing the caller does not need, so reaching for one fails the test.
+// cloud listing ran unsplit. Reaching for one of its guided fetches fails the test.
 type unsplitSource struct{ all []cmdTemplates.Template }
 
 const unsplitGuidedFetchMsg = "a source resolving a named template must not be asked for the guided fetches"
