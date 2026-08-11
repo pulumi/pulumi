@@ -1,0 +1,4 @@
+component: cli/deployment
+kind: fix
+body: "Stop `pulumi deployment settings edit` overwriting the source of stacks that use a provider other than GitHub, take `--path-filter` once per filter rather than splitting it on commas, and report an unconfigured stack from `get` instead of failing"
+time: 2026-08-11T12:00:00+00:00

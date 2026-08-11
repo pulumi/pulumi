@@ -22,11 +22,13 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 var editFlagNames = []string{
-	flagGitHubRepo, flagGitURL, flagBranch, flagCommit, flagFolder,
-	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter,
+	flagGitHubRepo, flagRepo, flagVCSProvider, flagGitURL, flagBranch, flagCommit, flagFolder,
+	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter, flagClearPathFilters,
 	flagRunnerPool, flagExecutorImage, flagExecutorRootPath,
 	flagPreRunCommand, flagEnv, flagSecretEnv, flagRemoveEnv, flagRemoveAllEnv,
 	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy,
@@ -36,8 +38,18 @@ var editFlagNames = []string{
 	flagOIDCGCPServiceAccount, flagOIDCGCPRegion, flagOIDCGCPTokenLifetime, flagRemoveOIDCGCP,
 }
 
+// vcsEditFlags write the vcs object rather than a deep-merged key path, so setting any of them
+// forces a GET before the PATCH. The provider-neutral --branch / --commit / --folder / --git-url
+// write sourceContext.git and are deliberately absent.
+var vcsEditFlags = []string{
+	flagGitHubRepo, flagRepo, flagVCSProvider,
+	flagPreviewPRs, flagPushToDeploy, flagPRTemplate,
+	flagPathFilter, flagClearPathFilters,
+}
+
 // presenceOnlyEditFlags reject an explicit false value rather than silently ignoring it.
 var presenceOnlyEditFlags = []string{
+	flagClearPathFilters,
 	flagRemoveAllEnv,
 	flagRemoveOIDCAWS, flagRemoveOIDCAzure, flagRemoveOIDCGCP,
 }
@@ -64,8 +76,17 @@ func anyEditFlagSet(args deploymentSettingsEditArgs) bool {
 	return slices.ContainsFunc(editFlagNames, args.flagsChanged)
 }
 
+func anyVCSEditFlagSet(args deploymentSettingsEditArgs) bool {
+	if args.flagsChanged == nil {
+		return false
+	}
+	return slices.ContainsFunc(vcsEditFlags, args.flagsChanged)
+}
+
 func presenceOnlyFlagValue(args deploymentSettingsEditArgs, flag string) bool {
 	switch flag {
+	case flagClearPathFilters:
+		return args.clearPathFilters
 	case flagRemoveAllEnv:
 		return args.removeAllEnv
 	case flagRemoveOIDCAWS:
@@ -76,6 +97,117 @@ func presenceOnlyFlagValue(args deploymentSettingsEditArgs, flag string) bool {
 		return args.oidcGCPClear
 	}
 	return false
+}
+
+func parseVCSProvider(s string) (apitype.VCSProvider, error) {
+	known := []apitype.VCSProvider{
+		apitype.VCSProviderGitHub, apitype.VCSProviderGitLab, apitype.VCSProviderAzureDevOps,
+		apitype.VCSProviderBitbucket, apitype.VCSProviderCustom,
+	}
+	if slices.Contains(known, apitype.VCSProvider(s)) {
+		return apitype.VCSProvider(s), nil
+	}
+	names := make([]string, len(known))
+	for i, p := range known {
+		names[i] = string(p)
+	}
+	return "", fmt.Errorf("--%s must be one of %s, got %q", flagVCSProvider, strings.Join(names, ", "), s)
+}
+
+// resolveEditVCS applies the flags that were set on top of the stored vcs object. The whole object
+// is sent because the service replaces it wholesale, so a key left out of the patch is a key erased.
+func resolveEditVCS(
+	args deploymentSettingsEditArgs, stored *apitype.DeploymentSettings,
+) (*apitype.DeploymentSettingsVCS, error) {
+	if !anyVCSEditFlagSet(args) {
+		return nil, nil
+	}
+	changed := args.flagsChanged
+
+	var vcs apitype.DeploymentSettingsVCS
+	switch {
+	case stored != nil && stored.VCS != nil:
+		vcs = *stored.VCS
+	case stored != nil && stored.GitHub != nil:
+		g := stored.GitHub
+		vcs = apitype.DeploymentSettingsVCS{
+			Provider:            apitype.VCSProviderGitHub,
+			Repository:          g.Repository,
+			DeployCommits:       g.DeployCommits,
+			DeployTags:          g.DeployTags,
+			Paths:               g.Paths,
+			TagFilters:          g.TagFilters,
+			InstallationID:      g.InstallationID,
+			PullRequestTemplate: g.PullRequestTemplate,
+			PreviewPullRequests: g.PreviewPullRequests,
+			DeployPullRequest:   g.DeployPullRequest,
+			ReviewStackLabels:   g.ReviewStackLabels,
+		}
+	}
+
+	var requested apitype.VCSProvider
+	switch {
+	case changed(flagVCSProvider):
+		p, err := parseVCSProvider(args.vcsProvider)
+		if err != nil {
+			return nil, err
+		}
+		requested = p
+	case changed(flagGitHubRepo):
+		requested = apitype.VCSProviderGitHub
+	}
+
+	switch {
+	case vcs.Provider == "" && requested == "":
+		return nil, fmt.Errorf(
+			"this stack has no version control source configured; pass --%s to say which provider to configure",
+			flagVCSProvider)
+	case vcs.Provider == "":
+		vcs.Provider = requested
+	case requested != "" && requested != vcs.Provider:
+		return nil, fmt.Errorf(
+			"this stack's deployment source is %s, and %s would replace it; "+
+				"change the provider in the Pulumi Cloud console instead",
+			vcs.Provider, requestedProviderOrigin(args, requested))
+	}
+
+	if changed(flagRepo) {
+		vcs.Repository = args.repo
+	}
+	if changed(flagGitHubRepo) {
+		vcs.Repository = args.githubRepo
+	}
+	if changed(flagPreviewPRs) {
+		vcs.PreviewPullRequests = args.previewPRs
+	}
+	if changed(flagPushToDeploy) {
+		vcs.DeployCommits = args.pushToDeploy
+	}
+	if changed(flagPRTemplate) {
+		vcs.PullRequestTemplate = args.prTemplate
+	}
+	if changed(flagPathFilter) {
+		vcs.Paths = args.pathFilters
+	}
+	if changed(flagClearPathFilters) {
+		vcs.Paths = nil
+	}
+
+	// The vcs object replaces the stored one wholesale, so an empty repository here would erase the
+	// stack's source rather than leave it alone.
+	if vcs.Repository == "" {
+		return nil, fmt.Errorf("a %s source needs a repository; pass --%s owner/name",
+			vcs.Provider, flagRepo)
+	}
+
+	return &vcs, nil
+}
+
+func requestedProviderOrigin(args deploymentSettingsEditArgs, requested apitype.VCSProvider) string {
+	if args.flagsChanged(flagVCSProvider) {
+		return fmt.Sprintf("--%s %s", flagVCSProvider, requested)
+	}
+	return fmt.Sprintf("--%s (which implies a github source)", flagGitHubRepo)
 }
 
 // validateEditArgs catches conflicts that cobra can't express on its own
@@ -136,6 +268,11 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 			return fmt.Errorf("--%s does not accept a false value; omit it to leave the setting alone", clearFlag)
 		}
 	}
+	if args.flagsChanged(flagVCSProvider) {
+		if _, err := parseVCSProvider(args.vcsProvider); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -154,9 +291,12 @@ func buildSecretEnvVars(specs []string) map[string]map[string]any {
 }
 
 // buildEditFlagPatch turns the parsed flag values into a JSON-shaped map that mirrors apitype.DeploymentSettings.
+// vcs, when non-nil, is the complete replacement object resolved by resolveEditVCS. The deprecated gitHub block is
+// never written alongside it: the service gives vcs priority and clears gitHub when both are present.
 func buildEditFlagPatch(
 	args deploymentSettingsEditArgs,
 	secretEnv map[string]map[string]any,
+	vcs *apitype.DeploymentSettingsVCS,
 ) map[string]any {
 	patch := map[string]any{}
 	changed := args.flagsChanged
@@ -164,8 +304,8 @@ func buildEditFlagPatch(
 		changed = func(string) bool { return false }
 	}
 
-	if changed(flagGitHubRepo) {
-		setNested(patch, []string{"gitHub", "repository"}, args.githubRepo)
+	if vcs != nil {
+		patch["vcs"] = vcs
 	}
 	if changed(flagGitURL) {
 		setNested(patch, []string{"sourceContext", "git", "repoUrl"}, args.gitURL)
@@ -190,18 +330,6 @@ func buildEditFlagPatch(
 	}
 	if changed(flagFolder) {
 		setNested(patch, []string{"sourceContext", "git", "repoDir"}, args.folder)
-	}
-	if changed(flagPreviewPRs) {
-		setNested(patch, []string{"gitHub", "previewPullRequests"}, args.previewPRs)
-	}
-	if changed(flagPushToDeploy) {
-		setNested(patch, []string{"gitHub", "deployCommits"}, args.pushToDeploy)
-	}
-	if changed(flagPRTemplate) {
-		setNested(patch, []string{"gitHub", "pullRequestTemplate"}, args.prTemplate)
-	}
-	if changed(flagPathFilter) {
-		setNested(patch, []string{"gitHub", "paths"}, args.pathFilters)
 	}
 
 	if changed(flagRunnerPool) {
