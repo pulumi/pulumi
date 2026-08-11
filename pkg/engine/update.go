@@ -22,6 +22,7 @@ import (
 	"io"
 	"maps"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -39,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -1057,7 +1059,7 @@ func newUpdateSource(ctx context.Context,
 	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
 
 	var observer *deploy.RegistrationObserver
-	// Now create sources for _any_ snippets in the snapshot and mux them with the main source.
+	// Now create sources for snippets in the snapshot and mux them with the main source.
 	if target.Snapshot != nil && len(target.Snapshot.Snippets) > 0 {
 		// Create a registration observer so concurrent sources (the program + any snippet sources below) can wait for
 		// each other's RegisterResource calls. The resource monitor publishes outputs on the observer; snippet sources
@@ -1067,8 +1069,26 @@ func newUpdateSource(ctx context.Context,
 		// We need a loader for snippets
 		loader := schema.NewPluginLoader(plugctx)
 
-		snippetSources := make([]func(string) *promise.Promise[struct{}], len(target.Snapshot.Snippets))
-		for i, snippet := range target.Snapshot.Snippets {
+		// When the operation targets specific snippets, evaluate only those; everything else is
+		// carried forward from old state, so references into it are resolved from that state
+		// (matching what an untargeted replay would publish).
+		replaySnippets := target.Snapshot.Snippets
+		if len(opts.TargetSnippets) > 0 {
+			replaySnippets = slice.Prealloc[resource.Snippet](len(target.Snapshot.Snippets))
+			for _, snippet := range target.Snapshot.Snippets {
+				if slices.Contains(opts.TargetSnippets, snippet.UUID) {
+					replaySnippets = append(replaySnippets, snippet)
+				}
+			}
+			for _, r := range target.Snapshot.Resources {
+				if r != nil && !r.Delete && !slices.Contains(opts.TargetSnippets, r.SnippetID) {
+					observer.Resolve(r.URN, r.ID, r.Outputs)
+				}
+			}
+		}
+
+		snippetSources := make([]func(string) *promise.Promise[struct{}], len(replaySnippets))
+		for i, snippet := range replaySnippets {
 			snippetSources[i] = deploy.NewSnippetSource(
 				ctx, snippet, loader, runinfo.ProjectRoot, runinfo.Pwd, observer)
 		}

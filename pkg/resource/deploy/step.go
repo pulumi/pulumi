@@ -179,8 +179,9 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.Outputs = s.old.Outputs
 
 	// If the resource is a provider, ensure that it is present in the registry under the appropriate URNs.
-	// We can only do this if the provider is actually a same, not a skipped create.
-	if providers.IsProviderType(s.new.Type) && !s.skippedCreate {
+	// We can only do this if the provider is actually a same, not a skipped create or an untargeted same;
+	// untargeted providers are loaded on demand via Deployment.EnsureProvider instead.
+	if providers.IsProviderType(s.new.Type) && !s.skippedCreate && !s.untargeted {
 		if s.Deployment() != nil {
 			// We need to use the new state here (so that URN and ID are correct), but we want to use the old
 			// inputs. This ensures that providers that report changed inputs as NO_DIFF consistently see the
