@@ -28,12 +28,19 @@ var editFlagNames = []string{
 	flagGitHubRepo, flagGitURL, flagBranch, flagCommit, flagFolder,
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter,
 	flagRunnerPool, flagExecutorImage, flagExecutorRootPath,
-	flagPreRunCommand, flagEnv, flagSecretEnv, flagRemoveEnv,
+	flagPreRunCommand, flagClearPreRunCommands, flagEnv, flagSecretEnv, flagRemoveEnv, flagClearEnv,
 	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy,
 	flagOIDCAWSRoleARN, flagOIDCAWSSessionName, flagOIDCAWSDuration, flagOIDCAWSPolicyARN, flagOIDCAWSClear,
 	flagOIDCAzureClientID, flagOIDCAzureTenantID, flagOIDCAzureSubscriptionID, flagOIDCAzureClear,
 	flagOIDCGCPProjectNumber, flagOIDCGCPWorkloadPoolID, flagOIDCGCPProviderID,
 	flagOIDCGCPServiceAccount, flagOIDCGCPRegion, flagOIDCGCPTokenLifetime, flagOIDCGCPClear,
+}
+
+// clearEditFlags are presence-only: passing one with an explicit false value is rejected rather
+// than silently ignored.
+var clearEditFlags = []string{
+	flagClearPreRunCommands, flagClearEnv,
+	flagOIDCAWSClear, flagOIDCAzureClear, flagOIDCGCPClear,
 }
 
 // oidcProviderFlags lists the field-setter flags for each OIDC provider so
@@ -56,6 +63,22 @@ func anyEditFlagSet(args deploymentSettingsEditArgs) bool {
 		return false
 	}
 	return slices.ContainsFunc(editFlagNames, args.flagsChanged)
+}
+
+func clearFlagValue(args deploymentSettingsEditArgs, flag string) bool {
+	switch flag {
+	case flagClearPreRunCommands:
+		return args.clearPreRunCommands
+	case flagClearEnv:
+		return args.clearEnv
+	case flagOIDCAWSClear:
+		return args.oidcAWSClear
+	case flagOIDCAzureClear:
+		return args.oidcAzureClear
+	case flagOIDCGCPClear:
+		return args.oidcGCPClear
+	}
+	return false
 }
 
 // validateEditArgs catches conflicts that cobra can't express on its own
@@ -95,16 +118,22 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 		}
 		envKeys[k] = flagRemoveEnv
 	}
-	if args.flagsChanged != nil {
-		for clearFlag, fieldFlags := range oidcProviderFlags {
-			if !args.flagsChanged(clearFlag) {
-				continue
+	if args.flagsChanged == nil {
+		return nil
+	}
+	for clearFlag, fieldFlags := range oidcProviderFlags {
+		if !args.flagsChanged(clearFlag) {
+			continue
+		}
+		for _, f := range fieldFlags {
+			if args.flagsChanged(f) {
+				return fmt.Errorf("--%s cannot be combined with --%s", clearFlag, f)
 			}
-			for _, f := range fieldFlags {
-				if args.flagsChanged(f) {
-					return fmt.Errorf("--%s cannot be combined with --%s", clearFlag, f)
-				}
-			}
+		}
+	}
+	for _, clearFlag := range clearEditFlags {
+		if args.flagsChanged(clearFlag) && !clearFlagValue(args, clearFlag) {
+			return fmt.Errorf("--%s does not accept a false value; omit it to leave the setting alone", clearFlag)
 		}
 	}
 	return nil
@@ -141,11 +170,19 @@ func buildEditFlagPatch(
 	if changed(flagGitURL) {
 		setNested(patch, []string{"sourceContext", "git", "repoUrl"}, args.gitURL)
 	}
+	// A branch and a commit cannot both be set: the service validates the merged object and rejects
+	// the pair. Setting either one therefore has to null the other rather than leave it stored.
 	if changed(flagBranch) {
-		setNested(patch, []string{"sourceContext", "git", "branch"}, args.branch)
+		setNested(patch, []string{"sourceContext", "git", "branch"}, nullIfEmpty(args.branch))
+		if args.branch != "" {
+			setNested(patch, []string{"sourceContext", "git", "commit"}, nil)
+		}
 	}
 	if changed(flagCommit) {
-		setNested(patch, []string{"sourceContext", "git", "commit"}, args.commit)
+		setNested(patch, []string{"sourceContext", "git", "commit"}, nullIfEmpty(args.commit))
+		if args.commit != "" {
+			setNested(patch, []string{"sourceContext", "git", "branch"}, nil)
+		}
 	}
 	if changed(flagFolder) {
 		setNested(patch, []string{"sourceContext", "git", "repoDir"}, args.folder)
@@ -173,11 +210,12 @@ func buildEditFlagPatch(
 		patch["agentPoolID"] = v
 	}
 	if changed(flagExecutorImage) {
-		// Map empty string to null so `--executor-image ""` clears the field
-		// back to the default image. Matches the --runner-pool convention.
-		var v any = args.executorImage
-		if args.executorImage == "" {
-			v = nil
+		// Only the keys the user set are emitted: a bare-string image decodes server-side to an
+		// object whose credentials are explicitly null, which erases the stored registry
+		// credentials. Empty string still clears the whole image, per the --runner-pool convention.
+		var v any
+		if args.executorImage != "" {
+			v = map[string]any{"reference": args.executorImage}
 		}
 		setNested(patch, []string{"executorContext", "executorImage"}, v)
 	}
@@ -189,9 +227,13 @@ func buildEditFlagPatch(
 		setNested(patch, []string{"executorContext", "executorRootPath"}, v)
 	}
 
-	if changed(flagPreRunCommand) {
+	switch {
+	case changed(flagClearPreRunCommands):
+		setNested(patch, []string{"operationContext", "preRunCommands"}, nil)
+	case changed(flagPreRunCommand):
 		setNested(patch, []string{"operationContext", "preRunCommands"}, args.preRunCommands)
 	}
+
 	envEntries := map[string]any{}
 	for _, spec := range args.envVars {
 		key, value, _ := strings.Cut(spec, "=")
@@ -203,7 +245,12 @@ func buildEditFlagPatch(
 	for _, key := range args.removeEnv {
 		envEntries[key] = nil
 	}
-	if len(envEntries) > 0 {
+	switch {
+	case changed(flagClearEnv):
+		// An empty map would be a no-op: the server copies through every stored key the patch does
+		// not mention.
+		setNested(patch, []string{"operationContext", "environmentVariables"}, nil)
+	case len(envEntries) > 0:
 		setNested(patch, []string{"operationContext", "environmentVariables"}, envEntries)
 	}
 
@@ -220,8 +267,8 @@ func buildEditFlagPatch(
 		setNested(patch, []string{"operationContext", "options", "deleteAfterDestroy"}, args.deleteAfterDestroy)
 	}
 
-	// OIDC — AWS
-	if changed(flagOIDCAWSClear) && args.oidcAWSClear {
+	// OIDC - AWS
+	if changed(flagOIDCAWSClear) {
 		setNested(patch, []string{"operationContext", "oidc", "aws"}, nil)
 	}
 	if changed(flagOIDCAWSRoleARN) {
@@ -231,14 +278,18 @@ func buildEditFlagPatch(
 		setNested(patch, []string{"operationContext", "oidc", "aws", "sessionName"}, args.oidcAWSSessionName)
 	}
 	if changed(flagOIDCAWSDuration) {
-		setNested(patch, []string{"operationContext", "oidc", "aws", "duration"}, args.oidcAWSDuration)
+		var v any = args.oidcAWSDuration
+		if args.oidcAWSDuration == "" {
+			v = nil
+		}
+		setNested(patch, []string{"operationContext", "oidc", "aws", "duration"}, v)
 	}
 	if changed(flagOIDCAWSPolicyARN) {
 		setNested(patch, []string{"operationContext", "oidc", "aws", "policyArns"}, args.oidcAWSPolicyARNs)
 	}
 
-	// OIDC — Azure
-	if changed(flagOIDCAzureClear) && args.oidcAzureClear {
+	// OIDC - Azure
+	if changed(flagOIDCAzureClear) {
 		setNested(patch, []string{"operationContext", "oidc", "azure"}, nil)
 	}
 	if changed(flagOIDCAzureClientID) {
@@ -251,8 +302,8 @@ func buildEditFlagPatch(
 		setNested(patch, []string{"operationContext", "oidc", "azure", "subscriptionId"}, args.oidcAzureSubscriptionID)
 	}
 
-	// OIDC — GCP
-	if changed(flagOIDCGCPClear) && args.oidcGCPClear {
+	// OIDC - GCP
+	if changed(flagOIDCGCPClear) {
 		setNested(patch, []string{"operationContext", "oidc", "gcp"}, nil)
 	}
 	if changed(flagOIDCGCPProjectNumber) {
@@ -271,10 +322,23 @@ func buildEditFlagPatch(
 		setNested(patch, []string{"operationContext", "oidc", "gcp", "region"}, args.oidcGCPRegion)
 	}
 	if changed(flagOIDCGCPTokenLifetime) {
-		setNested(patch, []string{"operationContext", "oidc", "gcp", "tokenLifetime"}, args.oidcGCPTokenLifetime)
+		var v any = args.oidcGCPTokenLifetime
+		if args.oidcGCPTokenLifetime == "" {
+			v = nil
+		}
+		setNested(patch, []string{"operationContext", "oidc", "gcp", "tokenLifetime"}, v)
 	}
 
 	return patch
+}
+
+// nullIfEmpty maps an empty flag value to a JSON null so the server clears the stored field, since
+// an empty string is a value the server would store as-is.
+func nullIfEmpty(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
 }
 
 func setNested(m map[string]any, path []string, value any) {
