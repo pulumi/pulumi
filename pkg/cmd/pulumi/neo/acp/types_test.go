@@ -59,7 +59,7 @@ func TestSessionUpdateDiscriminators(t *testing.T) {
 }
 
 // TestAuthMethodWireShape verifies the typed-auth fields marshal when set and
-// disappear when zero, so a degraded (untyped) method advertises exactly the
+// disappear when zero, so an untyped method advertises exactly the
 // pre-typed-auth wire shape.
 func TestAuthMethodWireShape(t *testing.T) {
 	t.Parallel()
