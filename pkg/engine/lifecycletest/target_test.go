@@ -4928,14 +4928,14 @@ func TestUntargetedRefreshedProviderUpdate(t *testing.T) {
 func TestTargetedOperationSkipsUnrelatedProviderConfiguration(t *testing.T) {
 	t.Parallel()
 
-	var pkgAAuthenticated atomic.Bool
+	var pkgACredentialsExpired atomic.Bool
 	var skipA atomic.Bool
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				ConfigureF: func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					if pkgAAuthenticated.Load() {
+					if pkgACredentialsExpired.Load() {
 						return plugin.ConfigureResponse{}, errors.New("no valid credential sources found")
 					}
 					return plugin.ConfigureResponse{}, nil
@@ -4968,7 +4968,7 @@ func TestTargetedOperationSkipsUnrelatedProviderConfiguration(t *testing.T) {
 
 	// pkgA's credentials "expire" and the program no longer registers resA, so both resA and its
 	// provider survive only as untargeted sames from the old state.
-	pkgAAuthenticated.Store(true)
+	pkgACredentialsExpired.Store(true)
 	skipA.Store(true)
 
 	resA := resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")

@@ -101,6 +101,11 @@ type stepGenerator struct {
 	// the set of resources that need to be destroyed in this deployment after running other steps on them.
 	toDelete []*pkgresource.State
 
+	// untargeted same steps queued for old-state dependencies of resources in a constrained
+	// operation, prepended to the next validated batch so they precede their consumers in the snapshot
+	pendingUntargetedSames    []Step
+	pendingUntargetedSameURNs map[resource.URN]bool
+
 	pendingDeletes map[*pkgresource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*pkgresource.State // URN map of providers that we have seen so far.
 
@@ -410,6 +415,22 @@ func (sg *stepGenerator) GenerateSteps(ctx context.Context, event RegisterResour
 // Called at the end of GenerateSteps and ContinueStepsFromDiff to validate the steps generated are valid.
 // That is they match any constraint plan or targets that are set.
 func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
+	if len(sg.pendingUntargetedSames) > 0 {
+		pending := sg.pendingUntargetedSames
+		sg.pendingUntargetedSames = nil
+		prepend := slice.Prealloc[Step](len(pending))
+		for _, s := range pending {
+			urn := s.URN()
+			if sg.hasGeneratedStep(urn) || sg.isOperatedOn(urn) {
+				continue
+			}
+			sg.urns[urn] = true
+			sg.sames[urn] = true
+			prepend = append(prepend, s)
+		}
+		steps = append(prepend, steps...)
+	}
+
 	// Check each proposed step against the relevant resource plan, if any
 	for _, s := range steps {
 		logging.V(5).Infof("Checking step %s for %s", s.Op(), s.URN())
@@ -1329,6 +1350,10 @@ func (sg *stepGenerator) continueStepsFromImport(
 		new.Inputs = inputs
 	}
 
+	if isTargeted {
+		sg.queueUntargetedDependencySames(new)
+	}
+
 	// If the resource is valid and we're generating plans then generate a plan
 	if !invalid && sg.deployment.opts.GeneratePlan {
 		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
@@ -2172,6 +2197,45 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 	return nil, nil
 }
 
+// queueUntargetedDependencySames queues untargeted same steps for old-state resources that new
+// depends on but that nothing in this constrained operation registers (e.g. a targeted snippet
+// referencing resources of untargeted snippets), walking the old dependency graph so transitive
+// dependencies and their providers precede new in the snapshot.
+func (sg *stepGenerator) queueUntargetedDependencySames(new *pkgresource.State) {
+	if !sg.deployment.opts.Targets.IsConstrained() && len(sg.deployment.opts.TargetSnippets) == 0 {
+		return
+	}
+	var queue func(urn resource.URN)
+	queue = func(urn resource.URN) {
+		if urn == "" || sg.hasGeneratedStep(urn) || sg.pendingUntargetedSameURNs[urn] {
+			return
+		}
+		old, has := sg.deployment.olds[urn]
+		if !has || old.Delete {
+			return
+		}
+		sg.pendingUntargetedSameURNs[urn] = true
+		if old.Provider != "" {
+			if ref, err := sdkproviders.ParseReference(old.Provider); err == nil {
+				if provOld, ok := sg.deployment.olds[ref.URN()]; ok && provOld.ID == ref.ID() {
+					queue(ref.URN())
+				}
+			}
+		}
+		_, allDeps := old.GetAllDependencies()
+		for _, dep := range allDeps {
+			queue(dep.URN)
+		}
+		copied := old.Copy()
+		copied.ID = ""
+		sg.pendingUntargetedSames = append(sg.pendingUntargetedSames, NewUntargetedSameStep(sg.deployment, nil, old, copied))
+	}
+	_, allDeps := new.GetAllDependencies()
+	for _, dep := range allDeps {
+		queue(dep.URN)
+	}
+}
+
 // Returns true if this resource has been operated on by any steps generated so far.
 func (sg *stepGenerator) isOperatedOn(urn resource.URN) bool {
 	alias, aliased := sg.aliased[urn]
@@ -3008,7 +3072,23 @@ func (sg *stepGenerator) loadResourceProvider(
 	}
 	p, ok := sg.deployment.GetProvider(ref)
 	if !ok {
-		return nil, sg.bailDiag(diag.GetUnknownProviderError(urn), provider, urn)
+		// The provider may exist only in old state; load it on demand and queue a same step for
+		// it so it precedes its consumers in the snapshot.
+		old, has := sg.deployment.olds[ref.URN()]
+		if !has || old.ID != ref.ID() {
+			return nil, sg.bailDiag(diag.GetUnknownProviderError(urn), provider, urn)
+		}
+		if err := sg.deployment.EnsureProvider(provider); err != nil {
+			return nil, fmt.Errorf("load provider %v for resource %v: %w", provider, urn, err)
+		}
+		if !sg.pendingUntargetedSameURNs[old.URN] {
+			sg.pendingUntargetedSameURNs[old.URN] = true
+			new := old.Copy()
+			new.ID = ""
+			sg.pendingUntargetedSames = append(sg.pendingUntargetedSames, NewUntargetedSameStep(sg.deployment, nil, old, new))
+		}
+		p, ok = sg.deployment.GetProvider(ref)
+		contract.Assertf(ok, "EnsureProvider succeeded but provider %v is not registered", ref)
 	}
 	return p, nil
 }
@@ -3019,10 +3099,15 @@ func (sg *stepGenerator) getProviderResource(urn resource.URN, provider string) 
 	}
 
 	// All callers of this method are on paths that have previously validated that the provider
-	// reference can be parsed correctly and has a provider resource in the map.
+	// reference can be parsed correctly and has a provider resource in the map or in old state.
 	ref, err := sdkproviders.ParseReference(provider)
 	contract.AssertNoErrorf(err, "failed to parse provider reference")
 	result := sg.providers[ref.URN()]
+	if result == nil {
+		if old, has := sg.deployment.olds[ref.URN()]; has && old.ID == ref.ID() {
+			result = old
+		}
+	}
 	contract.Assertf(result != nil, "provider missing from step generator providers map")
 	return result
 }
@@ -3505,24 +3590,25 @@ func newStepGenerator(
 	deployment *Deployment, refresh bool, mode stepGeneratorMode, events chan<- SourceEvent,
 ) *stepGenerator {
 	return &stepGenerator{
-		deployment:           deployment,
-		mode:                 mode,
-		refresh:              refresh,
-		urns:                 make(map[resource.URN]bool),
-		reads:                make(map[resource.URN]bool),
-		creates:              make(map[resource.URN]bool),
-		sames:                make(map[resource.URN]bool),
-		imports:              make(map[resource.URN]bool),
-		replaces:             make(map[resource.URN]bool),
-		updates:              make(map[resource.URN]bool),
-		deletes:              make(map[resource.URN]bool),
-		refreshes:            make(map[resource.URN]bool),
-		skippedCreates:       make(map[resource.URN]bool),
-		pendingDeletes:       make(map[*pkgresource.State]bool),
-		providers:            make(map[resource.URN]*pkgresource.State),
-		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
-		aliased:              make(map[resource.URN]resource.URN),
-		aliases:              make(map[resource.URN]resource.URN),
+		deployment:                deployment,
+		mode:                      mode,
+		refresh:                   refresh,
+		urns:                      make(map[resource.URN]bool),
+		reads:                     make(map[resource.URN]bool),
+		creates:                   make(map[resource.URN]bool),
+		sames:                     make(map[resource.URN]bool),
+		imports:                   make(map[resource.URN]bool),
+		replaces:                  make(map[resource.URN]bool),
+		updates:                   make(map[resource.URN]bool),
+		deletes:                   make(map[resource.URN]bool),
+		refreshes:                 make(map[resource.URN]bool),
+		skippedCreates:            make(map[resource.URN]bool),
+		pendingDeletes:            make(map[*pkgresource.State]bool),
+		pendingUntargetedSameURNs: make(map[resource.URN]bool),
+		providers:                 make(map[resource.URN]*pkgresource.State),
+		dependentReplaceKeys:      make(map[resource.URN][]resource.PropertyKey),
+		aliased:                   make(map[resource.URN]resource.URN),
+		aliases:                   make(map[resource.URN]resource.URN),
 
 		refreshStates: make(map[*pkgresource.State]*pkgresource.State),
 
