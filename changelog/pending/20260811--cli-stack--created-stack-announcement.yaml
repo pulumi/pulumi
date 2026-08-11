@@ -1,0 +1,4 @@
+component: cli/stack
+kind: fix
+body: Announce `Created stack` when creating a stack against the Pulumi Cloud backend
+time: 2026-08-11T00:00:00+00:00
