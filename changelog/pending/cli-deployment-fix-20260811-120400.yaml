@@ -1,0 +1,4 @@
+component: cli/deployment
+kind: fix
+body: "`pulumi deployment settings edit` no longer builds patches that clear settings it was not asked to change, and `--branch` and `--commit` now replace one another"
+time: 2026-08-11T12:04:00+00:00
