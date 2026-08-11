@@ -397,6 +397,91 @@ func TestNewDiffJSON_HiddenPathsExcluded(t *testing.T) {
 	}, NewDiffJSON(&m, false, false))
 }
 
+// makeDiffPreEvent builds a pre-event carrying old/new inputs so the tap can
+// compute a property diff.
+func makeDiffPreEvent(op display.StepOp, urn resource.URN, old, new resource.PropertyMap,
+) engine.ResourcePreEventPayload {
+	meta := engine.StepEventMetadata{Op: op, URN: urn}
+	if old != nil {
+		meta.Old = &engine.StepEventStateMetadata{URN: urn, Inputs: old}
+	}
+	if new != nil {
+		meta.New = &engine.StepEventStateMetadata{URN: urn, Inputs: new}
+	}
+	return engine.ResourcePreEventPayload{Metadata: meta}
+}
+
+func TestTapSummaryJSON_IncludesDiffOnlyInDiffMode(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
+	makeEvents := func() chan engine.Event {
+		in := make(chan engine.Event, 2)
+		in <- engine.NewEvent(makeDiffPreEvent(deploy.OpUpdate, urn,
+			resource.PropertyMap{"a": resource.NewProperty("1")},
+			resource.PropertyMap{"a": resource.NewProperty("2")}))
+		in <- engine.NewEvent(engine.SummaryEventPayload{Result: apitype.OperationResultSucceeded})
+		close(in)
+		return in
+	}
+
+	// Default (progress) mode: no diff key at all.
+	var plain bytes.Buffer
+	for range tapSummaryJSON(makeEvents(), Options{Stdout: &plain}) { //nolint:revive // intentional drain
+	}
+	assert.NotContains(t, plain.String(), `"diff"`)
+
+	// Diff mode: the changed property is reported.
+	var buf bytes.Buffer
+	for range tapSummaryJSON(makeEvents(), Options{Stdout: &buf, Type: DisplayDiff}) { //nolint:revive // drain
+	}
+	var summary SummaryJSON
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &summary))
+	require.Len(t, summary.Resources, 1)
+	assert.Equal(t, map[string]PropertyDiffJSON{
+		"a": {Kind: "update", Old: "1", New: "2"},
+	}, summary.Resources[0].Diff)
+}
+
+func TestTapSummaryJSON_RefreshDiffArrivesOnOutputsEvent(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
+	inputs := resource.PropertyMap{"acl": resource.NewProperty("private")}
+
+	// The pre-event announces the refresh with identical old/new state; the
+	// outputs event carries the update discovered by the provider read.
+	in := make(chan engine.Event, 3)
+	in <- engine.NewEvent(makeDiffPreEvent(deploy.OpRefresh, urn, inputs, inputs))
+	in <- engine.NewEvent(engine.ResourceOutputsEventPayload{
+		Metadata: engine.StepEventMetadata{
+			Op:           deploy.OpUpdate,
+			URN:          urn,
+			DetailedDiff: map[string]plugin.PropertyDiff{"acl": {Kind: plugin.DiffUpdate}},
+			Old:          &engine.StepEventStateMetadata{URN: urn, Outputs: inputs},
+			New: &engine.StepEventStateMetadata{
+				URN:     urn,
+				Inputs:  inputs,
+				Outputs: resource.PropertyMap{"acl": resource.NewProperty("public-read")},
+			},
+		},
+	})
+	in <- engine.NewEvent(engine.SummaryEventPayload{Result: apitype.OperationResultSucceeded})
+	close(in)
+
+	var buf bytes.Buffer
+	for range tapSummaryJSON(in, Options{Stdout: &buf, Type: DisplayDiff}) { //nolint:revive // intentional drain
+	}
+
+	var summary SummaryJSON
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &summary))
+	require.Len(t, summary.Resources, 1)
+	assert.Equal(t, apitype.OpRefresh, summary.Resources[0].Op)
+	assert.Equal(t, map[string]PropertyDiffJSON{
+		"acl": {Kind: "update", Old: "private", New: "public-read"},
+	}, summary.Resources[0].Diff)
+}
+
 func TestTapSummaryJSON_ReturnsOnCancelEvent(t *testing.T) {
 	t.Parallel()
 

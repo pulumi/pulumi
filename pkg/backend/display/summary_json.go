@@ -305,15 +305,37 @@ func tapSummaryJSON(in <-chan engine.Event, opts Options) <-chan engine.Event {
 	if stderr == nil {
 		stderr = os.Stderr
 	}
+	// `--diff` composed with `--output json`: include each resource's property
+	// diff in the summary.
+	includeDiff := opts.Type == DisplayDiff
 	go func() {
 		defer close(out)
 		var resources []ResourceJSON
+		indexByURN := map[resource.URN]int{}
 		for e := range in {
-			switch e.Type { //nolint:exhaustive // we only care about two event types here
+			switch e.Type { //nolint:exhaustive // we only care about a few event types here
 			case engine.ResourcePreEvent:
 				if payload, ok := e.Payload().(engine.ResourcePreEventPayload); ok {
 					if r := resourceJSONFromEvent(payload, opts.ShowSameResources); r != nil {
+						if includeDiff {
+							r.Diff = NewDiffJSON(&payload.Metadata, false /* refresh */, opts.ShowSecrets)
+						}
+						indexByURN[payload.Metadata.URN] = len(resources)
 						resources = append(resources, *r)
+					}
+				}
+			case engine.ResourceOutputsEvent:
+				// Refresh steps only reveal their diff once the provider has read
+				// the resource's current state, which arrives on the outputs event
+				// as an update (with a detailed diff) or a delete.
+				if !includeDiff {
+					break
+				}
+				if payload, ok := e.Payload().(engine.ResourceOutputsEventPayload); ok {
+					m := payload.Metadata
+					if i, ok := indexByURN[m.URN]; ok && resources[i].Op == apitype.OpRefresh &&
+						((m.Op == deploy.OpUpdate && m.DetailedDiff != nil) || m.Op == deploy.OpDelete) {
+						resources[i].Diff = NewDiffJSON(&m, true /* refresh */, opts.ShowSecrets)
 					}
 				}
 			case engine.SummaryEvent:
