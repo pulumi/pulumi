@@ -328,12 +328,12 @@ func NewDoCmd(
 				}
 			}
 		}
-		// Copy the flags from the `do` command to this new subcommand
-		cmd.LocalNonPersistentFlags().VisitAll(func(f *pflag.Flag) {
-			subcmd.Flags().AddFlag(f)
-		})
+		// Copy the flags from the `do` command onto the dynamic subcommand as persistent flags
+		// so they're visible on every operation subcommand (create/patch/read/...). Skip any
+		// that the subcmd already declares — a schema input named e.g. "dry-run" registers an
+		// alias flag on the leaf that would otherwise collide.
 		cmd.LocalFlags().VisitAll(func(f *pflag.Flag) {
-			if subcmd.Flags().Lookup(f.Name) == nil {
+			if subcmd.Flags().Lookup(f.Name) == nil && subcmd.PersistentFlags().Lookup(f.Name) == nil {
 				subcmd.PersistentFlags().AddFlag(f)
 			}
 		})
@@ -419,21 +419,12 @@ Simple properties can also be set with flags: --<property> <value> takes the
 value as a literal, while --<property>+ <value> parses the value as an
 expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		DisableFlagParsing: true,
+		// Provider tokens like `aws:s3:Bucket` are not registered as cobra subcommands (the
+		// dispatch is dynamic in RunE), so accept arbitrary positional args here. Without this,
+		// cobra's default legacyArgs check rejects unknown positionals when the command has any
+		// real children (e.g. `show-resources`).
+		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// `show-resources` is a stack-scoped built-in that doesn't load a provider. The
-			// parent runs with DisableFlagParsing (provider schemas contribute unknown flags),
-			// so we intercept the token here and execute a real cobra subcommand for it — that
-			// restores standard --help and arg-validation behavior for `show-resources`.
-			showResourcesArgs, isShowResources := showResourcesArgs(args)
-			if isShowResources {
-				sub := newShowResourcesCommand(ws, lm)
-				sub.SetContext(cmd.Context())
-				sub.SetOut(cmd.OutOrStdout())
-				sub.SetErr(cmd.ErrOrStderr())
-				sub.SetIn(cmd.InOrStdin())
-				sub.SetArgs(showResourcesArgs)
-				return sub.Execute()
-			}
 			subcmd, cleanup, err := buildSubcommand(cmd, args)
 			if cleanup != nil {
 				defer cleanup()
@@ -471,49 +462,28 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		}
 	})
 
-	cmd.PersistentFlags().BoolVar(&dryrun, "dry-run", false, "Run the operation in preview mode")
-	cmd.PersistentFlags().BoolVar(&showSecrets, "show-secrets", false, "Show secret values in output")
-	cmd.PersistentFlags().StringVar(&output, "output", "",
+	// These flags apply to the dynamically-constructed resource/function subcommands and are
+	// consumed via the manual flags.Parse in buildSubcommand. They're declared as local (not
+	// persistent) so they don't leak onto real cobra children like `show-resources`, which has
+	// its own flag set. The copy loop in buildSubcommand replicates them onto each dynamic leaf.
+	cmd.Flags().BoolVar(&dryrun, "dry-run", false, "Run the operation in preview mode")
+	cmd.Flags().BoolVar(&showSecrets, "show-secrets", false, "Show secret values in output")
+	cmd.Flags().StringVar(&output, "output", "",
 		"Output format for resource operation results (supported: default, json)")
-	cmd.PersistentFlags().BoolVar(&stateless, "stateless", false,
+	cmd.Flags().BoolVar(&stateless, "stateless", false,
 		"Run create/patch/delete directly against the provider without persisting state. "+
 			"Required for now: the stateful (engine-driven) implementation is still in development, "+
 			"so patch/delete error out unless --stateless is set.")
-	cmd.PersistentFlags().StringVar(
+	cmd.Flags().StringVar(
 		&pkg, "package", "", "The package to load, in the form 'name@version' or "+
 			"a path to a plugin binary or folder. If the package supports "+
 			"parameterization, additional space-separated parameters can be "+
 			"included after the package name, e.g. --package \"name@version "+
 			"param1 \\\"multi word param\\\"\"")
 
-	return cmd
-}
+	cmd.AddCommand(newShowResourcesCommand(ws, lm))
 
-func showResourcesArgs(args []string) ([]string, bool) {
-	var passthrough []string
-	for i := 0; i < len(args); i++ {
-		switch a := args[i]; {
-		case a == "show-resources":
-			return append(passthrough, args[i+1:]...), true
-		case a == "--package" || strings.HasPrefix(a, "--package="):
-			return nil, false
-		case a == "--output":
-			if i+1 >= len(args) {
-				return nil, false
-			}
-			passthrough = append(passthrough, a, args[i+1])
-			i++
-		case strings.HasPrefix(a, "--output="):
-			passthrough = append(passthrough, a)
-		case a == "--dry-run" || a == "--show-secrets" || a == "--stateless" ||
-			strings.HasPrefix(a, "--dry-run=") ||
-			strings.HasPrefix(a, "--show-secrets=") ||
-			strings.HasPrefix(a, "--stateless="):
-		default:
-			return nil, false
-		}
-	}
-	return nil, false
+	return cmd
 }
 
 // currentStackIdentity reads the workspace's currently selected stack and splits it into an organization

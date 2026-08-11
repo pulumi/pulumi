@@ -240,6 +240,10 @@ func newShowResourcesCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager
 
 	cmd.Flags().StringVarP(&output, "output", "o", "text", "Output format (supported: text, json)")
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+	// The parent `do` command overrides HelpFunc to run the dynamic-dispatch logic; cobra
+	// inherits HelpFunc from the parent when the child doesn't set one, which would drag
+	// show-resources' --help through provider loading. Pin it to the default here.
+	cmd.SetHelpFunc(cmd.HelpFunc())
 	return cmd
 }
 

@@ -3794,7 +3794,7 @@ func TestRequiredObjectCycles(t *testing.T) {
 func TestBindSpecReservedPackageNames(t *testing.T) {
 	t.Parallel()
 
-	for _, name := range []string{"pulumi", "input", "show-resources"} {
+	for _, name := range []string{"pulumi", "input"} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			_, diags, err := BindSpec(PackageSpec{Name: name}, NewNullLoader(), ValidationOptions{})
@@ -3817,7 +3817,7 @@ func TestBindSpecReservedPackageNames(t *testing.T) {
 		t.Parallel()
 		_, diags, _ := BindSpec(PackageSpec{Name: "aws"}, NewNullLoader(), ValidationOptions{})
 		for _, d := range diags {
-			assert.NotContains(t, d.Summary, "package names 'pulumi', 'input', and 'show-resources' are reserved")
+			assert.NotContains(t, d.Summary, "package names 'pulumi' and 'input' are reserved")
 		}
 	})
 }
