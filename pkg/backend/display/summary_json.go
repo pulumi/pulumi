@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"time"
+	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -49,8 +51,8 @@ type SummaryJSON struct {
 }
 
 // ResourceJSON is the per-resource entry that appears in SummaryJSON.Resources.
-// It is intentionally compact: callers that need full diffs / property values
-// should use `--json` (the streaming event format) instead.
+// It is intentionally compact: callers that need full property values should
+// use `--json` (the streaming event format) instead.
 type ResourceJSON struct {
 	// URN is the canonical, globally-unique identifier of the resource.
 	URN string `json:"urn"`
@@ -62,6 +64,20 @@ type ResourceJSON struct {
 	Op apitype.OpType `json:"op"`
 	// Parent is the URN of this resource's parent, if any.
 	Parent string `json:"parent,omitempty"`
+	// Diff maps changed property paths to their old/new values. It is only
+	// populated when the caller asked for a diff (`--diff`).
+	Diff map[string]PropertyDiffJSON `json:"diff,omitempty"`
+}
+
+// PropertyDiffJSON describes the change to a single property path within a
+// resource's diff.
+type PropertyDiffJSON struct {
+	// Kind is one of "add", "delete", or "update".
+	Kind string `json:"kind"`
+	// Old is the value before the operation; unset for adds.
+	Old any `json:"old,omitempty"`
+	// New is the value after the operation; unset for deletes.
+	New any `json:"new,omitempty"`
 }
 
 // summaryJSONFromEvent extracts the summary JSON shape from a SummaryEventPayload.
@@ -110,6 +126,152 @@ func NewResourceJSON(urn resource.URN, op apitype.OpType, parent string) Resourc
 		Name:   urn.Name(),
 		Op:     op,
 		Parent: parent,
+	}
+}
+
+// NewDiffJSON flattens a step's property diff into path → change entries,
+// drawing on the same sources as the human diff view: the provider's detailed
+// diff when present, otherwise a diff computed from the step's old and new
+// inputs.
+func NewDiffJSON(m *engine.StepEventMetadata, refresh, showSecrets bool) map[string]PropertyDiffJSON {
+	// An OpSame might have a diff due to metadata changes (e.g. protect) but we
+	// should never report a property diff. See
+	// https://github.com/pulumi/pulumi/issues/15944 for context.
+	if m.Op == deploy.OpSame {
+		return nil
+	}
+
+	var diff *resource.ObjectDiff
+	var hidden []resource.PropertyPath
+	switch {
+	case m.DetailedDiff != nil:
+		// TranslateDetailedDiff already excludes hidden (HideDiffs) paths.
+		diff, _ = engine.TranslateDetailedDiff(m, refresh)
+	case m.Old == nil && m.New != nil:
+		diff = resource.PropertyMap{}.Diff(m.New.Inputs, resource.IsInternalPropertyKey)
+		hidden = m.New.HideDiffs
+	case m.Old != nil && m.New == nil:
+		diff = m.Old.Inputs.Diff(resource.PropertyMap{}, resource.IsInternalPropertyKey)
+		hidden = m.Old.HideDiffs
+	case m.Old != nil && m.New != nil:
+		diff = m.Old.Inputs.Diff(m.New.Inputs, resource.IsInternalPropertyKey)
+		hidden = m.New.HideDiffs
+	}
+	if diff == nil {
+		return nil
+	}
+
+	out := map[string]PropertyDiffJSON{}
+	flattenObjectDiff(out, nil, diff, hidden, showSecrets)
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// NewDiffJSONFromAPI is NewDiffJSON for step metadata that has already been
+// serialized to its API shape, as returned by the Pulumi Cloud events
+// endpoint. Secret values in such metadata are already blinded, so there is
+// no showSecrets option to offer.
+func NewDiffJSONFromAPI(md apitype.StepEventMetadata, refresh bool) map[string]PropertyDiffJSON {
+	em := convertJSONStepEventMetadata(md)
+	return NewDiffJSON(&em, refresh, false /* showSecrets */)
+}
+
+func flattenObjectDiff(out map[string]PropertyDiffJSON, path resource.PropertyPath, diff *resource.ObjectDiff,
+	hidden []resource.PropertyPath, showSecrets bool,
+) {
+	at := func(k resource.PropertyKey) resource.PropertyPath {
+		return append(slices.Clone(path), string(k))
+	}
+	for k, v := range diff.Adds {
+		emitDiffEntry(out, at(k), PropertyDiffJSON{Kind: "add", New: jsonPropertyValue(v, showSecrets)}, hidden)
+	}
+	for k, v := range diff.Deletes {
+		emitDiffEntry(out, at(k), PropertyDiffJSON{Kind: "delete", Old: jsonPropertyValue(v, showSecrets)}, hidden)
+	}
+	for k, v := range diff.Updates {
+		flattenValueDiff(out, at(k), v, hidden, showSecrets)
+	}
+}
+
+func flattenValueDiff(out map[string]PropertyDiffJSON, path resource.PropertyPath, diff resource.ValueDiff,
+	hidden []resource.PropertyPath, showSecrets bool,
+) {
+	at := func(i int) resource.PropertyPath {
+		return append(slices.Clone(path), i)
+	}
+	switch {
+	case diff.Object != nil:
+		flattenObjectDiff(out, path, diff.Object, hidden, showSecrets)
+	case diff.Array != nil:
+		for i, v := range diff.Array.Adds {
+			emitDiffEntry(out, at(i), PropertyDiffJSON{Kind: "add", New: jsonPropertyValue(v, showSecrets)}, hidden)
+		}
+		for i, v := range diff.Array.Deletes {
+			emitDiffEntry(out, at(i), PropertyDiffJSON{Kind: "delete", Old: jsonPropertyValue(v, showSecrets)}, hidden)
+		}
+		for i, v := range diff.Array.Updates {
+			flattenValueDiff(out, at(i), v, hidden, showSecrets)
+		}
+	default:
+		emitDiffEntry(out, path, PropertyDiffJSON{
+			Kind: "update",
+			Old:  jsonPropertyValue(diff.Old, showSecrets),
+			New:  jsonPropertyValue(diff.New, showSecrets),
+		}, hidden)
+	}
+}
+
+func emitDiffEntry(out map[string]PropertyDiffJSON, path resource.PropertyPath, d PropertyDiffJSON,
+	hidden []resource.PropertyPath,
+) {
+	for _, h := range hidden {
+		if h.Contains(path) {
+			return
+		}
+	}
+	out[path.String()] = d
+}
+
+// jsonPropertyValue renders a property value as a plain JSON-marshalable
+// value, masking secrets and unknowns the same way the human diff display
+// does.
+func jsonPropertyValue(v resource.PropertyValue, showSecrets bool) any {
+	switch {
+	case v.IsSecret():
+		if !showSecrets {
+			return "[secret]"
+		}
+		return jsonPropertyValue(v.SecretValue().Element, showSecrets)
+	case v.IsComputed():
+		return "[unknown]"
+	case v.IsOutput():
+		o := v.OutputValue()
+		switch {
+		case !o.Known:
+			return "[unknown]"
+		case o.Secret && !showSecrets:
+			return "[secret]"
+		default:
+			return jsonPropertyValue(o.Element, showSecrets)
+		}
+	case v.IsString() && !utf8.ValidString(v.StringValue()):
+		return byteStringDisplay(v.StringValue())
+	case v.IsArray():
+		arr := make([]any, len(v.ArrayValue()))
+		for i, e := range v.ArrayValue() {
+			arr[i] = jsonPropertyValue(e, showSecrets)
+		}
+		return arr
+	case v.IsObject():
+		obj := make(map[string]any, len(v.ObjectValue()))
+		for k, e := range v.ObjectValue() {
+			obj[string(k)] = jsonPropertyValue(e, showSecrets)
+		}
+		return obj
+	default:
+		return v.Mappable()
 	}
 }
 

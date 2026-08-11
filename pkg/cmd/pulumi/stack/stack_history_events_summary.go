@@ -72,8 +72,11 @@ func summaryResourceFor(m apitype.StepEventMetadata) summaryResource {
 
 // buildUpdateSummary reduces an engine event stream to an updateSummary,
 // mirroring the live summary tap (display.tapSummaryJSON): one resource entry
-// per attempted operation, unchanged (`same`) resources omitted.
-func buildUpdateSummary(events iter.Seq2[apitype.EngineEvent, error]) (*updateSummary, error) {
+// per attempted operation, unchanged (`same`) resources omitted. When
+// includeDiff is set, each entry carries its property diff too.
+func buildUpdateSummary(
+	events iter.Seq2[apitype.EngineEvent, error], includeDiff bool,
+) (*updateSummary, error) {
 	s := &updateSummary{}
 
 	var startTs, endTs int
@@ -110,7 +113,27 @@ func buildUpdateSummary(events iter.Seq2[apitype.EngineEvent, error]) (*updateSu
 			summaryEvent = ev.SummaryEvent
 		case ev.ResourcePreEvent != nil:
 			if m := ev.ResourcePreEvent.Metadata; m.Op != apitype.OpSame {
-				s.Resources = append(s.Resources, summaryResourceFor(m))
+				r := summaryResourceFor(m)
+				if includeDiff {
+					r.Diff = display.NewDiffJSONFromAPI(m, false /* refresh */)
+				}
+				s.Resources = append(s.Resources, r)
+			}
+		case ev.ResOutputsEvent != nil:
+			// Refresh steps only reveal their diff once the provider has read the
+			// resource's current state, which arrives on the outputs event as an
+			// update (with a detailed diff) or a delete.
+			if !includeDiff {
+				continue
+			}
+			m := ev.ResOutputsEvent.Metadata
+			if (m.Op == apitype.OpUpdate && m.DetailedDiff != nil) || m.Op == apitype.OpDelete {
+				for i := len(s.Resources) - 1; i >= 0; i-- {
+					if s.Resources[i].URN == m.URN && s.Resources[i].Op == apitype.OpRefresh {
+						s.Resources[i].Diff = display.NewDiffJSONFromAPI(m, true /* refresh */)
+						break
+					}
+				}
 			}
 		case ev.ResOpFailedEvent != nil:
 			anyFailed = true
@@ -202,6 +225,29 @@ func renderUpdateSummaryText(w io.Writer, s *updateSummary) error {
 		t.Render()
 	}
 
+	diffed := false
+	for _, r := range s.Resources {
+		if len(r.Diff) == 0 {
+			continue
+		}
+		if !diffed {
+			fmt.Fprintln(w, "\nDiffs:")
+			diffed = true
+		}
+		fmt.Fprintf(w, "  %s (%s)\n", r.Name, r.Type)
+		for _, path := range slices.Sorted(maps.Keys(r.Diff)) {
+			d := r.Diff[path]
+			switch d.Kind {
+			case "add":
+				fmt.Fprintf(w, "    + %s: %s\n", path, compactJSON(d.New))
+			case "delete":
+				fmt.Fprintf(w, "    - %s: %s\n", path, compactJSON(d.Old))
+			default:
+				fmt.Fprintf(w, "    ~ %s: %s => %s\n", path, compactJSON(d.Old), compactJSON(d.New))
+			}
+		}
+	}
+
 	if len(s.Diagnostics) > 0 {
 		fmt.Fprintln(w, "\nDiagnostics:")
 		for _, d := range s.Diagnostics {
@@ -214,4 +260,13 @@ func renderUpdateSummaryText(w io.Writer, s *updateSummary) error {
 	}
 
 	return nil
+}
+
+// compactJSON renders a diff value on one line for the text view.
+func compactJSON(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Sprintf("%v", v)
+	}
+	return string(b)
 }

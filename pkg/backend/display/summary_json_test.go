@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
@@ -246,6 +247,154 @@ func TestTapSummaryJSON_OmitsResourcesFieldWhenEmpty(t *testing.T) {
 	}
 
 	assert.NotContains(t, buf.String(), `"resources"`)
+}
+
+func TestNewDiffJSON_ComputedInputsDiff(t *testing.T) {
+	t.Parallel()
+
+	m := engine.StepEventMetadata{
+		Op: deploy.OpUpdate,
+		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
+			"region": resource.NewProperty("us-west-2"),
+			"tags": resource.NewProperty(resource.PropertyMap{
+				"env":  resource.NewProperty("dev"),
+				"gone": resource.NewProperty("bye"),
+			}),
+			"password": resource.MakeSecret(resource.NewProperty("hunter2")),
+		}},
+		New: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
+			"region": resource.NewProperty("us-east-1"),
+			"tags": resource.NewProperty(resource.PropertyMap{
+				"env":  resource.NewProperty("prod"),
+				"team": resource.NewProperty("infra"),
+			}),
+			"password": resource.MakeSecret(resource.NewProperty("hunter3")),
+			"arn":      resource.MakeComputed(resource.NewProperty("")),
+		}},
+	}
+
+	got := NewDiffJSON(&m, false, false)
+	assert.Equal(t, map[string]PropertyDiffJSON{
+		"region":    {Kind: "update", Old: "us-west-2", New: "us-east-1"},
+		"tags.env":  {Kind: "update", Old: "dev", New: "prod"},
+		"tags.gone": {Kind: "delete", Old: "bye"},
+		"tags.team": {Kind: "add", New: "infra"},
+		"password":  {Kind: "update", Old: "[secret]", New: "[secret]"},
+		"arn":       {Kind: "add", New: "[unknown]"},
+	}, got)
+
+	// With showSecrets, secret values are revealed.
+	withSecrets := NewDiffJSON(&m, false, true)
+	assert.Equal(t, PropertyDiffJSON{Kind: "update", Old: "hunter2", New: "hunter3"}, withSecrets["password"])
+}
+
+func TestNewDiffJSON_CreateAndDelete(t *testing.T) {
+	t.Parallel()
+
+	inputs := resource.PropertyMap{
+		"bucket": resource.NewProperty("my-bucket"),
+		"tags":   resource.NewProperty(resource.PropertyMap{"env": resource.NewProperty("dev")}),
+	}
+
+	create := engine.StepEventMetadata{
+		Op:  deploy.OpCreate,
+		New: &engine.StepEventStateMetadata{Inputs: inputs},
+	}
+	assert.Equal(t, map[string]PropertyDiffJSON{
+		"bucket": {Kind: "add", New: "my-bucket"},
+		"tags":   {Kind: "add", New: map[string]any{"env": "dev"}},
+	}, NewDiffJSON(&create, false, false))
+
+	del := engine.StepEventMetadata{
+		Op:  deploy.OpDelete,
+		Old: &engine.StepEventStateMetadata{Inputs: inputs},
+	}
+	assert.Equal(t, map[string]PropertyDiffJSON{
+		"bucket": {Kind: "delete", Old: "my-bucket"},
+		"tags":   {Kind: "delete", Old: map[string]any{"env": "dev"}},
+	}, NewDiffJSON(&del, false, false))
+}
+
+func TestNewDiffJSON_ArrayAndSameSkipped(t *testing.T) {
+	t.Parallel()
+
+	// OpSame never reports a property diff, even if the inputs differ.
+	same := engine.StepEventMetadata{
+		Op:  deploy.OpSame,
+		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{"a": resource.NewProperty("1")}},
+		New: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{"a": resource.NewProperty("2")}},
+	}
+	assert.Nil(t, NewDiffJSON(&same, false, false))
+
+	m := engine.StepEventMetadata{
+		Op: deploy.OpUpdate,
+		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
+			"subnets": resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty("a"),
+				resource.NewProperty("b"),
+			}),
+		}},
+		New: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
+			"subnets": resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty("a"),
+				resource.NewProperty("c"),
+				resource.NewProperty("d"),
+			}),
+		}},
+	}
+	assert.Equal(t, map[string]PropertyDiffJSON{
+		"subnets[1]": {Kind: "update", Old: "b", New: "c"},
+		"subnets[2]": {Kind: "add", New: "d"},
+	}, NewDiffJSON(&m, false, false))
+}
+
+func TestNewDiffJSON_DetailedDiff(t *testing.T) {
+	t.Parallel()
+
+	m := engine.StepEventMetadata{
+		Op: deploy.OpUpdate,
+		DetailedDiff: map[string]plugin.PropertyDiff{
+			"tags.env":  {Kind: plugin.DiffUpdate},
+			"tags.team": {Kind: plugin.DiffAdd},
+		},
+		Old: &engine.StepEventStateMetadata{Outputs: resource.PropertyMap{
+			"tags": resource.NewProperty(resource.PropertyMap{"env": resource.NewProperty("dev")}),
+		}},
+		New: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
+			"tags": resource.NewProperty(resource.PropertyMap{
+				"env":  resource.NewProperty("prod"),
+				"team": resource.NewProperty("infra"),
+			}),
+		}},
+	}
+
+	assert.Equal(t, map[string]PropertyDiffJSON{
+		"tags.env":  {Kind: "update", Old: "dev", New: "prod"},
+		"tags.team": {Kind: "add", New: "infra"},
+	}, NewDiffJSON(&m, false, false))
+}
+
+func TestNewDiffJSON_HiddenPathsExcluded(t *testing.T) {
+	t.Parallel()
+
+	m := engine.StepEventMetadata{
+		Op: deploy.OpUpdate,
+		Old: &engine.StepEventStateMetadata{Inputs: resource.PropertyMap{
+			"visible": resource.NewProperty("1"),
+			"hidden":  resource.NewProperty("1"),
+		}},
+		New: &engine.StepEventStateMetadata{
+			Inputs: resource.PropertyMap{
+				"visible": resource.NewProperty("2"),
+				"hidden":  resource.NewProperty("2"),
+			},
+			HideDiffs: []resource.PropertyPath{{"hidden"}},
+		},
+	}
+
+	assert.Equal(t, map[string]PropertyDiffJSON{
+		"visible": {Kind: "update", Old: "1", New: "2"},
+	}, NewDiffJSON(&m, false, false))
 }
 
 func TestTapSummaryJSON_ReturnsOnCancelEvent(t *testing.T) {
