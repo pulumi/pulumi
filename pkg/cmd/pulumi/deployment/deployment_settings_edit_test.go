@@ -752,6 +752,33 @@ func TestDeploymentSettingsEdit_GuardRejectsProviderChange(t *testing.T) {
 	}
 }
 
+func TestDeploymentSettingsEdit_ReviewStackLabelsAreGitHubOnly(t *testing.T) {
+	t.Parallel()
+
+	args := deploymentSettingsEditArgs{
+		reviewStackLabels: []string{"deploy"},
+		flagsChanged:      flagsSet(flagReviewStackLabel),
+	}
+
+	got := captureEditPatch(t, args, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+			Provider:   apitype.VCSProviderGitHub,
+			Repository: "acme/infra",
+		}),
+	})
+	assert.JSONEq(t, `{"vcs":{
+		"provider": "github",
+		"repository": "acme/infra",
+		"reviewStackLabels": ["deploy"]
+	}}`, string(got))
+
+	err := runEditArgs(t, args, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab}),
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagReviewStackLabel)
+}
+
 func TestDeploymentSettingsEdit_VCSFlagNeedsAProvider(t *testing.T) {
 	t.Parallel()
 	err := runEditArgs(t, deploymentSettingsEditArgs{
@@ -770,6 +797,122 @@ func TestDeploymentSettingsEdit_UnknownVCSProvider(t *testing.T) {
 	}, &mockDeploymentSettingsEditClient{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "svn")
+}
+
+// The conflict is with the merged object, so when only one of the two triggers was passed the
+// message has to point at the stored setting instead of at a flag the user never typed.
+func TestDeploymentSettingsEdit_DeployCommitsAndDeployTagsConflict(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name   string
+		args   deploymentSettingsEditArgs
+		stored apitype.DeploymentSettingsVCS
+		want   string
+	}{
+		{
+			"stored deploy commits",
+			deploymentSettingsEditArgs{deployTags: true, flagsChanged: flagsSet(flagDeployTags)},
+			apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab, DeployCommits: true},
+			"this stack deploys on commits; pass --push-to-deploy=false to deploy on tags instead",
+		},
+		{
+			"stored deploy tags",
+			deploymentSettingsEditArgs{pushToDeploy: true, flagsChanged: flagsSet(flagPushToDeploy)},
+			apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab, DeployTags: true},
+			"this stack deploys on tags; pass --deploy-tags=false to deploy on commits instead",
+		},
+		{
+			"both passed together",
+			deploymentSettingsEditArgs{
+				deployTags:   true,
+				pushToDeploy: true,
+				flagsChanged: flagsSet(flagDeployTags, flagPushToDeploy),
+			},
+			apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab},
+			"--push-to-deploy and --deploy-tags are mutually exclusive",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			err := runEditArgs(t, tc.args, &mockDeploymentSettingsEditClient{
+				getResp: storedVCSSettings(tc.stored),
+			})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.want)
+		})
+	}
+}
+
+// The service silently drops deployPullRequest when any standard trigger is on, so the merged object
+// has to be refused rather than reported back as stored.
+func TestDeploymentSettingsEdit_DeployPullRequestConflictsWithTriggers(t *testing.T) {
+	t.Parallel()
+	for _, stored := range []apitype.DeploymentSettingsVCS{
+		{Provider: apitype.VCSProviderGitHub, DeployCommits: true},
+		{Provider: apitype.VCSProviderGitHub, PreviewPullRequests: true},
+		{Provider: apitype.VCSProviderGitHub, PullRequestTemplate: true},
+	} {
+		t.Run(string(stored.Provider), func(t *testing.T) {
+			t.Parallel()
+			err := runEditArgs(t, deploymentSettingsEditArgs{
+				deployPullRequest: 42,
+				flagsChanged:      flagsSet(flagDeployPullRequest),
+			}, &mockDeploymentSettingsEditClient{getResp: storedVCSSettings(stored)})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), flagDeployPullRequest)
+		})
+	}
+
+	// Turning the trigger off in the same command is accepted: the check runs on the merged object.
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		deployPullRequest: 42,
+		flagsChanged:      flagsSet(flagDeployPullRequest, flagPreviewPRs),
+	}, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+			Provider:            apitype.VCSProviderGitHub,
+			PreviewPullRequests: true,
+		}),
+	})
+	assert.JSONEq(t, `{"vcs":{"provider":"github","deployPullRequest":42}}`, string(got))
+}
+
+// Turning a standard trigger on must not be blocked by a pull request number the user never
+// mentioned; the service would discard it, so the patch drops it too.
+func TestDeploymentSettingsEdit_EnablingATriggerDropsAStoredDeployPullRequest(t *testing.T) {
+	t.Parallel()
+	pr := int64(42)
+	for _, tc := range []struct {
+		flag string
+		args deploymentSettingsEditArgs
+		want string
+	}{
+		{
+			flagPreviewPRs,
+			deploymentSettingsEditArgs{previewPRs: true, flagsChanged: flagsSet(flagPreviewPRs)},
+			`{"vcs":{"provider":"github","previewPullRequests":true}}`,
+		},
+		{
+			flagPushToDeploy,
+			deploymentSettingsEditArgs{pushToDeploy: true, flagsChanged: flagsSet(flagPushToDeploy)},
+			`{"vcs":{"provider":"github","deployCommits":true}}`,
+		},
+		{
+			flagPRTemplate,
+			deploymentSettingsEditArgs{prTemplate: true, flagsChanged: flagsSet(flagPRTemplate)},
+			`{"vcs":{"provider":"github","pullRequestTemplate":true}}`,
+		},
+	} {
+		t.Run(tc.flag, func(t *testing.T) {
+			t.Parallel()
+			got := captureEditPatch(t, tc.args, &mockDeploymentSettingsEditClient{
+				getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+					Provider:          apitype.VCSProviderGitHub,
+					DeployPullRequest: &pr,
+				}),
+			})
+			assert.JSONEq(t, tc.want, string(got))
+		})
+	}
 }
 
 // PATCH is what creates the settings row, so a stack that has none must still be configurable.
@@ -833,6 +976,27 @@ func TestDeploymentSettingsEdit_GitFlagsDoNotReadSettingsFirst(t *testing.T) {
 	assert.Equal(t, 2, withVCS.getCalls)
 }
 
+func TestDeploymentSettingsEdit_VCSCoverageFlags(t *testing.T) {
+	t.Parallel()
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		deployTags:        true,
+		tagFilters:        []string{"v*", "release-*"},
+		installationID:    "install-1",
+		deployPullRequest: 42,
+		flagsChanged: flagsSet(flagDeployTags, flagTagFilter, flagInstallationID,
+			flagDeployPullRequest),
+	}, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderBitbucket}),
+	})
+	assert.JSONEq(t, `{"vcs":{
+		"provider": "bitbucket",
+		"deployTags": true,
+		"tagFilters": ["v*", "release-*"],
+		"installationId": "install-1",
+		"deployPullRequest": 42
+	}}`, string(got))
+}
+
 func TestDeploymentSettingsEdit_ClearPathFilters(t *testing.T) {
 	t.Parallel()
 	got := captureEditPatch(t, deploymentSettingsEditArgs{
@@ -846,6 +1010,54 @@ func TestDeploymentSettingsEdit_ClearPathFilters(t *testing.T) {
 		}),
 	})
 	assert.JSONEq(t, `{"vcs":{"provider":"gitlab","repository":"acme/infra"}}`, string(got))
+}
+
+func TestDeploymentSettingsEdit_ClearVCSListFlags(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		args deploymentSettingsEditArgs
+		want string
+	}{
+		{
+			"tag filters",
+			deploymentSettingsEditArgs{clearTagFilters: true, flagsChanged: flagsSet(flagClearTagFilters)},
+			`{"vcs":{"provider":"github","repository":"acme/infra","reviewStackLabels":["deploy"]}}`,
+		},
+		{
+			"review stack labels",
+			deploymentSettingsEditArgs{
+				clearReviewStackLabels: true,
+				flagsChanged:           flagsSet(flagClearReviewStackLabel),
+			},
+			`{"vcs":{"provider":"github","repository":"acme/infra","tagFilters":["v*"]}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := captureEditPatch(t, tc.args, &mockDeploymentSettingsEditClient{
+				getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{
+					Provider:          apitype.VCSProviderGitHub,
+					Repository:        "acme/infra",
+					TagFilters:        []string{"v*"},
+					ReviewStackLabels: []string{"deploy"},
+				}),
+			})
+			assert.JSONEq(t, tc.want, string(got))
+		})
+	}
+}
+
+func TestDeploymentSettingsEdit_ClearReviewStackLabelsIsGitHubOnly(t *testing.T) {
+	t.Parallel()
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		clearReviewStackLabels: true,
+		flagsChanged:           flagsSet(flagClearReviewStackLabel),
+	}, &mockDeploymentSettingsEditClient{
+		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab}),
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagClearReviewStackLabel)
 }
 
 // Both list and map clears send null: an empty map is a no-op, because the server copies through
@@ -916,6 +1128,16 @@ func TestDeploymentSettingsEdit_DurationFlagsClearWithNull(t *testing.T) {
 			assert.JSONEq(t, tc.want, string(got))
 		})
 	}
+}
+
+func TestDeploymentSettingsEdit_DeployPullRequestRejectsNegative(t *testing.T) {
+	t.Parallel()
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		deployPullRequest: -1,
+		flagsChanged:      flagsSet(flagDeployPullRequest),
+	}, &mockDeploymentSettingsEditClient{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagDeployPullRequest)
 }
 
 // A brace glob is one filter, not two: --path-filter is a repeatable string array rather than a
