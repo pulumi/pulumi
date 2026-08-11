@@ -1,0 +1,4 @@
+component: cli/deployment
+kind: feat
+body: "`pulumi deployment settings get` renders every source kind and shows environment variable values, changing the `--json` shape of `environmentVariables` from a list of names to a list of objects"
+time: 2026-08-11T12:02:00+00:00

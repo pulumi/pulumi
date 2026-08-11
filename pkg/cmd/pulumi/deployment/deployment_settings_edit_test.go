@@ -125,25 +125,25 @@ func TestDeploymentSettingsEdit_DefaultOutput(t *testing.T) {
 	assert.JSONEq(t, `{"sourceContext":{"git":{"branch":"feature"}}}`, string(captured.patch))
 
 	assert.Equal(t, `Source: GitHub
-  Repository:               acme/infra
-  Branch:                   main
-  Commit:                   abc123
-  Pulumi.yaml folder:       stacks/prod
-  Run previews for PRs:     yes
-  Run updates on push:      yes
-  PR stack template:        no
-  Path filters:             stacks/prod/**
+  Repository:                    acme/infra
+  Branch:                        main
+  Commit:                        abc123
+  Pulumi.yaml folder:            stacks/prod
+  Run previews for PRs:          yes
+  Run updates on push:           yes
+  PR stack template:             no
+  Path filters:                  stacks/prod/**
 
 Deployment runner
-  Runner pool:              pool-1
-  Executor image:           pulumi/pulumi:latest
+  Runner pool:                   pool-1
+  Executor image:                pulumi/pulumi:latest
 
 Pre-run commands
   echo hi
 
 Environment variables
-  BAZ
-  FOO
+  BAZ:                           qux
+  FOO:                           bar
 `, buf.String())
 }
 
@@ -176,7 +176,10 @@ func TestDeploymentSettingsEdit_JSONOutput(t *testing.T) {
 			"executorImage": "pulumi/pulumi:latest"
 		},
 		"preRunCommands": ["echo hi"],
-		"environmentVariables": ["BAZ", "FOO"]
+		"environmentVariables": [
+			{"name": "BAZ", "value": "qux"},
+			{"name": "FOO", "value": "bar"}
+		]
 	}`, buf.String())
 }
 
