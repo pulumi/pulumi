@@ -73,10 +73,12 @@ type deploymentSettingsEditArgs struct {
 	executorRootPath string
 
 	// Operation
-	preRunCommands []string
-	envVars        []string // each "KEY=VALUE"; plaintext.
-	secretEnvVars  []string // each "KEY=VALUE"; encrypted before send.
-	removeEnv      []string // each "KEY"; sent as null to delete.
+	preRunCommands      []string
+	clearPreRunCommands bool
+	envVars             []string // each "KEY=VALUE"; plaintext.
+	secretEnvVars       []string // each "KEY=VALUE"; encrypted before send.
+	removeEnv           []string // each "KEY"; sent as null to delete.
+	clearEnv            bool
 
 	skipInstallDeps    bool
 	skipIntermediate   bool
@@ -109,26 +111,28 @@ type deploymentSettingsEditArgs struct {
 }
 
 const (
-	flagGitHubRepo         = "github-repo"
-	flagGitURL             = "git-url"
-	flagBranch             = "branch"
-	flagCommit             = "commit"
-	flagFolder             = "folder"
-	flagPreviewPRs         = "preview-prs"
-	flagPushToDeploy       = "push-to-deploy"
-	flagPRTemplate         = "pr-template"
-	flagPathFilter         = "path-filter"
-	flagRunnerPool         = "runner-pool"
-	flagExecutorImage      = "executor-image"
-	flagExecutorRootPath   = "executor-root-path"
-	flagPreRunCommand      = "pre-run-command"
-	flagEnv                = "env"
-	flagSecretEnv          = "secret-env"
-	flagRemoveEnv          = "remove-env"
-	flagSkipInstallDeps    = "skip-install-deps"
-	flagSkipIntermediate   = "skip-intermediate-deployments"
-	flagShell              = "shell"
-	flagDeleteAfterDestroy = "delete-after-destroy"
+	flagGitHubRepo          = "github-repo"
+	flagGitURL              = "git-url"
+	flagBranch              = "branch"
+	flagCommit              = "commit"
+	flagFolder              = "folder"
+	flagPreviewPRs          = "preview-prs"
+	flagPushToDeploy        = "push-to-deploy"
+	flagPRTemplate          = "pr-template"
+	flagPathFilter          = "path-filter"
+	flagRunnerPool          = "runner-pool"
+	flagExecutorImage       = "executor-image"
+	flagExecutorRootPath    = "executor-root-path"
+	flagPreRunCommand       = "pre-run-command"
+	flagClearPreRunCommands = "clear-pre-run-commands"
+	flagEnv                 = "env"
+	flagSecretEnv           = "secret-env"
+	flagRemoveEnv           = "remove-env"
+	flagClearEnv            = "clear-env"
+	flagSkipInstallDeps     = "skip-install-deps"
+	flagSkipIntermediate    = "skip-intermediate-deployments"
+	flagShell               = "shell"
+	flagDeleteAfterDestroy  = "delete-after-destroy"
 
 	flagOIDCAWSRoleARN     = "oidc-aws-role-arn"
 	flagOIDCAWSSessionName = "oidc-aws-session-name"
@@ -219,13 +223,15 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 
 	// Operation
 	f.StringArrayVar(&args.preRunCommands, flagPreRunCommand, nil,
-		"Replace the pre-run command list (repeatable; pass once per command")
+		"Replace the pre-run command list (repeatable; pass once per command)")
+	f.BoolVar(&args.clearPreRunCommands, flagClearPreRunCommands, false, "Remove every pre-run command")
 	f.StringArrayVar(&args.envVars, flagEnv, nil,
 		"Set a plaintext environment variable (repeatable, KEY=VALUE)")
 	f.StringArrayVar(&args.secretEnvVars, flagSecretEnv, nil,
 		"Set an encrypted environment variable (repeatable, KEY=VALUE)")
 	f.StringSliceVar(&args.removeEnv, flagRemoveEnv, nil,
-		"Delete an environment variable by key (repeatable, comma-separated)")
+		"Delete an environment variable by key (repeatable or comma-separated)")
+	f.BoolVar(&args.clearEnv, flagClearEnv, false, "Remove every environment variable")
 
 	f.BoolVar(&args.skipInstallDeps, flagSkipInstallDeps, false,
 		"Skip automatic dependency installation")
@@ -243,7 +249,7 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	f.StringVar(&args.oidcAWSDuration, flagOIDCAWSDuration, "",
 		"AWS OIDC: assume-role session duration (e.g. 30m, 1h)")
 	f.StringSliceVar(&args.oidcAWSPolicyARNs, flagOIDCAWSPolicyARN, nil,
-		"AWS OIDC: replace the session policy ARN list (repeatable, comma-separated)")
+		"AWS OIDC: replace the session policy ARN list (repeatable or comma-separated)")
 	f.BoolVar(&args.oidcAWSClear, flagOIDCAWSClear, false,
 		"Remove the entire AWS OIDC configuration")
 
@@ -274,6 +280,11 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 		"Remove the entire GCP OIDC configuration")
 
 	cmd.MarkFlagsMutuallyExclusive(flagGitHubRepo, flagGitURL)
+	cmd.MarkFlagsMutuallyExclusive(flagBranch, flagCommit)
+	cmd.MarkFlagsMutuallyExclusive(flagPreRunCommand, flagClearPreRunCommands)
+	cmd.MarkFlagsMutuallyExclusive(flagEnv, flagClearEnv)
+	cmd.MarkFlagsMutuallyExclusive(flagSecretEnv, flagClearEnv)
+	cmd.MarkFlagsMutuallyExclusive(flagRemoveEnv, flagClearEnv)
 
 	return cmd
 }
