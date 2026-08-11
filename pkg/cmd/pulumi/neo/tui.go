@@ -763,7 +763,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// users who reach for Ctrl+C don't need to learn ESC to abort.
 			// Same guards as the ESC handler below.
 			if m.busy && !m.pendingApproval && !m.cancelling {
-				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
+				if !m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}}) {
+					// Outbound channel full: nothing was enqueued, so don't
+					// claim to be cancelling — the next press retries.
+					warnCmd := m.appendWarningBlock("Cancel not sent — press Esc to try again.")
+					return m, tea.Batch(warnCmd, disarmCmd)
+				}
 				m.cancelling = true
 				cancelCmd := m.showBusy("Cancelling...", shimmerVerb)
 				return m, tea.Batch(cancelCmd, disarmCmd)
@@ -852,15 +857,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// ESC clears a non-empty textarea; with an empty box it asks the
 		// agent to abort. The cancelling flag overrides the spinner label
 		// until the backend acknowledges via cancelled / error / a new
-		// final assistant_message. Skipped during a pending approval — the
-		// agent is already paused for us there.
+		// final assistant_message — or until UICancelFailed reports the
+		// dispatcher gave up delivering the cancel, which re-enables ESC.
+		// Skipped during a pending approval — the agent is already paused
+		// for us there.
 		if keyStr == "esc" {
 			if m.textInput.Value() != "" {
 				m.textInput.Reset()
 				return m, nil
 			}
 			if m.busy && !m.pendingApproval && !m.cancelling {
-				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
+				if !m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}}) {
+					// Outbound channel full: nothing was enqueued, so don't
+					// claim to be cancelling — the next press retries.
+					return m, m.appendWarningBlock("Cancel not sent — press Esc to try again.")
+				}
 				m.cancelling = true
 				return m, m.showBusy("Cancelling...", shimmerVerb)
 			}
@@ -1056,6 +1067,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case UIWarning:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, m.appendWarningBlock(msg.Message))
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UICancelFailed:
+		// The dispatcher gave up delivering the cancel. Clear the cancelling
+		// substate so ESC works again, and restore a live spinner label — the
+		// turn is still running. Deliberately not routed through
+		// labelForUIEvent: a failure arriving after the turn already ended
+		// must not resurrect the spinner.
+		m.cancelling = false
+		if m.busy {
+			cmds = append(cmds, m.showBusy(thinkingLabel, shimmerVerb))
+		}
+		cmds = append(cmds, m.appendWarningBlock("Cancel failed: "+msg.Message+" — press Esc to retry."))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIReconnecting:

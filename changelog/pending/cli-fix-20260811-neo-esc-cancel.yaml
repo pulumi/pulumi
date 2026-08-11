@@ -1,0 +1,7 @@
+component: cli
+kind: fix
+body: Retry `pulumi neo` cancellation requests that the service rejects and keep
+    Esc responsive instead of showing "Cancelling..." forever
+time: 2026-08-11T00:00:00Z
+custom:
+    PR: "24267"

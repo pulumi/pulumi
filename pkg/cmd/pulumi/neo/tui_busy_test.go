@@ -268,15 +268,12 @@ func TestBusy_EscIgnoredWhileApprovalPending(t *testing.T) {
 	}
 }
 
-// TestBusy_EscRetryableAfterCancelPostFailure encodes desired behavior for
-// pulumi/pulumi-service#44059: when the user_cancel POST fails (the service
-// 409s cancels while the task is parked on a CLI tool call), the user must
-// not be locked out of cancelling. Today the failure only surfaces as a
-// UIWarning while m.cancelling stays set, so every further ESC is a no-op
-// and the TUI shows "Cancelling..." forever.
+// TestBusy_EscRetryableAfterCancelPostFailure — pulumi/pulumi-service#44059:
+// when the dispatcher gives up delivering a cancel and reports UICancelFailed,
+// the cancelling substate must clear so a later ESC can retry instead of
+// being swallowed and leaving the TUI in "Cancelling..." forever.
 func TestBusy_EscRetryableAfterCancelPostFailure(t *testing.T) {
 	t.Parallel()
-	t.Skip("desired behavior for https://github.com/pulumi/pulumi-service/issues/44059; un-skip when the fix lands")
 
 	ch := make(chan UIEvent, 4)
 	outCh := make(chan outboundEvent, 4)
@@ -293,15 +290,17 @@ func TestBusy_EscRetryableAfterCancelPostFailure(t *testing.T) {
 		t.Fatal("first ESC did not post any user event")
 	}
 
-	// The cancel POST fails; dispatchUserEvents surfaces it as a warning.
-	model, _ = model.Update(UIWarning{
-		Message: "failed to send event: [409] Conflict: cannot respond while a request is still ongoing",
+	// The dispatcher exhausted its cancel retries and reported the failure.
+	model, _ = model.Update(UICancelFailed{
+		Message: "[409] Conflict: cannot respond while a request is still ongoing",
 	})
-
-	// A second ESC must be able to retry the cancel instead of being swallowed
-	// by the still-set cancelling flag.
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m := model.(Model)
+	require.False(t, m.cancelling, "UICancelFailed must clear the cancelling substate")
+	require.True(t, m.busy, "the turn is still live after a failed cancel")
+
+	// A second ESC must retry the cancel instead of being swallowed.
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m = model.(Model)
 	select {
 	case ev := <-outCh:
 		_, ok := ev.event.(apitype.AgentUserEventCancel)
@@ -311,15 +310,13 @@ func TestBusy_EscRetryableAfterCancelPostFailure(t *testing.T) {
 	}
 }
 
-// TestBusy_EscWithFullOutChannelNotSilentlyDropped encodes desired behavior
-// for pulumi/pulumi-service#44059: ESC must not claim to be cancelling when
-// the cancel event was never enqueued. Today sendOut is a non-blocking send
-// whose result is ignored, so with a full outbound channel the model flips to
-// "Cancelling..." while nothing is ever posted — and the cancelling guard then
-// swallows every retry.
+// TestBusy_EscWithFullOutChannelNotSilentlyDropped — pulumi/pulumi-service#44059:
+// ESC must not claim to be cancelling when the cancel event was never
+// enqueued. sendOut is a non-blocking send, so with a full outbound channel
+// the model must stay out of the cancelling substate and let the next ESC
+// retry.
 func TestBusy_EscWithFullOutChannelNotSilentlyDropped(t *testing.T) {
 	t.Parallel()
-	t.Skip("desired behavior for https://github.com/pulumi/pulumi-service/issues/44059; un-skip when the fix lands")
 
 	ch := make(chan UIEvent, 4)
 	outCh := make(chan outboundEvent, 1)

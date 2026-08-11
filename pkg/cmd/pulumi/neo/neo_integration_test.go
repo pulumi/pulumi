@@ -1019,18 +1019,14 @@ func TestRunNeoIntegration_DisableIntegrationsSendsEmptyList(t *testing.T) {
 		"--disable-integrations must send an empty enabledIntegrations array")
 }
 
-// TestRunNeoIntegration_EscDuringPendingTool_CancelNotLost encodes desired
-// end-to-end behavior for pulumi/pulumi-service#44059: when the service
-// rejects a user_cancel with 409 (today it does so whenever the task is
-// parked on a CLI tool call), the CLI must not wedge in "Cancelling..." —
-// the user must be able to retry the cancel. Today the 409 only surfaces as
-// a warning while the cancelling flag stays set, so every later ESC is
-// swallowed and no second user_cancel is ever posted.
+// TestRunNeoIntegration_EscDuringPendingTool_CancelNotLost — end-to-end
+// pin for pulumi/pulumi-service#44059: when the service rejects a user_cancel
+// with 409 (it does so whenever the task is parked on a CLI tool call), the
+// CLI must not wedge in "Cancelling..." — the dispatcher auto-retries the
+// cancel, so a second user_cancel POST must show up.
 //
 //nolint:paralleltest,lll // mutates package globals (DefaultLoginManager, pkgWorkspace.Instance, newTeaProgram, isInteractive)
 func TestRunNeoIntegration_EscDuringPendingTool_CancelNotLost(t *testing.T) {
-	t.Skip("desired behavior for https://github.com/pulumi/pulumi-service/issues/44059; un-skip when the fix lands")
-
 	isolateWorkspace(t)
 	srv := newNeoFakeServer(t)
 
@@ -1101,16 +1097,12 @@ func TestRunNeoIntegration_EscDuringPendingTool_CancelNotLost(t *testing.T) {
 	require.Eventually(t, func() bool { return countCancelPosts() >= 1 },
 		testWaitTimeout, 20*time.Millisecond, "first ESC never posted a user_cancel")
 
-	// Desired: after the failed cancel, ESC must still be able to retry. Keep
-	// pressing while polling — today the cancelling guard swallows every one
-	// of these and no second post ever appears.
-	retryDeadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(retryDeadline) && countCancelPosts() < 2 {
-		p.Send(tea.KeyPressMsg{Code: tea.KeyEsc})
-		time.Sleep(100 * time.Millisecond)
-	}
-	require.GreaterOrEqual(t, countCancelPosts(), 2,
-		"ESC after a 409-rejected cancel must retry the user_cancel post instead of being swallowed")
+	// After the 409, the dispatcher must auto-retry the cancel (first retry
+	// fires after ~1s of backoff), so a second user_cancel post shows up
+	// without any further user input.
+	require.Eventually(t, func() bool { return countCancelPosts() >= 2 },
+		5*time.Second, 100*time.Millisecond,
+		"a 409-rejected cancel must be retried instead of dropped")
 
 	p.Quit()
 	select {

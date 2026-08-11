@@ -63,6 +63,13 @@ const nonInteractivePromptPreamble = "<details><summary>non-interactive mode</su
 var (
 	userMessageRetryInitialBackoff = 1 * time.Second
 	userMessageRetryMaxBackoff     = 30 * time.Second
+
+	// cancelRetryMaxAttempts bounds the automatic retries of a failed
+	// user_cancel post. With userMessageRetryDelay backoff this spans roughly
+	// two minutes — enough to outlast most local tool calls (during which the
+	// service 409s cancels because the task is parked) without retrying
+	// forever against a task that will never accept one.
+	cancelRetryMaxAttempts = 8
 )
 
 // neoTaskCreator is the slice of the cloud client that creates Neo tasks.
@@ -633,6 +640,10 @@ func runNeo(ctx context.Context, stdout, stderr io.Writer, opts neoRunOptions) e
 						})
 					},
 					func(ctx context.Context, taskID string, body any) error {
+						// Deadline so a hung post can't wedge the serial
+						// dispatcher loop (and with it the whole TUI).
+						ctx, cancel := context.WithTimeout(ctx, client.NeoRequestTimeout)
+						defer cancel()
 						return rt.pc.PostNeoTaskUserEvent(ctx, orgName, taskID, body)
 					},
 					func(ctx context.Context, taskID string, opts client.UpdateNeoTaskOptions) error {
@@ -801,6 +812,8 @@ func runNeoResumeTUI(
 					func() string { return taskID },
 					func(string, client.NeoApprovalMode, client.NeoPermissionMode, bool) {},
 					func(ctx context.Context, taskID string, body any) error {
+						ctx, cancel := context.WithTimeout(ctx, client.NeoRequestTimeout)
+						defer cancel()
 						return pc.PostNeoTaskUserEvent(ctx, orgName, taskID, body)
 					},
 					func(ctx context.Context, taskID string, opts client.UpdateNeoTaskOptions) error {
@@ -968,6 +981,20 @@ func dispatchUserEvents(
 	var retryTimer *time.Timer
 	var retryC <-chan time.Time
 	retryNow := false
+
+	// A failed user_cancel post is retried on its own timer rather than being
+	// dropped: the service rejects cancels while the task is parked on a local
+	// tool call, and the retry is what eventually lands the cancel once the
+	// tool result posts. Single slot — repeated ESC presses while a cancel is
+	// pending are deduplicated.
+	var pendingCancel *apitype.AgentUserEventCancel
+	cancelFailures := 0
+	var cancelTimer *time.Timer
+	var cancelRetryC <-chan time.Time
+	scheduleCancelRetry := func() {
+		cancelTimer = time.NewTimer(userMessageRetryDelay(cancelFailures))
+		cancelRetryC = cancelTimer.C
+	}
 	stopRetryTimer := func() {
 		if retryTimer != nil {
 			retryTimer.Stop()
@@ -1008,6 +1035,25 @@ func dispatchUserEvents(
 			retryTimer = nil
 			retryC = nil
 			retryNow = true
+		case <-cancelRetryC:
+			cancelTimer = nil
+			cancelRetryC = nil
+			if pendingCancel == nil {
+				continue
+			}
+			if err := postEvent(ctx, getTaskID(), *pendingCancel); err != nil {
+				cancelFailures++
+				if cancelFailures >= cancelRetryMaxAttempts {
+					sendUI(uiCh, UICancelFailed{Message: err.Error()})
+					pendingCancel = nil
+					cancelFailures = 0
+					continue
+				}
+				scheduleCancelRetry()
+				continue
+			}
+			pendingCancel = nil
+			cancelFailures = 0
 		case ob, ok := <-outCh:
 			if !ok {
 				return nil
@@ -1043,6 +1089,18 @@ func dispatchUserEvents(
 				pendingMessages = append(pendingMessages, queuedUserMessage{event: msg})
 				if len(pendingMessages) == 1 {
 					retryNow = true
+				}
+				continue
+			}
+			if cancelEvt, isCancel := ob.event.(apitype.AgentUserEventCancel); isCancel {
+				if pendingCancel != nil {
+					continue
+				}
+				if err := postEvent(ctx, taskID, cancelEvt); err != nil {
+					pendingCancel = &cancelEvt
+					cancelFailures = 1
+					sendUI(uiCh, UIWarning{Message: "cancel not accepted yet, retrying: " + err.Error()})
+					scheduleCancelRetry()
 				}
 				continue
 			}
