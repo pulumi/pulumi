@@ -112,8 +112,8 @@ func TestProvider(t *testing.T) {
 					req plugin.CheckConfigRequest,
 				) (plugin.CheckConfigResponse, error) {
 					assert.Equal(t, resource.URN("expected-urn"), req.URN)
-					assert.Equal(t, resource.NewProperty("old-value"), req.Olds.Get("old"))
-					assert.Equal(t, resource.NewProperty("new-value"), req.News.Get("new"))
+					assert.Equal(t, property.New("old-value"), req.Olds.Get("old"))
+					assert.Equal(t, property.New("new-value"), req.News.Get("new"))
 					called = true
 					return plugin.CheckConfigResponse{}, expectedErr
 				},
@@ -143,7 +143,7 @@ func TestProvider(t *testing.T) {
 			require.NoError(t, err)
 			assert.Empty(t, resp.Failures)
 			// Should return the news.
-			assert.Equal(t, resource.NewProperty("expected-value"), resp.Properties.Get("expected"))
+			assert.Equal(t, property.New("expected-value"), resp.Properties.Get("expected"))
 		})
 	})
 	t.Run("Construct", func(t *testing.T) {
