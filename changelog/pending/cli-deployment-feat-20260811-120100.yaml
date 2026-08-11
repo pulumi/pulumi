@@ -1,0 +1,4 @@
+component: cli/deployment
+kind: feat
+body: "Allow `pulumi deployment settings edit` to configure git authentication, the deployment role, dependency caching, template sources and drift remediation"
+time: 2026-08-11T12:01:00+00:00
