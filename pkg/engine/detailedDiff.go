@@ -49,9 +49,7 @@ func getProperty(key any, v resource.PropertyValue) (resource.PropertyValue, boo
 	}
 }
 
-// valueOrUnknown returns v if the property it came from exists, and an unknown value otherwise. A detailed diff may
-// name a property that the engine has no value for -- e.g. a default that the provider only applies while planning
-// -- and rendering the absent value as `<null>` misreports what is being added or removed.
+// valueOrUnknown returns v if the property it came from exists, and an unknown value otherwise.
 func valueOrUnknown(v resource.PropertyValue, exists bool) resource.PropertyValue {
 	if exists {
 		return v
