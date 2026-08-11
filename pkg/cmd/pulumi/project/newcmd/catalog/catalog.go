@@ -14,8 +14,7 @@
 
 // Package catalog turns the flat list of available template names into the provider/language
 // structure the guided `pulumi new` flow walks through. A name that doesn't decompose into a known
-// provider and language stays out of the guided flow and remains reachable through the "Browse all
-// templates" fallback.
+// provider and language stays out of the catalog entirely.
 package catalog
 
 import (
@@ -33,16 +32,13 @@ type Provider struct {
 	Languages   []Language
 }
 
-// noneProvider is the pseudo-provider for the bare, cloudless templates whose name is just a
-// language id (e.g. "typescript", "java-gradle").
+// noneProvider is the pseudo-provider for templates whose name is just a language id.
 const noneProvider = "none"
 
 type vocab struct {
 	id, displayName string
 }
 
-// languages is the closed vocabulary of languages the guided flow recognizes, roughly ordered by
-// `pulumi new` usage share, most-used first.
 var languages = []vocab{
 	{"typescript", "TypeScript"},
 	{"python", "Python"},
@@ -59,9 +55,7 @@ var languages = []vocab{
 	{"visualbasic", "Visual Basic"},
 }
 
-// providers is the closed set of providers the guided flow offers, in prompt order. The
-// cloudless row sits last so the curated clouds stay adjacent. Every other provider's templates
-// are reachable only through "Browse all templates".
+// The cloudless row sits last so the curated clouds stay adjacent.
 var providers = []vocab{
 	{"aws", "AWS"},
 	{"azure", "Azure"},
@@ -87,7 +81,6 @@ type Catalog[T any] struct {
 	templates map[string]map[string]T
 }
 
-// New derives a catalog from the available templates and their names.
 func New[T any](templates []T, name func(T) string) *Catalog[T] {
 	byProvider := map[string]map[string]T{}
 	for _, template := range templates {
@@ -106,7 +99,6 @@ func New[T any](templates []T, name func(T) string) *Catalog[T] {
 	return &Catalog[T]{templates: byProvider}
 }
 
-// Providers returns the providers that have at least one template, in prompt order.
 func (c *Catalog[T]) Providers() []Provider {
 	found := make([]Provider, 0, len(providers))
 	for _, p := range providers {
@@ -126,8 +118,8 @@ func (c *Catalog[T]) Resolve(providerID, languageID string) (T, bool) {
 	return template, ok
 }
 
-// splitTemplateName decomposes a template name into its provider and language. The longest known
-// language suffix wins, which keeps "java-gradle" whole instead of reading it as provider "java".
+// The longest known language suffix wins, which keeps "java-gradle" whole instead of reading it as
+// provider "java".
 func splitTemplateName(name string) (providerID, languageID string, ok bool) {
 	if _, isLanguage := languageDisplayNames[name]; isLanguage {
 		return noneProvider, name, true

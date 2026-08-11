@@ -52,8 +52,7 @@ type fakeRegistryTemplate struct {
 
 func (f fakeRegistryTemplate) Publisher() string { return f.publisher }
 
-// scriptedSelect answers each prompt in order, asserting the option offered is present. An error
-// entry is returned from the prompt as-is.
+// scriptedSelect answers each prompt in order, asserting the option offered is present.
 func scriptedSelect(t *testing.T, answers ...any) (selectFunc, *[]([]string)) {
 	t.Helper()
 	var offered [][]string
@@ -72,8 +71,8 @@ func scriptedSelect(t *testing.T, answers ...any) (selectFunc, *[]([]string)) {
 	}, &offered
 }
 
-// noFetch fails the test if the full template fetch is triggered; provider/language selections
-// must resolve from the project templates alone, never waiting on the templates API.
+// noFetch fails the test if the full template fetch is triggered: provider/language selections must
+// resolve from the project templates alone.
 func noFetch(t *testing.T) fetchTemplatesFunc {
 	return func() ([]cmdTemplates.Template, error) {
 		t.Error("the full template fetch must not run for this path")
@@ -85,12 +84,10 @@ func fetchOf(templates ...cmdTemplates.Template) fetchTemplatesFunc {
 	return func() ([]cmdTemplates.Template, error) { return templates, nil }
 }
 
-// projectOnly assembles the inputs for a flow whose rows all come from the project templates.
 func projectOnly(project []cmdTemplates.Template, fetchAll fetchTemplatesFunc) guidedTemplates {
 	return guidedTemplates{project: project, fetchAll: fetchAll}
 }
 
-// runGuided drives one run of the guided prompts to completion.
 func runGuided(
 	t guidedTemplates, opts display.Options, sel selectFunc,
 ) (cmdTemplates.Template, error) {

@@ -60,7 +60,6 @@ func TestChooseTemplateNonInteractiveReturnsNil(t *testing.T) {
 	assert.Nil(t, got)
 }
 
-// fakeSource is a templateSource with independently controllable fetches.
 type fakeSource struct {
 	project     []cmdTemplates.Template
 	database    []cmdTemplates.Template
@@ -82,14 +81,14 @@ func (f fakeSource) DatabaseTemplates() ([]cmdTemplates.Template, error) {
 func (f fakeSource) VcsTemplateSourceOrgs() []string             { return f.vcsOrgs }
 func (f fakeSource) Templates() ([]cmdTemplates.Template, error) { return f.all, f.allErr }
 
-// sourceOf builds a fakeSource whose project fetch carries every template, as the local checkout
-// does when nothing has been published to the registry.
+// sourceOf mirrors a local checkout with nothing published to the registry: project carries
+// everything.
 func sourceOf(templates ...cmdTemplates.Template) fakeSource {
 	return fakeSource{project: templates, all: templates}
 }
 
-// unsplitSource stands in for a [cmdTemplates.Source] created to resolve a named template, whose
-// cloud listing ran unsplit. Reaching for one of its guided fetches fails the test.
+// unsplitSource is a source created to resolve a named template, whose cloud listing ran unsplit.
+// Reaching for one of its guided fetches fails the test.
 type unsplitSource struct{ all []cmdTemplates.Template }
 
 const unsplitGuidedFetchMsg = "a source resolving a named template must not be asked for the guided fetches"
@@ -132,7 +131,7 @@ func TestUseGuidedFlowOnlyWhenNothingIsNamedAndWeCanPrompt(t *testing.T) {
 	}
 }
 
-// guidedArgs is an invocation that names no template, so template selection takes the guided flow.
+// guidedArgs names no template, so template selection takes the guided flow.
 var guidedArgs = newArgs{interactive: true}
 
 func TestResolveTemplateFallsBackToFlatWhenNothingIsCurated(t *testing.T) {
@@ -216,8 +215,6 @@ func TestResolveTemplatePropagatesErrors(t *testing.T) {
 	assert.ErrorContains(t, err, "boom")
 }
 
-// A named template or `--yes` skips the guided prompts, and neither reads the split fetches that
-// only a browsing source can answer.
 func TestResolveTemplateWithoutGuidedFlowUsesTheFullSetOnly(t *testing.T) {
 	t.Parallel()
 

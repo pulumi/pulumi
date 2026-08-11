@@ -44,7 +44,6 @@ func surveySelect(message string, options []string, opts display.Options) (int, 
 		survey.WithPageSize(cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)})))
 }
 
-// pick prompts for one of items, suffixing duplicate display names so identical rows stay distinct.
 func pick[T any](
 	selector selectFunc, message string, opts display.Options, items []T, name func(T) string,
 ) (T, error) {
@@ -66,12 +65,10 @@ func pick[T any](
 	return items[i], nil
 }
 
-// fetchTemplatesFunc blocks until the full template set, including the VCS collections the service
-// fetches upstream, is available.
 type fetchTemplatesFunc func() ([]cmdTemplates.Template, error)
 
-// guidedTemplates is what the guided prompts are built from. project and database are fast enough
-// to hold up the first prompt; fetchAll is only called for a row that cannot be answered without it.
+// project and database are fast enough to hold up the first prompt; fetchAll blocks on the VCS
+// collections the service fetches upstream, so only a row that needs them calls it.
 type guidedTemplates struct {
 	project  []cmdTemplates.Template
 	database []cmdTemplates.Template
@@ -103,14 +100,11 @@ func newGuided(t guidedTemplates, opts display.Options, selector selectFunc) *gu
 	}
 }
 
-// backToProvider reports why the chosen row led nowhere and returns to the provider prompt.
 func (g *guided) backToProvider(format string, a ...any) error {
 	fmt.Fprintf(g.opts.Stdout, format+"\n", a...)
 	return errBackToProvider
 }
 
-// chooseGuidedFromSource runs the guided prompts against a live template source, falling back to
-// the flat list when the source holds nothing the guided prompts can offer.
 func chooseGuidedFromSource(
 	src templateSource, opts display.Options, selector selectFunc,
 ) (cmdTemplates.Template, error) {
@@ -151,8 +145,6 @@ func chooseGuidedFromSource(
 	return pickFromSet(all, false /*yes*/, opts, selector)
 }
 
-// choose runs the prompts to a template, or returns [errFallBackToFlatList] when there is nothing
-// to guide between.
 func (g *guided) choose() (cmdTemplates.Template, error) {
 	rows := g.choiceRows()
 	if len(rows) == 0 {
@@ -174,8 +166,7 @@ func (g *guided) choose() (cmdTemplates.Template, error) {
 	}
 }
 
-// providerRow is one row of the provider prompt. choose runs whatever the row leads to, and returns
-// [errBackToProvider] if the row turned out to lead nowhere.
+// choose returns [errBackToProvider] if the row turned out to lead nowhere.
 type providerRow struct {
 	label  string
 	choose func() (cmdTemplates.Template, error)
@@ -189,9 +180,7 @@ func registryPublisher(t cmdTemplates.Template) (string, bool) {
 	return publisher, publisher != ""
 }
 
-// orgRows names the organizations worth offering a row for: those that published templates to the
-// registry, and those the service reports as having VCS collections. Both signals come from the
-// database, so an organization can turn out to have nothing to show.
+// Both signals are advisory, so an organization can turn out to have nothing to show.
 func (t guidedTemplates) orgRows() []string {
 	names := slices.Clone(t.vcsOrgs)
 	for _, template := range t.database {
@@ -203,8 +192,6 @@ func (t guidedTemplates) orgRows() []string {
 	return slices.Compact(names)
 }
 
-// choiceRows are the rows that represent a real choice: one per curated provider, then one per
-// organization. An empty result means the guided prompts have nothing to offer.
 func (g *guided) choiceRows() []providerRow {
 	providers, orgs := g.catalog.Providers(), g.orgRows()
 	rows := make([]providerRow, 0, len(providers)+len(orgs))
@@ -221,8 +208,8 @@ func (g *guided) choiceRows() []providerRow {
 	return rows
 }
 
-// browseAllRow is the escape hatch into the flat list. It is always offered, so it never counts
-// towards there being a choice worth prompting for.
+// browseAllRow is always offered, so it never counts towards there being a choice worth prompting
+// for.
 func (g *guided) browseAllRow() providerRow {
 	return providerRow{optionBrowseAll, g.chooseAllTemplates}
 }
@@ -241,9 +228,8 @@ func (g *guided) chooseLanguage(p catalog.Provider) (cmdTemplates.Template, erro
 	return template, nil
 }
 
-// chooseAllTemplates and chooseOrgTemplates are the only rows that need the full template set. Both
-// return to the provider prompt rather than abandoning the flow, since the provider and language
-// rows still work without it.
+// chooseAllTemplates and chooseOrgTemplates return to the provider prompt rather than abandoning
+// the flow, since the provider and language rows still work without the full template set.
 func (g *guided) chooseAllTemplates() (cmdTemplates.Template, error) {
 	all, err := g.fetchAll()
 	if err != nil {
@@ -255,8 +241,6 @@ func (g *guided) chooseAllTemplates() (cmdTemplates.Template, error) {
 	return chooseTemplateFromList(sortedForDisplay(all), g.opts, g.selector)
 }
 
-// chooseOrgTemplates offers an organization's templates. Only an organization with VCS collections
-// has to wait for the full set; the rest are answered from the database fetch.
 func (g *guided) chooseOrgTemplates(org string) (cmdTemplates.Template, error) {
 	available := g.database
 	if slices.Contains(g.vcsOrgs, org) {

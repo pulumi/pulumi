@@ -41,7 +41,6 @@ func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cm
 	return declinedToChoose(chooseTemplateFromList(sortedForDisplay(templates), opts, surveySelect))
 }
 
-// sortedForDisplay orders templates by display name, broken templates last.
 func sortedForDisplay(templates []cmdTemplates.Template) []cmdTemplates.Template {
 	sorted := slices.Clone(templates)
 	slices.SortStableFunc(sorted, func(a, b cmdTemplates.Template) int {
@@ -57,8 +56,7 @@ func sortedForDisplay(templates []cmdTemplates.Template) []cmdTemplates.Template
 	return sorted
 }
 
-// templateSource is the subset of [cmdTemplates.Source] template selection needs. Only Templates
-// waits on the slowest fetch.
+// Only Templates waits on the slowest fetch.
 type templateSource interface {
 	ProjectTemplates() ([]cmdTemplates.Template, error)
 	DatabaseTemplates() ([]cmdTemplates.Template, error)
@@ -66,14 +64,10 @@ type templateSource interface {
 	Templates() ([]cmdTemplates.Template, error)
 }
 
-// useGuidedFlow reports whether the guided provider/language prompts apply: they only help when
-// nothing has narrowed the choice already.
 func (args newArgs) useGuidedFlow() bool {
 	return args.templateNameOrURL == "" && !args.yes && args.interactive
 }
 
-// declinedToChoose maps a cancelled prompt to the sentinel callers report, leaving real failures
-// alone.
 func declinedToChoose(
 	template cmdTemplates.Template, err error,
 ) (cmdTemplates.Template, error) {
@@ -83,8 +77,6 @@ func declinedToChoose(
 	return template, err
 }
 
-// resolveTemplate works out which template this invocation should instantiate, prompting through
-// selector as needed.
 func resolveTemplate(
 	src templateSource, args newArgs, opts display.Options, selector selectFunc,
 ) (cmdTemplates.Template, error) {
@@ -98,8 +90,7 @@ func resolveTemplate(
 	return declinedToChoose(pickFromSet(all, args.yes, opts, selector))
 }
 
-// pickFromSet chooses a template from the complete set. `--yes` never prompts, and takes no
-// template rather than guessing among several.
+// `--yes` never prompts, and takes no template rather than guessing among several.
 func pickFromSet(
 	templates []cmdTemplates.Template, yes bool, opts display.Options, selector selectFunc,
 ) (cmdTemplates.Template, error) {

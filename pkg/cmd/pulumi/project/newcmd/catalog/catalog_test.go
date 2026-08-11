@@ -21,8 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// testTemplateNames mirrors a representative slice of the real pulumi/templates names so the derived
-// catalog exercises the featured providers, the None build-system split, and uncurated providers.
+// testTemplateNames mirrors a representative slice of the real pulumi/templates names.
 var testTemplateNames = []string{
 	"aws-typescript", "aws-python", "aws-bun", "aws-csharp", "aws-fsharp",
 	"aws-go", "aws-java", "aws-scala", "aws-visualbasic", "aws-yaml",
@@ -33,14 +32,12 @@ var testTemplateNames = []string{
 	"aws-hcl", "hcl",
 }
 
-// newFromNames builds a catalog whose templates are their own names.
 func newFromNames(names []string) *Catalog[string] {
 	return New(names, func(name string) string { return name })
 }
 
 func testCatalog() *Catalog[string] { return newFromNames(testTemplateNames) }
 
-// providerByID finds a provider in the catalog's prompt order.
 func providerByID(t *testing.T, cat *Catalog[string], providerID string) Provider {
 	t.Helper()
 	for _, p := range cat.Providers() {
