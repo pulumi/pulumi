@@ -65,10 +65,17 @@ type deploymentSettingsEditArgs struct {
 	folder      string
 
 	// VCS toggles
-	previewPRs   bool
-	pushToDeploy bool
-	prTemplate   bool
-	pathFilters  []string
+	previewPRs             bool
+	pushToDeploy           bool
+	prTemplate             bool
+	pathFilters            []string
+	deployTags             bool
+	tagFilters             []string
+	clearTagFilters        bool
+	reviewStackLabels      []string
+	clearReviewStackLabels bool
+	installationID         string
+	deployPullRequest      int64
 
 	// Runner
 	runnerPool       string
@@ -113,29 +120,36 @@ type deploymentSettingsEditArgs struct {
 }
 
 const (
-	flagGitHubRepo         = "github-repo"
-	flagRepo               = "repo"
-	flagVCSProvider        = "vcs-provider"
-	flagGitURL             = "git-url"
-	flagBranch             = "branch"
-	flagCommit             = "commit"
-	flagFolder             = "folder"
-	flagPreviewPRs         = "preview-prs"
-	flagPushToDeploy       = "push-to-deploy"
-	flagPRTemplate         = "pr-template"
-	flagPathFilter         = "path-filter"
-	flagRunnerPool         = "runner-pool"
-	flagExecutorImage      = "executor-image"
-	flagExecutorRootPath   = "executor-root-path"
-	flagPreRunCommand      = "pre-run-command"
-	flagEnv                = "env"
-	flagSecretEnv          = "secret-env"
-	flagRemoveEnv          = "remove-env"
-	flagRemoveAllEnv       = "remove-all-env"
-	flagSkipInstallDeps    = "skip-install-deps"
-	flagSkipIntermediate   = "skip-intermediate-deployments"
-	flagShell              = "shell"
-	flagDeleteAfterDestroy = "delete-after-destroy"
+	flagGitHubRepo            = "github-repo"
+	flagRepo                  = "repo"
+	flagVCSProvider           = "vcs-provider"
+	flagGitURL                = "git-url"
+	flagBranch                = "branch"
+	flagCommit                = "commit"
+	flagFolder                = "folder"
+	flagPreviewPRs            = "preview-prs"
+	flagPushToDeploy          = "push-to-deploy"
+	flagPRTemplate            = "pr-template"
+	flagPathFilter            = "path-filter"
+	flagDeployTags            = "deploy-tags"
+	flagTagFilter             = "tag-filter"
+	flagClearTagFilters       = "clear-tag-filters"
+	flagReviewStackLabel      = "review-stack-label"
+	flagClearReviewStackLabel = "clear-review-stack-labels"
+	flagInstallationID        = "installation-id"
+	flagDeployPullRequest     = "deploy-pull-request"
+	flagRunnerPool            = "runner-pool"
+	flagExecutorImage         = "executor-image"
+	flagExecutorRootPath      = "executor-root-path"
+	flagPreRunCommand         = "pre-run-command"
+	flagEnv                   = "env"
+	flagSecretEnv             = "secret-env"
+	flagRemoveEnv             = "remove-env"
+	flagRemoveAllEnv          = "remove-all-env"
+	flagSkipInstallDeps       = "skip-install-deps"
+	flagSkipIntermediate      = "skip-intermediate-deployments"
+	flagShell                 = "shell"
+	flagDeleteAfterDestroy    = "delete-after-destroy"
 
 	flagOIDCAWSRoleARN     = "oidc-aws-role-arn"
 	flagOIDCAWSSessionName = "oidc-aws-session-name"
@@ -238,10 +252,28 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	f.StringVar(&args.commit, flagCommit, "", "Source commit hash")
 	f.StringVar(&args.folder, flagFolder, "", "Path to the Pulumi.yaml folder within the source repo")
 	f.BoolVar(&args.previewPRs, flagPreviewPRs, false, "Run previews for pull requests")
-	f.BoolVar(&args.pushToDeploy, flagPushToDeploy, false, "Run updates for pushed commits")
+	f.BoolVar(&args.pushToDeploy, flagPushToDeploy, false,
+		fmt.Sprintf("Run updates for pushed commits (cannot be enabled together with --%s)", flagDeployTags))
 	f.BoolVar(&args.prTemplate, flagPRTemplate, false, "Use this stack as a template for PR review stacks")
 	f.StringArrayVar(&args.pathFilters, flagPathFilter, nil,
 		"Replace the path filter list (repeatable; pass once per filter); empty string clears it")
+	f.BoolVar(&args.deployTags, flagDeployTags, false,
+		fmt.Sprintf("Run updates for pushed tags (cannot be enabled together with --%s)", flagPushToDeploy))
+	f.StringArrayVar(&args.tagFilters, flagTagFilter, nil,
+		"Replace the tag filter list (repeatable; pass once per filter)")
+	f.BoolVar(&args.clearTagFilters, flagClearTagFilters, false, "Remove every tag filter")
+	f.StringArrayVar(&args.reviewStackLabels, flagReviewStackLabel, nil,
+		"GitHub only: replace the labels that trigger a PR review stack (repeatable)")
+	f.BoolVar(&args.clearReviewStackLabels, flagClearReviewStackLabel, false,
+		"GitHub only: remove every PR review stack label")
+	// No backquotes in a flag usage string: pflag reads the first backquoted span as the value
+	// placeholder and strips it, so a quoted command name replaces the flag's type in the help.
+	f.StringVar(&args.installationID, flagInstallationID, "",
+		"Version control integration ID; only needed to choose between several integrations for "+
+			"the same provider. List them with: pulumi api ListAllVCSIntegrations -F orgName=<org>")
+	f.Int64Var(&args.deployPullRequest, flagDeployPullRequest, 0,
+		fmt.Sprintf("Pull request number this review stack deploys; 0 clears it "+
+			"(requires --%s, --%s and --%s to all be off)", flagPushToDeploy, flagPreviewPRs, flagPRTemplate))
 
 	// Runner
 	f.StringVar(&args.runnerPool, flagRunnerPool, "",
@@ -319,6 +351,8 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	cmd.MarkFlagsMutuallyExclusive(flagRepo, flagGitURL)
 	cmd.MarkFlagsMutuallyExclusive(flagGitHubRepo, flagRepo)
 	cmd.MarkFlagsMutuallyExclusive(flagBranch, flagCommit)
+	cmd.MarkFlagsMutuallyExclusive(flagTagFilter, flagClearTagFilters)
+	cmd.MarkFlagsMutuallyExclusive(flagReviewStackLabel, flagClearReviewStackLabel)
 	cmd.MarkFlagsMutuallyExclusive(flagEnv, flagRemoveAllEnv)
 	cmd.MarkFlagsMutuallyExclusive(flagSecretEnv, flagRemoveAllEnv)
 	cmd.MarkFlagsMutuallyExclusive(flagRemoveEnv, flagRemoveAllEnv)
