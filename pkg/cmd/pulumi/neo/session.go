@@ -55,6 +55,20 @@ type ToolHandler interface {
 	Invoke(ctx context.Context, method string, args json.RawMessage) (any, error)
 }
 
+// toolBatch is one assistant message's worth of CLI tool calls queued for the tool
+// worker. The context is carried in the struct (a work-queue item, not an API) so a
+// cancelled backend event can stop the batch it belongs to.
+type toolBatch struct {
+	ctx   context.Context
+	calls []apitype.AgentBackendEventToolCall
+}
+
+// batchQueueCap bounds the tool-batch queue. The protocol is turn-based — the agent
+// waits for tool_result before issuing more CLI calls — so more than one queued batch
+// is already anomalous. If the queue ever fills, enqueueBatch blocks the drain loop,
+// degrading to the old synchronous behavior instead of dropping work.
+const batchQueueCap = 8
+
 // EventStreamer is the subset of *client.Client we depend on for the SSE event stream and
 // for posting CLI tool result user events back to the Neo task. It is an interface so the
 // loop can be unit-tested without a live HTTP backend.
@@ -89,6 +103,24 @@ type Session struct {
 	// assistant_message with no pending CLI tool calls is written to it and Run
 	// returns nil.
 	Output io.Writer
+
+	// Tool-worker state, initialized by Run rather than at construction so the
+	// exported literal shape used by callers is unchanged.
+	//
+	// batches queues one entry per assistant message whose CLI tool calls we must
+	// execute. A single worker goroutine consumes it, so batches stay strictly
+	// serialized (tools/pulumi.go's process-global os.Chdir depends on this) while
+	// drainStream keeps reading the SSE stream (pulumi/pulumi-service#44059).
+	batches chan toolBatch
+	// batchErrs delivers a fatal runBatch error (exec_tool_call post failure) from
+	// the worker back to drainStream/Run, preserving the pre-worker behavior where
+	// such an error aborted the session. Capacity 1; only the first error matters.
+	batchErrs chan error
+	// batchCtx/batchCancel cover every batch enqueued since the last cancelled
+	// event. Only the Run goroutine touches them (handleEvent and Run's shutdown
+	// path), so no locking is needed.
+	batchCtx    context.Context
+	batchCancel context.CancelFunc
 }
 
 // Run drives the loop. It blocks until ctx is cancelled (clean shutdown, returns nil),
@@ -96,12 +128,41 @@ type Session struct {
 // error). Mid-stream network drops are reopened silently with Last-Event-ID so the
 // server replays missed events; the user sees no signal unless the retry budget is
 // exhausted.
-func (s *Session) Run(ctx context.Context) error {
+func (s *Session) Run(ctx context.Context) (err error) {
 	var (
 		lastEventID = s.LastEventID
 		failures    int
 		deadline    time.Time
 	)
+
+	s.batches = make(chan toolBatch, batchQueueCap)
+	s.batchErrs = make(chan error, 1)
+	workerDone := make(chan struct{})
+	go s.toolWorker(workerDone)
+	defer func() {
+		// On an error exit, stop the in-flight tool promptly. On a clean exit
+		// leave the batch ctx alone until the worker drains: ctx-cancel exits
+		// already propagate (batchCtx is a child of ctx), and a clean stream
+		// close waits for the batch to finish and post its result — the same
+		// observable behavior as the old synchronous code.
+		if err != nil && s.batchCancel != nil {
+			s.batchCancel()
+		}
+		close(s.batches)
+		<-workerDone
+		if s.batchCancel != nil {
+			s.batchCancel()
+		}
+		// The worker may have hit a fatal error after drainStream last looked;
+		// don't swallow it on an otherwise-clean exit.
+		if err == nil {
+			select {
+			case werr := <-s.batchErrs:
+				err = werr
+			default:
+			}
+		}
+	}()
 
 	for {
 		stream, err := s.Client.StreamNeoTaskEvents(ctx, s.OrgName, s.TaskID, lastEventID)
@@ -153,6 +214,10 @@ func (s *Session) drainStream(
 		select {
 		case <-ctx.Done():
 			return gotEvent, nil
+		case err := <-s.batchErrs:
+			// The tool worker hit a fatal error (see runBatch); abort the drain
+			// so Run applies its usual transient/fatal classification.
+			return gotEvent, err
 		case evt, ok := <-stream:
 			if !ok {
 				return gotEvent, nil
@@ -260,6 +325,19 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 		s.logf("warning: skipping malformed backend event: %v", err)
 		return nil
 	}
+	if head.Type == backendEventCancelled {
+		// Server-side cancel: stop the in-flight and any queued tool batches so
+		// long-running local tools (shell, pulumi_up) stop now rather than
+		// running to completion against a cancelled turn. The handlers are
+		// ctx-aware: shell kills the process, pulumi does an engine graceful
+		// cancel. Batches enqueued after this point (a new turn) get a fresh
+		// context. No-op when nothing is running.
+		if s.batchCancel != nil {
+			s.batchCancel()
+			s.batchCancel = nil
+		}
+		return nil
+	}
 	if head.Type != backendEventAssistantMessage {
 		return nil
 	}
@@ -293,12 +371,56 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 		}
 		return nil
 	}
-	return s.runBatch(ctx, cliCalls)
+	return s.enqueueBatch(ctx, cliCalls)
+}
+
+// enqueueBatch hands the batch to the tool worker and returns immediately so the
+// drain loop keeps reading the stream while tools run. The batch context is shared
+// by every batch enqueued since the last cancelled event: one server-side cancel
+// stops the running batch and everything queued behind it.
+func (s *Session) enqueueBatch(ctx context.Context, calls []apitype.AgentBackendEventToolCall) error {
+	if s.batchCancel == nil {
+		s.batchCtx, s.batchCancel = context.WithCancel(ctx)
+	}
+	select {
+	case s.batches <- toolBatch{ctx: s.batchCtx, calls: calls}:
+		return nil
+	case err := <-s.batchErrs:
+		// A blocked enqueue must not mask a fatal worker error.
+		return err
+	case <-ctx.Done():
+		return nil
+	}
+}
+
+// toolWorker executes queued batches one at a time, in arrival order, until Run
+// closes the intake. It survives stream reconnects (it is per-Run, not per-stream)
+// and keeps running after a batch error so replayed events after a transient
+// reconnect can still execute tools.
+func (s *Session) toolWorker(done chan<- struct{}) {
+	defer close(done)
+	for batch := range s.batches {
+		if err := s.runBatch(batch.ctx, batch.calls); err != nil {
+			// Non-blocking: only the first error matters — by the time a second
+			// could occur, Run is already aborting or reconnecting.
+			select {
+			case s.batchErrs <- err:
+			default:
+			}
+		}
+	}
 }
 
 func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEventToolCall) error {
 	items := make([]apitype.AgentUserEventToolResultItem, 0, len(calls))
 	for _, call := range calls {
+		// A cancelled batch context means the server abandoned this turn (or
+		// the session is shutting down): stop dispatching. The agent is not
+		// waiting for results from a cancelled turn, so skipping the posts is
+		// correct and they would fail with context.Canceled anyway.
+		if ctx.Err() != nil {
+			return nil
+		}
 		sendUI(s.UIEvents, UIToolStarted{Name: call.Name, Args: call.Args})
 
 		// The agent runtime relies on exec_tool_call to transition the call into its
@@ -311,6 +433,11 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 			Name:       call.Name,
 		}
 		if err := s.Client.PostNeoTaskUserEvent(ctx, s.OrgName, s.TaskID, execEvt); err != nil {
+			// A post failure caused by cancellation is not session-fatal; the
+			// turn is being abandoned anyway.
+			if ctx.Err() != nil {
+				return nil
+			}
 			return fmt.Errorf("posting exec_tool_call for %q: %w", call.Name, err)
 		}
 
@@ -334,6 +461,11 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 		})
 	}
 
+	// The turn was cancelled while a tool ran: the agent is not waiting for
+	// these results, so don't post them.
+	if ctx.Err() != nil {
+		return nil
+	}
 	result := apitype.AgentUserEventToolResult{
 		Type:        userEventToolResult,
 		ToolResults: items,

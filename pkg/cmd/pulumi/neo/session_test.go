@@ -1573,15 +1573,13 @@ func (b *blockedHandler) Invoke(_ context.Context, _ string, _ json.RawMessage) 
 	return map[string]any{"ok": true}, nil
 }
 
-// TestSession_CancelledEventDeliveredWhileLocalToolRuns encodes desired
-// behavior for pulumi/pulumi-service#44059: a cancelled backend event must
-// reach the TUI even while a local tool call is executing. Today drainStream
-// invokes tool handlers synchronously, so nothing is read off the SSE stream
-// until the tool returns — a long-running shell or pulumi_up call blocks the
-// cancellation acknowledgement (and everything else) for its full duration.
+// TestSession_CancelledEventDeliveredWhileLocalToolRuns is a regression test
+// for pulumi/pulumi-service#44059: a cancelled backend event must reach the
+// TUI even while a local tool call is executing. Tool batches run on a worker
+// goroutine so the drain loop keeps reading the SSE stream — a long-running
+// shell or pulumi_up call must not block the cancellation acknowledgement.
 func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 	t.Parallel()
-	t.Skip("desired behavior for https://github.com/pulumi/pulumi-service/issues/44059; un-skip when the fix lands")
 
 	streamer := newFakeStreamer()
 	bh := &blockedHandler{started: make(chan struct{}), release: make(chan struct{})}
@@ -1644,4 +1642,199 @@ func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("session did not exit")
 	}
+}
+
+// ctxReportingHandler blocks inside Invoke until its context is cancelled,
+// reporting the ctx error it observed on finished.
+type ctxReportingHandler struct {
+	started  chan struct{}
+	finished chan error
+}
+
+func (h *ctxReportingHandler) Invoke(ctx context.Context, _ string, _ json.RawMessage) (any, error) {
+	close(h.started)
+	<-ctx.Done()
+	h.finished <- ctx.Err()
+	return nil, ctx.Err()
+}
+
+// TestSession_CancelledEventCancelsInFlightBatchContext verifies that a
+// server-side cancelled event cancels the running tool's context (so shell
+// kills its process and pulumi does an engine graceful-cancel), that no
+// tool_result is posted for the cancelled turn, and that the next turn's
+// batch runs with a fresh, non-cancelled context.
+func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	first := &ctxReportingHandler{started: make(chan struct{}), finished: make(chan error, 1)}
+	secondCtxErr := make(chan error, 1)
+	second := &probeHandler{invoke: func(ctx context.Context) (any, error) {
+		secondCtxErr <- ctx.Err()
+		return map[string]any{"ok": true}, nil
+	}}
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{"blocking": first, "probe": second},
+		OrgName:  "org",
+		TaskID:   "task",
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c1", Name: "blocking__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		},
+	})}
+	select {
+	case <-first.started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("tool handler never started")
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventCancelled{
+		Type: backendEventCancelled,
+	})}
+	select {
+	case err := <-first.finished:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(5 * time.Second):
+		t.Fatal("cancelled event did not cancel the in-flight tool context")
+	}
+
+	// A new turn dispatches another CLI call: it must run with a fresh context.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c2", Name: "probe__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		},
+	})}
+	select {
+	case err := <-secondCtxErr:
+		require.NoError(t, err, "batch after a cancelled turn must get a fresh context")
+	case <-time.After(5 * time.Second):
+		t.Fatal("second tool call never ran")
+	}
+
+	close(streamer.stream)
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("session did not exit")
+	}
+
+	// The cancelled turn posted its exec_tool_call but must not post a
+	// tool_result; the fresh turn posts both.
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	var execNames []string
+	var resultIDs []string
+	for _, p := range streamer.posted {
+		switch evt := p.(type) {
+		case apitype.AgentUserEventExecToolCall:
+			execNames = append(execNames, evt.Name)
+		case apitype.AgentUserEventToolResult:
+			for _, item := range evt.ToolResults {
+				resultIDs = append(resultIDs, item.ToolCallID)
+			}
+		}
+	}
+	assert.Equal(t, []string{"blocking__run", "probe__run"}, execNames)
+	assert.Equal(t, []string{"c2"}, resultIDs)
+}
+
+// probeHandler delegates Invoke to a closure, for tests that only care about
+// the context or ordering.
+type probeHandler struct {
+	invoke func(ctx context.Context) (any, error)
+}
+
+func (h *probeHandler) Invoke(ctx context.Context, _ string, _ json.RawMessage) (any, error) {
+	return h.invoke(ctx)
+}
+
+// TestSession_BatchesRunSeriallyAcrossAssistantMessages locks down that tool
+// batches from consecutive assistant messages never run concurrently:
+// tools/pulumi.go's process-global os.Chdir depends on serialized dispatch.
+func TestSession_BatchesRunSeriallyAcrossAssistantMessages(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	var mu sync.Mutex
+	var active, maxActive int
+	ran := make(chan struct{}, 2)
+	handler := &probeHandler{invoke: func(_ context.Context) (any, error) {
+		mu.Lock()
+		active++
+		if active > maxActive {
+			maxActive = active
+		}
+		mu.Unlock()
+		time.Sleep(20 * time.Millisecond)
+		mu.Lock()
+		active--
+		mu.Unlock()
+		ran <- struct{}{}
+		return map[string]any{"ok": true}, nil
+	}}
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{"shell": handler},
+		OrgName:  "org",
+		TaskID:   "task",
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	for _, id := range []string{"c1", "c2"} {
+		streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+			ToolCalls: []apitype.AgentBackendEventToolCall{
+				{ToolCallID: id, Name: "shell__" + id, Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+			},
+		})}
+	}
+	for range 2 {
+		select {
+		case <-ran:
+		case <-time.After(5 * time.Second):
+			t.Fatal("tool call never completed")
+		}
+	}
+
+	close(streamer.stream)
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("session did not exit")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, 1, maxActive, "tool batches must not run concurrently")
+
+	// Posted order must be exec(c1), result(c1), exec(c2), result(c2).
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	require.Len(t, streamer.posted, 4)
+	exec1, ok := streamer.posted[0].(apitype.AgentUserEventExecToolCall)
+	require.True(t, ok)
+	assert.Equal(t, "c1", exec1.ToolCallID)
+	res1, ok := streamer.posted[1].(apitype.AgentUserEventToolResult)
+	require.True(t, ok)
+	require.Len(t, res1.ToolResults, 1)
+	assert.Equal(t, "c1", res1.ToolResults[0].ToolCallID)
+	exec2, ok := streamer.posted[2].(apitype.AgentUserEventExecToolCall)
+	require.True(t, ok)
+	assert.Equal(t, "c2", exec2.ToolCallID)
+	res2, ok := streamer.posted[3].(apitype.AgentUserEventToolResult)
+	require.True(t, ok)
+	require.Len(t, res2.ToolResults, 1)
+	assert.Equal(t, "c2", res2.ToolResults[0].ToolCallID)
 }

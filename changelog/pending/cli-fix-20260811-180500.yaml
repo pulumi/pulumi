@@ -1,0 +1,8 @@
+component: cli
+kind: fix
+body: '`pulumi neo`: backend events (including cancellation) now reach the TUI while
+    a local tool call is running, and cancelling a task interrupts the in-flight
+    shell or Pulumi operation instead of waiting for it to finish'
+time: 2026-08-11T18:05:00+03:00
+custom:
+    PR: "24268"
