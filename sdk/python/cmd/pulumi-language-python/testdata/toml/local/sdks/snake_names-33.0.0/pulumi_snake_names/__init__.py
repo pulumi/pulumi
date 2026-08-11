@@ -12,8 +12,11 @@ from .provider import *
 if typing.TYPE_CHECKING:
     import pulumi_snake_names.cool_module as __cool_module
     cool_module = __cool_module
+    import pulumi_snake_names.dashed_module as __dashed_module
+    dashed_module = __dashed_module
 else:
     cool_module = _utilities.lazy_import('pulumi_snake_names.cool_module')
+    dashed_module = _utilities.lazy_import('pulumi_snake_names.dashed_module')
 
 _utilities.register(
     resource_modules="""
@@ -25,6 +28,14 @@ _utilities.register(
   "classes": {
    "snake_names:cool_module:another_resource": "Another_resource",
    "snake_names:cool_module:some_resource": "Some_resource"
+  }
+ },
+ {
+  "pkg": "snake_names",
+  "mod": "dashed-module",
+  "fqn": "pulumi_snake_names.dashed_module",
+  "classes": {
+   "snake_names:dashed-module:dashed_resource": "Dashed_resource"
   }
  }
 ]

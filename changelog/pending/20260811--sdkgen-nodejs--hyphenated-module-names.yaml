@@ -1,0 +1,4 @@
+component: sdkgen/nodejs
+kind: fix
+body: Export schema modules whose names contain hyphens under a valid sanitized identifier
+time: 2026-08-11T00:00:00Z

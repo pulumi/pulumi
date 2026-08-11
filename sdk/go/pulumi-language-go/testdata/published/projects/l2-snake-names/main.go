@@ -2,6 +2,7 @@ package main
 
 import (
 	"example.com/pulumi-snake_names/sdk/go/v33/snake_names/cool_module"
+	dashedmodule "example.com/pulumi-snake_names/sdk/go/v33/snake_names/dashed-module"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -13,6 +14,13 @@ func main() {
 			Nested: &cool_module.Nested_inputArgs{
 				Nested_value: pulumi.String("nested"),
 			},
+		})
+		if err != nil {
+			return err
+		}
+		// Modules with hyphens in their names generate valid programs
+		_, err = dashedmodule.NewDashed_resource(ctx, "second", &dashedmodule.Dashed_resourceArgs{
+			The_input: pulumi.String("buzz"),
 		})
 		if err != nil {
 			return err

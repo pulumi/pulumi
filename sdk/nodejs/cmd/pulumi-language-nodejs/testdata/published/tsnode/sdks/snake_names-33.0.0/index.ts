@@ -13,10 +13,12 @@ utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
 
 // Export sub-modules:
 import * as cool_module from "./cool_module";
+import * as dashed_module from "./dashed-module";
 import * as types from "./types";
 
 export {
     cool_module,
+    dashed_module,
     types,
 };
 pulumi.runtime.registerResourcePackage("snake_names", {

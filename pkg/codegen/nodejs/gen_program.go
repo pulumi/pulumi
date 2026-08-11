@@ -1152,7 +1152,11 @@ func moduleName(module string, pkg schema.PackageReference) string {
 	if module == "index" {
 		return ""
 	}
-	return strings.ToLower(strings.ReplaceAll(module, "/", "."))
+	segments := strings.Split(strings.ToLower(module), "/")
+	for i, segment := range segments {
+		segments[i] = makeValidIdentifier(segment)
+	}
+	return strings.Join(segments, ".")
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name

@@ -2402,8 +2402,8 @@ func printSubmoduleExports(w io.Writer, exports []string) {
 	fmt.Fprintf(w, "export {\n")
 	for _, mod := range exports {
 		ident := submoduleImportIdentifier(mod)
-		if ident == mod {
-			fmt.Fprintf(w, "    %s,\n", mod)
+		if ident == mod || !isLegalIdentifier(mod) {
+			fmt.Fprintf(w, "    %s,\n", ident)
 		} else {
 			fmt.Fprintf(w, "    %s as %s,\n", ident, mod)
 		}

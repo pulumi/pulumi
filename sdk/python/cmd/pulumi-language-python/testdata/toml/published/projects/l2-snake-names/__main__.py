@@ -7,6 +7,8 @@ first = snake_names.cool_module.Some_resource("first",
     nested={
         "nested_value": "nested",
     })
+# Modules with hyphens in their names generate valid programs
+second = snake_names.dashed_module.Dashed_resource("second", the_input="buzz")
 # Datasource outputs are correctly translated
 third = snake_names.cool_module.Another_resource("third", the_input=snake_names.cool_module.some_data_output(the_input=first.the_output["someKey"][0].nested_output,
     nested=[{

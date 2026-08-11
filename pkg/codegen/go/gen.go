@@ -4276,7 +4276,7 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAlia
 			pkgName = packageName(def)
 		}
 	} else {
-		pkgName = path.Base(pkg.mod)
+		pkgName = goPackage(path.Base(pkg.mod))
 	}
 
 	fmt.Fprintf(w, "package %s\n\n", pkgName)

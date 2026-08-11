@@ -8,6 +8,8 @@ const first = new snake_names.cool_module.Some_resource("first", {
         nested_value: "nested",
     },
 });
+// Modules with hyphens in their names generate valid programs
+const second = new snake_names.dashed_module.Dashed_resource("second", {the_input: "buzz"});
 // Datasource outputs are correctly translated
 const third = new snake_names.cool_module.Another_resource("third", {the_input: snake_names.cool_module.some_dataOutput({
     the_input: first.the_output.someKey[0].nested_output,

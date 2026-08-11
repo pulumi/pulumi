@@ -31,10 +31,11 @@ func init() {
 			{
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
-					require.Len(l, res.Snap.Resources, 4)
+					require.Len(l, res.Snap.Resources, 5)
 
 					RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:snake_names")
 					first := RequireSingleNamedResource(l, res.Snap.Resources, "first")
+					second := RequireSingleNamedResource(l, res.Snap.Resources, "second")
 					third := RequireSingleNamedResource(l, res.Snap.Resources, "third")
 
 					assert.Equal(l, resource.PropertyMap{
@@ -53,6 +54,14 @@ func init() {
 							}),
 						}),
 					}, first.Outputs)
+
+					assert.Equal(l, resource.PropertyMap{
+						"the_input": resource.NewProperty("buzz"),
+					}, second.Inputs)
+
+					assert.Equal(l, resource.PropertyMap{
+						"the_input": resource.NewProperty("buzz"),
+					}, second.Outputs)
 
 					assert.Equal(l, resource.PropertyMap{
 						"the_input": resource.NewProperty("fuzz"),
