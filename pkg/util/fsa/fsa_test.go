@@ -50,9 +50,8 @@ func TestUnblockedProgression(t *testing.T) {
 		return nil
 	})
 
-	e1 = machine.NewEdge(func(ctx context.Context, m fsa.FSA[string], from, to fsa.Node) (fsa.ConditionResult, error) {
-		assert.Equal(t, n0, from)
-		assert.Equal(t, n1, to)
+	e1 = machine.NewEdge(func(ctx context.Context, m fsa.FSA[string], v string) (fsa.ConditionResult, error) {
+		assert.Equal(t, "v1", v)
 		actions = append(actions, "n0->n1")
 		return fsa.ConditionPass, nil
 	}, n0, n1)
@@ -84,9 +83,8 @@ func TestBlockedProgression(t *testing.T) {
 		panic("should not be called")
 	})
 
-	machine.NewEdge(func(ctx context.Context, m fsa.FSA[string], from, to fsa.Node) (fsa.ConditionResult, error) {
-		assert.Equal(t, n0, from)
-		assert.Equal(t, n1, to)
+	machine.NewEdge(func(ctx context.Context, m fsa.FSA[string], v string) (fsa.ConditionResult, error) {
+		assert.Equal(t, "v1", v)
 		return fsa.ConditionFail, nil
 	}, n0, n1)
 
@@ -107,7 +105,7 @@ func nopNode[Cursor any](context.Context, fsa.FSA[Cursor], fsa.Edge, Cursor) err
 // A condition that passes exactly once, then fails.
 func passOnce[Cursor any]() fsa.ConditionFunc[Cursor] {
 	used := false
-	return func(context.Context, fsa.FSA[Cursor], fsa.Node, fsa.Node) (fsa.ConditionResult, error) {
+	return func(context.Context, fsa.FSA[Cursor], Cursor) (fsa.ConditionResult, error) {
 		if used {
 			return fsa.ConditionFail, nil
 		}
@@ -161,7 +159,7 @@ func TestStuckOccupantOverwritten(t *testing.T) {
 		panic("should not be called")
 	})
 	machine.NewEdge(passOnce[string](), n0, n1)
-	machine.NewEdge(func(context.Context, fsa.FSA[string], fsa.Node, fsa.Node) (fsa.ConditionResult, error) {
+	machine.NewEdge(func(context.Context, fsa.FSA[string], string) (fsa.ConditionResult, error) {
 		return fsa.ConditionFail, nil
 	}, n1, n2)
 
@@ -188,7 +186,7 @@ func TestRacingArrivalsError(t *testing.T) {
 	n2 := machine.NewNode(func(context.Context, fsa.FSA[string], fsa.Edge, string) error {
 		panic("should not be called")
 	})
-	pass := func(context.Context, fsa.FSA[string], fsa.Node, fsa.Node) (fsa.ConditionResult, error) {
+	pass := func(context.Context, fsa.FSA[string], string) (fsa.ConditionResult, error) {
 		return fsa.ConditionPass, nil
 	}
 	machine.NewEdge(pass, n0, n2)
@@ -246,7 +244,7 @@ func TestFailureSwallowsCancellationCollateral(t *testing.T) {
 	errBoom := errors.New("boom")
 
 	machine := fsa.New[string]()
-	pass := func(context.Context, fsa.FSA[string], fsa.Node, fsa.Node) (fsa.ConditionResult, error) {
+	pass := func(context.Context, fsa.FSA[string], string) (fsa.ConditionResult, error) {
 		return fsa.ConditionPass, nil
 	}
 
@@ -290,7 +288,7 @@ func TestExternalCancelReportsCause(t *testing.T) {
 		<-ctx.Done()
 		return ctx.Err()
 	})
-	machine.NewEdge(func(context.Context, fsa.FSA[string], fsa.Node, fsa.Node) (fsa.ConditionResult, error) {
+	machine.NewEdge(func(context.Context, fsa.FSA[string], string) (fsa.ConditionResult, error) {
 		return fsa.ConditionPass, nil
 	}, n0, n1)
 	machine.NewCursor("x", n0)
@@ -321,7 +319,7 @@ func TestMutationDuringProgress(t *testing.T) {
 	deadEnd := machine.NewNode(func(context.Context, fsa.FSA[string], fsa.Edge, string) error {
 		panic("should not be called")
 	})
-	machine.NewEdge(func(context.Context, fsa.FSA[string], fsa.Node, fsa.Node) (fsa.ConditionResult, error) {
+	machine.NewEdge(func(context.Context, fsa.FSA[string], string) (fsa.ConditionResult, error) {
 		return fsa.ConditionFail, nil
 	}, parkedAt, deadEnd)
 	machine.NewCursor("parked", parkedAt)
@@ -390,7 +388,7 @@ func TestEdgeAddedByFailingCondition(t *testing.T) {
 	bDead := machine.NewNode(func(context.Context, fsa.FSA[string], fsa.Edge, string) error {
 		panic("should not be called")
 	})
-	machine.NewEdge(func(context.Context, fsa.FSA[string], fsa.Node, fsa.Node) (fsa.ConditionResult, error) {
+	machine.NewEdge(func(context.Context, fsa.FSA[string], string) (fsa.ConditionResult, error) {
 		return fsa.ConditionFail, nil
 	}, nB, bDead)
 	machine.NewCursor("b", nB)
@@ -404,7 +402,7 @@ func TestEdgeAddedByFailingCondition(t *testing.T) {
 
 	// x's only condition adds an edge from x's own node and one from b's node, then fails.
 	condCalls := 0
-	machine.NewEdge(func(_ context.Context, m fsa.FSA[string], _, _ fsa.Node) (fsa.ConditionResult, error) {
+	machine.NewEdge(func(_ context.Context, m fsa.FSA[string], _ string) (fsa.ConditionResult, error) {
 		condCalls++
 		if condCalls == 1 {
 			m.NewEdge(passOnce[string](), n0, n2)
@@ -426,13 +424,41 @@ func TestEdgeAddedByFailingCondition(t *testing.T) {
 	assert.Equal(t, 1, condCalls)
 }
 
+// Every Progress call starts a fresh visit: a condition that failed in one call is re-asked by the
+// next, even though the cursor never moved.
+func TestProgressRestartsVisits(t *testing.T) {
+	t.Parallel()
+
+	machine := fsa.New[string]()
+	n0 := machine.NewNode(nopNode[string])
+	n1 := machine.NewNode(func(context.Context, fsa.FSA[string], fsa.Edge, string) error {
+		panic("should not be called")
+	})
+	condCalls := 0
+	machine.NewEdge(func(context.Context, fsa.FSA[string], string) (fsa.ConditionResult, error) {
+		condCalls++
+		return fsa.ConditionFail, nil
+	}, n0, n1)
+	machine.NewCursor("x", n0)
+
+	require.NoError(t, machine.Progress(t.Context(), fsa.SyncRunner))
+	assert.Equal(t, 1, condCalls)
+
+	require.NoError(t, machine.Progress(t.Context(), fsa.SyncRunner))
+	assert.Equal(t, 2, condCalls)
+
+	assert.Equal(t, map[string]fsa.Node{
+		"x": n0,
+	}, maps.Collect(machine.Parked))
+}
+
 // Entry functions run in parallel under an async runner: the two entry functions rendezvous, each
 // blocking until the other has started, so Progress only completes if the runner overlaps them.
 func TestEntryFunctionsRunInParallel(t *testing.T) {
 	t.Parallel()
 
 	machine := fsa.New[string]()
-	pass := func(context.Context, fsa.FSA[string], fsa.Node, fsa.Node) (fsa.ConditionResult, error) {
+	pass := func(context.Context, fsa.FSA[string], string) (fsa.ConditionResult, error) {
 		return fsa.ConditionPass, nil
 	}
 
@@ -490,7 +516,7 @@ func TestConcurrentRunner(t *testing.T) {
 			entered[v]++
 			return nil
 		})
-		machine.NewEdge(func(context.Context, fsa.FSA[int], fsa.Node, fsa.Node) (fsa.ConditionResult, error) {
+		machine.NewEdge(func(context.Context, fsa.FSA[int], int) (fsa.ConditionResult, error) {
 			return fsa.ConditionPass, nil
 		}, src, dst)
 		machine.NewCursor(i, src)
