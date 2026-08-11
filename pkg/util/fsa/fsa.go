@@ -3,6 +3,7 @@ package fsa
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"slices"
 	"sync"
@@ -12,13 +13,21 @@ type FSA[Cursor any] struct {
 	*fsa[Cursor]
 }
 
-func New[Cursor any]() FSA[Cursor] { return FSA[Cursor]{&fsa[Cursor]{}} }
+func New[Cursor any]() FSA[Cursor] {
+	return FSA[Cursor]{&fsa[Cursor]{
+		cursors: map[nodeID]*cursor[Cursor]{},
+		nodes:   map[nodeID]*node[Cursor]{},
+		edges:   map[edgeID]ConditionFunc[Cursor]{},
+	}}
+}
 
-type NodeFunc[Cursor any] = func(context.Context, FSA[Cursor], Edge, Cursor) error
+// TODO[https://github.com/golang/go/issues/75757]: Should be a type alias
+type NodeFunc[Cursor any] func(context.Context, FSA[Cursor], Edge, Cursor) error
 
 type Node struct{ id nodeID }
 
-type ConditionFunc[Cursor any] = func(ctx context.Context, fsa FSA[Cursor], from, to Node) (ConditionResult, error)
+// TODO[https://github.com/golang/go/issues/75757]: Should be a type alias
+type ConditionFunc[Cursor any] func(ctx context.Context, fsa FSA[Cursor], from, to Node) (ConditionResult, error)
 
 type ConditionResult struct{ kind int8 }
 
@@ -55,6 +64,9 @@ func (fsa FSA[Cursor]) NewEdge(f ConditionFunc[Cursor], from, to Node) Edge {
 	return Edge{id}
 }
 
+// Place a cursor on n.
+//
+// The entry function for n is not called.
 func (fsa FSA[Cursor]) NewCursor(c Cursor, n Node) {
 	fsa.m.Lock()
 	defer fsa.m.Unlock()
@@ -83,6 +95,8 @@ progressNode:
 		toProgress = toProgress[:len(toProgress)-1]
 		c := fsa.nodes[inProgress]
 
+		fmt.Printf("Progressing %#v\n", fsa.cursors[inProgress])
+
 		if len(c.edges) == 0 {
 			// The cursor is terminal, but not blocked
 			continue progressNode
@@ -106,7 +120,11 @@ progressNode:
 			case ConditionPass:
 				// We are now going to try to move down this path
 				c := fsa.cursors[inProgress]
-				err := fsa.nodes[e.n].f(ctx, fsa, Edge{e.e}, c.c)
+				func() {
+					fsa.m.Unlock()
+					defer fsa.m.Lock()
+					err = fsa.nodes[e.n].f(ctx, fsa, Edge{e.e}, c.c)
+				}()
 				if err != nil {
 					return err
 				}
@@ -117,6 +135,7 @@ progressNode:
 				continue progressNode
 			}
 		}
+
 		// Mark this node as parked
 		fsa.cursors[inProgress].parked = fsa.generation
 	}
@@ -151,7 +170,7 @@ func (fsa FSA[Cursor]) cursorsInner(yield func(Cursor, Node) bool, onlyParked bo
 	defer fsa.m.Unlock()
 	for _, n := range slices.Sorted(maps.Keys(fsa.cursors)) {
 		c, ok := fsa.cursors[n]
-		if !ok || (onlyParked && c.parked != 0) {
+		if !ok || (onlyParked && (c.parked == 0 || c.parked < fsa.generation)) {
 			continue
 		}
 		{
