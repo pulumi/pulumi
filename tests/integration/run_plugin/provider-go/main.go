@@ -6,9 +6,9 @@ import (
 	"context"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -21,10 +21,10 @@ func (p *Provider) Configure(ctx context.Context, req plugin.ConfigureRequest) (
 }
 
 func (p *Provider) Construct(ctx context.Context, req plugin.ConstructRequest) (plugin.ConstructResponse, error) {
+	propMap := resource.NewPropertyMap(nil)
+	propMap["ITS_ALIVE"] = resource.NewPropertyValue("IT'S ALIVE!")
 	return plugin.ConstructResponse{
-		Outputs: property.NewMap(map[string]property.Value{
-			"ITS_ALIVE": property.New("IT'S ALIVE!"),
-		}),
+		Outputs: propMap,
 	}, nil
 }
 
