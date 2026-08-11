@@ -326,16 +326,16 @@ func tapSummaryJSON(in <-chan engine.Event, opts Options) <-chan engine.Event {
 				}
 			case engine.ResourceOutputsEvent:
 				// Refresh steps only reveal their diff once the provider has read
-				// the resource's current state, which arrives on the outputs event
-				// as an update (with a detailed diff) or a delete.
+				// the resource's current state, which arrives on the outputs event.
 				if !includeDiff {
 					break
 				}
 				if payload, ok := e.Payload().(engine.ResourceOutputsEventPayload); ok {
 					m := payload.Metadata
-					if i, ok := indexByURN[m.URN]; ok && resources[i].Op == apitype.OpRefresh &&
-						((m.Op == deploy.OpUpdate && m.DetailedDiff != nil) || m.Op == deploy.OpDelete) {
-						resources[i].Diff = NewDiffJSON(&m, true /* refresh */, opts.ShowSecrets)
+					if i, ok := indexByURN[m.URN]; ok && resources[i].Op == apitype.OpRefresh {
+						if d := RefreshDiffJSON(&m, opts.ShowSecrets); d != nil {
+							resources[i].Diff = d
+						}
 					}
 				}
 			case engine.SummaryEvent:
