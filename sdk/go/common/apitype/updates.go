@@ -320,6 +320,7 @@ type BeginUpdateRequest struct {
 type BeginUpdateResponse struct {
 	StartUpdateResponse
 	UpdateProgramResponse
-	Deployment UntypedDeployment `json:"deployment"`
-	Stack      Stack             `json:"stack"`
+	// Deployment may be omitted by the service; the client then fetches it separately.
+	Deployment *UntypedDeployment `json:"deployment,omitempty"`
+	Stack      Stack              `json:"stack"`
 }

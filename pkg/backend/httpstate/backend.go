@@ -1824,7 +1824,7 @@ func (b *cloudBackend) createAndStartUpdate(
 
 		// Cache the deployment, stack tags, and stack for later use.
 		b.cachedUpdateData = &cachedUpdateData{
-			deployment: &resp.Deployment,
+			deployment: resp.Deployment,
 			stackTags:  resp.Stack.Tags,
 			stackRef:   stackRef,
 		}
@@ -2369,7 +2369,8 @@ func (b *cloudBackend) ExportDeploymentForVersion(
 func (b *cloudBackend) exportDeployment(
 	ctx context.Context, stackRef backend.StackReference, version *int,
 ) (*apitype.UntypedDeployment, error) {
-	if version == nil && b.cachedUpdateData != nil && b.cachedUpdateData.stackRef.String() == stackRef.String() {
+	if version == nil && b.cachedUpdateData != nil && b.cachedUpdateData.deployment != nil &&
+		b.cachedUpdateData.stackRef.String() == stackRef.String() {
 		logging.V(7).Infof("Using cached deployment from begin-update for %s", stackRef)
 		return b.cachedUpdateData.deployment, nil
 	}
