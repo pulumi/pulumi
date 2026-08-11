@@ -266,16 +266,17 @@ func runShowResources(cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend
 		return nil
 	}
 	idents := make([]string, 0, len(names))
-	width := 0
 	for k := range names {
 		idents = append(idents, k)
-		if len(k) > width {
-			width = len(k)
-		}
 	}
 	sort.Strings(idents)
+	rows := make([]cmdutil.TableRow, 0, len(idents))
 	for _, k := range idents {
-		fmt.Fprintf(cmd.OutOrStdout(), "%-*s  %s\n", width, k, names[k])
+		rows = append(rows, cmdutil.TableRow{Columns: []string{k, names[k]}})
 	}
+	fmt.Fprint(cmd.OutOrStdout(), cmdutil.Table{
+		Headers: []string{"NAME", "URN"},
+		Rows:    rows,
+	})
 	return nil
 }
