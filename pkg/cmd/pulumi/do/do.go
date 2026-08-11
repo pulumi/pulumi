@@ -490,15 +490,21 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 }
 
 func showResourcesArgs(args []string) ([]string, bool) {
+	var passthrough []string
 	for i := 0; i < len(args); i++ {
 		switch a := args[i]; {
 		case a == "show-resources":
-			return args[i+1:], true
+			return append(passthrough, args[i+1:]...), true
 		case a == "--package" || strings.HasPrefix(a, "--package="):
 			return nil, false
 		case a == "--output":
+			if i+1 >= len(args) {
+				return nil, false
+			}
+			passthrough = append(passthrough, a, args[i+1])
 			i++
 		case strings.HasPrefix(a, "--output="):
+			passthrough = append(passthrough, a)
 		case a == "--dry-run" || a == "--show-secrets" || a == "--stateless" ||
 			strings.HasPrefix(a, "--dry-run=") ||
 			strings.HasPrefix(a, "--show-secrets=") ||

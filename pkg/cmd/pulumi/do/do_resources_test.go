@@ -230,7 +230,19 @@ func TestShowResourcesArgs(t *testing.T) {
 		{
 			name:        "top-level flag before command",
 			args:        []string{"--output", "default", "show-resources"},
-			wantArgs:    []string{},
+			wantArgs:    []string{"--output", "default"},
+			wantBuiltin: true,
+		},
+		{
+			name:        "top-level output equals flag before command",
+			args:        []string{"--output=json", "show-resources"},
+			wantArgs:    []string{"--output=json"},
+			wantBuiltin: true,
+		},
+		{
+			name:        "output flag after command",
+			args:        []string{"show-resources", "--output", "json"},
+			wantArgs:    []string{"--output", "json"},
 			wantBuiltin: true,
 		},
 		{
@@ -326,4 +338,24 @@ func TestDoCmdShowResourcesSubcommand(t *testing.T) {
 
 	assert.Contains(t, stdout.String(), "myBucket")
 	assert.Contains(t, stdout.String(), string(bucket))
+}
+
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdShowResourcesSubcommandJSON(t *testing.T) {
+	bucket := resource.URN("urn:pulumi:dev::proj::aws:s3/bucket:Bucket::myBucket")
+	mws, mlm := installMockUpsertBackend(t, &deploy.Snapshot{
+		Resources: []*pkgresource.State{
+			{Type: bucket.Type(), URN: bucket, Custom: true},
+		},
+	})
+
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, nil, testHost, panicLoadConverterPlugin, nil)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs([]string{"--output", "json", "show-resources"})
+	require.NoError(t, cmd.Execute())
+
+	autoName := availableHashedResourceIdent("myBucket", bucket, nil)
+	assert.JSONEq(t, `{"`+autoName+`":"`+string(bucket)+`"}`, stdout.String())
 }

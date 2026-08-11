@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"sort"
@@ -41,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // autoResourceNames returns a deterministic identifier→URN map derived from the given snapshot.
@@ -223,6 +225,7 @@ func walkBody(body *hclv2syntax.Body, visit hclv2syntax.VisitFunc) {
 // runs with DisableFlagParsing, so cobra wouldn't otherwise handle --help or arg validation for
 // this subcommand.
 func newShowResourcesCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
+	output := "text"
 	cmd := &cobra.Command{
 		Use:   "show-resources",
 		Short: "Show the identifiers `pulumi do` will auto-assign to resources in the current stack",
@@ -231,10 +234,11 @@ func newShowResourcesCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager
 			"URN, in whatever expression syntax the chosen input format supports. Entries in " +
 			"--resources-file take precedence over the auto-assigned identifiers shown here.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runShowResources(cmd, ws, lm)
+			return runShowResources(cmd, ws, lm, output)
 		},
 	}
 
+	cmd.Flags().StringVarP(&output, "output", "o", "text", "Output format (supported: text, json)")
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 	return cmd
 }
@@ -242,7 +246,13 @@ func newShowResourcesCommand(ws pkgWorkspace.Context, lm cmdBackend.LoginManager
 // runShowResources opens the currently-selected stack, computes the auto-name map and prints it
 // (identifier -> URN). This is the discoverability surface for the auto-map that upsert/create
 // silently merge into the user's --resources-file.
-func runShowResources(cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend.LoginManager) error {
+func runShowResources(cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, output string) error {
+	switch output {
+	case "", "default", "text", "json":
+	default:
+		return fmt.Errorf("unsupported output format %q; supported values are text and json", output)
+	}
+
 	ctx := cmd.Context()
 	base := diag.DefaultSink(cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
@@ -261,6 +271,17 @@ func runShowResources(cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
 	names := autoResourceNames(snap)
+	switch output {
+	case "", "default", "text":
+		return printShowResourcesText(cmd, names)
+	case "json":
+		return printShowResourcesJSON(cmd, names)
+	}
+	contract.Failf("unsupported output format %q", output)
+	return nil
+}
+
+func printShowResourcesText(cmd *cobra.Command, names map[string]string) error {
 	if len(names) == 0 {
 		fmt.Fprintln(cmd.OutOrStdout(), "(no resources)")
 		return nil
@@ -279,4 +300,13 @@ func runShowResources(cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend
 		Rows:    rows,
 	})
 	return nil
+}
+
+func printShowResourcesJSON(cmd *cobra.Command, names map[string]string) error {
+	if names == nil {
+		names = map[string]string{}
+	}
+	encoder := json.NewEncoder(cmd.OutOrStdout())
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(names)
 }
