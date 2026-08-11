@@ -1,0 +1,4 @@
+component: cli/deployment
+kind: fix
+body: "`pulumi deployment settings edit` no longer overwrites the VCS configuration of stacks that use a provider other than GitHub, `--path-filter` keeps brace globs intact, and `get` reports a stack with no deployment settings instead of failing"
+time: 2026-08-11T12:00:00+00:00
