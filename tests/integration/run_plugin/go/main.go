@@ -49,7 +49,7 @@ func testProvider(ctx context.Context, host plugin.Host, pCtx *plugin.Context, n
 	if err != nil {
 		return err
 	}
-	if constructResult.Outputs["ITS_ALIVE"].StringValue() != "IT'S ALIVE!" {
+	if constructResult.Outputs.Get("ITS_ALIVE").AsString() != "IT'S ALIVE!" {
 		return errors.New("did not get expected response from provider")
 	}
 	return nil
