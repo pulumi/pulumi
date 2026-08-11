@@ -1339,10 +1339,9 @@ func (b *cloudBackend) CreateStack(
 
 	stack, err := newStack(ctx, apistack, b)
 	if err != nil {
-		fmt.Printf("Created stack '%s'\n", stack.Ref())
+		return nil, err
 	}
-
-	return stack, err
+	return stack, nil
 }
 
 func (b *cloudBackend) ListStacks(
