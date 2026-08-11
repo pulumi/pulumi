@@ -2,3 +2,5 @@ component: cli
 kind: feat
 body: Support combining --diff with --output json on up, preview, destroy, and refresh, and add --diff to `pulumi stack history events --summary`, to include each resource's property diff in the structured summary
 time: 2026-08-11T16:10:45.483909+02:00
+custom:
+    PR: "24264"
