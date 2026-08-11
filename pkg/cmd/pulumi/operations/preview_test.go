@@ -495,9 +495,9 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 	assert.Nil(t, importFile.ProviderInputs)
 }
 
-// TestBuildImportFile_NewProviderUnknownInputs tests that we refuse to generate an import file for a
-// provider whose configuration isn't known during the preview, rather than writing the unknown
-// placeholder into it (#24151).
+// TestBuildImportFile_NewProviderUnknownInputs tests that provider configuration that isn't known
+// during the preview is left out of the import file rather than written to it as the unknown
+// placeholder (#24151).
 func TestBuildImportFile_NewProviderUnknownInputs(t *testing.T) {
 	t.Parallel()
 
@@ -521,9 +521,11 @@ func TestBuildImportFile_NewProviderUnknownInputs(t *testing.T) {
 
 	close(events)
 
-	_, err := importFilePromise.Result(t.Context())
-	assert.ErrorContains(t, err, "the configuration of provider "+string(providerState.URN)+
-		" is not known during preview")
+	importFile, err := importFilePromise.Result(t.Context())
+	require.NoError(t, err)
+
+	require.Len(t, importFile.Resources, 1)
+	assert.Equal(t, map[string]any{"version": "1.2.3"}, importFile.Resources[0].Inputs)
 }
 
 // TestBuildImportFile_NewProviderWithParent tests that a created explicit provider parented to
