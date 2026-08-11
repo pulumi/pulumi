@@ -95,13 +95,25 @@ func autoResourceNames(snap *deploy.Snapshot) map[string]string {
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].urn < entries[j].urn })
 
+	// Count how many entries would claim each sanitized snippet name so that when two entries
+	// share one, both fall through to the hashed form rather than one arbitrarily winning the
+	// plain name.
+	snippetNameCounts := map[string]int{}
+	for _, e := range entries {
+		if e.snippetName != "" {
+			snippetNameCounts[sanitizeIdent(e.snippetName)]++
+		}
+	}
+
 	assigned := map[string]string{} // ident -> urn
 	for _, e := range entries {
 		if e.snippetName != "" {
 			c := sanitizeIdent(e.snippetName)
-			if _, taken := assigned[c]; !taken {
-				assigned[c] = string(e.urn)
-				continue
+			if snippetNameCounts[c] == 1 {
+				if _, taken := assigned[c]; !taken {
+					assigned[c] = string(e.urn)
+					continue
+				}
 			}
 		}
 

@@ -78,8 +78,9 @@ func TestAutoResourceNames_SkipsProvidersAndStackAndDeletes(t *testing.T) {
 
 func TestAutoResourceNames_SnippetConflictAppendsHash(t *testing.T) {
 	t.Parallel()
-	// Two snippet resources with the same snippet name: the first in URN order takes the
-	// plain snippet name, the second falls back directly to the hash-suffixed snippet name.
+	// Two snippet resources with the same snippet name: neither wins the bare name — both
+	// fall through to hash-suffixed identifiers so the shorter identifier isn't handed out
+	// arbitrarily based on URN order.
 	a := resource.URN("urn:pulumi:dev::proj::aws:s3/bucket:Bucket::shared")
 	b := resource.URN("urn:pulumi:dev::proj::aws:ec2/vpc:Vpc::shared")
 	names := autoResourceNames(&deploy.Snapshot{
@@ -92,9 +93,9 @@ func TestAutoResourceNames_SnippetConflictAppendsHash(t *testing.T) {
 			{Type: b.Type(), URN: b, Custom: true, SnippetID: "snippet-b"},
 		},
 	})
-	// URN order: "aws:ec2..." < "aws:s3...", so Vpc wins the bare name.
-	assert.Equal(t, string(b), names["shared"])
+	assert.NotContains(t, names, "shared")
 	assert.Equal(t, string(a), names[availableHashedResourceIdent("shared", a, nil)])
+	assert.Equal(t, string(b), names[availableHashedResourceIdent("shared", b, nil)])
 	require.Len(t, names, 2)
 }
 
