@@ -20,20 +20,25 @@ package deployment
 
 import (
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 var editFlagNames = []string{
 	flagGitHubRepo, flagRepo, flagVCSProvider, flagGitURL, flagBranch, flagCommit, flagFolder,
+	flagGitAuthToken, flagGitAuthSSHKey, flagGitAuthSSHKeyPath, flagGitAuthSSHKeyPassword,
+	flagGitAuthUsername, flagGitAuthPassword, flagTemplateSourceURL,
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter, flagClearPathFilters,
 	flagDeployTags, flagTagFilter, flagClearTagFilters, flagReviewStackLabel, flagClearReviewStackLabel,
 	flagInstallationID, flagDeployPullRequest,
 	flagRunnerPool, flagExecutorImage, flagExecutorRootPath,
 	flagPreRunCommand, flagClearPreRunCommands, flagEnv, flagSecretEnv, flagRemoveEnv, flagClearEnv,
-	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy,
+	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy, flagRemediateIfDrift,
+	flagDeploymentRoleID, flagCache,
 	flagOIDCAWSRoleARN, flagOIDCAWSSessionName, flagOIDCAWSDuration, flagOIDCAWSPolicyARN, flagOIDCAWSClear,
 	flagOIDCAzureClientID, flagOIDCAzureTenantID, flagOIDCAzureSubscriptionID, flagOIDCAzureClear,
 	flagOIDCGCPProjectNumber, flagOIDCGCPWorkloadPoolID, flagOIDCGCPProviderID,
@@ -336,10 +341,74 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 			return err
 		}
 	}
+	if args.flagsChanged(flagGitAuthSSHKeyPassword) && !gitAuthSSHKeyEdited(args) {
+		return fmt.Errorf("--%s requires --%s or --%s",
+			flagGitAuthSSHKeyPassword, flagGitAuthSSHKey, flagGitAuthSSHKeyPath)
+	}
+	// An empty username clears the stored credentials, so only a real username needs a password.
+	if args.flagsChanged(flagGitAuthUsername) && args.gitAuthUsername != "" &&
+		!args.flagsChanged(flagGitAuthPassword) {
+		return fmt.Errorf("--%s requires --%s", flagGitAuthUsername, flagGitAuthPassword)
+	}
+	if args.flagsChanged(flagGitAuthPassword) && !args.flagsChanged(flagGitAuthUsername) {
+		return fmt.Errorf("--%s requires --%s", flagGitAuthPassword, flagGitAuthUsername)
+	}
 	if args.flagsChanged(flagDeployPullRequest) && args.deployPullRequest < 0 {
 		return fmt.Errorf("--%s must not be negative; pass 0 to clear it", flagDeployPullRequest)
 	}
 	return nil
+}
+
+// gitAuthSSHKeyEdited reports whether the SSH key was given inline or as a path, which
+// resolveEditGitAuthSSHKey has already folded into the one field.
+func gitAuthSSHKeyEdited(args deploymentSettingsEditArgs) bool {
+	return args.flagsChanged(flagGitAuthSSHKey) || args.flagsChanged(flagGitAuthSSHKeyPath)
+}
+
+// resolveEditGitAuthSSHKey reads the key file so the rest of the command has a single field to
+// consult. An empty key deletes the stored credentials, so neither an empty path nor an empty file
+// is accepted here: a truncated key file would otherwise wipe every stored authentication mode and
+// report success. Only the inline flag clears them.
+func resolveEditGitAuthSSHKey(args *deploymentSettingsEditArgs) error {
+	if !args.flagsChanged(flagGitAuthSSHKeyPath) {
+		return nil
+	}
+	if args.gitAuthSSHPrivateKeyPath == "" {
+		return fmt.Errorf("--%s requires a path; pass --%s \"\" to remove the stored git credentials",
+			flagGitAuthSSHKeyPath, flagGitAuthSSHKey)
+	}
+	key, err := os.ReadFile(args.gitAuthSSHPrivateKeyPath)
+	if err != nil {
+		return fmt.Errorf("reading SSH private key %q: %w", args.gitAuthSSHPrivateKeyPath, err)
+	}
+	if strings.TrimSpace(string(key)) == "" {
+		return fmt.Errorf("SSH private key %q holds no key material; pass --%s \"\" to remove the "+
+			"stored git credentials", args.gitAuthSSHPrivateKeyPath, flagGitAuthSSHKey)
+	}
+	args.gitAuthSSHPrivateKey = string(key)
+	return nil
+}
+
+// registerEditSecrets keeps the credentials the flags carry out of the request bodies the HTTP
+// client dumps at high verbosity.
+func registerEditSecrets(args deploymentSettingsEditArgs) {
+	var secrets []string
+	for _, v := range []string{
+		args.gitAuthToken, args.gitAuthSSHPrivateKey, args.gitAuthSSHPrivateKeyPassword,
+		args.gitAuthUsername, args.gitAuthPassword,
+	} {
+		if v != "" {
+			secrets = append(secrets, v)
+		}
+	}
+	for _, spec := range args.secretEnvVars {
+		if _, value, ok := strings.Cut(spec, "="); ok && value != "" {
+			secrets = append(secrets, value)
+		}
+	}
+	if len(secrets) > 0 {
+		logging.AddGlobalSecretFilter(secrets, "[secret]")
+	}
 }
 
 // buildSecretEnvVars converts each "KEY=VALUE" --secret-env entry into the plaintext-secret
@@ -351,7 +420,7 @@ func buildSecretEnvVars(specs []string) map[string]map[string]any {
 	out := map[string]map[string]any{}
 	for _, spec := range specs {
 		key, value, _ := strings.Cut(spec, "=")
-		out[key] = map[string]any{"secret": value}
+		out[key] = secretWireValue(value)
 	}
 	return out
 }
@@ -392,6 +461,18 @@ func buildEditFlagPatch(
 	}
 	if changed(flagFolder) {
 		setNested(patch, []string{"sourceContext", "git", "repoDir"}, args.folder)
+	}
+	if gitAuth, ok := buildGitAuthPatch(args, changed); ok {
+		setNested(patch, []string{"sourceContext", "git", "gitAuth"}, gitAuth)
+	}
+	if changed(flagTemplateSourceURL) {
+		// Clearing only the url would leave an empty template object behind, which then takes
+		// precedence over the git source and fails the deployment for a missing source url.
+		if args.templateSourceURL == "" {
+			setNested(patch, []string{"sourceContext", "template"}, nil)
+		} else {
+			setNested(patch, []string{"sourceContext", "template", "sourceUrl"}, args.templateSourceURL)
+		}
 	}
 
 	if changed(flagRunnerPool) {
@@ -460,6 +541,21 @@ func buildEditFlagPatch(
 	if changed(flagDeleteAfterDestroy) {
 		setNested(patch, []string{"operationContext", "options", "deleteAfterDestroy"}, args.deleteAfterDestroy)
 	}
+	if changed(flagRemediateIfDrift) {
+		setNested(patch, []string{"operationContext", "options", "remediateIfDriftDetected"}, args.remediateIfDrift)
+	}
+	if changed(flagDeploymentRoleID) {
+		// Only a null role unsets the assignment: the service looks up a role object that carries an
+		// empty id and rejects it as invalid.
+		if args.deploymentRoleID == "" {
+			setNested(patch, []string{"operationContext", "role"}, nil)
+		} else {
+			setNested(patch, []string{"operationContext", "role", "id"}, args.deploymentRoleID)
+		}
+	}
+	if changed(flagCache) {
+		setNested(patch, []string{"cacheOptions", "enable"}, args.cache)
+	}
 
 	// OIDC - AWS
 	if changed(flagOIDCAWSClear) {
@@ -524,6 +620,60 @@ func buildEditFlagPatch(
 	}
 
 	return patch
+}
+
+// buildGitAuthPatch nulls the two git auth modes that were not selected: the executor picks an ssh
+// key over an access token over basic auth, so a stored mode left in place would win over the one
+// the user just set.
+func buildGitAuthPatch(args deploymentSettingsEditArgs, changed func(string) bool) (any, bool) {
+	switch {
+	case changed(flagGitAuthToken):
+		if args.gitAuthToken == "" {
+			return nil, true
+		}
+		return map[string]any{
+			"accessToken": secretWireValue(args.gitAuthToken),
+			"sshAuth":     nil,
+			"basicAuth":   nil,
+		}, true
+
+	case gitAuthSSHKeyEdited(args):
+		if args.gitAuthSSHPrivateKey == "" {
+			return nil, true
+		}
+		// The password is always written so that rotating to an unprotected key does not leave the
+		// previous key's passphrase bound to it.
+		sshAuth := map[string]any{
+			"sshPrivateKey": secretWireValue(args.gitAuthSSHPrivateKey),
+			"password":      nil,
+		}
+		if changed(flagGitAuthSSHKeyPassword) {
+			sshAuth["password"] = secretWireValue(args.gitAuthSSHPrivateKeyPassword)
+		}
+		return map[string]any{
+			"sshAuth":     sshAuth,
+			"accessToken": nil,
+			"basicAuth":   nil,
+		}, true
+
+	case changed(flagGitAuthUsername):
+		if args.gitAuthUsername == "" {
+			return nil, true
+		}
+		return map[string]any{
+			"basicAuth": map[string]any{
+				"userName": secretWireValue(args.gitAuthUsername),
+				"password": secretWireValue(args.gitAuthPassword),
+			},
+			"accessToken": nil,
+			"sshAuth":     nil,
+		}, true
+	}
+	return nil, false
+}
+
+func secretWireValue(v string) map[string]any {
+	return map[string]any{"secret": v}
 }
 
 // nullIfEmpty maps an empty flag value to a JSON null so the server clears the stored field, since

@@ -21,6 +21,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -714,6 +716,29 @@ func TestDeploymentSettingsEdit_GitHubRepoStillWritesGitHubVCS(t *testing.T) {
 	assert.NotEmpty(t, cmd.Flags().Lookup(flagGitHubRepo).Deprecated)
 }
 
+func TestDeploymentSettingsEdit_GitAuthModesAreMutuallyExclusive(t *testing.T) {
+	t.Parallel()
+	for _, other := range []string{
+		"--" + flagGitAuthSSHKey, "--" + flagGitAuthSSHKeyPath, "--" + flagGitAuthUsername,
+	} {
+		t.Run(other, func(t *testing.T) {
+			t.Parallel()
+			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
+				"--git-auth-token", "tok", other, "value")
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), flagGitAuthToken)
+		})
+	}
+}
+
+func TestDeploymentSettingsEdit_GitAuthSSHKeyAndPathAreMutuallyExclusive(t *testing.T) {
+	t.Parallel()
+	_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
+		"--"+flagGitAuthSSHKey, "key", "--"+flagGitAuthSSHKeyPath, "/tmp/key")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagGitAuthSSHKeyPath)
+}
+
 func TestDeploymentSettingsEdit_GuardRejectsProviderChange(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -1130,6 +1155,172 @@ func TestDeploymentSettingsEdit_DurationFlagsClearWithNull(t *testing.T) {
 	}
 }
 
+func TestDeploymentSettingsEdit_GitAuthModes(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		args deploymentSettingsEditArgs
+		want string
+	}{
+		{
+			"access token",
+			deploymentSettingsEditArgs{
+				gitAuthToken: "tok",
+				flagsChanged: flagsSet(flagGitAuthToken),
+			},
+			`{"sourceContext":{"git":{"gitAuth":{
+				"accessToken": {"secret": "tok"}, "sshAuth": null, "basicAuth": null
+			}}}}`,
+		},
+		{
+			"ssh key",
+			deploymentSettingsEditArgs{
+				gitAuthSSHPrivateKey:         "PRIVATE KEY",
+				gitAuthSSHPrivateKeyPassword: "pw",
+				flagsChanged:                 flagsSet(flagGitAuthSSHKey, flagGitAuthSSHKeyPassword),
+			},
+			`{"sourceContext":{"git":{"gitAuth":{
+				"sshAuth": {"sshPrivateKey": {"secret": "PRIVATE KEY"}, "password": {"secret": "pw"}},
+				"accessToken": null, "basicAuth": null
+			}}}}`,
+		},
+		{
+			"ssh key without a password",
+			deploymentSettingsEditArgs{
+				gitAuthSSHPrivateKey: "PRIVATE KEY",
+				flagsChanged:         flagsSet(flagGitAuthSSHKey),
+			},
+			`{"sourceContext":{"git":{"gitAuth":{
+				"sshAuth": {"sshPrivateKey": {"secret": "PRIVATE KEY"}, "password": null},
+				"accessToken": null, "basicAuth": null
+			}}}}`,
+		},
+		{
+			"basic auth",
+			deploymentSettingsEditArgs{
+				gitAuthUsername: "deploy",
+				gitAuthPassword: "pw",
+				flagsChanged:    flagsSet(flagGitAuthUsername, flagGitAuthPassword),
+			},
+			`{"sourceContext":{"git":{"gitAuth":{
+				"basicAuth": {"userName": {"secret": "deploy"}, "password": {"secret": "pw"}},
+				"accessToken": null, "sshAuth": null
+			}}}}`,
+		},
+		{
+			"empty value clears every mode",
+			deploymentSettingsEditArgs{flagsChanged: flagsSet(flagGitAuthToken)},
+			`{"sourceContext":{"git":{"gitAuth":null}}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := captureEditPatch(t, tc.args, &mockDeploymentSettingsEditClient{})
+			assert.JSONEq(t, tc.want, string(got))
+		})
+	}
+}
+
+func TestDeploymentSettingsEdit_GitAuthSSHKeyPasswordNeedsAKey(t *testing.T) {
+	t.Parallel()
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		gitAuthSSHPrivateKeyPassword: "pw",
+		flagsChanged:                 flagsSet(flagGitAuthSSHKeyPassword),
+	}, &mockDeploymentSettingsEditClient{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagGitAuthSSHKey)
+}
+
+func TestDeploymentSettingsEdit_GitAuthSSHKeyFromPath(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "id_ed25519")
+	require.NoError(t, os.WriteFile(path, []byte("PRIVATE KEY FROM FILE"), 0o600))
+
+	got := captureEditPatch(t, deploymentSettingsEditArgs{
+		gitAuthSSHPrivateKeyPath: path,
+		flagsChanged:             flagsSet(flagGitAuthSSHKeyPath),
+	}, &mockDeploymentSettingsEditClient{})
+
+	assert.JSONEq(t, `{"sourceContext":{"git":{"gitAuth":{
+		"sshAuth": {"sshPrivateKey": {"secret": "PRIVATE KEY FROM FILE"}, "password": null},
+		"accessToken": null, "basicAuth": null
+	}}}}`, string(got))
+}
+
+func TestDeploymentSettingsEdit_GitAuthSSHKeyPathMustExist(t *testing.T) {
+	t.Parallel()
+
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		gitAuthSSHPrivateKeyPath: filepath.Join(t.TempDir(), "missing"),
+		flagsChanged:             flagsSet(flagGitAuthSSHKeyPath),
+	}, &mockDeploymentSettingsEditClient{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reading SSH private key")
+}
+
+// An empty path is a mistake rather than a request to clear: only the inline flag removes the
+// stored credentials.
+func TestDeploymentSettingsEdit_GitAuthSSHKeyPathRejectsEmpty(t *testing.T) {
+	t.Parallel()
+
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		flagsChanged: flagsSet(flagGitAuthSSHKeyPath),
+	}, &mockDeploymentSettingsEditClient{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagGitAuthSSHKeyPath)
+}
+
+// A truncated key file would otherwise read as the inline clear sentinel and wipe every stored
+// authentication mode, reporting success.
+func TestDeploymentSettingsEdit_GitAuthSSHKeyPathRejectsAnEmptyFile(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct{ name, contents string }{
+		{"zero bytes", ""},
+		{"whitespace only", "\n  \n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), "id_ed25519")
+			require.NoError(t, os.WriteFile(path, []byte(tc.contents), 0o600))
+
+			c := &mockDeploymentSettingsEditClient{}
+			err := runEditArgs(t, deploymentSettingsEditArgs{
+				gitAuthSSHPrivateKeyPath: path,
+				flagsChanged:             flagsSet(flagGitAuthSSHKeyPath),
+			}, c)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "no key material")
+			assert.False(t, c.patched, "the stored credentials must survive an unreadable key")
+		})
+	}
+}
+
+// An empty username clears the stored credentials, so it is the one case that needs no password.
+func TestDeploymentSettingsEdit_GitAuthUsernameNeedsAPassword(t *testing.T) {
+	t.Parallel()
+
+	err := runEditArgs(t, deploymentSettingsEditArgs{
+		gitAuthUsername: "deploy",
+		flagsChanged:    flagsSet(flagGitAuthUsername),
+	}, &mockDeploymentSettingsEditClient{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagGitAuthPassword)
+
+	err = runEditArgs(t, deploymentSettingsEditArgs{
+		gitAuthPassword: "pw",
+		flagsChanged:    flagsSet(flagGitAuthPassword),
+	}, &mockDeploymentSettingsEditClient{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), flagGitAuthUsername)
+
+	captured, err := runEditCmd(t, &mockDeploymentSettingsEditClient{}, "--git-auth-username", "")
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"sourceContext":{"git":{"gitAuth":null}}}`, string(captured.patch))
+}
+
 func TestDeploymentSettingsEdit_DeployPullRequestRejectsNegative(t *testing.T) {
 	t.Parallel()
 	err := runEditArgs(t, deploymentSettingsEditArgs{
@@ -1138,6 +1329,68 @@ func TestDeploymentSettingsEdit_DeployPullRequestRejectsNegative(t *testing.T) {
 	}, &mockDeploymentSettingsEditClient{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), flagDeployPullRequest)
+}
+
+func TestDeploymentSettingsEdit_OperationCoverageFlags(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name string
+		args deploymentSettingsEditArgs
+		want string
+	}{
+		{
+			"remediate on drift",
+			deploymentSettingsEditArgs{
+				remediateIfDrift: true,
+				flagsChanged:     flagsSet(flagRemediateIfDrift),
+			},
+			`{"operationContext":{"options":{"remediateIfDriftDetected":true}}}`,
+		},
+		{
+			"deployment role",
+			deploymentSettingsEditArgs{
+				deploymentRoleID: "role-1",
+				flagsChanged:     flagsSet(flagDeploymentRoleID),
+			},
+			`{"operationContext":{"role":{"id":"role-1"}}}`,
+		},
+		{
+			// A role object carrying an empty id is rejected by the service as an invalid role id.
+			"deployment role cleared",
+			deploymentSettingsEditArgs{flagsChanged: flagsSet(flagDeploymentRoleID)},
+			`{"operationContext":{"role":null}}`,
+		},
+		{
+			"cache enabled",
+			deploymentSettingsEditArgs{cache: true, flagsChanged: flagsSet(flagCache)},
+			`{"cacheOptions":{"enable":true}}`,
+		},
+		{
+			"cache disabled",
+			deploymentSettingsEditArgs{flagsChanged: flagsSet(flagCache)},
+			`{"cacheOptions":{"enable":false}}`,
+		},
+		{
+			"template source url",
+			deploymentSettingsEditArgs{
+				templateSourceURL: "registry://templates/source/acme/vpc",
+				flagsChanged:      flagsSet(flagTemplateSourceURL),
+			},
+			`{"sourceContext":{"template":{"sourceUrl":"registry://templates/source/acme/vpc"}}}`,
+		},
+		{
+			// The whole template object goes, or the service sees a second source next to the git one.
+			"template source url cleared",
+			deploymentSettingsEditArgs{flagsChanged: flagsSet(flagTemplateSourceURL)},
+			`{"sourceContext":{"template":null}}`,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := captureEditPatch(t, tc.args, &mockDeploymentSettingsEditClient{})
+			assert.JSONEq(t, tc.want, string(got))
+		})
+	}
 }
 
 // A brace glob is one filter, not two: --path-filter is a repeatable string array rather than a

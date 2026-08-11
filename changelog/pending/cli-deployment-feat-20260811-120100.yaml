@@ -1,0 +1,4 @@
+component: cli/deployment
+kind: feat
+body: "`pulumi deployment settings edit` can configure every version control provider, tag and pull request triggers, git authentication, the deployment role, dependency caching and template sources"
+time: 2026-08-11T12:01:00+00:00
