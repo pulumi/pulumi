@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"maps"
+	"slices"
 	"sync"
 	"testing"
 
@@ -297,6 +298,132 @@ func TestExternalCancelReportsCause(t *testing.T) {
 	err := machine.Progress(parent, fsa.SyncRunner)
 	assert.ErrorIs(t, err, errShutdown)
 	assert.NotErrorIs(t, err, context.Canceled)
+}
+
+// Nodes, edges, and cursors added while entering a node are live within the same Progress call: a new
+// cursor is progressed, and a new edge is retried by cursors stuck at its source — whether they are
+// parked (all conditions failed) or resting on a node that had no outgoing edges.
+func TestMutationDuringProgress(t *testing.T) {
+	t.Parallel()
+
+	var entered []string
+	record := func(name string) fsa.NodeFunc[string] {
+		return func(_ context.Context, _ fsa.FSA[string], _ fsa.Edge, v string) error {
+			entered = append(entered, name+":"+v)
+			return nil
+		}
+	}
+
+	machine := fsa.New[string]()
+
+	// "parked" sits on a node whose only edge always fails.
+	parkedAt := machine.NewNode(nopNode[string])
+	deadEnd := machine.NewNode(func(context.Context, fsa.FSA[string], fsa.Edge, string) error {
+		panic("should not be called")
+	})
+	machine.NewEdge(func(context.Context, fsa.FSA[string], fsa.Node, fsa.Node) (fsa.ConditionResult, error) {
+		return fsa.ConditionFail, nil
+	}, parkedAt, deadEnd)
+	machine.NewCursor("parked", parkedAt)
+
+	// "resting" sits on a node with no outgoing edges at all.
+	restingAt := machine.NewNode(nopNode[string])
+	machine.NewCursor("resting", restingAt)
+
+	// "late" is created mid-progress on lateStart, whose edge out already exists.
+	lateStart := machine.NewNode(nopNode[string])
+	lateEnd := machine.NewNode(record("lateEnd"))
+	machine.NewEdge(passOnce[string](), lateStart, lateEnd)
+
+	// Entering mutator adds two nodes, an edge to them from each stuck cursor's location, and a new
+	// cursor.
+	var fromParked, fromResting fsa.Node
+	n0 := machine.NewNode(nopNode[string])
+	mutator := machine.NewNode(func(_ context.Context, m fsa.FSA[string], _ fsa.Edge, v string) error {
+		entered = append(entered, "mutator:"+v)
+		fromParked = m.NewNode(record("fromParked"))
+		fromResting = m.NewNode(record("fromResting"))
+		m.NewEdge(passOnce[string](), parkedAt, fromParked)
+		m.NewEdge(passOnce[string](), restingAt, fromResting)
+		m.NewCursor("late", lateStart)
+		return nil
+	})
+	machine.NewEdge(passOnce[string](), n0, mutator)
+	machine.NewCursor("x", n0)
+
+	require.NoError(t, machine.Progress(t.Context(), fsa.SyncRunner))
+
+	slices.Sort(entered)
+	assert.Equal(t, []string{
+		"fromParked:parked",
+		"fromResting:resting",
+		"lateEnd:late",
+		"mutator:x",
+	}, entered)
+	assert.Equal(t, map[string]fsa.Node{
+		"x":       mutator,
+		"parked":  fromParked,
+		"resting": fromResting,
+		"late":    lateEnd,
+	}, maps.Collect(machine.Cursors))
+	assert.Equal(t, map[string]fsa.Node{}, maps.Collect(machine.Parked))
+}
+
+// A condition that adds edges and then fails must not strand cursors: the new edges are tried even
+// though no move (and so no generation bump) ever follows — both by the evaluating cursor itself and by
+// an already-parked cursor at a new edge's source. Edges that already failed are not re-evaluated.
+func TestEdgeAddedByFailingCondition(t *testing.T) {
+	t.Parallel()
+
+	var entered []string
+	record := func(name string) fsa.NodeFunc[string] {
+		return func(_ context.Context, _ fsa.FSA[string], _ fsa.Edge, v string) error {
+			entered = append(entered, name+":"+v)
+			return nil
+		}
+	}
+
+	machine := fsa.New[string]()
+
+	// "b" parks: its only edge always fails.
+	nB := machine.NewNode(nopNode[string])
+	bDead := machine.NewNode(func(context.Context, fsa.FSA[string], fsa.Edge, string) error {
+		panic("should not be called")
+	})
+	machine.NewEdge(func(context.Context, fsa.FSA[string], fsa.Node, fsa.Node) (fsa.ConditionResult, error) {
+		return fsa.ConditionFail, nil
+	}, nB, bDead)
+	machine.NewCursor("b", nB)
+
+	n0 := machine.NewNode(nopNode[string])
+	n1 := machine.NewNode(func(context.Context, fsa.FSA[string], fsa.Edge, string) error {
+		panic("should not be called")
+	})
+	n2 := machine.NewNode(record("n2"))
+	n3 := machine.NewNode(record("n3"))
+
+	// x's only condition adds an edge from x's own node and one from b's node, then fails.
+	condCalls := 0
+	machine.NewEdge(func(_ context.Context, m fsa.FSA[string], _, _ fsa.Node) (fsa.ConditionResult, error) {
+		condCalls++
+		if condCalls == 1 {
+			m.NewEdge(passOnce[string](), n0, n2)
+			m.NewEdge(passOnce[string](), nB, n3)
+		}
+		return fsa.ConditionFail, nil
+	}, n0, n1)
+	machine.NewCursor("x", n0)
+
+	require.NoError(t, machine.Progress(t.Context(), fsa.SyncRunner))
+
+	slices.Sort(entered)
+	assert.Equal(t, []string{"n2:x", "n3:b"}, entered)
+	assert.Equal(t, map[string]fsa.Node{
+		"b": n3,
+		"x": n2,
+	}, maps.Collect(machine.Cursors))
+	assert.Equal(t, map[string]fsa.Node{}, maps.Collect(machine.Parked))
+	assert.Equal(t, 1, condCalls)
 }
 
 // Entry functions run in parallel under an async runner: the two entry functions rendezvous, each
