@@ -210,6 +210,8 @@ export function resetOptions(
     store.supportsParameterization = false;
     store.callbacks = undefined;
     store.packageRefs = new Map<string, Promise<string>>();
+    store.pendingResourceRegistrations = new Map();
+    store.deferredOutputSources = new WeakMap();
 }
 
 export function setMockOptions(

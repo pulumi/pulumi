@@ -16,6 +16,7 @@ from typing import Optional, TypeVar, Awaitable, List, Any
 import asyncio
 import os
 import unittest
+from unittest import mock
 import pytest
 import pytest_asyncio
 
@@ -40,10 +41,9 @@ async def test_get_package():
 
 @pytest.fixture(autouse=True)
 def clean_up_env_vars():
-    try:
-        del os.environ[ERROR_ON_DEPENDENCY_CYCLES_VAR]
-    except KeyError:
-        pass
+    with mock.patch.dict(os.environ):
+        os.environ.pop(ERROR_ON_DEPENDENCY_CYCLES_VAR, None)
+        yield
 
 
 @pulumi.runtime.test

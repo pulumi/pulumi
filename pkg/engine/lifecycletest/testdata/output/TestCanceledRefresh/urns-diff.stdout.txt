@@ -1,6 +1,6 @@
 <{%fg 3%}>~ urn:pulumi:test::test::pkgA:m:typA::resA: (update)
 <{%reset%}>    [id=2]
-<{%reset%}><{%fg 2%}>  + oof: <{%reset%}><{%fg 2%}><null><{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>  + oof: <{%reset%}><{%fg 2%}>"rab"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 3%}>~ 1 updated<{%reset%}>
 

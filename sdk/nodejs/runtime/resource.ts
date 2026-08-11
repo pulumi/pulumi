@@ -40,7 +40,12 @@ import {
 import { debuggablePromise, debugPromiseLeaks } from "./debuggable";
 import { gatherExplicitDependencies, getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
 import { invoke } from "./invoke";
-import { getStore } from "./state";
+import {
+    failPendingRegistration,
+    getPendingResourceRegistrations,
+    getStore,
+    PendingResourceRegistration,
+} from "./state";
 
 import { isGrpcError } from "../errors";
 import {
@@ -313,6 +318,7 @@ export function getResource(
                 });
             })
             .catch((err) => {
+                failPendingRegistration(res, err);
                 done();
                 throw err;
             }),
@@ -450,6 +456,7 @@ export function readResource(
                 });
             })
             .catch((err) => {
+                failPendingRegistration(res, err);
                 done();
                 throw err;
             }),
@@ -825,7 +832,9 @@ export function registerResource(
             })
             .catch((err) => {
                 log.debug(`RegisterResource RPC failed: t=${t}, name=${name}, err=${err}`);
-                // If we fail to prepare the resource, we need to ensure that we still call done to prevent a hang.
+                // If we fail to prepare the resource, we need to ensure that we still call done to prevent a hang,
+                // and fail the resource's outputs so that dependents (e.g. children awaiting our URN) unblock.
+                failPendingRegistration(res, err);
                 done();
                 throw err;
             }),
@@ -953,6 +962,19 @@ export async function prepareResource(
 
     /** IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
 
+    const pendingRegistrations = getPendingResourceRegistrations();
+    const pending: PendingResourceRegistration = { res, parent, label, type, name, phase: "dependencies" };
+    pending.fail = (err) => {
+        resolveURN("", err);
+        if (resolveID !== undefined) {
+            resolveID(undefined, false, err);
+        }
+        for (const key of Object.keys(resolvers)) {
+            resolvers[key](undefined, true, false, [], err);
+        }
+    };
+    pendingRegistrations.set(res, pending);
+
     // Before we can proceed, all our dependencies must be finished.
     const replaceWithDependencies = await gatherExplicitDependencies(opts.replaceWith);
     const explicitDirectDependencies = new Set(await gatherExplicitDependencies(opts.dependsOn));
@@ -962,6 +984,7 @@ export async function prepareResource(
 
     // Serialize out all our props to their final values.  In doing so, we'll also collect all
     // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
+    pending.phase = "inputs";
     const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props, {
         // To initially scope the use of this new feature, we only keep output values when
         // remote is true (for multi-lang components, i.e. MLCs).
@@ -971,11 +994,15 @@ export async function prepareResource(
         // on 'propertyDependencies' won't create outputs for properties that only
         // contain resource references.
         excludeResourceReferencesFromDependencies: remote,
+        pendingRegistration: pending,
     });
+    pending.inputProperty = undefined;
 
     // Wait for the parent to complete.
     // If no parent was provided, parent to the root resource.
+    pending.phase = "parent";
     const parentURN = parent ? await parent.urn.promise() : undefined;
+    pending.phase = "provider";
 
     let importID: ID | undefined;
     if (custom) {
@@ -1032,6 +1059,7 @@ export async function prepareResource(
 
     // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
     // the dependency graph and optimize operations accordingly.
+    pending.phase = "dependency-urns";
 
     // The list of all dependencies (implicit or explicit).
     const allDirectDependencies = new Set<Resource>(explicitDirectDependencies);
@@ -1071,6 +1099,8 @@ export async function prepareResource(
     const deletedWithURN = opts?.deletedWith ? await opts.deletedWith.urn.promise() : undefined;
     const replaceWithResources =
         replaceWithDependencies.length > 0 ? Array.from(new Set(replaceWithDependencies)) : undefined;
+
+    pendingRegistrations.delete(res);
 
     return {
         resolveURN: resolveURN,

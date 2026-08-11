@@ -29,17 +29,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// templatesFromIterable yields the given templates as a registry list iterator.
-func templatesFromIterable(templates []apitype.TemplateMetadata) iter.Seq2[apitype.TemplateMetadata, error] {
-	return func(yield func(apitype.TemplateMetadata, error) bool) {
-		for _, tmpl := range templates {
-			if !yield(tmpl, nil) {
-				return
-			}
-		}
-	}
-}
-
 // mockListRegistry stubs registry.Registry's ListTemplates and panics on every
 // other method. The test only needs ListTemplates wired up.
 type mockListRegistry struct {
@@ -53,16 +42,17 @@ func newMockListRegistry(
 	r := &mockListRegistry{}
 	r.ListTemplatesF = func(
 		_ context.Context, opts registry.ListTemplatesOptions,
-	) iter.Seq2[apitype.TemplateMetadata, error] {
+	) iter.Seq2[apitype.ListTemplatesResponse, error] {
 		if captured != nil {
 			*captured = opts
 		}
-		if err != nil {
-			return func(yield func(apitype.TemplateMetadata, error) bool) {
-				yield(apitype.TemplateMetadata{}, err)
+		return func(yield func(apitype.ListTemplatesResponse, error) bool) {
+			if err != nil {
+				yield(apitype.ListTemplatesResponse{}, err)
+				return
 			}
+			yield(apitype.ListTemplatesResponse{Templates: templates}, nil)
 		}
-		return templatesFromIterable(templates)
 	}
 	return r
 }

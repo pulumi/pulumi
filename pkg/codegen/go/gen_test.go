@@ -341,7 +341,7 @@ func TestPackageNaming(t *testing.T) {
 				if k == ".gitattributes" {
 					continue
 				}
-				root := strings.Split(k, "/")[0]
+				root, _, _ := strings.Cut(k, "/")
 				if tt.expectedRoot != "" {
 					require.Equal(t, tt.expectedRoot, root, "Root should precede all cases. Got file %s", k)
 				}
