@@ -103,28 +103,27 @@ func resourceJSONFromEvent(p engine.ResourcePreEventPayload, showSames bool) *Re
 		return nil
 	}
 
-	// Parent lives on the post-step state when there is one, and falls back to
-	// the pre-step state for deletes (where New is nil).
-	var parent string
-	switch {
-	case p.Metadata.New != nil:
-		parent = string(p.Metadata.New.Parent)
-	case p.Metadata.Old != nil:
-		parent = string(p.Metadata.Old.Parent)
-	}
-
-	r := NewResourceJSON(p.Metadata.URN, apitype.OpType(p.Metadata.Op), parent)
+	r := NewResourceJSON(&p.Metadata)
 	return &r
 }
 
-// NewResourceJSON builds the per-resource summary entry from the fields
-// shared by the live display and `pulumi stack history events --summary`.
-func NewResourceJSON(urn resource.URN, op apitype.OpType, parent string) ResourceJSON {
+// NewResourceJSON builds the per-resource summary entry shared by the live
+// display and `pulumi stack history events --summary`. The parent lives on
+// the post-step state when there is one, and falls back to the pre-step
+// state for deletes (where New is nil).
+func NewResourceJSON(m *engine.StepEventMetadata) ResourceJSON {
+	var parent string
+	switch {
+	case m.New != nil:
+		parent = string(m.New.Parent)
+	case m.Old != nil:
+		parent = string(m.Old.Parent)
+	}
 	return ResourceJSON{
-		URN:    string(urn),
-		Type:   string(urn.Type()),
-		Name:   urn.Name(),
-		Op:     op,
+		URN:    string(m.URN),
+		Type:   string(m.URN.Type()),
+		Name:   m.URN.Name(),
+		Op:     apitype.OpType(m.Op),
 		Parent: parent,
 	}
 }
@@ -169,13 +168,14 @@ func NewDiffJSON(m *engine.StepEventMetadata, refresh, showSecrets bool) map[str
 	return out
 }
 
-// NewDiffJSONFromAPI is NewDiffJSON for step metadata that has already been
-// serialized to its API shape, as returned by the Pulumi Cloud events
-// endpoint. Secret values in such metadata are already blinded, so there is
-// no showSecrets option to offer.
-func NewDiffJSONFromAPI(md apitype.StepEventMetadata, refresh bool) map[string]PropertyDiffJSON {
-	em := convertJSONStepEventMetadata(md)
-	return NewDiffJSON(&em, refresh, false /* showSecrets */)
+// RefreshDiffJSON returns the diff a refresh step reveals on its outputs
+// event — an update carrying a detailed diff from the provider read, or a
+// delete of a resource that no longer exists — and nil for anything else.
+func RefreshDiffJSON(m *engine.StepEventMetadata, showSecrets bool) map[string]PropertyDiffJSON {
+	if (m.Op == deploy.OpUpdate && m.DetailedDiff != nil) || m.Op == deploy.OpDelete {
+		return NewDiffJSON(m, true /* refresh */, showSecrets)
+	}
+	return nil
 }
 
 func flattenObjectDiff(out map[string]PropertyDiffJSON, path resource.PropertyPath, diff *resource.ObjectDiff,

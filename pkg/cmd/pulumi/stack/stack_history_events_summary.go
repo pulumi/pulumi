@@ -27,10 +27,10 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	pkgdisplay "github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // updateSummary is the document emitted by `pulumi stack history events
@@ -58,42 +58,31 @@ type diagnosticSummary struct {
 	Message  string `json:"message"`
 }
 
-func summaryResourceFor(m apitype.StepEventMetadata) summaryResource {
-	// Parent falls back to the pre-step state for deletes, where New is nil.
-	var parent string
-	switch {
-	case m.New != nil:
-		parent = m.New.Parent
-	case m.Old != nil:
-		parent = m.Old.Parent
-	}
-	return summaryResource{ResourceJSON: display.NewResourceJSON(resource.URN(m.URN), m.Op, parent)}
-}
-
 // buildUpdateSummary reduces an engine event stream to an updateSummary,
 // mirroring the live summary tap (display.tapSummaryJSON): one resource entry
 // per attempted operation, unchanged (`same`) resources omitted. When
 // includeDiff is set, each entry carries its property diff too.
+//
+// Events arrive in their API shape and are converted back to engine events up
+// front so the rest of the reduction can share the display package's helpers.
 func buildUpdateSummary(
 	events iter.Seq2[apitype.EngineEvent, error], includeDiff bool,
 ) (*updateSummary, error) {
 	s := &updateSummary{}
 
 	var startTs, endTs int
-	var summaryEvent *apitype.SummaryEvent
+	var summaryEvent *engine.SummaryEventPayload
 	anyFailed := false
 	anyError := false
 
-	markFailed := func(m apitype.StepEventMetadata) {
+	markFailed := func(m engine.StepEventMetadata) {
 		for i := len(s.Resources) - 1; i >= 0; i-- {
-			if s.Resources[i].URN == m.URN {
+			if s.Resources[i].URN == string(m.URN) {
 				s.Resources[i].Failed = true
 				return
 			}
 		}
-		r := summaryResourceFor(m)
-		r.Failed = true
-		s.Resources = append(s.Resources, r)
+		s.Resources = append(s.Resources, summaryResource{ResourceJSON: display.NewResourceJSON(&m), Failed: true})
 	}
 
 	for ev, err := range events {
@@ -108,60 +97,65 @@ func buildUpdateSummary(
 				endTs = ev.Timestamp
 			}
 		}
-		switch {
-		case ev.SummaryEvent != nil:
-			summaryEvent = ev.SummaryEvent
-		case ev.ResourcePreEvent != nil:
-			if m := ev.ResourcePreEvent.Metadata; m.Op != apitype.OpSame {
-				r := summaryResourceFor(m)
+		e, err := display.ConvertJSONEvent(ev)
+		if err != nil {
+			// An event kind this CLI doesn't know about; skip it, as the switch
+			// below would anyway.
+			continue
+		}
+		switch e.Type { //nolint:exhaustive // we only care about a few event types here
+		case engine.SummaryEvent:
+			p := e.Payload().(engine.SummaryEventPayload)
+			summaryEvent = &p
+		case engine.ResourcePreEvent:
+			if m := e.Payload().(engine.ResourcePreEventPayload).Metadata; m.Op != deploy.OpSame {
+				r := summaryResource{ResourceJSON: display.NewResourceJSON(&m)}
 				if includeDiff {
-					r.Diff = display.NewDiffJSONFromAPI(m, false /* refresh */)
+					r.Diff = display.NewDiffJSON(&m, false /* refresh */, false /* showSecrets */)
 				}
 				s.Resources = append(s.Resources, r)
 			}
-		case ev.ResOutputsEvent != nil:
+		case engine.ResourceOutputsEvent:
 			// Refresh steps only reveal their diff once the provider has read the
-			// resource's current state, which arrives on the outputs event as an
-			// update (with a detailed diff) or a delete.
+			// resource's current state, which arrives on the outputs event.
 			if !includeDiff {
 				continue
 			}
-			m := ev.ResOutputsEvent.Metadata
-			if (m.Op == apitype.OpUpdate && m.DetailedDiff != nil) || m.Op == apitype.OpDelete {
-				for i := len(s.Resources) - 1; i >= 0; i-- {
-					if s.Resources[i].URN == m.URN && s.Resources[i].Op == apitype.OpRefresh {
-						s.Resources[i].Diff = display.NewDiffJSONFromAPI(m, true /* refresh */)
-						break
-					}
+			m := e.Payload().(engine.ResourceOutputsEventPayload).Metadata
+			d := display.RefreshDiffJSON(&m, false /* showSecrets */)
+			if d == nil {
+				continue
+			}
+			for i := len(s.Resources) - 1; i >= 0; i-- {
+				if s.Resources[i].URN == string(m.URN) && s.Resources[i].Op == apitype.OpRefresh {
+					s.Resources[i].Diff = d
+					break
 				}
 			}
-		case ev.ResOpFailedEvent != nil:
+		case engine.ResourceOperationFailed:
 			anyFailed = true
-			markFailed(ev.ResOpFailedEvent.Metadata)
-		case ev.DiagnosticEvent != nil:
-			d := ev.DiagnosticEvent
+			markFailed(e.Payload().(engine.ResourceOperationFailedPayload).Metadata)
+		case engine.DiagEvent:
+			d := e.Payload().(engine.DiagEventPayload)
 			// A failing program reports through the language host's stderr, which
 			// arrives as "info#err" rather than "error" — for a preview that never
 			// reached a resource operation it is the only record of what went wrong.
 			// It doesn't imply failure on its own (a program can write to stderr and
 			// succeed), so only "error" contributes to the result below.
-			if d.Ephemeral || (d.Severity != string(diag.Error) && d.Severity != string(diag.Infoerr)) {
+			if d.Ephemeral || (d.Severity != diag.Error && d.Severity != diag.Infoerr) {
 				continue
 			}
-			anyError = anyError || d.Severity == string(diag.Error)
+			anyError = anyError || d.Severity == diag.Error
 			s.Diagnostics = append(s.Diagnostics, diagnosticSummary{
-				Severity: d.Severity,
-				URN:      d.URN,
+				Severity: string(d.Severity),
+				URN:      string(d.URN),
 				Message:  strings.TrimRight(plain(d.Message), "\n"),
 			})
 		}
 	}
 
 	if summaryEvent != nil {
-		s.Summary = make(pkgdisplay.ResourceChanges, len(summaryEvent.ResourceChanges))
-		for op, n := range summaryEvent.ResourceChanges {
-			s.Summary[pkgdisplay.StepOp(op)] = n
-		}
+		s.Summary = summaryEvent.ResourceChanges
 	}
 
 	switch {
@@ -177,8 +171,8 @@ func buildUpdateSummary(
 	}
 
 	switch {
-	case summaryEvent != nil && summaryEvent.DurationSeconds > 0:
-		s.Duration = time.Duration(summaryEvent.DurationSeconds) * time.Second
+	case summaryEvent != nil && summaryEvent.Duration > 0:
+		s.Duration = summaryEvent.Duration
 	case endTs > startTs:
 		s.Duration = time.Duration(endTs-startTs) * time.Second
 	}
