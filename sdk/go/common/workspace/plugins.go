@@ -1383,6 +1383,8 @@ const pluginLastUsedSuffix = ".lastused"
 
 // markPluginUsed records, best-effort, that the cached plugin at dir is about to be run.
 func markPluginUsed(dir string) {
+	contract.Requiref(strings.LastIndexByte(dir, filepath.Separator) != (len(dir)-1),
+		"dir", "%q must not end in / or be empty", dir)
 	if err := os.WriteFile(dir+pluginLastUsedSuffix, nil, 0o600); err != nil {
 		logging.V(6).Infof("failed to record last-use time for %s: %v", dir, err)
 	}
