@@ -64,6 +64,17 @@ type deploymentSettingsEditArgs struct {
 	commit      string
 	folder      string
 
+	// Git authentication
+	gitAuthToken                 string
+	gitAuthSSHPrivateKey         string
+	gitAuthSSHPrivateKeyPath     string
+	gitAuthSSHPrivateKeyPassword string
+	gitAuthUsername              string
+	gitAuthPassword              string
+	clearGitAuth                 bool
+
+	templateSourceURL string
+
 	// VCS toggles
 	previewPRs        bool
 	pushToDeploy      bool
@@ -91,6 +102,10 @@ type deploymentSettingsEditArgs struct {
 	skipIntermediate   bool
 	shell              string
 	deleteAfterDestroy bool
+	remediateIfDrift   bool
+
+	deploymentRoleID string
+	cache            bool
 
 	// OIDC — AWS
 	oidcAWSRoleARN     string
@@ -118,34 +133,45 @@ type deploymentSettingsEditArgs struct {
 }
 
 const (
-	flagGitHubRepo         = "github-repo"
-	flagRepo               = "repo"
-	flagVCSProvider        = "vcs-provider"
-	flagGitURL             = "git-url"
-	flagBranch             = "branch"
-	flagCommit             = "commit"
-	flagFolder             = "folder"
-	flagPreviewPRs         = "preview-prs"
-	flagPushToDeploy       = "push-to-deploy"
-	flagPRTemplate         = "pr-template"
-	flagPathFilter         = "path-filter"
-	flagDeployTags         = "deploy-tags"
-	flagTagFilter          = "tag-filter"
-	flagReviewStackLabel   = "review-stack-label"
-	flagInstallationID     = "installation-id"
-	flagDeployPullRequest  = "deploy-pull-request"
-	flagRunnerPool         = "runner-pool"
-	flagExecutorImage      = "executor-image"
-	flagExecutorRootPath   = "executor-root-path"
-	flagPreRunCommand      = "pre-run-command"
-	flagEnv                = "env"
-	flagSecretEnv          = "secret-env"
-	flagRemoveEnv          = "remove-env"
-	flagRemoveAllEnv       = "remove-all-env"
-	flagSkipInstallDeps    = "skip-install-deps"
-	flagSkipIntermediate   = "skip-intermediate-deployments"
-	flagShell              = "shell"
-	flagDeleteAfterDestroy = "delete-after-destroy"
+	flagGitHubRepo            = "github-repo"
+	flagRepo                  = "repo"
+	flagVCSProvider           = "vcs-provider"
+	flagGitURL                = "git-url"
+	flagBranch                = "branch"
+	flagCommit                = "commit"
+	flagFolder                = "folder"
+	flagGitAuthToken          = "git-auth-access-token" //nolint:gosec // flag name, not a credential
+	flagGitAuthSSHKey         = "git-auth-ssh-private-key"
+	flagGitAuthSSHKeyPath     = "git-auth-ssh-private-key-path"
+	flagGitAuthSSHKeyPassword = "git-auth-ssh-private-key-password" //nolint:gosec // flag name, not a credential
+	flagGitAuthUsername       = "git-auth-username"
+	flagGitAuthPassword       = "git-auth-password" //nolint:gosec // flag name, not a credential
+	flagClearGitAuth          = "clear-git-auth"
+	flagTemplateSourceURL     = "template-source-url"
+	flagPreviewPRs            = "preview-prs"
+	flagPushToDeploy          = "push-to-deploy"
+	flagPRTemplate            = "pr-template"
+	flagPathFilter            = "path-filter"
+	flagDeployTags            = "deploy-tags"
+	flagTagFilter             = "tag-filter"
+	flagReviewStackLabel      = "review-stack-label"
+	flagInstallationID        = "installation-id"
+	flagDeployPullRequest     = "deploy-pull-request"
+	flagRunnerPool            = "runner-pool"
+	flagExecutorImage         = "executor-image"
+	flagExecutorRootPath      = "executor-root-path"
+	flagPreRunCommand         = "pre-run-command"
+	flagEnv                   = "env"
+	flagSecretEnv             = "secret-env"
+	flagRemoveEnv             = "remove-env"
+	flagRemoveAllEnv          = "remove-all-env"
+	flagSkipInstallDeps       = "skip-install-deps"
+	flagSkipIntermediate      = "skip-intermediate-deployments"
+	flagShell                 = "shell"
+	flagDeleteAfterDestroy    = "delete-after-destroy"
+	flagRemediateIfDrift      = "remediate-if-drift-detected"
+	flagDeploymentRoleID      = "deployment-role-id"
+	flagCache                 = "cache"
 
 	flagOIDCAWSRoleARN     = "oidc-aws-role-arn"
 	flagOIDCAWSSessionName = "oidc-aws-session-name"
@@ -199,6 +225,15 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 			"  # Configure a GitLab source.\n" +
 			"  pulumi deployment settings edit \\\n" +
 			"    --vcs-provider gitlab --repo acme/infra --branch main --push-to-deploy\n\n" +
+			"  # Authenticate against a private git repository with an access token.\n" +
+			"  pulumi deployment settings edit \\\n" +
+			"    --git-url https://git.acme.example/infra.git --git-auth-access-token \"$GIT_TOKEN\"\n\n" +
+			"  # Authenticate against a private git repository with an SSH key.\n" +
+			"  pulumi deployment settings edit \\\n" +
+			"    --git-url git@git.acme.example:acme/infra.git \\\n" +
+			"    --git-auth-ssh-private-key-path ~/.ssh/id_ed25519\n\n" +
+			"  # Run deployments under a Pulumi Cloud role, whose id `pulumi org role ls` lists.\n" +
+			"  pulumi deployment settings edit --deployment-role-id role-1a2b3c\n\n" +
 			"  # Set environment variables (plaintext and encrypted).\n" +
 			"  pulumi deployment settings edit --env LOG_LEVEL=info --secret-env API_KEY=s3cret\n\n" +
 			"  # Remove an environment variable.\n" +
@@ -269,6 +304,26 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 		fmt.Sprintf("Pull request number this review stack deploys; 0 clears it "+
 			"(requires --%s, --%s and --%s to all be off)", flagPushToDeploy, flagPreviewPRs, flagPRTemplate))
 
+	// Git authentication
+	f.StringVar(&args.gitAuthToken, flagGitAuthToken, "",
+		fmt.Sprintf("Git source: personal access token (pass --%s to remove stored credentials)",
+			flagClearGitAuth))
+	f.StringVar(&args.gitAuthSSHPrivateKey, flagGitAuthSSHKey, "",
+		"Git source: PEM-encoded SSH private key, key material and not a path")
+	f.StringVar(&args.gitAuthSSHPrivateKeyPath, flagGitAuthSSHKeyPath, "",
+		fmt.Sprintf("Git source: path to a PEM-encoded SSH private key file (mutually exclusive with --%s)",
+			flagGitAuthSSHKey))
+	f.StringVar(&args.gitAuthSSHPrivateKeyPassword, flagGitAuthSSHKeyPassword, "",
+		"Git source: password for the SSH private key")
+	f.StringVar(&args.gitAuthUsername, flagGitAuthUsername, "",
+		"Git source: basic auth username")
+	f.StringVar(&args.gitAuthPassword, flagGitAuthPassword, "",
+		"Git source: basic auth password")
+	f.BoolVar(&args.clearGitAuth, flagClearGitAuth, false,
+		"Remove the stored git credentials, whichever authentication mode they use")
+	f.StringVar(&args.templateSourceURL, flagTemplateSourceURL, "",
+		"Template source URL, e.g. registry://templates/source/acme/vpc; empty string clears it")
+
 	// Runner
 	f.StringVar(&args.runnerPool, flagRunnerPool, "",
 		"Deployment runner pool ID; empty string clears it to the Pulumi-hosted pool")
@@ -295,6 +350,12 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	f.StringVar(&args.shell, flagShell, "", "Shell to use for pre-run commands")
 	f.BoolVar(&args.deleteAfterDestroy, flagDeleteAfterDestroy, false,
 		"Delete the stack after a successful destroy")
+	f.BoolVar(&args.remediateIfDrift, flagRemediateIfDrift, false,
+		"Remediate the stack when a drift detection run finds drift")
+	f.StringVar(&args.deploymentRoleID, flagDeploymentRoleID, "",
+		"ID of the Pulumi Cloud role to run deployments under, as listed by pulumi org role ls; "+
+			"empty string clears it back to stack-only access")
+	f.BoolVar(&args.cache, flagCache, false, "Cache dependencies between deployments")
 
 	// OIDC — AWS
 	f.StringVar(&args.oidcAWSRoleARN, flagOIDCAWSRoleARN, "",
@@ -348,6 +409,18 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	cmd.MarkFlagsMutuallyExclusive(flagEnv, flagRemoveAllEnv)
 	cmd.MarkFlagsMutuallyExclusive(flagSecretEnv, flagRemoveAllEnv)
 	cmd.MarkFlagsMutuallyExclusive(flagRemoveEnv, flagRemoveAllEnv)
+	cmd.MarkFlagsMutuallyExclusive(flagClearGitAuth, flagGitAuthToken)
+	cmd.MarkFlagsMutuallyExclusive(flagClearGitAuth, flagGitAuthSSHKey)
+	cmd.MarkFlagsMutuallyExclusive(flagClearGitAuth, flagGitAuthSSHKeyPath)
+	cmd.MarkFlagsMutuallyExclusive(flagClearGitAuth, flagGitAuthSSHKeyPassword)
+	cmd.MarkFlagsMutuallyExclusive(flagClearGitAuth, flagGitAuthUsername)
+	cmd.MarkFlagsMutuallyExclusive(flagClearGitAuth, flagGitAuthPassword)
+	cmd.MarkFlagsMutuallyExclusive(flagGitAuthToken, flagGitAuthSSHKey)
+	cmd.MarkFlagsMutuallyExclusive(flagGitAuthToken, flagGitAuthSSHKeyPath)
+	cmd.MarkFlagsMutuallyExclusive(flagGitAuthToken, flagGitAuthUsername)
+	cmd.MarkFlagsMutuallyExclusive(flagGitAuthSSHKey, flagGitAuthSSHKeyPath)
+	cmd.MarkFlagsMutuallyExclusive(flagGitAuthSSHKey, flagGitAuthUsername)
+	cmd.MarkFlagsMutuallyExclusive(flagGitAuthSSHKeyPath, flagGitAuthUsername)
 
 	return cmd
 }
@@ -400,6 +473,14 @@ func runDeploymentSettingsEdit(
 	if err := validateEditArgs(args); err != nil {
 		return err
 	}
+
+	// Resolved before the secrets are registered so the key material read from disk is filtered out
+	// of the request dumps too.
+	if err := resolveEditGitAuthSSHKey(&args); err != nil {
+		return err
+	}
+
+	registerEditSecrets(args)
 
 	c, stackID, err := factory(ctx, args.stack)
 	if err != nil {
