@@ -1560,3 +1560,88 @@ func TestSession_RunDoesNotCloseUIEvents(t *testing.T) {
 		sendUI(uiCh, UIWarning{Message: "x"})
 	})
 }
+
+// blockedHandler blocks inside Invoke until released, signalling entry via started.
+type blockedHandler struct {
+	started chan struct{}
+	release chan struct{}
+}
+
+func (b *blockedHandler) Invoke(_ context.Context, _ string, _ json.RawMessage) (any, error) {
+	close(b.started)
+	<-b.release
+	return map[string]any{"ok": true}, nil
+}
+
+// TestSession_CancelledEventDeliveredWhileLocalToolRuns encodes desired
+// behavior for pulumi/pulumi-service#44059: a cancelled backend event must
+// reach the TUI even while a local tool call is executing. Today drainStream
+// invokes tool handlers synchronously, so nothing is read off the SSE stream
+// until the tool returns — a long-running shell or pulumi_up call blocks the
+// cancellation acknowledgement (and everything else) for its full duration.
+func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
+	t.Parallel()
+	t.Skip("desired behavior for https://github.com/pulumi/pulumi-service/issues/44059; un-skip when the fix lands")
+
+	streamer := newFakeStreamer()
+	bh := &blockedHandler{started: make(chan struct{}), release: make(chan struct{})}
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{"shell": bh},
+		OrgName:  "org",
+		TaskID:   "task",
+		UIEvents: uiCh,
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- s.Run(ctx) }()
+
+	// A final assistant_message dispatching one CLI tool call: the session
+	// starts executing it locally.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c1", Name: "shell__run", Args: json.RawMessage(`{}`), ExecutionMode: toolExecutionModeCLI},
+		},
+	})}
+	select {
+	case <-bh.started:
+	case <-time.After(5 * time.Second):
+		t.Fatal("tool handler never started")
+	}
+
+	// The task is cancelled server-side while the local tool is still running.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventCancelled{
+		Type: backendEventCancelled,
+	})}
+
+	// Desired: UICancelled reaches the TUI promptly, without waiting for the
+	// tool to finish.
+	gotCancelled := func() bool {
+		for {
+			select {
+			case ev := <-uiCh:
+				if _, ok := ev.(UICancelled); ok {
+					return true
+				}
+			default:
+				return false
+			}
+		}
+	}
+	require.Eventually(t, gotCancelled, 2*time.Second, 20*time.Millisecond,
+		"cancelled event must be delivered while a local tool call is still executing")
+
+	// Unblock the tool and shut down.
+	close(bh.release)
+	close(streamer.stream)
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("session did not exit")
+	}
+}
