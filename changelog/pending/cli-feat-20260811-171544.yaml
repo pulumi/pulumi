@@ -2,3 +2,5 @@ component: cli
 kind: feat
 body: Add --diff to `pulumi stack history events --summary` to include each resource's property diff in the summary
 time: 2026-08-11T17:15:44.719007+02:00
+custom:
+    PR: "24266"
