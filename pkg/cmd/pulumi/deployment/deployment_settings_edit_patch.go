@@ -56,6 +56,11 @@ var vcsEditFlags = []string{
 	flagInstallationID, flagDeployPullRequest,
 }
 
+var gitAuthEditFlags = []string{
+	flagGitAuthToken, flagGitAuthSSHKey, flagGitAuthSSHKeyPath, flagGitAuthSSHKeyPassword,
+	flagGitAuthUsername, flagGitAuthPassword, flagRemoveGitAuth,
+}
+
 // presenceOnlyEditFlags reject an explicit false value rather than silently ignoring it.
 var presenceOnlyEditFlags = []string{
 	flagRemoveAllEnv, flagRemoveGitAuth,
@@ -106,6 +111,47 @@ func anyVCSEditFlagSet(args deploymentSettingsEditArgs) bool {
 		return false
 	}
 	return slices.ContainsFunc(vcsEditFlags, args.flagsChanged)
+}
+
+func anyGitAuthEditFlagSet(args deploymentSettingsEditArgs) bool {
+	if args.flagsChanged == nil {
+		return false
+	}
+	return slices.ContainsFunc(gitAuthEditFlags, args.flagsChanged)
+}
+
+func storedGitSource(stored *apitype.DeploymentSettings) *apitype.SourceContextGit {
+	if stored == nil || stored.SourceContext == nil {
+		return nil
+	}
+	return stored.SourceContext.Git
+}
+
+func storedGitRepoURL(stored *apitype.DeploymentSettings) string {
+	if git := storedGitSource(stored); git != nil {
+		return strings.TrimSpace(git.RepoURL)
+	}
+	return ""
+}
+
+// adoptedRepoURL reports the repository url a stack gives up by taking on a version control
+// integration, and is empty unless the stack stores a url and no integration. A stack that stores
+// both has to predate the service validation that rejects the pair, and letting an edit resolve that
+// pair silently changes where its deployments clone from; leaving it for the service to reject keeps
+// the failure loud.
+func adoptedRepoURL(stored *apitype.DeploymentSettings) string {
+	if stored == nil || stored.VCS != nil || stored.GitHub != nil {
+		return ""
+	}
+	return storedGitRepoURL(stored)
+}
+
+func storedGitCredentials(stored *apitype.DeploymentSettings) bool {
+	git := storedGitSource(stored)
+	if git == nil || git.GitAuth == nil {
+		return false
+	}
+	return git.GitAuth.PersonalAccessToken != nil || git.GitAuth.SSHAuth != nil || git.GitAuth.BasicAuth != nil
 }
 
 func presenceOnlyFlagValue(args deploymentSettingsEditArgs, flag string) bool {
@@ -199,6 +245,19 @@ func resolveEditVCS(
 	if changed(flagReviewStackLabel) && vcs.Provider != apitype.VCSProviderGitHub {
 		return nil, fmt.Errorf("--%s is only supported on github sources, and this stack's source is %s",
 			flagReviewStackLabel, vcs.Provider)
+	}
+
+	// Adopting an integration drops the stored repository url, which the service derives from the
+	// integration instead. Credentials stored alongside it survive, and the service only falls back to
+	// the integration's own access token when none are stored, so leaving them would have the stack
+	// clone the new repository with the old one's credentials and fail at deployment time.
+	if repoURL := adoptedRepoURL(stored); repoURL != "" &&
+		storedGitCredentials(stored) && !anyGitAuthEditFlagSet(args) {
+		return nil, fmt.Errorf(
+			"this stack's git source stores credentials for %s, and a %s integration would keep using them "+
+				"in place of its own; add --%s to this command to drop them, or set the credentials to "+
+				"use instead",
+			repoURL, vcs.Provider, flagRemoveGitAuth)
 	}
 
 	if changed(flagRepo) {
@@ -467,6 +526,7 @@ func buildEditFlagPatch(
 	args deploymentSettingsEditArgs,
 	secretEnv map[string]map[string]any,
 	vcs *apitype.DeploymentSettingsVCS,
+	stored *apitype.DeploymentSettings,
 ) map[string]any {
 	patch := map[string]any{}
 	changed := args.flagsChanged
@@ -476,6 +536,11 @@ func buildEditFlagPatch(
 
 	if vcs != nil {
 		patch["vcs"] = vcs
+		// The service resolves the clone url from the integration and rejects a settings object that
+		// carries both, so a stack moving off a plain git source has to give up its stored url.
+		if !changed(flagGitURL) && adoptedRepoURL(stored) != "" {
+			setNested(patch, []string{"sourceContext", "git", "repoUrl"}, nil)
+		}
 	}
 	if changed(flagGitURL) {
 		setNested(patch, []string{"sourceContext", "git", "repoUrl"}, args.gitURL)
