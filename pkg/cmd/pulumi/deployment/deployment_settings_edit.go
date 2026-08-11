@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 
 	"github.com/spf13/cobra"
 
@@ -54,18 +55,21 @@ type deploymentSettingsEditArgs struct {
 	stack        string
 	outputFormat outputflag.OutputFlag[deploymentSettingsGetRenderFunc]
 
-	// Source — github and git URLs are mutually exclusive
-	githubRepo string
-	gitURL     string
-	branch     string
-	commit     string
-	folder     string
+	// Source — repository and git URLs are mutually exclusive
+	githubRepo  string
+	repo        string
+	vcsProvider string
+	gitURL      string
+	branch      string
+	commit      string
+	folder      string
 
-	// GitHub-only toggles
-	previewPRs   bool
-	pushToDeploy bool
-	prTemplate   bool
-	pathFilters  []string
+	// VCS toggles
+	previewPRs       bool
+	pushToDeploy     bool
+	prTemplate       bool
+	pathFilters      []string
+	clearPathFilters bool
 
 	// Runner
 	runnerPool       string
@@ -111,6 +115,8 @@ type deploymentSettingsEditArgs struct {
 
 const (
 	flagGitHubRepo         = "github-repo"
+	flagRepo               = "repo"
+	flagVCSProvider        = "vcs-provider"
 	flagGitURL             = "git-url"
 	flagBranch             = "branch"
 	flagCommit             = "commit"
@@ -119,6 +125,7 @@ const (
 	flagPushToDeploy       = "push-to-deploy"
 	flagPRTemplate         = "pr-template"
 	flagPathFilter         = "path-filter"
+	flagClearPathFilters   = "clear-path-filters"
 	flagRunnerPool         = "runner-pool"
 	flagExecutorImage      = "executor-image"
 	flagExecutorRootPath   = "executor-root-path"
@@ -179,8 +186,11 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 			"  pulumi deployment settings edit --branch feature-x\n\n" +
 			"  # Configure a GitHub source.\n" +
 			"  pulumi deployment settings edit \\\n" +
-			"    --github-repo acme/infra --branch main --folder stacks/prod \\\n" +
+			"    --vcs-provider github --repo acme/infra --branch main --folder stacks/prod \\\n" +
 			"    --preview-prs --push-to-deploy\n\n" +
+			"  # Configure a GitLab source.\n" +
+			"  pulumi deployment settings edit \\\n" +
+			"    --vcs-provider gitlab --repo acme/infra --branch main --push-to-deploy\n\n" +
 			"  # Set environment variables (plaintext and encrypted).\n" +
 			"  pulumi deployment settings edit --env LOG_LEVEL=info --secret-env API_KEY=s3cret\n\n" +
 			"  # Remove an environment variable.\n" +
@@ -216,17 +226,25 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 
 	// Source
 	f.StringVar(&args.githubRepo, flagGitHubRepo, "",
-		"GitHub source: organization/repository (mutually exclusive with --git-url)")
+		"GitHub source: organization/repository")
+	_ = f.MarkDeprecated(flagGitHubRepo,
+		fmt.Sprintf("use --%s together with --%s github", flagRepo, flagVCSProvider))
+	f.StringVar(&args.repo, flagRepo, "",
+		"Version control source: repository reference, e.g. organization/repository "+
+			"(mutually exclusive with --git-url)")
+	f.StringVar(&args.vcsProvider, flagVCSProvider, "",
+		"Version control provider: github, gitlab, azure_devops, bitbucket or custom")
 	f.StringVar(&args.gitURL, flagGitURL, "",
-		"Git source: full repository URL (mutually exclusive with --github-repo)")
+		"Git source: full repository URL (mutually exclusive with --repo)")
 	f.StringVar(&args.branch, flagBranch, "", "Source branch")
 	f.StringVar(&args.commit, flagCommit, "", "Source commit hash")
 	f.StringVar(&args.folder, flagFolder, "", "Path to the Pulumi.yaml folder within the source repo")
-	f.BoolVar(&args.previewPRs, flagPreviewPRs, false, "GitHub: run previews for pull requests")
-	f.BoolVar(&args.pushToDeploy, flagPushToDeploy, false, "GitHub: run updates for pushed commits")
-	f.BoolVar(&args.prTemplate, flagPRTemplate, false, "GitHub: use this stack as a template for PR review stacks")
-	f.StringSliceVar(&args.pathFilters, flagPathFilter, nil,
-		"GitHub: replace the path filter list (repeatable, comma-separated)")
+	f.BoolVar(&args.previewPRs, flagPreviewPRs, false, "Run previews for pull requests")
+	f.BoolVar(&args.pushToDeploy, flagPushToDeploy, false, "Run updates for pushed commits")
+	f.BoolVar(&args.prTemplate, flagPRTemplate, false, "Use this stack as a template for PR review stacks")
+	f.StringArrayVar(&args.pathFilters, flagPathFilter, nil,
+		"Replace the path filter list (repeatable; pass once per filter)")
+	f.BoolVar(&args.clearPathFilters, flagClearPathFilters, false, "Remove every path filter")
 
 	// Runner
 	f.StringVar(&args.runnerPool, flagRunnerPool, "",
@@ -301,7 +319,10 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	}
 
 	cmd.MarkFlagsMutuallyExclusive(flagGitHubRepo, flagGitURL)
+	cmd.MarkFlagsMutuallyExclusive(flagRepo, flagGitURL)
+	cmd.MarkFlagsMutuallyExclusive(flagGitHubRepo, flagRepo)
 	cmd.MarkFlagsMutuallyExclusive(flagBranch, flagCommit)
+	cmd.MarkFlagsMutuallyExclusive(flagPathFilter, flagClearPathFilters)
 	cmd.MarkFlagsMutuallyExclusive(flagEnv, flagRemoveAllEnv)
 	cmd.MarkFlagsMutuallyExclusive(flagSecretEnv, flagRemoveAllEnv)
 	cmd.MarkFlagsMutuallyExclusive(flagRemoveEnv, flagRemoveAllEnv)
@@ -363,10 +384,28 @@ func runDeploymentSettingsEdit(
 		return err
 	}
 
+	// The service replaces the whole vcs object instead of merging it field by field, so a flag that
+	// touches it has to be applied on top of the stored value rather than sent on its own.
+	var stored *apitype.DeploymentSettings
+	if anyVCSEditFlagSet(args) {
+		stored, err = c.GetStackDeploymentSettings(ctx, stackID)
+		switch {
+		case isNotFound(err):
+			// A stack with no deployment settings has nothing to read; the PATCH creates them.
+			stored = nil
+		case err != nil:
+			return fmt.Errorf("reading deployment settings: %w", err)
+		}
+	}
+	vcs, err := resolveEditVCS(args, stored)
+	if err != nil {
+		return err
+	}
+
 	// Secret env vars are sent in plaintext-secret wire form; the server encrypts them on PATCH.
 	secretValues := buildSecretEnvVars(args.secretEnvVars)
 
-	patch := buildEditFlagPatch(args, secretValues)
+	patch := buildEditFlagPatch(args, secretValues, vcs)
 	raw, err := marshalAndValidatePatch(patch)
 	if err != nil {
 		return fmt.Errorf("validating patch: %w", err)
@@ -385,6 +424,11 @@ func runDeploymentSettingsEdit(
 	}
 
 	return args.outputFormat.Get()(w, *resp)
+}
+
+func isNotFound(err error) bool {
+	errResp, ok := errors.AsType[*apitype.ErrorResponse](err)
+	return ok && errResp.Code == http.StatusNotFound
 }
 
 // marshalAndValidatePatch turns the constructed map into bytes, then decodes those bytes into
