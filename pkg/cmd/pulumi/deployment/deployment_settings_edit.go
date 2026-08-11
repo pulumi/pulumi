@@ -490,7 +490,7 @@ func runDeploymentSettingsEdit(
 	// Secret env vars are sent in plaintext-secret wire form; the server encrypts them on PATCH.
 	secretValues := buildSecretEnvVars(args.secretEnvVars)
 
-	patch := buildEditFlagPatch(args, secretValues, vcs)
+	patch := buildEditFlagPatch(args, secretValues, vcs, stored)
 	raw, err := marshalAndValidatePatch(patch)
 	if err != nil {
 		return fmt.Errorf("validating patch: %w", err)
