@@ -245,6 +245,11 @@ func buildImportFile(
 					contract.Assertf(preEvent.Metadata.Res.State != nil,
 						"%s: expected State to be non-nil for provider", urn)
 					if fullInputs := preEvent.Metadata.Res.State.Inputs; len(fullInputs) > 0 {
+						if fullInputs.ContainsUnknowns() {
+							return importFile{}, fmt.Errorf(
+								"the configuration of provider %s is not known during preview, "+
+									"so an import file cannot be generated for it", urn)
+						}
 						var serErr error
 						inputs, serErr = stack.SerializeProperties(ctx, fullInputs, enc, false)
 						if serErr != nil {

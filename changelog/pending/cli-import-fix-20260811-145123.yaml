@@ -1,4 +1,4 @@
 component: cli/import
 kind: fix
-body: Reject import files containing unknown values instead of writing them into state
+body: '`pulumi preview --import-file` no longer emits unknown values, and `pulumi import` rejects files that contain them'
 time: 2026-08-11T14:51:23.589206+02:00
