@@ -46,6 +46,7 @@ require (
 	github.com/go-git/go-git/v6 v6.0.0-alpha.4
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/golang/glog v1.2.5
+	github.com/google/go-tpm v0.9.8
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.22.0
 	github.com/iancoleman/strcase v0.2.0

@@ -59,7 +59,7 @@ func probeSecretService(allowPrompt bool) (Outcome, error) {
 		}
 	}
 
-	_, err := withTimeout(func() (struct{}, error) {
+	_, err := withTimeout(keyringOpTimeout, func() (struct{}, error) {
 		conn, err := dbus.ConnectSessionBus()
 		if err != nil {
 			return struct{}{}, fmt.Errorf("%w: cannot connect to the D-Bus session bus: %v", ErrUnavailable, err)
@@ -118,7 +118,7 @@ func unlockDefaultCollection(mayAskUser bool) error {
 	if mayAskUser {
 		return onSessionBus(unlockAndWaitForUser)
 	}
-	_, err := withTimeout(func() (struct{}, error) {
+	_, err := withTimeout(keyringOpTimeout, func() (struct{}, error) {
 		return struct{}{}, onSessionBus(unlockWithoutDrawingUI)
 	})
 	return err

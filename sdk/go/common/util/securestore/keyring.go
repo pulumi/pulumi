@@ -34,28 +34,7 @@ const (
 // Secret Service calls can hang on D-Bus activation or invisible prompts.
 // Bounds only calls that never wait on the user — the interactive unlock has
 // no deadline — and failures still return immediately.
-const opTimeout = 1 * time.Second
-
-// On timeout the goroutine is abandoned; the buffered channel lets it exit
-// once fn returns. Only a permanently hung fn leaks it, acceptable in a CLI.
-func withTimeout[T any](fn func() (T, error)) (T, error) {
-	type result struct {
-		v   T
-		err error
-	}
-	ch := make(chan result, 1)
-	go func() {
-		v, err := fn()
-		ch <- result{v, err}
-	}()
-	select {
-	case r := <-ch:
-		return r.v, r.err
-	case <-time.After(opTimeout):
-		var zero T
-		return zero, fmt.Errorf("%w: operation timed out after %s", ErrUnavailable, opTimeout)
-	}
-}
+const keyringOpTimeout = 1 * time.Second
 
 type getCache struct {
 	mu    sync.Mutex
@@ -111,7 +90,7 @@ func (s keyringStore) get() (string, error) {
 }
 
 func (s keyringStore) fetch() (string, error) {
-	value, err := withTimeout(func() (string, error) {
+	value, err := withTimeout(keyringOpTimeout, func() (string, error) {
 		return keyring.Get(keyringService, keyringAccount)
 	})
 	if errors.Is(err, keyring.ErrNotFound) {
@@ -130,7 +109,7 @@ func (s keyringStore) invalidate() {
 
 func (s keyringStore) set(value string) error {
 	s.invalidate()
-	_, err := withTimeout(func() (struct{}, error) {
+	_, err := withTimeout(keyringOpTimeout, func() (struct{}, error) {
 		return struct{}{}, keyring.Set(keyringService, keyringAccount, value)
 	})
 	return err
@@ -138,7 +117,7 @@ func (s keyringStore) set(value string) error {
 
 func (s keyringStore) delete() error {
 	s.invalidate()
-	_, err := withTimeout(func() (struct{}, error) {
+	_, err := withTimeout(keyringOpTimeout, func() (struct{}, error) {
 		return struct{}{}, keyring.Delete(keyringService, keyringAccount)
 	})
 	if errors.Is(err, keyring.ErrNotFound) {
