@@ -42,6 +42,13 @@ type NodeFunc[Cursor any] func(context.Context, FSA[Cursor], Edge, Cursor) error
 
 type Node struct{ id nodeID }
 
+// A condition guards an edge: returning ConditionPass grants the cursor the move along that edge.
+//
+// Conditions are sampled at most once per visit: after returning ConditionFail for a cursor, a condition
+// is not asked again until that cursor re-enters the edge's source node. A cursor that stays put is never
+// re-asked, so state changes a condition does not cause are not observed until the cursor's next visit.
+// Every Progress call starts a fresh visit.
+//
 // TODO[https://github.com/golang/go/issues/75757]: Should be a type alias
 type ConditionFunc[Cursor any] func(context.Context, FSA[Cursor], Cursor) (ConditionResult, error)
 
@@ -78,12 +85,13 @@ func (fsa FSA[Cursor]) NewEdge(f ConditionFunc[Cursor], from, to Node) Edge {
 			n nodeID
 		}{id, to.id})
 
-	// If we are mid-progress, stuck cursors at from may now be able to move: queue them to try the new
-	// edge. Their evaluated watermark is left alone, so only the new edge is tried — the edges that
-	// already failed against the current generation are not re-run.
+	// If we are mid-progress, settled cursors at from can now try the new edge. Their evaluated
+	// watermark is left alone, so only the new edge is tried — edges already asked this visit are not
+	// re-asked. Sorted order keeps the ready queue deterministic.
 	if r := fsa.currentRun; r != nil {
-		for cid, c := range fsa.cursors {
-			if c.node == from.id && (c.state == stateParked || c.state == stateTerminal) {
+		for _, cid := range slices.Sorted(maps.Keys(fsa.cursors)) {
+			c := fsa.cursors[cid]
+			if c.node == from.id && c.state == stateParked {
 				c.state = stateReady
 				r.ready = append(r.ready, cid)
 			}
@@ -107,7 +115,6 @@ func (fsa FSA[Cursor]) NewCursor(c Cursor, n Node) {
 	if r := fsa.currentRun; r != nil {
 		fsa.cursors[id].state = stateReady
 		r.ready = append(r.ready, id)
-		fsa.advanceGenerationLocked(r)
 		r.notify()
 	}
 }
@@ -125,10 +132,10 @@ var SyncRunner Runner = func(ctx context.Context, f func(context.Context)) error
 // through runner.
 //
 // Cursors progress unordered, but a cursor arriving at an occupied node waits for each occupant to settle
-// first. An occupant that can move away is *guaranteed* the chance to do so; an occupant that cannot move
-// (every condition failed against the latest state, or its node has no outgoing edges) is overwritten by
-// the arrival. Two cursors concurrently moving to the same node are a race; Progress reports it as an
-// error.
+// first. An occupant that can move away is *guaranteed* the chance to do so; an occupant that cannot
+// (every outgoing edge was tried and failed since it arrived at its node, or the node has no outgoing
+// edges) is overwritten by the arrival. Two cursors concurrently moving to the same node are a race;
+// Progress reports it as an error.
 //
 // runner may run the function it is handed on another goroutine; Progress does not return until every
 // dispatched function has completed. If runner returns an error, the function it was handed must never
@@ -146,7 +153,7 @@ func (fsa FSA[Cursor]) Progress(ctx context.Context, runner Runner) error {
 	fsa.m.Lock()
 	contract.Assertf(fsa.currentRun == nil, "we can only progress one run at a time")
 	fsa.currentRun = r
-	fsa.generation++ // Invalidate previous generations parking
+	// Every Progress call starts a fresh visit for every cursor.
 	for _, id := range slices.Sorted(maps.Keys(fsa.cursors)) {
 		fsa.cursors[id].state = stateReady
 		fsa.cursors[id].evaluated = 0
@@ -243,13 +250,6 @@ func (fsa FSA[Cursor]) Progress(ctx context.Context, runner Runner) error {
 					continue
 				}
 				cur := fsa.cursors[res.cursor]
-				if res.startGen < fsa.generation {
-					// The machine moved while we evaluated: the parking decision is stale.
-					cur.evaluated = 0
-					cur.state = stateReady
-					r.ready = append(r.ready, res.cursor)
-					continue
-				}
 				cur.evaluated = res.endLen
 				if len(fsa.nodes[cur.node].edges) > res.endLen {
 					// Edges were appended while we evaluated: try just the new ones.
@@ -281,25 +281,26 @@ func (fsa FSA[Cursor]) Progress(ctx context.Context, runner Runner) error {
 			}
 			cur := fsa.cursors[id]
 			edges := fsa.nodes[cur.node].edges
-			if len(edges) == 0 {
-				cur.state = stateTerminal // Resting, but not blocked
+			if len(edges) <= cur.evaluated {
+				cur.state = stateParked // Settled: nothing untried this visit
 				if w, ok := r.waiters[cur.node]; ok {
 					delete(r.waiters, cur.node)
 					fsa.attemptCommitLocked(r, w, cur.node)
 				}
 				continue
 			}
-			suffix := edges[cur.evaluated:] // Earlier edges already failed at this generation
+			suffix := edges[cur.evaluated:] // Earlier edges were already asked this visit
 			conds := make([]condRef[Cursor], len(suffix))
 			for i, e := range suffix {
 				conds[i] = condRef[Cursor]{fsa.edges[e.e], e.e, e.n}
 			}
 			cur.state = stateEvaluating
-			from, startGen, endLen := cur.node, fsa.generation, len(edges)
+			endLen := len(edges)
+			data := cur.c
 			inFlight++
 			dispatches = append(dispatches, func(ctx context.Context) {
 				for _, c := range conds {
-					result, err := c.fn(ctx, fsa, Node{from}, Node{c.to})
+					result, err := c.fn(ctx, fsa, data)
 					if err != nil {
 						fsa.deliver(r, completion{kind: completionErr, cursor: id, err: err})
 						return
@@ -318,7 +319,7 @@ func (fsa FSA[Cursor]) Progress(ctx context.Context, runner Runner) error {
 						return
 					}
 				}
-				fsa.deliver(r, completion{kind: completionParked, cursor: id, startGen: startGen, endLen: endLen})
+				fsa.deliver(r, completion{kind: completionParked, cursor: id, endLen: endLen})
 			})
 		}
 		fsa.m.Unlock()
@@ -344,19 +345,6 @@ func (f *fsa[Cursor]) deliver(r *run, c completion) {
 	r.notify()
 }
 
-// Record that observable state changed: parked cursors must re-fail their conditions against the new state
-// before they can be considered stuck.
-func (f *fsa[Cursor]) advanceGenerationLocked(r *run) {
-	f.generation++
-	for id, c := range f.cursors {
-		if c.state == stateParked {
-			c.state = stateReady
-			c.evaluated = 0 // Prior failures are against a stale generation
-			r.ready = append(r.ready, id)
-		}
-	}
-}
-
 // Commit id's granted move into target if every occupant of target has settled, overwriting occupants that
 // cannot move away; otherwise register id to wait for the occupants to settle.
 func (f *fsa[Cursor]) attemptCommitLocked(r *run, id cursorID, target nodeID) {
@@ -364,7 +352,7 @@ func (f *fsa[Cursor]) attemptCommitLocked(r *run, id cursorID, target nodeID) {
 		if oid == id || o.node != target {
 			continue
 		}
-		if o.state != stateParked && o.state != stateTerminal {
+		if o.state != stateParked {
 			// The occupant may still move away; it is guaranteed the chance to do so.
 			cur := f.cursors[id]
 			cur.state = stateDeferred
@@ -373,10 +361,14 @@ func (f *fsa[Cursor]) attemptCommitLocked(r *run, id cursorID, target nodeID) {
 			return
 		}
 	}
+	var doomed []cursorID
 	for oid, o := range f.cursors {
 		if oid != id && o.node == target {
-			delete(f.cursors, oid) // Overwrite: the occupant cannot move away
+			doomed = append(doomed, oid) // Overwrite: the occupant cannot move away
 		}
+	}
+	for _, oid := range doomed {
+		delete(f.cursors, oid)
 	}
 	f.commitLocked(r, id, target)
 }
@@ -386,10 +378,9 @@ func (f *fsa[Cursor]) commitLocked(r *run, id cursorID, target nodeID) {
 	vacated := cur.node
 	cur.node = target
 	cur.state = stateReady
-	cur.evaluated = 0
+	cur.evaluated = 0 // Entering a node starts a fresh visit
 	delete(r.claims, target)
 	r.ready = append(r.ready, id)
-	f.advanceGenerationLocked(r)
 	if w, ok := r.waiters[vacated]; ok {
 		// Vacating our old node may unblock an arrival that was waiting on us.
 		delete(r.waiters, vacated)
@@ -412,10 +403,14 @@ func (f *fsa[Cursor]) commitStalledLocked(r *run) bool {
 	if len(movers) == 0 {
 		return false
 	}
+	var doomed []cursorID
 	for id, c := range f.cursors {
-		if (c.state == stateParked || c.state == stateTerminal) && targets[c.node] {
-			delete(f.cursors, id) // Overwrite: a stuck occupant of an entered node
+		if c.state == stateParked && targets[c.node] {
+			doomed = append(doomed, id) // Overwrite: a stuck occupant of an entered node
 		}
+	}
+	for _, id := range doomed {
+		delete(f.cursors, id)
 	}
 	slices.Sort(movers)
 	for _, id := range movers {
@@ -427,7 +422,6 @@ func (f *fsa[Cursor]) commitStalledLocked(r *run) bool {
 	}
 	clear(r.claims)
 	clear(r.waiters)
-	f.advanceGenerationLocked(r)
 	return true
 }
 
@@ -463,7 +457,8 @@ func (fsa FSA[Cursor]) cursorsInner(yield func(Cursor, Node) bool, onlyParked bo
 	var snapshot []entry
 	for _, id := range slices.Sorted(maps.Keys(fsa.cursors)) {
 		c := fsa.cursors[id]
-		if onlyParked && c.state != stateParked {
+		// A settled cursor on a node with no outgoing edges is resting, not blocked: not parked.
+		if onlyParked && (c.state != stateParked || len(fsa.nodes[c.node].edges) == 0) {
 			continue
 		}
 		snapshot = append(snapshot, entry{c.c, Node{c.node}})
@@ -481,10 +476,6 @@ type fsa[Cursor any] struct {
 	m sync.Mutex
 
 	idCounter uint64
-
-	// Incremented every time observable state changes during a run. A cursor only counts as stuck once
-	// every one of its conditions failed against the current generation.
-	generation uint64
 
 	cursors map[cursorID]*cursor[Cursor]
 	nodes   map[nodeID]*node[Cursor]
@@ -510,13 +501,12 @@ func (r *run) notify() {
 }
 
 type completion struct {
-	kind     completionKind
-	cursor   cursorID
-	edge     edgeID // completionPassed
-	target   nodeID // completionPassed, completionMoved
-	startGen uint64 // completionParked
-	endLen   int    // completionParked: length of the node's edge list when evaluation began
-	err      error  // completionErr, completionMoved
+	kind   completionKind
+	cursor cursorID
+	edge   edgeID // completionPassed
+	target nodeID // completionPassed, completionMoved
+	endLen int    // completionParked: length of the node's edge list when evaluation began
+	err    error  // completionErr, completionMoved
 }
 
 type completionKind uint8
@@ -547,9 +537,9 @@ type cursor[Cursor any] struct {
 	c      Cursor
 	state  cursorState
 	target nodeID // Valid when state == stateDeferred
-	// How many leading edges of node have been condition-checked (and failed) against the current
-	// generation. Edge lists are append-only, so a re-queued cursor evaluates only the suffix beyond
-	// this watermark; it resets whenever the generation advances or the cursor moves.
+	// How many leading edges of node have been asked (and failed) during this visit. Edge lists are
+	// append-only, so a re-queued cursor evaluates only the suffix beyond this watermark. It resets when
+	// the cursor enters a node — and only then: conditions are sampled at most once per visit.
 	evaluated int
 }
 
@@ -561,8 +551,7 @@ const (
 	stateEvaluating                     // Condition evaluation in flight
 	stateMovePending                    // Node entry function in flight; the target is claimed
 	stateDeferred                       // Entry granted; waiting for the target's occupants to settle
-	stateParked                         // Every condition failed against the current generation
-	stateTerminal                       // Resting on a node with no outgoing edges
+	stateParked                         // Settled: every outgoing edge (possibly none) was asked this visit
 )
 
 type (
