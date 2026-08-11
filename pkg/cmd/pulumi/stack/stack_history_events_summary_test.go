@@ -107,7 +107,7 @@ func TestBuildUpdateSummary(t *testing.T) {
 		},
 	)
 
-	s, err := buildUpdateSummary(events)
+	s, err := buildUpdateSummary(events, false)
 	require.NoError(t, err)
 
 	assert.Equal(t, apitype.OperationResultFailed, s.Result)
@@ -149,7 +149,7 @@ func TestBuildUpdateSummary_BaseShapeMatchesLive(t *testing.T) {
 				ResourceChanges: map[apitype.OpType]int{apitype.OpCreate: 1},
 			},
 		},
-	))
+	), false)
 	require.NoError(t, err)
 
 	encoded, err := json.Marshal(s)
@@ -176,7 +176,7 @@ func TestBuildUpdateSummary_FailureMarksLastEntryForURN(t *testing.T) {
 				Metadata: apitype.StepEventMetadata{Op: apitype.OpCreate, URN: urn, Type: "aws:s3/bucket:Bucket"},
 			},
 		},
-	))
+	), false)
 	require.NoError(t, err)
 
 	require.Len(t, s.Resources, 1)
@@ -188,21 +188,21 @@ func TestBuildUpdateSummary_ResultFallbacks(t *testing.T) {
 	t.Parallel()
 
 	// No summary event, no failures: unknown.
-	s, err := buildUpdateSummary(eventSeq())
+	s, err := buildUpdateSummary(eventSeq(), false)
 	require.NoError(t, err)
 	assert.Equal(t, apitype.OperationResult("unknown"), s.Result)
 
 	// No summary event, but an error diagnostic: failed.
 	s, err = buildUpdateSummary(eventSeq(apitype.EngineEvent{
 		DiagnosticEvent: &apitype.DiagnosticEvent{Message: "boom", Severity: "error"},
-	}))
+	}), false)
 	require.NoError(t, err)
 	assert.Equal(t, apitype.OperationResultFailed, s.Result)
 
 	// Summary event without a result (older updates): succeeded.
 	s, err = buildUpdateSummary(eventSeq(apitype.EngineEvent{
 		SummaryEvent: &apitype.SummaryEvent{DurationSeconds: 1},
-	}))
+	}), false)
 	require.NoError(t, err)
 	assert.Equal(t, apitype.OperationResultSucceeded, s.Result)
 
@@ -213,7 +213,7 @@ func TestBuildUpdateSummary_ResultFallbacks(t *testing.T) {
 			DiagnosticEvent: &apitype.DiagnosticEvent{Message: "npm notice", Severity: "info#err"},
 		},
 		apitype.EngineEvent{SummaryEvent: &apitype.SummaryEvent{DurationSeconds: 1}},
-	))
+	), false)
 	require.NoError(t, err)
 	assert.Equal(t, apitype.OperationResultSucceeded, s.Result)
 	require.Len(t, s.Diagnostics, 1)
@@ -241,7 +241,7 @@ func TestBuildUpdateSummary_ReportsProgramErrors(t *testing.T) {
 		apitype.EngineEvent{
 			SummaryEvent: &apitype.SummaryEvent{DurationSeconds: 1, Result: apitype.OperationResultFailed},
 		},
-	))
+	), false)
 	require.NoError(t, err)
 
 	assert.Equal(t, apitype.OperationResultFailed, s.Result)
@@ -261,7 +261,7 @@ func TestBuildUpdateSummary_DurationFallsBackToTimestamps(t *testing.T) {
 			Timestamp:       1030,
 			DiagnosticEvent: &apitype.DiagnosticEvent{Message: "boom", Severity: "error"},
 		},
-	))
+	), false)
 	require.NoError(t, err)
 	assert.Equal(t, 30*time.Second, s.Duration)
 }
@@ -274,8 +274,56 @@ func TestBuildUpdateSummary_PropagatesIteratorError(t *testing.T) {
 		yield(apitype.EngineEvent{}, boom)
 	}
 
-	_, err := buildUpdateSummary(events)
+	_, err := buildUpdateSummary(events, false)
 	assert.ErrorIs(t, err, boom)
+}
+
+func TestBuildUpdateSummary_IncludesDiffWhenRequested(t *testing.T) {
+	t.Parallel()
+
+	urn := "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::b"
+	events := func() iter.Seq2[apitype.EngineEvent, error] {
+		return eventSeq(preEvent(1, apitype.OpUpdate, urn, "aws:s3/bucket:Bucket",
+			apitype.StepEventMetadata{
+				Old: &apitype.StepEventStateMetadata{Inputs: map[string]any{"acl": "private"}},
+				New: &apitype.StepEventStateMetadata{Inputs: map[string]any{"acl": "public-read"}},
+			}))
+	}
+
+	s, err := buildUpdateSummary(events(), true)
+	require.NoError(t, err)
+	require.Len(t, s.Resources, 1)
+	assert.Equal(t, map[string]display.PropertyDiffJSON{
+		"acl": {Kind: "update", Old: "private", New: "public-read"},
+	}, s.Resources[0].Diff)
+
+	// Without --diff the field stays empty.
+	s, err = buildUpdateSummary(events(), false)
+	require.NoError(t, err)
+	require.Len(t, s.Resources, 1)
+	assert.Nil(t, s.Resources[0].Diff)
+}
+
+func TestRenderUpdateSummaryText_Diffs(t *testing.T) {
+	t.Parallel()
+
+	s, err := buildUpdateSummary(eventSeq(preEvent(1, apitype.OpUpdate,
+		"urn:pulumi:dev::proj::aws:s3/bucket:Bucket::b", "aws:s3/bucket:Bucket",
+		apitype.StepEventMetadata{
+			Old: &apitype.StepEventStateMetadata{Inputs: map[string]any{"acl": "private", "gone": true}},
+			New: &apitype.StepEventStateMetadata{Inputs: map[string]any{"acl": "public-read", "new": float64(1)}},
+		})), true)
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	require.NoError(t, renderUpdateSummaryText(&buf, s))
+	out := buf.String()
+
+	assert.Contains(t, out, "Diffs:")
+	assert.Contains(t, out, "b (aws:s3/bucket:Bucket)")
+	assert.Contains(t, out, `~ acl: "private" => "public-read"`)
+	assert.Contains(t, out, `- gone: true`)
+	assert.Contains(t, out, `+ new: 1`)
 }
 
 func TestRenderUpdateSummaryJSON_SingleLine(t *testing.T) {
@@ -283,7 +331,7 @@ func TestRenderUpdateSummaryJSON_SingleLine(t *testing.T) {
 
 	s, err := buildUpdateSummary(eventSeq(apitype.EngineEvent{
 		SummaryEvent: &apitype.SummaryEvent{Result: apitype.OperationResultSucceeded},
-	}))
+	}), false)
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
@@ -321,7 +369,7 @@ func TestRenderUpdateSummaryText(t *testing.T) {
 			},
 		},
 	)
-	s, err := buildUpdateSummary(events)
+	s, err := buildUpdateSummary(events, false)
 	require.NoError(t, err)
 
 	var buf bytes.Buffer

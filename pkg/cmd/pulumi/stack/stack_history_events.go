@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"iter"
@@ -70,6 +71,7 @@ type stackHistoryEventsArgs struct {
 	count               int
 	all                 bool
 	summary             bool
+	diff                bool
 	render              historyEventsRenderers
 }
 
@@ -105,7 +107,8 @@ func newStackHistoryEventsCmd(
 			"Pass --summary to reduce the update's full event stream to a compact\n" +
 			"summary with the same base shape as a live `pulumi up --output json`,\n" +
 			"extended with the update's error diagnostics and failed-resource\n" +
-			"markers — useful for diagnosing an update after the fact.\n" +
+			"markers — useful for diagnosing an update after the fact. Add --diff\n" +
+			"to include each resource's property diff in the summary.\n" +
 			"\n" +
 			"This command requires the Pulumi Cloud backend.",
 		Example: "  # Show the first page of events in a human-readable table.\n" +
@@ -122,6 +125,9 @@ func newStackHistoryEventsCmd(
 			"  pulumi stack history events <update-id> \\\n" +
 			"      --urn urn:pulumi:dev::proj::aws:s3/bucket:Bucket::my-bucket",
 		RunE: func(cmd *cobra.Command, positional []string) error {
+			if args.diff && !args.summary {
+				return errors.New("--diff can only be used with --summary")
+			}
 			args.updateID = positional[0]
 			args.render = outputFormat.Get()
 			sink := diag.DefaultSink(cmd.OutOrStdout(), cmd.ErrOrStderr(), diag.FormatOptions{
@@ -151,6 +157,8 @@ func newStackHistoryEventsCmd(
 		"Return every event for the update")
 	cmd.Flags().BoolVar(&args.summary, "summary", false,
 		"Reduce the update's events to a single summary document with error diagnostics; implies --all")
+	cmd.Flags().BoolVar(&args.diff, "diff", false,
+		"Include each resource's property diff in the --summary output")
 	cmd.MarkFlagsMutuallyExclusive("count", "all")
 	cmd.MarkFlagsMutuallyExclusive("summary", "count")
 	cmd.MarkFlagsMutuallyExclusive("summary", "event-type")
@@ -188,7 +196,7 @@ func runStackHistoryEvents(
 
 	events := iterateEngineEvents(ctx, c, update, opts, args.all || args.summary, args.count)
 	if args.summary {
-		summary, err := buildUpdateSummary(events)
+		summary, err := buildUpdateSummary(events, args.diff)
 		if err != nil {
 			return err
 		}
