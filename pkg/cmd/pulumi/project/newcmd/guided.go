@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	survey "github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -159,7 +160,9 @@ func (g *guided) choose() (cmdTemplates.Template, error) {
 			return nil, err
 		}
 		template, err := row.choose()
-		if errors.Is(err, errBackToProvider) {
+		// Ctrl-C steps back to this prompt, as it does in `pulumi state rename`; at this prompt
+		// there is nothing to step back to, so it leaves the flow.
+		if errors.Is(err, errBackToProvider) || errors.Is(err, terminal.InterruptErr) {
 			continue
 		}
 		return template, err

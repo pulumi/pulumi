@@ -193,15 +193,19 @@ func TestGuidedBrowseAllListsEveryTemplateInline(t *testing.T) {
 	assert.Contains(t, (*offered)[1][1], BrokenTemplateDescription, "broken templates sort last and are marked")
 }
 
-func TestGuidedInterruptInBrowseAllAborts(t *testing.T) {
+func TestGuidedInterruptInBrowseAllReturnsToProviderPrompt(t *testing.T) {
 	t.Parallel()
 
 	templates := []cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}}
-	sel, _ := scriptedSelect(t, optionBrowseAll, terminal.InterruptErr)
+	sel, offered := scriptedSelect(t, optionBrowseAll, terminal.InterruptErr, "AWS", "TypeScript")
 
 	got, err := runGuided(projectOnly(templates, fetchOf(templates...)), display.Options{}, sel)
-	assert.Nil(t, got)
-	assert.ErrorIs(t, err, terminal.InterruptErr, "Ctrl-C must abort the flow, not navigate")
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "aws-typescript", got.Name())
+
+	require.Len(t, *offered, 4)
+	assert.Equal(t, (*offered)[0], (*offered)[2], "Ctrl-C must reoffer the provider prompt")
 }
 
 func TestGuidedNoneJavaIsSplitByBuildSystem(t *testing.T) {
@@ -268,21 +272,25 @@ func TestGuidedFallsBackWhenEverythingIsBroken(t *testing.T) {
 	assert.ErrorIs(t, err, errFallBackToFlatList, "the flat chooser is the only surface that marks broken templates")
 }
 
-func TestGuidedInterruptAtLanguageStepAborts(t *testing.T) {
+func TestGuidedInterruptAtLanguageStepReturnsToProviderPrompt(t *testing.T) {
 	t.Parallel()
 
 	templates := []cmdTemplates.Template{
 		fakeTemplate{name: "aws-typescript"},
 		fakeTemplate{name: "gcp-go"},
 	}
-	sel, _ := scriptedSelect(t, "AWS", terminal.InterruptErr)
+	sel, offered := scriptedSelect(t, "AWS", terminal.InterruptErr, "Google Cloud", "Go")
 
 	got, err := runGuided(projectOnly(templates, noFetch(t)), display.Options{}, sel)
-	assert.Nil(t, got)
-	assert.ErrorIs(t, err, terminal.InterruptErr, "Ctrl-C must abort the flow, not navigate")
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	assert.Equal(t, "gcp-go", got.Name())
+
+	require.Len(t, *offered, 4)
+	assert.Equal(t, (*offered)[0], (*offered)[2], "Ctrl-C must reoffer the provider prompt")
 }
 
-func TestGuidedInterruptAtFirstStepPropagates(t *testing.T) {
+func TestGuidedInterruptAtProviderPromptPropagates(t *testing.T) {
 	t.Parallel()
 
 	templates := []cmdTemplates.Template{fakeTemplate{name: "aws-typescript"}}
