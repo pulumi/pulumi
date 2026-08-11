@@ -2148,8 +2148,8 @@ func TestInternalFiltered(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					assert.NotContains(t, req.News, internalKey)
-					assert.NotContains(t, req.Olds, internalKey)
+					assert.NotContains(t, req.News.AsMap(), string(internalKey))
+					assert.NotContains(t, req.Olds.AsMap(), string(internalKey))
 					return plugin.CheckConfigResponse{}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
@@ -2173,8 +2173,8 @@ func TestInternalFiltered(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					assert.NotContains(t, req.News, internalKey)
-					assert.NotContains(t, req.Olds, internalKey)
+					assert.NotContains(t, req.News.AsMap(), string(internalKey))
+					assert.NotContains(t, req.Olds.AsMap(), string(internalKey))
 					return plugin.CheckConfigResponse{}, nil
 				},
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
