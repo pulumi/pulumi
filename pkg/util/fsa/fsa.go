@@ -43,7 +43,7 @@ type NodeFunc[Cursor any] func(context.Context, FSA[Cursor], Edge, Cursor) error
 type Node struct{ id nodeID }
 
 // TODO[https://github.com/golang/go/issues/75757]: Should be a type alias
-type ConditionFunc[Cursor any] func(ctx context.Context, fsa FSA[Cursor], from, to Node) (ConditionResult, error)
+type ConditionFunc[Cursor any] func(context.Context, FSA[Cursor], Cursor) (ConditionResult, error)
 
 type ConditionResult struct{ kind int8 }
 
@@ -77,6 +77,19 @@ func (fsa FSA[Cursor]) NewEdge(f ConditionFunc[Cursor], from, to Node) Edge {
 			e edgeID
 			n nodeID
 		}{id, to.id})
+
+	// If we are mid-progress, stuck cursors at from may now be able to move: queue them to try the new
+	// edge. Their evaluated watermark is left alone, so only the new edge is tried — the edges that
+	// already failed against the current generation are not re-run.
+	if r := fsa.currentRun; r != nil {
+		for cid, c := range fsa.cursors {
+			if c.node == from.id && (c.state == stateParked || c.state == stateTerminal) {
+				c.state = stateReady
+				r.ready = append(r.ready, cid)
+			}
+		}
+		r.notify()
+	}
 	return Edge{id}
 }
 
@@ -136,6 +149,7 @@ func (fsa FSA[Cursor]) Progress(ctx context.Context, runner Runner) error {
 	fsa.generation++ // Invalidate previous generations parking
 	for _, id := range slices.Sorted(maps.Keys(fsa.cursors)) {
 		fsa.cursors[id].state = stateReady
+		fsa.cursors[id].evaluated = 0
 		r.ready = append(r.ready, id)
 	}
 	fsa.m.Unlock()
@@ -231,6 +245,14 @@ func (fsa FSA[Cursor]) Progress(ctx context.Context, runner Runner) error {
 				cur := fsa.cursors[res.cursor]
 				if res.startGen < fsa.generation {
 					// The machine moved while we evaluated: the parking decision is stale.
+					cur.evaluated = 0
+					cur.state = stateReady
+					r.ready = append(r.ready, res.cursor)
+					continue
+				}
+				cur.evaluated = res.endLen
+				if len(fsa.nodes[cur.node].edges) > res.endLen {
+					// Edges were appended while we evaluated: try just the new ones.
 					cur.state = stateReady
 					r.ready = append(r.ready, res.cursor)
 					continue
@@ -267,12 +289,13 @@ func (fsa FSA[Cursor]) Progress(ctx context.Context, runner Runner) error {
 				}
 				continue
 			}
-			conds := make([]condRef[Cursor], len(edges))
-			for i, e := range edges {
+			suffix := edges[cur.evaluated:] // Earlier edges already failed at this generation
+			conds := make([]condRef[Cursor], len(suffix))
+			for i, e := range suffix {
 				conds[i] = condRef[Cursor]{fsa.edges[e.e], e.e, e.n}
 			}
 			cur.state = stateEvaluating
-			from, startGen := cur.node, fsa.generation
+			from, startGen, endLen := cur.node, fsa.generation, len(edges)
 			inFlight++
 			dispatches = append(dispatches, func(ctx context.Context) {
 				for _, c := range conds {
@@ -295,7 +318,7 @@ func (fsa FSA[Cursor]) Progress(ctx context.Context, runner Runner) error {
 						return
 					}
 				}
-				fsa.deliver(r, completion{kind: completionParked, cursor: id, startGen: startGen})
+				fsa.deliver(r, completion{kind: completionParked, cursor: id, startGen: startGen, endLen: endLen})
 			})
 		}
 		fsa.m.Unlock()
@@ -328,6 +351,7 @@ func (f *fsa[Cursor]) advanceGenerationLocked(r *run) {
 	for id, c := range f.cursors {
 		if c.state == stateParked {
 			c.state = stateReady
+			c.evaluated = 0 // Prior failures are against a stale generation
 			r.ready = append(r.ready, id)
 		}
 	}
@@ -362,6 +386,7 @@ func (f *fsa[Cursor]) commitLocked(r *run, id cursorID, target nodeID) {
 	vacated := cur.node
 	cur.node = target
 	cur.state = stateReady
+	cur.evaluated = 0
 	delete(r.claims, target)
 	r.ready = append(r.ready, id)
 	f.advanceGenerationLocked(r)
@@ -397,6 +422,7 @@ func (f *fsa[Cursor]) commitStalledLocked(r *run) bool {
 		c := f.cursors[id]
 		c.node = c.target
 		c.state = stateReady
+		c.evaluated = 0
 		r.ready = append(r.ready, id)
 	}
 	clear(r.claims)
@@ -489,6 +515,7 @@ type completion struct {
 	edge     edgeID // completionPassed
 	target   nodeID // completionPassed, completionMoved
 	startGen uint64 // completionParked
+	endLen   int    // completionParked: length of the node's edge list when evaluation began
 	err      error  // completionErr, completionMoved
 }
 
@@ -520,6 +547,10 @@ type cursor[Cursor any] struct {
 	c      Cursor
 	state  cursorState
 	target nodeID // Valid when state == stateDeferred
+	// How many leading edges of node have been condition-checked (and failed) against the current
+	// generation. Edge lists are append-only, so a re-queued cursor evaluates only the suffix beyond
+	// this watermark; it resets whenever the generation advances or the cursor moves.
+	evaluated int
 }
 
 type cursorState uint8
