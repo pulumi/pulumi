@@ -31,7 +31,7 @@ export class AnotherResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === AnotherResource.__pulumiType;
     }
 
-    declare public readonly theInput: pulumi.Output<string>;
+    declare public readonly "the-input": pulumi.Output<string>;
 
     /**
      * Create a AnotherResource resource with the given unique name, arguments, and options.
@@ -44,12 +44,12 @@ export class AnotherResource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if (args?.theInput === undefined && !opts.urn) {
-                throw new Error("Missing required property 'theInput'");
+            if (args?.["the-input"] === undefined && !opts.urn) {
+                throw new Error("Missing required property 'the-input'");
             }
-            resourceInputs["theInput"] = args?.theInput;
+            resourceInputs["the-input"] = args?.["the-input"];
         } else {
-            resourceInputs["theInput"] = undefined /*out*/;
+            resourceInputs["the-input"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(AnotherResource.__pulumiType, name, resourceInputs, opts);
@@ -60,5 +60,5 @@ export class AnotherResource extends pulumi.CustomResource {
  * The set of arguments for constructing a AnotherResource resource.
  */
 export interface AnotherResourceArgs {
-    theInput: pulumi.Input<string>;
+    "the-input": pulumi.Input<string>;
 }

@@ -33,7 +33,7 @@ export class SomeResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === SomeResource.__pulumiType;
     }
 
-    declare public /*out*/ readonly theOutput: pulumi.Output<outputs.kebab_module.OutputItem>;
+    declare public /*out*/ readonly "the-output": pulumi.Output<outputs.kebab_module.OutputItem>;
 
     /**
      * Create a SomeResource resource with the given unique name, arguments, and options.
@@ -49,14 +49,14 @@ export class SomeResource extends pulumi.CustomResource {
             if (args?.nested === undefined && !opts.urn) {
                 throw new Error("Missing required property 'nested'");
             }
-            if (args?.theInput === undefined && !opts.urn) {
-                throw new Error("Missing required property 'theInput'");
+            if (args?.["the-input"] === undefined && !opts.urn) {
+                throw new Error("Missing required property 'the-input'");
             }
             resourceInputs["nested"] = args?.nested;
-            resourceInputs["theInput"] = args?.theInput;
-            resourceInputs["theOutput"] = undefined /*out*/;
+            resourceInputs["the-input"] = args?.["the-input"];
+            resourceInputs["the-output"] = undefined /*out*/;
         } else {
-            resourceInputs["theOutput"] = undefined /*out*/;
+            resourceInputs["the-output"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
         super(SomeResource.__pulumiType, name, resourceInputs, opts);
@@ -68,5 +68,5 @@ export class SomeResource extends pulumi.CustomResource {
  */
 export interface SomeResourceArgs {
     nested: pulumi.Input<inputs.kebab_module.NestedInputArgs>;
-    theInput: pulumi.Input<boolean>;
+    "the-input": pulumi.Input<boolean>;
 }
