@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
@@ -443,6 +444,10 @@ func TestGenerateLanguageDefinitionsSkipsLocalComponents(t *testing.T) {
 		for _, content := range p.Source() {
 			generatedProgram.WriteString(content)
 		}
+		// The component belongs to the user's program, so its children reference it unbound.
+		files, _, err := nodejs.GenerateProgram(p)
+		require.NoError(t, err)
+		assert.Contains(t, string(files["index.ts"]), "parent: parentComponent")
 		return nil
 	}
 
