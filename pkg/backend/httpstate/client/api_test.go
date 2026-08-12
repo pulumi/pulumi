@@ -134,7 +134,7 @@ func TestHTTPClientUserAgent(t *testing.T) {
 
 	var inReq *http.Request
 	client := &defaultHTTPClient{
-		&http.Client{
+		client: &http.Client{
 			Transport: &errorTransport{
 				roundTripFunc: func(req *http.Request) (*http.Response, error) {
 					inReq = req
@@ -203,7 +203,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 			Message: "Unauthorized",
 		})
 		httpClient := &defaultHTTPClient{
-			&http.Client{
+			client: &http.Client{
 				Transport: &errorTransport{
 					roundTripFunc: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -247,7 +247,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 				},
 			})
 			httpClient := &defaultHTTPClient{
-				&http.Client{
+				client: &http.Client{
 					Transport: &errorTransport{
 						roundTripFunc: func(req *http.Request) (*http.Response, error) {
 							return &http.Response{
@@ -279,7 +279,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 		t.Parallel()
 
 		httpClient := &defaultHTTPClient{
-			&http.Client{
+			client: &http.Client{
 				Transport: &errorTransport{
 					roundTripFunc: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -315,7 +315,7 @@ func TestCall_RefreshOn401(t *testing.T) {
 	newRESTClient := func(rt func(req *http.Request) (*http.Response, error)) *defaultRESTClient {
 		return &defaultRESTClient{
 			client: &defaultHTTPClient{
-				&http.Client{Transport: &errorTransport{roundTripFunc: rt}},
+				client: &http.Client{Transport: &errorTransport{roundTripFunc: rt}},
 			},
 		}
 	}
@@ -524,7 +524,7 @@ func TestDoCreatesPerAttemptSpans(t *testing.T) {
 		})
 
 		client := &defaultHTTPClient{
-			&http.Client{
+			client: &http.Client{
 				Transport: &errorTransport{
 					roundTripFunc: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -565,7 +565,7 @@ func TestDoCreatesPerAttemptSpans(t *testing.T) {
 
 		var callCount atomic.Int32
 		client := &defaultHTTPClient{
-			&http.Client{
+			client: &http.Client{
 				Transport: &errorTransport{
 					roundTripFunc: func(req *http.Request) (*http.Response, error) {
 						n := callCount.Add(1)
@@ -629,4 +629,90 @@ func assertSpanAttribute(t *testing.T, span sdktrace.ReadOnlySpan, key string, w
 		}
 	}
 	require.Failf(t, "attribute not found", "attribute %q not found on span %q", key, span.Name())
+}
+
+func TestRetryWaitWarner(t *testing.T) {
+	t.Parallel()
+
+	mkRes := func(status int) *http.Response {
+		return &http.Response{StatusCode: status, Header: http.Header{}}
+	}
+
+	t.Run("warns on long maintenance waits", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		w := &retryWaitWarner{diag: sink}
+		w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
+		require.Len(t, sink.Messages[diag.Warning], 1)
+		assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "unavailable")
+		assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "retrying in")
+	})
+
+	t.Run("warns on long rate-limit waits", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		w := &retryWaitWarner{diag: sink}
+		w.onRetryWait(15*time.Second, mkRes(http.StatusTooManyRequests))
+		require.Len(t, sink.Messages[diag.Warning], 1)
+		assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "rate-limited")
+	})
+
+	t.Run("silent on short waits", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		w := &retryWaitWarner{diag: sink}
+		w.onRetryWait(time.Second, mkRes(http.StatusServiceUnavailable))
+		assert.Empty(t, sink.Messages)
+	})
+
+	t.Run("short waits accumulate past the threshold", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		w := &retryWaitWarner{diag: sink}
+		for range 4 {
+			w.onRetryWait(3*time.Second, mkRes(http.StatusServiceUnavailable))
+		}
+		require.Len(t, sink.Messages[diag.Warning], 1)
+		assert.NotContains(t, sink.Messages[diag.Warning][0].Diag.Message, "retrying in")
+	})
+
+	t.Run("repeat warnings are paced", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		w := &retryWaitWarner{diag: sink}
+		for range 5 {
+			w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
+		}
+		require.Len(t, sink.Messages[diag.Warning], 1)
+
+		w.lastWarn = time.Now().Add(-2 * serverWaitRewarnInterval)
+		w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
+		require.Len(t, sink.Messages[diag.Warning], 2)
+	})
+
+	t.Run("success after warning notes resumption and resets", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		w := &retryWaitWarner{diag: sink}
+		w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
+		w.onSuccess()
+		require.Len(t, sink.Messages[diag.Infoerr], 1)
+		assert.Contains(t, sink.Messages[diag.Infoerr][0].Diag.Message, "resuming")
+
+		w.onSuccess()
+		require.Len(t, sink.Messages[diag.Infoerr], 1)
+
+		w.onRetryWait(time.Second, mkRes(http.StatusServiceUnavailable))
+		require.Len(t, sink.Messages[diag.Warning], 1)
+	})
+
+	t.Run("nil warner and nil sink are safe", func(t *testing.T) {
+		t.Parallel()
+		var w *retryWaitWarner
+		w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
+		w.onSuccess()
+		w = &retryWaitWarner{}
+		w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
+		w.onSuccess()
+	})
 }
