@@ -38,29 +38,29 @@ func init() {
 					second := RequireSingleNamedResource(l, res.Snap.Resources, "second")
 
 					assert.Equal(l, resource.PropertyMap{
-						"theInput": resource.NewProperty(true),
+						"the-input": resource.NewProperty(true),
 						"nested": resource.NewProperty(resource.PropertyMap{
-							"nestedValue": resource.NewProperty("nested"),
+							"nested-value": resource.NewProperty("nested"),
 						}),
 					}, first.Inputs)
 
 					assert.Equal(l, resource.PropertyMap{
-						"theOutput": resource.NewProperty(resource.PropertyMap{
-							"nestedOutput": resource.NewProperty("nested"),
+						"the-output": resource.NewProperty(resource.PropertyMap{
+							"nested-output": resource.NewProperty("nested"),
 						}),
 					}, first.Outputs)
 
 					assert.Equal(l, resource.PropertyMap{
-						"theInput": resource.NewProperty("nested"),
+						"the-input": resource.NewProperty("nested"),
 					}, second.Inputs)
 
 					assert.Equal(l, resource.PropertyMap{
-						"theInput": resource.NewProperty("nested"),
+						"the-input": resource.NewProperty("nested"),
 					}, second.Outputs)
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 					AssertPropertyMapMember(l, stack.Outputs, "theOutput", resource.NewProperty(resource.PropertyMap{
-						"nestedOutput": resource.NewProperty("nested"),
+						"nested-output": resource.NewProperty("nested"),
 					}))
 				},
 			},

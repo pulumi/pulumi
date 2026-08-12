@@ -1,0 +1,5 @@
+component: programgen/python
+kind: fix
+body: Access schema properties whose names contain hyphens as attributes under their
+    Python names instead of subscripting
+time: 2026-08-12T00:00:00Z

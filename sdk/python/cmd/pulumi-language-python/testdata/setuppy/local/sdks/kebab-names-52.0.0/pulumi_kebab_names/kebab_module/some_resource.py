@@ -39,7 +39,7 @@ class SomeResourceArgs:
         pulumi.set(self, "nested", value)
 
     @_builtins.property
-    @pulumi.getter(name="theInput")
+    @pulumi.getter(name="the-input")
     def the_input(self) -> pulumi.Input[_builtins.bool]:
         return pulumi.get(self, "the_input")
 
@@ -131,7 +131,7 @@ class SomeResource(pulumi.CustomResource):
         return SomeResource(resource_name, opts=opts, __props__=__props__)
 
     @_builtins.property
-    @pulumi.getter(name="theOutput")
+    @pulumi.getter(name="the-output")
     def the_output(self) -> pulumi.Output['outputs.OutputItem']:
         return pulumi.get(self, "the_output")
 

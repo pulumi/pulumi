@@ -7,9 +7,8 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		// The package name and module name are kebab-case. Resource and object type names cannot be
-		// kebab-case yet (the metaschema forbids hyphens in the member segment of a token), and kebab-case
-		// property names are not yet handled by all code generators.
+		// The package name, module name and property names are kebab-case. Resource and object type names
+		// cannot be kebab-case yet: the metaschema forbids hyphens in the member segment of a token.
 		first, err := kebabmodule.NewSomeResource(ctx, "first", &kebabmodule.SomeResourceArgs{
 			TheInput: pulumi.Bool(true),
 			Nested: &kebabmodule.NestedInputArgs{

@@ -20,7 +20,7 @@ class NestedInputArgs:
         pulumi.set(__self__, "nested_value", nested_value)
 
     @_builtins.property
-    @pulumi.getter(name="nestedValue")
+    @pulumi.getter(name="nested-value")
     def nested_value(self) -> pulumi.Input[_builtins.str]:
         return pulumi.get(self, "nested_value")
 

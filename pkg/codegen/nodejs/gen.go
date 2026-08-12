@@ -486,7 +486,7 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 		}
 
 		typ := mod.typeString(propertyType, input, p.ConstValue)
-		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
+		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, propertyName(p.Name), sigil, typ)
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
 	return nil
@@ -760,7 +760,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		if mod.compatibility == kubernetes20 {
 			propertyType = codegen.RequiredType(prop)
 		}
-		fmt.Fprintf(w, "    declare public %sreadonly %s: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(propertyType, false, prop.ConstValue))
+		fmt.Fprintf(w, "    declare public %sreadonly %s: pulumi.Output<%s>;\n", outcomment, propertyName(prop.Name), mod.typeString(propertyType, false, prop.ConstValue))
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -804,7 +804,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 	genInputProps := func() error {
 		for _, prop := range r.InputProperties {
 			if prop.IsRequired() {
-				fmt.Fprintf(w, "            if (args?.%s === undefined && !opts.urn) {\n", prop.Name)
+				fmt.Fprintf(w, "            if (args%s === undefined && !opts.urn) {\n", optionalPropertyAccessor(prop.Name))
 				fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
 				fmt.Fprintf(w, "            }\n")
 			}
@@ -827,13 +827,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 				return arg
 			}
 
-			argRef := "args." + prop.Name
+			argRef := "args" + propertyAccessor(prop.Name)
 			argValue := applyDefaults(argRef)
 			if prop.Secret {
-				arg = fmt.Sprintf("args?.%[1]s ? pulumi.secret(%[2]s) : undefined", prop.Name, argValue)
+				arg = fmt.Sprintf("args%[1]s ? pulumi.secret(%[2]s) : undefined",
+					optionalPropertyAccessor(prop.Name), argValue)
 			} else {
 				if argRef == argValue {
-					arg = "args?." + prop.Name
+					arg = "args" + optionalPropertyAccessor(prop.Name)
 				} else {
 					arg = fmt.Sprintf("args ? %[1]s : undefined", argValue)
 				}
@@ -899,7 +900,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			stateInputNames := codegen.NewStringSet()
 			for _, prop := range r.StateInputs.Properties {
 				stateInputNames.Add(prop.Name)
-				fmt.Fprintf(w, "            resourceInputs[\"%[1]s\"] = state?.%[1]s;\n", prop.Name)
+				fmt.Fprintf(w, "            resourceInputs[\"%s\"] = state%s;\n",
+					prop.Name, optionalPropertyAccessor(prop.Name))
 			}
 			// Add resolvers for output-only properties so that they resolve to unknown
 			// during a preview when the id is unknown.
