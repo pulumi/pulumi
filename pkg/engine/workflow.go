@@ -22,8 +22,10 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"regexp"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,10 +34,10 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/fsa"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -50,11 +52,15 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-// workflowExecutor implements deploy.WorkflowExecutor: it runs pulumi:index:Workflow resources by
-// driving the fsa scheduler with nested per-node deployments. Node programs and edge conditions are
-// closures in the user's program, reached through the callbacks facility; each node's sub-state is a
-// checkpoint-shaped snapshot serialized into the workflow resource's own state.
-type workflowExecutor struct {
+const workflowResourceType = "pulumi:index:Workflow"
+
+// workflowProgressor implements deploy.WorkflowProgressor: it advances every workflow the
+// deployment registered by driving the fsa scheduler with nested, scoped deployments. Node
+// programs and edge conditions are closures in the user's program, reached through the callbacks
+// facility. Node resources live in the main snapshot, marked with an owner (workflow URN + node)
+// and namespaced by a per-node project qualifier; nested deployments share the outer deployment's
+// events/snapshot manager, so their steps persist and display like any other.
+type workflowProgressor struct {
 	plugctx       *plugin.Context
 	backendClient deploy.BackendClient
 	resourceHooks *deploy.ResourceHooks
@@ -67,7 +73,7 @@ type workflowExecutor struct {
 	callbacks map[string]*deploy.CallbacksClient
 }
 
-func newWorkflowExecutor(
+func newWorkflowProgressor(
 	plugctx *plugin.Context,
 	backendClient deploy.BackendClient,
 	resourceHooks *deploy.ResourceHooks,
@@ -75,8 +81,8 @@ func newWorkflowExecutor(
 	organization tokens.Name,
 	projectName tokens.PackageName,
 	parallel int32,
-) *workflowExecutor {
-	return &workflowExecutor{
+) *workflowProgressor {
+	return &workflowProgressor{
 		plugctx:       plugctx,
 		backendClient: backendClient,
 		resourceHooks: resourceHooks,
@@ -86,6 +92,29 @@ func newWorkflowExecutor(
 		parallel:      parallel,
 		callbacks:     map[string]*deploy.CallbacksClient{},
 	}
+}
+
+func (x *workflowProgressor) Progress(ctx context.Context, d *deploy.Deployment,
+	persistState func(urn resource.URN, outputs resource.PropertyMap) error,
+) error {
+	var wfs []*pkgresource.State
+	d.News().Range(func(_ resource.URN, s *pkgresource.State) bool {
+		if s.Type == workflowResourceType {
+			wfs = append(wfs, s)
+		}
+		return true
+	})
+	slices.SortFunc(wfs, func(a, b *pkgresource.State) int {
+		return strings.Compare(string(a.URN), string(b.URN))
+	})
+
+	var errs []error
+	for _, wf := range wfs {
+		if err := x.progressWorkflow(ctx, d, wf, persistState); err != nil {
+			errs = append(errs, fmt.Errorf("workflow %v: %w", wf.URN, err))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // wfCallback identifies a closure in the user's program, reachable via the callbacks service.
@@ -118,27 +147,54 @@ type wfCursor struct {
 type wfState struct {
 	cursors    []*wfCursor
 	entrySeeds map[string]string // node -> hash of the last admitted entry seed
-	nodeStates map[string]string // node -> JSON-serialized apitype.DeploymentV3 sub-snapshot
 	nextID     int64
 }
 
-func (x *workflowExecutor) Update(
-	ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
-) (resource.PropertyMap, resource.Status, error) {
-	g, err := parseWorkflowGraph(news)
+// workflowRun is the in-flight state of progressing one workflow within one deployment.
+type workflowRun struct {
+	x  *workflowProgressor
+	d  *deploy.Deployment
+	wf *pkgresource.State
+	g  *wfGraph
+	st *wfState
+
+	// m guards slices: during Progress, node deployments run on concurrent goroutines and each
+	// replaces its slice as it completes.
+	m sync.Mutex
+	// slices holds the current resource states owned by each node, initialized from the previous
+	// snapshot and replaced by each nested deployment's result.
+	slices map[string][]*pkgresource.State
+}
+
+func (x *workflowProgressor) progressWorkflow(
+	ctx context.Context, d *deploy.Deployment, wf *pkgresource.State,
+	persistState func(urn resource.URN, outputs resource.PropertyMap) error,
+) error {
+	g, err := parseWorkflowGraph(wf.Inputs)
 	if err != nil {
-		return nil, resource.StatusUnknown, err
+		return err
 	}
-	st, err := parseWorkflowState(olds)
+	wf.Lock.Lock()
+	st, err := parseWorkflowState(wf.Outputs)
+	wf.Lock.Unlock()
 	if err != nil {
-		return nil, resource.StatusUnknown, err
+		return err
+	}
+
+	run := &workflowRun{x: x, d: d, wf: wf, g: g, st: st, slices: map[string][]*pkgresource.State{}}
+	if prev := d.Prev(); prev != nil {
+		for _, res := range prev.Resources {
+			if owner, node, ok := deploy.ParseWorkflowOwner(res.Owner); ok && owner == wf.URN {
+				run.slices[node] = append(run.slices[node], res)
+			}
+		}
 	}
 
 	info := func(f string, a ...any) {
-		x.plugctx.Diag.Infof(diag.Message(urn, "workflow: "+f), a...)
+		x.plugctx.Diag.Infof(diag.Message(wf.URN, "workflow: "+f), a...)
 	}
 	warn := func(f string, a ...any) {
-		x.plugctx.Diag.Warningf(diag.Message(urn, "workflow: "+f), a...)
+		x.plugctx.Diag.Warningf(diag.Message(wf.URN, "workflow: "+f), a...)
 	}
 
 	// Cursors on nodes no longer in the definition are deleted with their node during GC.
@@ -157,7 +213,7 @@ func (x *workflowExecutor) Update(
 	// 1. Reconcile every node currently hosting a cursor: node-body and config edits converge on
 	// every up, and an up that previously died mid-entry is healed here by plain reconciliation.
 	for _, c := range alive {
-		outs, err := x.runNode(ctx, st, g, c.node, c.data)
+		outs, err := run.runNode(ctx, c.node, c.data)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("reconciling node %q: %w", c.node, err))
 			break
@@ -189,42 +245,38 @@ func (x *workflowExecutor) Update(
 
 	// 3. Progress the automaton. Conditions are sampled once per visit; every up is a fresh visit.
 	if len(errs) == 0 {
-		final, err := x.progress(ctx, g, st, alive, info)
+		final, err := run.progress(ctx, alive, info)
 		if err != nil {
 			errs = append(errs, err)
 		}
-		if final != nil {
-			superseded := make(map[int64]bool, len(alive))
-			for _, c := range alive {
-				superseded[c.id] = true
-			}
-			for _, c := range final {
-				delete(superseded, c.id)
-			}
-			for _, id := range slices.Sorted(maps.Keys(superseded)) {
-				info("cursor %d was superseded and deleted", id)
-			}
-			st.cursors = final
-		} else {
-			st.cursors = alive
+		superseded := make(map[int64]bool, len(alive))
+		for _, c := range alive {
+			superseded[c.id] = true
 		}
+		for _, c := range final {
+			delete(superseded, c.id)
+		}
+		for _, id := range slices.Sorted(maps.Keys(superseded)) {
+			info("cursor %d was superseded and deleted", id)
+		}
+		st.cursors = final
 	} else {
 		st.cursors = append(alive, doomed...)
 		doomed = nil
 	}
 
-	// 4. GC, after everything else: nodes in state but not in the definition are destroyed, and any
-	// resident cursor is deleted with its node.
+	// 4. GC, after everything else: nodes with owned resources but no definition are destroyed,
+	// and any resident cursor is deleted with its node.
 	if len(errs) == 0 {
-		for _, name := range slices.Sorted(maps.Keys(st.nodeStates)) {
+		for _, name := range slices.Sorted(maps.Keys(run.slices)) {
 			if _, ok := g.nodes[name]; ok {
 				continue
 			}
-			if err := x.destroyNode(ctx, st, name); err != nil {
+			if err := run.destroyNode(ctx, name); err != nil {
 				errs = append(errs, fmt.Errorf("destroying removed node %q: %w", name, err))
 				continue
 			}
-			delete(st.nodeStates, name)
+			delete(run.slices, name)
 			info("destroyed removed node %q", name)
 		}
 		for _, c := range doomed {
@@ -232,49 +284,30 @@ func (x *workflowExecutor) Update(
 		}
 	}
 
-	outs := renderWorkflowState(news, st)
-	if len(errs) > 0 {
-		return outs, resource.StatusPartialFailure, errors.Join(errs...)
+	// Persist the workflow's durable state — cursor positions survive even a failed run — through
+	// the executor's regular resource-outputs path.
+	wf.Lock.Lock()
+	outputs := wf.Outputs.Copy()
+	wf.Lock.Unlock()
+	outputs["cursors"] = renderCursors(st.cursors)
+	outputs["entrySeeds"] = renderEntrySeeds(st.entrySeeds)
+	if err := persistState(wf.URN, outputs); err != nil {
+		errs = append(errs, fmt.Errorf("persisting workflow state: %w", err))
 	}
-	return outs, resource.StatusOK, nil
+
+	return errors.Join(errs...)
 }
 
-func (x *workflowExecutor) Destroy(
-	ctx context.Context, urn resource.URN, olds resource.PropertyMap,
-) (resource.Status, error) {
-	st, err := parseWorkflowState(olds)
-	if err != nil {
-		return resource.StatusUnknown, err
-	}
-	var errs []error
-	for _, name := range slices.Sorted(maps.Keys(st.nodeStates)) {
-		if err := x.destroyNode(ctx, st, name); err != nil {
-			errs = append(errs, fmt.Errorf("destroying node %q: %w", name, err))
-			continue
-		}
-		delete(st.nodeStates, name)
-	}
-	if len(errs) > 0 {
-		return resource.StatusPartialFailure, errors.Join(errs...)
-	}
-	return resource.StatusOK, nil
-}
-
-// progress runs one fsa.Progress call over the workflow graph and returns the surviving cursors. A
-// nil cursor slice with a non-nil error means the run failed before any structural change could be
-// observed.
-func (x *workflowExecutor) progress(
-	ctx context.Context, g *wfGraph, st *wfState, cursors []*wfCursor, info func(string, ...any),
+// progress runs one fsa.Progress call over the workflow graph and returns the surviving cursors.
+func (run *workflowRun) progress(
+	ctx context.Context, cursors []*wfCursor, info func(string, ...any),
 ) ([]*wfCursor, error) {
-	// st is shared with runNode through the node closures; SyncRunner keeps access serial.
-	// ponytail: SyncRunner serializes node deployments; switch to a concurrent runner (plus a lock
-	// around st) when parallel node deploys matter.
 	m := fsa.New[*wfCursor]()
-	fsaNodes := make(map[string]fsa.Node, len(g.nodes))
-	nodeNames := make(map[fsa.Node]string, len(g.nodes))
-	for _, name := range slices.Sorted(maps.Keys(g.nodes)) {
+	fsaNodes := make(map[string]fsa.Node, len(run.g.nodes))
+	nodeNames := make(map[fsa.Node]string, len(run.g.nodes))
+	for _, name := range slices.Sorted(maps.Keys(run.g.nodes)) {
 		n := m.NewNode(func(fctx context.Context, _ fsa.FSA[*wfCursor], _ fsa.Edge, c *wfCursor) error {
-			outs, err := x.runNode(fctx, st, g, name, c.data)
+			outs, err := run.runNode(fctx, name, c.data)
 			if err != nil {
 				return fmt.Errorf("node %q: %w", name, err)
 			}
@@ -287,9 +320,9 @@ func (x *workflowExecutor) progress(
 		fsaNodes[name] = n
 		nodeNames[n] = name
 	}
-	for _, e := range g.edges {
+	for _, e := range run.g.edges {
 		m.NewEdge(func(fctx context.Context, _ fsa.FSA[*wfCursor], c *wfCursor) (fsa.ConditionResult, error) {
-			pass, err := x.invokeCondition(fctx, e.Cond, c)
+			pass, err := run.x.invokeCondition(fctx, e.Cond, c)
 			if err != nil {
 				return fsa.ConditionUnknown, fmt.Errorf("condition %s -> %s: %w", e.From, e.To, err)
 			}
@@ -303,7 +336,14 @@ func (x *workflowExecutor) progress(
 		m.NewCursor(c, fsaNodes[c.node])
 	}
 
-	err := m.Progress(ctx, fsa.SyncRunner)
+	// Independent cursors evaluate conditions and deploy their nodes in parallel. The FSA
+	// serializes all per-cursor and per-node-entry work itself; the only cross-goroutine state is
+	// workflowRun.slices, which is locked.
+	asyncRunner := func(ctx context.Context, f func(context.Context)) error {
+		go f(ctx)
+		return nil
+	}
+	err := m.Progress(ctx, asyncRunner)
 
 	var final []*wfCursor
 	m.Cursors(func(c *wfCursor, n fsa.Node) bool {
@@ -315,24 +355,44 @@ func (x *workflowExecutor) progress(
 	return final, err
 }
 
-// runNode reconciles one node's sub-state by running its program as a nested deployment with the
-// given cursor data as config. The resulting snapshot is persisted into st even when the deployment
-// fails, so a later up can heal by reconciliation. Returns the node's stack outputs.
-func (x *workflowExecutor) runNode(
-	ctx context.Context, st *wfState, g *wfGraph, name string, data map[string]any,
-) (map[string]any, error) {
-	prev, err := x.loadNodeSnapshot(ctx, st, name)
-	if err != nil {
-		return nil, err
-	}
+// sliceProject namespaces a node's resources within the shared snapshot: URNs embed the project,
+// so per-node projects make slice URNs (including default providers and the node's root stack)
+// unique by construction.
+func (run *workflowRun) sliceProject(node string) tokens.PackageName {
+	return tokens.PackageName(fmt.Sprintf("%s-wf-%s-%s", run.x.projectName, run.wf.URN.Name(), node))
+}
 
-	cb := g.nodes[name]
+func (run *workflowRun) sliceSnapshot(node string) *deploy.Snapshot {
+	run.m.Lock()
+	resources := run.slices[node]
+	run.m.Unlock()
+	if len(resources) == 0 {
+		return nil
+	}
+	manifest := deploy.Manifest{}
+	manifest.Magic = manifest.NewMagic()
+	var sm secrets.Manager
+	var extensions map[apitype.ExtensionRef]apitype.Extension
+	if prev := run.d.Prev(); prev != nil {
+		sm = prev.SecretsManager
+		extensions = prev.Extensions
+	}
+	return deploy.NewSnapshot(manifest, sm, resources, nil, deploy.SnapshotMetadata{}, nil, extensions)
+}
+
+// runNode reconciles one node by running its program as a nested deployment scoped to the node's
+// slice, sharing the outer deployment's events (persistence and display). Returns the node's stack
+// outputs. The slice is updated even when the deployment fails, so a later up heals what committed.
+func (run *workflowRun) runNode(ctx context.Context, node string, data map[string]any) (map[string]any, error) {
+	x := run.x
+	cb := run.g.nodes[node]
+	project := run.sliceProject(node)
 	runner := func(monitorAddr string) *promise.Promise[struct{}] {
 		cs := &promise.CompletionSource[struct{}]{}
 		go func() {
 			payload := workflowNodeRequest{
 				MonitorAddr: monitorAddr,
-				Project:     string(x.projectName),
+				Project:     string(project),
 				Stack:       x.stackName.String(),
 				Config:      workflowNodeConfig(data),
 				Parallel:    x.parallel,
@@ -346,10 +406,10 @@ func (x *workflowExecutor) runNode(
 		return cs.Promise()
 	}
 
-	snap, err := x.runNested(ctx, prev, func(target *deploy.Target, panicErrs chan<- error) deploy.Source {
+	newSlice, err := run.runNested(ctx, node, func(target *deploy.Target, panicErrs chan<- error) deploy.Source {
 		runinfo := &deploy.EvalRunInfo{
 			Proj: &workspace.Project{
-				Name:    x.projectName,
+				Name:    project,
 				Runtime: workspace.NewProjectRuntimeInfo("workflow-node", nil),
 			},
 			Pwd:     x.plugctx.Pwd,
@@ -359,55 +419,44 @@ func (x *workflowExecutor) runNode(
 		return deploy.NewEvalSource(x.plugctx, runinfo, nil, x.resourceHooks,
 			deploy.EvalSourceOptions{Parallel: x.parallel}, panicErrs, nil, runner)
 	})
-	if snap != nil {
-		serialized, serr := x.serializeNodeSnapshot(ctx, snap)
-		if serr != nil {
-			err = errors.Join(err, serr)
-		} else {
-			st.nodeStates[name] = serialized
-		}
-	}
 	if err != nil {
 		return nil, err
 	}
-	return workflowStackOutputs(snap), nil
+	for _, res := range newSlice {
+		if res.Type == resource.RootStackType && res.Parent == "" {
+			res.Lock.Lock()
+			defer res.Lock.Unlock()
+			return res.Outputs.Mappable(), nil
+		}
+	}
+	return nil, nil
 }
 
-// destroyNode tears down a node's sub-state by running a nested deployment with an empty program.
-func (x *workflowExecutor) destroyNode(ctx context.Context, st *wfState, name string) error {
-	prev, err := x.loadNodeSnapshot(ctx, st, name)
-	if err != nil {
-		return err
-	}
-	if prev == nil {
-		return nil
-	}
-	snap, err := x.runNested(ctx, prev, func(*deploy.Target, chan<- error) deploy.Source {
-		return deploy.NewNullSource(x.projectName)
+// destroyNode tears down a node's slice by running a nested deployment with an empty program.
+func (run *workflowRun) destroyNode(ctx context.Context, node string) error {
+	remaining, err := run.runNested(ctx, node, func(*deploy.Target, chan<- error) deploy.Source {
+		return deploy.NewNullSource(run.sliceProject(node))
 	})
 	if err != nil {
-		if snap != nil {
-			// Keep the partial result so a retry destroys only what remains.
-			if serialized, serr := x.serializeNodeSnapshot(ctx, snap); serr == nil {
-				st.nodeStates[name] = serialized
-			}
-		}
 		return err
 	}
-	if snap != nil && len(snap.Resources) > 0 {
-		return fmt.Errorf("%d resources were not deleted", len(snap.Resources))
+	if len(remaining) > 0 {
+		return fmt.Errorf("%d resources were not deleted", len(remaining))
 	}
 	return nil
 }
 
-// runNested executes a nested deployment against prev and returns the resulting snapshot, built by
-// replaying a journal of the steps taken. The snapshot is returned (for persistence) even when
-// execution fails.
-func (x *workflowExecutor) runNested(
+// runNested executes a nested deployment over node's slice. Steps flow through the outer
+// deployment's events — persisting into the shared snapshot and rendering in the display — and are
+// also journaled locally to compute the slice's resulting resources, which replace the slice (even
+// on failure, so retries see what committed).
+func (run *workflowRun) runNested(
 	ctx context.Context,
-	prev *deploy.Snapshot,
+	node string,
 	makeSource func(target *deploy.Target, panicErrs chan<- error) deploy.Source,
-) (*deploy.Snapshot, error) {
+) ([]*pkgresource.State, error) {
+	x := run.x
+	prev := run.sliceSnapshot(node)
 	target := &deploy.Target{
 		Name:         x.stackName,
 		Organization: x.organization,
@@ -420,8 +469,11 @@ func (x *workflowExecutor) runNested(
 	source := makeSource(target, panicErrs)
 
 	journal := NewTestJournal()
-	events := &workflowJournalEvents{journal: journal}
-	opts := &deploy.Options{Parallel: x.parallel}
+	events := &workflowTeeEvents{outer: run.d.Events(), journal: journal}
+	opts := &deploy.Options{
+		Parallel: x.parallel,
+		Owner:    deploy.MakeWorkflowOwner(run.wf.URN, node),
+	}
 	depl, err := deploy.NewDeployment(
 		x.plugctx, opts, events, target, prev, nil, source, x.backendClient, x.resourceHooks)
 	if err != nil {
@@ -438,47 +490,83 @@ func (x *workflowExecutor) runNested(
 	}
 
 	snap, snapErr := journal.Snap(prev)
-	if snap != nil && snap.SecretsManager == nil {
-		snap.SecretsManager = b64.NewBase64SecretsManager()
+	var resources []*pkgresource.State
+	if snap != nil {
+		resources = snap.Resources
+		run.m.Lock()
+		run.slices[node] = resources
+		run.m.Unlock()
 	}
-	return snap, errors.Join(execErr, snapErr)
+	return resources, errors.Join(execErr, snapErr)
 }
 
-// workflowJournalEvents adapts deploy.Events onto a TestJournal so nested deployments can rebuild
-// their snapshot without a backend-attached snapshot manager.
-type workflowJournalEvents struct {
+// workflowTeeEvents forwards nested-deployment events to the outer deployment's events (shared
+// snapshot manager and display) while journaling steps locally to rebuild the slice's resources.
+type workflowTeeEvents struct {
+	outer   deploy.Events
 	journal *TestJournal
 }
 
-func (e *workflowJournalEvents) OnSnapshotWrite(base *deploy.Snapshot) error {
-	return e.journal.Write(base)
+type workflowTeeMutation struct {
+	outer   any
+	journal SnapshotMutation
 }
 
-func (e *workflowJournalEvents) OnRebuiltBaseState() error {
-	return e.journal.RebuiltBaseState()
+func (t *workflowTeeEvents) OnSnapshotWrite(base *deploy.Snapshot) error {
+	return errors.Join(t.outer.OnSnapshotWrite(base), t.journal.Write(base))
 }
 
-func (e *workflowJournalEvents) OnResourceStepPre(step deploy.Step) (any, error) {
-	return e.journal.BeginMutation(step)
+func (t *workflowTeeEvents) OnRebuiltBaseState() error {
+	return errors.Join(t.outer.OnRebuiltBaseState(), t.journal.RebuiltBaseState())
 }
 
-func (e *workflowJournalEvents) OnResourceStepPost(
+func (t *workflowTeeEvents) OnResourceStepPre(step deploy.Step) (any, error) {
+	octx, err := t.outer.OnResourceStepPre(step)
+	if err != nil {
+		return nil, err
+	}
+	jctx, err := t.journal.BeginMutation(step)
+	if err != nil {
+		return nil, err
+	}
+	return workflowTeeMutation{outer: octx, journal: jctx}, nil
+}
+
+func (t *workflowTeeEvents) OnResourceStepPost(
 	ctx any, step deploy.Step, status resource.Status, err error,
 ) error {
-	return ctx.(SnapshotMutation).End(step, err == nil || status == resource.StatusPartialFailure)
+	tee := ctx.(workflowTeeMutation)
+	return errors.Join(
+		t.outer.OnResourceStepPost(tee.outer, step, status, err),
+		tee.journal.End(step, err == nil || status == resource.StatusPartialFailure),
+	)
 }
 
-func (e *workflowJournalEvents) OnResourceOutputs(step deploy.Step) error {
-	return e.journal.RegisterResourceOutputs(step)
+func (t *workflowTeeEvents) OnResourceOutputs(step deploy.Step) error {
+	return errors.Join(t.outer.OnResourceOutputs(step), t.journal.RegisterResourceOutputs(step))
 }
 
-func (e *workflowJournalEvents) OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic) {}
-func (e *workflowJournalEvents) OnPolicyRemediation(resource.URN, plugin.Remediation,
-	property.Map, property.Map) {
+func (t *workflowTeeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
+	t.outer.OnPolicyViolation(urn, d)
 }
-func (e *workflowJournalEvents) OnPolicyAnalyzeSummary(plugin.PolicySummary)      {}
-func (e *workflowJournalEvents) OnPolicyRemediateSummary(plugin.PolicySummary)    {}
-func (e *workflowJournalEvents) OnPolicyAnalyzeStackSummary(plugin.PolicySummary) {}
+
+func (t *workflowTeeEvents) OnPolicyRemediation(urn resource.URN, r plugin.Remediation,
+	before, after property.Map,
+) {
+	t.outer.OnPolicyRemediation(urn, r, before, after)
+}
+
+func (t *workflowTeeEvents) OnPolicyAnalyzeSummary(s plugin.PolicySummary) {
+	t.outer.OnPolicyAnalyzeSummary(s)
+}
+
+func (t *workflowTeeEvents) OnPolicyRemediateSummary(s plugin.PolicySummary) {
+	t.outer.OnPolicyRemediateSummary(s)
+}
+
+func (t *workflowTeeEvents) OnPolicyAnalyzeStackSummary(s plugin.PolicySummary) {
+	t.outer.OnPolicyAnalyzeStackSummary(s)
+}
 
 // -- Callback plumbing --
 
@@ -503,7 +591,7 @@ type workflowConditionResponse struct {
 	Pass bool `json:"pass"`
 }
 
-func (x *workflowExecutor) invokeCondition(ctx context.Context, cb wfCallback, c *wfCursor) (bool, error) {
+func (x *workflowProgressor) invokeCondition(ctx context.Context, cb wfCallback, c *wfCursor) (bool, error) {
 	resp, err := x.invokeCallback(ctx, cb, workflowConditionRequest{
 		Data:        c.data,
 		When:        c.enteredAt,
@@ -521,7 +609,7 @@ func (x *workflowExecutor) invokeCondition(ctx context.Context, cb wfCallback, c
 
 // invokeCallback invokes a user closure over the callbacks service with a JSON payload; the
 // response is JSON wrapped in a protobuf StringValue.
-func (x *workflowExecutor) invokeCallback(ctx context.Context, cb wfCallback, payload any) ([]byte, error) {
+func (x *workflowProgressor) invokeCallback(ctx context.Context, cb wfCallback, payload any) ([]byte, error) {
 	client, err := x.callbackClient(cb.Target)
 	if err != nil {
 		return nil, err
@@ -541,7 +629,7 @@ func (x *workflowExecutor) invokeCallback(ctx context.Context, cb wfCallback, pa
 	return []byte(sv.Value), nil
 }
 
-func (x *workflowExecutor) callbackClient(target string) (*deploy.CallbacksClient, error) {
+func (x *workflowProgressor) callbackClient(target string) (*deploy.CallbacksClient, error) {
 	x.m.Lock()
 	defer x.m.Unlock()
 	if client, ok := x.callbacks[target]; ok {
@@ -557,51 +645,6 @@ func (x *workflowExecutor) callbackClient(target string) (*deploy.CallbacksClien
 	client := deploy.NewCallbacksClient(conn)
 	x.callbacks[target] = client
 	return client, nil
-}
-
-// -- Sub-snapshot codec --
-
-func (x *workflowExecutor) loadNodeSnapshot(
-	ctx context.Context, st *wfState, name string,
-) (*deploy.Snapshot, error) {
-	raw, ok := st.nodeStates[name]
-	if !ok {
-		return nil, nil
-	}
-	var d3 apitype.DeploymentV3
-	if err := json.Unmarshal([]byte(raw), &d3); err != nil {
-		return nil, fmt.Errorf("unmarshaling node %q sub-state: %w", name, err)
-	}
-	snap, err := stack.DeserializeDeploymentV3(ctx, d3, b64.Base64SecretsProvider)
-	if err != nil {
-		return nil, fmt.Errorf("deserializing node %q sub-state: %w", name, err)
-	}
-	return snap, nil
-}
-
-func (x *workflowExecutor) serializeNodeSnapshot(ctx context.Context, snap *deploy.Snapshot) (string, error) {
-	d3, err := stack.SerializeDeployment(ctx, snap, false /*showSecrets*/)
-	if err != nil {
-		return "", err
-	}
-	b, err := json.Marshal(d3)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
-// workflowStackOutputs extracts the root stack outputs from a node's snapshot.
-func workflowStackOutputs(snap *deploy.Snapshot) map[string]any {
-	if snap == nil {
-		return nil
-	}
-	for _, res := range snap.Resources {
-		if res.Type == resource.RootStackType && res.Parent == "" {
-			return res.Outputs.Mappable()
-		}
-	}
-	return nil
 }
 
 // workflowNodeConfig renders cursor data as config for a node program, namespaced under "workflow:".
@@ -639,6 +682,10 @@ func sortCursors(cs []*wfCursor) {
 
 // -- State codec: PropertyMap <-> wfGraph/wfState --
 
+// workflowNodeName constrains node names: they become part of owner markings ('#'-separated) and
+// slice project names, so keep them to a safe identifier charset.
+var workflowNodeName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]*$`)
+
 func parseWorkflowGraph(news resource.PropertyMap) (*wfGraph, error) {
 	g := &wfGraph{
 		nodes:   map[string]wfCallback{},
@@ -650,6 +697,9 @@ func parseWorkflowGraph(news resource.PropertyMap) (*wfGraph, error) {
 		return nil, err
 	}
 	for name, v := range nodes {
+		if !workflowNodeName.MatchString(string(name)) {
+			return nil, fmt.Errorf("invalid node name %q", name)
+		}
 		cb, err := parseCallback(v)
 		if err != nil {
 			return nil, fmt.Errorf("node %q: %w", name, err)
@@ -725,7 +775,6 @@ func parseCallback(v resource.PropertyValue) (wfCallback, error) {
 func parseWorkflowState(olds resource.PropertyMap) (*wfState, error) {
 	st := &wfState{
 		entrySeeds: map[string]string{},
-		nodeStates: map[string]string{},
 	}
 	if olds == nil {
 		return st, nil
@@ -771,44 +820,28 @@ func parseWorkflowState(olds resource.PropertyMap) (*wfState, error) {
 			}
 		}
 	}
-	if v, ok := olds["nodeStates"]; ok && v.IsObject() {
-		for k, sv := range v.ObjectValue() {
-			if sv.IsString() {
-				st.nodeStates[string(k)] = sv.StringValue()
-			}
-		}
-	}
 	return st, nil
 }
 
-func renderWorkflowState(news resource.PropertyMap, st *wfState) resource.PropertyMap {
-	outs := resource.PropertyMap{}
-	maps.Copy(outs, news)
-
-	cursors := make([]resource.PropertyValue, len(st.cursors))
-	for i, c := range st.cursors {
-		cursors[i] = resource.NewProperty(resource.PropertyMap{
+func renderCursors(cursors []*wfCursor) resource.PropertyValue {
+	rendered := make([]resource.PropertyValue, len(cursors))
+	for i, c := range cursors {
+		rendered[i] = resource.NewProperty(resource.PropertyMap{
 			"id":        resource.NewProperty(float64(c.id)),
 			"node":      resource.NewProperty(c.node),
 			"data":      resource.NewProperty(resource.NewPropertyMapFromMap(c.data)),
 			"enteredAt": resource.NewProperty(c.enteredAt.Format(time.RFC3339Nano)),
 		})
 	}
-	outs["cursors"] = resource.NewProperty(cursors)
+	return resource.NewProperty(rendered)
+}
 
-	seeds := resource.PropertyMap{}
-	for k, v := range st.entrySeeds {
-		seeds[resource.PropertyKey(k)] = resource.NewProperty(v)
+func renderEntrySeeds(seeds map[string]string) resource.PropertyValue {
+	rendered := resource.PropertyMap{}
+	for k, v := range seeds {
+		rendered[resource.PropertyKey(k)] = resource.NewProperty(v)
 	}
-	outs["entrySeeds"] = resource.NewProperty(seeds)
-
-	states := resource.PropertyMap{}
-	for k, v := range st.nodeStates {
-		states[resource.PropertyKey(k)] = resource.NewProperty(v)
-	}
-	outs["nodeStates"] = resource.NewProperty(states)
-
-	return outs
+	return resource.NewProperty(rendered)
 }
 
 func propObject(m resource.PropertyMap, key string) (resource.PropertyMap, error) {

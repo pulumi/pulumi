@@ -265,5 +265,6 @@ func CreateRootStackResource(stackName tokens.QName, projectName tokens.PackageN
 		ViewOf:                  "",
 		ResourceHooks:           nil,
 		SnippetID:               "",
+		Owner:                   "",
 	}.Make()
 }

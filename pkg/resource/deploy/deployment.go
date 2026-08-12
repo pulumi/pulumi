@@ -124,9 +124,12 @@ type Options struct {
 	ShowSecrets bool
 	// Analyzers is the list of policy analyzers to run during this deployment.
 	Analyzers []plugin.Analyzer
-	// WorkflowExecutor runs pulumi:index:Workflow resources. Injected by pkg/engine; nil disables
-	// workflow support for this deployment.
-	WorkflowExecutor WorkflowExecutor
+	// WorkflowProgressor advances pulumi:index:Workflow resources after the source completes.
+	// Injected by pkg/engine; nil disables workflow progression.
+	WorkflowProgressor WorkflowProgressor
+	// Owner marks every resource state created by this deployment as owned by the given slice. Set
+	// for the nested deployments a WorkflowProgressor runs for workflow nodes; empty otherwise.
+	Owner string
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -644,7 +647,6 @@ func NewDeployment(
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
 	builtins := newBuiltinProvider(backendClient, newResources, reads, ctx.Diag)
-	builtins.workflows = opts.WorkflowExecutor
 
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
@@ -690,6 +692,11 @@ func (d *Deployment) Diag() diag.Sink                           { return d.ctx.D
 func (d *Deployment) Prev() *Snapshot                           { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*pkgresource.State { return d.olds }
 func (d *Deployment) Source() Source                            { return d.source }
+func (d *Deployment) Events() Events                            { return d.events }
+func (d *Deployment) Options() *Options                         { return d.opts }
+
+// News returns the set of new resource states produced by this deployment so far.
+func (d *Deployment) News() *gsync.Map[resource.URN, *pkgresource.State] { return d.news }
 
 // IgnoresProtect returns true if the step's deployment has been configured to ignore the protect
 // resource option (i.e. --ignore-protect was set), allowing protected resources to be deleted.

@@ -1,0 +1,72 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:index:Workflow::wf: (create)
+<{%fg 2%}>    edges  : <{%reset%}><{%fg 2%}>[
+<{%reset%}><{%fg 2%}>        [0]: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            from  : <{%reset%}><{%fg 2%}>"a1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64816"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            to    : <{%reset%}><{%fg 2%}>"a2"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"03086389-e595-4725-afaa-f2ca24ec4acc"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        [1]: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            from  : <{%reset%}><{%fg 2%}>"b1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64816"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            to    : <{%reset%}><{%fg 2%}>"b2"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"03086389-e595-4725-afaa-f2ca24ec4acc"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    ]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    entries: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>        a1: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            run: <{%reset%}><{%fg 2%}>"a"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        b1: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            run: <{%reset%}><{%fg 2%}>"b"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    nodes  : <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>        a1: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64816"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"999b13ba-7e1b-4d59-86ef-f85ef33f2f2f"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        a2: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64816"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"c4e5a91c-6f78-4175-be1f-36eb3185cb32"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        b1: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64816"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"08e16369-fa09-4525-9eaf-b7b945e9063c"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        b2: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64816"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"888bbb6d-f313-47f2-8cc1-b87105ea8ff7"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test-wf-wf-a2::pulumi:pulumi:Stack::node-stack: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test-wf-wf-b2::pulumi:pulumi:Stack::node-stack: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test-wf-wf-b2::pkgA:m:typA::b2: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test-wf-wf-a2::pkgA:m:typA::a2: (create)
+<{%reset%}><{%fg 2%}>    --outputs:--<{%reset%}>
+<{%fg 2%}>    cursors   : <{%reset%}><{%fg 2%}>[
+<{%reset%}><{%fg 2%}>        [0]: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            data     : <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                run: <{%reset%}><{%fg 2%}>"a"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            enteredAt: <{%reset%}><{%fg 2%}>"2026-08-12T01:06:42.72074Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            id       : <{%reset%}><{%fg 2%}>1<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            node     : <{%reset%}><{%fg 2%}>"a2"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        [1]: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>            data     : <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                run: <{%reset%}><{%fg 2%}>"b"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            enteredAt: <{%reset%}><{%fg 2%}>"2026-08-12T01:06:42.720714Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            id       : <{%reset%}><{%fg 2%}>2<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            node     : <{%reset%}><{%fg 2%}>"b2"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    ]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    entrySeeds: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>        a1: <{%reset%}><{%fg 2%}>"653a15c7b55227be29be2b1156ce9b7d1ae573ac619b26d7080f0ba4a4fbac9e"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        b1: <{%reset%}><{%fg 2%}>"e68ea4385a52ba8bd262abf86eb9b9bf0a511ed0bd78cf0f6d4974252102db17"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 5 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

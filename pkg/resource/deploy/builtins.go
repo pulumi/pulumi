@@ -48,9 +48,6 @@ type builtinProvider struct {
 	news *gsync.Map[resource.URN, *pkgresource.State]
 	// reads is a map of URNs to resource states that have been read during the current deployment.
 	reads *gsync.Map[resource.URN, *pkgresource.State]
-
-	// workflows runs pulumi:index:Workflow resources; nil when workflows are unsupported (e.g. imports).
-	workflows WorkflowExecutor
 }
 
 func newBuiltinProvider(
@@ -259,9 +256,8 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 			Status: resource.StatusOK,
 		}, nil
 	case workflowType:
-		if p.workflows == nil {
-			return plugin.CreateResponse{}, errors.New("workflow resources are not supported in this context")
-		}
+		// The step only records the workflow's shape and carried state; the deployment executor's
+		// WorkflowProgressor advances cursors and reconciles nodes after the source completes.
 		var id resource.ID
 		if !req.Preview {
 			uuid, err := uuid.NewV4()
@@ -270,12 +266,11 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 			}
 			id = resource.ID(uuid.String())
 		}
-		if req.Preview {
-			// Static preview: no conditions are evaluated and no moves are simulated.
-			return plugin.CreateResponse{Properties: req.Properties, Status: resource.StatusOK}, nil
-		}
-		outs, status, err := p.workflows.Update(ctx, req.URN, nil, req.Properties)
-		return plugin.CreateResponse{ID: id, Properties: outs, Status: status}, err
+		return plugin.CreateResponse{
+			ID:         id,
+			Properties: workflowState(req.Properties, nil),
+			Status:     resource.StatusOK,
+		}, nil
 	default:
 		return plugin.CreateResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
@@ -285,15 +280,12 @@ func (p *builtinProvider) Update(ctx context.Context, req plugin.UpdateRequest) 
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
 	case workflowType:
-		if p.workflows == nil {
-			return plugin.UpdateResponse{}, errors.New("workflow resources are not supported in this context")
-		}
-		if req.Preview {
-			// Static preview: report the current state unchanged.
-			return plugin.UpdateResponse{Properties: req.OldOutputs, Status: resource.StatusOK}, nil
-		}
-		outs, status, err := p.workflows.Update(ctx, req.URN, req.OldOutputs, req.NewInputs)
-		return plugin.UpdateResponse{Properties: outs, Status: status}, err
+		// Echo the new shape and carry the durable workflow state (cursors, entry records) forward;
+		// the WorkflowProgressor mutates it after the source completes.
+		return plugin.UpdateResponse{
+			Properties: workflowState(req.NewInputs, req.OldOutputs),
+			Status:     resource.StatusOK,
+		}, nil
 	case stashType:
 		properties := resource.PropertyMap{
 			"input":  req.NewInputs["input"],
@@ -309,19 +301,28 @@ func (p *builtinProvider) Update(ctx context.Context, req plugin.UpdateRequest) 
 	}
 }
 
-func (p *builtinProvider) Delete(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-	if req.URN.Type() == workflowType {
-		if p.workflows == nil {
-			return plugin.DeleteResponse{}, errors.New("workflow resources are not supported in this context")
-		}
-		status, err := p.workflows.Destroy(ctx, req.URN, req.Outputs)
-		return plugin.DeleteResponse{Status: status}, err
-	}
-
-	contract.Assertf(req.URN.Type() == stackReferenceType || req.URN.Type() == stashType,
-		"expected resource type %v or %v, got %v", stackReferenceType, stashType, req.URN.Type())
+func (p *builtinProvider) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+	// Deleting a workflow deletes only its own record: the resources its nodes own are swept by the
+	// regular delete sweep once their owner is gone from the new state.
+	contract.Assertf(
+		req.URN.Type() == stackReferenceType || req.URN.Type() == stashType || req.URN.Type() == workflowType,
+		"expected resource type %v, %v or %v, got %v", stackReferenceType, stashType, workflowType, req.URN.Type())
 
 	return plugin.DeleteResponse{Status: resource.StatusOK}, nil
+}
+
+// workflowState computes a workflow's new state: the new inputs echoed, with the durable state
+// (cursors, per-node entry seeds) carried over from the old state.
+func workflowState(news, olds resource.PropertyMap) resource.PropertyMap {
+	outs := news.Copy()
+	outs["cursors"] = resource.NewProperty([]resource.PropertyValue{})
+	outs["entrySeeds"] = resource.NewProperty(resource.PropertyMap{})
+	for _, key := range []resource.PropertyKey{"cursors", "entrySeeds"} {
+		if v, ok := olds[key]; ok {
+			outs[key] = v
+		}
+	}
+	return outs
 }
 
 func (p *builtinProvider) List(context.Context, plugin.ListRequest) (*plugin.ListStream, error) {
@@ -362,8 +363,10 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 
 	case stashType, workflowType:
 		if len(req.Inputs) == 0 {
-			return plugin.ReadResponse{Status: resource.StatusUnknown},
-				fmt.Errorf("%v can not be imported", typ)
+			if typ == workflowType {
+				return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("workflow can not be imported")
+			}
+			return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stash can not be imported")
 		}
 
 		return plugin.ReadResponse{

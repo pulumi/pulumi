@@ -2,7 +2,8 @@
 
 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%bold%}><{%fg 2%}>creating<{%reset%}> 
- <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%reset%}>workflow: admitted cursor 1 at node "dev"<{%reset%}>
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: admitted cursor 1 at node "dev"<{%reset%}>
  <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: admitted cursor 1 at node "dev"<{%reset%}>
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>

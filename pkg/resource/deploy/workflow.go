@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -23,19 +24,43 @@ import (
 // workflowType is the type token of the built-in workflow resource.
 const workflowType = "pulumi:index:Workflow"
 
-// A WorkflowExecutor runs pulumi:index:Workflow resource operations. Progressing a workflow means
-// running nested deployments for its nodes, and the machinery for that (snapshot journaling,
-// serialization, callback invocation) lives in pkg/engine, so the executor is injected from there
-// via Options.WorkflowExecutor. A nil executor means workflow resources are not supported for the
-// current operation.
-type WorkflowExecutor interface {
-	// Update progresses the workflow: reconcile occupied nodes, admit entries, run the scheduler,
-	// then GC removed nodes. olds is nil on create. The returned property map is the workflow's new
-	// state; it is valid (and should be persisted) even when an error is returned, in which case
-	// the returned status is StatusPartialFailure.
-	Update(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
-	) (resource.PropertyMap, resource.Status, error)
+// A WorkflowProgressor advances pulumi:index:Workflow resources. The deployment executor calls it
+// once per update, after the source has completed (so every workflow registration and its step have
+// finished) and before deletes are generated. Progressing a workflow means running nested, scoped
+// deployments for its nodes; that machinery lives in pkg/engine, so the progressor is injected from
+// there via Options.WorkflowProgressor. A nil progressor means workflows do not advance.
+//
+// persistState records a workflow's durable state (cursor positions, entry records) as the
+// resource's outputs, through the executor's regular RegisterResourceOutputs path so the change is
+// persisted and displayed like any other outputs registration. It may be called at most once per
+// registered workflow.
+type WorkflowProgressor interface {
+	Progress(ctx context.Context, d *Deployment,
+		persistState func(urn resource.URN, outputs resource.PropertyMap) error) error
+}
 
-	// Destroy tears down every node's sub-state.
-	Destroy(ctx context.Context, urn resource.URN, olds resource.PropertyMap) (resource.Status, error)
+// workflowOutputsEvent is the synthetic RegisterResourceOutputsEvent behind persistState.
+type workflowOutputsEvent struct {
+	urn     resource.URN
+	outputs resource.PropertyMap
+}
+
+func (e *workflowOutputsEvent) event()                        {}
+func (e *workflowOutputsEvent) URN() resource.URN             { return e.urn }
+func (e *workflowOutputsEvent) Outputs() resource.PropertyMap { return e.outputs }
+func (e *workflowOutputsEvent) Done()                         {}
+
+// MakeWorkflowOwner encodes the owner marking for a resource managed by the given workflow node.
+// Node names must not contain '#' (enforced at workflow registration).
+func MakeWorkflowOwner(workflow resource.URN, node string) string {
+	return string(workflow) + "#" + node
+}
+
+// ParseWorkflowOwner decodes an owner marking produced by MakeWorkflowOwner.
+func ParseWorkflowOwner(owner string) (workflow resource.URN, node string, ok bool) {
+	i := strings.LastIndexByte(owner, '#')
+	if i < 0 {
+		return "", "", false
+	}
+	return resource.URN(owner[:i]), owner[i+1:], true
 }

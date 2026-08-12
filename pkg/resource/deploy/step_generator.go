@@ -339,6 +339,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		ViewOf:                  "",
 		ResourceHooks:           nil,
 		SnippetID:               "",
+		Owner:                   sg.deployment.opts.Owner,
 	}.Make()
 
 	if newState.ID == "" {
@@ -819,6 +820,7 @@ func (sg *stepGenerator) generateResourceSteps(
 		ViewOf:                  "",
 		ResourceHooks:           goal.ResourceHooks,
 		SnippetID:               goal.SnippetID,
+		Owner:                   sg.deployment.opts.Owner,
 	}.Make()
 	if sdkproviders.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
@@ -1153,6 +1155,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 					ViewOf:                  "",
 					ResourceHooks:           goal.ResourceHooks,
 					SnippetID:               "",
+					Owner:                   sg.deployment.opts.Owner,
 				}.Make()
 			}
 
@@ -2308,6 +2311,17 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				// This is a view of another resource, so we don't need to delete it.
 				// The owning resource is responsible for publishing delete steps for its views.
 				continue
+			}
+
+			if res.Owner != "" && sg.mode == updateMode {
+				// Owned resources are reconciled by their owner's nested deployments, not the
+				// program: absence from the source does not mean deletion. Sweep them only once
+				// their owner is gone from the new state (the workflow was deleted, or a destroy).
+				if owner, _, ok := ParseWorkflowOwner(res.Owner); ok {
+					if _, registered := sg.deployment.news.Load(owner); registered {
+						continue
+					}
+				}
 			}
 
 			if isTargeted(res) {

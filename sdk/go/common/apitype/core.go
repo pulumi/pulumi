@@ -562,6 +562,9 @@ type ResourceV3 struct {
 	ExtensionRef ExtensionRef `json:"extensionRef,omitempty" yaml:"extensionRef,omitempty"`
 	// SnippetID is the UUID of the snippet that most recently registered this resource, if any.
 	SnippetID string `json:"snippetID,omitempty" yaml:"snippetID,omitempty"`
+	// Owner identifies the slice that owns this resource (e.g. a workflow node), if any. Owned
+	// resources are reconciled by their owner's nested deployments rather than the stack's program.
+	Owner string `json:"owner,omitempty" yaml:"owner,omitempty"`
 }
 
 // StackFrameV1 captures information about a stack frame.

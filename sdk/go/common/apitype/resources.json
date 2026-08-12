@@ -122,6 +122,10 @@
                 "snippetID": {
                     "description": "The UUID of the snippet that most recently registered this resource, if any.",
                     "type": "string"
+                },
+                "owner": {
+                    "description": "The slice that owns this resource (e.g. a workflow node), if any.",
+                    "type": "string"
                 }
             },
             "additionalProperties": false,

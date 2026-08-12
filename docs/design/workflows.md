@@ -654,7 +654,10 @@ the recovery metric is polled per `up`, so an active roll wants a tight cron (mi
 
 ## Decided
 
-- Sub-state: one managed backend stack per (workflow, node); the workflow's state references them.
+- Sub-state: node resources live in the main snapshot, marked with an owner (workflow URN + node)
+  and URN-namespaced by a per-node project qualifier. Secrets, refresh, display, and export come
+  for free; workflow destroy and node GC are ordinary delete sweeps over the marking. (Supersedes
+  the earlier managed-stack-per-node and state-in-the-resource designs.)
 - Node GC runs after everything else in the `up`; a resident cursor does not block it.
 - `up` reconciles every occupied node; preview is static in v1.
 - Approvals bind to the cursor-data fingerprint; `pulumi.Stack` will not accept a plan file.

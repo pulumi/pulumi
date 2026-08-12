@@ -296,7 +296,7 @@ func newDeployment(
 		ShowSecrets:               opts.ShowSecrets,
 		Analyzers:                 opts.LoadedAnalyzers,
 	}
-	deplOpts.WorkflowExecutor = newWorkflowExecutor(
+	deplOpts.WorkflowProgressor = newWorkflowProgressor(
 		plugctx, ctx.BackendClient, resourceHooks,
 		target.Name, target.Organization, proj.Name, deplOpts.Parallel)
 

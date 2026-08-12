@@ -90,6 +90,7 @@ type State struct {
 	ViewOf                  URN                   // If set, the URN of the resource this resource is a view of.
 	ResourceHooks           map[HookType][]string // The resource hooks attached to the resource, by type.
 	SnippetID               string                // If set, the UUID of the snippet that most recently registered this resource.
+	Owner                   string                // If set, the slice that owns this resource (e.g. a workflow node). Owned resources are reconciled by their owner's nested deployments, not the stack's program.
 }
 
 func cloneMapOfSlices[M ~map[K]V, K comparable, V ~[]E, E any](m M) M {
@@ -142,6 +143,7 @@ func (s *State) Copy() *State {
 		ViewOf:                  s.ViewOf,
 		ResourceHooks:           cloneMapOfSlices(s.ResourceHooks),
 		SnippetID:               s.SnippetID,
+		Owner:                   s.Owner,
 	}
 }
 
@@ -269,6 +271,9 @@ type NewState struct {
 
 	// If set, the UUID of the snippet that most recently registered this resource.
 	SnippetID string // required
+
+	// If set, the slice that owns this resource (e.g. a workflow node).
+	Owner string
 }
 
 // Make consumes the NewState to create a *State.
@@ -318,6 +323,7 @@ func (s NewState) Make() *State {
 		ViewOf:                  s.ViewOf,
 		ResourceHooks:           s.ResourceHooks,
 		SnippetID:               s.SnippetID,
+		Owner:                   s.Owner,
 	}
 }
 

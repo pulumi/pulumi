@@ -78,6 +78,7 @@ const (
 	snippetsFeature                  = "snippets-prototype"
 	extensionParameterizationFeature = "extensionParameterization"
 	byteStringFeature                = "byteString"
+	ownerFeature                     = "owner-prototype"
 )
 
 var (
@@ -137,6 +138,7 @@ var supportedFeatures = map[string]bool{
 	snippetsFeature:                  true,
 	extensionParameterizationFeature: true,
 	byteStringFeature:                true,
+	ownerFeature:                     true,
 }
 
 // validateSupportedFeatures validates that the features used in a deployment are supported.
@@ -181,6 +183,9 @@ func ApplyFeatures(res apitype.ResourceV3, encodedByteString bool, features map[
 	}
 	if res.SnippetID != "" {
 		features[snippetsFeature] = true
+	}
+	if res.Owner != "" {
+		features[ownerFeature] = true
 	}
 }
 
@@ -732,6 +737,7 @@ func SerializeResource(
 		ViewOf:                  res.ViewOf,
 		ResourceHooks:           res.ResourceHooks,
 		SnippetID:               res.SnippetID,
+		Owner:                   res.Owner,
 	}
 
 	if res.CustomTimeouts.IsNotEmpty() {
@@ -974,6 +980,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*pkgreso
 			ViewOf:                  res.ViewOf,
 			ResourceHooks:           res.ResourceHooks,
 			SnippetID:               res.SnippetID,
+			Owner:                   res.Owner,
 		}.Make(),
 		nil
 }

@@ -1,0 +1,4 @@
+<{%reset%}>workflow: admitted cursor 1 at node "a1"<{%reset%}>
+<{%reset%}>workflow: admitted cursor 2 at node "b1"<{%reset%}>
+<{%reset%}>workflow: cursor 2 entered node "b2"<{%reset%}>
+<{%reset%}>workflow: cursor 1 entered node "a2"<{%reset%}>

@@ -16,8 +16,10 @@ package lifecycletest
 
 import (
 	"encoding/json"
+	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/require"
@@ -28,6 +30,7 @@ import (
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -55,11 +58,14 @@ func TestWorkflowLifecycle(t *testing.T) {
 		return nodeRuns[name]
 	}
 
-	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		callbacks, err := deploytest.NewCallbacksServer()
-		require.NoError(t, err)
-		defer func() { require.NoError(t, callbacks.Close()) }()
+	// The callback server outlives each program run: workflows advance after the source completes,
+	// so the engine invokes node/condition callbacks once the program function has returned. (Real
+	// SDKs stay alive in SignalAndWaitForShutdown until the deployment finishes.)
+	callbacks, err := deploytest.NewCallbacksServer()
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, callbacks.Close()) })
 
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		// A node program: dials the nested monitor the engine started for this reconcile, registers
 		// a root stack, one custom resource configured from the cursor's data, and stack outputs.
 		nodeProgram := func(name string) *pulumirpc.Callback {
@@ -169,6 +175,17 @@ func TestWorkflowLifecycle(t *testing.T) {
 	cursorNode := func(c resource.PropertyValue) string {
 		return c.ObjectValue()["node"].StringValue()
 	}
+	// Node resources live in the main snapshot, marked as owned by their (workflow, node) slice
+	// and URN-namespaced by a per-node project qualifier.
+	wfURN := resource.URN("urn:pulumi:test::test::pulumi:index:Workflow::wf")
+	ownedResource := func(snap *deploy.Snapshot, node string) *pkgresource.State {
+		for _, res := range snap.Resources {
+			if res.Type == "pkgA:m:typA" && res.Owner == deploy.MakeWorkflowOwner(wfURN, node) {
+				return res
+			}
+		}
+		return nil
+	}
 
 	// Up 1: the entry admits a cursor at dev. Initial placement runs no node program, and there was
 	// no occupant to reconcile; the gate is polled once (fails), so the cursor parks at dev.
@@ -179,6 +196,7 @@ func TestWorkflowLifecycle(t *testing.T) {
 	require.Equal(t, "dev", cursorNode(cursors[0]))
 	require.Equal(t, 0, runs("dev"))
 	require.Equal(t, 0, runs("prod"))
+	require.Nil(t, ownedResource(snap, "dev"))
 
 	// Up 2: dev now hosts a cursor, so it is reconciled (the node program runs); the gate still
 	// fails and the cursor stays parked at dev.
@@ -189,6 +207,12 @@ func TestWorkflowLifecycle(t *testing.T) {
 	require.Equal(t, "dev", cursorNode(cursors[0]))
 	require.Equal(t, 1, runs("dev"))
 	require.Equal(t, 0, runs("prod"))
+	dev := ownedResource(snap, "dev")
+	require.NotNil(t, dev)
+	require.Equal(t, resource.URN("urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev"), dev.URN)
+	require.Equal(t, resource.PropertyMap{
+		"image": resource.NewProperty("v1"),
+	}, dev.Inputs)
 
 	// Up 3: the gate opens; the cursor moves to prod, running prod's program as it enters.
 	mu.Lock()
@@ -206,9 +230,139 @@ func TestWorkflowLifecycle(t *testing.T) {
 		"image":    resource.NewProperty("v1"),
 		"deployed": resource.NewProperty("prod"),
 	}, cursors[0].ObjectValue()["data"].ObjectValue())
+	// Both slices are live in the main snapshot: dev keeps its resources after the cursor left.
+	require.NotNil(t, ownedResource(snap, "dev"))
+	require.NotNil(t, ownedResource(snap, "prod"))
 
-	// Destroy: every node's sub-state is torn down with the workflow.
+	// Destroy: owned resources are swept with everything else — no workflow-specific destroy path.
 	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
 	require.NoError(t, err)
 	require.Empty(t, snap.Resources)
+}
+
+// TestWorkflowParallelNodes proves independent cursors deploy their nodes concurrently: two
+// disconnected chains move in the same up, and the entered nodes' programs rendezvous — if node
+// programs ran serially, the first would block on the barrier and the test would fail.
+func TestWorkflowParallelNodes(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	barrier := func() error {
+		wg.Done()
+		done := make(chan struct{})
+		go func() { wg.Wait(); close(done) }()
+		select {
+		case <-done:
+			return nil
+		case <-time.After(1 * time.Minute):
+			return errors.New("rendezvous timed out: node programs did not overlap")
+		}
+	}
+
+	callbacks, err := deploytest.NewCallbacksServer()
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, callbacks.Close()) })
+
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		nodeProgram := func(name string, meet bool) *pulumirpc.Callback {
+			cb, err := callbacks.Allocate(func(req []byte) (proto.Message, error) {
+				var p struct {
+					MonitorAddr string `json:"monitorAddr"`
+				}
+				if err := json.Unmarshal(req, &p); err != nil {
+					return nil, err
+				}
+				if meet {
+					if err := barrier(); err != nil {
+						return nil, err
+					}
+				}
+				conn, err := grpc.NewClient(p.MonitorAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+				if err != nil {
+					return nil, err
+				}
+				defer conn.Close()
+				nested := deploytest.NewResourceMonitor(pulumirpc.NewResourceMonitorClient(conn))
+				stackRes, err := nested.RegisterResource(resource.RootStackType, "node-stack", false)
+				if err != nil {
+					return nil, err
+				}
+				_, err = nested.RegisterResource("pkgA:m:typA", name, true, deploytest.ResourceOptions{
+					Parent: stackRes.URN,
+				})
+				if err != nil {
+					return nil, err
+				}
+				return wrapperspb.String("{}"), nil
+			})
+			require.NoError(t, err)
+			return cb
+		}
+
+		pass, err := callbacks.Allocate(func([]byte) (proto.Message, error) {
+			return wrapperspb.String(`{"pass":true}`), nil
+		})
+		require.NoError(t, err)
+
+		asCallback := func(cb *pulumirpc.Callback) resource.PropertyValue {
+			return resource.NewProperty(resource.PropertyMap{
+				"target": resource.NewProperty(cb.Target),
+				"token":  resource.NewProperty(cb.Token),
+			})
+		}
+		edge := func(from, to string) resource.PropertyValue {
+			return resource.NewProperty(resource.PropertyMap{
+				"from":   resource.NewProperty(from),
+				"to":     resource.NewProperty(to),
+				"target": resource.NewProperty(pass.Target),
+				"token":  resource.NewProperty(pass.Token),
+			})
+		}
+		seed := func(v string) resource.PropertyValue {
+			return resource.NewProperty(resource.PropertyMap{"run": resource.NewProperty(v)})
+		}
+		_, err = monitor.RegisterResource("pulumi:index:Workflow", "wf", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"nodes": resource.NewProperty(resource.PropertyMap{
+					"a1": asCallback(nodeProgram("a1", false)),
+					"a2": asCallback(nodeProgram("a2", true)),
+					"b1": asCallback(nodeProgram("b1", false)),
+					"b2": asCallback(nodeProgram("b2", true)),
+				}),
+				"edges": resource.NewProperty([]resource.PropertyValue{
+					edge("a1", "a2"),
+					edge("b1", "b2"),
+				}),
+				"entries": resource.NewProperty(resource.PropertyMap{
+					"a1": seed("a"),
+					"b1": seed("b"),
+				}),
+			},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	nodes := map[string]bool{}
+	for _, res := range snap.Resources {
+		if res.Type == "pulumi:index:Workflow" {
+			for _, c := range res.Outputs["cursors"].ArrayValue() {
+				nodes[c.ObjectValue()["node"].StringValue()] = true
+			}
+		}
+	}
+	require.Equal(t, map[string]bool{"a2": true, "b2": true}, nodes)
 }
