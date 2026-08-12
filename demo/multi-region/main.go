@@ -25,7 +25,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -94,7 +93,7 @@ func deployWave(wave int, regions []string) pulumi.RunFunc {
 			return err
 		}
 
-		var alarmIDs, urls []interface{}
+		var alarms, urls pulumi.Array
 		for _, region := range regions {
 			opt := pulumi.Provider(providers[region])
 
@@ -150,21 +149,17 @@ func deployWave(wave int, regions []string) pulumi.RunFunc {
 				return err
 			}
 
-			alarmIDs = append(alarmIDs, pulumi.Sprintf("%s|%s", region, alarm.Name))
+			alarms = append(alarms, pulumi.Map{
+				"region": pulumi.String(region),
+				"name":   alarm.Name,
+			})
 			urls = append(urls, url.FunctionUrl)
 		}
 
-		join := func(parts []interface{}) pulumi.StringOutput {
-			return pulumi.All(parts...).ApplyT(func(vs []interface{}) string {
-				ss := make([]string, len(vs))
-				for i, v := range vs {
-					ss[i] = v.(string)
-				}
-				return strings.Join(ss, ",")
-			}).(pulumi.StringOutput)
-		}
-		nctx.Export("alarms", join(alarmIDs))
-		nctx.Export("urls", join(urls))
+		// Cursor data is structured: these exports arrive in the edge gates as a real list of
+		// objects, not a string encoding.
+		nctx.Export("alarms", alarms)
+		nctx.Export("urls", urls)
 		nctx.Export("version", pulumi.String(version))
 		return nil
 	}
@@ -179,14 +174,16 @@ func wavesHealthy(bake time.Duration) pulumi.WorkflowCondition {
 		if time.Since(t.When) < bake {
 			return false, nil
 		}
-		alarms, _ := t.Data()["alarms"].(string)
-		if alarms == "" {
+		alarms, _ := t.Data()["alarms"].([]any)
+		if len(alarms) == 0 {
 			return false, nil // The wave has not been reconciled yet; its exports are not in the data.
 		}
-		for _, entry := range strings.Split(alarms, ",") {
-			region, name, ok := strings.Cut(entry, "|")
-			if !ok {
-				return false, fmt.Errorf("malformed alarm entry %q", entry)
+		for _, entry := range alarms {
+			m, _ := entry.(map[string]any)
+			region, _ := m["region"].(string)
+			name, _ := m["name"].(string)
+			if region == "" || name == "" {
+				return false, fmt.Errorf("malformed alarm entry %v", entry)
 			}
 			cfg, err := awsconfig.LoadDefaultConfig(cctx, awsconfig.WithRegion(region))
 			if err != nil {
