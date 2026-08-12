@@ -5,3 +5,6 @@ import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
+export interface BarArgs {
+    prop: pulumi.Input<string>;
+}

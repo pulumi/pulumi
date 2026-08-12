@@ -9,16 +9,40 @@ import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
+from ._inputs import *
 
 __all__ = ['FooArgs', 'Foo']
 
 @pulumi.input_type
 class FooArgs:
-    def __init__(__self__):
+    def __init__(__self__, *,
+                 condition_sets: pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['BarArgs']]]]]]]] = None,
+                 private_endpoint: pulumi.Input[Optional[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]]]]]] = None):
         """
         The set of arguments for constructing a Foo resource.
         """
-        pass
+        if condition_sets is not None:
+            pulumi.set(__self__, "condition_sets", condition_sets)
+        if private_endpoint is not None:
+            pulumi.set(__self__, "private_endpoint", private_endpoint)
+
+    @_builtins.property
+    @pulumi.getter(name="conditionSets")
+    def condition_sets(self) -> pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['BarArgs']]]]]]]]:
+        return pulumi.get(self, "condition_sets")
+
+    @condition_sets.setter
+    def condition_sets(self, value: pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input['BarArgs']]]]]]]]):
+        pulumi.set(self, "condition_sets", value)
+
+    @_builtins.property
+    @pulumi.getter(name="privateEndpoint")
+    def private_endpoint(self) -> pulumi.Input[Optional[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]]]]]]:
+        return pulumi.get(self, "private_endpoint")
+
+    @private_endpoint.setter
+    def private_endpoint(self, value: pulumi.Input[Optional[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]]]]]]):
+        pulumi.set(self, "private_endpoint", value)
 
 
 @pulumi.type_token("nestedcollections:index:Foo")
@@ -27,6 +51,8 @@ class Foo(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 condition_sets: pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['BarArgs']]]]]]]]] = None,
+                 private_endpoint: pulumi.Input[Optional[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]]]]]] = None,
                  __props__=None):
         """
         Create a Foo resource with the given unique name, props, and options.
@@ -58,6 +84,8 @@ class Foo(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 condition_sets: pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['BarArgs']]]]]]]]] = None,
+                 private_endpoint: pulumi.Input[Optional[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]]]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -67,8 +95,8 @@ class Foo(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = FooArgs.__new__(FooArgs)
 
-            __props__.__dict__["condition_sets"] = None
-            __props__.__dict__["private_endpoint"] = None
+            __props__.__dict__["condition_sets"] = condition_sets
+            __props__.__dict__["private_endpoint"] = private_endpoint
         super(Foo, __self__).__init__(
             'nestedcollections:index:Foo',
             resource_name,

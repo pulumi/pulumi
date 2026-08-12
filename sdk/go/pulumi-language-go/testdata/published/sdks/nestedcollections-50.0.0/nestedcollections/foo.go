@@ -58,10 +58,14 @@ func (FooState) ElementType() reflect.Type {
 }
 
 type fooArgs struct {
+	ConditionSets   [][][]Bar                               `pulumi:"conditionSets"`
+	PrivateEndpoint map[string]map[string]map[string]string `pulumi:"privateEndpoint"`
 }
 
 // The set of arguments for constructing a Foo resource.
 type FooArgs struct {
+	ConditionSets   BarArrayArrayArrayInput
+	PrivateEndpoint pulumi.StringMapMapMapInput
 }
 
 func (FooArgs) ElementType() reflect.Type {
