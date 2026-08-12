@@ -3,3 +3,5 @@ kind: improvement
 body: Include per-property diffs in the resources listed by `--output json` when
   combined with `--diff` in `up`, `preview`, `destroy`, `refresh`, and `import`
 time: 2026-08-12T14:53:01.492735+02:00
+custom:
+  PR: "24296"
