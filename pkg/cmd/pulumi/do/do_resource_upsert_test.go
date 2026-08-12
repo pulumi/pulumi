@@ -513,6 +513,110 @@ func TestDoCmdResourceUpsertReusesExistingSnippet(t *testing.T) {
 	_ = stderr
 }
 
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourcePatchMergesAndFiltersReferences(t *testing.T) {
+	oldURN := resource.URN("urn:pulumi:dev::proj::azure:index:myResource::old")
+	newURN := resource.URN("urn:pulumi:dev::proj::azure:index:myResource::new")
+	existing := resource.Snippet{
+		UUID: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+		Name: "myres", Type: "azure:index:myResource",
+		Code:       "name = old.name\nsize = 1\n",
+		Descriptor: resource.PackageDescriptor{Name: "azure"},
+		References: map[string]string{
+			"old": string(oldURN),
+		},
+	}
+	snapshot := &deploy.Snapshot{
+		Resources: []*pkgresource.State{
+			{Type: oldURN.Type(), URN: oldURN, Custom: true, ID: "old-id"},
+			{Type: newURN.Type(), URN: newURN, Custom: true, ID: "new-id"},
+		},
+		Snippets: []resource.Snippet{existing},
+	}
+	mws, mlm := installMockUpsertBackend(t, snapshot)
+
+	var got StatefulUpdateRequest
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		got = req
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "patch.pcl", `name = new.name`)
+	resourcesFile := writeHCLFile(t, "resources.json", `{"new":"`+string(newURN)+`"}`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "patch", "myres", "--yes",
+		"--input", "pcl", "--input-file", inputFile, "--resources-file", resourcesFile,
+	})
+	require.NoError(t, cmd.Execute())
+
+	require.Len(t, got.Snippets, 1)
+	patched := got.Snippets[0]
+	assert.Equal(t, existing.UUID, patched.UUID)
+	assert.Contains(t, patched.Code, "name = new.name")
+	assert.Contains(t, patched.Code, "size = 1")
+	assert.Equal(t, map[string]string{"new": string(newURN)}, patched.References)
+	_ = stdout
+	_ = stderr
+}
+
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourcePatchRejectsReferenceRemapConflict(t *testing.T) {
+	oldURN := resource.URN("urn:pulumi:dev::proj::azure:index:myResource::old")
+	newURN := resource.URN("urn:pulumi:dev::proj::azure:index:myResource::new")
+	existing := resource.Snippet{
+		UUID: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+		Name: "myres", Type: "azure:index:myResource",
+		Code:       "name = hi.name\n",
+		Descriptor: resource.PackageDescriptor{Name: "azure"},
+		References: map[string]string{
+			"hi": string(oldURN),
+		},
+	}
+	snapshot := &deploy.Snapshot{
+		Resources: []*pkgresource.State{
+			{Type: oldURN.Type(), URN: oldURN, Custom: true, ID: "old-id"},
+			{Type: newURN.Type(), URN: newURN, Custom: true, ID: "new-id"},
+		},
+		Snippets: []resource.Snippet{existing},
+	}
+	mws, mlm := installMockUpsertBackend(t, snapshot)
+
+	stub := func(context.Context, *pflag.FlagSet, StatefulUpdateRequest) (*StatefulUpdateResult, error) {
+		require.Fail(t, "conflicting patch references must not run an update")
+		return nil, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "patch.pcl", `name = hi.name`)
+	resourcesFile := writeHCLFile(t, "resources.json", `{"hi":"`+string(newURN)+`"}`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "patch", "myres", "--yes",
+		"--input", "pcl", "--input-file", inputFile, "--resources-file", resourcesFile,
+	})
+	err := cmd.Execute()
+	require.ErrorContains(t, err, `resource reference "hi" already points to`)
+	require.ErrorContains(t, err, string(oldURN))
+	require.ErrorContains(t, err, string(newURN))
+	_ = stdout
+	_ = stderr
+}
+
 // TestDoCmdResourceUpsertEndToEnd drives `pulumi do <token> upsert` through the real deployment
 // engine (via the lifecycletest framework) so we can assert that a fresh snippet ends up in the
 // snapshot and the engine creates the underlying resource. The runStatefulUpdate stub bridges the

@@ -485,8 +485,7 @@ expression in the input format (e.g. YAML interpolations or fn:: invocations).`,
 		"Output format for resource operation results (supported: default, json)")
 	cmd.Flags().BoolVar(&stateless, "stateless", false,
 		"Run create/patch/delete directly against the provider without persisting state. "+
-			"Required for now: the stateful (engine-driven) implementation is still in development, "+
-			"so patch/delete error out unless --stateless is set.")
+			"Required for delete until stateful delete is implemented.")
 	cmd.Flags().StringVar(
 		&pkg, "package", "", "The package to load, in the form 'name@version' or "+
 			"a path to a plugin binary or folder. If the package supports "+
