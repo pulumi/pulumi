@@ -65,8 +65,9 @@ type ResourceJSON struct {
 	// Parent is the URN of this resource's parent, if any.
 	Parent string `json:"parent,omitempty"`
 	// Diff maps changed property paths to their old/new values. It is only
-	// populated when the caller asked for a diff (`--diff`).
-	Diff map[string]PropertyDiffJSON `json:"diff,omitempty"`
+	// populated when the caller asked for a diff (`--diff`), and is not yet
+	// part of the JSON wire shape.
+	Diff map[string]PropertyDiffJSON `json:"-"`
 }
 
 // PropertyDiffJSON describes the change to a single property path within a
