@@ -181,38 +181,36 @@ func NewDiffJSONFromAPI(md apitype.StepEventMetadata) map[string]PropertyDiffJSO
 func flattenObjectDiff(out map[string]PropertyDiffJSON, path resource.PropertyPath, diff *resource.ObjectDiff,
 	hidden []resource.PropertyPath, showSecrets bool,
 ) {
-	at := func(k resource.PropertyKey) resource.PropertyPath {
-		return append(slices.Clone(path), string(k))
-	}
 	for k, v := range diff.Adds {
-		emitDiffEntry(out, at(k), PropertyDiffJSON{Kind: "add", New: jsonPropertyValue(v, showSecrets)}, hidden)
+		emitDiffEntry(out, append(slices.Clone(path), string(k)),
+			PropertyDiffJSON{Kind: "add", New: jsonPropertyValue(v, showSecrets)}, hidden)
 	}
 	for k, v := range diff.Deletes {
-		emitDiffEntry(out, at(k), PropertyDiffJSON{Kind: "delete", Old: jsonPropertyValue(v, showSecrets)}, hidden)
+		emitDiffEntry(out, append(slices.Clone(path), string(k)),
+			PropertyDiffJSON{Kind: "delete", Old: jsonPropertyValue(v, showSecrets)}, hidden)
 	}
 	for k, v := range diff.Updates {
-		flattenValueDiff(out, at(k), v, hidden, showSecrets)
+		flattenValueDiff(out, append(slices.Clone(path), string(k)), v, hidden, showSecrets)
 	}
 }
 
 func flattenValueDiff(out map[string]PropertyDiffJSON, path resource.PropertyPath, diff resource.ValueDiff,
 	hidden []resource.PropertyPath, showSecrets bool,
 ) {
-	at := func(i int) resource.PropertyPath {
-		return append(slices.Clone(path), i)
-	}
 	switch {
 	case diff.Object != nil:
 		flattenObjectDiff(out, path, diff.Object, hidden, showSecrets)
 	case diff.Array != nil:
 		for i, v := range diff.Array.Adds {
-			emitDiffEntry(out, at(i), PropertyDiffJSON{Kind: "add", New: jsonPropertyValue(v, showSecrets)}, hidden)
+			emitDiffEntry(out, append(slices.Clone(path), i),
+				PropertyDiffJSON{Kind: "add", New: jsonPropertyValue(v, showSecrets)}, hidden)
 		}
 		for i, v := range diff.Array.Deletes {
-			emitDiffEntry(out, at(i), PropertyDiffJSON{Kind: "delete", Old: jsonPropertyValue(v, showSecrets)}, hidden)
+			emitDiffEntry(out, append(slices.Clone(path), i),
+				PropertyDiffJSON{Kind: "delete", Old: jsonPropertyValue(v, showSecrets)}, hidden)
 		}
 		for i, v := range diff.Array.Updates {
-			flattenValueDiff(out, at(i), v, hidden, showSecrets)
+			flattenValueDiff(out, append(slices.Clone(path), i), v, hidden, showSecrets)
 		}
 	default:
 		emitDiffEntry(out, path, PropertyDiffJSON{
