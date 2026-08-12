@@ -124,6 +124,9 @@ type Options struct {
 	ShowSecrets bool
 	// Analyzers is the list of policy analyzers to run during this deployment.
 	Analyzers []plugin.Analyzer
+	// WorkflowExecutor runs pulumi:index:Workflow resources. Injected by pkg/engine; nil disables
+	// workflow support for this deployment.
+	WorkflowExecutor WorkflowExecutor
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -641,6 +644,7 @@ func NewDeployment(
 
 	// Create a new builtin provider. This provider implements features such as `getStack`.
 	builtins := newBuiltinProvider(backendClient, newResources, reads, ctx.Diag)
+	builtins.workflows = opts.WorkflowExecutor
 
 	// Create a new provider registry. Although we really only need to pass in any providers that were present in the
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,

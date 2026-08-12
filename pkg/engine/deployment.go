@@ -296,6 +296,9 @@ func newDeployment(
 		ShowSecrets:               opts.ShowSecrets,
 		Analyzers:                 opts.LoadedAnalyzers,
 	}
+	deplOpts.WorkflowExecutor = newWorkflowExecutor(
+		plugctx, ctx.BackendClient, resourceHooks,
+		target.Name, target.Organization, proj.Name, deplOpts.Parallel)
 
 	var depl *deploy.Deployment
 	if !opts.isImport {

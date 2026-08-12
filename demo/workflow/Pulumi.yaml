@@ -1,0 +1,3 @@
+name: workflow-demo
+runtime: go
+description: Proof-of-concept demo for the pulumi.Workflow resource.

@@ -1,0 +1,143 @@
+<{%fg 3%}>~ pulumi:index:Workflow: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:index:Workflow::wf]
+<{%reset%}><{%fg 3%}>  ~ edges  : <{%reset%}><{%fg 3%}>[
+<{%reset%}><{%fg 3%}>      ~ [0]: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%reset%}>                from  : <{%reset%}><{%reset%}>"dev"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>              ~ target: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>127.0.0.1:513<{%reset%}><{%fg 1%}>62<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>127.0.0.1:513<{%reset%}><{%fg 2%}>74<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>                to    : <{%reset%}><{%reset%}>"prod"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>              ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>7<{%reset%}><{%fg 1%}>eeba70a-b03f-460<{%reset%}><{%reset%}>c-<{%reset%}><{%reset%}>ae<{%reset%}><{%fg 1%}>fd-e62b2a63027d<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>7<{%reset%}><{%fg 2%}>a4123ed-f11b-45f<{%reset%}><{%reset%}>c-<{%reset%}><{%fg 2%}>b<{%reset%}><{%reset%}>ae<{%reset%}><{%fg 2%}>5-bf4d0e5afe1e<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>            }
+<{%reset%}><{%fg 3%}>    ]
+<{%reset%}><{%reset%}>    entries: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>        dev: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>            image: <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    }<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>  ~ nodes  : <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>      ~ dev : <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>          ~ target: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>127.0.0.1:513<{%reset%}><{%fg 1%}>62<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>127.0.0.1:513<{%reset%}><{%fg 2%}>74<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>          ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>28778bbb-6539-4288-a27e-c577c32c883e<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>63960033-aac9-4dfd-bf8b-2773618fa9d8<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>        }
+<{%reset%}><{%fg 3%}>      ~ prod: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>          ~ target: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>127.0.0.1:513<{%reset%}><{%fg 1%}>62<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>127.0.0.1:513<{%reset%}><{%fg 2%}>74<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>          ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>87573509-be1d-474a-b51a-70fd92de5278<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>378f4632-b283-452f-bae8-c1c6d799416b<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>        }
+<{%reset%}><{%fg 3%}>    }
+<{%reset%}><{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>  ~ cursors   : <{%reset%}><{%fg 3%}>[
+<{%reset%}><{%fg 3%}>      ~ [0]: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>              ~ data     : <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>                  ~ deployed: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>d<{%reset%}><{%fg 1%}>ev<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>pro<{%reset%}><{%reset%}>d<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>                    image   : <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>                }
+<{%reset%}><{%fg 3%}>              ~ enteredAt: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>2026-08-11T23:47:56.9<{%reset%}><{%fg 1%}>05807<{%reset%}><{%reset%}>Z<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>2026-08-11T23:47:56.9<{%reset%}><{%fg 2%}>22513<{%reset%}><{%reset%}>Z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>                id       : <{%reset%}><{%reset%}>1<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>              ~ node     : <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>d<{%reset%}><{%fg 1%}>ev<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>pro<{%reset%}><{%reset%}>d<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>            }
+<{%reset%}><{%fg 3%}>    ]
+<{%reset%}><{%reset%}>    entrySeeds: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>        dev: <{%reset%}><{%reset%}>"9c78e7407d286f4675a22260f772ad6ff7b156f6fd3d32d7ed6a7ed947c4d750"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>    }<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>  ~ nodeStates: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%reset%}>        dev : <{%reset%}><{%reset%}>(json) <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>            manifest         : <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                magic  : <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                time   : <{%reset%}><{%reset%}>"0001-01-01T00:00:00Z"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                version: <{%reset%}><{%reset%}>""<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            metadata         : <{%reset%}><{%reset%}>{}<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            resources        : <{%reset%}><{%reset%}>[
+<{%reset%}><{%reset%}>                [0]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                    created : <{%reset%}><{%reset%}>"2026-08-11T23:47:56.912985Z"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    custom  : <{%reset%}><{%reset%}>false<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    modified: <{%reset%}><{%reset%}>"2026-08-11T23:47:56.912985Z"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    outputs : <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                        deployed: <{%reset%}><{%reset%}>"dev"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    type    : <{%reset%}><{%reset%}>"pulumi:pulumi:Stack"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    urn     : <{%reset%}><{%reset%}>"urn:pulumi:test::test::pulumi:pulumi:Stack::node-stack"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                [1]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                    created : <{%reset%}><{%reset%}>"2026-08-11T23:47:56.913137Z"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    custom  : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    id      : <{%reset%}><{%reset%}>"f6c06541-2c74-4c19-891c-01a1f68e173f"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    modified: <{%reset%}><{%reset%}>"2026-08-11T23:47:56.913137Z"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    type    : <{%reset%}><{%reset%}>"pulumi:providers:pkgA"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    urn     : <{%reset%}><{%reset%}>"urn:pulumi:test::test::pulumi:providers:pkgA::default"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                [2]: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                    created             : <{%reset%}><{%reset%}>"2026-08-11T23:47:56.913172Z"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    custom              : <{%reset%}><{%reset%}>true<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    id                  : <{%reset%}><{%reset%}>"c6dd2781-3f68-48fb-b939-7266341117d0"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    inputs              : <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                        image: <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    modified            : <{%reset%}><{%reset%}>"2026-08-11T23:47:56.913172Z"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    parent              : <{%reset%}><{%reset%}>"urn:pulumi:test::test::pulumi:pulumi:Stack::node-stack"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    propertyDependencies: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                        image: <{%reset%}><{%reset%}>[]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    provider            : <{%reset%}><{%reset%}>"urn:pulumi:test::test::pulumi:providers:pkgA::default::f6c06541-2c74-4c19-891c-01a1f68e173f"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    type                : <{%reset%}><{%reset%}>"pkgA:m:typA"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                    urn                 : <{%reset%}><{%reset%}>"urn:pulumi:test::test::pkgA:m:typA::dev"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            ]<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            secrets_providers: <{%reset%}><{%reset%}>{
+<{%reset%}><{%reset%}>                type: <{%reset%}><{%reset%}>"b64"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 2%}>      + prod: <{%reset%}><{%fg 2%}>(json) <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>          + manifest         : <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>              + magic  : <{%reset%}><{%fg 2%}>""<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>              + time   : <{%reset%}><{%fg 2%}>"0001-01-01T00:00:00Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>              + version: <{%reset%}><{%fg 2%}>""<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>          + metadata         : <{%reset%}><{%fg 2%}>{}<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>          + resources        : <{%reset%}><{%fg 2%}>[
+<{%reset%}><{%fg 2%}>          +     [0]: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                  + created : <{%reset%}><{%fg 2%}>"2026-08-11T23:47:56.922045Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + custom  : <{%reset%}><{%fg 2%}>false<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + modified: <{%reset%}><{%fg 2%}>"2026-08-11T23:47:56.922045Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + outputs : <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                      + deployed: <{%reset%}><{%fg 2%}>"prod"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + type    : <{%reset%}><{%fg 2%}>"pulumi:pulumi:Stack"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + urn     : <{%reset%}><{%fg 2%}>"urn:pulumi:test::test::pulumi:pulumi:Stack::node-stack"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>          +     [1]: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                  + created : <{%reset%}><{%fg 2%}>"2026-08-11T23:47:56.922207Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + custom  : <{%reset%}><{%fg 2%}>true<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + id      : <{%reset%}><{%fg 2%}>"24b1a96e-bf78-49b3-8c8e-bf0521dc3d54"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + modified: <{%reset%}><{%fg 2%}>"2026-08-11T23:47:56.922207Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + type    : <{%reset%}><{%fg 2%}>"pulumi:providers:pkgA"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + urn     : <{%reset%}><{%fg 2%}>"urn:pulumi:test::test::pulumi:providers:pkgA::default"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>          +     [2]: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                  + created             : <{%reset%}><{%fg 2%}>"2026-08-11T23:47:56.922226Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + custom              : <{%reset%}><{%fg 2%}>true<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + id                  : <{%reset%}><{%fg 2%}>"5b25cc9d-3d6a-4b83-9db9-29377246ee97"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + inputs              : <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                      + image: <{%reset%}><{%fg 2%}>"v1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + modified            : <{%reset%}><{%fg 2%}>"2026-08-11T23:47:56.922226Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + parent              : <{%reset%}><{%fg 2%}>"urn:pulumi:test::test::pulumi:pulumi:Stack::node-stack"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + propertyDependencies: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>                      + image: <{%reset%}><{%fg 2%}>[]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                    }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + provider            : <{%reset%}><{%fg 2%}>"urn:pulumi:test::test::pulumi:providers:pkgA::default::24b1a96e-bf78-49b3-8c8e-bf0521dc3d54"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + type                : <{%reset%}><{%fg 2%}>"pkgA:m:typA"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                  + urn                 : <{%reset%}><{%fg 2%}>"urn:pulumi:test::test::pkgA:m:typA::prod"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>                }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            ]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>          + secrets_providers: <{%reset%}><{%fg 2%}>{
+<{%reset%}><{%fg 2%}>              + type: <{%reset%}><{%fg 2%}>"b64"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 3%}>    }
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 updated<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

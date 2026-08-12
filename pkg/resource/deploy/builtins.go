@@ -48,6 +48,9 @@ type builtinProvider struct {
 	news *gsync.Map[resource.URN, *pkgresource.State]
 	// reads is a map of URNs to resource states that have been read during the current deployment.
 	reads *gsync.Map[resource.URN, *pkgresource.State]
+
+	// workflows runs pulumi:index:Workflow resources; nil when workflows are unsupported (e.g. imports).
+	workflows WorkflowExecutor
 }
 
 func newBuiltinProvider(
@@ -163,6 +166,17 @@ func (p *builtinProvider) Check(_ context.Context, req plugin.CheckRequest) (plu
 		}
 
 		return plugin.CheckResponse{Properties: req.News}, nil
+	case workflowType:
+		for k := range req.News {
+			switch k {
+			case "nodes", "edges", "entries":
+			default:
+				return plugin.CheckResponse{
+					Failures: []plugin.CheckFailure{{Property: k, Reason: fmt.Sprintf("unknown property \"%v\"", k)}},
+				}, nil
+			}
+		}
+		return plugin.CheckResponse{Properties: req.News}, nil
 	default:
 		return plugin.CheckResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
@@ -191,6 +205,10 @@ func (p *builtinProvider) Diff(_ context.Context, req plugin.DiffRequest) (plugi
 		}
 
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+	case workflowType:
+		// A workflow polls its edge conditions on every up, so it always has work to do: report a
+		// diff unconditionally so the engine issues an Update even when the graph shape is unchanged.
+		return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 	default:
 		return plugin.DiffResult{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
@@ -240,14 +258,42 @@ func (p *builtinProvider) Create(ctx context.Context, req plugin.CreateRequest) 
 			},
 			Status: resource.StatusOK,
 		}, nil
+	case workflowType:
+		if p.workflows == nil {
+			return plugin.CreateResponse{}, errors.New("workflow resources are not supported in this context")
+		}
+		var id resource.ID
+		if !req.Preview {
+			uuid, err := uuid.NewV4()
+			if err != nil {
+				return plugin.CreateResponse{Status: resource.StatusOK}, err
+			}
+			id = resource.ID(uuid.String())
+		}
+		if req.Preview {
+			// Static preview: no conditions are evaluated and no moves are simulated.
+			return plugin.CreateResponse{Properties: req.Properties, Status: resource.StatusOK}, nil
+		}
+		outs, status, err := p.workflows.Update(ctx, req.URN, nil, req.Properties)
+		return plugin.CreateResponse{ID: id, Properties: outs, Status: status}, err
 	default:
 		return plugin.CreateResponse{}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
 }
 
-func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+func (p *builtinProvider) Update(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 	typ := req.URN.Type()
 	switch typ { //nolint:exhaustive
+	case workflowType:
+		if p.workflows == nil {
+			return plugin.UpdateResponse{}, errors.New("workflow resources are not supported in this context")
+		}
+		if req.Preview {
+			// Static preview: report the current state unchanged.
+			return plugin.UpdateResponse{Properties: req.OldOutputs, Status: resource.StatusOK}, nil
+		}
+		outs, status, err := p.workflows.Update(ctx, req.URN, req.OldOutputs, req.NewInputs)
+		return plugin.UpdateResponse{Properties: outs, Status: status}, err
 	case stashType:
 		properties := resource.PropertyMap{
 			"input":  req.NewInputs["input"],
@@ -263,7 +309,15 @@ func (p *builtinProvider) Update(_ context.Context, req plugin.UpdateRequest) (p
 	}
 }
 
-func (p *builtinProvider) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+func (p *builtinProvider) Delete(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+	if req.URN.Type() == workflowType {
+		if p.workflows == nil {
+			return plugin.DeleteResponse{}, errors.New("workflow resources are not supported in this context")
+		}
+		status, err := p.workflows.Destroy(ctx, req.URN, req.Outputs)
+		return plugin.DeleteResponse{Status: status}, err
+	}
+
 	contract.Assertf(req.URN.Type() == stackReferenceType || req.URN.Type() == stashType,
 		"expected resource type %v or %v, got %v", stackReferenceType, stashType, req.URN.Type())
 
@@ -306,9 +360,10 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 			Status: resource.StatusOK,
 		}, nil
 
-	case stashType:
+	case stashType, workflowType:
 		if len(req.Inputs) == 0 {
-			return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stash can not be imported")
+			return plugin.ReadResponse{Status: resource.StatusUnknown},
+				fmt.Errorf("%v can not be imported", typ)
 		}
 
 		return plugin.ReadResponse{
