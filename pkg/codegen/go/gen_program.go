@@ -1681,7 +1681,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 						}
 					}
 				}
-				g.Fgenf(w, "%s: %.v,\n", strings.Title(attr.Name), attr.Value)
+				g.Fgenf(w, "%s: %.v,\n", structFieldName(attr.Name), attr.Value)
 				g.inPlainObjectField = false
 			}
 			g.Fprint(w, "}")
@@ -1822,7 +1822,7 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 		if len(stateInputs) > 0 {
 			g.Fgenf(w, "&%s.%sState{\n", modOrAlias, typ)
 			for _, attr := range stateInputs {
-				g.Fgenf(w, "%s: %.v,\n", strings.Title(attr.Name), attr.Value)
+				g.Fgenf(w, "%s: %.v,\n", structFieldName(attr.Name), attr.Value)
 			}
 			g.Fprint(w, "}")
 		} else {
