@@ -15,7 +15,6 @@
 package httputil
 
 import (
-	"context"
 	"net/http"
 	"strconv"
 	"strings"
@@ -144,9 +143,12 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 			return false, nil, nil
 		},
 	}
-	_, res, err := retry.Until(context.Background(), acceptor)
+	accepted, res, err := retry.Until(req.Context(), acceptor)
 	if err != nil {
 		return nil, err
+	}
+	if !accepted {
+		return nil, req.Context().Err()
 	}
 
 	return res.(*http.Response), nil

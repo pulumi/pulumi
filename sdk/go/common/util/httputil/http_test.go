@@ -201,6 +201,27 @@ func TestRetry429ContextCanceledDuringWait(t *testing.T) {
 	assert.Less(t, time.Since(start), 5*time.Second)
 }
 
+func TestRetryContextCanceledDuringBackoff(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := 10 * time.Second
+	start := time.Now()
+	_, err = DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay}) //nolint:bodyclose // no response on error
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Less(t, time.Since(start), 5*time.Second, "the backoff must not outlive the request context")
+}
+
 func TestRetryAfterDelay(t *testing.T) {
 	t.Parallel()
 
