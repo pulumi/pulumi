@@ -326,8 +326,6 @@ func TestDiffJSONFromStep_CreateAndDelete(t *testing.T) {
 func TestDiffJSONFromStep_SameNeverReportsDiff(t *testing.T) {
 	t.Parallel()
 
-	// An OpSame can surface for metadata-only changes (e.g. protect); it must
-	// never carry a property diff even if inputs appear to differ.
 	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
 	meta := engine.StepEventMetadata{
 		Op:  deploy.OpSame,
@@ -372,9 +370,6 @@ func TestResourceJSONFromEvent_DiffOnlyInDiffMode(t *testing.T) {
 func TestTapSummaryJSON_RefreshDiffFromOutputsEvent(t *testing.T) {
 	t.Parallel()
 
-	// Refresh discovers changes after reading the resource: the pre-event has
-	// op `refresh` and no diff; the outputs event is rewritten to an update
-	// carrying the detailed diff, which the tap attaches to the entry.
 	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
 	pre := engine.ResourcePreEventPayload{
 		Metadata: engine.StepEventMetadata{

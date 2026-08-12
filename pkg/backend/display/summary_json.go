@@ -66,14 +66,12 @@ type ResourceJSON struct {
 	Op apitype.OpType `json:"op"`
 	// Parent is the URN of this resource's parent, if any.
 	Parent string `json:"parent,omitempty"`
-	// Diff maps property paths to their changes. Only populated when `--diff`
-	// is combined with `--output json`.
+	// Diff maps property paths to their changes; only populated when `--diff` is set.
 	Diff map[string]PropertyDiffJSON `json:"diff,omitempty"`
 }
 
-// PropertyDiffJSON describes the change to a single property path within
-// ResourceJSON.Diff. Old is absent for adds and New is absent for deletes;
-// secret values are masked unless the caller passed `--show-secrets`.
+// PropertyDiffJSON is the change to a single property path in ResourceJSON.Diff.
+// Old is absent for adds, New for deletes.
 type PropertyDiffJSON struct {
 	Kind string `json:"kind"`
 	Old  any    `json:"old,omitzero"`
@@ -120,15 +118,10 @@ func resourceJSONFromEvent(p engine.ResourcePreEventPayload, opts Options) *Reso
 	return &r
 }
 
-// diffJSONFromStep flattens the property changes carried by a step event into
-// the summary's path → change map, drawing on the same sources as the
-// human-readable diff display: the provider's detailed diff when present, and
-// an old-vs-new inputs comparison otherwise. Creates report every input as an
-// add and deletes report every input as a delete. Returns nil when the step
-// carries no property changes.
+// diffJSONFromStep flattens a step's property changes into a path → change map,
+// using the same sources as the human-readable diff display.
 func diffJSONFromStep(m *engine.StepEventMetadata, refresh, showSecrets bool) map[string]PropertyDiffJSON {
-	// An OpSame can carry a metadata-only diff (e.g. protect); never report a
-	// property diff for it. See https://github.com/pulumi/pulumi/issues/15944.
+	// An OpSame diff is metadata-only (e.g. protect); see pulumi/pulumi#15944.
 	if m.Op == deploy.OpSame {
 		return nil
 	}
@@ -186,9 +179,6 @@ func diffJSONFromStep(m *engine.StepEventMetadata, refresh, showSecrets bool) ma
 	return out
 }
 
-// propertyValueJSON prepares a property value for JSON output: secrets are
-// masked (unless showSecrets), and unknowns, assets, and resource references
-// are rendered the same way the preview digest renders resource states.
 func propertyValueJSON(v resource.PropertyValue, showSecrets bool) any {
 	serialized, err := stack.SerializePropertyValue(
 		context.TODO(), massagePropertyValue(v, showSecrets), config.NewPanicCrypter(), showSecrets)
@@ -294,10 +284,7 @@ func tapSummaryJSON(in <-chan engine.Event, opts Options) <-chan engine.Event {
 					}
 				}
 			case engine.ResourceOutputsEvent:
-				// Refreshes only discover their changes after reading the
-				// resource: the outputs event carries them, rewritten as an
-				// update or delete. Attach the diff to the entry recorded by
-				// the pre-event.
+				// Refresh diffs only arrive on the outputs event, rewritten as an update or delete.
 				if payload, ok := e.Payload().(engine.ResourceOutputsEventPayload); ok && opts.Type == DisplayDiff {
 					m := payload.Metadata
 					if refreshed[m.URN] && ((m.Op == deploy.OpUpdate && m.DetailedDiff != nil) || m.Op == deploy.OpDelete) {
