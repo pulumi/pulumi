@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 
 	"github.com/blang/semver"
@@ -321,6 +322,120 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 			verb, args.name, result.SnippetUUIDs[len(result.SnippetUUIDs)-1])
 	}
 	return nil
+}
+
+// runStatefulSnippetPatch finds the existing snippet for (name, res.Token), overlays the patch
+// inputs onto its PCL Code, and re-runs the stateful update. The snippet's UUID, References,
+// and Descriptor are preserved so the engine treats this as an in-place update.
+func (pc *packageCommand) runStatefulSnippetPatch(
+	cmd *cobra.Command, res *schema.Resource, name, inputFile, inputFormat, resourcesFile string, yes bool,
+) error {
+	contract.Assertf(pc.runStatefulUpdate != nil, "stateful snippet update is not wired up in this build")
+
+	contract.Assertf(pc.proj != nil, "project must be set (the global fallback should have supplied one)")
+	if err := pc.requireYesIfNonInteractive(yes); err != nil {
+		return err
+	}
+
+	ctx := cmd.Context()
+	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
+	stack, err := pc.loadStackForStateful(ctx, displayOpts)
+	if err != nil {
+		return err
+	}
+	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	if err != nil {
+		return fmt.Errorf("load stack snapshot: %w", err)
+	}
+
+	var existing *resource.Snippet
+	if snap != nil {
+		for i := range snap.Snippets {
+			s := snap.Snippets[i]
+			if s.Name == name && s.Type == res.Token {
+				existing = &s
+				break
+			}
+		}
+	}
+	if existing == nil {
+		return fmt.Errorf("resource %s %q does not exist in stack %s", res.Token, name, stack.Ref())
+	}
+
+	userResources, err := readResourceReferences(resourcesFile)
+	if err != nil {
+		return err
+	}
+	resources := mergeResourceNames(autoResourceNames(snap), userResources)
+	resourceInfos, err := resourceReferenceInfos(resources, snap)
+	if err != nil {
+		return err
+	}
+
+	inputFlags := collectInputFlags(cmd, "input", res.InputProperties)
+	patch, patchFilename, resourceNames, err := parseFile(
+		ctx, inputFile, "input", inputFormat, res.Token,
+		pc.converter, pc.loaderTarget, pc.packageDescriptor, inputFlags, resourceInfos,
+	)
+	if err != nil {
+		return fmt.Errorf("read input file: %w", err)
+	}
+	patchReferences, err := applyResourceNameRemaps(resources, resourceNames)
+	if err != nil {
+		return err
+	}
+	references, err := mergePatchReferences(existing.References, patchReferences)
+	if err != nil {
+		return err
+	}
+
+	sourceFilename := fmt.Sprintf("<snippet %s>", existing.UUID)
+	merged, err := mergePCLAttributesIntoPCL([]byte(existing.Code), sourceFilename, patch, patchFilename)
+	if err != nil {
+		return fmt.Errorf("merge patch inputs: %w", err)
+	}
+	references = filterReferencesByPCLUsage(references, merged, sourceFilename)
+
+	patched := *existing
+	patched.Code = string(merged)
+	patched.References = references
+
+	result, err := pc.runStatefulUpdate(ctx, cmd.Flags(), StatefulUpdateRequest{
+		Snippets:    []resource.Snippet{patched},
+		Stack:       stack,
+		DryRun:      pc.dryrun,
+		Yes:         yes,
+		ShowSecrets: pc.showSecrets,
+		Proj:        pc.proj,
+		Root:        pc.root,
+		Sink:        pc.diagFwd,
+	})
+	if err != nil {
+		return err
+	}
+	if result != nil && !pc.dryrun && len(result.SnippetUUIDs) > 0 {
+		fmt.Fprintf(cmd.OutOrStdout(), "Patched %s (snippet %s)\n", name, result.SnippetUUIDs[len(result.SnippetUUIDs)-1])
+	}
+	return nil
+}
+
+func mergePatchReferences(existing, patch map[string]string) (map[string]string, error) {
+	if len(existing) == 0 && len(patch) == 0 {
+		return nil, nil
+	}
+
+	merged := make(map[string]string, len(existing)+len(patch))
+	maps.Copy(merged, existing)
+	for name, urn := range patch {
+		if existingURN, ok := merged[name]; ok && existingURN != urn {
+			return nil, fmt.Errorf(
+				"resource reference %q already points to %s and cannot be patched to point to %s",
+				name, existingURN, urn,
+			)
+		}
+		merged[name] = urn
+	}
+	return merged, nil
 }
 
 func (pc *packageCommand) runStatefulSnippetDelete(

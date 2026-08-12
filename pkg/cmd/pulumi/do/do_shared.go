@@ -615,6 +615,43 @@ func mergeAbsentAttributeLiteralsIntoPCL(
 	return file.Bytes(), nil
 }
 
+// mergePCLAttributesIntoPCL takes the top-level attributes from `patch` and writes them into
+// `source`, overriding any attribute of the same name and preserving all other content (existing
+// attributes, blocks, and comments). Non-attribute content in `patch` (blocks, comments) is
+// ignored — patch semantics only touch inputs.
+func mergePCLAttributesIntoPCL(
+	source []byte, sourceFilename string, patch []byte, patchFilename string,
+) ([]byte, error) {
+	if len(patch) == 0 {
+		return source, nil
+	}
+	patchFile, diags := hclwrite.ParseConfig(patch, patchFilename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	patchAttrs := patchFile.Body().Attributes()
+	if len(patchAttrs) == 0 {
+		return source, nil
+	}
+	if len(source) > 0 && source[len(source)-1] != '\n' {
+		source = append(append([]byte{}, source...), '\n')
+	}
+	file, diags := hclwrite.ParseConfig(source, sourceFilename, hcl.Pos{Line: 1, Column: 1})
+	if diags.HasErrors() {
+		return nil, diags
+	}
+	body := file.Body()
+	names := make([]string, 0, len(patchAttrs))
+	for name := range patchAttrs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		body.SetAttributeRaw(name, patchAttrs[name].Expr().BuildTokens(nil))
+	}
+	return file.Bytes(), nil
+}
+
 // injectProviderOptionInPCL rewrites a resource snippet's PCL to reference the (external) provider
 // snippet's URN via the given identifier (declared by the snippet's References map). If the
 // source already has a top-level `options` block, `provider = <name>` is added inside it (unless
