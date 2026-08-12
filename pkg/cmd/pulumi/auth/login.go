@@ -254,7 +254,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				fmt.Fprintf(cmd.OutOrStdout(), "Logged in to %s (%s)\n", be.Name(), be.URL())
 			}
 
-			return nil
+			return offerFirstStep(ctx, be, cwd, cmd.OutOrStdout(), displayOptions, cmdutil.Interactive())
 		},
 	}
 
@@ -288,7 +288,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 }
 
 func validateCloudBackendType(typ string) error {
-	kind := strings.SplitN(typ, ":", 2)[0]
+	kind, _, _ := strings.Cut(typ, ":")
 	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http", "postgres"}
 	if slices.Contains(supportedKinds, kind) {
 		return nil

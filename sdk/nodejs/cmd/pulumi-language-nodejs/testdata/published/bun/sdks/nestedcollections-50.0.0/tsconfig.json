@@ -19,8 +19,6 @@
         "skipLibCheck": true
     },
     "files": [
-        "elementtype/elementType.ts",
-        "elementtype/index.ts",
         "foo.ts",
         "index.ts",
         "provider.ts",

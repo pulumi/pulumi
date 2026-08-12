@@ -39,9 +39,7 @@ func main() {
 			Text: third.Text,
 		}, nil)
 		_, err = simpleinvoke.NewStringResource(ctx, "fourth", &simpleinvoke.StringResourceArgs{
-			Text: data.ApplyT(func(data simpleinvoke.GetTextResult) (string, error) {
-				return data.Result, nil
-			}).(pulumi.StringOutput),
+			Text: data.Result(),
 		})
 		if err != nil {
 			return err

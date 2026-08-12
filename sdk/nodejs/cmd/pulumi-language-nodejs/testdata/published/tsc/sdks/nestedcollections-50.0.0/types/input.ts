@@ -8,5 +8,3 @@ import * as outputs from "../types/output";
 export interface BarArgs {
     prop: pulumi.Input<string>;
 }
-export namespace elementType {
-}

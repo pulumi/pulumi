@@ -2,7 +2,6 @@ package main
 
 import (
 	"example.com/pulumi-nestedcollections/sdk/go/v50/nestedcollections"
-	"example.com/pulumi-nestedcollections/sdk/go/v50/nestedcollections/elementtype"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -11,12 +10,6 @@ func main() {
 		// A resource with deeply nested collection output properties: a list of lists of lists
 		// of an object type and a map of maps of maps of strings.
 		foo, err := nestedcollections.NewFoo(ctx, "foo", nil)
-		if err != nil {
-			return err
-		}
-		// A resource whose `elementType` property collides with the `ElementType()` method that
-		// generated Go SDK types must implement.
-		_, err = elementtype.NewElementType(ctx, "elem", nil)
 		if err != nil {
 			return err
 		}

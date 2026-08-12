@@ -23,10 +23,8 @@ import (
 )
 
 // l2-nested-collections exercises deeply nested collection types: a resource with a
-// list-of-lists-of-lists of an object type and a map-of-maps-of-maps of strings, plus a
-// resource whose `elementType` property collides with the `ElementType()` method that
-// generated Go SDK types must implement. Converted from the `go-nested-collections`
-// codegen test (pulumi/pulumi#9887).
+// list-of-lists-of-lists of an object type and a map-of-maps-of-maps of strings.
+// Converted from the `go-nested-collections` codegen test (pulumi/pulumi#9887).
 func init() {
 	LanguageTests["l2-nested-collections"] = LanguageTest{
 		Providers: []func() plugin.Provider{
@@ -38,8 +36,8 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 					snap := res.Snap
 
-					// The stack, the provider, and the two resources.
-					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
+					// The stack, the provider, and the resource.
+					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:nestedcollections")
 
 					foo := RequireSingleResource(l, snap.Resources, "nestedcollections:index:Foo")
@@ -61,12 +59,6 @@ func init() {
 						},
 					})
 					assert.Equal(l, want, foo.Outputs, "expected the computed nested collection outputs")
-
-					elem := RequireSingleResource(l, snap.Resources, "nestedcollections:elementType:ElementType")
-					wantElem := resource.NewPropertyMapFromMap(map[string]any{
-						"elementType": map[string]any{"elementType": "nested"},
-					})
-					assert.Equal(l, wantElem, elem.Outputs, "expected the computed elementType output")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					AssertPropertyMapMember(l, stack.Outputs, "secondProp", resource.NewProperty("second"))

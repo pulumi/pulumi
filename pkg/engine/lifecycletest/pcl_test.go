@@ -16,6 +16,7 @@ package lifecycletest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"sync/atomic"
@@ -1944,4 +1945,334 @@ func TestPclSnippetTargetDeletesWithExcludes(t *testing.T) {
 
 	require.Len(t, deleted, 1, "TargetSnippets should take precedence over Excludes during deletes")
 	require.Equal(t, "r1", deleted[0].Name())
+}
+
+// TestPclSnippetTargetSkipsUntargetedProviders checks that a snippet-targeted operation neither
+// evaluates untargeted snippets nor checks/configures their providers. A stack may contain
+// snippets whose provider credentials are unavailable (or whose plugin cannot even be loaded);
+// operations that only touch other snippets must still succeed.
+func TestPclSnippetTargetSkipsUntargetedProviders(t *testing.T) {
+	t.Parallel()
+
+	var pkgBBroken atomic.Bool
+	var updated []resource.URN
+	loaders := append(pclSnippetTestProvider(pclSnippetSchemaPropA, nil, &updated, nil),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(_ context.Context, _ plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(`{
+  "version": "0.0.1",
+  "name": "pkgB",
+  "resources": {
+    "pkgB:index:res": {
+      "inputProperties": {
+        "propB": { "type": "boolean" }
+      },
+      "requiredInputs": ["propB"]
+    }
+  }
+}`)}, nil
+				},
+				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+					if pkgBBroken.Load() {
+						return plugin.CheckConfigResponse{}, errors.New("no valid credential sources found")
+					}
+					return plugin.CheckConfigResponse{Properties: req.News}, nil
+				},
+				ConfigureF: func(_ context.Context, _ plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					if pkgBBroken.Load() {
+						return plugin.ConfigureResponse{}, errors.New("no valid credential sources found")
+					}
+					return plugin.ConfigureResponse{}, nil
+				},
+				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: cr.Properties}, nil
+				},
+			}, nil
+		}))
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			SkipDisplayTests: true,
+			T:                t,
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
+		},
+	}
+
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	sAUUID := newPclSnippetUUID(t)
+	sBUUID := newPclSnippetUUID(t)
+	snap.Snippets = []resource.Snippet{
+		pclSnippetForRes(sAUUID, "rA", `propA = true`),
+		{
+			UUID: sBUUID,
+			Name: "rB", Type: "pkgB:index:res",
+			Descriptor: resource.PackageDescriptor{Name: "pkgB"},
+			Code:       `propB = true`,
+		},
+	}
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
+
+	// pkgB's credentials "expire"; updating only the pkgA snippet must still work.
+	pkgBBroken.Store(true)
+	snap.Snippets[0].Code = `propA = false`
+	targetedOpts := p.Options
+	targetedOpts.UpdateOptions = UpdateOptions{TargetSnippets: []string{sAUUID}}
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), targetedOpts, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+
+	require.Len(t, updated, 1)
+	require.Equal(t, "rA", updated[0].Name())
+	require.Len(t, snap.Resources, 4)
+	byType := map[tokens.Type]*pkgresource.State{}
+	for _, r := range snap.Resources {
+		byType[r.Type] = r
+	}
+	require.NotNil(t, byType["pulumi:providers:pkgB"], "pkgB provider should still be in the snapshot")
+	require.NotNil(t, byType["pkgB:index:res"], "pkgB resource should still be in the snapshot")
+	require.Equal(t, resource.PropertyMap{"propA": resource.NewProperty(false)}, byType["pkgA:index:res"].Inputs)
+}
+
+// TestPclSnippetTargetReferenceUntargetedSnippet checks that a targeted snippet that references a
+// resource of an untargeted snippet reads that resource's outputs from old state, without the
+// untargeted snippet being evaluated.
+func TestPclSnippetTargetReferenceUntargetedSnippet(t *testing.T) {
+	t.Parallel()
+
+	schemaJSON := `{
+  "version": "0.0.1",
+  "name": "pkgA",
+  "resources": {
+    "pkgA:index:res": {
+      "inputProperties": {
+        "message": { "type": "string" }
+      },
+      "requiredInputs": ["message"]
+    },
+    "pkgA:index:producer": {
+      "inputProperties": {
+        "seed": { "type": "string" }
+      },
+      "requiredInputs": ["seed"],
+      "properties": {
+        "value": { "type": "string" }
+      },
+      "required": ["value"]
+    }
+  }
+}`
+
+	var producerCreates atomic.Int32
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(_ context.Context, _ plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(schemaJSON)}, nil
+				},
+				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
+					out := resource.PropertyMap{}
+					maps.Copy(out, cr.Properties)
+					if seed, ok := cr.Properties["seed"]; ok {
+						producerCreates.Add(1)
+						out["value"] = resource.NewProperty("value-of-" + seed.StringValue())
+					}
+					id, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: out}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			SkipDisplayTests: true,
+			T:                t,
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
+		},
+	}
+
+	producerUUID := newPclSnippetUUID(t)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, []resource.Snippet{
+		{
+			UUID: producerUUID,
+			Name: "producer", Type: "pkgA:index:producer",
+			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+			Code:       `seed = "hello"`,
+		},
+	}, nil)
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Equal(t, int32(1), producerCreates.Load())
+
+	// Add a consumer snippet referencing the producer and target only the consumer.
+	consumerUUID := newPclSnippetUUID(t)
+	snap.Snippets = append(snap.Snippets, resource.Snippet{
+		UUID: consumerUUID,
+		Name: "consumer", Type: "pkgA:index:res",
+		Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+		References: map[string]string{
+			"producer": "urn:pulumi:test::test::pkgA:index:producer::producer",
+		},
+		Code: `message = producer.value`,
+	})
+	targetedOpts := p.Options
+	targetedOpts.UpdateOptions = UpdateOptions{TargetSnippets: []string{consumerUUID}}
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), targetedOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	require.Equal(t, int32(1), producerCreates.Load(), "producer should not have been recreated")
+	var consumer *pkgresource.State
+	for _, r := range snap.Resources {
+		if r.URN.Name() == "consumer" {
+			consumer = r
+		}
+	}
+	require.NotNil(t, consumer, "consumer resource should have been created")
+	require.Equal(t, resource.PropertyMap{
+		"message": resource.NewProperty("value-of-hello"),
+	}, consumer.Inputs)
+}
+
+// TestPclSnippetTargetExplicitProviderFromState checks that a targeted snippet using an explicit
+// provider whose own snippet is untargeted works: the provider reference resolves from old state
+// and the provider is loaded and configured on demand during step generation.
+func TestPclSnippetTargetExplicitProviderFromState(t *testing.T) {
+	t.Parallel()
+
+	schemaJSON := `{
+  "version": "0.0.1",
+  "name": "pkgA",
+  "provider": {
+    "inputProperties": {
+      "region": { "type": "string" }
+    }
+  },
+  "resources": {
+    "pkgA:index:res": {
+      "inputProperties": {
+        "propA": { "type": "boolean" }
+      },
+      "requiredInputs": ["propA"]
+    }
+  }
+}`
+
+	var configures atomic.Int32
+	var updated []resource.URN
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(_ context.Context, _ plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					return plugin.GetSchemaResponse{Schema: []byte(schemaJSON)}, nil
+				},
+				ConfigureF: func(_ context.Context, _ plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					configures.Add(1)
+					return plugin.ConfigureResponse{}, nil
+				},
+				CreateF: func(_ context.Context, cr plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+					return plugin.CreateResponse{ID: resource.ID(id.String()), Properties: cr.Properties}, nil
+				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldInputs.DeepEquals(req.NewInputs) {
+						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					updated = append(updated, req.URN)
+					return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			SkipDisplayTests: true,
+			T:                t,
+			HostF:            deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
+		},
+	}
+
+	const providerURN = "urn:pulumi:test::test::pulumi:providers:pkgA::my-provider"
+	providerUUID := newPclSnippetUUID(t)
+	resUUID := newPclSnippetUUID(t)
+	snap := deploy.NewSnapshot(deploy.Manifest{}, nil, nil, nil, deploy.SnapshotMetadata{}, []resource.Snippet{
+		{
+			UUID: providerUUID,
+			Name: "my-provider", Type: "pulumi:providers:pkgA",
+			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+			Code:       `region = "west"`,
+		},
+		{
+			UUID: resUUID,
+			Name: "test-resource", Type: "pkgA:index:res",
+			Descriptor: resource.PackageDescriptor{Name: "pkgA"},
+			References: map[string]string{
+				"prov": providerURN,
+			},
+			Code: `propA = true
+options {
+    provider = prov
+}`,
+		},
+	}, nil)
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Update only the resource snippet; its untargeted provider snippet is not evaluated.
+	configuresBefore := configures.Load()
+	snap.Snippets[1].Code = `propA = false
+options {
+    provider = prov
+}`
+	targetedOpts := p.Options
+	targetedOpts.UpdateOptions = UpdateOptions{TargetSnippets: []string{resUUID}}
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), targetedOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	require.Len(t, updated, 1)
+	require.Equal(t, "test-resource", updated[0].Name())
+	require.Greater(t, configures.Load(), configuresBefore,
+		"the explicit provider should have been configured on demand")
+	var res *pkgresource.State
+	for _, r := range snap.Resources {
+		if r.Type == "pkgA:index:res" {
+			res = r
+		}
+	}
+	require.NotNil(t, res)
+	require.Equal(t, resource.PropertyMap{"propA": resource.NewProperty(false)}, res.Inputs)
+	require.Contains(t, res.Provider, providerURN, "the resource should still use the explicit provider")
 }

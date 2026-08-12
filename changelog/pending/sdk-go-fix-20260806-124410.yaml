@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Fix panics in hooks to not crash the entire process
+time: 2026-08-06T12:44:10.421056+01:00

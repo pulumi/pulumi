@@ -10,25 +10,9 @@ from .foo import *
 from .provider import *
 from ._inputs import *
 from . import outputs
-
-# Make subpackages available:
-if typing.TYPE_CHECKING:
-    import pulumi_nestedcollections.elementtype as __elementtype
-    elementtype = __elementtype
-else:
-    elementtype = _utilities.lazy_import('pulumi_nestedcollections.elementtype')
-
 _utilities.register(
     resource_modules="""
 [
- {
-  "pkg": "nestedcollections",
-  "mod": "elementType",
-  "fqn": "pulumi_nestedcollections.elementtype",
-  "classes": {
-   "nestedcollections:elementType:ElementType": "ElementType"
-  }
- },
  {
   "pkg": "nestedcollections",
   "mod": "index",

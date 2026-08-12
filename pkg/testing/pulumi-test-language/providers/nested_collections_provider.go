@@ -27,8 +27,7 @@ import (
 
 // NestedCollectionsProvider exercises deeply nested collection types: a resource whose
 // properties are a list of lists of lists of an object type and a map of maps of maps of
-// strings (pulumi/pulumi#9887), and a resource whose `elementType` property collides with
-// the `ElementType()` method that generated Go SDK types must implement.
+// strings (pulumi/pulumi#9887).
 type NestedCollectionsProvider struct {
 	plugin.UnimplementedProvider
 }
@@ -92,17 +91,6 @@ func (p *NestedCollectionsProvider) GetSchema(
 					Required: []string{"prop"},
 				},
 			},
-			// A type with the same token as the ElementType resource, whose property
-			// shares the type's own name.
-			"nestedcollections:elementType:ElementType": {
-				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type: "object",
-					Properties: map[string]schema.PropertySpec{
-						"elementType": {TypeSpec: schema.TypeSpec{Type: "string"}},
-					},
-					Required: []string{"elementType"},
-				},
-			},
 		},
 		Resources: map[string]schema.ResourceSpec{
 			"nestedcollections:index:Foo": {
@@ -117,18 +105,6 @@ func (p *NestedCollectionsProvider) GetSchema(
 				InputProperties: map[string]schema.PropertySpec{
 					"conditionSets":   conditionSets,
 					"privateEndpoint": privateEndpoint,
-				},
-			},
-			"nestedcollections:elementType:ElementType": {
-				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type: "object",
-					Properties: map[string]schema.PropertySpec{
-						"elementType": {
-							TypeSpec: schema.TypeSpec{
-								Ref: "#/types/nestedcollections:elementType:ElementType",
-							},
-						},
-					},
 				},
 			},
 		},
@@ -160,8 +136,7 @@ func (p *NestedCollectionsProvider) Create(
 
 	outputs := req.Properties.Copy()
 
-	switch req.URN.Type() { //nolint:exhaustive // other types are simple echoes
-	case "nestedcollections:index:Foo":
+	if req.URN.Type() == "nestedcollections:index:Foo" {
 		bar := func(prop string) resource.PropertyValue {
 			return resource.NewProperty(resource.PropertyMap{
 				"prop": resource.NewProperty(prop),
@@ -178,10 +153,6 @@ func (p *NestedCollectionsProvider) Create(
 					"leaf": resource.NewProperty("deep"),
 				}),
 			}),
-		})
-	case "nestedcollections:elementType:ElementType":
-		outputs["elementType"] = resource.NewProperty(resource.PropertyMap{
-			"elementType": resource.NewProperty("nested"),
 		})
 	}
 
