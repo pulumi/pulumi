@@ -202,7 +202,7 @@ func TestImporter(t *testing.T) {
 									// NOT just ambient config from GetPackageConfig.
 									// The registry's FilterProviderConfig strips internal fields
 									// but passes through user config like "region".
-									assert.Equal(t, resource.NewProperty("eu-west-1"),
+									assert.Equal(t, property.New("eu-west-1"),
 										req.News.Get("region"))
 									return plugin.CheckConfigResponse{}, expectedErr
 								},
