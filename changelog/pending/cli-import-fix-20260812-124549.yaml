@@ -1,0 +1,4 @@
+component: cli/import
+kind: fix
+body: Do not fail import code generation when the import file declares a component resource
+time: 2026-08-12T12:45:49.913419+02:00

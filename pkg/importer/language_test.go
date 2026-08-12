@@ -432,3 +432,76 @@ parent = parentComponent
 `
 	assert.Equal(t, expectedCode, generatedProgram.String())
 }
+
+func TestGenerateLanguageDefinitionsSkipsLocalComponents(t *testing.T) {
+	t.Parallel()
+
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
+
+	var generatedProgram strings.Builder
+	generator := func(_ io.Writer, p *pcl.Program) error {
+		for _, content := range p.Source() {
+			generatedProgram.WriteString(content)
+		}
+		return nil
+	}
+
+	componentURN := resource.NewURN("dev", "project", "", "company:product:CRClass", "example")
+	childURN := resource.NewURN(
+		"dev",
+		"project",
+		"company:product:CRClass",
+		"random:index/randomPet:RandomPet",
+		"randomPet")
+
+	nameTable := NameTable{
+		componentURN: "parentComponent",
+	}
+
+	snapshot := []*pkgresource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:random",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:random::default_123",
+		},
+	}
+
+	resources := []apitype.ResourceV3{
+		{
+			URN:  componentURN,
+			Type: "company:product:CRClass",
+		},
+		{
+			URN:      childURN,
+			Custom:   true,
+			Type:     "random:index/randomPet:RandomPet",
+			Parent:   componentURN,
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+		},
+	}
+
+	states := slice.Prealloc[*pkgresource.State](len(resources))
+	for _, r := range resources {
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
+		require.NoError(t, err)
+		states = append(states, state)
+	}
+
+	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, snapshot, nameTable)
+	require.NoError(t, err)
+	expectedCode := `package random {
+    baseProviderName = "random"
+
+}
+
+resource randomPet "random:index/randomPet:RandomPet" {
+options {
+parent = parentComponent
+
+}
+
+}
+`
+	assert.Equal(t, expectedCode, generatedProgram.String())
+}

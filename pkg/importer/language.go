@@ -188,13 +188,19 @@ func GenerateLanguageDefinitions(
 		// Keep track of packages we've seen, we assume package names are unique.
 		seenPkgs := mapset.NewSet[string]()
 
-		for i, state := range states {
+		for _, state := range states {
+			// Local component resources are declared by the user's program rather than by a package schema, so
+			// there is nothing to generate for them. Their children still refer to them via the name table.
+			if !state.Custom && state.Provider == "" {
+				continue
+			}
+
 			hcl2Def, pkgDesc, err := GenerateHCL2Definition(loader, state, importState)
 			if err != nil {
 				return nil, nil, err
 			}
 			pre := ""
-			if i > 0 {
+			if hcl2Text.Len() > 0 {
 				pre = "\n"
 			}
 
