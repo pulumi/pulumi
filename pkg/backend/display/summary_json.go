@@ -191,16 +191,24 @@ func RefreshDiffJSON(m *engine.StepEventMetadata, showSecrets bool) map[string]P
 func flattenObjectDiff(out map[string]PropertyDiffJSON, path resource.PropertyPath, diff *resource.ObjectDiff,
 	hidden []resource.PropertyPath, showSecrets bool,
 ) {
+	// Internal (__meta-style) keys reach us through provider detailed diffs;
+	// hide them as the rest of the display does.
 	for k, v := range diff.Adds {
-		emitDiffEntry(out, append(slices.Clone(path), string(k)),
-			PropertyDiffJSON{Kind: "add", New: jsonPropertyValue(v, showSecrets)}, hidden)
+		if !resource.IsInternalPropertyKey(k) {
+			emitDiffEntry(out, append(slices.Clone(path), string(k)),
+				PropertyDiffJSON{Kind: "add", New: jsonPropertyValue(v, showSecrets)}, hidden)
+		}
 	}
 	for k, v := range diff.Deletes {
-		emitDiffEntry(out, append(slices.Clone(path), string(k)),
-			PropertyDiffJSON{Kind: "delete", Old: jsonPropertyValue(v, showSecrets)}, hidden)
+		if !resource.IsInternalPropertyKey(k) {
+			emitDiffEntry(out, append(slices.Clone(path), string(k)),
+				PropertyDiffJSON{Kind: "delete", Old: jsonPropertyValue(v, showSecrets)}, hidden)
+		}
 	}
 	for k, v := range diff.Updates {
-		flattenValueDiff(out, append(slices.Clone(path), string(k)), v, hidden, showSecrets)
+		if !resource.IsInternalPropertyKey(k) {
+			flattenValueDiff(out, append(slices.Clone(path), string(k)), v, hidden, showSecrets)
+		}
 	}
 }
 

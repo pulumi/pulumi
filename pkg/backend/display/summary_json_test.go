@@ -356,6 +356,8 @@ func TestNewDiffJSON_DetailedDiff(t *testing.T) {
 		DetailedDiff: map[string]plugin.PropertyDiff{
 			"tags.env":  {Kind: plugin.DiffUpdate},
 			"tags.team": {Kind: plugin.DiffAdd},
+			// Internal keys (as reported by e.g. the AWS provider) are hidden.
+			"__meta": {Kind: plugin.DiffUpdate},
 		},
 		Old: &engine.StepEventStateMetadata{Outputs: resource.PropertyMap{
 			"tags": resource.NewProperty(resource.PropertyMap{"env": resource.NewProperty("dev")}),
