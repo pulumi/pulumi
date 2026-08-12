@@ -115,23 +115,6 @@ func buildUpdateSummary(
 				}
 				s.Resources = append(s.Resources, r)
 			}
-		case engine.ResourceOutputsEvent:
-			// Refresh steps only reveal their diff once the provider has read the
-			// resource's current state, which arrives on the outputs event.
-			if !includeDiff {
-				continue
-			}
-			m := e.Payload().(engine.ResourceOutputsEventPayload).Metadata
-			d := display.RefreshDiffJSON(&m, false /* showSecrets */)
-			if d == nil {
-				continue
-			}
-			for i := len(s.Resources) - 1; i >= 0; i-- {
-				if s.Resources[i].URN == string(m.URN) && s.Resources[i].Op == apitype.OpRefresh {
-					s.Resources[i].Diff = d
-					break
-				}
-			}
 		case engine.ResourceOperationFailed:
 			anyFailed = true
 			markFailed(e.Payload().(engine.ResourceOperationFailedPayload).Metadata)

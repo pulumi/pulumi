@@ -168,16 +168,6 @@ func NewDiffJSON(m *engine.StepEventMetadata, refresh, showSecrets bool) map[str
 	return out
 }
 
-// RefreshDiffJSON returns the diff a refresh step reveals on its outputs
-// event — an update carrying a detailed diff from the provider read, or a
-// delete of a resource that no longer exists — and nil for anything else.
-func RefreshDiffJSON(m *engine.StepEventMetadata, showSecrets bool) map[string]PropertyDiffJSON {
-	if (m.Op == deploy.OpUpdate && m.DetailedDiff != nil) || m.Op == deploy.OpDelete {
-		return NewDiffJSON(m, true /* refresh */, showSecrets)
-	}
-	return nil
-}
-
 func flattenObjectDiff(out map[string]PropertyDiffJSON, path resource.PropertyPath, diff *resource.ObjectDiff,
 	hidden []resource.PropertyPath, showSecrets bool,
 ) {
