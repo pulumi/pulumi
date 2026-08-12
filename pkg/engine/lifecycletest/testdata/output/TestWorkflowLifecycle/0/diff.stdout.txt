@@ -3,9 +3,9 @@
 <{%reset%}><{%fg 2%}>    edges  : <{%reset%}><{%fg 2%}>[
 <{%reset%}><{%fg 2%}>        [0]: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            from  : <{%reset%}><{%fg 2%}>"dev"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64815"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:56704"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            to    : <{%reset%}><{%fg 2%}>"prod"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"c2efbd31-3fb4-4ed8-9f70-f31ba4a0fc9f"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"4015e846-8d81-4a1a-9eb2-3aae7d33abe9"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    ]<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    entries: <{%reset%}><{%fg 2%}>{
@@ -15,12 +15,12 @@
 <{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    nodes  : <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>        dev : <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64815"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"69458ffc-a066-4731-9ea8-63a7abce6931"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:56704"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"d292b105-17ad-4a2d-b2e9-1cc4506bec73"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        prod: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64815"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"74e70b94-5663-40c3-af7c-49f57c33baf9"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:56704"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"1dce8424-6087-41bc-93e1-4d138c4f7479"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>    --outputs:--<{%reset%}>
@@ -29,7 +29,7 @@
 <{%reset%}><{%fg 2%}>            data     : <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                image: <{%reset%}><{%fg 2%}>"v1"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            enteredAt: <{%reset%}><{%fg 2%}>"2026-08-12T01:06:42.717101Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            enteredAt: <{%reset%}><{%fg 2%}>"2026-08-12T15:46:51.113976Z"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            id       : <{%reset%}><{%fg 2%}>1<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            node     : <{%reset%}><{%fg 2%}>"dev"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>

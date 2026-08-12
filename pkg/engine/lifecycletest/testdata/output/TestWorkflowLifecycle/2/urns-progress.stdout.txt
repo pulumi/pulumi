@@ -3,22 +3,18 @@
 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]
  <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]
- <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::node-stack running 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::node-stack <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-prod::pulumi:pulumi:Stack::node-stack <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-prod::pkgA:m:typA::prod <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-prod::pkgA:m:typA::prod <{%fg 2%}>created<{%reset%}> 
  <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: cursor 1 entered node "prod"<{%reset%}>
  <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]; <{%reset%}>workflow: cursor 1 entered node "prod"<{%reset%}>
- <{%reset%}>  <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::node-stack <{%reset%}><{%reset%}> 
- <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-wf-wf-prod::pulumi:pulumi:Stack::node-stack <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
   <{%fg 12%}>urn:pulumi:test::test::pulumi:index:Workflow::wf:<{%reset%}>
     <{%reset%}>workflow: cursor 1 entered node "prod"<{%reset%}>
 
-<{%fg 13%}><{%bold%}>Outputs:<{%reset%}>
-<{%fg 2%}>    deployed: <{%reset%}><{%fg 2%}>"prod"<{%reset%}><{%fg 2%}>
-<{%reset%}>
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 2 created<{%reset%}>
     <{%fg 3%}>~ 1 updated<{%reset%}>

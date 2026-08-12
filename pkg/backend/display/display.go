@@ -295,9 +295,14 @@ func (s *nopSpinner) Tick() {
 func (s *nopSpinner) Reset() {
 }
 
-// isRootStack returns true if the step pertains to the rootmost stack component.
+// isRootStack returns true if the step pertains to the rootmost stack component. Stack-typed
+// resources with a parent are not the root: workflow node deployments contribute parented
+// pulumi:pulumi:Stack resources of their own.
 func isRootStack(step engine.StepEventMetadata) bool {
-	return isRootURN(step.URN)
+	if !isRootURN(step.URN) {
+		return false
+	}
+	return step.Res == nil || step.Res.Parent == ""
 }
 
 func isRootURN(urn resource.URN) bool {

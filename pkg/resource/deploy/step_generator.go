@@ -262,6 +262,19 @@ func (sg *stepGenerator) checkParent(parent resource.URN, resourceType tokens.Ty
 	return parent, nil
 }
 
+// ownedParent parents the roots of an owned (nested workflow) deployment under the owning workflow
+// resource, so they nest under it in the display, the dependency graph, and delete ordering. It is
+// applied to states after URN generation, so it never alters URNs.
+func (sg *stepGenerator) ownedParent(parent resource.URN) resource.URN {
+	if parent != "" || sg.deployment.opts.Owner == "" {
+		return parent
+	}
+	if owner, _, ok := ParseWorkflowOwner(sg.deployment.opts.Owner); ok {
+		return owner
+	}
+	return parent
+}
+
 // bailDiag prints the given diagnostic to the error stream and then returns a bail error with the same message.
 func (sg *stepGenerator) bailDiag(diag *diag.Diag, args ...any) error {
 	sg.deployment.Diag().Errorf(diag, args...)
@@ -311,7 +324,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		ID:                      event.ID(),
 		Inputs:                  event.Properties(),
 		Outputs:                 make(resource.PropertyMap),
-		Parent:                  parent,
+		Parent:                  sg.ownedParent(parent),
 		Protect:                 false,
 		Taint:                   false,
 		External:                true,
@@ -791,7 +804,7 @@ func (sg *stepGenerator) generateResourceSteps(
 		ID:                      "",
 		Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
 		Outputs:                 nil,
-		Parent:                  goal.Parent,
+		Parent:                  sg.ownedParent(goal.Parent),
 		Protect:                 protectState,
 		Taint:                   false,
 		External:                false,
@@ -1127,7 +1140,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 					ID:                      "",
 					Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
 					Outputs:                 nil,
-					Parent:                  goal.Parent,
+					Parent:                  sg.ownedParent(goal.Parent),
 					Protect:                 new.Protect,
 					Taint:                   false,
 					External:                false,
@@ -2313,10 +2326,14 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 				continue
 			}
 
-			if res.Owner != "" && sg.mode == updateMode {
-				// Owned resources are reconciled by their owner's nested deployments, not the
-				// program: absence from the source does not mean deletion. Sweep them only once
-				// their owner is gone from the new state (the workflow was deleted, or a destroy).
+			if sg.mode == updateMode && res.Owner != sg.deployment.opts.Owner {
+				// A deployment only sweeps its own scope. A nested (owned) deployment never
+				// deletes resources it does not own, such as the parent-chain anchors included in
+				// its snapshot. The stack's own deployment sweeps owned resources only once their
+				// owner is gone from the new state (the workflow was deleted, or a destroy).
+				if sg.deployment.opts.Owner != "" {
+					continue
+				}
 				if owner, _, ok := ParseWorkflowOwner(res.Owner); ok {
 					if _, registered := sg.deployment.news.Load(owner); registered {
 						continue

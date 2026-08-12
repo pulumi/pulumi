@@ -48,6 +48,10 @@ type TestJournalEntry struct {
 type JournalEntries []TestJournalEntry
 
 func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
+	return entries.snap(base, true)
+}
+
+func (entries JournalEntries) snap(base *deploy.Snapshot, verify bool) (*deploy.Snapshot, error) {
 	// Build up a list of current resources by replaying the journal.
 	resources, dones := []*pkgresource.State{}, make(map[*pkgresource.State]bool)
 	isRefresh := false
@@ -217,10 +221,19 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	if err != nil {
 		return snap, err
 	}
+	if !verify {
+		return normSnap, nil
+	}
 	return normSnap, normSnap.VerifyIntegrity()
 }
 
 type TestJournal struct {
+	// SkipVerify makes Snap skip integrity verification of the reconstructed snapshot. Workflow
+	// slices are open subgraphs of the stack's snapshot (their roots are parented to the owning
+	// workflow, which lives outside the slice); they are verified as part of the merged stack
+	// snapshot when it is written instead.
+	SkipVerify bool
+
 	entries JournalEntries
 	events  chan TestJournalEntry
 	cancel  chan bool
@@ -276,7 +289,7 @@ func (j *TestJournal) RecordPlugin(plugin workspace.PluginInfo) error {
 }
 
 func (j *TestJournal) Snap(base *deploy.Snapshot) (*deploy.Snapshot, error) {
-	return j.entries.Snap(base)
+	return j.entries.snap(base, !j.SkipVerify)
 }
 
 func (j *TestJournal) Write(base *deploy.Snapshot) error {

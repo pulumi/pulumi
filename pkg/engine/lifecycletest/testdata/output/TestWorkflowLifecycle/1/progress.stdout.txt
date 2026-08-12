@@ -7,10 +7,7 @@
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typA dev <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pkgA:m:typA dev <{%fg 2%}>created<{%reset%}> 
  <{%fg 3%}>~ <{%reset%}> pulumi:index:Workflow wf <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~edges,nodes<{%reset%}><{%reset%}>]
- <{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack node-stack <{%fg 2%}>created<{%reset%}> 
-<{%fg 13%}><{%bold%}>Outputs:<{%reset%}>
-<{%fg 2%}>    deployed: <{%reset%}><{%fg 2%}>"dev"<{%reset%}><{%fg 2%}>
-<{%reset%}>
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 2%}>+ 2 created<{%reset%}>
     <{%fg 3%}>~ 1 updated<{%reset%}>

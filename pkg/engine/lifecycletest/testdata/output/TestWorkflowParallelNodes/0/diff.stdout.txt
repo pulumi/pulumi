@@ -3,15 +3,15 @@
 <{%reset%}><{%fg 2%}>    edges  : <{%reset%}><{%fg 2%}>[
 <{%reset%}><{%fg 2%}>        [0]: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            from  : <{%reset%}><{%fg 2%}>"a1"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64816"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:56705"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            to    : <{%reset%}><{%fg 2%}>"a2"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"03086389-e595-4725-afaa-f2ca24ec4acc"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"c9a3fca5-39db-42a8-9fc2-b2de394d2098"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        [1]: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            from  : <{%reset%}><{%fg 2%}>"b1"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64816"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:56705"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            to    : <{%reset%}><{%fg 2%}>"b2"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"03086389-e595-4725-afaa-f2ca24ec4acc"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"c9a3fca5-39db-42a8-9fc2-b2de394d2098"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    ]<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    entries: <{%reset%}><{%fg 2%}>{
@@ -24,37 +24,37 @@
 <{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    nodes  : <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>        a1: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64816"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"999b13ba-7e1b-4d59-86ef-f85ef33f2f2f"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:56705"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"018aeb4f-c34f-4a99-ab42-d5a68714a4c1"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        a2: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64816"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"c4e5a91c-6f78-4175-be1f-36eb3185cb32"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:56705"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"736b9129-d961-48ae-8243-1a1de413b813"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        b1: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64816"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"08e16369-fa09-4525-9eaf-b7b945e9063c"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:56705"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"5ee8b777-7381-4a70-a686-97eb9626bb7c"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        b2: <{%reset%}><{%fg 2%}>{
-<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:64816"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"888bbb6d-f313-47f2-8cc1-b87105ea8ff7"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            target: <{%reset%}><{%fg 2%}>"127.0.0.1:56705"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            token : <{%reset%}><{%fg 2%}>"50f2d276-c229-4d90-9ed1-ca43d9fd98cd"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>    }<{%reset%}><{%fg 2%}>
-<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:pulumi:Stack: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test-wf-wf-a2::pulumi:pulumi:Stack::node-stack]
-<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:pulumi:Stack: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test-wf-wf-b2::pulumi:pulumi:Stack::node-stack]
-<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
-<{%fg 2%}>        [urn=urn:pulumi:test::test-wf-wf-b2::pkgA:m:typA::b2]
-<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
-<{%fg 2%}>        [urn=urn:pulumi:test::test-wf-wf-a2::pkgA:m:typA::a2]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pulumi:pulumi:Stack: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test-wf-wf-b2::pulumi:pulumi:Stack::node-stack]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pulumi:pulumi:Stack: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test-wf-wf-a2::pulumi:pulumi:Stack::node-stack]
+<{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>            [urn=urn:pulumi:test::test-wf-wf-b2::pkgA:m:typA::b2]
+<{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>            [urn=urn:pulumi:test::test-wf-wf-a2::pkgA:m:typA::a2]
 <{%reset%}><{%reset%}><{%fg 2%}>    --outputs:--<{%reset%}>
 <{%fg 2%}>    cursors   : <{%reset%}><{%fg 2%}>[
 <{%reset%}><{%fg 2%}>        [0]: <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>            data     : <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                run: <{%reset%}><{%fg 2%}>"a"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            enteredAt: <{%reset%}><{%fg 2%}>"2026-08-12T01:06:42.72074Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            enteredAt: <{%reset%}><{%fg 2%}>"2026-08-12T15:46:51.118576Z"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            id       : <{%reset%}><{%fg 2%}>1<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            node     : <{%reset%}><{%fg 2%}>"a2"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>
@@ -62,7 +62,7 @@
 <{%reset%}><{%fg 2%}>            data     : <{%reset%}><{%fg 2%}>{
 <{%reset%}><{%fg 2%}>                run: <{%reset%}><{%fg 2%}>"b"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            }<{%reset%}><{%fg 2%}>
-<{%reset%}><{%fg 2%}>            enteredAt: <{%reset%}><{%fg 2%}>"2026-08-12T01:06:42.720714Z"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>            enteredAt: <{%reset%}><{%fg 2%}>"2026-08-12T15:46:51.118528Z"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            id       : <{%reset%}><{%fg 2%}>2<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>            node     : <{%reset%}><{%fg 2%}>"b2"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 2%}>        }<{%reset%}><{%fg 2%}>

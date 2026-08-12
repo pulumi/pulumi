@@ -4,9 +4,9 @@
 <{%reset%}><{%fg 3%}>  ~ edges  : <{%reset%}><{%fg 3%}>[
 <{%reset%}><{%fg 3%}>      ~ [0]: <{%reset%}><{%fg 3%}>{
 <{%reset%}><{%reset%}>                from  : <{%reset%}><{%reset%}>"dev"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>                target: <{%reset%}><{%reset%}>"127.0.0.1:64815"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>                target: <{%reset%}><{%reset%}>"127.0.0.1:56704"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                to    : <{%reset%}><{%reset%}>"prod"<{%reset%}><{%reset%}>
-<{%reset%}><{%fg 3%}>              ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>58facfd0-247d-4b49-993d-a56564c<{%reset%}><{%reset%}>2c<{%reset%}><{%fg 1%}>337<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>492f0f64-65a8-4cb3-93a0-760ff4adc1<{%reset%}><{%reset%}>2c<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>              ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>43c400c1-a1f6-4306-af8f-f0d9774cee9e<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>6885c165-d208-4cf3-95dc-41969d26f20b<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%fg 3%}>            }
 <{%reset%}><{%fg 3%}>    ]
 <{%reset%}><{%reset%}>    entries: <{%reset%}><{%reset%}>{
@@ -16,12 +16,12 @@
 <{%reset%}><{%reset%}>    }<{%reset%}><{%reset%}>
 <{%reset%}><{%fg 3%}>  ~ nodes  : <{%reset%}><{%fg 3%}>{
 <{%reset%}><{%fg 3%}>      ~ dev : <{%reset%}><{%fg 3%}>{
-<{%reset%}><{%reset%}>            target: <{%reset%}><{%reset%}>"127.0.0.1:64815"<{%reset%}><{%reset%}>
-<{%reset%}><{%fg 3%}>          ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>cdba5256-7406-4fb0-9bc6-5905a68568f4<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>3889d38f-80e9-4542-abc7-c6eae0ea8b3d<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>            target: <{%reset%}><{%reset%}>"127.0.0.1:56704"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>          ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>6f0ed397-1b4c-41d3-9b39-7ed7b2c760f0<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>1f1d8ef2-9043-481e-b6dd-515135cec6d1<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%fg 3%}>        }
 <{%reset%}><{%fg 3%}>      ~ prod: <{%reset%}><{%fg 3%}>{
-<{%reset%}><{%reset%}>            target: <{%reset%}><{%reset%}>"127.0.0.1:64815"<{%reset%}><{%reset%}>
-<{%reset%}><{%fg 3%}>          ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>c7771956-bcda-466d-a0d9-00e3e83cdbe9<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>eb978839-c8f4-4b4b-9115-b61bf269e866<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%reset%}>            target: <{%reset%}><{%reset%}>"127.0.0.1:56704"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>          ~ token : <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>2d492971-cd22-48d5-8912-9901efbff2b1<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>4f20ded9-c8ac-4169-928e-dae9e5dd61d7<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%fg 3%}>        }
 <{%reset%}><{%fg 3%}>    }
 <{%reset%}><{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
@@ -31,7 +31,7 @@
 <{%reset%}><{%reset%}>                deployed: <{%reset%}><{%reset%}>"dev"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>                image   : <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>            enteredAt: <{%reset%}><{%reset%}>"2026-08-12T01:06:42.717101Z"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            enteredAt: <{%reset%}><{%reset%}>"2026-08-12T15:46:51.113976Z"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            id       : <{%reset%}><{%reset%}>1<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>            node     : <{%reset%}><{%reset%}>"dev"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>        }<{%reset%}><{%reset%}>
@@ -39,21 +39,21 @@
 <{%reset%}><{%reset%}>    entrySeeds: <{%reset%}><{%reset%}>{
 <{%reset%}><{%reset%}>        dev: <{%reset%}><{%reset%}>"9c78e7407d286f4675a22260f772ad6ff7b156f6fd3d32d7ed6a7ed947c4d750"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}>    }<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>  pulumi:pulumi:Stack: (same)
-<{%reset%}>    [id=2]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::node-stack]
-<{%reset%}><{%reset%}>    <{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>        [id=5]
-<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev]
-<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
-<{%reset%}>    deployed: <{%reset%}><{%reset%}>"dev"<{%reset%}><{%reset%}>
-<{%reset%}><{%fg 2%}>+ pulumi:pulumi:Stack: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test-wf-wf-prod::pulumi:pulumi:Stack::node-stack]
-<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
-<{%fg 2%}>        [urn=urn:pulumi:test::test-wf-wf-prod::pkgA:m:typA::prod]
-<{%reset%}><{%fg 2%}>        image: <{%reset%}><{%fg 2%}>"v1"<{%reset%}><{%fg 2%}>
-<{%reset%}><{%reset%}><{%fg 2%}>    --outputs:--<{%reset%}>
-<{%fg 2%}>    deployed: <{%reset%}><{%fg 2%}>"prod"<{%reset%}><{%fg 2%}>
+<{%reset%}>    <{%reset%}>  pulumi:pulumi:Stack: (same)
+<{%reset%}>        [id=2]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::node-stack]
+<{%reset%}><{%reset%}>        <{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>            [id=5]
+<{%reset%}><{%reset%}>            [urn=urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev]
+<{%reset%}><{%reset%}><{%reset%}>        --outputs:--<{%reset%}>
+<{%reset%}>        deployed: <{%reset%}><{%reset%}>"dev"<{%reset%}><{%reset%}>
+<{%reset%}>    <{%fg 2%}>+ pulumi:pulumi:Stack: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test-wf-wf-prod::pulumi:pulumi:Stack::node-stack]
+<{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>            [urn=urn:pulumi:test::test-wf-wf-prod::pkgA:m:typA::prod]
+<{%reset%}><{%fg 2%}>            image: <{%reset%}><{%fg 2%}>"v1"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 2%}>        --outputs:--<{%reset%}>
+<{%fg 2%}>        deployed: <{%reset%}><{%fg 2%}>"prod"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%fg 3%}>    --outputs:--<{%reset%}>
 <{%fg 3%}>  ~ cursors   : <{%reset%}><{%fg 3%}>[
 <{%reset%}><{%fg 3%}>      ~ [0]: <{%reset%}><{%fg 3%}>{
@@ -61,7 +61,7 @@
 <{%reset%}><{%fg 3%}>                  ~ deployed: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>d<{%reset%}><{%fg 1%}>ev<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>pro<{%reset%}><{%reset%}>d<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}>                    image   : <{%reset%}><{%reset%}>"v1"<{%reset%}><{%reset%}>
 <{%reset%}><{%fg 3%}>                }
-<{%reset%}><{%fg 3%}>              ~ enteredAt: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>2026-08-12T01:06:42.7<{%reset%}><{%fg 1%}>17101<{%reset%}><{%reset%}>Z<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>2026-08-12T01:06:42.7<{%reset%}><{%fg 2%}>37778<{%reset%}><{%reset%}>Z<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>              ~ enteredAt: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>2026-08-12T15:46:51.1<{%reset%}><{%fg 1%}>13976<{%reset%}><{%reset%}>Z<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>2026-08-12T15:46:51.1<{%reset%}><{%fg 2%}>33885<{%reset%}><{%reset%}>Z<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}>                id       : <{%reset%}><{%reset%}>1<{%reset%}><{%reset%}>
 <{%reset%}><{%fg 3%}>              ~ node     : <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>d<{%reset%}><{%fg 1%}>ev<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>pro<{%reset%}><{%reset%}>d<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%fg 3%}>            }

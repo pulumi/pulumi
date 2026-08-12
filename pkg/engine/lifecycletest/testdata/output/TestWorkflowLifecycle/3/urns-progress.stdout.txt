@@ -1,16 +1,14 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
 
- <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test-wf-wf-prod::pkgA:m:typA::prod <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
- <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> urn:pulumi:test::test-wf-wf-prod::pkgA:m:typA::prod <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test-wf-wf-prod::pkgA:m:typA::prod <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev <{%fg 1%}>deleted<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 1%}>deleted<{%reset%}> 
- <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::node-stack <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> urn:pulumi:test::test-wf-wf-prod::pkgA:m:typA::prod <{%fg 1%}>deleted<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test-wf-wf-prod::pulumi:pulumi:Stack::node-stack <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::node-stack <{%fg 1%}>deleted<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> urn:pulumi:test::test-wf-wf-prod::pulumi:pulumi:Stack::node-stack <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::node-stack <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pulumi:index:Workflow::wf <{%fg 1%}>deleted<{%reset%}> 
  <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 5 deleted<{%reset%}>

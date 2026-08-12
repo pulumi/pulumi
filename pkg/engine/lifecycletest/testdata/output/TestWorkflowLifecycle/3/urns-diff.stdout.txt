@@ -1,17 +1,25 @@
-<{%fg 1%}>- urn:pulumi:test::test-wf-wf-prod::pkgA:m:typA::prod: (delete)
+<{%fg 1%}>- urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev: (delete)
 <{%fg 1%}>    [id=1]
 <{%reset%}><{%fg 1%}>    image: <{%reset%}><{%fg 1%}>"v1"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test-wf-wf-dev::pkgA:m:typA::dev: (delete)
+<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test-wf-wf-prod::pkgA:m:typA::prod: (delete)
 <{%fg 1%}>    [id=3]
 <{%reset%}><{%fg 1%}>    image: <{%reset%}><{%fg 1%}>"v1"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pulumi:index:Workflow::wf: (delete)
+<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test-wf-wf-prod::pulumi:pulumi:Stack::node-stack: (delete)
 <{%fg 1%}>    [id=5]
+<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::node-stack: (delete)
+<{%fg 1%}>    [id=5]
+<{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - deployed: <{%reset%}><{%fg 1%}>"prod"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
+<{%fg 1%}>  - deployed: <{%reset%}><{%fg 1%}>"dev"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pulumi:index:Workflow::wf: (delete)
+<{%fg 1%}>    [id=6]
 <{%reset%}><{%fg 1%}>    edges  : <{%reset%}><{%fg 1%}>[
 <{%reset%}><{%fg 1%}>        [0]: <{%reset%}><{%fg 1%}>{
 <{%reset%}><{%fg 1%}>            from  : <{%reset%}><{%fg 1%}>"dev"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>            target: <{%reset%}><{%fg 1%}>"127.0.0.1:64815"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>            target: <{%reset%}><{%fg 1%}>"127.0.0.1:56704"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>            to    : <{%reset%}><{%fg 1%}>"prod"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>            token : <{%reset%}><{%fg 1%}>"492f0f64-65a8-4cb3-93a0-760ff4adc12c"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>            token : <{%reset%}><{%fg 1%}>"6885c165-d208-4cf3-95dc-41969d26f20b"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>        }<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>    ]<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>    entries: <{%reset%}><{%fg 1%}>{
@@ -21,12 +29,12 @@
 <{%reset%}><{%fg 1%}>    }<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>    nodes  : <{%reset%}><{%fg 1%}>{
 <{%reset%}><{%fg 1%}>        dev : <{%reset%}><{%fg 1%}>{
-<{%reset%}><{%fg 1%}>            target: <{%reset%}><{%fg 1%}>"127.0.0.1:64815"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>            token : <{%reset%}><{%fg 1%}>"3889d38f-80e9-4542-abc7-c6eae0ea8b3d"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>            target: <{%reset%}><{%fg 1%}>"127.0.0.1:56704"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>            token : <{%reset%}><{%fg 1%}>"1f1d8ef2-9043-481e-b6dd-515135cec6d1"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>        }<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>        prod: <{%reset%}><{%fg 1%}>{
-<{%reset%}><{%fg 1%}>            target: <{%reset%}><{%fg 1%}>"127.0.0.1:64815"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>            token : <{%reset%}><{%fg 1%}>"eb978839-c8f4-4b4b-9115-b61bf269e866"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>            target: <{%reset%}><{%fg 1%}>"127.0.0.1:56704"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>            token : <{%reset%}><{%fg 1%}>"4f20ded9-c8ac-4169-928e-dae9e5dd61d7"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>        }<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>    }<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
@@ -36,7 +44,7 @@
 <{%reset%}><{%fg 1%}>              - deployed: <{%reset%}><{%fg 1%}>"prod"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>              - image   : <{%reset%}><{%fg 1%}>"v1"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>            }<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>          - enteredAt: <{%reset%}><{%fg 1%}>"2026-08-12T01:06:42.737778Z"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>          - enteredAt: <{%reset%}><{%fg 1%}>"2026-08-12T15:46:51.133885Z"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>          - id       : <{%reset%}><{%fg 1%}>1<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>          - node     : <{%reset%}><{%fg 1%}>"prod"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>        }<{%reset%}><{%fg 1%}>
@@ -44,9 +52,9 @@
 <{%reset%}><{%fg 1%}>  - edges     : <{%reset%}><{%fg 1%}>[
 <{%reset%}><{%fg 1%}>  -     [0]: <{%reset%}><{%fg 1%}>{
 <{%reset%}><{%fg 1%}>          - from  : <{%reset%}><{%fg 1%}>"dev"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>          - target: <{%reset%}><{%fg 1%}>"127.0.0.1:64815"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>          - target: <{%reset%}><{%fg 1%}>"127.0.0.1:56704"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>          - to    : <{%reset%}><{%fg 1%}>"prod"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>          - token : <{%reset%}><{%fg 1%}>"492f0f64-65a8-4cb3-93a0-760ff4adc12c"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>          - token : <{%reset%}><{%fg 1%}>"6885c165-d208-4cf3-95dc-41969d26f20b"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>        }<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>    ]<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>  - entries   : <{%reset%}><{%fg 1%}>{
@@ -59,22 +67,14 @@
 <{%reset%}><{%fg 1%}>    }<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>  - nodes     : <{%reset%}><{%fg 1%}>{
 <{%reset%}><{%fg 1%}>      - dev : <{%reset%}><{%fg 1%}>{
-<{%reset%}><{%fg 1%}>          - target: <{%reset%}><{%fg 1%}>"127.0.0.1:64815"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>          - token : <{%reset%}><{%fg 1%}>"3889d38f-80e9-4542-abc7-c6eae0ea8b3d"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>          - target: <{%reset%}><{%fg 1%}>"127.0.0.1:56704"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>          - token : <{%reset%}><{%fg 1%}>"1f1d8ef2-9043-481e-b6dd-515135cec6d1"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>        }<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>      - prod: <{%reset%}><{%fg 1%}>{
-<{%reset%}><{%fg 1%}>          - target: <{%reset%}><{%fg 1%}>"127.0.0.1:64815"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>          - token : <{%reset%}><{%fg 1%}>"eb978839-c8f4-4b4b-9115-b61bf269e866"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>          - target: <{%reset%}><{%fg 1%}>"127.0.0.1:56704"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>          - token : <{%reset%}><{%fg 1%}>"4f20ded9-c8ac-4169-928e-dae9e5dd61d7"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>        }<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 1%}>    }<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>- urn:pulumi:test::test-wf-wf-dev::pulumi:pulumi:Stack::node-stack: (delete)
-<{%fg 1%}>    [id=7]
-<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test-wf-wf-prod::pulumi:pulumi:Stack::node-stack: (delete)
-<{%fg 1%}>    [id=7]
-<{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
-<{%fg 1%}>  - deployed: <{%reset%}><{%fg 1%}>"dev"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
-<{%fg 1%}>  - deployed: <{%reset%}><{%fg 1%}>"prod"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 5 deleted<{%reset%}>
 

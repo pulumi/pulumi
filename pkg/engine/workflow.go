@@ -364,11 +364,22 @@ func (run *workflowRun) sliceProject(node string) tokens.PackageName {
 
 func (run *workflowRun) sliceSnapshot(node string) *deploy.Snapshot {
 	run.m.Lock()
-	resources := run.slices[node]
+	slice := run.slices[node]
 	run.m.Unlock()
-	if len(resources) == 0 {
+	if len(slice) == 0 {
 		return nil
 	}
+	// The slice's roots are parented to the workflow resource, so prepend the workflow's own
+	// parent chain: the nested deployment's dependency graph requires the snapshot to be closed
+	// under parent edges. Anchors are never swept by the nested deployment (the sweep is scoped to
+	// resources it owns) and are filtered back out of the resulting slice.
+	var anchors []*pkgresource.State
+	for res := run.wf; res != nil; {
+		anchors = append([]*pkgresource.State{res}, anchors...)
+		parent, _ := run.d.News().Load(res.Parent)
+		res = parent
+	}
+	resources := append(anchors, slice...)
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
 	var sm secrets.Manager
@@ -423,7 +434,7 @@ func (run *workflowRun) runNode(ctx context.Context, node string, data map[strin
 		return nil, err
 	}
 	for _, res := range newSlice {
-		if res.Type == resource.RootStackType && res.Parent == "" {
+		if res.Type == resource.RootStackType {
 			res.Lock.Lock()
 			defer res.Lock.Unlock()
 			return res.Outputs.Mappable(), nil
@@ -469,6 +480,7 @@ func (run *workflowRun) runNested(
 	source := makeSource(target, panicErrs)
 
 	journal := NewTestJournal()
+	journal.SkipVerify = true // Slices are open subgraphs; the merged stack snapshot is verified on write.
 	events := &workflowTeeEvents{outer: run.d.Events(), journal: journal}
 	opts := &deploy.Options{
 		Parallel: x.parallel,
@@ -492,7 +504,14 @@ func (run *workflowRun) runNested(
 	snap, snapErr := journal.Snap(prev)
 	var resources []*pkgresource.State
 	if snap != nil {
-		resources = snap.Resources
+		// Drop the parent-chain anchors (and anything else this run does not own) so the slice
+		// holds exactly the node's resources.
+		owner := opts.Owner
+		for _, res := range snap.Resources {
+			if res.Owner == owner {
+				resources = append(resources, res)
+			}
+		}
 		run.m.Lock()
 		run.slices[node] = resources
 		run.m.Unlock()

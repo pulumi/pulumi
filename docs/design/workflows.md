@@ -658,6 +658,9 @@ the recovery metric is polled per `up`, so an active roll wants a tight cron (mi
   and URN-namespaced by a per-node project qualifier. Secrets, refresh, display, and export come
   for free; workflow destroy and node GC are ordinary delete sweeps over the marking. (Supersedes
   the earlier managed-stack-per-node and state-in-the-resource designs.)
+- Nesting: each node deployment's root resources are parented to the workflow resource, so state
+  and display form the natural tree — workflow → node stack → the node's resources — and delete
+  sweeps order children before the workflow via ordinary parent edges.
 - Node GC runs after everything else in the `up`; a resident cursor does not block it.
 - `up` reconciles every occupied node; preview is static in v1.
 - Approvals bind to the cursor-data fingerprint; `pulumi.Stack` will not accept a plan file.

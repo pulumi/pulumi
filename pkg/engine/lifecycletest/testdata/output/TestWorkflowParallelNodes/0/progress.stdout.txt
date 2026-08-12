@@ -16,6 +16,7 @@
  <{%fg 2%}>+ <{%reset%}> pulumi:index:Workflow wf <{%fg 2%}>created<{%reset%}> <{%reset%}>workflow: cursor 1 entered node "a2"<{%reset%}>
  <{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack node-stack <{%fg 2%}>created<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack node-stack <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
   <{%fg 12%}>pulumi:index:Workflow (wf):<{%reset%}>
     <{%reset%}>workflow: admitted cursor 1 at node "a1"<{%reset%}>

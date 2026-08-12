@@ -1165,7 +1165,7 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 
 	// If this is the first time we're seeing an event for the stack resource, check to see if we've already
 	// recorded root events that we want to reassociate with this URN.
-	if isRootURN(urn) {
+	if isRootStack(step) {
 		display.stackUrn = urn
 
 		if row, has = display.eventUrnToResourceRow[""]; has {

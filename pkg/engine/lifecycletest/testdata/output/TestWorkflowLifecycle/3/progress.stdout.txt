@@ -1,16 +1,14 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
 
- <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA prod <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA dev <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
- <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:index:Workflow wf <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> pkgA:m:typA prod <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pkgA:m:typA prod <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> pkgA:m:typA dev <{%fg 1%}>deleted<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> pkgA:m:typA prod <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:pulumi:Stack node-stack <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:pulumi:Stack node-stack <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:index:Workflow wf <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> pulumi:index:Workflow wf <{%fg 1%}>deleted<{%reset%}> 
- <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:pulumi:Stack node-stack <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
- <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:pulumi:Stack node-stack <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> pulumi:pulumi:Stack node-stack <{%fg 1%}>deleted<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> pulumi:pulumi:Stack node-stack <{%fg 1%}>deleted<{%reset%}> 
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 5 deleted<{%reset%}>
