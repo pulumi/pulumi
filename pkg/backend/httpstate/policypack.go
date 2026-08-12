@@ -20,10 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -33,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/esc/prepare"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
@@ -159,10 +158,7 @@ func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine
 		result.Config = policyConfig
 	}
 
-	// Extract environment variables and secrets using the environment's typed
-	// accessors (GetEnvironmentVariables, GetTemporaryFiles). This mirrors the
-	// stack resolution path's use of cli.PrepareEnvironment.
-	envVars, secrets, _, err := prepareEnvironment(env)
+	envVars, secrets, _, err := prepare.EnvironmentMap(env, nil)
 	if err != nil {
 		return nil, fmt.Errorf("preparing ESC environment for policy pack %q: %w", rp.RequiredPolicy.Name, err)
 	}
@@ -172,59 +168,6 @@ func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine
 	result.Secrets = secrets
 
 	return result, nil
-}
-
-// prepareEnvironment extracts environment variables, secrets, and temporary file
-// projections from a resolved ESC environment. This mirrors cli.PrepareEnvironment
-// from the esc package but avoids the import cycle (cli → httpstate).
-func prepareEnvironment(env *esc.Environment) (envVars map[string]string, secrets, tempFiles []string, err error) {
-	vars := env.GetEnvironmentVariables()
-	files := env.GetTemporaryFiles()
-
-	if len(vars) > 0 || len(files) > 0 {
-		envVars = make(map[string]string, len(vars)+len(files))
-	}
-
-	// Sort keys for deterministic output, matching cli.PrepareEnvironment.
-	for _, k := range slices.Sorted(maps.Keys(vars)) {
-		v := vars[k]
-		s, ok := v.Value.(string)
-		if !ok {
-			continue
-		}
-		envVars[k] = s
-		if v.Secret {
-			secrets = append(secrets, s)
-		}
-	}
-
-	// Create temporary files and map their paths as environment variables.
-	// Temp files persist for the process lifetime (matching the stack path).
-	for _, k := range slices.Sorted(maps.Keys(files)) {
-		v := files[k]
-		s, ok := v.Value.(string)
-		if !ok {
-			continue
-		}
-		if v.Secret {
-			secrets = append(secrets, s)
-		}
-
-		f, fErr := os.CreateTemp("", "esc-*")
-		if fErr != nil {
-			return nil, nil, nil, fmt.Errorf("creating temporary file for %q: %w", k, fErr)
-		}
-		if _, fErr = f.Write([]byte(s)); fErr != nil {
-			contract.IgnoreClose(f)
-			return nil, nil, nil, fmt.Errorf("writing temporary file for %q: %w", k, fErr)
-		}
-		contract.IgnoreClose(f)
-
-		tempFiles = append(tempFiles, f.Name())
-		envVars[k] = f.Name()
-	}
-
-	return envVars, secrets, tempFiles, nil
 }
 
 // escValueToConfigMap converts an esc.Value representing policyConfig into the
@@ -318,7 +261,7 @@ func (r *localPolicyEnvironmentResolver) ResolveEnvironments(
 		result.Config = policyConfig
 	}
 
-	envVars, secrets, _, err := prepareEnvironment(env)
+	envVars, secrets, _, err := prepare.EnvironmentMap(env, nil)
 	if err != nil {
 		return nil, fmt.Errorf("preparing ESC environment: %w", err)
 	}

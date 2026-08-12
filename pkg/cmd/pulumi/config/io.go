@@ -24,8 +24,8 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/esc/prepare"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -152,7 +152,7 @@ func getStackConfigurationFromProjectStack(
 
 		pulumiEnv = env.Properties["pulumiConfig"]
 
-		_, environ, secrets, err := cli.PrepareEnvironment(env, nil)
+		_, environ, secrets, err := prepare.Environment(env, nil)
 		if err != nil {
 			return backend.StackConfiguration{}, fmt.Errorf("preparing environment: %w", err)
 		}

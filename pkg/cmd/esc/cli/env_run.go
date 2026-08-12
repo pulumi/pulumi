@@ -26,6 +26,7 @@ import (
 
 	aho_corasick "github.com/pgavlin/aho-corasick"
 
+	"github.com/pulumi/pulumi/pkg/v3/esc/prepare"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/ast"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -165,7 +166,7 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 				return envcmd.writePropertyEnvironmentDiagnostics(envcmd.esc.stderr, diags)
 			}
 
-			files, environ, secrets, err := envcmd.prepareEnvironment(env, PrepareOptions{})
+			files, environ, secrets, err := envcmd.prepareEnvironment(env, prepare.Options{})
 			if err != nil {
 				return err
 			}

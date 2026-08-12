@@ -32,11 +32,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/esc/prepare"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -1253,7 +1253,7 @@ func listConfig(
 		}, nil)
 
 		if env != nil {
-			_, environ, _, err := cli.PrepareEnvironment(env, &cli.PrepareOptions{
+			_, environ, _, err := prepare.Environment(env, &prepare.Options{
 				Pretend: !openEnvironment,
 				Redact:  !showSecrets,
 			})

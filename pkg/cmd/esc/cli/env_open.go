@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
+	"github.com/pulumi/pulumi/pkg/v3/esc/prepare"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/spf13/cobra"
@@ -138,7 +139,7 @@ func (env *envCommand) renderValue(
 	case "dotenv":
 		_, environ, _, err := env.prepareEnvironment(
 			e,
-			PrepareOptions{Pretend: pretend, Quote: true, Redact: !showSecrets},
+			prepare.Options{Pretend: pretend, Quote: true, Redact: !showSecrets},
 		)
 		if err != nil {
 			return err
@@ -150,7 +151,7 @@ func (env *envCommand) renderValue(
 	case "shell":
 		_, environ, _, err := env.prepareEnvironment(
 			e,
-			PrepareOptions{Pretend: pretend, Quote: true, Redact: !showSecrets},
+			prepare.Options{Pretend: pretend, Quote: true, Redact: !showSecrets},
 		)
 		if err != nil {
 			return err
@@ -177,14 +178,14 @@ func (env *envCommand) renderValue(
 // temporary files, environment variable pairs, and secret values.
 func (env *envCommand) prepareEnvironment(
 	e *esc.Environment,
-	opts PrepareOptions,
+	opts prepare.Options,
 ) (files, environ, secrets []string, err error) {
-	opts.fs = env.esc.fs
-	return PrepareEnvironment(e, &opts)
+	opts.FS = env.esc.fs
+	return prepare.Environment(e, &opts)
 }
 
 func (env *envCommand) removeTemporaryFiles(paths []string) {
-	removeTemporaryFiles(env.esc.fs, paths)
+	prepare.RemoveTemporaryFiles(env.esc.fs, paths)
 }
 
 func (env *envCommand) openEnvironment(

@@ -14,42 +14,10 @@
 
 package cli
 
-import (
-	"io"
-	"io/fs"
-	"os"
-)
+import "github.com/pulumi/pulumi/pkg/v3/esc/prepare"
 
-type escFS interface {
-	fs.FS
-
-	CreateTemp(dir, pattern string) (string, io.ReadWriteCloser, error)
-	ReadFile(filename string) ([]byte, error)
-	Remove(name string) error
-}
-
-type defaultFS struct{}
+type escFS = prepare.FS
 
 func newFS() escFS {
-	return defaultFS{}
-}
-
-func (defaultFS) Open(name string) (fs.File, error) {
-	return os.Open(name)
-}
-
-func (defaultFS) CreateTemp(dir, pattern string) (string, io.ReadWriteCloser, error) {
-	f, err := os.CreateTemp(dir, pattern)
-	if err != nil {
-		return "", nil, err
-	}
-	return f.Name(), f, nil
-}
-
-func (defaultFS) Remove(name string) error {
-	return os.Remove(name)
-}
-
-func (defaultFS) ReadFile(name string) ([]byte, error) {
-	return os.ReadFile(name)
+	return prepare.NewFS()
 }
