@@ -236,43 +236,29 @@ func emitDiffEntry(out map[string]PropertyDiffJSON, path resource.PropertyPath, 
 
 // jsonPropertyValue renders a property value as a plain JSON-marshalable
 // value, masking secrets and unknowns the same way the human diff display
-// does.
+// does. A sibling of massagePropertyValue, which cannot be extended to cover
+// unknowns without changing the existing `--json` output.
 func jsonPropertyValue(v resource.PropertyValue, showSecrets bool) any {
-	switch {
-	case v.IsSecret():
-		if !showSecrets {
-			return "[secret]"
-		}
-		return jsonPropertyValue(v.SecretValue().Element, showSecrets)
-	case v.IsComputed():
-		return "[unknown]"
-	case v.IsOutput():
-		o := v.OutputValue()
+	return v.MapRepl(nil, func(v resource.PropertyValue) (any, bool) {
 		switch {
-		case !o.Known:
-			return "[unknown]"
-		case o.Secret && !showSecrets:
-			return "[secret]"
+		case v.IsSecret() && !showSecrets:
+			return "[secret]", true
+		case v.IsSecret():
+			return jsonPropertyValue(v.SecretValue().Element, showSecrets), true
+		case v.IsComputed():
+			return "[unknown]", true
+		case v.IsOutput() && !v.OutputValue().Known:
+			return "[unknown]", true
+		case v.IsOutput() && v.OutputValue().Secret && !showSecrets:
+			return "[secret]", true
+		case v.IsOutput():
+			return jsonPropertyValue(v.OutputValue().Element, showSecrets), true
+		case v.IsString() && !utf8.ValidString(v.StringValue()):
+			return byteStringDisplay(v.StringValue()), true
 		default:
-			return jsonPropertyValue(o.Element, showSecrets)
+			return nil, false
 		}
-	case v.IsString() && !utf8.ValidString(v.StringValue()):
-		return byteStringDisplay(v.StringValue())
-	case v.IsArray():
-		arr := make([]any, len(v.ArrayValue()))
-		for i, e := range v.ArrayValue() {
-			arr[i] = jsonPropertyValue(e, showSecrets)
-		}
-		return arr
-	case v.IsObject():
-		obj := make(map[string]any, len(v.ObjectValue()))
-		for k, e := range v.ObjectValue() {
-			obj[string(k)] = jsonPropertyValue(e, showSecrets)
-		}
-		return obj
-	default:
-		return v.Mappable()
-	}
+	})
 }
 
 // writeSummaryJSON encodes a SummaryJSON to w as a single line.
