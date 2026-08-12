@@ -367,6 +367,107 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 				"<{%fg 2%}>\n<{%reset%}>",
 		},
 		{
+			name: "stack output secret changed with showSecrets = true",
+			oldState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"secret": resource.MakeSecret(resource.NewProperty("initial")),
+				}),
+			},
+			newState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"secret": resource.MakeSecret(resource.NewProperty("changed")),
+				}),
+			},
+			showSecrets: true,
+			expected: "<{%fg 3%}>  ~ secret: <{%reset%}>" +
+				"<{%fg 3%}>\"<{%reset%}>" +
+				"<{%fg 1%}>initial<{%reset%}>" +
+				"<{%fg 3%}>\"<{%reset%}>" +
+				"<{%fg 3%}> => <{%reset%}>" +
+				"<{%fg 3%}>\"<{%reset%}>" +
+				"<{%fg 2%}>changed<{%reset%}>" +
+				"<{%fg 3%}>\"\n<{%reset%}>",
+		},
+		{
+			name: "stack output secret changed with showSecrets = false",
+			oldState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"secret": resource.MakeSecret(resource.NewProperty("initial")),
+				}),
+			},
+			newState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"secret": resource.MakeSecret(resource.NewProperty("changed")),
+				}),
+			},
+			showSecrets: false,
+			expected: "<{%fg 3%}>  ~ secret: <{%reset%}>" +
+				"<{%fg 1%}>[secret]<{%reset%}>" +
+				"<{%fg 3%}> => <{%reset%}>" +
+				"<{%fg 2%}>[secret]<{%reset%}>" +
+				"<{%fg 3%}>\n<{%reset%}>",
+		},
+		{
+			name: "stack output secret became plain with showSecrets = true",
+			oldState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"secret": resource.MakeSecret(resource.NewProperty("initial")),
+				}),
+			},
+			newState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"secret": resource.NewProperty("changed"),
+				}),
+			},
+			showSecrets: true,
+			expected: "<{%fg 3%}>  ~ secret: <{%reset%}>" +
+				"<{%fg 3%}>\"<{%reset%}>" +
+				"<{%fg 1%}>initial<{%reset%}>" +
+				"<{%fg 3%}>\"<{%reset%}>" +
+				"<{%fg 3%}> => <{%reset%}>" +
+				"<{%fg 3%}>\"<{%reset%}>" +
+				"<{%fg 2%}>changed<{%reset%}>" +
+				"<{%fg 3%}>\"\n<{%reset%}>",
+		},
+		{
+			name: "stack output plain became secret with showSecrets = true",
+			oldState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"secret": resource.NewProperty("initial"),
+				}),
+			},
+			newState: engine.StepEventStateMetadata{
+				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
+				Type: "pulumi:pulumi:Stack",
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+					"secret": resource.MakeSecret(resource.NewProperty("changed")),
+				}),
+			},
+			showSecrets: true,
+			expected: "<{%fg 3%}>  ~ secret: <{%reset%}>" +
+				"<{%fg 3%}>\"<{%reset%}>" +
+				"<{%fg 1%}>initial<{%reset%}>" +
+				"<{%fg 3%}>\"<{%reset%}>" +
+				"<{%fg 3%}> => <{%reset%}>" +
+				"<{%fg 3%}>\"<{%reset%}>" +
+				"<{%fg 2%}>changed<{%reset%}>" +
+				"<{%fg 3%}>\"\n<{%reset%}>",
+		},
+		{
 			name: "truncates with truncateOutput=true",
 			oldState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",

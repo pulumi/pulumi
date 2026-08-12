@@ -191,6 +191,7 @@ func (c *PackageCache) loadPackageSchema(
 }
 
 func (c *PackageCache) loadPackageSchemaFromDescriptor(
+	ctx context.Context,
 	loader schema.Loader,
 	descriptor *schema.PackageDescriptor,
 ) (*packageSchema, error) {
@@ -210,7 +211,7 @@ func (c *PackageCache) loadPackageSchemaFromDescriptor(
 		return s, nil
 	}
 
-	pkg, err := schema.LoadPackageReferenceV2(context.TODO(), loader, descriptor)
+	pkg, err := schema.LoadPackageReferenceV2(ctx, loader, descriptor)
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +384,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 		var pkg *packageSchema
 		var err error
 		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
-			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(ctx, b.options.loader, packageDescriptor)
 		} else {
 			pkg, err = b.options.packageCache.loadPackageSchema(
 				ctx, b.options.loader,
@@ -744,7 +745,7 @@ func GenEnum(
 			safeEnum(member)
 		} else {
 			unsafeEnum(from)
-			knownVal := strings.Split(strings.Split(known.GoString(), "(")[1], ")")[0]
+			knownVal, _, _ := strings.Cut(strings.Split(known.GoString(), "(")[1], ")")
 			diag := &hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  fmt.Sprintf("%v is not a valid value of the enum \"%v\"", knownVal, t.Token),

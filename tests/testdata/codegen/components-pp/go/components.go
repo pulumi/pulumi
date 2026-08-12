@@ -13,7 +13,6 @@ func main() {
 		var multipleSimpleComponents []*SimpleComponent
 		for index := 0; index < 10; index++ {
 			key0 := index
-			_ := index
 			__res, err := NewSimpleComponent(ctx, fmt.Sprintf("multipleSimpleComponents-%v", key0), nil)
 			if err != nil {
 				return err

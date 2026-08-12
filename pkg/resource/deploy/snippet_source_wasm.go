@@ -38,7 +38,7 @@ func NewSnippetSource(
 }
 
 // ValidateSnippet is unavailable in wasm builds.
-func ValidateSnippet(resource.Snippet, schema.ReferenceLoader) error {
+func ValidateSnippet(context.Context, resource.Snippet, schema.ReferenceLoader) error {
 	return errors.New("snippet validation is not supported in wasm builds")
 }
 

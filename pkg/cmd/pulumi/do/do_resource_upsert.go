@@ -196,9 +196,7 @@ type statefulSnippetUpdate struct {
 func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args statefulSnippetUpdate) error {
 	contract.Assertf(pc.runStatefulUpdate != nil, "stateful snippet update is not wired up in this build")
 
-	if pc.proj == nil {
-		return fmt.Errorf("`%s` requires a Pulumi project (run inside a project directory)", cmd.Name())
-	}
+	contract.Assertf(pc.proj != nil, "project must be set (the global fallback should have supplied one)")
 	if err := pc.requireYesIfNonInteractive(args.yes); err != nil {
 		return err
 	}
@@ -209,23 +207,22 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	// stack is threaded through to runStatefulUpdate so it doesn't re-load. We also use the same
 	// snapshot to resolve resource-reference package metadata before conversion.
 	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
-	stack, err := cmdStack.RequireStack(
-		ctx, pc.diagFwd, pc.ws, pc.lm,
-		"",                                 /*stackName — use currently selected*/
-		cmdStack.LoadOnly, displayOpts, "", /*configFile*/
-	)
+	stack, err := pc.loadStackForStateful(ctx, displayOpts)
 	if err != nil {
-		return fmt.Errorf("load stack: %w", err)
+		return err
 	}
 	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
 
-	resources, err := readResourceReferences(args.resourcesFile)
+	userResources, err := readResourceReferences(args.resourcesFile)
 	if err != nil {
 		return err
 	}
+	// Merge the auto-assigned identifiers (derived from the stack snapshot) with the user's
+	// --resources-file. User entries win on collision.
+	resources := mergeResourceNames(autoResourceNames(snap), userResources)
 	resourceInfos, err := resourceReferenceInfos(resources, snap)
 	if err != nil {
 		return err
@@ -281,6 +278,11 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 		}
 		mergedReferences[k] = v
 	}
+	// Trim the reference map to just the identifiers the resource's PCL body actually references
+	// before persisting. Auto-derived entries that aren't used would freeze URNs from the current
+	// snapshot into state and go stale if those resources change. The provider-injected identifier
+	// (in provReferences) is always kept — buildProviderSnippet injected it into resourceCode.
+	mergedReferences = filterReferencesByPCLUsage(mergedReferences, resourceCode, resourceFilename)
 
 	snippet := resource.Snippet{
 		UUID:       snippetUUID,
@@ -326,22 +328,16 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 ) error {
 	contract.Assertf(pc.runStatefulUpdate != nil, "stateful snippet update is not wired up in this build")
 
-	if pc.proj == nil {
-		return fmt.Errorf("`%s` requires a Pulumi project (run inside a project directory)", cmd.Name())
-	}
+	contract.Assertf(pc.proj != nil, "project must be set (the global fallback should have supplied one)")
 	if err := pc.requireYesIfNonInteractive(yes); err != nil {
 		return err
 	}
 
 	ctx := cmd.Context()
 	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
-	stack, err := cmdStack.RequireStack(
-		ctx, pc.diagFwd, pc.ws, pc.lm,
-		"",                                 /*stackName — use currently selected*/
-		cmdStack.LoadOnly, displayOpts, "", /*configFile*/
-	)
+	stack, err := pc.loadStackForStateful(ctx, displayOpts)
 	if err != nil {
-		return fmt.Errorf("load stack: %w", err)
+		return err
 	}
 	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
 	if err != nil {
@@ -394,7 +390,9 @@ func addStatefulSnippetUpdateFlags(
 			"  {\n"+
 			"    \"myBucket\": \"urn:pulumi:dev::my-project::aws:s3/bucket:Bucket::my-bucket\",\n"+
 			"    \"myVpc\":    \"urn:pulumi:dev::my-project::aws:ec2/vpc:Vpc::my-vpc\"\n"+
-			"  }")
+			"  }\n"+
+			"Identifiers for existing stack resources are auto-assigned; run `pulumi do show-resources`\n"+
+			"to see them. Entries in this file take precedence over any auto-assigned identifier.")
 	cmd.Flags().BoolVar(yes, "yes", false,
 		"Automatically approve and perform the operation without a confirmation prompt")
 	addInputFlags(cmd, "input", inputs)

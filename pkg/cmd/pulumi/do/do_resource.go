@@ -560,7 +560,7 @@ func evaluateResourceListFile(
 	contract.Assertf(res.ListInputs != nil, "should not call evaluateResourceListFile for resources without list inputs")
 
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
-		attrs, inputType, diags := pcl.BindResourceList(file, res)
+		attrs, inputType, diags := pcl.BindResourceList(ctx, file, res)
 		return attrs, inputType, res.ListInputs.Properties, diags
 	}
 	return evaluateFile(

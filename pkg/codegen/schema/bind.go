@@ -186,11 +186,11 @@ func bindSpec(ctx context.Context, spec PackageSpec, languages map[string]Langua
 
 	diags = diags.Extend(spec.validateTypeTokens())
 
-	// Disallow the package names "pulumi" and "input". "pulumi" is reserved for the builtin package and provider
-	// resources, and "input" is reserved for `pulumi do` to use as a discriminator for input flags.
+	// Disallow package names reserved by Pulumi.
 	if (!options.AllowPulumiPackage && spec.Name == "pulumi") || spec.Name == "input" {
 		diags = diags.Append(errorf("#/name",
-			"invalid package name '%s' (package names 'pulumi' and 'input' are reserved)", spec.Name))
+			"invalid package name '%s' (package names 'pulumi' and 'input' are reserved)",
+			spec.Name))
 	}
 
 	config, configDiags, err := bindConfig(spec.Config, types, options)

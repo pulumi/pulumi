@@ -15,6 +15,8 @@
 package pcl
 
 import (
+	"context"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 
@@ -89,7 +91,7 @@ func (b *binder) positionalInvokeSignature(fn *schema.Function) model.StaticFunc
 // invokeFunction re-resolves the schema function referenced by an invoke call's arguments. It
 // mirrors the lookup performed during signature binding (sharing invokeTokenArgument and
 // loadPackageSchema) and relies on the package cache, so it is cheap to call again after binding.
-func (b *binder) invokeFunction(args []model.Expression) (*schema.Function, bool) {
+func (b *binder) invokeFunction(ctx context.Context, args []model.Expression) (*schema.Function, bool) {
 	token, _, _, ok := invokeTokenArgument(args)
 	if !ok {
 		return nil, false
@@ -98,7 +100,7 @@ func (b *binder) invokeFunction(args []model.Expression) (*schema.Function, bool
 	if diags.HasErrors() {
 		return nil, false
 	}
-	pkgSchema, err := b.loadPackageSchema(pkg)
+	pkgSchema, err := b.loadPackageSchema(ctx, pkg)
 	if err != nil {
 		return nil, false
 	}
@@ -111,10 +113,12 @@ func (b *binder) invokeFunction(args []model.Expression) (*schema.Function, bool
 
 // rewritePositionalInvokes normalizes every positional multi-argument invoke in the program into the
 // object-argument form, so that program generators only need to handle the object form.
-func (b *binder) rewritePositionalInvokes() hcl.Diagnostics {
+func (b *binder) rewritePositionalInvokes(ctx context.Context) hcl.Diagnostics {
 	var diags hcl.Diagnostics
 	for _, n := range b.nodes {
-		diags = diags.Extend(n.VisitExpressions(nil, b.rewritePositionalInvoke))
+		diags = diags.Extend(n.VisitExpressions(nil, func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+			return b.rewritePositionalInvoke(ctx, expr)
+		}))
 	}
 	return diags
 }
@@ -123,12 +127,14 @@ func (b *binder) rewritePositionalInvokes() hcl.Diagnostics {
 // form: invoke(token, v1, v2) becomes invoke(token, { p1 = v1, p2 = v2 }), preserving any trailing
 // invokeOptions argument. Non-invoke expressions and invokes already in object form are returned
 // unchanged.
-func (b *binder) rewritePositionalInvoke(expr model.Expression) (model.Expression, hcl.Diagnostics) {
+func (b *binder) rewritePositionalInvoke(
+	ctx context.Context, expr model.Expression,
+) (model.Expression, hcl.Diagnostics) {
 	call, ok := expr.(*model.FunctionCallExpression)
 	if !ok || call.Name != Invoke || !call.Signature.MultiArgumentInputs {
 		return expr, nil
 	}
-	fn, ok := b.invokeFunction(call.Args)
+	fn, ok := b.invokeFunction(ctx, call.Args)
 	if !ok || fn.Inputs == nil {
 		return expr, nil
 	}

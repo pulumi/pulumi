@@ -1,0 +1,4 @@
+component: cli/do
+kind: feat
+body: Fall back to an auto-created project and stack under PULUMI_HOME when `pulumi do` is invoked outside of a Pulumi project
+time: 2026-08-06T00:00:00+01:00

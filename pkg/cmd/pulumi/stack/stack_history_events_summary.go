@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	pkgdisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -78,6 +79,7 @@ func buildUpdateSummary(events iter.Seq2[apitype.EngineEvent, error]) (*updateSu
 	var startTs, endTs int
 	var summaryEvent *apitype.SummaryEvent
 	anyFailed := false
+	anyError := false
 
 	markFailed := func(m apitype.StepEventMetadata) {
 		for i := len(s.Resources) - 1; i >= 0; i-- {
@@ -115,9 +117,15 @@ func buildUpdateSummary(events iter.Seq2[apitype.EngineEvent, error]) (*updateSu
 			markFailed(ev.ResOpFailedEvent.Metadata)
 		case ev.DiagnosticEvent != nil:
 			d := ev.DiagnosticEvent
-			if d.Severity != "error" || d.Ephemeral {
+			// A failing program reports through the language host's stderr, which
+			// arrives as "info#err" rather than "error" — for a preview that never
+			// reached a resource operation it is the only record of what went wrong.
+			// It doesn't imply failure on its own (a program can write to stderr and
+			// succeed), so only "error" contributes to the result below.
+			if d.Ephemeral || (d.Severity != string(diag.Error) && d.Severity != string(diag.Infoerr)) {
 				continue
 			}
+			anyError = anyError || d.Severity == string(diag.Error)
 			s.Diagnostics = append(s.Diagnostics, diagnosticSummary{
 				Severity: d.Severity,
 				URN:      d.URN,
@@ -136,7 +144,7 @@ func buildUpdateSummary(events iter.Seq2[apitype.EngineEvent, error]) (*updateSu
 	switch {
 	case summaryEvent != nil && summaryEvent.Result != "":
 		s.Result = summaryEvent.Result
-	case anyFailed || len(s.Diagnostics) > 0:
+	case anyFailed || anyError:
 		s.Result = apitype.OperationResultFailed
 	case summaryEvent != nil:
 		s.Result = apitype.OperationResultSucceeded

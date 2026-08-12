@@ -64,6 +64,7 @@ type generator struct {
 	jsonTempSpiller     *jsonSpiller
 	ternaryTempSpiller  *tempSpiller
 	splatSpiller        *splatSpiller
+	forSpiller          *forSpiller
 	optionalSpiller     *optionalSpiller
 	inlineInvokeSpiller *inlineInvokeSpiller
 	callSpiller         *callSpiller
@@ -130,6 +131,7 @@ func newGenerator(program *pcl.Program, opts GenerateProgramOptions) (*generator
 		jsonTempSpiller:     &jsonSpiller{},
 		ternaryTempSpiller:  &tempSpiller{},
 		splatSpiller:        &splatSpiller{},
+		forSpiller:          &forSpiller{},
 		optionalSpiller:     &optionalSpiller{},
 		inlineInvokeSpiller: &inlineInvokeSpiller{},
 		callSpiller:         &callSpiller{},
@@ -1735,7 +1737,9 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			g.Fgenf(w, "for index := 0; index < %.v; index++ {\n", rangeExpr)
 			g.Indented(func() {
 				g.Fgenf(w, "%skey0 := index\n", g.Indent)
-				g.Fgenf(w, "%s%s := index\n", g.Indent, valVar)
+				if isValUsed {
+					g.Fgenf(w, "%sval0 := index\n", g.Indent)
+				}
 			})
 		} else {
 			g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
@@ -1870,7 +1874,9 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 			g.Fgenf(w, "for index := 0; index < %.v; index++ {\n", rangeExpr)
 			g.Indented(func() {
 				g.Fgenf(w, "%skey0 := index\n", g.Indent)
-				g.Fgenf(w, "%s%s := index\n", g.Indent, valVar)
+				if isValUsed {
+					g.Fgenf(w, "%sval0 := index\n", g.Indent)
+				}
 			})
 		} else {
 			g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
@@ -2179,7 +2185,9 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 			g.Fgenf(w, "for index := 0; index < %.v; index++ {\n", rangeExpr)
 			g.Indented(func() {
 				g.Fgenf(w, "%skey0 := index\n", g.Indent)
-				g.Fgenf(w, "%s%s := index\n", g.Indent, valVar)
+				if isValUsed {
+					g.Fgenf(w, "%sval0 := index\n", g.Indent)
+				}
 			})
 		} else {
 			g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
@@ -2374,6 +2382,8 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType 
 			g.Fgenf(w, "for _, val0 := range %.v {\n", t.Value.Source)
 			g.Fgenf(w, "%s = append(%s, %.v)\n", t.Name, t.Name, t.Value.Each)
 			g.Fgenf(w, "}\n")
+		case *forTemp:
+			g.genForTemp(w, t)
 		case *optionalTemp:
 			g.Fgenf(w, "%s := %.v\n", t.Name, t.Value)
 		case *inlineInvokeTemp:

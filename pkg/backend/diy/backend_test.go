@@ -850,7 +850,7 @@ func TestDIYBackendRejectsStackInitOptions(t *testing.T) {
 }
 
 func TestLegacyFolderStructure(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Make a dummy stack file in the legacy location
 	tmpDir := t.TempDir()
@@ -924,6 +924,7 @@ func TestOptIntoLegacyFolderStructure(t *testing.T) {
 	ctx := t.Context()
 	s := make(env.MapStore)
 	s[env.DIYBackendLegacyLayout.Var().Name()] = "true"
+	s[env.DIYBackendIgnoreDeprecationError.Var().Name()] = "true"
 	b, err := newDIYBackend(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil,
 		&diyBackendOptions{Env: env.NewEnv(s)},
 	)
@@ -1189,7 +1190,7 @@ func TestNew_legacyFileWarning(t *testing.T) {
 }
 
 func TestLegacyUpgrade(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Make a dummy stack file in the legacy location
 	tmpDir := t.TempDir()
@@ -1258,7 +1259,7 @@ func TestLegacyUpgrade(t *testing.T) {
 }
 
 func TestLegacyUpgrade_partial(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	// Verifies that we can upgrade a subset of stacks.
 
@@ -1303,7 +1304,7 @@ func TestLegacyUpgrade_partial(t *testing.T) {
 // When a stack project could not be determined,
 // we should fill it in with ProjectsForDetachedStacks.
 func TestLegacyUpgrade_ProjectsForDetachedStacks(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	stateDir := t.TempDir()
 	bucket, err := fileblob.OpenBucket(stateDir, nil)
@@ -1372,7 +1373,7 @@ func TestLegacyUpgrade_ProjectsForDetachedStacks(t *testing.T) {
 // and ProjectsForDetachedStacks returns an error,
 // the upgrade should fail.
 func TestLegacyUpgrade_ProjectsForDetachedStacks_error(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	stateDir := t.TempDir()
 	bucket, err := fileblob.OpenBucket(stateDir, nil)
@@ -1428,7 +1429,7 @@ func TestLegacyUpgrade_ProjectsForDetachedStacks_error(t *testing.T) {
 // If an upgrade failed because we couldn't write the meta.yaml,
 // the stacks should be left in legacy mode.
 func TestLegacyUpgrade_writeMetaError(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	stateDir := t.TempDir()
 	bucket, err := fileblob.OpenBucket(stateDir, nil)
@@ -1505,7 +1506,7 @@ func TestSerializeTimestampRFC3339(t *testing.T) {
 }
 
 func TestUpgrade_manyFailures(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	const (
 		numStacks    = 100

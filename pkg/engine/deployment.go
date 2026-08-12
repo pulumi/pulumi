@@ -247,7 +247,7 @@ func newDeployment(
 
 	// Set up a goroutine that will signal cancellation to the source if the caller context
 	// is cancelled.
-	cancelCtx, cancelFunc := context.WithCancel(context.Background())
+	cancelCtx, cancelFunc := context.WithCancel(context.WithoutCancel(baseCtx))
 	go deploy.PanicRecovery(panicErrsChannel, func() {
 		<-ctx.Cancel.Canceled()
 		logging.V(7).Infof("engine.newDeployment(...): received cancellation signal")
@@ -417,6 +417,9 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 	// Inject our opentracing span into the context.
 	if deployment.Ctx.TracingSpan != nil {
 		ctx = opentracing.ContextWithSpan(ctx, deployment.Ctx.TracingSpan)
+	}
+	if deployment.Ctx.otelSpan != nil {
+		ctx = trace.ContextWithSpan(ctx, deployment.Ctx.otelSpan)
 	}
 
 	// Emit an appropriate prelude event.
