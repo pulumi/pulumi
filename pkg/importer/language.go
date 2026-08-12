@@ -189,8 +189,7 @@ func GenerateLanguageDefinitions(
 		seenPkgs := mapset.NewSet[string]()
 
 		for _, state := range states {
-			// Local component resources are declared by the user's program rather than by a package schema, so
-			// there is nothing to generate for them. Their children still refer to them via the name table.
+			// Local components have no provider and no schema, so there is nothing to generate.
 			if !state.Custom && state.Provider == "" {
 				continue
 			}
