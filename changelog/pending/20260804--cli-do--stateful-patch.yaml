@@ -1,4 +1,4 @@
 component: cli/do
 kind: feat
-body: "`pulumi do <pkg> <resource> patch <name>` now works in stateful mode, overlaying the supplied inputs onto the existing snippet"
+body: Make "`pulumi do <pkg> <resource> patch <name>` work in stateful mode, overlaying the supplied inputs onto the existing snippet"
 time: 2026-08-04T00:00:00+00:00
