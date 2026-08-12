@@ -103,27 +103,28 @@ func resourceJSONFromEvent(p engine.ResourcePreEventPayload, showSames bool) *Re
 		return nil
 	}
 
-	r := NewResourceJSON(&p.Metadata)
+	// Parent lives on the post-step state when there is one, and falls back to
+	// the pre-step state for deletes (where New is nil).
+	var parent string
+	switch {
+	case p.Metadata.New != nil:
+		parent = string(p.Metadata.New.Parent)
+	case p.Metadata.Old != nil:
+		parent = string(p.Metadata.Old.Parent)
+	}
+
+	r := NewResourceJSON(p.Metadata.URN, apitype.OpType(p.Metadata.Op), parent)
 	return &r
 }
 
-// NewResourceJSON builds the per-resource summary entry shared by the live
-// display and `pulumi stack history events --summary`. The parent lives on
-// the post-step state when there is one, and falls back to the pre-step
-// state for deletes (where New is nil).
-func NewResourceJSON(m *engine.StepEventMetadata) ResourceJSON {
-	var parent string
-	switch {
-	case m.New != nil:
-		parent = string(m.New.Parent)
-	case m.Old != nil:
-		parent = string(m.Old.Parent)
-	}
+// NewResourceJSON builds the per-resource summary entry from the fields
+// shared by the live display and `pulumi stack history events --summary`.
+func NewResourceJSON(urn resource.URN, op apitype.OpType, parent string) ResourceJSON {
 	return ResourceJSON{
-		URN:    string(m.URN),
-		Type:   string(m.URN.Type()),
-		Name:   m.URN.Name(),
-		Op:     apitype.OpType(m.Op),
+		URN:    string(urn),
+		Type:   string(urn.Type()),
+		Name:   urn.Name(),
+		Op:     op,
 		Parent: parent,
 	}
 }
@@ -166,6 +167,15 @@ func NewDiffJSON(m *engine.StepEventMetadata, refresh, showSecrets bool) map[str
 		return nil
 	}
 	return out
+}
+
+// NewDiffJSONFromAPI is NewDiffJSON for step metadata that has already been
+// serialized to its API shape, as returned by the Pulumi Cloud events
+// endpoint. Secret values in such metadata are already blinded, so there is
+// no showSecrets option to offer.
+func NewDiffJSONFromAPI(md apitype.StepEventMetadata) map[string]PropertyDiffJSON {
+	em := convertJSONStepEventMetadata(md)
+	return NewDiffJSON(&em, false /* refresh */, false /* showSecrets */)
 }
 
 // RefreshDiffJSON returns the diff a refresh step reveals on its outputs

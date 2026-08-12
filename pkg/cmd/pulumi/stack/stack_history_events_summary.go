@@ -27,10 +27,10 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	pkgdisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // updateSummary is the document emitted by `pulumi stack history events
@@ -58,31 +58,42 @@ type diagnosticSummary struct {
 	Message  string `json:"message"`
 }
 
+func summaryResourceFor(m apitype.StepEventMetadata) summaryResource {
+	// Parent falls back to the pre-step state for deletes, where New is nil.
+	var parent string
+	switch {
+	case m.New != nil:
+		parent = m.New.Parent
+	case m.Old != nil:
+		parent = m.Old.Parent
+	}
+	return summaryResource{ResourceJSON: display.NewResourceJSON(resource.URN(m.URN), m.Op, parent)}
+}
+
 // buildUpdateSummary reduces an engine event stream to an updateSummary,
 // mirroring the live summary tap (display.tapSummaryJSON): one resource entry
 // per attempted operation, unchanged (`same`) resources omitted. When
 // includeDiff is set, each entry carries its property diff too.
-//
-// Events arrive in their API shape and are converted back to engine events up
-// front so the rest of the reduction can share the display package's helpers.
 func buildUpdateSummary(
 	events iter.Seq2[apitype.EngineEvent, error], includeDiff bool,
 ) (*updateSummary, error) {
 	s := &updateSummary{}
 
 	var startTs, endTs int
-	var summaryEvent *engine.SummaryEventPayload
+	var summaryEvent *apitype.SummaryEvent
 	anyFailed := false
 	anyError := false
 
-	markFailed := func(m engine.StepEventMetadata) {
+	markFailed := func(m apitype.StepEventMetadata) {
 		for i := len(s.Resources) - 1; i >= 0; i-- {
-			if s.Resources[i].URN == string(m.URN) {
+			if s.Resources[i].URN == m.URN {
 				s.Resources[i].Failed = true
 				return
 			}
 		}
-		s.Resources = append(s.Resources, summaryResource{ResourceJSON: display.NewResourceJSON(&m), Failed: true})
+		r := summaryResourceFor(m)
+		r.Failed = true
+		s.Resources = append(s.Resources, r)
 	}
 
 	for ev, err := range events {
@@ -97,48 +108,44 @@ func buildUpdateSummary(
 				endTs = ev.Timestamp
 			}
 		}
-		e, err := display.ConvertJSONEvent(ev)
-		if err != nil {
-			// An event kind this CLI doesn't know about; skip it, as the switch
-			// below would anyway.
-			continue
-		}
-		switch e.Type { //nolint:exhaustive // we only care about a few event types here
-		case engine.SummaryEvent:
-			p := e.Payload().(engine.SummaryEventPayload)
-			summaryEvent = &p
-		case engine.ResourcePreEvent:
-			if m := e.Payload().(engine.ResourcePreEventPayload).Metadata; m.Op != deploy.OpSame {
-				r := summaryResource{ResourceJSON: display.NewResourceJSON(&m)}
+		switch {
+		case ev.SummaryEvent != nil:
+			summaryEvent = ev.SummaryEvent
+		case ev.ResourcePreEvent != nil:
+			if m := ev.ResourcePreEvent.Metadata; m.Op != apitype.OpSame {
+				r := summaryResourceFor(m)
 				if includeDiff {
-					r.Diff = display.NewDiffJSON(&m, false /* refresh */, false /* showSecrets */)
+					r.Diff = display.NewDiffJSONFromAPI(m)
 				}
 				s.Resources = append(s.Resources, r)
 			}
-		case engine.ResourceOperationFailed:
+		case ev.ResOpFailedEvent != nil:
 			anyFailed = true
-			markFailed(e.Payload().(engine.ResourceOperationFailedPayload).Metadata)
-		case engine.DiagEvent:
-			d := e.Payload().(engine.DiagEventPayload)
+			markFailed(ev.ResOpFailedEvent.Metadata)
+		case ev.DiagnosticEvent != nil:
+			d := ev.DiagnosticEvent
 			// A failing program reports through the language host's stderr, which
 			// arrives as "info#err" rather than "error" — for a preview that never
 			// reached a resource operation it is the only record of what went wrong.
 			// It doesn't imply failure on its own (a program can write to stderr and
 			// succeed), so only "error" contributes to the result below.
-			if d.Ephemeral || (d.Severity != diag.Error && d.Severity != diag.Infoerr) {
+			if d.Ephemeral || (d.Severity != string(diag.Error) && d.Severity != string(diag.Infoerr)) {
 				continue
 			}
-			anyError = anyError || d.Severity == diag.Error
+			anyError = anyError || d.Severity == string(diag.Error)
 			s.Diagnostics = append(s.Diagnostics, diagnosticSummary{
-				Severity: string(d.Severity),
-				URN:      string(d.URN),
+				Severity: d.Severity,
+				URN:      d.URN,
 				Message:  strings.TrimRight(plain(d.Message), "\n"),
 			})
 		}
 	}
 
 	if summaryEvent != nil {
-		s.Summary = summaryEvent.ResourceChanges
+		s.Summary = make(pkgdisplay.ResourceChanges, len(summaryEvent.ResourceChanges))
+		for op, n := range summaryEvent.ResourceChanges {
+			s.Summary[pkgdisplay.StepOp(op)] = n
+		}
 	}
 
 	switch {
@@ -154,8 +161,8 @@ func buildUpdateSummary(
 	}
 
 	switch {
-	case summaryEvent != nil && summaryEvent.Duration > 0:
-		s.Duration = summaryEvent.Duration
+	case summaryEvent != nil && summaryEvent.DurationSeconds > 0:
+		s.Duration = time.Duration(summaryEvent.DurationSeconds) * time.Second
 	case endTs > startTs:
 		s.Duration = time.Duration(endTs-startTs) * time.Second
 	}
