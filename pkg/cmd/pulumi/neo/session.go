@@ -127,42 +127,48 @@ type Session struct {
 // the stream ends cleanly (returns nil), or an unrecoverable error occurs (returns the
 // error). Mid-stream network drops are reopened silently with Last-Event-ID so the
 // server replays missed events; the user sees no signal unless the retry budget is
-// exhausted.
-func (s *Session) Run(ctx context.Context) (err error) {
+// exhausted. Run initializes the tool-worker state on Session, so it must be called
+// at most once per Session.
+func (s *Session) Run(ctx context.Context) error {
+	s.batches = make(chan toolBatch, batchQueueCap)
+	s.batchErrs = make(chan error, 1)
+	workerDone := make(chan struct{})
+	go s.toolWorker(workerDone)
+
+	err := s.streamLoop(ctx)
+
+	// On an error exit, stop the in-flight tool promptly. On a clean exit leave
+	// the batch ctx alone until the worker drains: ctx-cancel exits already
+	// propagate (batchCtx is a child of ctx), and a clean stream close waits for
+	// the batch to finish and post its result — the same observable behavior as
+	// the old synchronous code.
+	if err != nil && s.batchCancel != nil {
+		s.batchCancel()
+	}
+	close(s.batches)
+	<-workerDone
+	if s.batchCancel != nil {
+		s.batchCancel()
+	}
+	// The worker may have hit a fatal error after drainStream last looked; don't
+	// swallow it on an otherwise-clean exit.
+	if err == nil {
+		select {
+		case err = <-s.batchErrs:
+		default:
+		}
+	}
+	return err
+}
+
+// streamLoop opens and drains the SSE stream until the session ends, reconnecting
+// transparently (with Last-Event-ID resume) on transient failures.
+func (s *Session) streamLoop(ctx context.Context) error {
 	var (
 		lastEventID = s.LastEventID
 		failures    int
 		deadline    time.Time
 	)
-
-	s.batches = make(chan toolBatch, batchQueueCap)
-	s.batchErrs = make(chan error, 1)
-	workerDone := make(chan struct{})
-	go s.toolWorker(workerDone)
-	defer func() {
-		// On an error exit, stop the in-flight tool promptly. On a clean exit
-		// leave the batch ctx alone until the worker drains: ctx-cancel exits
-		// already propagate (batchCtx is a child of ctx), and a clean stream
-		// close waits for the batch to finish and post its result — the same
-		// observable behavior as the old synchronous code.
-		if err != nil && s.batchCancel != nil {
-			s.batchCancel()
-		}
-		close(s.batches)
-		<-workerDone
-		if s.batchCancel != nil {
-			s.batchCancel()
-		}
-		// The worker may have hit a fatal error after drainStream last looked;
-		// don't swallow it on an otherwise-clean exit.
-		if err == nil {
-			select {
-			case werr := <-s.batchErrs:
-				err = werr
-			default:
-			}
-		}
-	}()
 
 	for {
 		stream, err := s.Client.StreamNeoTaskEvents(ctx, s.OrgName, s.TaskID, lastEventID)

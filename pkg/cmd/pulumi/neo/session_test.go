@@ -1561,16 +1561,14 @@ func TestSession_RunDoesNotCloseUIEvents(t *testing.T) {
 	})
 }
 
-// blockedHandler blocks inside Invoke until released, signalling entry via started.
-type blockedHandler struct {
-	started chan struct{}
-	release chan struct{}
+// probeHandler delegates Invoke to a closure, for tests that need to observe or
+// control the timing and context of tool execution.
+type probeHandler struct {
+	invoke func(ctx context.Context) (any, error)
 }
 
-func (b *blockedHandler) Invoke(_ context.Context, _ string, _ json.RawMessage) (any, error) {
-	close(b.started)
-	<-b.release
-	return map[string]any{"ok": true}, nil
+func (h *probeHandler) Invoke(ctx context.Context, _ string, _ json.RawMessage) (any, error) {
+	return h.invoke(ctx)
 }
 
 // TestSession_CancelledEventDeliveredWhileLocalToolRuns is a regression test
@@ -1582,7 +1580,15 @@ func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 	t.Parallel()
 
 	streamer := newFakeStreamer()
-	bh := &blockedHandler{started: make(chan struct{}), release: make(chan struct{})}
+	started := make(chan struct{})
+	release := make(chan struct{})
+	// Deliberately ignores ctx: the point is that events flow even while a tool
+	// keeps running.
+	bh := &probeHandler{invoke: func(_ context.Context) (any, error) {
+		close(started)
+		<-release
+		return map[string]any{"ok": true}, nil
+	}}
 	uiCh := make(chan UIEvent, 16)
 	s := &Session{
 		Client:   streamer,
@@ -1607,7 +1613,7 @@ func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 		},
 	})}
 	select {
-	case <-bh.started:
+	case <-started:
 	case <-time.After(5 * time.Second):
 		t.Fatal("tool handler never started")
 	}
@@ -1635,27 +1641,13 @@ func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 		"cancelled event must be delivered while a local tool call is still executing")
 
 	// Unblock the tool and shut down.
-	close(bh.release)
+	close(release)
 	close(streamer.stream)
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second):
 		t.Fatal("session did not exit")
 	}
-}
-
-// ctxReportingHandler blocks inside Invoke until its context is cancelled,
-// reporting the ctx error it observed on finished.
-type ctxReportingHandler struct {
-	started  chan struct{}
-	finished chan error
-}
-
-func (h *ctxReportingHandler) Invoke(ctx context.Context, _ string, _ json.RawMessage) (any, error) {
-	close(h.started)
-	<-ctx.Done()
-	h.finished <- ctx.Err()
-	return nil, ctx.Err()
 }
 
 // TestSession_CancelledEventCancelsInFlightBatchContext verifies that a
@@ -1667,7 +1659,15 @@ func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 	t.Parallel()
 
 	streamer := newFakeStreamer()
-	first := &ctxReportingHandler{started: make(chan struct{}), finished: make(chan error, 1)}
+	started := make(chan struct{})
+	finished := make(chan error, 1)
+	// Blocks until its context is cancelled, reporting the ctx error it observed.
+	first := &probeHandler{invoke: func(ctx context.Context) (any, error) {
+		close(started)
+		<-ctx.Done()
+		finished <- ctx.Err()
+		return nil, ctx.Err()
+	}}
 	secondCtxErr := make(chan error, 1)
 	second := &probeHandler{invoke: func(ctx context.Context) (any, error) {
 		secondCtxErr <- ctx.Err()
@@ -1690,7 +1690,7 @@ func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 		},
 	})}
 	select {
-	case <-first.started:
+	case <-started:
 	case <-time.After(5 * time.Second):
 		t.Fatal("tool handler never started")
 	}
@@ -1699,7 +1699,7 @@ func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 		Type: backendEventCancelled,
 	})}
 	select {
-	case err := <-first.finished:
+	case err := <-finished:
 		require.ErrorIs(t, err, context.Canceled)
 	case <-time.After(5 * time.Second):
 		t.Fatal("cancelled event did not cancel the in-flight tool context")
@@ -1745,16 +1745,6 @@ func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 	}
 	assert.Equal(t, []string{"blocking__run", "probe__run"}, execNames)
 	assert.Equal(t, []string{"c2"}, resultIDs)
-}
-
-// probeHandler delegates Invoke to a closure, for tests that only care about
-// the context or ordering.
-type probeHandler struct {
-	invoke func(ctx context.Context) (any, error)
-}
-
-func (h *probeHandler) Invoke(ctx context.Context, _ string, _ json.RawMessage) (any, error) {
-	return h.invoke(ctx)
 }
 
 // TestSession_BatchesRunSeriallyAcrossAssistantMessages locks down that tool
