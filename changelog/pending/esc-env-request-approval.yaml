@@ -1,0 +1,6 @@
+component: cli/env
+kind: feat
+body: Add `--request-approval`, `--wait-for-approval`, `--wait-timeout`, `--access-duration`, and `--reason` flags to `pulumi env open` and `pulumi env get`, to submit an open request when the environment requires approval and wait for it to be approved
+time: 2026-08-09T00:00:00+00:00
+custom:
+    PR: "24244"
