@@ -1,0 +1,3 @@
+name: wf-instance-rotation
+runtime: go
+description: pulumi.Workflow demo - fleet-wide AMI rotation, cluster by cluster, gated on instance health.

@@ -669,6 +669,10 @@ the recovery metric is polled per `up`, so an active roll wants a tight cron (mi
 
 ## Deferred
 
+- Pulumi Cloud backend support: the service re-serializes state through its vendored apitype
+  (e.g. when replaying update journals), silently dropping the `owner` field, which breaks node
+  sub-state tracking. Verified live 2026-08-12; needs the service to vendor an SDK that carries
+  `owner` (plus the `owner-prototype` deployment feature). DIY backends round-trip correctly.
 - Cursor surgery (`pulumi workflow cursor ls|rm|mv`): not in the prototype.
 - Simulated preview (evaluate conditions, preview would-be moves).
 - AND-join / merge-on-collision and per-cursor sub-state: needs a fundamental FSA change first;

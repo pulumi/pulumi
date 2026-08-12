@@ -1,0 +1,3 @@
+name: wf-multiregion
+runtime: go
+description: pulumi.Workflow demo - hands-off multi-region rollout in waves with alarm and bake gates.
