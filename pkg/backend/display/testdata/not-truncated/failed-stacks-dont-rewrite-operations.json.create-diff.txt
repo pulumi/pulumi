@@ -4,6 +4,10 @@ Configuration:
     ~ pulumi-python:dynamic:Resource: (update)
         [id=quux2]
         [urn=urn:pulumi:dev::test::pulumi-python:dynamic:Resource::test-x]
+      ~ quux: "quux12" => "quux13"
     --pulumi-python:dynamic:Resource: (delete-replaced)
         [id=foo]
         [urn=urn:pulumi:dev::test::pulumi-python:dynamic:Resource::test-r]
+        --outputs:--
+      - bar: "bar9"
+      - baz: "baz"

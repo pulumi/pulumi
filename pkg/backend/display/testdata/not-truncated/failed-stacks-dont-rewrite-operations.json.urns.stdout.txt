@@ -2,9 +2,16 @@
 <{%reset%}>  urn:pulumi:dev::test::pulumi:pulumi:Stack::test-dev: (same)
 <{%reset%}>    <{%fg 3%}>~ urn:pulumi:dev::test::pulumi-python:dynamic:Resource::test-x: (update)
 <{%reset%}>        [id=quux2]
+<{%reset%}><{%fg 3%}>      ~ quux: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>quux1<{%reset%}><{%fg 1%}>2<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>quux1<{%reset%}><{%fg 2%}>3<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}>    <{%fg 9%}>--urn:pulumi:dev::test::pulumi-python:dynamic:Resource::test-r: (delete-replaced)
 <{%fg 9%}>        [id=foo]
-<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+<{%reset%}><{%fg 9%}>        bar       : <{%reset%}><{%fg 9%}>"bar9"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%fg 9%}>        baz       : <{%reset%}><{%fg 9%}>"baz"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%fg 9%}>        foo       : <{%reset%}><{%fg 9%}>"foo"<{%reset%}><{%fg 9%}>
+<{%reset%}><{%reset%}><{%fg 9%}>        --outputs:--<{%reset%}>
+<{%fg 1%}>      - bar: <{%reset%}><{%fg 1%}>"bar9"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 1%}>      - baz: <{%reset%}><{%fg 1%}>"baz"<{%reset%}><{%fg 1%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     1 unchanged
     <{%fg 1%}>1 errored<{%reset%}>
 
