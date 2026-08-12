@@ -1152,9 +1152,12 @@ func moduleName(module string, pkg schema.PackageReference) string {
 	if module == "index" {
 		return ""
 	}
+	// Each segment becomes a property access on the package, so segments that aren't
+	// legal identifiers (e.g. containing hyphens) use the sanitized name the SDK
+	// exports them under.
 	segments := strings.Split(strings.ToLower(module), "/")
 	for i, segment := range segments {
-		segments[i] = makeValidIdentifier(segment)
+		segments[i] = makeValidModuleSegment(segment)
 	}
 	return strings.Join(segments, ".")
 }

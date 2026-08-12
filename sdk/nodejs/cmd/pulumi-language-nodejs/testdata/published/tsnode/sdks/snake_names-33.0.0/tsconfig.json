@@ -23,8 +23,6 @@
         "cool_module/index.ts",
         "cool_module/some_data.ts",
         "cool_module/some_resource.ts",
-        "dashed-module/dashed_resource.ts",
-        "dashed-module/index.ts",
         "index.ts",
         "provider.ts",
         "types/index.ts",

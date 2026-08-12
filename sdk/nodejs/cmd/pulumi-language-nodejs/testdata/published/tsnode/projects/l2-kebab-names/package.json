@@ -1,0 +1,11 @@
+{
+	"name": "l2-kebab-names",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/kebab-names": "ROOT/artifacts/pulumi-kebab-names-50.0.0.tgz"
+	}
+}

@@ -118,23 +118,6 @@ func (p *SnakeNamesProvider) GetSchema(
 				},
 				RequiredInputs: []string{"the_input", "nested"},
 			},
-			"snake_names:dashed-module:dashed_resource": {
-				ObjectTypeSpec: schema.ObjectTypeSpec{
-					Type: "object",
-					Properties: map[string]schema.PropertySpec{
-						"the_input": {
-							TypeSpec: schema.TypeSpec{Type: "string"},
-						},
-					},
-					Required: []string{"the_input"},
-				},
-				InputProperties: map[string]schema.PropertySpec{
-					"the_input": {
-						TypeSpec: schema.TypeSpec{Type: "string"},
-					},
-				},
-				RequiredInputs: []string{"the_input"},
-			},
 			"snake_names:cool_module:another_resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
@@ -247,7 +230,7 @@ func (p *SnakeNamesProvider) Check(
 			}, nil
 		}
 		return plugin.CheckResponse{Properties: req.News}, nil
-	case "snake_names:cool_module:another_resource", "snake_names:dashed-module:dashed_resource":
+	case "snake_names:cool_module:another_resource":
 		if _, ok := req.News["the_input"]; !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("the_input", "missing the_input"),
@@ -296,7 +279,7 @@ func (p *SnakeNamesProvider) Create(
 			},
 			Status: resource.StatusOK,
 		}, nil
-	case "snake_names:cool_module:another_resource", "snake_names:dashed-module:dashed_resource":
+	case "snake_names:cool_module:another_resource":
 		theInput, ok := req.Properties["the_input"]
 		if !ok {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("missing the_input property")
