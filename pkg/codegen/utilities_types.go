@@ -1,4 +1,4 @@
-// Copyright 2021-2024, Pulumi Corporation.
+// Copyright 2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -135,6 +135,21 @@ func MapOptionalType(t schema.Type, f func(schema.Type) schema.Type) schema.Type
 		return &schema.OptionalType{ElementType: f(opt.ElementType)}
 	}
 	return f(t)
+}
+
+// PushOptionalIntoInput rewrites Optional(Input(T)) to Input(Optional(T))
+func PushOptionalIntoInput(t schema.Type) schema.Type {
+	opt, ok := t.(*schema.OptionalType)
+	if !ok {
+		return t
+	}
+	input, ok := opt.ElementType.(*schema.InputType)
+	if !ok {
+		return t
+	}
+	return &schema.InputType{
+		ElementType: &schema.OptionalType{ElementType: SimplifyInputUnion(input.ElementType)},
+	}
 }
 
 func IsNOptionalInput(t schema.Type) bool {

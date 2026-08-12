@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ func (src *nullSource) Iterate(ctx context.Context, providers ProviderSource) (S
 // nullSourceIterator always returns nil, nil in response to Next, indicating that it is done.
 type nullSourceIterator struct{}
 
-func (iter *nullSourceIterator) Close() error {
+func (iter *nullSourceIterator) Cancel(context.Context) error {
 	return nil // nothing to do.
 }
 

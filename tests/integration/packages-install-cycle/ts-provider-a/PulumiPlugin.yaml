@@ -1,0 +1,3 @@
+runtime: nodejs
+packages:
+  typescript-b: ../ts-provider-b

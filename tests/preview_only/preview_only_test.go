@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,8 +33,7 @@ func TestPreviewOnlyFlag(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("../integration/single_resource")
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
-		e.RunCommand("yarn", "install")
+		e.InstallDependencies()
 		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "foo")
 		e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
@@ -73,8 +72,7 @@ func TestPreviewOnlyFlag(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("../integration/single_resource")
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
-		e.RunCommand("yarn", "install")
+		e.InstallDependencies()
 		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "foo")
 		e.RunCommand("pulumi", "up", "--skip-preview", "--yes")

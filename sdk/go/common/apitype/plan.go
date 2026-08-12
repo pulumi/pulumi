@@ -1,10 +1,10 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,11 +25,11 @@ import (
 // PlanDiffV1 is the serializable version of a plan diff.
 type PlanDiffV1 struct {
 	// the resource properties that will be added.
-	Adds map[string]interface{} `json:"adds,omitempty"`
+	Adds map[string]any `json:"adds,omitempty"`
 	// the resource properties that will be deleted.
 	Deletes []string `json:"deletes,omitempty"`
 	// the resource properties that will be updated.
-	Updates map[string]interface{} `json:"updates,omitempty"`
+	Updates map[string]any `json:"updates,omitempty"`
 }
 
 // GoalV1 is the serializable version of a resource goal state.
@@ -77,7 +77,7 @@ type ResourcePlanV1 struct {
 	// The steps to be performed on the resource.
 	Steps []OpType `json:"steps,omitempty"`
 	// The proposed outputs for the resource, if any. Purely advisory.
-	Outputs map[string]interface{} `json:"state"`
+	Outputs map[string]any `json:"state"`
 	// The random byte seed used for resource goal.
 	Seed []byte `json:"seed,omitempty"`
 }

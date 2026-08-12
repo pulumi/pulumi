@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -121,4 +121,15 @@ type UpdateInfo struct {
 // a stack's history.
 type GetHistoryResponse struct {
 	Updates []UpdateInfo `json:"updates"`
+}
+
+// StackPreview describes a single preview operation on a stack. Previews are tracked separately
+// from update history and carry their own opaque UpdateID — the UUID in the console preview URL.
+type StackPreview struct {
+	UpdateID string `json:"updateID"`
+}
+
+// GetLatestStackPreviewsResponse is the Pulumi Service response for a stack's most recent previews.
+type GetLatestStackPreviewsResponse struct {
+	Updates []StackPreview `json:"updates"`
 }

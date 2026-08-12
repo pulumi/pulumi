@@ -18,6 +18,11 @@ class ResourceMonitorStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.GetDeploymentInfo = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/GetDeploymentInfo',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=pulumi_dot_resource__pb2.DeploymentInfo.FromString,
+                )
         self.SupportsFeature = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/SupportsFeature',
                 request_serializer=pulumi_dot_resource__pb2.SupportsFeatureRequest.SerializeToString,
@@ -26,12 +31,7 @@ class ResourceMonitorStub(object):
         self.Invoke = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/Invoke',
                 request_serializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.SerializeToString,
-                response_deserializer=pulumi_dot_provider__pb2.InvokeResponse.FromString,
-                )
-        self.StreamInvoke = channel.unary_stream(
-                '/pulumirpc.ResourceMonitor/StreamInvoke',
-                request_serializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.SerializeToString,
-                response_deserializer=pulumi_dot_provider__pb2.InvokeResponse.FromString,
+                response_deserializer=pulumi_dot_resource__pb2.ResourceInvokeResponse.FromString,
                 )
         self.Call = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/Call',
@@ -63,16 +63,46 @@ class ResourceMonitorStub(object):
                 request_serializer=pulumi_dot_callback__pb2.Callback.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.RegisterResourceHook = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/RegisterResourceHook',
+                request_serializer=pulumi_dot_resource__pb2.RegisterResourceHookRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.RegisterErrorHook = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/RegisterErrorHook',
+                request_serializer=pulumi_dot_resource__pb2.RegisterErrorHookRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
         self.RegisterPackage = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/RegisterPackage',
                 request_serializer=pulumi_dot_resource__pb2.RegisterPackageRequest.SerializeToString,
                 response_deserializer=pulumi_dot_resource__pb2.RegisterPackageResponse.FromString,
+                )
+        self.SignalAndWaitForShutdown = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/SignalAndWaitForShutdown',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
 
 
 class ResourceMonitorServicer(object):
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
     """
+
+    def GetDeploymentInfo(self, request, context):
+        """GetDeploymentInfo returns the execution context associated with this monitor instance.
+
+        This is an additive API intended to reduce duplicated state passed through
+        environment variables and per-request protobuf fields. New clients should
+        prefer this over piecemeal feature probing via SupportsFeature.
+
+        Backward compatibility:
+        - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+        - Clients should fall back to existing request fields/env vars/SupportsFeature.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def SupportsFeature(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -81,12 +111,6 @@ class ResourceMonitorServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def Invoke(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def StreamInvoke(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -130,6 +154,23 @@ class ResourceMonitorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def RegisterResourceHook(self, request, context):
+        """Register a resource hook that can be called by the engine during certain
+        steps of a resource's lifecycle.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RegisterErrorHook(self, request, context):
+        """Register an error hook that can be called by the engine when an operation fails and is retryable.
+
+        Error hooks are a separate type of hook to other life cycle hooks as they have different inputs and outputs.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def RegisterPackage(self, request, context):
         """Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
         Multiple requests are idempotent and guaranteed to return the same result.
@@ -138,9 +179,26 @@ class ResourceMonitorServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SignalAndWaitForShutdown(self, request, context):
+        """SignalAndWaitForShutdown lets the resource monitor know that no more
+        events will be generated. This call blocks until the resource monitor is
+        finished, which will happen once all the steps have executed. This allows
+        the language runtime to stay running and handle callback requests, even
+        after the user program has completed. Runtime SDKs should call this after
+        executing the user's program. This can only be called once.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ResourceMonitorServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'GetDeploymentInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetDeploymentInfo,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=pulumi_dot_resource__pb2.DeploymentInfo.SerializeToString,
+            ),
             'SupportsFeature': grpc.unary_unary_rpc_method_handler(
                     servicer.SupportsFeature,
                     request_deserializer=pulumi_dot_resource__pb2.SupportsFeatureRequest.FromString,
@@ -149,12 +207,7 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
             'Invoke': grpc.unary_unary_rpc_method_handler(
                     servicer.Invoke,
                     request_deserializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.FromString,
-                    response_serializer=pulumi_dot_provider__pb2.InvokeResponse.SerializeToString,
-            ),
-            'StreamInvoke': grpc.unary_stream_rpc_method_handler(
-                    servicer.StreamInvoke,
-                    request_deserializer=pulumi_dot_resource__pb2.ResourceInvokeRequest.FromString,
-                    response_serializer=pulumi_dot_provider__pb2.InvokeResponse.SerializeToString,
+                    response_serializer=pulumi_dot_resource__pb2.ResourceInvokeResponse.SerializeToString,
             ),
             'Call': grpc.unary_unary_rpc_method_handler(
                     servicer.Call,
@@ -186,10 +239,25 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_callback__pb2.Callback.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
+            'RegisterResourceHook': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterResourceHook,
+                    request_deserializer=pulumi_dot_resource__pb2.RegisterResourceHookRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'RegisterErrorHook': grpc.unary_unary_rpc_method_handler(
+                    servicer.RegisterErrorHook,
+                    request_deserializer=pulumi_dot_resource__pb2.RegisterErrorHookRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
             'RegisterPackage': grpc.unary_unary_rpc_method_handler(
                     servicer.RegisterPackage,
                     request_deserializer=pulumi_dot_resource__pb2.RegisterPackageRequest.FromString,
                     response_serializer=pulumi_dot_resource__pb2.RegisterPackageResponse.SerializeToString,
+            ),
+            'SignalAndWaitForShutdown': grpc.unary_unary_rpc_method_handler(
+                    servicer.SignalAndWaitForShutdown,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -201,6 +269,23 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
 class ResourceMonitor(object):
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
     """
+
+    @staticmethod
+    def GetDeploymentInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/GetDeploymentInfo',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            pulumi_dot_resource__pb2.DeploymentInfo.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def SupportsFeature(request,
@@ -232,24 +317,7 @@ class ResourceMonitor(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/Invoke',
             pulumi_dot_resource__pb2.ResourceInvokeRequest.SerializeToString,
-            pulumi_dot_provider__pb2.InvokeResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
-    def StreamInvoke(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/pulumirpc.ResourceMonitor/StreamInvoke',
-            pulumi_dot_resource__pb2.ResourceInvokeRequest.SerializeToString,
-            pulumi_dot_provider__pb2.InvokeResponse.FromString,
+            pulumi_dot_resource__pb2.ResourceInvokeResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -356,6 +424,40 @@ class ResourceMonitor(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
+    def RegisterResourceHook(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterResourceHook',
+            pulumi_dot_resource__pb2.RegisterResourceHookRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def RegisterErrorHook(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterErrorHook',
+            pulumi_dot_resource__pb2.RegisterErrorHookRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
     def RegisterPackage(request,
             target,
             options=(),
@@ -369,5 +471,22 @@ class ResourceMonitor(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/RegisterPackage',
             pulumi_dot_resource__pb2.RegisterPackageRequest.SerializeToString,
             pulumi_dot_resource__pb2.RegisterPackageResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def SignalAndWaitForShutdown(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/SignalAndWaitForShutdown',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

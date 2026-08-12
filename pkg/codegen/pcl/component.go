@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,6 +46,10 @@ type Component struct {
 	// The inner Program that makes up this Component.
 	Program *Program
 
+	// InputType maps each input attribute name to its expected model type, derived from the
+	// component program's config variables. Used for type-checking and RewriteConversions.
+	InputType model.Type
+
 	// The type of the resource variable.
 	VariableType model.Type
 
@@ -89,13 +93,13 @@ func (c *Component) DeclarationName() string {
 		baseDirName = strings.ReplaceAll(baseDirName, invalidChar, "_")
 	}
 
-	componentName := ""
 	componentNameParts := strings.Split(baseDirName, "_")
+	var componentName strings.Builder
 	for _, part := range componentNameParts {
-		componentName += titleCase(part)
+		componentName.WriteString(titleCase(part))
 	}
 
-	return componentName
+	return componentName.String()
 }
 
 func (c *Component) Type() model.Type {

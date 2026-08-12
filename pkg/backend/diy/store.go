@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -37,15 +38,15 @@ import (
 var (
 	// StacksDir is a path under the state's root directory
 	// where the diy backend stores stack information.
-	StacksDir = filepath.Join(workspace.BookkeepingDir, workspace.StackDir)
+	StacksDir = filepath.Join(workspace.BookkeepingDir, pkgWorkspace.StackDir)
 
 	// HistoriesDir is a path under the state's root directory
 	// where the diy backend stores histories for all stacks.
-	HistoriesDir = filepath.Join(workspace.BookkeepingDir, workspace.HistoryDir)
+	HistoriesDir = filepath.Join(workspace.BookkeepingDir, pkgWorkspace.HistoryDir)
 
 	// BackupsDir is a path under the state's root directory
 	// where the diy backend stores backups of stacks.
-	BackupsDir = filepath.Join(workspace.BookkeepingDir, workspace.BackupDir)
+	BackupsDir = filepath.Join(workspace.BookkeepingDir, pkgWorkspace.BackupDir)
 )
 
 // referenceStore stores and provides access to stack information.
@@ -61,6 +62,7 @@ type referenceStore interface {
 	// This is the path to the file without the extension.
 	// The real file path is StackBasePath + ".json"
 	// or StackBasePath + ".json.gz".
+	// or StackBasePath + ".json.zst".
 	StackBasePath(*diyBackendReference) string
 
 	// HistoryDir returns the path to the directory
@@ -271,6 +273,8 @@ func (p *projectReferenceStore) ListReferences(ctx context.Context) ([]*diyBacke
 
 		// Key is in the form,
 		//   $StacksDir/$projName/$stackName.json[.gz]
+		// or
+		//   $StacksDir/$projName/$stackName.json[.zst]
 		// We want to extract projName and stackName from it.
 
 		parts := strings.Split(strings.TrimPrefix(file.Key, prefix), "/")
@@ -289,9 +293,9 @@ func (p *projectReferenceStore) ListReferences(ctx context.Context) ([]*diyBacke
 
 		// Skip files without valid extensions (e.g., *.bak files).
 		ext := filepath.Ext(objName)
-		// But accept gzip compression
-		if ext == encoding.GZIPExt {
-			objName = strings.TrimSuffix(objName, encoding.GZIPExt)
+		// But accept gzip/zstd compression.
+		if ext == encoding.GZIPExt || ext == encoding.ZSTDExt {
+			objName = strings.TrimSuffix(objName, ext)
 			ext = filepath.Ext(objName)
 		}
 
@@ -384,9 +388,9 @@ func (p *legacyReferenceStore) ListReferences(ctx context.Context) ([]*diyBacken
 		objName := objectName(file)
 		// Skip files without valid extensions (e.g., *.bak files).
 		ext := filepath.Ext(objName)
-		// But accept gzip compression
-		if ext == encoding.GZIPExt {
-			objName = strings.TrimSuffix(objName, encoding.GZIPExt)
+		// But accept gzip/zstd compression.
+		if ext == encoding.GZIPExt || ext == encoding.ZSTDExt {
+			objName = strings.TrimSuffix(objName, ext)
 			ext = filepath.Ext(objName)
 		}
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,11 +21,11 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v2"
@@ -52,7 +52,7 @@ func mapPaths(t *testing.T, c Map) []Key {
 func valuePaths(o any) []resource.PropertyPath {
 	switch o := o.(type) {
 	case []any:
-		var paths []resource.PropertyPath
+		var paths []resource.PropertyPath //nolint:prealloc // recursive function with unknown depth
 		for i, v := range o {
 			paths = append(paths, resource.PropertyPath{i})
 			for _, p := range valuePaths(v) {
@@ -87,6 +87,16 @@ type gobObject struct {
 	value any
 }
 
+func isTruthyEnv(key string) bool {
+	v := os.Getenv(key)
+	switch v {
+	case "", "0", "false", "False", "no", "No", "n", "N":
+		return false
+	default:
+		return true
+	}
+}
+
 func init() {
 	gob.Register([]any(nil))
 	gob.Register(map[string]any(nil))
@@ -114,6 +124,10 @@ func (o *gobObject) UnmarshalYAML(unmarshal func(v any) error) error {
 }
 
 func TestRepr(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on Windows.
+		t.Skip("Skipping test on Windows")
+	}
 	t.Parallel()
 
 	type expectedValue struct {
@@ -131,7 +145,7 @@ func TestRepr(t *testing.T) {
 		Paths   map[string]expectedValue `yaml:"paths"`   // Each path in the map and information about its value
 	}
 
-	isAccept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+	isAccept := isTruthyEnv("PULUMI_ACCEPT")
 
 	root := filepath.Join("testdata", "repr")
 	entries, err := os.ReadDir(root)

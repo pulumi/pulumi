@@ -1,0 +1,15 @@
+{
+	"name": "l2-resource-option-version",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/simple": "ROOT/artifacts/pulumi-simple-26.0.0.tgz"
+	}
+}

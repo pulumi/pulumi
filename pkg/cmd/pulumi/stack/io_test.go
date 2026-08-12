@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,12 +21,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -45,7 +47,6 @@ func TestStackLoadOption(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(fmt.Sprint(tt.give), func(t *testing.T) {
 			t.Parallel()
 
@@ -66,7 +67,7 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 
 	// Arrange.
 	_, expectedSm, err := passphrase.NewPassphraseSecretsManager("test-passphrase")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var actualDeployment apitype.DeploymentV3
 
@@ -86,10 +87,10 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 			opts *backend.CreateStackOptions,
 		) (backend.Stack, error) {
 			err := json.Unmarshal(initialState.Deployment, &actualDeployment)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil, nil
 		},
-		DefaultSecretManagerF: func(*workspace.ProjectStack) (secrets.Manager, error) {
+		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
 			return expectedSm, nil
 		},
 	}
@@ -99,7 +100,8 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 	// Act.
 	//nolint:errcheck
 	CreateStack(
-		context.Background(),
+		t.Context(),
+		cmdutil.Diag(),
 		pkgWorkspace.Instance,
 		mockBackend,
 		stackRef,
@@ -107,6 +109,8 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 		nil,   /*opts*/
 		false, /*setCurrent*/
 		"",    /*secretsProvider*/
+		false, /* useRemoteConfig */
+		"",    /*configFile*/
 	)
 
 	// Assert.

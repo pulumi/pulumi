@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -47,7 +47,6 @@ func TestPyName(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range pyNameTests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -69,7 +68,6 @@ func TestPyNameLegacy(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range pyNameTests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -77,4 +75,13 @@ func TestPyNameLegacy(t *testing.T) {
 			assert.Equal(t, tt.legacy, result)
 		})
 	}
+}
+
+func TestTokenToModule(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "module", tokenToModule("pkg:module:Type", nil, nil))
+	assert.Equal(t, "mymodule", tokenToModule("pkg:myModule:Type", nil, nil))
+	assert.Equal(t, "indexmine", tokenToModule("pkg:indexMine:Type", nil, nil))
+	assert.Equal(t, "indexmine/nested", tokenToModule("pkg:indexMine/nested:Type", nil, nil))
 }

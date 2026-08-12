@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,9 +24,11 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -81,7 +83,8 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 	}
 
 	if len(lockKeys) > 0 {
-		errorString := fmt.Sprintf("the stack is currently locked by %v lock(s). Either wait for the other "+
+		var errorString strings.Builder
+		fmt.Fprintf(&errorString, "the stack is currently locked by %v lock(s). Either wait for the other "+
 			"process(es) to end or delete the lock file with `pulumi cancel`.", len(lockKeys))
 
 		for _, lock := range lockKeys {
@@ -95,16 +98,15 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 				return err
 			}
 
-			errorString += fmt.Sprintf("\n  %v: created by %v@%v (pid %v) at %v",
+			fmt.Fprintf(&errorString, "\n  %v: created by %v@%v (pid %v) at %v",
 				b.lockURLForError(lock),
 				l.Username,
 				l.Hostname,
 				l.Pid,
-				l.Timestamp.Format(time.RFC3339),
-			)
+				l.Timestamp.Format(time.RFC3339))
 		}
 
-		return errors.New(errorString)
+		return errors.New(errorString.String())
 	}
 	return nil
 }
@@ -112,8 +114,13 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 // lockURLForError returns a URL that can be used in error messages to help users find the lock file.
 func (b *diyBackend) lockURLForError(lockPath string) string {
 	if parsedURL, err := url.Parse(b.url); err == nil {
+		if parsedURL.User != nil {
+			parsedURL.User = url.UserPassword("****", "****")
+		}
 		parsedURL.Path = path.Join(parsedURL.Path, lockPath)
-		return parsedURL.String()
+		// Go's URL encoder percent-encodes '*' as '%2A'; replace back so the
+		// redaction placeholder is human-readable in error messages.
+		return strings.ReplaceAll(parsedURL.String(), "%2A", "*")
 	}
 	// If we couldn't parse the URL, we'll just return a naive concatenation,
 	// which is what we used to do before we started using URL parsing.
@@ -151,13 +158,13 @@ func (b *diyBackend) Unlock(ctx context.Context, stackRef backend.StackReference
 	if err != nil {
 		b.d.Errorf(
 			diag.Message("", "there was a problem deleting the lock at %v, manual clean up may be required: %v"),
-			path.Join(b.url, b.lockPath(stackRef)),
+			b.lockURLForError(b.lockPath(stackRef)),
 			err)
 	}
 }
 
 func lockDir() string {
-	return path.Join(workspace.BookkeepingDir, workspace.LockDir)
+	return path.Join(workspace.BookkeepingDir, pkgWorkspace.LockDir)
 }
 
 func stackLockDir(stack tokens.QName) string {

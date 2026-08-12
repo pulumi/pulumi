@@ -1,0 +1,99 @@
+run: |
+  esc env version tag default/test@stable 2
+  esc env version default/test@stable --utc
+  esc env version tag default/test@stable 3
+  esc env version default/test@stable --utc
+  esc env version tag default/test@stable
+  esc env version default/test@stable --utc
+  esc env version default/test@latest --utc
+  esc env version tag ls default/test --utc
+  esc env version tag default/test@initial 1
+  esc env version tag ls default/test --utc
+  esc env version tag rm default/test@initial
+  esc env version tag ls default/test --utc
+environments:
+  test-user/default/a: {}
+  test-user/default/b: {}
+  test-user/default/test:
+    revisions:
+      - yaml:
+          values: {}
+      - yaml:
+          values:
+            string: hello, world!
+      - yaml:
+          imports:
+            - a
+            - b
+          values:
+            # comment
+            "null": null
+            boolean: true
+            number: 42
+            string: esc
+            array: [hello, world]
+            object: {hello: world}
+            open:
+              fn::open::test: echo
+            secret:
+              fn::secret:
+                ciphertext: ZXNjeAAAAAHz5ePy5fTB4+Pl8/PL5fnJxPD7
+
+---
+> esc env version tag default/test@stable 2
+> esc env version default/test@stable --utc
+stable
+Revision 2
+Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
+> esc env version tag default/test@stable 3
+> esc env version default/test@stable --utc
+stable
+Revision 3
+Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
+> esc env version tag default/test@stable
+> esc env version default/test@stable --utc
+stable
+Revision 4
+Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
+> esc env version default/test@latest --utc
+latest
+Revision 4
+Last updated at 0001-01-01 00:00:00 +0000 UTC by <unknown>
+> esc env version tag ls default/test --utc
+┌────────┬──────────┬───────────────────────────────┬───────────┐
+│ NAME   │ REVISION │ MODIFIED                      │ EDITOR    │
+├────────┼──────────┼───────────────────────────────┼───────────┤
+│ latest │        4 │ 0001-01-01 00:00:00 +0000 UTC │ <unknown> │
+│ stable │        4 │ 0001-01-01 00:00:00 +0000 UTC │ <unknown> │
+└────────┴──────────┴───────────────────────────────┴───────────┘
+> esc env version tag default/test@initial 1
+> esc env version tag ls default/test --utc
+┌─────────┬──────────┬───────────────────────────────┬───────────┐
+│ NAME    │ REVISION │ MODIFIED                      │ EDITOR    │
+├─────────┼──────────┼───────────────────────────────┼───────────┤
+│ initial │        1 │ 0001-01-01 00:00:00 +0000 UTC │ <unknown> │
+│ latest  │        4 │ 0001-01-01 00:00:00 +0000 UTC │ <unknown> │
+│ stable  │        4 │ 0001-01-01 00:00:00 +0000 UTC │ <unknown> │
+└─────────┴──────────┴───────────────────────────────┴───────────┘
+> esc env version tag rm default/test@initial
+> esc env version tag ls default/test --utc
+┌────────┬──────────┬───────────────────────────────┬───────────┐
+│ NAME   │ REVISION │ MODIFIED                      │ EDITOR    │
+├────────┼──────────┼───────────────────────────────┼───────────┤
+│ latest │        4 │ 0001-01-01 00:00:00 +0000 UTC │ <unknown> │
+│ stable │        4 │ 0001-01-01 00:00:00 +0000 UTC │ <unknown> │
+└────────┴──────────┴───────────────────────────────┴───────────┘
+
+---
+> esc env version tag default/test@stable 2
+> esc env version default/test@stable --utc
+> esc env version tag default/test@stable 3
+> esc env version default/test@stable --utc
+> esc env version tag default/test@stable
+> esc env version default/test@stable --utc
+> esc env version default/test@latest --utc
+> esc env version tag ls default/test --utc
+> esc env version tag default/test@initial 1
+> esc env version tag ls default/test --utc
+> esc env version tag rm default/test@initial
+> esc env version tag ls default/test --utc

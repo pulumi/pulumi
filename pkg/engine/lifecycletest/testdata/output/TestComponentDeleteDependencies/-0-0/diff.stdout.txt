@@ -1,11 +1,7 @@
-<{%fg 2%}>+ pulumi:providers:pkgB: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgB::default]
-<{%reset%}><{%reset%}><{%fg 2%}>+ pkgB:m:first: (create)
+<{%fg 2%}>+ pkgB:m:first: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgB:m:first::first]
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ nested: (create)
 <{%fg 2%}>        [urn=urn:pulumi:test::test::pkgB:m:first$nested::nested]
-<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgA:m:sg: (create)
 <{%fg 2%}>            [urn=urn:pulumi:test::test::pkgB:m:first$nested$pkgA:m:sg::sg]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgB:m:second: (create)

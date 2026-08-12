@@ -1,0 +1,172 @@
+// Copyright 2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "google/protobuf/struct.proto";
+import "pulumi/provider.proto";
+
+package pulumirpc;
+
+option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
+
+// ResourceStatus is an interface that can be called from a resource provider to update status about a resource.
+service ResourceStatus {
+    // `PublishViewSteps` is used to publish a series of steps for a view resource.
+    // Views can be materialized via create and update steps, and more complex
+    // changes, such as replacements, can be modeled as a series of steps.
+    // The engine does not actually apply these steps, but rather flows them through
+    // the engine such that the view resources are written to state and the view
+    // resources are displayed in the UI.
+    rpc PublishViewSteps(PublishViewStepsRequest) returns (PublishViewStepsResponse) {}
+}
+
+// `PublishViewStepsRequest` is the type of requests sent as part of a
+// [](pulumirpc.ResourceStatus.PublishViewSteps) call.
+message PublishViewStepsRequest {
+    // The service context token.
+    string token = 1;
+
+    // The steps to publish.
+    repeated ViewStep steps = 2;
+}
+
+// `PublishViewStepsResponse` is the type of responses sent as part of a
+// [](pulumirpc.ResourceStatus.PublishViewSteps) call.
+message PublishViewStepsResponse {
+}
+
+// `ViewStep` represents a deployment operation step for a view resource.
+message ViewStep {
+    // Represents the kind of operation performed by a step.
+    enum Op {
+        // An unspecified operation.
+        UNSPECIFIED = 0;
+
+        // Nothing to do.
+        SAME = 1;
+
+        // Creating a new resource.
+        CREATE = 2;
+
+        // Updating an existing resource.
+        UPDATE = 3;
+
+        // Deleting an existing resource.
+        DELETE = 4;
+
+        // Replacing a resource with a new one.
+        REPLACE = 5;
+
+        // Creating a new resource for a replacement.
+        CREATE_REPLACEMENT = 6;
+
+        // Deleting an existing resource after replacement.
+        DELETE_REPLACED = 7;
+
+        // Reading an existing resource.
+        READ = 8;
+
+        // Reading an existing resource for a replacement.
+        READ_REPLACEMENT = 9;
+
+        // Refreshing an existing resource.
+        REFRESH = 10;
+
+        // Removing a resource that was read.
+        READ_DISCARD = 11;
+
+        // Discarding a read resource that was replaced.
+        DISCARD_REPLACED = 12;
+
+        // Removing a pending replace resource.
+        REMOVE_PENDING_REPLACE = 13;
+
+        // Import an existing resource.
+        IMPORT = 14;
+
+        // Replace an existing resource.
+        IMPORT_REPLACEMENT = 15;
+    }
+
+    // Status is returned when an error has occurred during a resource provider operation.
+    // It indicates whether the operation could be rolled back cleanly (OK). If not, it
+    // means the resource was left in an indeterminate state.
+    enum Status {
+        OK = 0;
+        PARTIAL_FAILURE = 1;
+        UNKNOWN = 2;
+    }
+
+    // The status of the operation.
+    Status status = 1;
+
+    // An optional error message indicating the operation failed.
+    string error = 2;
+
+    // The operation being performed.
+    Op op = 3;
+
+    // The type of the view resource.
+    string type = 4;
+
+    // The name of the view resource.
+    string name = 5;
+
+    // The state of the view resource before performing the step.
+    ViewStepState old = 6;
+
+    // The state of the view resource after performing the step.
+    ViewStepState new = 7;
+
+    // The keys causing a replacement (only applicable for "create" and "replace" ops).
+    repeated string keys = 8;
+
+    // The keys that changed with this step.
+    repeated string diffs = 9;
+
+    // A detailed diff is a map from [property paths](property-paths) to [](pulumirpc.PropertyDiff)s,
+    // which describe the kind of change that occurred to the property located at that path.
+    map<string, PropertyDiff> detailed_diff = 10;
+
+    // Whether the detailed diff is present.
+    bool has_detailed_diff = 11;
+}
+
+// `ViewStepState` represents the state of a view resource.
+message ViewStepState {
+    // The type of the view resource.
+    string type = 1;
+
+    // The name of the view resource.
+    string name = 2;
+
+    // An optional type of the parent view resource. By default, a view resource will
+    // be a child of the owning resource, but views can be nested within other views,
+    // as long as they're all under the same owner. Both parent_type and parent_name
+    // must be set together.
+    string parent_type = 3;
+
+    // An optional name of the parent view resource. By default, a view resource will
+    // be a child of the owning resource, but views can be nested within other views,
+    // as long as they're all under the same owner. Both parent_type and parent_name
+    // must be set together.
+    string parent_name = 4;
+
+    // The view resource's inputs.
+    google.protobuf.Struct inputs = 5;
+
+    // The view resource's outputs.
+    google.protobuf.Struct outputs = 6;
+}

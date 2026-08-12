@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import (
 func TestApplier_Call(t *testing.T) {
 	t.Parallel()
 
-	stringType := reflect.TypeOf("")
+	stringType := reflect.TypeFor[string]()
 
 	t.Run("minimal", func(t *testing.T) {
 		t.Parallel()
@@ -38,7 +38,7 @@ func TestApplier_Call(t *testing.T) {
 		}, stringType)
 		require.NoError(t, err)
 
-		o, err := ap.Call(context.Background(), reflect.ValueOf("hello"))
+		o, err := ap.Call(t.Context(), reflect.ValueOf("hello"))
 		require.NoError(t, err)
 		assert.Equal(t, int64(42), o.Int())
 	})
@@ -46,7 +46,7 @@ func TestApplier_Call(t *testing.T) {
 	t.Run("context", func(t *testing.T) {
 		t.Parallel()
 
-		giveCtx, cancel := context.WithCancel(context.Background())
+		giveCtx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
 		ap, err := newApplier(func(ctx context.Context, s string) int {
@@ -71,7 +71,7 @@ func TestApplier_Call(t *testing.T) {
 		}, stringType)
 		require.NoError(t, err)
 
-		o, err := ap.Call(context.Background(), reflect.ValueOf("hello"))
+		o, err := ap.Call(t.Context(), reflect.ValueOf("hello"))
 		require.NoError(t, err)
 		assert.Equal(t, int64(42), o.Int())
 	})
@@ -86,7 +86,7 @@ func TestApplier_Call(t *testing.T) {
 		}, stringType)
 		require.NoError(t, err)
 
-		_, err = ap.Call(context.Background(), reflect.ValueOf("hello"))
+		_, err = ap.Call(t.Context(), reflect.ValueOf("hello"))
 		// == check because we want an exact reference match,
 		// not a deep equals.
 		assert.True(t, err == giveErr, "error must match")
@@ -96,10 +96,10 @@ func TestApplier_Call(t *testing.T) {
 func TestNewApplier_errors(t *testing.T) {
 	t.Parallel()
 
-	stringType := reflect.TypeOf("")
+	stringType := reflect.TypeFor[string]()
 	tests := []struct {
 		desc string
-		give interface{}
+		give any
 
 		// Part of the error message expected in return.
 		wantErr string
@@ -147,7 +147,6 @@ func TestNewApplier_errors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -162,7 +161,7 @@ func TestOutputState_nil(t *testing.T) {
 
 	var os *OutputState
 
-	assert.NotNil(t, os.elementType())
+	require.NotNil(t, os.elementType())
 	assert.Empty(t, os.dependencies())
 
 	// should be a no-op
@@ -172,12 +171,12 @@ func TestOutputState_nil(t *testing.T) {
 func TestOutputWithDependencies(t *testing.T) {
 	t.Parallel()
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	state := out.getState()
 	require.Empty(t, state.dependencies())
 
 	deps := []Resource{&ResourceState{}, &ResourceState{}}
-	outputWithDeps := OutputWithDependencies(context.Background(), out, deps...)
+	outputWithDeps := OutputWithDependencies(t.Context(), out, deps...)
 
 	// The output with dependencies should be pending and track the dependencies
 	stateWithDeps := outputWithDeps.getState()
@@ -187,7 +186,7 @@ func TestOutputWithDependencies(t *testing.T) {
 	// Resolve the original output, which should also resolve the output with dependencies
 	state.resolve(42, true, false, nil)
 
-	v, known, secret, resolvedDeps, err := stateWithDeps.await(context.Background())
+	v, known, secret, resolvedDeps, err := stateWithDeps.await(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, 42, v)
 	require.True(t, known)
@@ -198,12 +197,12 @@ func TestOutputWithDependencies(t *testing.T) {
 func TestOutputWithDependenciesReject(t *testing.T) {
 	t.Parallel()
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	state := out.getState()
 	require.Empty(t, state.dependencies())
 
 	deps := []Resource{&ResourceState{}, &ResourceState{}}
-	outputWithDeps := OutputWithDependencies(context.Background(), out, deps...)
+	outputWithDeps := OutputWithDependencies(t.Context(), out, deps...)
 
 	// The output with dependencies should be pending and track the dependencies
 	stateWithDeps := outputWithDeps.getState()
@@ -213,7 +212,7 @@ func TestOutputWithDependenciesReject(t *testing.T) {
 	// Reject the original output, which should also reject the output with dependencies
 	state.reject(errors.New("oh no"))
 
-	v, known, secret, resolvedDeps, err := stateWithDeps.await(context.Background())
+	v, known, secret, resolvedDeps, err := stateWithDeps.await(t.Context())
 	require.Error(t, err, "oh no")
 	require.Nil(t, v)
 	require.True(t, known)

@@ -13,7 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
+var proto = { codegen: { }, pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 goog.exportSymbol('proto.pulumirpc.Alias', null, global);
 goog.exportSymbol('proto.pulumirpc.Alias.AliasCase', null, global);
@@ -119,8 +119,8 @@ proto.pulumirpc.Alias.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.Alias.toObject = function(includeInstance, msg) {
   var f, obj = {
-    urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    spec: (f = msg.getSpec()) && proto.pulumirpc.Alias.Spec.toObject(includeInstance, f)
+urn: (f = jspb.Message.getField(msg, 1)) == null ? undefined : f,
+spec: (f = msg.getSpec()) && proto.pulumirpc.Alias.Spec.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -271,12 +271,12 @@ proto.pulumirpc.Alias.Spec.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.Alias.Spec.toObject = function(includeInstance, msg) {
   var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    stack: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    project: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    parenturn: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    noparent: jspb.Message.getBooleanFieldWithDefault(msg, 6, false)
+name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+type: jspb.Message.getFieldWithDefault(msg, 2, ""),
+stack: jspb.Message.getFieldWithDefault(msg, 3, ""),
+project: jspb.Message.getFieldWithDefault(msg, 4, ""),
+parenturn: (f = jspb.Message.getField(msg, 5)) == null ? undefined : f,
+noparent: (f = jspb.Message.getBooleanField(msg, 6)) == null ? undefined : f
   };
 
   if (includeInstance) {

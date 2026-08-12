@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,22 +16,23 @@ package metadata
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 )
 
 // TestReadingGitRepo tests the functions which read data fom the local Git repo
 // to add metadata to any updates.
-//
-//nolint:paralleltest // mutates environment variables
 func TestReadingGitRepo(t *testing.T) {
 	// Disable our CI/CD detection code, since if this unit test is ran under CI
 	// it will change the expected behavior.
@@ -56,11 +57,10 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 
-		assert.EqualValues(t, test.Message, "message for commit alpha")
-		_, ok := test.Environment[backend.GitHead]
-		assert.True(t, ok, "Expected to find Git SHA in update environment map")
+		assert.Equal(t, test.Message, "message for commit alpha")
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
 
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/master")
 		assertEnvValue(t, test, backend.GitDirty, "false")
@@ -81,12 +81,11 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 
-		assert.EqualValues(t, test.Message, "message for commit beta")
+		assert.Equal(t, "message for commit beta", test.Message)
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
 		featureBranch1SHA = test.Environment[backend.GitHead]
-		_, ok := test.Environment[backend.GitHead]
-		assert.True(t, ok, "Expected to find Git SHA in update environment map")
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/feature/branch1")
 		assertEnvValue(t, test, backend.GitDirty, "true") // Because beta-unsubmitted.txt, after commit
 
@@ -101,11 +100,11 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 
-		assert.EqualValues(t, test.Message, "message for commit beta")
+		assert.Equal(t, "message for commit beta", test.Message)
 		featureBranch2SHA := test.Environment[backend.GitHead]
-		assert.EqualValues(t, featureBranch1SHA, featureBranch2SHA)
+		assert.Equal(t, featureBranch1SHA, featureBranch2SHA)
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/feature/branch2")
 	}
 
@@ -116,13 +115,12 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 
-		assert.EqualValues(t, test.Message, "message for commit alpha") // The prior commit
-		_, ok := test.Environment[backend.GitHead]
-		assert.True(t, ok, "Expected to find Git SHA in update environment map")
-		_, ok = test.Environment[backend.GitHeadName]
-		assert.False(t, ok, "Expected no 'git.headName' key, since in detached head state.")
+		assert.Equal(t, "message for commit alpha", test.Message) // The prior commit
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
+		assert.NotContains(t, test.Environment, backend.GitHeadName,
+			"Expected no 'git.headName' key, since in detached head state.")
 	}
 
 	// Tag the commit
@@ -133,7 +131,7 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 		// Ref is still branch2, since `git tag` didn't change anything.
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/feature/branch2")
 	}
@@ -146,34 +144,138 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
-		_, ok := test.Environment[backend.GitHeadName]
-		assert.False(t, ok, "Expected no 'git.headName' key, since in detached head state.")
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
+		assert.NotContains(t, test.Environment, backend.GitHeadName,
+			"Expected no 'git.headName' key, since in detached head state.")
 	}
 
 	// Confirm that data can be inferred from the CI system if unavailable.
-	// Fake running under Travis CI.
+	// Fake running under Travis CI. We also need to unset GITHUB_ACTIONS so that
+	// the GitHub Actions detector doesn't take precedence when running in CI.
 	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION") // Restore our CI/CD detection logic.
+	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("TRAVIS", "1")
 	t.Setenv("TRAVIS_BRANCH", "branch-from-ci")
-	t.Setenv("GITHUB_REF", "branch-from-ci")
 
 	{
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
+
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 		name, ok := test.Environment[backend.GitHeadName]
-		t.Log(name)
 		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
-		// assert.Equal(t, "branch-from-ci", name) # see https://github.com/pulumi/pulumi/issues/5303
+		assert.Equal(t, "branch-from-ci", name)
+	}
+}
+
+// TestReadingHgRepo tests that metadata for a local Mercurial repository is
+// populated into the same git.* / vcs.* keys as a Git repository.
+func TestReadingHgRepo(t *testing.T) {
+	if _, err := exec.LookPath("hg"); err != nil {
+		t.Skip("hg binary not found on PATH; skipping")
+	}
+
+	// Disable CI/CD detection so running this in CI doesn't perturb the expected values.
+	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Isolate hg from the user's ~/.hgrc. Keep the config file outside the repo
+	// so it doesn't show up in `hg status` as an untracked file.
+	hgrc := filepath.Join(t.TempDir(), "hgrc")
+	require.NoError(t, os.WriteFile(hgrc, []byte(
+		"[ui]\nusername = test <test@test.org>\n",
+	), 0o600))
+	t.Setenv("HGRCPATH", hgrc)
+
+	e.RunCommand("hg", "init")
+	// Configure default remote path.
+	require.NoError(t, os.WriteFile(
+		filepath.Join(e.RootPath, ".hg", "hgrc"),
+		[]byte("[paths]\ndefault = https://bitbucket.org/owner-name/repo-name\n"),
+		0o600,
+	))
+	// Ignore any scaffolding files ptesting drops in RootPath (e.g. .yarnrc)
+	// so they don't pollute `hg status` and cause false "dirty" readings.
+	require.NoError(t, os.WriteFile(
+		filepath.Join(e.RootPath, ".hgignore"),
+		[]byte("syntax: glob\n.yarnrc\n.hgignore\n"),
+		0o600,
+	))
+
+	// First commit on the default branch.
+	e.WriteTestFile("alpha.txt", "")
+	e.RunCommand("hg", "add", "alpha.txt")
+	e.RunCommand("hg", "commit", "-m", "message for commit alpha\n\nDescription for commit alpha")
+
+	// State of the world from a clean hg repo on the default branch.
+	{
+		test := &backend.UpdateMetadata{
+			Environment: make(map[string]string),
+		}
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
+
+		assert.Equal(t, "message for commit alpha", test.Message)
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find hg node hash in update environment map")
+		require.Len(t, test.Environment[backend.GitHead], 40, "Expected full 40-char hg node hash")
+
+		// Mercurial always reports a branch; on a fresh repo that's "default".
+		assertEnvValue(t, test, backend.GitHeadName, "default")
+		assertEnvValue(t, test, backend.GitDirty, "false")
+
+		assertEnvValue(t, test, backend.GitAuthor, "test")
+		assertEnvValue(t, test, backend.GitAuthorEmail, "test@test.org")
+
+		// Mercurial has no committer/author split; committer keys are not set.
+		assert.NotContains(t, test.Environment, backend.GitCommitter)
+		assert.NotContains(t, test.Environment, backend.GitCommitterEmail)
+
+		assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
+		assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
+		assertEnvValue(t, test, backend.VCSRepoKind, "bitbucket.org")
+		assertEnvValue(t, test, backend.VCSRepoRoot, ".")
+	}
+
+	// Switch to a named branch; hg.headName is now reported.
+	e.RunCommand("hg", "branch", "feature/branch1")
+	e.WriteTestFile("beta.txt", "")
+	e.RunCommand("hg", "add", "beta.txt")
+	e.RunCommand("hg", "commit", "-m", "message for commit beta")
+	// Untracked file forces dirty.
+	e.WriteTestFile("beta-unsubmitted.txt", "")
+
+	{
+		test := &backend.UpdateMetadata{
+			Environment: make(map[string]string),
+		}
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
+
+		assert.Equal(t, "message for commit beta", test.Message)
+		assertEnvValue(t, test, backend.GitHeadName, "feature/branch1")
+		assertEnvValue(t, test, backend.GitDirty, "true")
+	}
+
+	// CI-driven branch name should be adopted when on the default branch.
+	e.RunCommand("hg", "update", "default")
+
+	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION")
+	t.Setenv("GITHUB_ACTIONS", "")
+	t.Setenv("TRAVIS", "1")
+	t.Setenv("TRAVIS_BRANCH", "branch-from-ci")
+
+	{
+		test := &backend.UpdateMetadata{
+			Environment: make(map[string]string),
+		}
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
+		assertEnvValue(t, test, backend.GitHeadName, "branch-from-ci")
 	}
 }
 
 // TestReadingGitLabMetadata tests the functions which read data fom the local Git repo
 // to add metadata to any updates.
-//
-//nolint:paralleltest // mutates environment variables
 func TestReadingGitLabMetadata(t *testing.T) {
 	// Disable our CI/CD detection code, since if this unit test is ran under CI
 	// it will change the expected behavior.
@@ -198,10 +300,9 @@ func TestReadingGitLabMetadata(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		assert.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 
-		_, ok := test.Environment[backend.GitHead]
-		assert.True(t, ok, "Expected to find Git SHA in update environment map")
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
 
 		assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
 		assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
@@ -260,7 +361,7 @@ func TestPulumiCLIMetadata(t *testing.T) {
 	cmd.SetArgs([]string{"subcommand", "--name", "pulumipus", "--age", "100", "--human"})
 
 	err := cmd.Execute()
-	assert.NoError(t, err, "Expected command to execute successfully")
+	require.NoError(t, err, "Expected command to execute successfully")
 
 	// Check that normal flags are set in the environment.
 	for _, flagName := range []string{
@@ -314,9 +415,28 @@ func TestAddEscMetadataToEnvironment(t *testing.T) {
 	assert.Equal(t, expected, env[backend.StackEnvironments])
 }
 
+func TestAddExecutionMetadataToEnvironmentDetectsAgent(t *testing.T) {
+	// Don't let agent-detection env vars from the host shell mask CODEX_THREAD_ID.
+	for _, key := range agentdetect.DetectionEnvVars() {
+		t.Setenv(key, "")
+	}
+	t.Setenv("CODEX_THREAD_ID", "thread")
+	env := map[string]string{}
+	addExecutionMetadataToEnvironment(env, "unknown", "")
+
+	assert.Equal(t, "cli", env[backend.ExecutionKind])
+	assert.Equal(t, "codex", env[backend.ExecutionAgent])
+}
+
+func TestAddExecutionMetadataToEnvironmentUsesExplicitAgent(t *testing.T) {
+	t.Setenv("CODEX_THREAD_ID", "thread")
+	env := map[string]string{}
+	addExecutionMetadataToEnvironment(env, "unknown", "user-provided")
+
+	assert.Equal(t, "user-provided", env[backend.ExecutionAgent])
+}
+
 // Tests that Git metadata can be read from the environment if there is no Git repository present.
-//
-//nolint:paralleltest // mutates environment variables
 func TestGitMetadataIsReadFromEnvironmentWhenNoRepo(t *testing.T) {
 	// Disable CI/CD detection code, since we don't care about those variables for this test and we don't want its
 	// behaviour to change if it is being run in CI.
@@ -343,10 +463,10 @@ func TestGitMetadataIsReadFromEnvironmentWhenNoRepo(t *testing.T) {
 	}
 
 	// Act.
-	err := addGitMetadata(e.RootPath, test)
+	err := addVCSMetadata(e.RootPath, test)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
 	assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
 	assertEnvValue(t, test, backend.VCSRepoKind, "repo-kind")
@@ -361,8 +481,6 @@ func TestGitMetadataIsReadFromEnvironmentWhenNoRepo(t *testing.T) {
 }
 
 // Tests that Git metadata is not read from the environment in the event that a real Git repository is present.
-//
-//nolint:paralleltest // mutates environment variables
 func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 	// Disable CI/CD detection code, since we don't care about those variables for this test and we don't want its
 	// behaviour to change if it is being run in CI.
@@ -384,14 +502,16 @@ func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	e.RunCommand("mkdir", "subdirectory")
 	e.RunCommand("git", "init", "-b", "master")
 	e.RunCommand("git", "config", "user.email", "repo-user@example.com")
 	e.RunCommand("git", "config", "user.name", "repo-user")
 	e.RunCommand("git", "remote", "add", "origin", "git@github.com:repo-owner-name/repo-repo-name")
 	e.RunCommand("git", "checkout", "-b", "master")
 
+	subDir := filepath.Join(e.RootPath, "subdirectory")
+	e.CWD = subDir
 	e.WriteTestFile("alpha.txt", "")
+	e.CWD = e.RootPath
 	e.RunCommand("git", "add", ".")
 	e.RunCommand("git", "commit", "-m", "repo-message")
 
@@ -402,10 +522,10 @@ func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 	}
 
 	// Act.
-	err := addGitMetadata(filepath.Join(e.RootPath, "subdirectory"), test)
+	err := addVCSMetadata(subDir, test)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assertEnvValue(t, test, backend.VCSRepoOwner, "repo-owner-name")
 	assertEnvValue(t, test, backend.VCSRepoName, "repo-repo-name")
 	assertEnvValue(t, test, backend.VCSRepoKind, "github.com")
@@ -423,9 +543,6 @@ func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 func assertEnvValue(t *testing.T, md *backend.UpdateMetadata, key, val string) {
 	t.Helper()
 	got, ok := md.Environment[key]
-	if !ok {
-		t.Errorf("Didn't find expected update metadata key %q (full env %+v)", key, md.Environment)
-	} else {
-		assert.EqualValues(t, val, got, "got different value for update metadata %v than expected", key)
-	}
+	require.True(t, ok, "Didn't find expected update metadata key %q (full env %+v)", key, md.Environment)
+	assert.Equal(t, val, got, "got different value for update metadata %v than expected", key)
 }

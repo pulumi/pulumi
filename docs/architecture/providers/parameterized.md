@@ -4,7 +4,8 @@
 *Parameterized providers* are a Pulumi feature that allows a user to change a
 provider's behaviour at runtime. The user generates an SDK by running
 `pulumi package add` or `pulumi package gen-sdk` with additional command-line
-arguments (`args`). The provider is passed the arguments and generates an SDK
+arguments (`args`). When using `pulumi package add`, the package is also added to
+the project configuration file (Pulumi.yaml). The provider is passed the arguments and generates an SDK
 for the user, which also includes custom provider metadata. When the SDK is used
 from a Pulumi program, the provider is "parameterized" with the metadata from
 within the generated SDK so it's ready to use.
@@ -30,7 +31,7 @@ call can take two forms:
 Requirements and conditions for "replacement" parameterization:
 
 * Each provider parameterization is run in its own provider instance.
-* Parameterized package names must be unique within the program where its added.
+* Parameterized package names must be unique within the program where it's added.
 * Parameterization is either via CLI args *or* embedded metadata.
 * [](pulumirpc.ResourceProvider.Parameterize) is always called before [](pulumirpc.ResourceProvider.Configure).
 * [](pulumirpc.ResourceProvider.Parameterize) is always called before [](pulumirpc.ResourceProvider.GetSchema).
@@ -132,7 +133,7 @@ sequenceDiagram
 
 :::{warning}
 In the absence of parameterized providers, it is generally safe to assume that a
-resource's package name exactly matches exactly the name of the provider
+resource's package name exactly matches the name of the provider
 [plugin](plugins) that provides that package. For example, an `aws:s3:Bucket`
 resource could be expected to be managed by the `aws` provider plugin, which in
 turn would live in a binary named `pulumi-resource-aws`. In the presence of

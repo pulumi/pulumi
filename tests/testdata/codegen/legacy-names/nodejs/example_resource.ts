@@ -34,9 +34,9 @@ export class Example_resource extends pulumi.CustomResource {
         return obj['__pulumiType'] === Example_resource.__pulumiType;
     }
 
-    public /*out*/ readonly URL!: pulumi.Output<string | undefined>;
-    public /*out*/ readonly good_URLs!: pulumi.Output<string[] | undefined>;
-    public readonly map_enum!: pulumi.Output<{[key: string]: enums.Enum_XYZ}[] | undefined>;
+    declare public /*out*/ readonly URL: pulumi.Output<string | undefined>;
+    declare public /*out*/ readonly good_URLs: pulumi.Output<string[] | undefined>;
+    declare public readonly map_enum: pulumi.Output<{[key: string]: enums.Enum_XYZ}[] | undefined>;
 
     /**
      * Create a Example_resource resource with the given unique name, arguments, and options.
@@ -49,8 +49,8 @@ export class Example_resource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["map_enum"] = args ? args.map_enum : undefined;
-            resourceInputs["request_HTTP"] = args ? args.request_HTTP : undefined;
+            resourceInputs["map_enum"] = args?.map_enum;
+            resourceInputs["request_HTTP"] = args?.request_HTTP;
             resourceInputs["URL"] = undefined /*out*/;
             resourceInputs["good_URLs"] = undefined /*out*/;
         } else {
@@ -67,6 +67,6 @@ export class Example_resource extends pulumi.CustomResource {
  * The set of arguments for constructing a Example_resource resource.
  */
 export interface Example_resourceArgs {
-    map_enum?: pulumi.Input<pulumi.Input<{[key: string]: pulumi.Input<enums.Enum_XYZ>}>[]>;
-    request_HTTP?: pulumi.Input<inputs.HTTP_module.RequestArgs>;
+    map_enum?: pulumi.Input<pulumi.Input<{[key: string]: pulumi.Input<enums.Enum_XYZ>}>[] | undefined>;
+    request_HTTP?: pulumi.Input<inputs.HTTP_module.RequestArgs | undefined>;
 }

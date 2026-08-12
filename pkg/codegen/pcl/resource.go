@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,18 @@
 package pcl
 
 import (
+	"bytes"
+	"fmt"
+
+	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // ResourceOptions represents a resource instantiation's options.
@@ -27,12 +34,16 @@ type ResourceOptions struct {
 	// The definition of the resource options.
 	Definition *model.Block
 
+	// An experession that evaluates to a list of aliases for the resource.
+	Aliases model.Expression
 	// An expression to range over when instantiating the resource.
 	Range model.Expression
 	// The resource's parent, if any.
 	Parent model.Expression
 	// The provider to use.
 	Provider model.Expression
+	// The providers (plural) to use in the case of a component resource.
+	Providers model.Expression
 	// The explicit dependencies of the resource.
 	DependsOn model.Expression
 	// Whether or not the resource is protected.
@@ -42,13 +53,41 @@ type ResourceOptions struct {
 	RetainOnDelete model.Expression
 	// A list of properties that are not considered when diffing the resource.
 	IgnoreChanges model.Expression
+	// A list of properties where the diff is not displayed.
+	HideDiffs model.Expression
+	// A list of properties that should trigger resource replacement when changed.
+	ReplaceOnChanges model.Expression
+	// Whether the old resource should be deleted before creating the new one during replacement.
+	DeleteBeforeReplace model.Expression
+	// A list of output properties that should be treated as secret, in addition to ones detected from schema.
+	AdditionalSecretOutputs model.Expression
 	// The version of the provider for this resource.
 	Version model.Expression
+	// CustomTimeouts overrides default timeouts for resource CRUD operations.
+	CustomTimeouts model.Expression
 	// The plugin download URL for this resource.
 	PluginDownloadURL model.Expression
 	// If set, the provider's Delete method will not be called for this resource if the specified resource is being
 	// deleted as well.
 	DeletedWith model.Expression
+	// If set, the resource will be replaced if one of the specified resources is replaced.
+	ReplaceWith model.Expression
+	// If the resource was imported, the id that was imported.
+	ImportID model.Expression
+	// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger model.Expression
+	// Environment variable mappings for provider resources.
+	EnvVarMappings model.Expression
+	// Hooks are lifecycle hooks for the resource, keyed by hook type with lists of command arrays.
+	Hooks model.Expression
+}
+
+// BaseResource represents shared resource-like data used by both registered and read resources.
+type BaseResource interface {
+	Node
+	GetToken() (string, hcl.Range)
+	GetSchema() *schema.Resource
+	GetInputType() model.Type
 }
 
 // Resource represents a resource instantiation inside of a program or component.
@@ -70,7 +109,7 @@ type Resource struct {
 	LenientTraversal bool
 
 	// Token is the type token for this resource.
-	Token string
+	token string
 
 	// Schema is the schema definition for this resource, if any.
 	Schema *schema.Resource
@@ -90,6 +129,16 @@ type Resource struct {
 	Options *ResourceOptions
 }
 
+// GetToken returns the resource's token and its source range. If the resource has been successfully bound, the token is
+// canonical, else it's what was parsed from the source code.
+func (r *Resource) GetToken() (string, hcl.Range) {
+	token := r.token
+	if token == "" {
+		token = r.syntax.Labels[1]
+	}
+	return token, r.syntax.LabelRanges[1]
+}
+
 // SyntaxNode returns the syntax node associated with the resource.
 func (r *Resource) SyntaxNode() hclsyntax.Node {
 	return r.syntax
@@ -102,6 +151,13 @@ func (r *Resource) Type() model.Type {
 
 func (r *Resource) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagnostics {
 	return model.VisitExpressions(r.Definition, pre, post)
+}
+
+func (r *Resource) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	if value, hasValue := hcl2.LookupVariable(context, r.Name()); hasValue {
+		return value, nil
+	}
+	return cty.DynamicVal, nil
 }
 
 func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
@@ -133,11 +189,119 @@ func (r *Resource) LogicalName() string {
 	return r.Name()
 }
 
-// DecomposeToken attempts to decompose the resource's type token into its package, module, and type. If decomposition
-// fails, a description of the failure is returned in the diagnostics.
-func (r *Resource) DecomposeToken() (string, string, string, hcl.Diagnostics) {
-	_, tokenRange := getResourceToken(r)
-	return DecomposeToken(r.Token, tokenRange)
+func (r *Resource) GetSchema() *schema.Resource {
+	return r.Schema
+}
+
+func (r *Resource) GetInputType() model.Type {
+	return r.InputType
+}
+
+// ReadResource represents a read resource instantiation inside of a program or component.
+type ReadResource struct {
+	node
+
+	syntax *hclsyntax.Block
+
+	// The name visible to API calls related to the resource. Used as the Name argument in resource
+	// constructors, and through those calls to RegisterResource. Must not be modified during code
+	// generation to ensure that resources are not renamed (deleted and recreated).
+	logicalName string
+
+	// The definition of the resource.
+	Definition *model.Block
+
+	// When set to true, allows traversing unknown properties through a resource. i.e. `resource.unknownProperty`
+	// will be valid and the type of the traversal is dynamic. This property is set to false by default
+	LenientTraversal bool
+
+	// Token is the type token for this resource.
+	token string
+
+	// Schema is the schema definition for this resource, if any.
+	Schema *schema.Resource
+
+	// The type of the resource's inputs. This will always be either Any or an object type.
+	InputType model.Type
+	// The type of the resource's outputs. This will always be either Any or an object type.
+	OutputType model.Type
+
+	// The type of the resource variable.
+	VariableType model.Type
+
+	// The resource's input attributes, in source order.
+	Inputs []*model.Attribute
+
+	// The resource's options, if any.
+	Options *ResourceOptions
+}
+
+// SyntaxNode returns the syntax node associated with the resource.
+func (r *ReadResource) SyntaxNode() hclsyntax.Node {
+	return r.syntax
+}
+
+// Type returns the type of the resource.
+func (r *ReadResource) Type() model.Type {
+	return r.VariableType
+}
+
+func (r *ReadResource) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagnostics {
+	return model.VisitExpressions(r.Definition, pre, post)
+}
+
+func (r *ReadResource) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	if value, hasValue := hcl2.LookupVariable(context, r.Name()); hasValue {
+		return value, nil
+	}
+	return cty.DynamicVal, nil
+}
+
+func (r *ReadResource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
+	if r == nil || r.VariableType == nil {
+		return model.DynamicType.Traverse(traverser)
+	}
+
+	traversable, diags := r.VariableType.Traverse(traverser)
+
+	if diags.HasErrors() && r.LenientTraversal {
+		return model.DynamicType.Traverse(traverser)
+	}
+
+	return traversable, diags
+}
+
+// Deprecated: Name returns the variable or declaration name of the resource.
+func (r *ReadResource) Name() string {
+	return r.Definition.Labels[0]
+}
+
+// Returns the unique name of the resource; if the resource has an unique name it is formatted with
+// the format string and returned, otherwise the defaultValue is returned as is.
+func (r *ReadResource) LogicalName() string {
+	if r.logicalName != "" {
+		return r.logicalName
+	}
+
+	return r.Name()
+}
+
+// GetToken returns the resource's token and its source range. If the resource has been successfully bound,
+// the token is canonical, else it's what was parsed from the source code.
+func (r *ReadResource) GetToken() (string, hcl.Range) {
+	token := r.token
+	if token == "" {
+		token = r.syntax.Labels[1]
+	}
+	return token, r.syntax.LabelRanges[1]
+}
+
+func (r *ReadResource) GetSchema() *schema.Resource {
+	return r.Schema
+}
+
+func (r *ReadResource) GetInputType() model.Type {
+	return r.InputType
 }
 
 // ResourceProperty represents a resource property.
@@ -150,6 +314,31 @@ func (*ResourceProperty) SyntaxNode() hclsyntax.Node {
 	return syntax.None
 }
 
+func (p *ResourceProperty) Value(*hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	var buffer bytes.Buffer
+	for _, t := range p.Path {
+		var err error
+		switch t := t.(type) {
+		case hcl.TraverseRoot:
+			_, err = fmt.Fprint(&buffer, t.Name)
+		case hcl.TraverseAttr:
+			_, err = fmt.Fprintf(&buffer, ".%s", t.Name)
+		case hcl.TraverseIndex:
+			switch t.Key.Type() {
+			case cty.String:
+				_, err = fmt.Fprintf(&buffer, `["%s"]`, model.EscapeString(t.Key.AsString()))
+			case cty.Number:
+				idx, _ := t.Key.AsBigFloat().Int64()
+				_, err = fmt.Fprintf(&buffer, "[%d]", idx)
+			default:
+				contract.Failf("unexpected traversal index of type %v", t.Key.Type())
+			}
+		}
+		contract.IgnoreError(err)
+	}
+	return cty.StringVal(buffer.String()), nil
+}
+
 func (p *ResourceProperty) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
 	propertyType, diagnostics := p.PropertyType.Traverse(traverser)
 	return &ResourceProperty{
@@ -160,4 +349,77 @@ func (p *ResourceProperty) Traverse(traverser hcl.Traverser) (model.Traversable,
 
 func (p *ResourceProperty) Type() model.Type {
 	return ResourcePropertyType
+}
+
+// NeedsVersionResourceOption returns false if the version resource matches the version in the schema.
+//
+// Languages that bake versions into their generated schemas can use NeedsVersionResourceOption to omit redundant
+// version information.
+func NeedsVersionResourceOption(version model.Expression, schema *schema.Resource) bool {
+	if version == nil {
+		return false
+	}
+
+	if schema == nil {
+		return true
+	}
+
+	v := schema.PackageReference.Version()
+	if v == nil {
+		return true
+	}
+
+	e, ok := version.(*model.TemplateExpression)
+	contract.Assertf(ok, "Expected a model.TemplateExpression, found %T", version)
+	if len(e.Parts) != 1 {
+		return true
+	}
+
+	optV, ok := e.Parts[0].(*model.LiteralValueExpression)
+	contract.Assertf(ok, "Expected a version literal, found %T", optV)
+	if !optV.Value.Type().Equals(cty.String) || !optV.Value.IsKnown() || optV.Value.IsNull() {
+		return true
+	}
+
+	optVStr := optV.Value.AsString()
+	optVersion, err := semver.Parse(optVStr)
+	if err != nil {
+		// If the literal isn't valid semver (including "v"-prefixed versions), treat it as a mismatch.
+		return true
+	}
+	return !v.Equals(optVersion)
+}
+
+func NeedsPluginDownloadURLResourceOption(pluginDownloadURL model.Expression, schema *schema.Resource) bool {
+	if pluginDownloadURL == nil {
+		return false
+	}
+
+	if schema == nil {
+		return true
+	}
+
+	pkg, err := schema.PackageReference.Definition()
+	if err != nil || pkg == nil {
+		return true
+	}
+
+	schemaURL := pkg.PluginDownloadURL
+	if schemaURL == "" {
+		return true
+	}
+
+	e, ok := pluginDownloadURL.(*model.TemplateExpression)
+	contract.Assertf(ok, "Expected a model.TemplateExpression, found %T", pluginDownloadURL)
+	if len(e.Parts) != 1 {
+		return true
+	}
+
+	optURL, ok := e.Parts[0].(*model.LiteralValueExpression)
+	contract.Assertf(ok, "Expected a pluginDownloadURL literal, found %T", optURL)
+	if !optURL.Value.Type().Equals(cty.String) || !optURL.Value.IsKnown() || optURL.Value.IsNull() {
+		return true
+	}
+
+	return schemaURL != optURL.Value.AsString()
 }

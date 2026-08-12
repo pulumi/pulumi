@@ -17,15 +17,16 @@ package fuzzing
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"golang.org/x/exp/maps"
 	"pgregory.net/rapid"
 )
 
@@ -70,9 +71,7 @@ func (ps *ProviderSpec) AsProviderLoaders() []*deploytest.ProviderLoader {
 
 	loaders := make([]*deploytest.ProviderLoader, len(ps.Packages))
 
-	pkgs := maps.Keys(ps.Packages)
-	slices.Sort(pkgs)
-	for i, pkg := range pkgs {
+	for i, pkg := range slices.Sorted(maps.Keys(ps.Packages)) {
 		loaders[i] = deploytest.NewProviderLoader(pkg, version, load)
 	}
 
@@ -82,17 +81,14 @@ func (ps *ProviderSpec) AsProviderLoaders() []*deploytest.ProviderLoader {
 // Implements PrettySpec.Pretty. Returns a human-readable representation of this ProviderSpec, suitable for use in
 // debugging output and error messages.
 func (ps *ProviderSpec) Pretty(indent string) string {
-	rendered := fmt.Sprintf("%sProvider %p", indent, ps)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "%sProvider %p", indent, ps)
 	if len(ps.Packages) == 0 {
-		rendered += fmt.Sprintf("\n%s  No packages", indent)
+		fmt.Fprintf(&rendered, "\n%s  No packages", indent)
 	} else {
-		rendered += fmt.Sprintf("\n%s  Packages (%d):", indent, len(ps.Packages))
-
-		pkgs := maps.Keys(ps.Packages)
-		slices.Sort(pkgs)
-
-		for _, p := range pkgs {
-			rendered += fmt.Sprintf("\n%s    %s", indent, p)
+		fmt.Fprintf(&rendered, "\n%s  Packages (%d):", indent, len(ps.Packages))
+		for _, p := range slices.Sorted(maps.Keys(ps.Packages)) {
+			fmt.Fprintf(&rendered, "\n%s    %s", indent, p)
 		}
 	}
 
@@ -109,16 +105,16 @@ func (ps *ProviderSpec) Pretty(indent string) string {
 		len(renderedUpdate) > 0
 
 	if !hasAny {
-		rendered += fmt.Sprintf("\n%s  No modified operations", indent)
+		fmt.Fprintf(&rendered, "\n%s  No modified operations", indent)
 	} else {
-		rendered += renderedCreate
-		rendered += renderedDelete
-		rendered += renderedDiff
-		rendered += renderedRead
-		rendered += renderedUpdate
+		rendered.WriteString(renderedCreate)
+		rendered.WriteString(renderedDelete)
+		rendered.WriteString(renderedDiff)
+		rendered.WriteString(renderedRead)
+		rendered.WriteString(renderedUpdate)
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // A ProviderCreateSpec specifies the behavior of a provider's create function. It maps resource URNs to the action that
@@ -142,15 +138,16 @@ func (pcs ProviderCreateSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sCreate:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sCreate:", indent)
 	for r, action := range pcs {
 		switch action {
 		case ProviderCreateFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns a CreateF-compatible callback that implements this ProviderCreateSpec.
@@ -197,15 +194,16 @@ func (pds ProviderDeleteSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sDelete:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sDelete:", indent)
 	for r, action := range pds {
 		switch action {
 		case ProviderDeleteFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s\n", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s\n", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns a DeleteF-compatible callback that implements this ProviderDeleteSpec.
@@ -252,21 +250,22 @@ func (pds ProviderDiffSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sDiff:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sDiff:", indent)
 	for r, action := range pds {
 		switch action {
 		case ProviderDiffDeleteBeforeReplace:
-			rendered += fmt.Sprintf("\n%s  -+ %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  -+ %s", indent, Colored(r))
 		case ProviderDiffDeleteAfterReplace:
-			rendered += fmt.Sprintf("\n%s  +- %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  +- %s", indent, Colored(r))
 		case ProviderDiffChange:
-			rendered += fmt.Sprintf("\n%s  ~  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  ~  %s", indent, Colored(r))
 		case ProviderDiffFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns a DiffF-compatible callback that implements this ProviderDiffSpec.
@@ -319,17 +318,18 @@ func (prs ProviderReadSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sRead:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sRead:", indent)
 	for r, action := range prs {
 		switch action {
 		case ProviderReadDeleted:
-			rendered += fmt.Sprintf("\n%s  -  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  -  %s", indent, Colored(r))
 		case ProviderReadFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns a ReadF-compatible callback that implements this ProviderReadSpec.
@@ -374,15 +374,16 @@ func (pus ProviderUpdateSpec) Pretty(indent string) string {
 		return ""
 	}
 
-	rendered := fmt.Sprintf("\n%sUpdate:", indent)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "\n%sUpdate:", indent)
 	for r, action := range pus {
 		switch action {
 		case ProviderUpdateFailure:
-			rendered += fmt.Sprintf("\n%s  !  %s", indent, Colored(r))
+			fmt.Fprintf(&rendered, "\n%s  !  %s", indent, Colored(r))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // Returns an UpdateF-compatible callback that implements this ProviderUpdateSpec.

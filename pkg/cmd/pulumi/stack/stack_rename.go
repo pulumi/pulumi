@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,9 +21,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -33,8 +35,7 @@ import (
 func newStackRenameCmd() *cobra.Command {
 	var stack string
 	cmd := &cobra.Command{
-		Use:   "rename <new-stack-name>",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "rename",
 		Short: "Rename an existing stack",
 		Long: "Rename an existing stack.\n" +
 			"\n" +
@@ -56,11 +57,13 @@ func newStackRenameCmd() *cobra.Command {
 			// Look up the stack to be moved, and find the path to the project file's location.
 			s, err := RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
-				backend.DefaultLoginManager,
+				cmdBackend.DefaultLoginManager,
 				stack,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -72,7 +75,7 @@ func newStackRenameCmd() *cobra.Command {
 
 			// Now perform the rename and get ready to rename the existing configuration to the new project file.
 			newStackName := args[0]
-			newStackRef, err := s.Rename(ctx, tokens.QName(newStackName))
+			newStackRef, err := backend.RenameStack(ctx, s, tokens.QName(newStackName))
 			if err != nil {
 				return err
 			}
@@ -87,7 +90,7 @@ func newStackRenameCmd() *cobra.Command {
 			case os.IsNotExist(configStatErr):
 				// Stack doesn't have any configuration, ignore.
 			case configStatErr == nil:
-				if err := os.Rename(oldConfigPath, newConfigPath); err != nil {
+				if err := os.Rename(oldConfigPath, newConfigPath); err != nil { //nolint:forbidigo // historic os.Rename usage
 					return fmt.Errorf("renaming configuration file to %s: %w", filepath.Base(newConfigPath), err)
 				}
 			default:
@@ -95,14 +98,22 @@ func newStackRenameCmd() *cobra.Command {
 			}
 
 			// Update the current workspace state to have selected the new stack.
-			if err := state.SetCurrentStack(newStackName); err != nil {
+			backendURL := state.BackendURLKey(s.Backend())
+			if err := state.SetCurrentStack(ws, backendURL, newStackRef.FullyQualifiedName().String()); err != nil {
 				return fmt.Errorf("setting current stack: %w", err)
 			}
 
-			fmt.Printf("Renamed %s to %s\n", s.Ref().String(), newStackRef.String())
+			fmt.Fprintf(cmd.OutOrStdout(), "Renamed %s to %s\n", s.Ref().String(), newStackRef.String())
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "new-stack-name"},
+		},
+		Required: 1,
+	})
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 //go:build !all
 // +build !all
 
@@ -106,7 +106,7 @@ func NewContainer(ctx *pulumi.Context, name string, child ChildInput,
 	}
 	// Wait to make sure RegisterResourceOutputs has actually finished registering the resource outputs.
 	//
-	// RegisterResourceOutputs does most of its work in a a goroutine, as does RegisterComponentResource.  This
+	// RegisterResourceOutputs does most of its work in a goroutine, as does RegisterComponentResource.  This
 	// means RegisterResourceOutputs is inheritly racy with the resource being read later.  This test explicitly
 	// tests roundtripping a container component resource, which means we need to read the outputs registered
 	// through RegisterResourceOutputs later, making the test racy.  We can work around this by making sure the
@@ -158,7 +158,7 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 		return nil, fmt.Errorf("unknown resource type: %s", typ)
 	}
 	err = ctx.RegisterResource(typ, name, nil, r, pulumi.URN_(urn))
-	return
+	return r, err
 }
 
 func main() {
@@ -199,7 +199,7 @@ func main() {
 		roundTrippedContainerChild := roundTrippedContainerChildResult.Value.(*Child)
 
 		pulumi.All(child.URN(), roundTrippedContainerChild.URN(), roundTrippedContainerChild.Message).ApplyT(
-			func(args []interface{}) (*string, error) {
+			func(args []any) (*string, error) {
 				const expectedMessage = "hello world!"
 				expectedURN := args[0].(pulumi.URN)
 				actualURN := args[1].(pulumi.URN)

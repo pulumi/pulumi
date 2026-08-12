@@ -18,16 +18,24 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
+	"sync"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	"github.com/AlecAivazis/survey/v2/terminal"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
+
+// Make sure we set `surveycore.DisableColor` to true exactly once, to avoid data races.
+// We only ever set `DisableColor` to true, so we don't have to worry about it needing to be reset.
+var disableSurveyColorOnce = sync.OnceFunc(func() { surveycore.DisableColor = true })
 
 func SurveyIcons(color colors.Colorization) survey.AskOpt {
 	return survey.WithIcons(func(icons *survey.IconSet) {
@@ -124,6 +132,10 @@ func PromptForValue(
 			if validationError == ErrRetryPromptForValue {
 				continue
 			} else if validationError != nil {
+				// Authentication errors should not be treated as validation failures.
+				if errors.Is(validationError, backenderr.LoginRequiredError{}) {
+					return "", validationError
+				}
 				// If validation failed, let the user know. If interactive, we will print the error and
 				// prompt the user again; otherwise, in the case of --yes, we fail and report an error.
 				var err error
@@ -135,7 +147,9 @@ func PromptForValue(
 				if yes {
 					return "", err
 				}
-				fmt.Printf("%s\n", err)
+				// Helper used by many commands; uses process stdout for
+				// interactive prompt validation feedback.
+				fmt.Printf("%s\n", err) //nolint:forbidigo
 				continue
 			}
 		}
@@ -169,8 +183,33 @@ func PromptUser(
 	colorization colors.Colorization,
 	surveyAskOpts ...survey.AskOpt,
 ) string {
+	response, _ := PromptUserErr(msg, options, defaultOption, colorization, surveyAskOpts...)
+	return response
+}
+
+// SurveyStdio routes survey prompts through the given streams when they are file-backed (survey
+// needs real file handles for terminal control), and returns nothing otherwise so survey falls
+// back to its defaults.
+func SurveyStdio(in io.Reader, out io.Writer) []survey.AskOpt {
+	fin, inOK := in.(terminal.FileReader)
+	fout, outOK := out.(terminal.FileWriter)
+	if !inOK || !outOK {
+		return nil
+	}
+	return []survey.AskOpt{survey.WithStdio(fin, fout, fout)}
+}
+
+// PromptUserErr is like PromptUser but returns the survey error (for example the user pressing
+// Ctrl-C) instead of swallowing it, so callers can distinguish cancellation from a chosen option.
+func PromptUserErr(
+	msg string,
+	options []string,
+	defaultOption string,
+	colorization colors.Colorization,
+	surveyAskOpts ...survey.AskOpt,
+) (string, error) {
 	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset)
-	surveycore.DisableColor = true
+	disableSurveyColorOnce()
 
 	allSurveyAskOpts := append(
 		surveyAskOpts,
@@ -186,9 +225,9 @@ func PromptUser(
 		Options: options,
 		Default: defaultOption,
 	}, &response, allSurveyAskOpts...); err != nil {
-		return ""
+		return "", err
 	}
-	return response
+	return response, nil
 }
 
 // PromptUserMultiSkippable wraps over promptUserMulti making it skippable through the "yes" parameter
@@ -210,7 +249,7 @@ func PromptUserMulti(msg string, options []string, defaultOptions []string, colo
 
 	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset) + confirmationHint
 
-	surveycore.DisableColor = true
+	disableSurveyColorOnce()
 	surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
 		icons.Question = survey.Icon{}
 		icons.SelectFocus = survey.Icon{Text: colorization.Colorize(colors.BrightGreen + ">" + colors.Reset)}
@@ -230,7 +269,8 @@ func PromptUserMulti(msg string, options []string, defaultOptions []string, colo
 func ConfirmPrompt(prompt string, name string, opts display.Options) bool {
 	out := opts.Stdout
 	if out == nil {
-		out = os.Stdout
+		// Helper used by many commands without a *cobra.Command writer.
+		out = os.Stdout //nolint:forbidigo
 	}
 	in := opts.Stdin
 	if in == nil {
@@ -251,4 +291,34 @@ func ConfirmPrompt(prompt string, name string, opts display.Options) bool {
 	reader := bufio.NewReader(in)
 	line, _ := reader.ReadString('\n')
 	return strings.TrimSpace(line) == name
+}
+
+// ConfirmDeletion runs the standard confirmation flow shared by destructive
+// commands (delete/remove/cancel). It returns nil when the caller should
+// proceed, and a non-nil error to return directly from RunE otherwise.
+//
+// The flow is:
+//   - if yes is true (the --yes flag), proceed without prompting;
+//   - if the session is non-interactive, return ErrNonInteractiveRequiresYes so
+//     callers must pass --yes in scripts and CI;
+//   - otherwise prompt and require the user to type confirmText, bailing (via
+//     result.FprintBailf) if they decline.
+//
+// confirmText is what the user must type to confirm. Pass the entity's name or
+// id so the user reaffirms exactly what they are deleting. For values that are
+// cumbersome to retype (for example UUIDs) pass a short word such as the command
+// verb ("remove", "cancel") instead.
+func ConfirmDeletion(
+	yes, interactive bool, prompt, confirmText string, w io.Writer, opts display.Options,
+) error {
+	if yes {
+		return nil
+	}
+	if !interactive {
+		return backenderr.ErrNonInteractiveRequiresYes
+	}
+	if !ConfirmPrompt(prompt, confirmText, opts) {
+		return result.FprintBailf(w, "confirmation declined")
+	}
+	return nil
 }

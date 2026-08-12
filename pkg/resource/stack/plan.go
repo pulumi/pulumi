@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@ func SerializeResourcePlan(
 	enc config.Encrypter,
 	showSecrets bool,
 ) (apitype.ResourcePlanV1, error) {
-	var outputs map[string]interface{}
+	var outputs map[string]any
 	if plan.Outputs != nil {
 		ctx := context.TODO()
 		outs, err := SerializeProperties(ctx, plan.Outputs, enc, showSecrets)

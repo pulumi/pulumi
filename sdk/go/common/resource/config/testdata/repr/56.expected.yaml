@@ -9,7 +9,7 @@ paths:
     - - nested: value
     string: '["a","b","c",[{"nested":"value"}]]'
     redacted: '["a","b","c",[{"nested":"value"}]]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAA/4D/hH0ABAZzdHJpbmcMAwABYQZzdHJpbmcMAwABYgZzdHJpbmcMAwABYw5bXWludGVyZmFjZSB7ff+EKAABF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAc/4IZAAEGbmVzdGVkBnN0cmluZwwHAAV2YWx1ZQ==
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAf/+CfAAEBnN0cmluZwwDAAFhBnN0cmluZwwDAAFiBnN0cmluZwwDAAFjDltdaW50ZXJmYWNlIHt9/4InAAEXbWFwW3N0cmluZ11pbnRlcmZhY2Uge31/BAEC/4AAAQwBEAAAHP+AGQABBm5lc3RlZAZzdHJpbmcMBwAFdmFsdWU=
     secure: false
     isObject: true
   my:name[0]:
@@ -38,7 +38,7 @@ paths:
     - nested: value
     string: '[{"nested":"value"}]'
     redacted: '[{"nested":"value"}]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAASP+EKAABF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAc/4IZAAEGbmVzdGVkBnN0cmluZwwHAAV2YWx1ZQ==
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAR/+CJwABF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABz/gBkAAQZuZXN0ZWQGc3RyaW5nDAcABXZhbHVl
     secure: false
     isObject: true
   my:name[3][0]:
@@ -46,7 +46,7 @@ paths:
       nested: value
     string: '{"nested":"value"}'
     redacted: '{"nested":"value"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAc/4IZAAEGbmVzdGVkBnN0cmluZwwHAAV2YWx1ZQ==
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABz/gBkAAQZuZXN0ZWQGc3RyaW5nDAcABXZhbHVl
     secure: false
     isObject: true
   my:name[3][0].nested:

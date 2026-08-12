@@ -1,0 +1,1 @@
+The SDKs used in the providers are simply copies of the SDKs from the tsnode/sdks snapshots.

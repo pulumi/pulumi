@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -105,13 +105,18 @@ func readConsolePlain(stdout io.Writer, stdin io.Reader, prompt string) (string,
 	var raw strings.Builder
 	for {
 		var b [1]byte
-		if _, err := os.Stdin.Read(b[:]); err != nil {
+		n, err := os.Stdin.Read(b[:])
+		if err != nil {
 			return "", err
 		}
-		if b[0] == '\n' {
+		if n == 0 {
+			continue
+		}
+		ch := b[0]
+		if ch == '\n' {
 			break
 		}
-		raw.WriteByte(b[0])
+		raw.WriteByte(ch)
 	}
 	return RemoveTrailingNewline(raw.String()), nil
 }
@@ -252,11 +257,12 @@ func (table Table) Render(opts *TableRenderOptions) string {
 	// any item in that column.
 	preferredColumnWidths := make([]int, columnCount)
 
-	allRows := []TableRow{{
+	normalizedRows := table.normalizedRows()
+	allRows := slice.Prealloc[TableRow](1 + len(normalizedRows))
+	allRows = append(allRows, TableRow{
 		Columns: table.Headers,
-	}}
-
-	allRows = append(allRows, table.normalizedRows()...)
+	})
+	allRows = append(allRows, normalizedRows...)
 
 	for rowIndex, row := range allRows {
 		columns := row.Columns

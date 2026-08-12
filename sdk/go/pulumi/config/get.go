@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ func Get(ctx *pulumi.Context, key string) string {
 	return v
 }
 
-func getObject(ctx *pulumi.Context, key string, output interface{}, use, insteadOf string) error {
+func getObject(ctx *pulumi.Context, key string, output any, use, insteadOf string) error {
 	if v, ok := get(ctx, key, use, insteadOf); ok {
 		return json.Unmarshal([]byte(v), output)
 	}
@@ -60,7 +60,7 @@ func getObject(ctx *pulumi.Context, key string, output interface{}, use, instead
 }
 
 // GetObject attempts to load an optional configuration value by its key into the specified output variable.
-func GetObject(ctx *pulumi.Context, key string, output interface{}) error {
+func GetObject(ctx *pulumi.Context, key string, output any) error {
 	return getObject(ctx, key, output, "GetSecretObject", "GetObject")
 }
 
@@ -107,7 +107,7 @@ func GetSecret(ctx *pulumi.Context, key string) pulumi.StringOutput {
 }
 
 // GetSecretObject attempts to load an optional configuration value by its key into the specified output variable.
-func GetSecretObject(ctx *pulumi.Context, key string, output interface{}) (pulumi.Output, error) {
+func GetSecretObject(ctx *pulumi.Context, key string, output any) (pulumi.Output, error) {
 	if err := getObject(ctx, key, output, "", ""); err != nil {
 		return nil, err
 	}

@@ -1,0 +1,1 @@
+<{%fg 3%}>warning: <{%reset%}><{%reset%}>AfterCreate hook "myHook" failed: Oh no<{%reset%}>

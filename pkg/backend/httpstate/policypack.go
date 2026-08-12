@@ -1,4 +1,4 @@
-// Copyright 2019-2024, Pulumi Corporation.
+// Copyright 2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,15 +20,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
@@ -36,64 +43,292 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
 type cloudRequiredPolicy struct {
 	apitype.RequiredPolicy
 	client  *client.Client
+	envs    backend.EnvironmentsBackend
 	orgName string
 }
 
 var _ engine.RequiredPolicy = (*cloudRequiredPolicy)(nil)
 
-func newCloudRequiredPolicy(client *client.Client,
+func newCloudRequiredPolicy(client *client.Client, envs backend.EnvironmentsBackend,
 	policy apitype.RequiredPolicy, orgName string,
 ) *cloudRequiredPolicy {
 	return &cloudRequiredPolicy{
 		client:         client,
+		envs:           envs,
 		RequiredPolicy: policy,
 		orgName:        orgName,
 	}
 }
 
 func (rp *cloudRequiredPolicy) Name() string    { return rp.RequiredPolicy.Name }
-func (rp *cloudRequiredPolicy) Version() string { return rp.RequiredPolicy.VersionTag }
+func (rp *cloudRequiredPolicy) Version() string { return rp.VersionTag }
 func (rp *cloudRequiredPolicy) OrgName() string { return rp.orgName }
 
-func (rp *cloudRequiredPolicy) Install(ctx context.Context) (string, error) {
+func (rp *cloudRequiredPolicy) policyVersion() string {
 	policy := rp.RequiredPolicy
-
-	// If version tag is empty, we use the version tag. This is to support older version of
+	// If version tag is empty, we use the version. This is to support older versions of
 	// pulumi/policy that do not have a version tag.
 	version := policy.VersionTag
 	if version == "" {
 		version = strconv.Itoa(policy.Version)
 	}
-	policyPackPath, installed, err := workspace.GetPolicyPath(rp.OrgName(),
-		strings.ReplaceAll(policy.Name, tokens.QNameDelimiter, "_"), version)
+	return version
+}
+
+func (rp *cloudRequiredPolicy) policyPath() (string, bool, error) {
+	version := rp.policyVersion()
+	return workspace.GetPolicyPath(
+		rp.OrgName(),
+		strings.ReplaceAll(rp.RequiredPolicy.Name, tokens.QNameDelimiter, "_"),
+		version)
+}
+
+// Installed returns true if the PolicyPack is already installed locally.
+func (rp *cloudRequiredPolicy) Installed() bool {
+	_, installed, err := rp.policyPath()
+	contract.IgnoreError(err)
+	return installed
+}
+
+// LocalPath returns the local path of the PolicyPack.
+func (rp *cloudRequiredPolicy) LocalPath() (string, error) {
+	policyPath, _, err := rp.policyPath()
+	return policyPath, err
+}
+
+// Download the PolicyPack.
+func (rp *cloudRequiredPolicy) Download(
+	ctx context.Context,
+	wrapper func(stream io.ReadCloser, size int64) io.ReadCloser,
+) (io.ReadCloser, int64, error) {
+	tarball, size, err := rp.client.DownloadPolicyPack(ctx, rp.PackLocation)
 	if err != nil {
-		// Failed to get a sensible PolicyPack path.
-		return "", err
-	} else if installed {
-		// We've already downloaded and installed the PolicyPack. Return.
-		return policyPackPath, nil
+		return nil, 0, err
 	}
+	return wrapper(tarball, size), size, nil
+}
 
-	fmt.Printf("Installing policy pack %s %s...\r\n", policy.Name, version)
-
-	// PolicyPack has not been downloaded and installed. Do this now.
-
-	logging.V(7).Infof("Downloading policy pack %s %s from %s", policy.Name, version, policy.PackLocation)
-	policyPackTarball, err := rp.client.DownloadPolicyPack(ctx, policy.PackLocation)
+// Install the PolicyPack. content is the tarball of the PolicyPack.
+func (rp *cloudRequiredPolicy) Install(ctx *plugin.Context, content io.ReadCloser, stdout, stderr io.Writer) error {
+	policyPackPath, _, err := rp.policyPath()
 	if err != nil {
-		return "", err
+		return err
 	}
-
-	return policyPackPath, installRequiredPolicy(ctx, policyPackPath, policyPackTarball)
+	return installRequiredPolicy(ctx, policyPackPath, content, stdout, stderr)
 }
 
 func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage { return rp.RequiredPolicy.Config }
+
+// ResolveEnvironments opens any referenced ESC environments and returns resolved
+// config (from policyConfig) and environment variables. Returns nil if no environments are referenced.
+func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine.ResolvedPolicyEnvironment, error) {
+	if len(rp.Environments) == 0 {
+		return nil, nil
+	}
+
+	// Build a synthetic environment that imports all referenced environments.
+	// This reuses the same path as stack ESC resolution.
+	yaml := workspace.NewEnvironment(rp.Environments).Definition()
+
+	env, diags, err := rp.envs.OpenYAMLEnvironment(ctx, rp.orgName, yaml, 2*time.Hour, nil)
+	if err != nil {
+		return nil, fmt.Errorf("opening ESC environments for policy pack %q: %w", rp.RequiredPolicy.Name, err)
+	}
+	if len(diags) != 0 {
+		var diagMsgs strings.Builder
+		for _, d := range diags {
+			fmt.Fprintf(&diagMsgs, "  %s\n", d.Summary)
+		}
+		return nil, fmt.Errorf(
+			"opening ESC environments for policy pack %q:\n%s", rp.RequiredPolicy.Name, diagMsgs.String())
+	}
+
+	result := &engine.ResolvedPolicyEnvironment{}
+
+	// Extract policyConfig from the resolved environment.
+	if policyConfigVal, ok := env.Properties["policyConfig"]; ok {
+		policyConfig, err := escValueToConfigMap(policyConfigVal)
+		if err != nil {
+			return nil, fmt.Errorf("extracting policyConfig from ESC environment for %q: %w", rp.RequiredPolicy.Name, err)
+		}
+		result.Config = policyConfig
+	}
+
+	// Extract environment variables and secrets using the environment's typed
+	// accessors (GetEnvironmentVariables, GetTemporaryFiles). This mirrors the
+	// stack resolution path's use of cli.PrepareEnvironment.
+	envVars, secrets, _, err := prepareEnvironment(env)
+	if err != nil {
+		return nil, fmt.Errorf("preparing ESC environment for policy pack %q: %w", rp.RequiredPolicy.Name, err)
+	}
+	if len(envVars) > 0 {
+		result.EnvironmentVariables = envVars
+	}
+	result.Secrets = secrets
+
+	return result, nil
+}
+
+// prepareEnvironment extracts environment variables, secrets, and temporary file
+// projections from a resolved ESC environment. This mirrors cli.PrepareEnvironment
+// from the esc package but avoids the import cycle (cli → httpstate).
+func prepareEnvironment(env *esc.Environment) (envVars map[string]string, secrets, tempFiles []string, err error) {
+	vars := env.GetEnvironmentVariables()
+	files := env.GetTemporaryFiles()
+
+	if len(vars) > 0 || len(files) > 0 {
+		envVars = make(map[string]string, len(vars)+len(files))
+	}
+
+	// Sort keys for deterministic output, matching cli.PrepareEnvironment.
+	for _, k := range slices.Sorted(maps.Keys(vars)) {
+		v := vars[k]
+		s, ok := v.Value.(string)
+		if !ok {
+			continue
+		}
+		envVars[k] = s
+		if v.Secret {
+			secrets = append(secrets, s)
+		}
+	}
+
+	// Create temporary files and map their paths as environment variables.
+	// Temp files persist for the process lifetime (matching the stack path).
+	for _, k := range slices.Sorted(maps.Keys(files)) {
+		v := files[k]
+		s, ok := v.Value.(string)
+		if !ok {
+			continue
+		}
+		if v.Secret {
+			secrets = append(secrets, s)
+		}
+
+		f, fErr := os.CreateTemp("", "esc-*")
+		if fErr != nil {
+			return nil, nil, nil, fmt.Errorf("creating temporary file for %q: %w", k, fErr)
+		}
+		if _, fErr = f.Write([]byte(s)); fErr != nil {
+			contract.IgnoreClose(f)
+			return nil, nil, nil, fmt.Errorf("writing temporary file for %q: %w", k, fErr)
+		}
+		contract.IgnoreClose(f)
+
+		tempFiles = append(tempFiles, f.Name())
+		envVars[k] = f.Name()
+	}
+
+	return envVars, secrets, tempFiles, nil
+}
+
+// escValueToConfigMap converts an esc.Value representing policyConfig into the
+// map[string]*json.RawMessage format expected by policy pack configuration.
+// The policyConfig is expected to be a map of policy names to config objects.
+func escValueToConfigMap(val esc.Value) (map[string]*json.RawMessage, error) {
+	m, ok := val.Value.(map[string]esc.Value)
+	if !ok {
+		return nil, fmt.Errorf("expected policyConfig to be a map, got %T", val.Value)
+	}
+
+	result := make(map[string]*json.RawMessage, len(m))
+	for k, v := range m {
+		jsonBytes, err := json.Marshal(escValueToInterface(v))
+		if err != nil {
+			return nil, fmt.Errorf("marshaling config for policy %q: %w", k, err)
+		}
+		raw := json.RawMessage(jsonBytes)
+		result[k] = &raw
+	}
+	return result, nil
+}
+
+// escValueToInterface recursively converts an esc.Value to a plain Go any for JSON serialization.
+func escValueToInterface(val esc.Value) any {
+	switch v := val.Value.(type) {
+	case map[string]esc.Value:
+		m := make(map[string]any, len(v))
+		for k, child := range v {
+			m[k] = escValueToInterface(child)
+		}
+		return m
+	case []esc.Value:
+		s := make([]any, len(v))
+		for i, child := range v {
+			s[i] = escValueToInterface(child)
+		}
+		return s
+	default:
+		return v
+	}
+}
+
+// localPolicyEnvironmentResolver implements engine.PolicyEnvironmentResolver
+// for local policy packs using the httpstate ESC backend.
+type localPolicyEnvironmentResolver struct {
+	envs    backend.EnvironmentsBackend
+	orgName string
+}
+
+var _ engine.PolicyEnvironmentResolver = (*localPolicyEnvironmentResolver)(nil)
+
+// NewLocalPolicyEnvironmentResolver creates a resolver for local policy pack
+// ESC environments.
+func NewLocalPolicyEnvironmentResolver(
+	envs backend.EnvironmentsBackend,
+	orgName string,
+) engine.PolicyEnvironmentResolver {
+	return &localPolicyEnvironmentResolver{envs: envs, orgName: orgName}
+}
+
+func (r *localPolicyEnvironmentResolver) ResolveEnvironments(
+	ctx context.Context,
+	environments []string,
+) (*engine.ResolvedPolicyEnvironment, error) {
+	if len(environments) == 0 {
+		return nil, nil
+	}
+
+	yaml := workspace.NewEnvironment(environments).Definition()
+
+	env, diags, err := r.envs.OpenYAMLEnvironment(ctx, r.orgName, yaml, 2*time.Hour, nil)
+	if err != nil {
+		return nil, fmt.Errorf("opening ESC environments: %w", err)
+	}
+	if len(diags) != 0 {
+		var diagMsgs strings.Builder
+		for _, d := range diags {
+			fmt.Fprintf(&diagMsgs, "  %s\n", d.Summary)
+		}
+		return nil, fmt.Errorf("opening ESC environments:\n%s", diagMsgs.String())
+	}
+
+	result := &engine.ResolvedPolicyEnvironment{}
+
+	if policyConfigVal, ok := env.Properties["policyConfig"]; ok {
+		policyConfig, err := escValueToConfigMap(policyConfigVal)
+		if err != nil {
+			return nil, fmt.Errorf("extracting policyConfig from ESC environment: %w", err)
+		}
+		result.Config = policyConfig
+	}
+
+	envVars, secrets, _, err := prepareEnvironment(env)
+	if err != nil {
+		return nil, fmt.Errorf("preparing ESC environment: %w", err)
+	}
+	if len(envVars) > 0 {
+		result.EnvironmentVariables = envVars
+	}
+	result.Secrets = secrets
+
+	return result, nil
+}
 
 func newCloudBackendPolicyPackReference(
 	cloudConsoleURL, orgName string, name tokens.QName,
@@ -136,7 +371,7 @@ func (pr *cloudBackendPolicyPackReference) Name() tokens.QName {
 }
 
 func (pr *cloudBackendPolicyPackReference) CloudConsoleURL() string {
-	return fmt.Sprintf("%s/%s/policypacks/%s", pr.cloudConsoleURL, pr.orgName, pr.Name())
+	return fmt.Sprintf("%s/%s/insights/policypacks/%s", pr.cloudConsoleURL, pr.orgName, pr.Name())
 }
 
 // cloudPolicyPack is a the Pulumi service implementation of the PolicyPack interface.
@@ -173,12 +408,12 @@ func (pack *cloudPolicyPack) Publish(
 		return err
 	}
 
-	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
+	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(op.PlugCtx, tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
 	if err != nil {
 		return err
 	}
 
-	analyzerInfo, err := analyzer.GetAnalyzerInfo()
+	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
 	if err != nil {
 		return err
 	}
@@ -214,7 +449,8 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Println("Uploading policy pack to Pulumi service")
 
-	publishedVersion, err := pack.cl.PublishPolicyPack(ctx, pack.ref.orgName, analyzerInfo, bytes.NewReader(packTarball))
+	publishedVersion, err := pack.cl.PublishPolicyPack(
+		ctx, pack.ref.orgName, runtime, analyzerInfo, bytes.NewReader(packTarball), op.Metadata)
 	if err != nil {
 		return err
 	}
@@ -260,7 +496,7 @@ func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOp
 
 const packageDir = "package"
 
-func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadCloser) error {
+func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadCloser, stdout, stderr io.Writer) error {
 	// If part of the directory tree is missing, os.MkdirTemp will return an error, so make sure
 	// the path we're going to create the temporary folder in actually exists.
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0o700); err != nil {
@@ -289,11 +525,17 @@ func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadClos
 		return fmt.Errorf("failed to extract tarball: %w", err)
 	}
 
+	// Close the tarball stream to emit its Done progress event, dismissing the
+	// "Installing policy pack" progress bar before dependency installation begins.
+	contract.IgnoreClose(tgz)
+
 	logging.V(7).Infof("Unpacking policy pack %q %q\n", tempDir, finalDir)
 
 	// If two calls to `plugin install` for the same plugin are racing, the second one will be
 	// unable to rename the directory. That's OK, just ignore the error. The temp directory created
 	// as part of the install will be cleaned up when we exit by the defer above.
+	//
+	//nolint:forbidigo // historic os.Rename usage
 	if err := os.Rename(tempPackageDir, finalDir); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("moving plugin: %w", err)
 	}
@@ -304,53 +546,31 @@ func installRequiredPolicy(ctx context.Context, finalDir string, tgz io.ReadClos
 		return fmt.Errorf("failed to load policy project at %s: %w", finalDir, err)
 	}
 
-	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
-	if strings.EqualFold(proj.Runtime.Name(), "nodejs") {
-		if err := completeNodeJSInstall(ctx, finalDir); err != nil {
-			return err
-		}
-	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		if err := completePythonInstall(ctx, finalDir, projPath, proj); err != nil {
-			return err
+	// Workaround for python, some policy packs don't specify a venv but we want to use one
+	if proj.Runtime.Name() == "python" {
+		// If the policy's options provide a virtualenv use it, else default to "venv"
+		if _, has := proj.Runtime.Options()["virtualenv"]; !has {
+			proj.Runtime.SetOption("virtualenv", "venv")
+			err = proj.Save(projPath)
+			if err != nil {
+				return fmt.Errorf("failed to save policy project at %s: %w", finalDir, err)
+			}
 		}
 	}
 
-	fmt.Println("Finished installing policy pack\r")
-	fmt.Println()
-
-	return nil
-}
-
-func completeNodeJSInstall(ctx context.Context, finalDir string) error {
-	if bin, err := npm.Install(ctx, npm.AutoPackageManager, finalDir, false /*production*/, nil, os.Stderr); err != nil {
-		return fmt.Errorf("failed to install dependencies of policy pack; you may need to re-run `%s install` "+
-			"in %q before this policy pack works"+": %w", bin, finalDir, err)
-	}
-
-	return nil
-}
-
-func completePythonInstall(ctx context.Context, finalDir, projPath string, proj *workspace.PolicyPackProject) error {
-	const venvDir = "venv"
-	// TODO[pulumi/pulumi/issues/16286]: Allow using different toolchains for policy packs.
-	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
-		Toolchain:  toolchain.Pip,
-		Root:       finalDir,
-		Virtualenv: venvDir,
-	})
+	language, err := ctx.Host.LanguageRuntime(ctx, proj.Runtime.Name())
 	if err != nil {
-		return fmt.Errorf("failed to get python toolchain: %w", err)
+		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 	}
 
-	if err := tc.InstallDependencies(ctx, finalDir, false /* useLanguageVersionTools */, false, /*showOutput*/
-		os.Stdout, os.Stderr); err != nil {
-		return err
-	}
-
-	// Save project with venv info.
-	proj.Runtime.SetOption("virtualenv", venvDir)
-	if err := proj.Save(projPath); err != nil {
-		return fmt.Errorf("saving project at %s: %w", projPath, err)
+	info := plugin.NewProgramInfo(finalDir, finalDir, ".", proj.Runtime.Options())
+	err = pkgCmdUtil.InstallDependencies(ctx.Request(), language, plugin.InstallDependenciesRequest{
+		Info:                    info,
+		UseLanguageVersionTools: false,
+		IsPlugin:                true,
+	}, stdout, stderr)
+	if err != nil {
+		return fmt.Errorf("installing dependencies: %w", err)
 	}
 
 	return nil

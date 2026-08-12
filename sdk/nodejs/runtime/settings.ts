@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,20 +18,75 @@ import * as path from "path";
 import { ComponentResource } from "../resource";
 import { CallbackServer, ICallbackServer } from "./callbacks";
 import { debuggablePromise } from "./debuggable";
-import { getLocalStore, getStore } from "./state";
+import { getLocalStore, getPackageRefs, getStore } from "./state";
 
 import * as engrpc from "../proto/engine_grpc_pb";
 import * as engproto from "../proto/engine_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
 import * as resproto from "../proto/resource_pb";
+import * as emptyproto from "google-protobuf/google/protobuf/empty_pb";
+
+// Loaded with require() instead of a typed import because the OpenTelemetry type declarations
+// use syntax that requires TypeScript >= 4.5, while this SDK is compiled with TypeScript 3.8.
+const opentelemetry = require("@opentelemetry/api");
+
+/*
+  Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
+ */
+const maxRPCMessageSize: number = 1024 * 1024 * 400;
+/*
+  This is the time a message can be received by the GRPC server and wait in the queue without being handled. If there is
+  blocking happening in the pulumi program, and/or there are a lot of requests and other tasks to process by the event
+  loop, this can take longer than the default 30 seconds. Requests that take longer end up being cancelled, causing the
+  operation to fail.
+*/
+const serverMaxUnrequestedTimeInServer = 30 * 60; // half an hour in seconds
+/**
+ * Create a gRPC interceptor that injects OpenTelemetry trace context into outgoing calls.
+ * This is needed because the automatic instrumentation doesn't work with generated gRPC clients
+ * that capture prototype method references at module load time.
+ */
+function createTraceContextInterceptor(): grpc.Interceptor {
+    return (opts, nextCall) => {
+        return new grpc.InterceptingCall(nextCall(opts), {
+            start: (metadata, listener, next) => {
+                const carrier = {
+                    get(key: string): string | undefined {
+                        return metadata.get(key)?.[0]?.toString();
+                    },
+                    set(key: string, value: string): void {
+                        metadata.set(key, value);
+                    },
+                    keys(): string[] {
+                        return metadata.getMap() ? Object.keys(metadata.getMap()) : [];
+                    },
+                };
+
+                opentelemetry.propagation.inject(opentelemetry.context.active(), carrier);
+
+                next(metadata, listener);
+            },
+        });
+    };
+}
 
 /**
- * Raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb).
- *
+ * Base gRPC channel options used for both clients and servers.
  * @internal
  */
-export const maxRPCMessageSize: number = 1024 * 1024 * 400;
-const grpcChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSize };
+export const grpcChannelOptions: grpc.ChannelOptions = {
+    "grpc.max_receive_message_length": maxRPCMessageSize,
+    "grpc.server_max_unrequested_time_in_server": serverMaxUnrequestedTimeInServer,
+};
+
+/**
+ * gRPC client options with trace context propagation interceptor.
+ * @internal
+ */
+export const grpcClientOptions: grpc.ClientOptions = {
+    ...grpcChannelOptions,
+    interceptors: [createTraceContextInterceptor()],
+};
 
 /**
  * excessiveDebugOutput enables, well, pretty excessive debug output pertaining
@@ -85,11 +140,6 @@ export interface Options {
     readonly testModeEnabled?: boolean;
 
     /**
-     * True if we're in query mode (does not allow resource registration).
-     */
-    readonly queryMode?: boolean;
-
-    /**
      * True if we will resolve missing outputs to inputs during preview.
      */
     readonly legacyApply?: boolean;
@@ -141,7 +191,6 @@ export function resetOptions(
     store.settings.options.project = project;
     store.settings.options.stack = stack;
     store.settings.options.dryRun = preview;
-    store.settings.options.queryMode = isQueryMode();
     store.settings.options.parallel = parallel;
     store.settings.options.monitorAddr = monitorAddr;
     store.settings.options.engineAddr = engineAddr;
@@ -154,11 +203,15 @@ export function resetOptions(
     store.supportsResourceReferences = false;
     store.supportsOutputValues = false;
     store.supportsDeletedWith = false;
+    store.supportsReplaceWith = false;
     store.supportsAliasSpecs = false;
     store.supportsTransforms = false;
     store.supportsInvokeTransforms = false;
     store.supportsParameterization = false;
     store.callbacks = undefined;
+    store.packageRefs = new Map<string, Promise<string>>();
+    store.pendingResourceRegistrations = new Map();
+    store.deferredOutputSources = new WeakMap();
 }
 
 export function setMockOptions(
@@ -240,55 +293,110 @@ async function monitorSupportsFeature(monitorClient: resrpc.IResourceMonitorClie
 }
 
 /**
+ * Queries the resource monitor for the set of features it supports via
+ * GetDeploymentInfo.
+ *
+ * Resolves to undefined if the monitor does not implement GetDeploymentInfo.
+ *
+ * @internal
+ */
+function getMonitorSupportedFeatures(
+    monitorClient: resrpc.IResourceMonitorClient,
+): Promise<resproto.ResourceMonitorFeature[] | undefined> {
+    return new Promise((resolve, reject) => {
+        monitorClient.getDeploymentInfo(
+            new emptyproto.Empty(),
+            (err: grpc.ServiceError | null, resp: resproto.DeploymentInfo | undefined) => {
+                if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                    return resolve(undefined);
+                }
+
+                if (err) {
+                    return reject(err);
+                }
+
+                if (resp === undefined) {
+                    return reject(new Error("No response from resource monitor"));
+                }
+
+                return resolve(resp.getSupportedfeaturesList());
+            },
+        );
+    });
+}
+
+// A frozen map of old feature IDs to the new resource monitor features.
+//
+// This map should never be updated.
+const legacyFeatureMapping: Record<string, resproto.ResourceMonitorFeature> = {
+    secrets: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_SECRETS,
+    resourceReferences: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+    outputValues: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES,
+    deletedWith: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+    replaceWith: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+    aliasSpecs: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
+    transforms: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
+    invokeTransforms: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+    parameterization: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+    resourceHooks: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+    errorHooks: resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+};
+
+/**
  * Queries the resource monitor for its capabilities and sets the appropriate
- * flags in the store.
+ * flags in the store. Monitor capabilities are advertised as a set via
+ * GetDeploymentInfo. Older monitors don't implement it, in which case we fall
+ * back to probing each feature individually via SupportsFeature.
  *
  * @internal
  **/
 export async function awaitFeatureSupport(): Promise<void> {
     const monitorRef = getMonitor();
-    if (monitorRef !== undefined) {
-        const store = getStore();
-        const [
-            secrets,
-            resourceReferences,
-            outputValues,
-            deletedWith,
-            aliasSpecs,
-            transforms,
-            invokeTransforms,
-            parameterization,
-        ] = await Promise.all(
-            [
-                "secrets",
-                "resourceReferences",
-                "outputValues",
-                "deletedWith",
-                "aliasSpecs",
-                "transforms",
-                "invokeTransforms",
-                "parameterization",
-            ].map((feature) => monitorSupportsFeature(monitorRef, feature)),
-        );
-
-        store.supportsSecrets = secrets;
-        store.supportsResourceReferences = resourceReferences;
-        store.supportsOutputValues = outputValues;
-        store.supportsDeletedWith = deletedWith;
-        store.supportsAliasSpecs = aliasSpecs;
-        store.supportsTransforms = transforms;
-        store.supportsInvokeTransforms = invokeTransforms;
-        store.supportsParameterization = parameterization;
+    if (monitorRef === undefined) {
+        return;
     }
-}
 
-/**
- * @internal
- *  Used only for testing purposes.
- */
-export function _setQueryMode(val: boolean) {
-    const { settings } = getStore();
-    settings.options.queryMode = val;
+    let features = await getMonitorSupportedFeatures(monitorRef);
+    if (features === undefined) {
+        const probed = await Promise.all(
+            Object.keys(legacyFeatureMapping)
+                .sort()
+                .map(async (id) =>
+                    (await monitorSupportsFeature(monitorRef, id)) ? legacyFeatureMapping[id] : undefined,
+                ),
+        );
+        features = probed.filter((f): f is resproto.ResourceMonitorFeature => f !== undefined);
+    }
+
+    const store = getStore();
+    store.supportsSecrets = features.includes(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_SECRETS);
+    store.supportsResourceReferences = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+    );
+    store.supportsOutputValues = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES,
+    );
+    store.supportsDeletedWith = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+    );
+    store.supportsReplaceWith = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+    );
+    store.supportsAliasSpecs = features.includes(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS);
+    store.supportsTransforms = features.includes(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_TRANSFORMS);
+    store.supportsInvokeTransforms = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+    );
+    store.supportsParameterization = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+    );
+    store.supportsResourceHooks = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+    );
+    store.supportsErrorHooks = features.includes(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS);
+    store.supportsInvokeDependsOn = features.includes(
+        resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
+    );
 }
 
 /**
@@ -297,13 +405,6 @@ export function _setQueryMode(val: boolean) {
  */
 export function _reset(): void {
     resetOptions("", "", -1, "", "", false, "");
-}
-
-/**
- * Returns true if query mode is enabled.
- */
-export function isQueryMode(): boolean {
-    return options().queryMode === true;
 }
 
 /**
@@ -391,6 +492,44 @@ export function _setStack(val: string | undefined) {
 }
 
 /**
+ * Checks if the engine we are connected to is compatible with the passed in version range. If the version is not
+ * compatible with the specified range, an exception is raised.
+ *
+ * @param range
+ *  The range to check. The supported syntax for the range is that of
+ *  https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be AND-ed
+ *  together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly 3.7.7.
+ *  Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than 3.8.0.
+ */
+export function requirePulumiVersion(range: string): Promise<void> {
+    const engineRef = getEngine();
+    if (!engineRef) {
+        return Promise.resolve(undefined);
+    }
+    const req = new engproto.RequirePulumiVersionRequest();
+    req.setPulumiVersionRange(range);
+    return new Promise<void>((resolve, reject) => {
+        engineRef.requirePulumiVersion(
+            req,
+            (err: grpc.ServiceError | null, resp: engproto.RequirePulumiVersionResponse | undefined) => {
+                if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                    return reject(
+                        new Error(
+                            "The installed version of the CLI does not support the `RequirePulumiVersion` RPC. " +
+                                "Please upgrade the Pulumi CLI.",
+                        ),
+                    );
+                }
+                if (err) {
+                    return reject(err);
+                }
+                return resolve();
+            },
+        );
+    });
+}
+
+/**
  * Returns true if we are currently connected to a resource monitoring service.
  */
 export function hasMonitor(): boolean {
@@ -409,7 +548,7 @@ export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
         if (monitor === undefined) {
             if (addr) {
                 // Lazily initialize the RPC connection to the monitor.
-                monitor = new resrpc.ResourceMonitorClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
+                monitor = new resrpc.ResourceMonitorClient(addr, grpc.credentials.createInsecure(), grpcClientOptions);
                 settings.options.monitorAddr = addr;
             }
         }
@@ -421,7 +560,7 @@ export function getMonitor(): resrpc.IResourceMonitorClient | undefined {
                 settings.monitor = new resrpc.ResourceMonitorClient(
                     addr,
                     grpc.credentials.createInsecure(),
-                    grpcChannelOptions,
+                    grpcClientOptions,
                 );
                 settings.options.monitorAddr = addr;
             }
@@ -504,7 +643,7 @@ export function getEngine(): engrpc.IEngineClient | undefined {
             const addr = options().engineAddr;
             if (addr) {
                 // Lazily initialize the RPC connection to the engine.
-                engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
+                engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcClientOptions);
             }
         }
         return engine;
@@ -513,7 +652,7 @@ export function getEngine(): engrpc.IEngineClient | undefined {
             const addr = options().engineAddr;
             if (addr) {
                 // Lazily initialize the RPC connection to the engine.
-                settings.engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcChannelOptions);
+                settings.engine = new engrpc.EngineClient(addr, grpc.credentials.createInsecure(), grpcClientOptions);
             }
         }
         return settings.engine;
@@ -521,6 +660,8 @@ export function getEngine(): engrpc.IEngineClient | undefined {
 }
 
 export function terminateRpcs() {
+    const store = getStore();
+    store.terminated = true;
     disconnectSync();
 }
 
@@ -555,29 +696,69 @@ function options(): Options {
  * Permanently disconnects from the server, closing the connections. It waits
  * for the existing RPC queue to drain.  If any RPCs come in afterwards,
  * however, they will crash the process.
+ *
+ * If `signalShutdown` is true, signal to the monitor that we're ready to
+ * shutdown. This will wait until the monitor has completed all steps,
+ * including deletion steps.
  */
-export function disconnect(): Promise<void> {
-    return waitForRPCs(/*disconnectFromServers*/ true);
+export async function disconnect(signalShutdown = false): Promise<void> {
+    await waitForRPCs();
+    if (signalShutdown) {
+        await signalAndWaitForShutdown();
+    }
+    disconnectSync();
 }
 
 /**
+ * Waits for the existing RPC queue to drain.
+ *
  * @internal
  */
-export function waitForRPCs(disconnectFromServers = false): Promise<void> {
+export function waitForRPCs(): Promise<void> {
     const localStore = getStore();
     let done: Promise<any> | undefined;
-    const closeCallback: () => Promise<void> = () => {
+    const closeCallback: () => Promise<void> = async () => {
         if (done !== localStore.settings.rpcDone) {
             // If the done promise has changed, some activity occurred in between callbacks.  Wait again.
             done = localStore.settings.rpcDone;
             return debuggablePromise(done.then(closeCallback), "disconnect");
         }
-        if (disconnectFromServers) {
-            disconnectSync();
-        }
         return Promise.resolve();
     };
     return closeCallback();
+}
+
+/**
+ * Signals to the monitor that we're ready to shutdown. This will wait until the
+ * monitor has completed all steps, including deletion steps.
+ *
+ * @internal
+ */
+export function signalAndWaitForShutdown(): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const monitorRef = getMonitor();
+        if (!monitorRef) {
+            return resolve();
+        }
+        monitorRef.signalAndWaitForShutdown(new emptyproto.Empty(), (err, _) => {
+            if (err) {
+                // If we are running against an older version of the CLI,
+                // SignalAndWaitForShutdown might not be implemented. This is
+                // mostly fine, but means that delete hooks do not work. Since
+                // we check if the CLI supports the `resourceHook` feature when
+                // registering hooks, it's fine to ignore the `UNIMPLEMENTED`
+                // error here.
+                // If we get `UNAVAILABLE`, the monitor was already shutdown, likely
+                // due to an error, and we can ignore the GRPC error here, since
+                // Pulumi will have notified the user.
+                if (err && (err.code === grpc.status.UNIMPLEMENTED || err.code === grpc.status.UNAVAILABLE)) {
+                    return resolve();
+                }
+                return reject(new Error(`Error while signaling shutdown: ${err}`));
+            }
+            return resolve();
+        });
+    });
 }
 
 /**
@@ -643,6 +824,77 @@ export function rpcKeepAlive(): () => void {
  */
 export function supportsParameterization(): boolean {
     return getStore().supportsParameterization;
+}
+
+/**
+ * Arguments for {@link registerPackage}.
+ */
+export interface RegisterPackageArgs {
+    baseProviderName: string;
+    baseProviderVersion: string;
+    baseProviderDownloadUrl: string;
+    packageName: string;
+    packageVersion: string;
+    base64Parameter: string;
+    /** When true, register an extension parameterization rather than a replacement. */
+    extension?: boolean;
+}
+
+/**
+ * Registers a parameterized provider package with the resource monitor and
+ * returns its package reference. The result is cached per deployment so that
+ * concurrent inline programs each register against their own engine and
+ * receive distinct refs.
+ */
+export function registerPackage(args: RegisterPackageArgs): Promise<string> {
+    const key = [
+        args.baseProviderName,
+        args.baseProviderVersion,
+        args.baseProviderDownloadUrl,
+        args.packageName,
+        args.packageVersion,
+        args.base64Parameter,
+        String(args.extension ?? false),
+    ].join("\0");
+
+    const cache = getPackageRefs();
+    const existing = cache.get(key);
+    if (existing !== undefined) {
+        return existing;
+    }
+    if (!supportsParameterization()) {
+        throw new Error("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI");
+    }
+
+    const params = new resproto.Parameterization();
+    params.setName(args.packageName);
+    params.setVersion(args.packageVersion);
+    params.setValue(Uint8Array.from(atob(args.base64Parameter), (c) => c.charCodeAt(0)));
+    const req = new resproto.RegisterPackageRequest();
+    req.setName(args.baseProviderName);
+    req.setVersion(args.baseProviderVersion);
+    req.setDownloadUrl(args.baseProviderDownloadUrl);
+    if (args.extension) {
+        req.setExtension$(params);
+    } else {
+        req.setParameterization(params);
+    }
+
+    const mon = getMonitor();
+    if (mon === undefined) {
+        throw new Error("No monitor available");
+    }
+    const promise = new Promise<string>((resolve, reject) => {
+        mon.registerPackage(req, (err, resp) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(resp.getRef());
+            }
+        });
+    });
+    cache.set(key, promise);
+    return promise;
 }
 
 /**

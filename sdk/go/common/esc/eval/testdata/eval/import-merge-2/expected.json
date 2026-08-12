@@ -1,0 +1,797 @@
+{
+    "check": {
+        "properties": {
+            "alpha": {
+                "value": "beta",
+                "trace": {
+                    "def": {
+                        "environment": "b",
+                        "begin": {
+                            "line": 2,
+                            "column": 10,
+                            "byte": 17
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 14,
+                            "byte": 21
+                        }
+                    }
+                }
+            },
+            "some_object": {
+                "value": {
+                    "baz": {
+                        "value": "qux",
+                        "trace": {
+                            "def": {
+                                "environment": "c",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 47
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 50
+                                }
+                            },
+                            "base": {
+                                "unknown": true,
+                                "trace": {
+                                    "def": {
+                                        "environment": "c",
+                                        "begin": {
+                                            "line": 5,
+                                            "column": 5,
+                                            "byte": 42
+                                        },
+                                        "end": {
+                                            "line": 5,
+                                            "column": 8,
+                                            "byte": 45
+                                        }
+                                    },
+                                    "base": {
+                                        "unknown": true,
+                                        "trace": {
+                                            "def": {
+                                                "environment": "c",
+                                                "begin": {
+                                                    "line": 5,
+                                                    "column": 10,
+                                                    "byte": 47
+                                                },
+                                                "end": {
+                                                    "line": 5,
+                                                    "column": 13,
+                                                    "byte": 50
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "c",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 42
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 13,
+                            "byte": 50
+                        }
+                    },
+                    "base": {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 5,
+                                    "byte": 41
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 18,
+                                    "byte": 74
+                                }
+                            },
+                            "base": {
+                                "value": {
+                                    "foo": {
+                                        "value": "bar",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "a",
+                                                "begin": {
+                                                    "line": 3,
+                                                    "column": 10,
+                                                    "byte": 32
+                                                },
+                                                "end": {
+                                                    "line": 3,
+                                                    "column": 13,
+                                                    "byte": 35
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 27
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 13,
+                                            "byte": 35
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "alpha": {
+                    "type": "string",
+                    "const": "beta"
+                },
+                "some_object": {
+                    "properties": {
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "baz"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "alpha",
+                "some_object"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-merge-2",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-merge-2",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-merge-2",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-merge-2",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-merge-2",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-merge-2",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-merge-2",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-merge-2",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-merge-2",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-merge-2"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-merge-2"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "alpha": "beta",
+        "some_object": {
+            "baz": "qux"
+        }
+    },
+    "eval": {
+        "properties": {
+            "alpha": {
+                "value": "beta",
+                "trace": {
+                    "def": {
+                        "environment": "b",
+                        "begin": {
+                            "line": 2,
+                            "column": 10,
+                            "byte": 17
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 14,
+                            "byte": 21
+                        }
+                    }
+                }
+            },
+            "some_object": {
+                "value": {
+                    "baz": {
+                        "value": "qux",
+                        "trace": {
+                            "def": {
+                                "environment": "c",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 47
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 13,
+                                    "byte": 50
+                                }
+                            }
+                        }
+                    },
+                    "beta": {
+                        "value": "gamma",
+                        "trace": {
+                            "def": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 5,
+                                    "byte": 41
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 18,
+                                    "byte": 74
+                                }
+                            }
+                        }
+                    },
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 10,
+                                    "byte": 32
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 13,
+                                    "byte": 35
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "c",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 42
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 13,
+                            "byte": 50
+                        }
+                    },
+                    "base": {
+                        "value": {
+                            "beta": {
+                                "value": "gamma",
+                                "trace": {
+                                    "def": {
+                                        "environment": "b",
+                                        "begin": {
+                                            "line": 4,
+                                            "column": 5,
+                                            "byte": 41
+                                        },
+                                        "end": {
+                                            "line": 5,
+                                            "column": 18,
+                                            "byte": 74
+                                        }
+                                    }
+                                }
+                            },
+                            "foo": {
+                                "value": "bar",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 10,
+                                            "byte": 32
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 13,
+                                            "byte": 35
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "b",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 5,
+                                    "byte": 41
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 18,
+                                    "byte": 74
+                                }
+                            },
+                            "base": {
+                                "value": {
+                                    "foo": {
+                                        "value": "bar",
+                                        "trace": {
+                                            "def": {
+                                                "environment": "a",
+                                                "begin": {
+                                                    "line": 3,
+                                                    "column": 10,
+                                                    "byte": 32
+                                                },
+                                                "end": {
+                                                    "line": 3,
+                                                    "column": 13,
+                                                    "byte": 35
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 27
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 13,
+                                            "byte": 35
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "alpha": {
+                    "type": "string",
+                    "const": "beta"
+                },
+                "some_object": {
+                    "properties": {
+                        "baz": {
+                            "type": "string",
+                            "const": "qux"
+                        },
+                        "beta": {
+                            "type": "string",
+                            "const": "gamma"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "baz",
+                        "beta",
+                        "foo"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "alpha",
+                "some_object"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-merge-2",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-merge-2",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-merge-2",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "import-merge-2",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "import-merge-2",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-merge-2",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "import-merge-2",
+                            "trace": {
+                                "def": {
+                                    "environment": "import-merge-2",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "import-merge-2",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-merge-2"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "import-merge-2"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "alpha": "beta",
+        "some_object": {
+            "baz": "qux",
+            "beta": "gamma",
+            "foo": "bar"
+        }
+    },
+    "evalJSONRevealed": {
+        "alpha": "beta",
+        "some_object": {
+            "baz": "qux",
+            "beta": "gamma",
+            "foo": "bar"
+        }
+    }
+}

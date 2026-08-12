@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,6 +46,8 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
@@ -54,11 +56,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -68,6 +75,7 @@ import (
 
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
@@ -84,7 +92,7 @@ const (
 	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
 
 	// A exit-code we recognize when the python process exits.  If we see this error, there's no
-	// need for us to print any additional error messages since the user already got a a good
+	// need for us to print any additional error messages since the user already got a good
 	// one they can handle.
 	pythonProcessExitedAfterShowingUserActionableMessage = 32
 
@@ -106,10 +114,7 @@ var (
 func main() {
 	var tracing string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
-	flag.String("virtualenv", "", "[obsolete] Virtual environment path to use")
-	flag.String("root", "", "[obsolete] Project root path to use")
-	flag.String("typechecker", "", "[obsolete] Use a typechecker to type check")
-	flag.String("toolchain", "pip", "[obsolete] Select the package manager to use for dependency management.")
+	showVersion := flag.Bool("version", false, "Print the current plugin version and exit")
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
 	// PATH.  This can be used during testing to override the default location.
@@ -118,9 +123,27 @@ func main() {
 		"Use the given program as the executor instead of looking for one on PATH")
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(version.Version)
+		os.Exit(0)
+	}
+
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
-	cmdutil.InitTracing("pulumi-language-python", "pulumi-language-python", tracing)
+
+	// Use OTel when the CLI provides an OTLP endpoint; fall back to
+	// OpenTracing otherwise.  Only one system should be active to avoid
+	// duplicate spans.
+	otelEndpoint := os.Getenv("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT")
+	if otelEndpoint == "" {
+		cmdutil.InitTracing("pulumi-language-python", "pulumi-language-python", tracing)
+	} else {
+		if err := cmdutil.InitOtelTracing("pulumi-language-python", otelEndpoint); err != nil {
+			logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+		}
+		defer cmdutil.CloseOtelTracing()
+	}
 
 	var pythonExec string
 	if givenExecutor == "" {
@@ -170,11 +193,11 @@ func main() {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing, "")
+			host := newLanguageHost(pythonExec, engineAddress, tracing, otelEndpoint, "", "")
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		cmdutil.Exit(fmt.Errorf("could not start language host RPC server: %w", err))
@@ -197,12 +220,19 @@ type pythonLanguageHost struct {
 	exec          string
 	engineAddress string
 	tracing       string
+	otelEndpoint  string
+	cancelCtx     context.Context    // Cancelled when we receive the `Cancel` RPC
+	cancelFunc    context.CancelFunc // Cancel the cancelCtx
 
 	// This is used by conformance testing to set the typechecker to use in ProgramGen.
 	typechecker string
+	// This is used by conformance testing to set the toolchain to use in ProgramGen.
+	toolchain string
 }
 
-func parseOptions(root string, programDir string, options map[string]interface{}) (toolchain.PythonOptions, error) {
+func parseOptions(
+	root string, programDir string, options map[string]any, isPlugin bool,
+) (toolchain.PythonOptions, error) {
 	pythonOptions := toolchain.PythonOptions{
 		Root:       root,
 		ProgramDir: programDir,
@@ -248,16 +278,30 @@ func parseOptions(root string, programDir string, options map[string]interface{}
 		}
 	}
 
+	// Default the `virtualenv` option to `venv` for plugins if not provided. We don't support running plugins using the
+	// global or ambient Python environment, but we do for programs for backwards compatibility. Auto is included
+	// because it is the zero value of the toolchain type: a plugin with no explicit toolchain set will have Toolchain
+	// == Auto, and should still get the venv default.
+	if isPlugin && (pythonOptions.Toolchain == toolchain.Pip || pythonOptions.Toolchain == toolchain.Auto) &&
+		pythonOptions.Virtualenv == "" {
+		pythonOptions.Virtualenv = "venv"
+	}
+
 	return pythonOptions, nil
 }
 
-func newLanguageHost(exec, engineAddress, tracing, typechecker string,
+func newLanguageHost(exec, engineAddress, tracing, otelEndpoint, typechecker, toolchain string,
 ) pulumirpc.LanguageRuntimeServer {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &pythonLanguageHost{
 		exec:          exec,
 		engineAddress: engineAddress,
 		tracing:       tracing,
+		otelEndpoint:  otelEndpoint,
 		typechecker:   typechecker,
+		toolchain:     toolchain,
+		cancelCtx:     ctx,
+		cancelFunc:    cancel,
 	}
 }
 
@@ -282,7 +326,7 @@ func (host *pythonLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Cl
 func (host *pythonLanguageHost) GetRequiredPackages(ctx context.Context,
 	req *pulumirpc.GetRequiredPackagesRequest,
 ) (*pulumirpc.GetRequiredPackagesResponse, error) {
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
 	if err != nil {
 		return nil, err
 	}
@@ -303,15 +347,14 @@ func (host *pythonLanguageHost) GetRequiredPackages(ctx context.Context,
 
 	validateVersion(ctx, opts)
 
-	// Now, determine which Pulumi packages are installed.
-	pulumiPackages, err := determinePulumiPackages(ctx, opts)
+	pkgInfos, err := listPulumiPackageInfos(ctx, tc)
 	if err != nil {
 		return nil, err
 	}
 
 	packages := []*pulumirpc.PackageDependency{}
-	for _, pkg := range pulumiPackages {
-		pkg, err := determinePackageDependency(pkg)
+	for _, info := range pkgInfos {
+		pkg, err := packageDependencyFromPluginJSON(info.DependencyInfo, info.PluginJSON)
 		if err != nil {
 			return nil, err
 		}
@@ -336,6 +379,12 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	if err != nil {
 		return nil, fmt.Errorf("create temporary directory: %w", err)
 	}
+	defer func() {
+		err := os.RemoveAll(tmp)
+		if err != nil {
+			logging.V(5).Infof("failed to remove temporary directory: %s", err)
+		}
+	}()
 	// We use [build](https://build.pypa.io/en/stable/) as the build frontend to
 	// pack the Python SDK. We install this in an isolated virtual environment
 	// to avoid conflicts with the user's environment.
@@ -497,112 +546,146 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 // These packages are known not to have any plugins.
 // TODO[pulumi/pulumi#5863]: Remove this once the `pulumi-policy` package includes a `pulumi-plugin.json`
 // file that indicates the package does not have an associated plugin, and enough time has passed.
-// TODO[pulumi/pulumi#18023]: Can only remove after this issue with `uv` is fixed
 var packagesWithoutPlugins = map[string]struct{}{
-	// We include both the hyphen and underscore variants of the package name
-	// to account for the fact that later versions of the package will come
-	// back from `python -m pip list` as the underscore variant due to a
-	// behavior change in setuptools where it keeps underscores rather than
-	// replacing them with hyphens.
 	"pulumi-policy":  {},
-	"pulumi_policy":  {},
 	"pulumi-esc-sdk": {},
-	"pulumi_esc_sdk": {},
 }
 
-// Returns if pkg is a pulumi package.
-//
-// We check:
-// 1. If there is a pulumi-plugin.json file.
-// 2. If the first segment is "pulumi". This implies a first party package.
-func isPulumiPackage(pkg toolchain.PythonPackage) bool {
-	plugin, err := readPulumiPluginJSON(pkg)
-	if err == nil && plugin != nil {
-		return true
+// pulumiPluginJSONPathsScript is a Python script that finds the path to the pulumi-plugin.json file for each
+// package passed as a command-line argument. It outputs a JSON object mapping each package name to the path
+// of its pulumi-plugin.json file, or an empty string if none was found.
+const pulumiPluginJSONPathsScript = `import importlib.metadata, importlib.util, os, sys, json
+result = {}
+for pkg_name in sys.argv[1:]:
+	try:
+		dist = importlib.metadata.distribution(pkg_name)
+		module = dist.metadata['Name'].replace('-', '_')
+		spec = importlib.util.find_spec(module)
+		locs = list(spec.submodule_search_locations or []) if spec else []
+		found = [p for l in locs for p in [os.path.join(str(l), 'pulumi-plugin.json')] if os.path.isfile(p)]
+		result[pkg_name] = found[0] if found else ''
+	except Exception:
+		result[pkg_name] = ''
+print(json.dumps(result))`
+
+func readAllPulumiPluginJSONPaths(
+	ctx context.Context, tc toolchain.Toolchain, pkgs []plugin.DependencyInfo,
+) (map[string]string, error) {
+	if len(pkgs) == 0 {
+		return map[string]string{}, nil
 	}
 
-	return strings.HasPrefix(pkg.Name, "pulumi_") || strings.HasPrefix(pkg.Name, "pulumi-")
-}
-
-func readPulumiPluginJSON(pkg toolchain.PythonPackage) (*plugin.PulumiPluginJSON, error) {
-	// The name of the module inside the package can be different from the package name.
-	// However, our convention is to always use the same name, e.g. a package name of
-	// "pulumi-aws" will have a module named "pulumi_aws", so we can determine the module
-	// by replacing hyphens with underscores.
-	packageModuleName := strings.ReplaceAll(pkg.Name, "-", "_")
-	pulumiPluginFilePath := filepath.Join(pkg.Location, packageModuleName, "pulumi-plugin.json")
-	logging.V(5).Infof("readPulumiPluginJSON: pulumi-plugin.json file path: %s", pulumiPluginFilePath)
-
-	plugin, err := plugin.LoadPulumiPluginJSON(pulumiPluginFilePath)
-	if os.IsNotExist(err) {
-		return nil, nil
-	} else if err != nil {
-		return nil, err
+	args := make([]string, 0, len(pkgs)+2)
+	args = append(args, "-c", pulumiPluginJSONPathsScript)
+	for _, pkg := range pkgs {
+		args = append(args, pkg.Name)
 	}
-	return plugin, nil
-}
-
-func determinePulumiPackages(ctx context.Context, options toolchain.PythonOptions) ([]toolchain.PythonPackage, error) {
-	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
-
-	tc, err := toolchain.ResolveToolchain(options)
+	cmd, err := tc.Command(ctx, args...)
 	if err != nil {
-		return nil, err
+		logging.V(5).Infof("readAllPulumiPluginJSONPaths: could not create command: %v", err)
+		return map[string]string{}, nil
 	}
+	out, err := cmd.Output()
+	if err != nil {
+		logging.V(5).Infof("readAllPulumiPluginJSONPaths: failed to run script: %v", err)
+		return map[string]string{}, nil
+	}
+	var paths map[string]string
+	if err := json.Unmarshal(out, &paths); err != nil {
+		return nil, fmt.Errorf("failed to parse pulumi-plugin.json paths: %w", err)
+	}
+	return paths, nil
+}
+
+// pulumiPackageInfo holds a Python package together with its parsed pulumi-plugin.json, if any.
+type pulumiPackageInfo struct {
+	DependencyInfo plugin.DependencyInfo
+	PluginJSON     *plugin.PulumiPluginJSON
+}
+
+// listPulumiPackageInfos returns the Pulumi packages in the current environment along with their pulumi-plugin.json
+// data.
+func listPulumiPackageInfos(ctx context.Context, tc toolchain.Toolchain) ([]pulumiPackageInfo, error) {
 	packages, err := tc.ListPackages(ctx, true /* transitive */)
 	if err != nil {
 		return nil, err
 	}
 
-	// Only return Pulumi packages.
-	pulumiPackages := slice.Prealloc[toolchain.PythonPackage](len(packages))
-	for _, pkg := range packages {
-		if !isPulumiPackage(pkg) {
-			continue
-		}
+	pluginJSONPaths, err := readAllPulumiPluginJSONPaths(ctx, tc, packages)
+	if err != nil {
+		return nil, err
+	}
 
-		// Skip packages that are known not have an associated plugin.
+	var result []pulumiPackageInfo
+	for _, pkg := range packages {
+		// Skip packages that are known not to have an associated plugin.
 		if _, ok := packagesWithoutPlugins[pkg.Name]; ok {
 			continue
 		}
 
-		pulumiPackages = append(pulumiPackages, pkg)
+		var pluginJSON *plugin.PulumiPluginJSON
+		if path := pluginJSONPaths[pkg.Name]; path != "" {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				logging.V(5).Infof("listPulumiPackageInfos: failed to read %s: %v", path, err)
+			} else {
+				pluginJSON = &plugin.PulumiPluginJSON{}
+				if err := json.Unmarshal(data, pluginJSON); err != nil {
+					return nil, fmt.Errorf("failed to parse pulumi-plugin.json for %s: %w", pkg.Name, err)
+				}
+			}
+		}
+
+		// A package is a Pulumi package if it has a pulumi-plugin.json or its name starts with "pulumi-". Packages are
+		// generated with a pulumi-plugin.json for a while now, and eventually we should get rid of the name prefix
+		// check.
+		if pluginJSON == nil && !strings.HasPrefix(pkg.Name, "pulumi-") {
+			continue
+		}
+
+		result = append(result, pulumiPackageInfo{DependencyInfo: pkg, PluginJSON: pluginJSON})
 	}
 
-	logging.V(5).Infof("GetRequiredPlugins: Pulumi packages: %#v", pulumiPackages)
-
-	return pulumiPackages, nil
+	return result, nil
 }
 
-// determinePackageDependency attempts to determine a pulumi package associated with a python package. It
-// checks to see if the package contains a pulumi-plugin.json file and uses the information in that file to
-// determine the plugin. If `resource` in pulumi-plugin.json is set to false, nil is returned. If the name or
-// version aren't specified in the file, these values are derived from the package name and version. If the
-// plugin version cannot be determined from the package version, nil is returned.
-func determinePackageDependency(pkg toolchain.PythonPackage) (*pulumirpc.PackageDependency, error) {
+// packageDependencyFromPluginJSON converts a Python package and its pulumi-plugin.json data (if any) into a
+// PackageDependency.
+//
+// If `resource` in pulumi-plugin.json is set to false, nil is returned. If the name or version aren't specified in the
+// file, these values are derived from the package name and version. If the plugin version cannot be determined from the
+// package version, nil is returned.
+func packageDependencyFromPluginJSON(
+	pkg plugin.DependencyInfo, p *plugin.PulumiPluginJSON,
+) (*pulumirpc.PackageDependency, error) {
 	var name, version, server string
 	var parameterization *pulumirpc.PackageParameterization
-	plugin, err := readPulumiPluginJSON(pkg)
-	if plugin != nil && err == nil {
+	var extension *pulumirpc.PackageParameterization
+	if p != nil {
 		// If `resource` is set to false, the Pulumi package has indicated that there is no associated plugin.
 		// Ignore it.
-		if !plugin.Resource {
+		if !p.Resource {
 			logging.V(5).Infof("GetRequiredPlugins: Ignoring package %s with resource set to false", pkg.Name)
 			return nil, nil
 		}
 
-		if plugin.Parameterization != nil {
+		if p.Parameterization != nil {
 			parameterization = &pulumirpc.PackageParameterization{
-				Name:    plugin.Parameterization.Name,
-				Version: plugin.Parameterization.Version,
-				Value:   plugin.Parameterization.Value,
+				Name:    p.Parameterization.Name,
+				Version: p.Parameterization.Version,
+				Value:   p.Parameterization.Value,
 			}
 		}
 
-		name, version, server = plugin.Name, plugin.Version, plugin.Server
-	} else if err != nil {
-		logging.V(5).Infof("GetRequiredPlugins: err: %v", err)
-		return nil, err
+		if p.ExtensionParameterization != nil {
+			extension = &pulumirpc.PackageParameterization{
+				Name:    p.ExtensionParameterization.Name,
+				Version: p.ExtensionParameterization.Version,
+				Value:   p.ExtensionParameterization.Value,
+			}
+		}
+
+		name, version, server = p.Name, p.Version, p.Server
 	}
 
 	if name == "" {
@@ -616,13 +699,14 @@ func determinePackageDependency(pkg toolchain.PythonPackage) (*pulumirpc.Package
 		// "3.31.0a1605189729" will have an associated plugin with a version of "3.31.0-alpha.1605189729+42435656".
 		// The "+42435656" suffix cannot be determined so the plugin version cannot be determined. In such cases,
 		// log the issue and skip the package.
-		version, err = determinePluginVersion(pkg.Version)
+		v, err := determinePluginVersion(pkg.Version)
 		if err != nil {
 			logging.V(5).Infof(
 				"GetRequiredPlugins: Could not determine plugin version for package %s with version %s: %s",
 				pkg.Name, pkg.Version, err)
 			return nil, nil
 		}
+		version = v
 	}
 	if !strings.HasPrefix(version, "v") {
 		// Add "v" prefix if not already present.
@@ -635,6 +719,7 @@ func determinePackageDependency(pkg toolchain.PythonPackage) (*pulumirpc.Package
 		Kind:             "resource",
 		Server:           server,
 		Parameterization: parameterization,
+		Extension:        extension,
 	}
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
@@ -779,7 +864,7 @@ func debugCommand(ctx context.Context, opts toolchain.PythonOptions) ([]string, 
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to select a debug port: %w", err)
 	}
-	args := []string{}
+	args := slice.Prealloc[string](8)
 	args = append(args, "-Xfrozen_modules=off")
 	args = append(args, "-m", "debugpy", "--listen", fmt.Sprintf("127.0.0.1:%d", port))
 	args = append(args, "--wait-for-client")
@@ -834,7 +919,13 @@ func (c *debugger) WaitForReady(ctx context.Context, pid int) error {
 	}
 }
 
-func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cmd *exec.Cmd, dbg *debugger) error {
+func startDebugging(
+	ctx context.Context,
+	engineClient pulumirpc.EngineClient,
+	cmd *exec.Cmd,
+	dbg *debugger,
+	name string,
+) error {
 	// wait for the debugger to be ready
 	ctx, cancel := context.WithTimeoutCause(ctx, 1*time.Minute, errors.New("debugger startup timed out"))
 	defer cancel()
@@ -844,11 +935,11 @@ func startDebugging(ctx context.Context, engineClient pulumirpc.EngineClient, cm
 	}
 
 	// emit a debug configuration
-	debugConfig, err := structpb.NewStruct(map[string]interface{}{
-		"name":    "Pulumi: Program (Python)",
+	debugConfig, err := structpb.NewStruct(map[string]any{
+		"name":    name,
 		"type":    "python",
 		"request": "attach",
-		"connect": map[string]interface{}{
+		"connect": map[string]any{
 			"host": dbg.Host,
 			"port": dbg.Port,
 		},
@@ -884,7 +975,7 @@ func checkForPackage(ctx context.Context, pkg string, opts toolchain.PythonOptio
 	if err != nil {
 		return err
 	}
-	idx := slices.IndexFunc(packages, func(p toolchain.PythonPackage) bool { return p.Name == pkg })
+	idx := slices.IndexFunc(packages, func(p plugin.DependencyInfo) bool { return p.Name == pkg })
 	if idx < 0 {
 		installCommand := fmt.Sprintf("Please install it using `poetry add %s`.", pkg)
 		if opts.Toolchain != toolchain.Poetry {
@@ -908,16 +999,14 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		contract.IgnoreClose(closer)
-	}()
+	defer contract.IgnoreClose(closer)
 
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
 	if err != nil {
 		return nil, err
 	}
 
-	args := []string{}
+	var args []string //nolint:prealloc // capacity depends on debug mode
 	var dbg *debugger
 	if req.GetAttachDebugger() {
 		args, dbg, err = debugCommand(ctx, opts)
@@ -944,45 +1033,65 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		return nil, err
 	}
 
-	if logging.V(5) {
+	if logging.V(5).Enabled() {
 		commandStr := strings.Join(args, " ")
 		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
 	}
 
-	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	mkCmd := func(args []string) (*exec.Cmd, error) {
-		tc, err := toolchain.ResolveToolchain(opts)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := tc.ValidateVenv(ctx); err != nil {
-			return nil, err
-		}
-
-		return tc.Command(ctx, args...)
-	}
-
-	cmd, err := mkCmd(args)
+	tc, err := toolchain.ResolveToolchain(opts)
 	if err != nil {
 		return nil, err
 	}
+
+	if err := tc.ValidateVenv(ctx); err != nil {
+		return nil, err
+	}
+	// Cancel if either the Cancel RPC fires (host.cancelCtx) or the gRPC request ends (ctx)
+	runCmdCtx, runCmdCancel := context.WithCancel(host.cancelCtx)
+	context.AfterFunc(ctx, runCmdCancel)
+	cmd, err := tc.Command(runCmdCtx, args...)
+	if err != nil {
+		return nil, err
+	}
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	if config != "" || configSecretKeys != "" {
-		env := cmd.Env
-		if env == nil {
-			env = os.Environ()
-		}
-		if config != "" {
-			env = append(env, pulumiConfigVar+"="+config)
-		}
-		if configSecretKeys != "" {
-			env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
-		}
-		cmd.Env = env
+	env := cmd.Env
+	if env == nil {
+		env = os.Environ()
 	}
+	if config != "" {
+		env = append(env, pulumiConfigVar+"="+config)
+	}
+	if configSecretKeys != "" {
+		env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
+	}
+
+	tracer := otel.Tracer("pulumi-language-python")
+	ctx, otelSpan := cmdutil.StartSpan(ctx, tracer, "execPython",
+		trace.WithAttributes(
+			attribute.String("component", "exec.Command"),
+			attribute.StringSlice("args", args),
+		))
+	defer otelSpan.End()
+
+	carrier := make(propagation.MapCarrier)
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	if traceparent := carrier.Get("traceparent"); traceparent != "" {
+		env = append(env, "TRACEPARENT="+traceparent)
+	}
+
+	if host.otelEndpoint != "" {
+		env = append(env, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
+	}
+	cmd.Env = env
 
 	// Before running the command, we might need to run typechecker first
 	var typechecker string
@@ -996,12 +1105,26 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	}
 
 	if typechecker != "" {
-		typecheckerCmd, err := mkCmd([]string{"-m", typechecker, req.Info.ProgramDirectory})
+		typecheckerArgs := []string{"-m", typechecker}
+		if typechecker == "mypy" {
+			virtualenvPath, err := tc.VirtualEnvPath(ctx)
+			if err != nil {
+				return nil, err
+			}
+			relPath, err := filepath.Rel(req.Info.ProgramDirectory, virtualenvPath)
+			if err != nil {
+				return nil, err
+			}
+			typecheckerArgs = append(typecheckerArgs, "--exclude", relPath)
+		}
+		typecheckerArgs = append(typecheckerArgs, req.Info.ProgramDirectory)
+		typecheckerCmd, err := tc.Command(ctx, typecheckerArgs...)
 		if err != nil {
 			return nil, err
 		}
-		typecheckerCmd.Stdout = os.Stdout
-		typecheckerCmd.Stderr = os.Stderr
+		var typecheckerOutput bytes.Buffer
+		typecheckerCmd.Stdout = io.MultiWriter(os.Stdout, &typecheckerOutput)
+		typecheckerCmd.Stderr = io.MultiWriter(os.Stderr, &typecheckerOutput)
 		typecheckerCmd.Dir = req.Info.ProgramDirectory
 		err = checkForPackage(ctx, typechecker, opts)
 		if err != nil {
@@ -1014,9 +1137,8 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 
 		if err := typecheckerCmd.Run(); err != nil {
-			var exiterr *exec.ExitError
-			if errors.As(err, &exiterr) && len(exiterr.Stderr) > 0 {
-				return nil, fmt.Errorf("%s failed: %w: %s", typechecker, exiterr, exiterr.Stderr)
+			if output := typecheckerOutput.String(); output != "" {
+				return nil, fmt.Errorf("%s failed: %w\n%s", typechecker, err, output)
 			}
 			return nil, fmt.Errorf("%s failed: %w", typechecker, err)
 		}
@@ -1032,7 +1154,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			go func() {
-				err := startDebugging(ctx, engineClient, cmd, dbg)
+				err := startDebugging(ctx, engineClient, cmd, dbg, "Pulumi: Program (Python)")
 				if err != nil {
 					// kill the program if we can't start debugging.
 					logging.Errorf("Unable to start debugging: %v", err)
@@ -1189,7 +1311,7 @@ func validateVersion(ctx context.Context, options toolchain.PythonOptions) {
 func (host *pythonLanguageHost) InstallDependencies(
 	req *pulumirpc.InstallDependenciesRequest, server pulumirpc.LanguageRuntime_InstallDependenciesServer,
 ) error {
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), req.IsPlugin)
 	if err != nil {
 		return err
 	}
@@ -1201,12 +1323,49 @@ func (host *pythonLanguageHost) InstallDependencies(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
+	tracer := otel.Tracer("pulumi-language-python")
+	_, otelSpan := cmdutil.StartSpan(server.Context(), tracer, "InstallDependencies",
+		trace.WithAttributes(append(tracing.ProgramInfoAttributes(req.Info),
+			attribute.Bool("useLanguageVersionTools", req.UseLanguageVersionTools),
+			attribute.Bool("isPlugin", req.IsPlugin),
+		)...))
+	defer otelSpan.End()
+	otelSpan.SetAttributes(pythonOptionsAttributes(opts)...)
+
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
 	tc, err := toolchain.ResolveToolchain(opts)
 	if err != nil {
 		return err
 	}
+
+	// For plugins with pyproject.toml (bootstrap-less mode), we need to install the package itself
+	// in addition to any dependencies listed in requirements.txt.
+	if req.IsPlugin {
+		buildable, err := toolchain.IsBuildablePackage(req.Info.ProgramDirectory)
+		if err != nil {
+			return fmt.Errorf("checking if plugin is a buildable package: %w", err)
+		}
+		if buildable {
+			// Ensure the virtual environment exists first
+			if err := tc.EnsureVenv(server.Context(), req.Info.ProgramDirectory, req.UseLanguageVersionTools,
+				true /*showOutput*/, stdout, stderr); err != nil {
+				return fmt.Errorf("creating virtual environment: %w", err)
+			}
+
+			// Install the package itself (pip install .)
+			cmd, err := tc.ModuleCommand(server.Context(), "pip", "install", req.Info.ProgramDirectory)
+			if err != nil {
+				return fmt.Errorf("preparing pip install command: %w", err)
+			}
+			cmd.Stdout = stdout
+			cmd.Stderr = stderr
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("installing package: %w", err)
+			}
+		}
+	}
+
 	if err := tc.InstallDependencies(server.Context(), req.Info.ProgramDirectory, req.UseLanguageVersionTools,
 		true /*showOutput*/, stdout, stderr); err != nil {
 		return err
@@ -1233,7 +1392,8 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 			DisplayName: "pip",
 		}
 		// Pip is always available in a Python installation or virtual environment.
-		choices := []*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{pipOption}
+		choices := slice.Prealloc[*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue](3)
+		choices = append(choices, pipOption)
 		choices = append(choices, plugin.MakeExecutablePromptChoices("poetry", "uv")...)
 		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
 			Key:         "toolchain",
@@ -1267,13 +1427,36 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	}, nil
 }
 
+func (host *pythonLanguageHost) Template(
+	ctx context.Context, req *pulumirpc.TemplateRequest,
+) (*pulumirpc.TemplateResponse, error) {
+	logging.V(5).Infof("Template(%+v)", req)
+
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
+	if err != nil {
+		return nil, err
+	}
+
+	tc, err := toolchain.ResolveToolchain(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tc.PrepareProject(ctx, req.ProjectName, req.Info.ProgramDirectory, false, /*showOutput*/
+		nil /* infoWriter */, nil /* errWriter */); err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.TemplateResponse{}, nil
+}
+
 func (host *pythonLanguageHost) About(ctx context.Context,
 	req *pulumirpc.AboutRequest,
 ) (*pulumirpc.AboutResponse, error) {
 	// Previously we did not pass any arguments to About and we always used the default python command.
 	opts := toolchain.PythonOptions{Toolchain: toolchain.Pip}
 	if req != nil && req.Info != nil {
-		aboutOpts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+		aboutOpts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
 		if err != nil {
 			return nil, err
 		}
@@ -1291,15 +1474,20 @@ func (host *pythonLanguageHost) About(ctx context.Context,
 	}
 
 	return &pulumirpc.AboutResponse{
-		Executable: info.Executable,
-		Version:    info.Version,
+		Executable: info.PythonExecutable,
+		Version:    info.PythonVersion.String(),
+		Metadata: map[string]string{
+			"toolchain":        toolchain.Name(opts.Toolchain),
+			"toolchainVersion": info.ToolchainVersion.String(),
+			"typechecker":      toolchain.TypeCheckerName(opts.Typechecker),
+		},
 	}, nil
 }
 
 func (host *pythonLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
 	if err != nil {
 		return nil, err
 	}
@@ -1326,31 +1514,116 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 	}, nil
 }
 
+// RunPlugin runs a Python based plugin.
+//
+// We support two ways of running Python based plugins: bare directories or
+// buildable packages.
+//
+//   - If the plugin directory is a bare directory (that is not a Python
+//     package), we run the plugin's `__main__.py` directly.
+//
+//   - Otherwise, we check if the plugin directory is a buildable Python
+//     package. In that case we run the plugin via the `pulumi.run.plugin`
+//     entrypoint.
 func (host *pythonLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	logging.V(5).Infof("Attempting to run python plugin in %s", req.Info.ProgramDirectory)
+	logging.V(5).Infof("Attempting to run python plugin in %s with args %v", req.Info.ProgramDirectory, req.Args)
+	ctx := server.Context()
 
-	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap())
+	engineClient, closer, err := host.connectToEngine()
 	if err != nil {
 		return err
 	}
+	defer contract.IgnoreClose(closer)
 
-	args := []string{req.Info.ProgramDirectory}
-	args = append(args, req.Args...)
-
-	// Default the `virtualenv` option to `venv` if not provided. We don't support running
-	// plugins using the global or ambient Python environment.
-	if opts.Toolchain == toolchain.Pip && opts.Virtualenv == "" {
-		opts.Virtualenv = "venv"
+	isPlugin := req.Kind != string(apitype.AnalyzerPlugin)
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), isPlugin)
+	if err != nil {
+		return err
 	}
 	tc, err := toolchain.ResolveToolchain(opts)
 	if err != nil {
 		return err
 	}
-	cmd, err := tc.Command(server.Context(), args...)
+
+	var cmd *exec.Cmd
+
+	hasMainPy := true
+	mainPy := filepath.Join(opts.Root, "__main__.py")
+	if _, err = os.Stat(mainPy); err != nil {
+		if os.IsNotExist(err) {
+			hasMainPy = false
+		} else {
+			return fmt.Errorf("looking for __main__.py: %w", err)
+		}
+	}
+
+	// Check if the `pulumi.run.plugin` module exists in the plugin's
+	// Pulumi package. A plugin might ship with an old version, in which case we
+	// fallback to the bare directory mode.
+	hasPluginRunModule := true
+	checkModuleCmd, err := tc.Command(ctx, "-c", "import pulumi.run.plugin")
 	if err != nil {
 		return err
+	}
+	if out, err := checkModuleCmd.CombinedOutput(); err != nil {
+		if strings.Contains(string(out), "ModuleNotFoundError") {
+			hasPluginRunModule = false
+		}
+	}
+
+	args := []string{}
+	var dbg *debugger
+	if req.GetAttachDebugger() {
+		args, dbg, err = debugCommand(ctx, opts)
+		if err != nil {
+			return err
+		}
+		defer dbg.Cleanup()
+	}
+
+	if hasPluginRunModule && !hasMainPy {
+		// Run `python -m pulumi.run.plugin <project name> req.Args...
+		buildable, err := toolchain.IsBuildablePackage(opts.Root)
+		if err != nil {
+			return fmt.Errorf("checking if plugin is a buildable package: %w", err)
+		}
+		if !buildable {
+			return errors.New("plugin is not runnable, it provides neither __main__.py nor a buildable pyproject.toml")
+		}
+
+		pyproject, err := toolchain.LoadPyproject(opts.Root)
+		if err != nil {
+			return fmt.Errorf("loading pyproject: %w", err)
+		}
+
+		args = append(args, pyproject.Project.Name)
+		args = append(args, req.Args...)
+		cmd, err = tc.ModuleCommand(ctx, "pulumi.run.plugin", args...)
+		if err != nil {
+			return err
+		}
+		logging.V(5).Infof("RunPlugin: %s", cmd.String())
+	} else {
+		// For policy analyzers we need to send the program directory as an argument _last_, for everything
+		// else it comes first
+		if req.Kind == string(apitype.AnalyzerPlugin) {
+			// Policy packs (i.e. kind=analyzer) need to be treated specially for back compatibility reasons. We
+			// used to have a dedicated shim plugin "pulumi-analyzer-python-policy" that would start policy packs
+			// up, but now we just let the RunPlugin code handle that logic.
+			args = append(args, []string{"-u", "-m", "pulumi.policy"}...)
+			args = append(args, req.Args...)
+			args = append(args, req.Info.ProgramDirectory)
+		} else {
+			// Run `python <path to plugin> req.Args...`, executing the plugin's `__main__.py`.
+			args = append(args, req.Info.ProgramDirectory)
+			args = append(args, req.Args...)
+		}
+		cmd, err = tc.Command(ctx, args...)
+		if err != nil {
+			return err
+		}
 	}
 
 	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
@@ -1360,11 +1633,82 @@ func (host *pythonLanguageHost) RunPlugin(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
-	cmd.Dir = req.Pwd
+	// python policy packs used to always run with the working directory set to the policy pack directory, not
+	// the main working directory. We need to continue that for backwards compatibility.
+	if req.Kind == string(apitype.AnalyzerPlugin) {
+		cmd.Dir = req.Info.ProgramDirectory
+	} else {
+		cmd.Dir = req.Pwd
+	}
+
+	// For policy packs we also need to adjust the environment to include stack configuration as well. Unfortunately to
+	// get that info we need to connect to the engine as a policy pack so that we can get the StackConfiguration call,
+	// we then need to wait for the _real_ policy pack to start up and shim all it's other request/responses.
+	var policyPackServer *sdk.PolicyProxy
+	if req.Kind == string(apitype.AnalyzerPlugin) {
+		policyPackServer, stdout, err = sdk.NewPolicyProxy(ctx, stdout)
+		if err != nil {
+			return fmt.Errorf("could not start policy pack proxy: %w", err)
+		}
+
+		config, err := policyPackServer.AwaitConfiguration(ctx)
+		if err != nil {
+			return fmt.Errorf("could not get stack configuration: %w", err)
+		}
+
+		if config != nil {
+			maybeAppendEnv := func(k, v string) {
+				if v != "" {
+					cmd.Env = append(cmd.Env, k+"="+v)
+				}
+			}
+			maybeAppendEnv("PULUMI_ORGANIZATION", config.Organization)
+			maybeAppendEnv("PULUMI_PROJECT", config.Project)
+			maybeAppendEnv("PULUMI_STACK", config.Stack)
+			maybeAppendEnv("PULUMI_DRY_RUN", strconv.FormatBool(config.DryRun))
+			if config.Config != nil {
+				configJSON, err := json.Marshal(config.Config)
+				if err != nil {
+					return fmt.Errorf("could not marshal stack configuration: %w", err)
+				}
+				maybeAppendEnv("PULUMI_CONFIG", string(configJSON))
+			}
+		}
+	}
+
 	cmd.Env = append(cmd.Env, req.Env...)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
-	if err = cmd.Run(); err != nil {
+	run := func() error {
+		err := cmd.Start()
+		if err != nil {
+			return err
+		}
+		if req.GetAttachDebugger() {
+			// create a sub-context to cancel the startDebugging operation when the process exits.
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			go func() {
+				err := startDebugging(ctx, engineClient, cmd, dbg, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
+				if err != nil {
+					// kill the program if we can't start debugging.
+					logging.Errorf("Unable to start debugging: %v", err)
+					contract.IgnoreError(cmd.Process.Kill())
+				}
+			}()
+		}
+		// If we've got a proxy policy then tell it to attach now
+		if policyPackServer != nil {
+			err = policyPackServer.Attach(ctx, cmd)
+			if err != nil {
+				return fmt.Errorf("could not attach policy pack proxy: %w", err)
+			}
+			return nil
+		}
+		return cmd.Wait()
+	}
+
+	if err = run(); err != nil {
 		var exiterr *exec.ExitError
 		if errors.As(err, &exiterr) {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
@@ -1418,7 +1762,8 @@ func (host *pythonLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	err = codegen.GenerateProject(req.TargetDirectory, project, program, req.LocalDependencies, host.typechecker)
+	err = codegen.GenerateProject(
+		req.TargetDirectory, project, program, req.LocalDependencies, host.typechecker, host.toolchain)
 	if err != nil {
 		return nil, err
 	}
@@ -1453,7 +1798,6 @@ func (host *pythonLanguageHost) GenerateProgram(
 	}
 
 	bindOptions := []pcl.BindOption{
-		pcl.Loader(schema.NewCachedLoader(loader)),
 		// for python, prefer output-versioned invokes
 		pcl.PreferOutputVersionedInvokes,
 	}
@@ -1462,7 +1806,7 @@ func (host *pythonLanguageHost) GenerateProgram(
 		bindOptions = append(bindOptions, pcl.NonStrictBindOptions()...)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, bindOptions...)
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewCachedLoader(loader), bindOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -1504,7 +1848,9 @@ func (host *pythonLanguageHost) GeneratePackage(
 		return nil, err
 	}
 
-	pkg, diags, err := schema.BindSpec(spec, schema.NewCachedLoader(loader))
+	pkg, diags, err := schema.BindSpec(spec, schema.NewCachedLoader(loader), schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -1515,7 +1861,7 @@ func (host *pythonLanguageHost) GeneratePackage(
 		}, nil
 	}
 
-	files, err := codegen.GeneratePackage("pulumi-language-python", pkg, req.ExtraFiles)
+	files, err := codegen.GeneratePackage("pulumi-language-python", pkg, req.ExtraFiles, schema.NewCachedLoader(loader))
 	if err != nil {
 		return nil, err
 	}
@@ -1554,7 +1900,7 @@ func (host *pythonLanguageHost) Handshake(ctx context.Context,
 	}()
 	err := rpcutil.Healthcheck(ctx, host.engineAddress, 5*time.Minute, cancel)
 	if err != nil {
-		cmdutil.Exit(fmt.Errorf("could not start health check host RPC server: %w", err))
+		return nil, fmt.Errorf("could not start health check host RPC server: %w", err)
 	}
 
 	return &pulumirpc.LanguageHandshakeResponse{}, nil
@@ -1564,4 +1910,135 @@ func (host *pythonLanguageHost) Handshake(ctx context.Context,
 func removeReleaseCandidateSuffix(version string) string {
 	re := regexp.MustCompile(`-?rc\d+$`)
 	return re.ReplaceAllString(version, "")
+}
+
+func (host *pythonLanguageHost) Link(
+	ctx context.Context, req *pulumirpc.LinkRequest,
+) (*pulumirpc.LinkResponse, error) {
+	logging.V(5).Infof("Linking %+v in %s", req.Packages, req.Info.RootDirectory)
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
+	if err != nil {
+		return nil, err
+	}
+
+	loader, err := schema.NewLoaderClient(req.LoaderTarget)
+	if err != nil {
+		return nil, err
+	}
+	defer loader.Close()
+	cachedLoader := schema.NewCachedLoader(loader)
+
+	instructions := "You can import the SDK in your Python code with:\n\n"
+	if len(req.Packages) > 1 {
+		instructions = "You can import the SDKs in your Python code with:\n\n"
+	}
+
+	// Map of python package names to paths
+	packages := map[string]string{}
+	var imports strings.Builder
+	for _, dep := range req.Packages {
+		if dep.Package.Name == "pulumi" {
+			packages["pulumi"] = dep.Path
+			continue
+		}
+
+		var version *semver.Version
+		v, err := semver.New(dep.Package.Version)
+		if err != nil {
+			logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+		} else {
+			version = v
+		}
+		var param *schema.ParameterizationDescriptor
+		if dep.Package.Parameterization != nil {
+			param = &schema.ParameterizationDescriptor{
+				Name:  dep.Package.Parameterization.Name,
+				Value: dep.Package.Parameterization.Value,
+			}
+			if dep.Package.Parameterization.Version != "" {
+				v, err := semver.New(dep.Package.Parameterization.Version)
+				if err != nil {
+					logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+				} else {
+					param.Version = *v
+				}
+			}
+		}
+		packageDesc := &schema.PackageDescriptor{
+			Name:             dep.Package.Name,
+			Version:          version,
+			DownloadURL:      dep.Package.Server,
+			Parameterization: param,
+		}
+
+		pkgRef, err := schema.LoadPackageReferenceV2(ctx, cachedLoader, packageDesc)
+		if err != nil {
+			return nil, err
+		}
+		pkg, err := pkgRef.Definition()
+		if err != nil {
+			return nil, err
+		}
+		if err := pkg.ImportLanguages(map[string]schema.Language{"python": codegen.Importer}); err != nil {
+			return nil, err
+		}
+		var importName string
+		var packageName string
+		if info, ok := pkg.Language["python"]; ok {
+			if info, ok := info.(codegen.PackageInfo); ok && info.PackageName != "" {
+				importName = info.PackageName
+				packageName = info.PackageName
+			}
+		}
+		if importName == "" {
+			importName = strings.ReplaceAll(pkgRef.Name(), "-", "_")
+		}
+		if packageName == "" {
+			packageName = python.PyPack(pkgRef.Namespace(), pkgRef.Name())
+		}
+		packages[packageName] = dep.Path
+		fmt.Fprintf(&imports, "  import %s as %s\n", packageName, importName)
+	}
+	instructions += imports.String()
+
+	if opts.Toolchain != toolchain.Pip {
+		pyprojectPath := filepath.Join(req.Info.ProgramDirectory, "pyproject.toml")
+		if _, err := os.Stat(pyprojectPath); os.IsNotExist(err) {
+			requirementsPath := filepath.Join(req.Info.ProgramDirectory, "requirements.txt")
+			if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
+				return nil, fmt.Errorf("no pyproject.toml or requirements.txt found in %s", req.Info.ProgramDirectory)
+			}
+			// We're not using pip, but there's no pyproject.toml, and requirements.txt still exists. This means we
+			// haven't run `pulumi install` yet. See https://github.com/pulumi/pulumi/issues/19763
+			//
+			// Pretend we're using pip so that the package gets linked into requirements.txt and then later converted
+			// into dependencies in pyproject.toml for poetry or uv.
+			opts.Toolchain = toolchain.Pip
+		}
+	}
+
+	tc, err := toolchain.ResolveToolchain(opts)
+	if err != nil {
+		return nil, err
+	}
+	if err := tc.LinkPackages(ctx, packages); err != nil {
+		return nil, fmt.Errorf("linking packages: %w", err)
+	}
+
+	return &pulumirpc.LinkResponse{
+		ImportInstructions: instructions,
+	}, nil
+}
+
+func (host *pythonLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	host.cancelFunc()
+	return &emptypb.Empty{}, nil
+}
+
+func pythonOptionsAttributes(opts toolchain.PythonOptions) []attribute.KeyValue {
+	return []attribute.KeyValue{
+		attribute.String("pythonOptions.virtualenv", opts.Virtualenv),
+		attribute.String("pythonOptions.toolchain", toolchain.Name(opts.Toolchain)),
+		attribute.String("pythonOptions.typechecker", toolchain.TypeCheckerName(opts.Typechecker)),
+	}
 }

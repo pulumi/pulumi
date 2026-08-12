@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import {
     runtime,
     secret,
 } from "../../index";
+import * as log from "../../log";
 import * as state from "../../runtime/state";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
@@ -495,6 +496,119 @@ describe("runtime", () => {
             assert.ok((<ComponentResource>deserialized["component"]).__pulumiComponentResource);
             assert.ok((<CustomResource>deserialized["custom"]).__pulumiCustomResource);
             assert.deepEqual(deserialized["unregistered"], unregisteredID);
+        });
+        it("deserializes resource references using explicit name and type", async () => {
+            runtime.setMocks(new TestMocks());
+            state.getStore().supportsResourceReferences = true;
+            runtime.registerResourceModule("test", "index", new TestResourceModule());
+
+            const custom = new TestCustomResource("test");
+            const customURN = await custom.urn.promise();
+            const customID = await custom.id.promise();
+
+            const outputs = {
+                custom: {
+                    [runtime.specialSigKey]: runtime.specialResourceSig,
+                    urn: customURN,
+                    id: customID,
+                    name: "name::from::field",
+                    type: "test:index:custom",
+                },
+            };
+
+            const deserialized = runtime.deserializeProperty(outputs);
+            const customRef = <CustomResource>deserialized["custom"];
+
+            assert.ok(customRef.__pulumiCustomResource);
+            assert.strictEqual(customRef.__name, "name::from::field");
+            assert.strictEqual(customRef.__pulumiType, "test:index:custom");
+            assert.strictEqual(await customRef.urn.promise(), customURN);
+        });
+    });
+
+    describe("serialization errors", () => {
+        it("augments the original error in place with the failing property name", async () => {
+            const original = new Error("inner boom");
+            const rejected = Promise.reject(original);
+
+            await assert.rejects(
+                runtime.serializeProperties("test", { badProp: rejected }),
+                (err: Error) => err === original && err.message.includes('"badProp"'),
+            );
+        });
+
+        it("names the property even when nested under other accepted keys", async () => {
+            const ok = Promise.resolve("fine");
+            const rejected = Promise.reject(new Error("inner boom"));
+
+            await assert.rejects(runtime.serializeProperties("test", { good: ok, badProp: rejected }), (err: Error) =>
+                err.message.includes('"badProp"'),
+            );
+        });
+
+        it("names the property for a circular reference", async () => {
+            const circular: any = {};
+            circular.self = circular;
+
+            await assert.rejects(runtime.serializeProperties("test", { badProp: circular }), (err: Error) =>
+                err.message.includes('"badProp"'),
+            );
+        });
+    });
+
+    describe("invoke and call serialization errors", () => {
+        it("logs an error and rejects the output when invoke arguments fail to serialize", async () => {
+            runtime.setMocks(new TestMocks());
+
+            const errors: string[] = [];
+            const original = log.error;
+            (log as any).error = (msg: string) => {
+                errors.push(msg);
+            };
+
+            try {
+                const rejected = Promise.reject(new Error("invoke arg boom"));
+                const result = runtime.invokeOutput("test:index:fn", { badArg: rejected });
+
+                await assert.rejects(result.promise(), (err: Error) => err.message.includes('"badArg"'));
+                // Observe the other rejected facets so they aren't reported as unhandled.
+                await result.isKnown.catch(() => undefined);
+                await result.isSecret.catch(() => undefined);
+            } finally {
+                (log as any).error = original;
+            }
+
+            assert.ok(
+                errors.some((m) => m.includes("serializing arguments for invoke") && m.includes('"badArg"')),
+                `expected a serialization error log, got: ${JSON.stringify(errors)}`,
+            );
+        });
+
+        it("logs an error and rejects the output when call arguments fail to serialize", async () => {
+            runtime.setMocks(new TestMocks());
+
+            const errors: string[] = [];
+            const original = log.error;
+            (log as any).error = (msg: string) => {
+                errors.push(msg);
+            };
+
+            try {
+                const rejected = Promise.reject(new Error("call arg boom"));
+                const result = runtime.call("test:index:fn", { badArg: rejected });
+
+                await assert.rejects(result.promise(), (err: Error) => err.message.includes('"badArg"'));
+                // Observe the other rejected facets so they aren't reported as unhandled.
+                await result.isKnown.catch(() => undefined);
+                await result.isSecret.catch(() => undefined);
+            } finally {
+                (log as any).error = original;
+            }
+
+            assert.ok(
+                errors.some((m) => m.includes("serializing arguments for call") && m.includes('"badArg"')),
+                `expected a serialization error log, got: ${JSON.stringify(errors)}`,
+            );
         });
     });
 

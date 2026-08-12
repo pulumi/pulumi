@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package model
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -25,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // UnionType represents values that may be any one of a specified set of types.
@@ -32,9 +34,11 @@ type UnionType struct {
 	// ElementTypes are the allowable types for the union type.
 	ElementTypes []Type
 	// Annotations records any annotations associated with the object type.
-	Annotations []interface{}
+	Annotations []any
 
 	s atomic.Value // Value<string>
+
+	cache *gsync.Map[Type, cacheEntry]
 }
 
 // NewUnionTypeAnnotated creates a new union type with the given element types and annotations.
@@ -43,7 +47,7 @@ type UnionType struct {
 // 2. Any duplicate types are removed.
 // 3. Unions have have more then 1 type. If only a single type is left after (1) and (2),
 // it is returned as is.
-func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
+func NewUnionTypeAnnotated(types []Type, annotations ...any) Type {
 	var elementTypes []Type
 	for _, t := range types {
 		if union, isUnion := t.(*UnionType); isUnion {
@@ -78,13 +82,13 @@ func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
 		return elementTypes[0]
 	}
 
-	return &UnionType{ElementTypes: elementTypes, Annotations: annotations}
+	return &UnionType{ElementTypes: elementTypes, Annotations: annotations, cache: &gsync.Map[Type, cacheEntry]{}}
 }
 
 // NewUnionType creates a new union type with the given element types. Any element types that are union types are
 // replaced with their element types.
 func NewUnionType(types ...Type) Type {
-	var annotations []interface{}
+	var annotations []any
 	for _, t := range types {
 		if union, isUnion := t.(*UnionType); isUnion {
 			annotations = append(annotations, union.Annotations...)
@@ -231,17 +235,15 @@ func (t *UnionType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+func (t *UnionType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		var conversionKind ConversionKind
 		var diags []lazyDiagnostics
 
 		// Fast path: see if the source type is equal to any of the element types. Equality checks are generally
 		// less expensive that full convertibility checks.
-		for _, t := range t.ElementTypes {
-			if src.Equals(t) {
-				return SafeConversion, nil
-			}
+		if slices.ContainsFunc(t.ElementTypes, src.Equals) {
+			return SafeConversion, nil
 		}
 
 		for _, t := range t.ElementTypes {
@@ -269,7 +271,7 @@ func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct
 // If all conversions to a dest type from a union type are safe, the conversion is safe.
 // If no conversions to a dest type from a union type exist, the conversion does not exist.
 // Otherwise, the conversion is unsafe.
-func (t *UnionType) conversionTo(dest Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+func (t *UnionType) conversionTo(dest Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	conversionKind, exists := SafeConversion, false
 	for _, t := range t.ElementTypes {
 		switch kind, _ := dest.conversionFrom(t, unifying, seen); kind {
@@ -282,7 +284,7 @@ func (t *UnionType) conversionTo(dest Type, unifying bool, seen map[Type]struct{
 		}
 	}
 	if !exists {
-		return NoConversion, nil
+		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(dest, t)} }
 	}
 	return conversionKind, nil
 }

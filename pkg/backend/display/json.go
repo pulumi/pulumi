@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,9 +16,13 @@ package display
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
+	"unicode/utf8"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -32,26 +36,35 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
+// byteStringDisplay renders a string containing bytes that are not valid UTF-8 as b"<base64>",
+// since such strings cannot be represented in JSON or terminal output directly.
+func byteStringDisplay(s string) string {
+	return `b"` + base64.StdEncoding.EncodeToString([]byte(s)) + `"`
+}
+
 // massagePropertyValue takes a property value and strips out the secrets annotations from it.  If showSecrets is
-// not true any secret values are replaced with "[secret]".
+// not true any secret values are replaced with "[secret]". Strings containing bytes that are not valid UTF-8 are
+// replaced with their b"<base64>" rendering.
 func massagePropertyValue(v resource.PropertyValue, showSecrets bool) resource.PropertyValue {
 	switch {
+	case v.IsString() && !utf8.ValidString(v.StringValue()):
+		return resource.NewProperty(byteStringDisplay(v.StringValue()))
 	case v.IsArray():
 		new := make([]resource.PropertyValue, len(v.ArrayValue()))
 		for i, e := range v.ArrayValue() {
 			new[i] = massagePropertyValue(e, showSecrets)
 		}
-		return resource.NewArrayProperty(new)
+		return resource.NewProperty(new)
 	case v.IsObject():
 		new := make(resource.PropertyMap, len(v.ObjectValue()))
 		for k, e := range v.ObjectValue() {
 			new[k] = massagePropertyValue(e, showSecrets)
 		}
-		return resource.NewObjectProperty(new)
+		return resource.NewProperty(new)
 	case v.IsSecret() && showSecrets:
 		return massagePropertyValue(v.SecretValue().Element, showSecrets)
 	case v.IsSecret():
-		return resource.NewStringProperty("[secret]")
+		return resource.NewProperty("[secret]")
 	default:
 		return v
 	}
@@ -71,7 +84,7 @@ func MassageSecrets(m resource.PropertyMap, showSecrets bool) resource.PropertyM
 
 // stateForJSONOutput prepares some resource's state for JSON output. This includes filtering the output based
 // on the supplied options, in addition to massaging secret fields.
-func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
+func stateForJSONOutput(s *pkgresource.State, opts Options) *pkgresource.State {
 	var inputs resource.PropertyMap
 	var outputs resource.PropertyMap
 	if !isRootURN(s.URN) || !opts.SuppressOutputs {
@@ -83,11 +96,43 @@ func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
 		inputs = resource.PropertyMap{}
 		outputs = resource.PropertyMap{}
 	}
-
-	return resource.NewState(s.Type, s.URN, s.Custom, s.Delete, s.ID, inputs,
-		outputs, s.Parent, s.Protect, s.External, s.Dependencies, s.InitErrors, s.Provider,
-		s.PropertyDependencies, s.PendingReplacement, s.AdditionalSecretOutputs, s.Aliases, &s.CustomTimeouts,
-		s.ImportID, s.RetainOnDelete, s.DeletedWith, s.Created, s.Modified, s.SourcePosition, s.IgnoreChanges)
+	return pkgresource.NewState{
+		Type:                    s.Type,
+		URN:                     s.URN,
+		Custom:                  s.Custom,
+		Delete:                  s.Delete,
+		ID:                      s.ID,
+		Inputs:                  inputs,
+		Outputs:                 outputs,
+		Parent:                  s.Parent,
+		Protect:                 s.Protect,
+		Taint:                   s.Taint,
+		External:                s.External,
+		Dependencies:            s.Dependencies,
+		InitErrors:              s.InitErrors,
+		Provider:                s.Provider,
+		PropertyDependencies:    s.PropertyDependencies,
+		PendingReplacement:      s.PendingReplacement,
+		AdditionalSecretOutputs: s.AdditionalSecretOutputs,
+		Aliases:                 s.Aliases,
+		CustomTimeouts:          &s.CustomTimeouts,
+		ImportID:                s.ImportID,
+		RetainOnDelete:          s.RetainOnDelete,
+		DeletedWith:             s.DeletedWith,
+		ReplaceWith:             s.ReplaceWith,
+		Created:                 s.Created,
+		Modified:                s.Modified,
+		SourcePosition:          s.SourcePosition,
+		StackTrace:              s.StackTrace,
+		IgnoreChanges:           s.IgnoreChanges,
+		HideDiff:                s.HideDiff,
+		ReplaceOnChanges:        s.ReplaceOnChanges,
+		ReplacementTrigger:      s.ReplacementTrigger,
+		RefreshBeforeUpdate:     s.RefreshBeforeUpdate,
+		ViewOf:                  s.ViewOf,
+		ResourceHooks:           s.ResourceHooks,
+		SnippetID:               s.SnippetID,
+	}.Make()
 }
 
 // ShowJSONEvents renders incremental engine events to stdout.
@@ -193,7 +238,8 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			continue
 
 		// Events occurring late:
-		case engine.PolicyViolationEvent, engine.PolicyLoadEvent, engine.PolicyRemediationEvent:
+		case engine.PolicyViolationEvent, engine.PolicyLoadEvent, engine.PolicyRemediationEvent,
+			engine.PolicyAnalyzeSummaryEvent, engine.PolicyRemediateSummaryEvent, engine.PolicyAnalyzeStackSummaryEvent:
 			// At this point in time, we don't handle policy events in JSON serialization
 			continue
 		case engine.SummaryEvent:
@@ -204,6 +250,9 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			digest.MaybeCorrupt = p.MaybeCorrupt
 		case engine.ProgressEvent:
 			// Progress events are ephemeral and should be skipped.
+			continue
+		case engine.ErrorEvent:
+			// Error events are not for display, so we skip them here.
 			continue
 		default:
 			contract.Failf("unknown event type '%s'", e.Type)
@@ -244,7 +293,7 @@ func getPreviewMetadataStep(
 	ctx := context.TODO()
 	if m.Old != nil {
 		oldState := stateForJSONOutput(m.Old.State, opts)
-		res, err := stack.SerializeResource(ctx, oldState, config.NewPanicCrypter(), false /* showSecrets */)
+		res, _, err := stack.SerializeResource(ctx, oldState, config.NewPanicCrypter(), false /* showSecrets */)
 		if err == nil {
 			step.OldState = &res
 		} else {
@@ -253,7 +302,7 @@ func getPreviewMetadataStep(
 	}
 	if m.New != nil {
 		newState := stateForJSONOutput(m.New.State, opts)
-		res, err := stack.SerializeResource(ctx, newState, config.NewPanicCrypter(), false /* showSecrets */)
+		res, _, err := stack.SerializeResource(ctx, newState, config.NewPanicCrypter(), false /* showSecrets */)
 		if err == nil {
 			step.NewState = &res
 		} else {

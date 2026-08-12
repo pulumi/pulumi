@@ -19,13 +19,20 @@ import (
 	"sync"
 )
 
-// cachingMapper wraps another Mapper, caching the results of GetMapping calls by source provider name.
+// cacheKey identifies a cached mapping by the ecosystem it was requested for and the source provider name.
+// Both matter: the same provider name can resolve to different mappings under different ecosystems.
+type cacheKey struct {
+	ecosystem string
+	provider  string
+}
+
+// cachingMapper wraps another Mapper, caching the results of GetMapping calls by (ecosystem, source provider).
 type cachingMapper struct {
 	// The underlying Mapper to which calls will be delegated when there is no cache hit.
 	mapper Mapper
 
-	// A cache of provider mappings, keyed by source provider name.
-	entries map[string][]byte
+	// A cache of provider mappings, keyed by (ecosystem, source provider name).
+	entries map[cacheKey][]byte
 
 	// Mutex to protect concurrent access to the entries map
 	mu sync.RWMutex
@@ -35,31 +42,34 @@ type cachingMapper struct {
 func NewCachingMapper(mapper Mapper) Mapper {
 	return &cachingMapper{
 		mapper:  mapper,
-		entries: map[string][]byte{},
+		entries: map[cacheKey][]byte{},
 	}
 }
 
-// Implements Mapper.GetMapping. Returned results are cached by source provider key.
+// Implements Mapper.GetMapping. Returned results are cached by (ecosystem, source provider) key.
 func (m *cachingMapper) GetMapping(
 	ctx context.Context,
 	provider string,
 	hint *MapperPackageHint,
+	ecosystem string,
 ) ([]byte, error) {
+	entryKey := cacheKey{ecosystem: ecosystem, provider: provider}
+
 	m.mu.RLock()
-	mapping, ok := m.entries[provider]
+	mapping, ok := m.entries[entryKey]
 	m.mu.RUnlock()
 
 	if ok {
 		return mapping, nil
 	}
 
-	mapping, err := m.mapper.GetMapping(ctx, provider, hint)
+	mapping, err := m.mapper.GetMapping(ctx, provider, hint, ecosystem)
 	if err != nil {
 		return nil, err
 	}
 
 	m.mu.Lock()
-	m.entries[provider] = mapping
+	m.entries[entryKey] = mapping
 	m.mu.Unlock()
 
 	return mapping, nil

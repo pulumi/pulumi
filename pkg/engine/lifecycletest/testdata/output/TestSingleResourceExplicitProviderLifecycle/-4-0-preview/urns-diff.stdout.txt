@@ -1,0 +1,7 @@
+<{%fg 1%}>- urn:pulumi:test::test::pkgA:m:typA::resA: (delete)
+<{%fg 1%}>    [id=1]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provA::2]
+<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pulumi:providers:pkgA::provA: (delete)
+<{%fg 1%}>    [id=2]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 2 to delete<{%reset%}>

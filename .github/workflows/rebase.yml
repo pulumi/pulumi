@@ -5,7 +5,7 @@ on:
 jobs:  
   rebase:
     name: Rebase
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     if: >-
       contains(fromJSON('["COLLABORATOR", "MEMBER", "OWNER"]'), github.event.comment.author_association) &&
       github.event.issue.pull_request != '' && 
@@ -15,7 +15,7 @@ jobs:
       )
     steps:
       - name: Checkout the latest code
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           fetch-depth: 0 # otherwise, you will fail to push refs to dest repo

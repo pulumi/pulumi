@@ -7,7 +7,7 @@ paths:
       port: 80
     string: '[{"host":"example","port":80}]'
     redacted: '[{"host":"example","port":80}]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAWP+EKAABF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAs/4IpAAIEaG9zdAZzdHJpbmcMCQAHZXhhbXBsZQRwb3J0BWludDY0BAMA/6A=
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAV/+CJwABF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAACz/gCkAAgRwb3J0BWludDY0BAMA/6AEaG9zdAZzdHJpbmcMCQAHZXhhbXBsZQ==
     secure: false
     isObject: true
   my:servers[0]:
@@ -16,7 +16,7 @@ paths:
       port: 80
     string: '{"host":"example","port":80}'
     redacted: '{"host":"example","port":80}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAs/4IpAAIEcG9ydAVpbnQ2NAQDAP+gBGhvc3QGc3RyaW5nDAkAB2V4YW1wbGU=
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAACz/gCkAAgRob3N0BnN0cmluZwwJAAdleGFtcGxlBHBvcnQFaW50NjQEAwD/oA==
     secure: false
     isObject: true
   my:servers[0].host:

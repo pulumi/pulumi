@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,8 +31,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -41,6 +43,7 @@ import (
 	"golang.org/x/mod/module"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -48,23 +51,29 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
 	PythonRuntime = "python"
 	NodeJSRuntime = "nodejs"
+	BunRuntime    = "bun"
 	GoRuntime     = "go"
 	DotNetRuntime = "dotnet"
 	YAMLRuntime   = "yaml"
 	JavaRuntime   = "java"
+	HCLRuntime    = "hcl"
+	PCLRuntime    = "pcl"
 )
 
 const windowsOS = "windows"
@@ -76,7 +85,7 @@ type RuntimeValidationStackInfo struct {
 	StackName    tokens.QName
 	Deployment   *apitype.DeploymentV3
 	RootResource apitype.ResourceV3
-	Outputs      map[string]interface{}
+	Outputs      map[string]any
 	Events       []apitype.EngineEvent
 }
 
@@ -133,7 +142,7 @@ type TestCommandStats struct {
 
 // TestStatsReporter reports results and metadata from a test run.
 type TestStatsReporter interface {
-	ReportCommand(stats TestCommandStats)
+	ReportCommand(ctx context.Context, stats TestCommandStats)
 }
 
 // Environment is used to create environments for use by test programs.
@@ -160,7 +169,7 @@ type ConfigValue struct {
 type ProgramTestOptions struct {
 	// Dir is the program directory to test.
 	Dir string
-	// Array of NPM packages which must be `yarn linked` (e.g. {"pulumi", "@pulumi/aws"})
+	// Array of NPM packages which must be linked (e.g. {"@pulumi/pulumi", "@pulumi/aws"})
 	Dependencies []string
 	// Map of package names to versions. The test will use the specified versions of these packages instead of what
 	// is declared in `package.json`.
@@ -235,6 +244,10 @@ type ProgramTestOptions struct {
 	PreviewCommandlineFlags []string
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi up` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
+	// DestroyCommandlineFlags specifies flags to add to the `pulumi destroy` command line (e.g. "--output=json")
+	DestroyCommandlineFlags []string
+	// RefreshCommandlineFlags specifies flags to add to the `pulumi refresh` command line (e.g. "--output=json")
+	RefreshCommandlineFlags []string
 	// QueryCommandlineFlags specifies flags to add to the `pulumi query` command line (e.g. "--color=raw")
 	QueryCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
@@ -264,6 +277,20 @@ type ProgramTestOptions struct {
 	// file.
 	Tracing string
 
+	// If non-empty, specifies the value of the `--otel-traces` flag to pass
+	// to Pulumi CLI. Supported endpoints:
+	//   - file:///path/to/traces.json  — writes OTLP JSON to a local file
+	//   - grpc://host:port             — sends via insecure gRPC
+	//   - grpcs://host:port            — sends via TLS-secured gRPC
+	//   - http://host:port             — sends via insecure OTLP HTTP
+	//   - https://host:port            — sends via TLS-secured OTLP HTTP
+	//
+	// Template `{command}` syntax will be expanded to the current
+	// command name such as `pulumi-up`. This is useful for file-based
+	// tracing since `ProgramTest` performs multiple CLI invocations that
+	// would otherwise overwrite the same file.
+	OtelTraces string
+
 	// NoParallel will opt the test out of being ran in parallel.
 	NoParallel bool
 
@@ -291,8 +318,15 @@ type ProgramTestOptions struct {
 
 	// Bin is a location of a `pulumi` executable to be run.  Taken from the $PATH if missing.
 	Bin string
+	// NpmBin is a location of a `npm` executable to be run.  Taken from the $PATH if missing.
+	NpmBin string
 	// YarnBin is a location of a `yarn` executable to be run.  Taken from the $PATH if missing.
 	YarnBin string
+	// UseNpm installs Node.js dependencies with npm instead of the default yarn. It can also be enabled globally
+	// by setting the PULUMI_TEST_USE_NPM environment variable to a truthy value.
+	UseNpm bool
+	// BunBin is a location of a `bun` executable to be run.  Taken from the $PATH if missing.
+	BunBin string
 	// GoBin is a location of a `go` executable to be run.  Taken from the $PATH if missing.
 	GoBin string
 	// PythonBin is a location of a `python` executable to be run.  Taken from the $PATH if missing.
@@ -425,7 +459,7 @@ func (opts *ProgramTestOptions) getEnvName(name string) string {
 	contract.IgnoreError(err)
 
 	suffix := hex.EncodeToString(h.Sum(nil))
-	return fmt.Sprintf("%v-%v", name, suffix)
+	return fmt.Sprintf("default/%v-%v", name, suffix)
 }
 
 func (opts *ProgramTestOptions) getEnvNameWithOwner(name string) string {
@@ -577,6 +611,12 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.UpdateCommandlineFlags != nil {
 		opts.UpdateCommandlineFlags = append(opts.UpdateCommandlineFlags, overrides.UpdateCommandlineFlags...)
 	}
+	if overrides.DestroyCommandlineFlags != nil {
+		opts.DestroyCommandlineFlags = append(opts.DestroyCommandlineFlags, overrides.DestroyCommandlineFlags...)
+	}
+	if overrides.RefreshCommandlineFlags != nil {
+		opts.RefreshCommandlineFlags = append(opts.RefreshCommandlineFlags, overrides.RefreshCommandlineFlags...)
+	}
 	if overrides.QueryCommandlineFlags != nil {
 		opts.QueryCommandlineFlags = append(opts.QueryCommandlineFlags, overrides.QueryCommandlineFlags...)
 	}
@@ -597,6 +637,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Tracing != "" {
 		opts.Tracing = overrides.Tracing
+	}
+	if overrides.OtelTraces != "" {
+		opts.OtelTraces = overrides.OtelTraces
 	}
 	if overrides.NoParallel {
 		opts.NoParallel = overrides.NoParallel
@@ -625,8 +668,14 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.Bin != "" {
 		opts.Bin = overrides.Bin
 	}
+	if overrides.NpmBin != "" {
+		opts.NpmBin = overrides.NpmBin
+	}
 	if overrides.YarnBin != "" {
 		opts.YarnBin = overrides.YarnBin
+	}
+	if overrides.UseNpm {
+		opts.UseNpm = overrides.UseNpm
 	}
 	if overrides.GoBin != "" {
 		opts.GoBin = overrides.GoBin
@@ -711,6 +760,14 @@ func init() {
 
 	mutexPath := filepath.Join(os.TempDir(), "pip-mutex.lock")
 	pipMutex = fsutil.NewFileMutex(mutexPath)
+
+	// Disable pip's HTTP cache to work around pypa/pip#13979: pip 26.1's upgraded urllib3
+	// advertises zstd encoding, changing the Vary header. Cache entries written by one pip
+	// version (e.g. the system pip upgraded in CI setup) become unreadable by another (e.g.
+	// the venv pip), causing "Cache entry deserialization failed" → "Content-Type: Unknown"
+	// → package resolution failures. Setting this process-wide ensures all subprocesses
+	// (including component_setup.sh and language host plugins) inherit it.
+	os.Setenv("PIP_NO_CACHE_DIR", "1")
 }
 
 // GetLogs retrieves the logs for a given stack in a particular region making the query provided.
@@ -723,15 +780,13 @@ func GetLogs(
 	query operations.LogQuery,
 ) *[]operations.LogEntry {
 	snap, err := stack.DeserializeDeploymentV3(
-		context.Background(),
+		t.Context(),
 		*stackInfo.Deployment,
-		stack.DefaultSecretsProvider)
-	assert.NoError(t, err)
+		secrets.DefaultProvider)
+	require.NoError(t, err)
 
 	tree := operations.NewResourceTree(snap.Resources)
-	if !assert.NotNil(t, tree) {
-		return nil
-	}
+	require.NotNil(t, tree)
 
 	cfg := map[config.Key]string{
 		config.MustMakeKey(provider, "region"): region,
@@ -739,10 +794,8 @@ func GetLogs(
 	ops := tree.OperationsProvider(cfg)
 
 	// Validate logs from example
-	logs, err := ops.GetLogs(query)
-	if !assert.NoError(t, err) {
-		return nil
-	}
+	logs, err := ops.GetLogs(t.Context(), query)
+	require.NoError(t, err)
 
 	return logs
 }
@@ -799,7 +852,7 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 				t.Errorf("report config should be set to a value of the form: <aws-region>:<bucket-name>:<keyPrefix>")
 			}
 
-			opts.ReportStats = NewS3Reporter(splits[0], splits[1], splits[2])
+			opts.ReportStats = NewS3Reporter(t.Context(), splits[0], splits[1], splits[2])
 		}
 	}
 
@@ -832,11 +885,11 @@ func prepareProgram(t *testing.T, opts *ProgramTestOptions) {
 	}
 }
 
-// ProgramTest runs a lifecycle of Pulumi commands in a program working directory, using the `pulumi` and `yarn`
-// binaries available on PATH.  It essentially executes the following workflow:
+// ProgramTest runs a lifecycle of Pulumi commands in a program working directory.
+// It essentially executes the following workflow:
 //
 //	yarn install
-//	yarn link <each opts.Depencies>
+//	yarn link <each opts.Dependencies>
 //	(+) yarn run build
 //	pulumi init
 //	(*) pulumi login
@@ -860,7 +913,7 @@ func ProgramTest(t *testing.T, opts *ProgramTestOptions) {
 	pt := ProgramTestManualLifeCycle(t, opts)
 	err := pt.TestLifeCycleInitAndDestroy()
 	if !errors.Is(err, ErrTestFailed) {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
@@ -876,10 +929,13 @@ type ProgramTester struct {
 	t              *testing.T          // the Go tester for this run.
 	opts           *ProgramTestOptions // options that control this test run.
 	bin            string              // the `pulumi` binary we are using.
+	npmBin         string              // the `npm` binary we are using.
 	yarnBin        string              // the `yarn` binary we are using.
+	bunBin         string              // the `bun` binary we are using.
 	goBin          string              // the `go` binary we are using.
 	pythonBin      string              // the `python` binary we are using.
 	pipenvBin      string              // The `pipenv` binary we are using.
+	uvBin          string              // the `uv` binary we are using.
 	dotNetBin      string              // the `dotnet` binary we are using.
 	updateEventLog string              // The path to the engine event log for `pulumi up` in this test.
 	maxStepTries   int                 // The maximum number of times to retry a failed pulumi step.
@@ -904,7 +960,7 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	return &ProgramTester{
 		t:              t,
 		opts:           opts,
-		updateEventLog: filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
+		updateEventLog: filepath.Join(t.TempDir(), string(stackName)+"-events.json"),
 		maxStepTries:   maxStepTries,
 		pulumiHome:     home,
 	}
@@ -924,8 +980,22 @@ func (pt *ProgramTester) getBin() (string, error) {
 	return getCmdBin(&pt.bin, "pulumi", pt.opts.Bin)
 }
 
+func (pt *ProgramTester) getNpmBin() (string, error) {
+	return getCmdBin(&pt.npmBin, "npm", pt.opts.NpmBin)
+}
+
 func (pt *ProgramTester) getYarnBin() (string, error) {
 	return getCmdBin(&pt.yarnBin, "yarn", pt.opts.YarnBin)
+}
+
+// useNpm reports whether Node.js dependencies should be installed with npm instead of the default yarn. npm is
+// opt-in per-test via ProgramTestOptions.UseNpm, or globally via the PULUMI_TEST_USE_NPM environment variable.
+func (pt *ProgramTester) useNpm() bool {
+	return pt.opts.UseNpm || cmdutil.IsTruthy(os.Getenv("PULUMI_TEST_USE_NPM"))
+}
+
+func (pt *ProgramTester) getBunBin() (string, error) {
+	return getCmdBin(&pt.bunBin, "bun", pt.opts.BunBin)
 }
 
 func (pt *ProgramTester) getGoBin() (string, error) {
@@ -967,6 +1037,11 @@ func (pt *ProgramTester) getPipenvBin() (string, error) {
 	return getCmdBin(&pt.pipenvBin, "pipenv", pt.opts.PipenvBin)
 }
 
+// getUvBin returns a path to the currently-installed `uv` tool, or an error if the tool could not be found.
+func (pt *ProgramTester) getUvBin() (string, error) {
+	return getCmdBin(&pt.uvBin, "uv", "")
+}
+
 func (pt *ProgramTester) getDotNetBin() (string, error) {
 	return getCmdBin(&pt.dotNetBin, "dotnet", pt.opts.DotNetBin)
 }
@@ -984,7 +1059,20 @@ func (pt *ProgramTester) pulumiCmd(name string, args []string) ([]string, error)
 	if tracing := pt.opts.Tracing; tracing != "" {
 		cmd = append(cmd, "--tracing", strings.ReplaceAll(tracing, "{command}", name))
 	}
+	if otelTraces := pt.opts.OtelTraces; otelTraces != "" {
+		cmd = append(cmd, "--otel-traces", strings.ReplaceAll(otelTraces, "{command}", name))
+	}
 	return cmd, nil
+}
+
+func (pt *ProgramTester) npmCmd(args []string) ([]string, error) {
+	bin, err := pt.getNpmBin()
+	if err != nil {
+		return nil, err
+	}
+	result := slice.Prealloc[string](1 + len(args))
+	result = append(result, bin)
+	return append(result, args...), nil
 }
 
 func (pt *ProgramTester) yarnCmd(args []string) ([]string, error) {
@@ -992,9 +1080,20 @@ func (pt *ProgramTester) yarnCmd(args []string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	result := []string{bin}
+	result := slice.Prealloc[string](1 + len(args))
+	result = append(result, bin)
 	result = append(result, args...)
 	return withOptionalYarnFlags(result), nil
+}
+
+func (pt *ProgramTester) bunCmd(args []string) ([]string, error) {
+	bin, err := pt.getBunBin()
+	if err != nil {
+		return nil, err
+	}
+	result := slice.Prealloc[string](1 + len(args))
+	result = append(result, bin)
+	return append(result, args...), nil
 }
 
 func (pt *ProgramTester) pythonCmd(args []string) ([]string, error) {
@@ -1003,7 +1102,8 @@ func (pt *ProgramTester) pythonCmd(args []string) ([]string, error) {
 		return nil, err
 	}
 
-	cmd := []string{bin}
+	cmd := make([]string, 0, 1+len(args))
+	cmd = append(cmd, bin)
 	return append(cmd, args...), nil
 }
 
@@ -1013,12 +1113,33 @@ func (pt *ProgramTester) pipenvCmd(args []string) ([]string, error) {
 		return nil, err
 	}
 
-	cmd := []string{bin}
+	cmd := make([]string, 0, 1+len(args))
+	cmd = append(cmd, bin)
 	return append(cmd, args...), nil
 }
 
 func (pt *ProgramTester) runCommand(name string, args []string, wd string) error {
 	return RunCommandPulumiHome(pt.t, name, args, wd, pt.opts, pt.pulumiHome)
+}
+
+// runCommandWithRetries runs a command, retrying up to maxTries on failure to absorb transient
+// errors such as network blips and shared-cache races.
+func (pt *ProgramTester) runCommandWithRetries(name string, args []string, wd string) error {
+	maxTries := 3
+	_, _, err := retry.Until(context.Background(), retry.Acceptor{
+		Accept: func(try int, _ time.Duration) (bool, any, error) {
+			runerr := pt.runCommand(name, args, wd)
+			if runerr == nil {
+				return true, nil, nil
+			}
+			if try+1 >= maxTries {
+				return false, nil, runerr
+			}
+			pt.t.Logf("%v failed: %v; retrying...", strings.Join(args, " "), runerr)
+			return false, nil, nil
+		},
+	})
+	return err
 }
 
 // RunPulumiCommand runs a Pulumi command in the project directory.
@@ -1072,7 +1193,7 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 	}
 
 	_, _, err = retry.Until(context.Background(), retry.Acceptor{
-		Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+		Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
 			runerr := pt.runCommand(name, cmd, wd)
 			if runerr == nil {
 				return true, nil, nil
@@ -1098,6 +1219,33 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 	return err
 }
 
+func (pt *ProgramTester) runNpmCommand(name string, args []string, wd string) error {
+	cmd, err := pt.npmCmd(args)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = retry.Until(context.Background(), retry.Acceptor{
+		Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
+			runerr := pt.runCommand(name, cmd, wd)
+			if runerr == nil {
+				return true, nil, nil
+			} else if _, ok := runerr.(*exec.ExitError); ok {
+				// npm failed, let's try again, assuming we haven't failed a few times.
+				if try+1 >= 3 {
+					return false, nil, fmt.Errorf("%v did not complete after %v tries", cmd, try+1)
+				}
+
+				return false, nil, nil
+			}
+
+			// someother error, fail
+			return false, nil, runerr
+		},
+	})
+	return err
+}
+
 func (pt *ProgramTester) runYarnCommand(name string, args []string, wd string) error {
 	// Yarn will time out if multiple processes are trying to install packages at the same time.
 	ptesting.YarnInstallMutex.Lock()
@@ -1111,12 +1259,39 @@ func (pt *ProgramTester) runYarnCommand(name string, args []string, wd string) e
 	}
 
 	_, _, err = retry.Until(context.Background(), retry.Acceptor{
-		Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+		Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
 			runerr := pt.runCommand(name, cmd, wd)
 			if runerr == nil {
 				return true, nil, nil
 			} else if _, ok := runerr.(*exec.ExitError); ok {
 				// yarn failed, let's try again, assuming we haven't failed a few times.
+				if try+1 >= 3 {
+					return false, nil, fmt.Errorf("%v did not complete after %v tries", cmd, try+1)
+				}
+
+				return false, nil, nil
+			}
+
+			// someother error, fail
+			return false, nil, runerr
+		},
+	})
+	return err
+}
+
+func (pt *ProgramTester) runBunCommand(name string, args []string, wd string) error {
+	cmd, err := pt.bunCmd(args)
+	if err != nil {
+		return err
+	}
+
+	_, _, err = retry.Until(context.Background(), retry.Acceptor{
+		Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
+			runerr := pt.runCommand(name, cmd, wd)
+			if runerr == nil {
+				return true, nil, nil
+			} else if _, ok := runerr.(*exec.ExitError); ok {
+				// bun failed, let's try again, assuming we haven't failed a few times.
 				if try+1 >= 3 {
 					return false, nil, fmt.Errorf("%v did not complete after %v tries", cmd, try+1)
 				}
@@ -1294,7 +1469,7 @@ func (pt *ProgramTester) TestLifeCycleInitAndDestroy() error {
 
 	destroyStack := func() {
 		destroyErr := pt.TestLifeCycleDestroy()
-		assert.NoError(pt.t, destroyErr)
+		require.NoError(pt.t, destroyErr)
 	}
 	if pt.opts.DestroyOnCleanup {
 		// Allow other tests to refer to this stack until the test is complete.
@@ -1331,7 +1506,21 @@ func upgradeProjectDeps(projectDir string, pt *ProgramTester) error {
 
 	switch rt := projInfo.Proj.Runtime.Name(); rt {
 	case NodeJSRuntime:
-		if err = pt.yarnLinkPackageDeps(projectDir); err != nil {
+		if pt.useNpm() {
+			cwd, cwdErr := pt.nodejsWorkspaceCwd(projInfo)
+			if cwdErr != nil {
+				return cwdErr
+			}
+			if err = pt.npmLinkPackageDeps(cwd); err != nil {
+				return err
+			}
+		} else {
+			if err = pt.yarnLinkPackageDeps(projectDir); err != nil {
+				return err
+			}
+		}
+	case BunRuntime:
+		if err = pt.bunLinkPackageDeps(projectDir); err != nil {
 			return err
 		}
 	case PythonRuntime:
@@ -1495,6 +1684,9 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 		if pt.opts.DestroyExcludeProtected {
 			destroy = append(destroy, "--exclude-protected")
 		}
+		if pt.opts.DestroyCommandlineFlags != nil {
+			destroy = append(destroy, pt.opts.DestroyCommandlineFlags...)
+		}
 		if err := pt.runPulumiCommand("pulumi-destroy", destroy, pt.projdir, false); err != nil {
 			return err
 		}
@@ -1572,6 +1764,9 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 		if !pt.opts.ExpectRefreshChanges {
 			refresh = append(refresh, "--expect-no-changes")
 		}
+		if pt.opts.RefreshCommandlineFlags != nil {
+			refresh = append(refresh, pt.opts.RefreshCommandlineFlags...)
+		}
 		if err := pt.runPulumiCommand("pulumi-refresh", refresh, dir, false); err != nil {
 			return err
 		}
@@ -1607,7 +1802,7 @@ func (pt *ProgramTester) exportImport(dir string) error {
 	}()
 
 	if err := pt.runPulumiCommand("pulumi-stack-export", exportCmd, dir, false); err != nil {
-		return err
+		return fmt.Errorf("export: %w", err)
 	}
 
 	if f := pt.opts.ExportStateValidator; f != nil {
@@ -1624,7 +1819,12 @@ func (pt *ProgramTester) exportImport(dir string) error {
 		}
 	}
 
-	return pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
+	err := pt.runPulumiCommand("pulumi-stack-import", importCmd, dir, false)
+	if err != nil {
+		return fmt.Errorf("import: %w", err)
+	}
+
+	return nil
 }
 
 // PreviewAndUpdate runs pulumi preview followed by pulumi up
@@ -1791,13 +1991,13 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 
 		// Finally, replace our current temp directory with the new one.
 		dirOld := dir + ".old"
-		if err := os.Rename(dir, dirOld); err != nil {
+		if err := os.Rename(dir, dirOld); err != nil { //nolint:forbidigo // test usage is OK
 			return fmt.Errorf("Couldn't rename %v to %v: %w", dir, dirOld, err)
 		}
 
 		// There's a brief window here where the old temp dir name could be taken from us.
 
-		if err := os.Rename(newDir, dir); err != nil {
+		if err := os.Rename(newDir, dir); err != nil { //nolint:forbidigo // test usage is OK
 			return fmt.Errorf("Couldn't rename %v to %v: %w", newDir, dir, err)
 		}
 
@@ -1894,7 +2094,7 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 
 	// Get the root resource and outputs from the deployment
 	var rootResource apitype.ResourceV3
-	var outputs map[string]interface{}
+	var outputs map[string]any
 	for _, res := range deployment.Resources {
 		if res.Type == resource.RootStackType && res.Parent == "" {
 			rootResource = res
@@ -2101,31 +2301,38 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
 	// Until that's been fixed, this environment variable can be set by a test, which results in
-	// a package.json being emitted in the project directory and `yarn install && yarn link @pulumi/pulumi`
-	// being run.
+	// a package.json being emitted in the project directory with the locally-built @pulumi/pulumi linked in.
 	// When the underlying issue has been fixed, the use of this environment variable should be removed.
-	var yarnLinkPulumi bool
-	for _, env := range pt.opts.Env {
-		if env == "PULUMI_TEST_YARN_LINK_PULUMI=true" {
-			yarnLinkPulumi = true
-			break
-		}
-	}
-	if yarnLinkPulumi {
-		const packageJSON = `{
-			"name": "test",
-			"peerDependencies": {
-				"@pulumi/pulumi": "latest"
+	linkPulumi := slices.Contains(pt.opts.Env, "PULUMI_TEST_LINK_PULUMI=true")
+	if linkPulumi {
+		if pt.useNpm() {
+			const packageJSON = `{
+				"name": "test"
+			}`
+			if err := os.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0o600); err != nil {
+				return "", "", err
 			}
-		}`
-		if err := os.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0o600); err != nil {
-			return "", "", err
-		}
-		if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
-			return "", "", err
-		}
-		if err = pt.runYarnCommand("yarn-install", []string{"install"}, projdir); err != nil {
-			return "", "", err
+			// Point @pulumi/pulumi at the locally-built SDK tarball, then install.
+			ptesting.ConfigureNodejsCoreSDK(pt.t, projdir)
+			if err = pt.runNpmCommand("npm-install", []string{"install"}, projdir); err != nil {
+				return "", "", err
+			}
+		} else {
+			const packageJSON = `{
+				"name": "test",
+				"peerDependencies": {
+					"@pulumi/pulumi": "latest"
+				}
+			}`
+			if err := os.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0o600); err != nil {
+				return "", "", err
+			}
+			if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
+				return "", "", err
+			}
+			if err = pt.runYarnCommand("yarn-install", []string{"install"}, projdir); err != nil {
+				return "", "", err
+			}
 		}
 	}
 
@@ -2160,8 +2367,103 @@ func (pt *ProgramTester) prepareProjectDir(projectDir string) error {
 	return pt.prepareProject(projinfo)
 }
 
-// prepareNodeJSProject runs setup necessary to get a Node.js project ready for `pulumi` commands.
+// nodejsWorkspaceCwd returns the directory npm should run in: the npm workspace root if the project is part of a
+// workspace, otherwise the project's own working directory.
+func (pt *ProgramTester) nodejsWorkspaceCwd(projinfo *engine.Projinfo) (string, error) {
+	cwd, _, err := projinfo.GetPwdMain()
+	if err != nil {
+		return "", err
+	}
+
+	workspaceRoot, err := npm.FindWorkspaceRoot(cwd)
+	if err != nil {
+		if !errors.Is(err, npm.ErrNotInWorkspace) {
+			return "", err
+		}
+		if manifest, err := npm.SearchupPackageManifest(cwd); err == nil {
+			cwd = filepath.Dir(manifest)
+		}
+	} else {
+		pt.t.Logf("detected npm workspace root at %s", workspaceRoot)
+		cwd = workspaceRoot
+	}
+	return cwd, nil
+}
+
+// prepareNodeJSProject runs setup necessary to get a Node.js project ready for `pulumi` commands
 func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
+	if pt.useNpm() {
+		return pt.prepareNodeJSProjectNpm(projinfo)
+	}
+	return pt.prepareNodeJSProjectYarn(projinfo)
+}
+
+// prepareNodeJSProjectNpm prepares a Node.js project using npm.
+func (pt *ProgramTester) prepareNodeJSProjectNpm(projinfo *engine.Projinfo) error {
+	cwd, err := pt.nodejsWorkspaceCwd(projinfo)
+	if err != nil {
+		return err
+	}
+
+	if pt.opts.InstallDevReleases {
+		if err := pt.runNpmCommand("npm-install-dev", []string{"install", "@pulumi/pulumi@dev"}, cwd); err != nil {
+			return err
+		}
+	}
+
+	// If the test requested some packages to be overridden, we do two things. First, if the package is listed as a
+	// direct dependency of the project, we change the version constraint in the package.json. For transitive
+	// dependencies, we use npm's "overrides" feature to force them to a specific version.
+	if len(pt.opts.Overrides) > 0 {
+		packageJSON, err := readPackageJSON(cwd)
+		if err != nil {
+			return err
+		}
+
+		overrides := make(map[string]any)
+
+		for packageName, packageVersion := range pt.opts.Overrides {
+			for _, section := range []string{"dependencies", "devDependencies"} {
+				if _, has := packageJSON[section]; has {
+					entry := packageJSON[section].(map[string]any)
+
+					if _, has := entry[packageName]; has {
+						entry[packageName] = packageVersion
+					}
+				}
+			}
+
+			overrides[packageName] = packageVersion
+		}
+
+		packageJSON["overrides"] = overrides
+
+		if err := writePackageJSON(cwd, packageJSON); err != nil {
+			return err
+		}
+	}
+
+	if err = pt.runNpmCommand("npm-install", []string{"install"}, cwd); err != nil {
+		return err
+	}
+
+	if !pt.opts.RunUpdateTest {
+		if err := pt.npmLinkPackageDeps(cwd); err != nil {
+			return err
+		}
+	}
+
+	if pt.opts.RunBuild {
+		if err = pt.runNpmCommand("npm-build", []string{"run", "build"}, cwd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// prepareNodeJSProjectYarn prepares a Node.js project using yarn.
+func (pt *ProgramTester) prepareNodeJSProjectYarn(projinfo *engine.Projinfo) error {
 	if err := ptesting.WriteYarnRCForTest(projinfo.Root); err != nil {
 		return err
 	}
@@ -2202,12 +2504,12 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 			return err
 		}
 
-		resolutions := make(map[string]interface{})
+		resolutions := make(map[string]any)
 
 		for packageName, packageVersion := range pt.opts.Overrides {
 			for _, section := range []string{"dependencies", "devDependencies"} {
 				if _, has := packageJSON[section]; has {
-					entry := packageJSON[section].(map[string]interface{})
+					entry := packageJSON[section].(map[string]any)
 
 					if _, has := entry[packageName]; has {
 						entry[packageName] = packageVersion
@@ -2248,15 +2550,99 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 	return nil
 }
 
+// prepareBunProject runs setup necessary to get a Bun project ready for `pulumi` commands.
+func (pt *ProgramTester) prepareBunProject(projinfo *engine.Projinfo) error {
+	// Get the correct pwd to run Yarn in.
+	cwd, _, err := projinfo.GetPwdMain()
+	if err != nil {
+		return err
+	}
+
+	workspaceRoot, err := npm.FindWorkspaceRoot(cwd)
+	if err != nil {
+		if !errors.Is(err, npm.ErrNotInWorkspace) {
+			return err
+		}
+		// Not in a workspace, don't updated cwd.
+	} else {
+		pt.t.Logf("detected workspace root at %s", workspaceRoot)
+		cwd = workspaceRoot
+	}
+
+	// If dev versions were requested, we need to update the
+	// package.json to use them.  Note that Overrides take
+	// priority over installing dev versions.
+	if pt.opts.InstallDevReleases {
+		err := pt.runBunCommand("bun-add", []string{"add", "@pulumi/pulumi@dev"}, cwd)
+		if err != nil {
+			return err
+		}
+	}
+
+	// If the test requested some packages to be overridden, we do two things. First, if the package is listed as a
+	// direct dependency of the project, we change the version constraint in the package.json. For transitive
+	// dependencies, we use "resolutions" feature to force them to a specific version.
+	if len(pt.opts.Overrides) > 0 {
+		packageJSON, err := readPackageJSON(cwd)
+		if err != nil {
+			return err
+		}
+
+		resolutions := make(map[string]any)
+
+		for packageName, packageVersion := range pt.opts.Overrides {
+			for _, section := range []string{"dependencies", "devDependencies"} {
+				if _, has := packageJSON[section]; has {
+					entry := packageJSON[section].(map[string]any)
+
+					if _, has := entry[packageName]; has {
+						entry[packageName] = packageVersion
+					}
+				}
+			}
+
+			pt.t.Logf("adding resolution for %s to version %s", packageName, packageVersion)
+			resolutions["**/"+packageName] = packageVersion
+		}
+
+		// Wack any existing resolutions section with our newly computed one.
+		packageJSON["resolutions"] = resolutions
+
+		if err := writePackageJSON(cwd, packageJSON); err != nil {
+			return err
+		}
+	}
+
+	// Now ensure dependencies are present.
+	if err = pt.runBunCommand("bun-install", []string{"install"}, cwd); err != nil {
+		return err
+	}
+
+	if !pt.opts.RunUpdateTest {
+		if err = pt.bunLinkPackageDeps(cwd); err != nil {
+			return err
+		}
+	}
+
+	if pt.opts.RunBuild {
+		// And finally compile it using whatever build steps are in the package.json file.
+		if err = pt.runBunCommand("bun-build", []string{"run", "build"}, cwd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // readPackageJSON unmarshals the package.json file located in pathToPackage.
-func readPackageJSON(pathToPackage string) (map[string]interface{}, error) {
+func readPackageJSON(pathToPackage string) (map[string]any, error) {
 	f, err := os.Open(filepath.Join(pathToPackage, "package.json"))
 	if err != nil {
 		return nil, fmt.Errorf("opening package.json: %w", err)
 	}
 	defer contract.IgnoreClose(f)
 
-	var ret map[string]interface{}
+	var ret map[string]any
 	if err := json.NewDecoder(f).Decode(&ret); err != nil {
 		return nil, fmt.Errorf("decoding package.json: %w", err)
 	}
@@ -2264,7 +2650,7 @@ func readPackageJSON(pathToPackage string) (map[string]interface{}, error) {
 	return ret, nil
 }
 
-func writePackageJSON(pathToPackage string, metadata map[string]interface{}) error {
+func writePackageJSON(pathToPackage string, metadata map[string]any) error {
 	// os.Create truncates the already existing file.
 	f, err := os.Create(filepath.Join(pathToPackage, "package.json"))
 	if err != nil {
@@ -2292,6 +2678,8 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		if err = pt.preparePythonProjectWithPipenv(cwd); err != nil {
 			return err
 		}
+	} else if pythonToolchainIsUv(projinfo) {
+		return pt.preparePythonProjectWithUv(projinfo, cwd)
 	} else {
 		venvPath := "venv"
 		if cwd != projinfo.Root {
@@ -2338,6 +2726,60 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 	return nil
 }
 
+func pythonToolchainIsUv(projinfo *engine.Projinfo) bool {
+	if projinfo == nil || projinfo.Proj == nil || projinfo.Proj.Runtime.Options() == nil {
+		return false
+	}
+	tc, _ := projinfo.Proj.Runtime.Options()["toolchain"].(string)
+	return tc == "uv"
+}
+
+// preparePythonProjectWithUv prepares a Python project that declares `toolchain: uv` in its Pulumi.yaml.
+// It runs `uv sync` against the fixture's pyproject.toml to create a `.venv` and a `uv.lock`, then
+// editable-installs any `Dependencies` (typically the local sdk/python) on top.
+func (pt *ProgramTester) preparePythonProjectWithUv(projinfo *engine.Projinfo, cwd string) error {
+	uvBin, err := pt.getUvBin()
+	if err != nil {
+		return err
+	}
+
+	venvDir := ".venv"
+	venvPath := filepath.Join(cwd, venvDir)
+
+	syncArgs := []string{uvBin, "sync"}
+	if pt.opts.InstallDevReleases {
+		syncArgs = append(syncArgs, "--prerelease=allow")
+	}
+	if err := pt.runCommandWithRetries("uv-sync", syncArgs, cwd); err != nil {
+		return err
+	}
+
+	pt.opts.virtualEnvDir = venvDir
+	projinfo.Proj.Runtime.SetOption("virtualenv", venvPath)
+	projfile := filepath.Join(projinfo.Root, workspace.ProjectFile+".yaml")
+	if err := projinfo.Proj.Save(projfile); err != nil {
+		return fmt.Errorf("saving project: %w", err)
+	}
+
+	if pt.opts.RunUpdateTest {
+		return nil
+	}
+
+	for _, dep := range pt.opts.Dependencies {
+		if !filepath.IsAbs(dep) {
+			abs, err := filepath.Abs(dep)
+			if err != nil {
+				return err
+			}
+			dep = abs
+		}
+		if err := pt.runCommandWithRetries("uv-add", []string{uvBin, "add", "--editable", dep}, cwd); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (pt *ProgramTester) preparePythonProjectWithPipenv(cwd string) error {
 	// Allow ENV var based overload of desired Python version for
 	// the Pipenv environment. This is useful in CI scenarios that
@@ -2369,10 +2811,30 @@ func (pt *ProgramTester) preparePythonProjectWithPipenv(cwd string) error {
 	return nil
 }
 
+func (pt *ProgramTester) npmLinkPackageDeps(cwd string) error {
+	for _, dependency := range pt.opts.Dependencies {
+		if err := pt.runNpmCommand("npm-link", []string{"link", dependency}, cwd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // YarnLinkPackageDeps bring in package dependencies via yarn
 func (pt *ProgramTester) yarnLinkPackageDeps(cwd string) error {
 	for _, dependency := range pt.opts.Dependencies {
 		if err := pt.runYarnCommand("yarn-link", []string{"link", dependency}, cwd); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (pt *ProgramTester) bunLinkPackageDeps(cwd string) error {
+	for _, dependency := range pt.opts.Dependencies {
+		if err := pt.runBunCommand("bun-link", []string{"link", dependency}, cwd); err != nil {
 			return err
 		}
 	}
@@ -2679,31 +3141,23 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	return nil
 }
 
-func (pt *ProgramTester) prepareYAMLProject(projinfo *engine.Projinfo) error {
-	// YAML doesn't need any system setup, and should auto-install required plugins
-	return nil
-}
-
-func (pt *ProgramTester) prepareJavaProject(projinfo *engine.Projinfo) error {
-	// Java doesn't need any system setup, and should auto-install required plugins
-	return nil
-}
-
 func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error {
 	// Based on the language, invoke the right routine to prepare the target directory.
 	switch rt := projinfo.Proj.Runtime.Name(); rt {
 	case NodeJSRuntime:
 		return pt.prepareNodeJSProject(projinfo)
+	case BunRuntime:
+		return pt.prepareBunProject(projinfo)
 	case PythonRuntime:
 		return pt.preparePythonProject(projinfo)
 	case GoRuntime:
 		return pt.prepareGoProject(projinfo)
 	case DotNetRuntime:
 		return pt.prepareDotNetProject(projinfo)
-	case YAMLRuntime:
-		return pt.prepareYAMLProject(projinfo)
-	case JavaRuntime:
-		return pt.prepareJavaProject(projinfo)
+	case YAMLRuntime, JavaRuntime, HCLRuntime, PCLRuntime:
+		// These runtimes have no SDK build step (no npm install, pip install,
+		// go mod tidy, dotnet restore, etc.), so there's nothing to prepare.
+		return nil
 	default:
 		return fmt.Errorf("unrecognized project runtime: %s", rt)
 	}
@@ -2715,15 +3169,21 @@ type AssertPerfBenchmark struct {
 	T                  *testing.T
 	MaxPreviewDuration time.Duration
 	MaxUpdateDuration  time.Duration
+	// MaxEmptyUpdateDuration is the time threshold for noop updates. If zero,
+	// the MaxUpdateDuration is used.
+	MaxEmptyUpdateDuration time.Duration
 }
 
-func (t AssertPerfBenchmark) ReportCommand(stats TestCommandStats) {
+func (t AssertPerfBenchmark) ReportCommand(ctx context.Context, stats TestCommandStats) {
 	var maxDuration *time.Duration
 	if strings.HasPrefix(stats.StepName, "pulumi-preview") {
 		maxDuration = &t.MaxPreviewDuration
 	}
 	if strings.HasPrefix(stats.StepName, "pulumi-update") {
 		maxDuration = &t.MaxUpdateDuration
+		if strings.HasSuffix(stats.StepName, "-empty") && t.MaxEmptyUpdateDuration != 0 {
+			maxDuration = &t.MaxEmptyUpdateDuration
+		}
 	}
 
 	if maxDuration != nil && *maxDuration != 0 {
@@ -2736,5 +3196,52 @@ func (t AssertPerfBenchmark) ReportCommand(stats TestCommandStats) {
 				"Test step %q took longer than expected. %.2fs vs. max %.2fs",
 				stats.StepName, stats.ElapsedSeconds, maxDuration.Seconds())
 		}
+	}
+}
+
+// componentSetupMutexes holds one mutex per fixture dir and guards concurrent access within a process.
+var componentSetupMutexes gsync.Map[string, *sync.Mutex]
+
+// RunComponentSetup installs the locally-built SDK into the test-component fixtures under testDir: `testcomponent` for
+// Node.js and `testcomponent-python` for Python. Go test components don't need any setup.
+func RunComponentSetup(t *testing.T, testDir string) {
+	t.Helper()
+	setupComponent(t, filepath.Join(testDir, "testcomponent"), NodeJSRuntime)
+	setupComponent(t, filepath.Join(testDir, "testcomponent-python"), PythonRuntime)
+}
+
+func setupComponent(t *testing.T, dir, runtime string) {
+	t.Helper()
+	if _, err := os.Stat(dir); err != nil {
+		return // this component variant isn't present under the test directory
+	}
+
+	mu, _ := componentSetupMutexes.LoadOrStore(filepath.Clean(dir), &sync.Mutex{})
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Guard against multiple processes running the tests concurrently.
+	lockfile := filepath.Join(dir, ".lock")
+	flock := fsutil.NewFileMutex(lockfile)
+	deadline := time.Now().Add(10 * time.Minute)
+	for {
+		if err := flock.Lock(); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("timed out waiting for lock on %s", lockfile)
+		}
+		time.Sleep(time.Second)
+	}
+	defer func() {
+		require.NoError(t, flock.Unlock())
+	}()
+
+	ptesting.InstallDependencies(t, dir)
+	if runtime == NodeJSRuntime {
+		cmd := exec.Command("npx", "tsc")
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "npx tsc in %s failed: %s", dir, out)
 	}
 }

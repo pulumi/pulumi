@@ -1,4 +1,4 @@
-// Copyright 2025-2025, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,14 +44,27 @@ export type ComponentDefinition = {
 
 export type TypeDefinition = {
     name: string;
-    properties: Record<string, PropertyDefinition>;
+    type: PropertyType;
+    properties?: Record<string, PropertyDefinition>;
+    enum?: Array<{ name: string; value: string | number; description?: string }>;
     description?: string;
+};
+
+export type Dependency = {
+    name: string;
+    version?: string;
+    downloadURL?: string;
+    parameterization?: {
+        name: string;
+        version: string;
+        value: string;
+    };
 };
 
 export type AnalyzeResult = {
     components: Record<string, ComponentDefinition>;
     typeDefinitions: Record<string, TypeDefinition>;
-    packageReferences: Record<string, string>;
+    dependencies: Dependency[];
 };
 
 interface docNode {
@@ -72,7 +85,7 @@ export class Analyzer {
     private program: typescript.Program;
     private components: Record<string, ComponentDefinition> = {};
     private typeDefinitions: Record<string, TypeDefinition> = {};
-    private packageReferences: Record<string, string> = {};
+    private dependencies: Dependency[] = [];
     private docStrings: Record<string, string> = {};
     private componentNames: Set<string>;
     private programFiles: Set<string>;
@@ -127,7 +140,10 @@ export class Analyzer {
                             componentNames.delete(component.name);
                         }
                     }
-                } else if ((ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node)) && node.name) {
+                } else if (
+                    (ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node) || ts.isEnumDeclaration(node)) &&
+                    node.name
+                ) {
                     // Collect documentation for types
                     const dNode = node as docNode;
                     if (dNode?.jsDoc && dNode.jsDoc.length > 0) {
@@ -154,7 +170,7 @@ Please ensure these components are properly imported to your package's entry poi
         return {
             components: this.components,
             typeDefinitions: this.typeDefinitions,
-            packageReferences: this.packageReferences,
+            dependencies: this.dependencies,
         };
     }
 
@@ -307,11 +323,13 @@ Please ensure these components are properly imported to your package's entry poi
         }
 
         let inputs: Record<string, PropertyDefinition> = {};
-        if (argsSymbol.members) {
+        // Use args.getProperties() instead of argsSymbol.members to include
+        // properties inherited from extended interfaces.
+        const argsProperties = args.getProperties();
+        if (argsProperties.length > 0) {
             inputs = this.analyzeSymbols(
-                { component: componentName, inputOutput: InputOutput.Input, typeName: argsSymbol.getName() },
-                symbolTableToSymbols(argsSymbol.members),
-                argsParam,
+                { component: componentName, inputOutput: InputOutput.Neither, typeName: argsSymbol.getName() },
+                argsProperties,
             );
         }
 
@@ -322,7 +340,6 @@ Please ensure these components are properly imported to your package's entry poi
             outputs = this.analyzeSymbols(
                 { component: componentName, inputOutput: InputOutput.Output },
                 symbolTableToSymbols(classSymbol.members),
-                node,
             );
         }
 
@@ -361,7 +378,6 @@ Please ensure these components are properly imported to your package's entry poi
     private analyzeSymbols(
         context: { component: string; inputOutput: InputOutput; typeName?: string },
         symbols: typescript.Symbol[],
-        location: typescript.Node,
     ): Record<string, PropertyDefinition> {
         const properties: Record<string, PropertyDefinition> = {};
         symbols.forEach((member) => {
@@ -369,43 +385,49 @@ Please ensure these components are properly imported to your package's entry poi
                 return;
             }
             const name = member.escapedName as string;
-            properties[name] = this.analyzeSymbol({ ...context, property: name }, member, location);
+            properties[name] = this.analyzeSymbol({ ...context, property: name }, member);
         });
         return properties;
     }
 
     private analyzeSymbol(
-        context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
+        context: {
+            component: string;
+            property: string;
+            inputOutput: InputOutput;
+            typeName?: string;
+            isPartial?: boolean;
+            isRequired?: boolean;
+        },
         symbol: typescript.Symbol,
-        location: typescript.Node,
     ): PropertyDefinition {
         // Check if the property is optional, e.g.: myProp?: string; This is
         // defined on the symbol, not the type.
-        const propType = this.checker.getTypeOfSymbolAtLocation(symbol, location);
+        const propType = this.checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration);
         const optional = isOptional(symbol);
         const dNode = symbol.valueDeclaration as docNode;
         let docString: string | undefined = undefined;
         if (dNode?.jsDoc && dNode.jsDoc.length > 0) {
             docString = dNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
         }
-        return this.analyzeType(
-            { ...context, inputOutput: InputOutput.Neither },
-            propType,
-            location,
-            optional,
-            docString,
-        );
+        return this.analyzeType({ ...context }, propType, symbol.valueDeclaration, optional, docString);
     }
 
     private analyzeType(
-        context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
+        context: {
+            component: string;
+            property: string;
+            inputOutput: InputOutput;
+            typeName?: string;
+            isPartial?: boolean;
+            isRequired?: boolean;
+        },
         type: typescript.Type,
         location: typescript.Node,
         optional: boolean = false,
         docString: string | undefined = undefined,
     ): PropertyDefinition {
-        if (isSimpleType(type)) {
-            const prop: PropertyDefinition = { type: tsTypeToPropertyType(type) };
+        const makeProp = (prop: PropertyDefinition) => {
             if (optional) {
                 prop.optional = true;
             }
@@ -416,20 +438,28 @@ Please ensure these components are properly imported to your package's entry poi
                 prop.description = docString;
             }
             return prop;
-        } else if (isInput(type)) {
-            // Grab the promise type from the `T | Promise<T> | OutputInstance<T>`
-            // union, and get the type reference `T` from there. With that we
-            // can recursively analyze the type, passing through the optional
-            // flag. The type can now not be plain anymore, since it's in an
-            // input.
-            const base = (type as typescript.UnionType)?.types?.find(isPromise);
-            if (!base) {
-                // unreachable due to the isInput check
-                throw new Error(
-                    `Input type union must include a Promise: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
-                );
-            }
-            const innerType = this.unwrapTypeReference(context, base);
+        };
+
+        const propType = getSimplePropertyType(type);
+        if (propType) {
+            return makeProp({ type: propType });
+        }
+
+        const partialInnerType = getPartialInnerType(type);
+        if (partialInnerType) {
+            // For Partial<T>, we need to process T but mark all properties as optional
+            return this.analyzeType({ ...context, isPartial: true }, partialInnerType, location, optional, docString);
+        }
+
+        const requiredInnerType = getRequiredInnerType(type);
+        if (requiredInnerType) {
+            // For Required<T>, we need to process T but mark all properties as required
+            return this.analyzeType({ ...context, isRequired: true }, requiredInnerType, location, optional, docString);
+        }
+
+        const innerInputType = getInputInnerType(type);
+        if (innerInputType) {
+            const innerType = this.unwrapTypeReference(context, innerInputType);
             return this.analyzeType(
                 { ...context, inputOutput: InputOutput.Input },
                 innerType,
@@ -437,7 +467,9 @@ Please ensure these components are properly imported to your package's entry poi
                 optional,
                 docString,
             );
-        } else if (isOutput(type)) {
+        }
+
+        if (isOutput(type)) {
             type = unwrapOutputIntersection(type);
             // Grab the inner type of the OutputInstance<T> type, and then
             // recurse, passing through the optional flag. The type can now not
@@ -450,172 +482,208 @@ Please ensure these components are properly imported to your package's entry poi
                 optional,
                 docString,
             );
-        } else if (isAny(type)) {
-            const $ref = "pulumi.json#/Any";
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
-        } else if (isAsset(type)) {
-            const $ref = "pulumi.json#/Asset";
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
-        } else if (isArchive(type)) {
-            const $ref = "pulumi.json#/Archive";
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
-        } else if (isResourceReference(type, this.checker)) {
-            const { packageName, packageVersion, pulumiType } = this.getResourceType(context, type);
-            const $ref = `/${packageName}/v${packageVersion}/schema.json#/resources/${pulumiType.replace("/", "%2F")}`;
-            this.packageReferences[packageName] = packageVersion;
+        }
 
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
+        if (isAny(type)) {
+            const prop = makeProp({ $ref: "pulumi.json#/Any" });
+            // Any is never plain, since it can be anything, including an Input<T>.
+            // biome-ignore lint/performance/noDelete: Completely remove the property to not include it in the schema.
+            delete prop.plain;
             return prop;
-        } else if (type.isClassOrInterface()) {
+        }
+
+        if (isAsset(type)) {
+            return makeProp({ $ref: "pulumi.json#/Asset" });
+        }
+
+        if (isArchive(type)) {
+            return makeProp({ $ref: "pulumi.json#/Archive" });
+        }
+
+        if (isResourceReference(type, this.checker)) {
+            const { dependency, pulumiType } = this.getResourceType(context, type);
+            if (!this.dependencies.find((dep) => dep.name === dependency.name && dep.version === dependency.version)) {
+                this.dependencies.push(dependency);
+            }
+            return makeProp({
+                $ref: `/${dependency.name}/v${dependency.version}/schema.json#/resources/${pulumiType.replace("/", "%2F")}`,
+            });
+        }
+
+        if (type.isClassOrInterface()) {
             // This is a complex type, create a typedef and then reference it in
             // the PropertyDefinition.
-            const name = type.getSymbol()?.escapedName as string | undefined;
+            let name = type.getSymbol()?.escapedName as string | undefined;
             if (!name) {
                 throw new Error(
                     `Class or interface has no name: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
                 );
             }
+
+            // If this is a Partial<T> or Required<T> type, use a different name to avoid conflicts
+            // with the regular type T
+            if (context.isPartial) {
+                name = `Partial${name}`;
+            } else if (context.isRequired) {
+                name = `Required${name}`;
+            }
+
             if (this.typeDefinitions[name]) {
                 // Type already exists, just reference it and we're done.
                 const refProp: PropertyDefinition = { $ref: `#/types/${this.providerName}:index:${name}` };
-                if (optional) {
-                    refProp.optional = true;
-                }
-                if (context.inputOutput === InputOutput.Neither) {
-                    refProp.plain = true;
-                }
-                return refProp;
+                return makeProp(refProp);
             }
             // Immediately add an empty type definition, so that it can be
             // referenced recursively, then analyze the properties.
-            this.typeDefinitions[name] = { name, properties: {} };
-            if (this.docStrings[name]) {
-                this.typeDefinitions[name].description = this.docStrings[name];
+            this.typeDefinitions[name] = { name, properties: {}, type: "object" };
+
+            // For Partial/Required types, get description from the original type
+            const originalTypeName =
+                context.isPartial || context.isRequired ? (type.getSymbol()?.escapedName as string) : name;
+            if (this.docStrings[originalTypeName]) {
+                this.typeDefinitions[name].description = this.docStrings[originalTypeName];
             }
-            const typeContext = { ...context, typeName: name };
-            const properties = this.analyzeSymbols(typeContext, type.getProperties(), location);
+
+            const typeContext = {
+                ...context,
+                // If the type is used in an output, we never set `plain`,
+                // otherwise it might or might not be plain, depending on
+                // whether it's wrapped in an `Input`.
+                inputOutput: context.inputOutput === InputOutput.Output ? InputOutput.Output : InputOutput.Neither,
+                typeName: name,
+                // Required<T> and Partial<T> are not recursive
+                isPartial: false,
+                isRequired: false,
+            };
+            const properties = this.analyzeSymbols(typeContext, type.getProperties());
+
+            if (context.isPartial) {
+                for (const key in properties) {
+                    if (Object.prototype.hasOwnProperty.call(properties, key)) {
+                        properties[key].optional = true;
+                    }
+                }
+            }
+
+            if (context.isRequired) {
+                for (const key in properties) {
+                    if (Object.prototype.hasOwnProperty.call(properties, key)) {
+                        // biome-ignore lint/performance/noDelete: Completely remove the property to not include it in the schema.
+                        delete properties[key].optional;
+                    }
+                }
+            }
+
             this.typeDefinitions[name].properties = properties;
-            const $ref = `#/types/${this.providerName}:index:${name}`;
-            const prop: PropertyDefinition = { $ref };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
-        } else if (isArrayType(type)) {
-            const prop: PropertyDefinition = { type: "array" };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
+            return makeProp({ $ref: `#/types/${this.providerName}:index:${name}` });
+        }
 
-            const typeArguments = (type as typescript.TypeReference).typeArguments;
-            if (!typeArguments || typeArguments.length !== 1) {
-                throw new Error(
-                    `Expected exactly one type argument in '${this.checker.typeToString(type)}': ${this.formatErrorContext(context)} has ${typeArguments?.length || 0} type arguments`,
-                );
-            }
+        const arrayItemType = getArrayType(type);
+        if (arrayItemType) {
+            return makeProp({
+                type: "array",
+                items: this.analyzeType(
+                    {
+                        ...context,
+                        property: `${context.property}[]`,
+                        inputOutput:
+                            context.inputOutput === InputOutput.Output ? InputOutput.Output : InputOutput.Neither,
+                    },
+                    arrayItemType,
+                    location,
+                    false /* optional */,
+                ),
+            });
+        }
 
-            const innerType = typeArguments[0];
-            prop.items = this.analyzeType(
-                {
-                    ...context,
-                    property: `${context.property}[]`,
-                    inputOutput: context.inputOutput === InputOutput.Output ? InputOutput.Output : InputOutput.Neither,
-                },
-                innerType,
-                location,
-                false /* optional */,
-            );
-            if (docString) {
-                prop.description = docString;
-            }
-            return prop;
-        } else if (isMapType(type, this.checker)) {
-            const prop: PropertyDefinition = { type: "object" };
-            if (optional) {
-                prop.optional = true;
-            }
-            if (context.inputOutput === InputOutput.Neither) {
-                prop.plain = true;
-            }
+        const mapType = getMapType(type, this.checker);
+        if (mapType) {
+            return makeProp({
+                type: "object",
+                additionalProperties: this.analyzeType(
+                    {
+                        ...context,
+                        property: `${context.property} values`,
+                    },
+                    mapType,
+                    location,
+                    false,
+                ),
+            });
+        }
 
-            // We got { [key: string]: <indexInfo.type> }
-            const indexInfo = this.checker.getIndexInfoOfType(type, ts.IndexKind.String);
-            if (!indexInfo) {
-                // We can't actually get here because isMapType checks for indexInfo
-                throw new Error(`Map type has no index info`);
-            }
-            if (docString) {
-                prop.description = docString;
-            }
-            prop.additionalProperties = this.analyzeType(
-                {
-                    ...context,
-                    property: `${context.property} values`,
-                },
-                indexInfo.type,
-                location,
-                false,
-            );
-            return prop;
-        } else if (isOptionalType(type, this.checker)) {
+        if (isBooleanOptionalType(type, this.checker)) {
+            // This is the special case for true | false | undefined
+            return makeProp({ type: "boolean", optional: true });
+        }
+
+        const optionalType = getOptionalType(type);
+        if (optionalType) {
+            return this.analyzeType(context, optionalType, location, true, docString);
+        }
+
+        if (type.isUnion()) {
+            // Enums are unions of string or number literals. We support two cases:
+            //
+            //   enum MyEnum { Value1 = "Value1", Value2 = "Value2" }
+            //
+            //   const MyEnum = { Value1: "Value1", Value2: "Value2" } as const;
+            //   type MyEnum = typeof MyEnum[keyof typeof MyEnum];
+            //
             const unionType = type as typescript.UnionType;
-            const nonUndefinedType = unionType.types.find((t) => !(t.flags & ts.TypeFlags.Undefined));
-            if (!nonUndefinedType) {
-                throw new Error(
-                    `Expected exactly one type to not be undefined: ${this.formatErrorContext(context)} has type '${this.checker.typeToString(type)}'`,
-                );
+            const isStringLiteralUnion = unionType.types.every(
+                (t) => t.isStringLiteral() || (t.flags & ts.TypeFlags.Undefined) !== 0,
+            );
+            const isNumberLiteralUnion = unionType.types.every(
+                (t) => t.isNumberLiteral() || (t.flags & ts.TypeFlags.Undefined) !== 0,
+            );
+
+            if (isStringLiteralUnion || isNumberLiteralUnion) {
+                // For `enum MyEnum { ... }` we have the name available directly on the type.
+                let name = type.aliasSymbol?.escapedName as string | undefined;
+                let typeRefNode: typescript.TypeReferenceNode | undefined;
+
+                // For the `as const` object pattern TypeScript doesn't track the name, we have to go get it from the
+                // type of the property.
+                if (!name && (ts.isPropertySignature(location) || ts.isPropertyDeclaration(location))) {
+                    const typeNode = location.type;
+                    if (typeNode && ts.isTypeReferenceNode(typeNode)) {
+                        const resolvedType = this.checker.getTypeFromTypeNode(typeNode);
+                        const isInputOrOutput = getInputInnerType(resolvedType) !== undefined || isOutput(resolvedType);
+                        if (isInputOrOutput && typeNode.typeArguments && typeNode.typeArguments.length > 0) {
+                            const innerTypeNode = typeNode.typeArguments[0];
+                            if (ts.isTypeReferenceNode(innerTypeNode)) {
+                                name = innerTypeNode.typeName.getText();
+                                typeRefNode = innerTypeNode;
+                            }
+                        } else {
+                            name = typeNode.typeName.getText();
+                            typeRefNode = typeNode;
+                        }
+                    }
+                }
+
+                const enumMembers = name
+                    ? this.extractEnumMembers({ ...context, property: name }, type, typeRefNode || location)
+                    : undefined;
+                if (name && enumMembers && enumMembers.members.length > 0) {
+                    if (!this.typeDefinitions[name]) {
+                        const propertyType = isStringLiteralUnion ? "string" : "number";
+                        this.typeDefinitions[name] = { name, enum: enumMembers.members, type: propertyType };
+                        if (enumMembers.description) {
+                            this.typeDefinitions[name].description = enumMembers.description;
+                        }
+                    }
+                    return makeProp({ $ref: `#/types/${this.providerName}:index:${name}` });
+                }
             }
-            return this.analyzeType(context, nonUndefinedType, location, true, docString);
-        } else if (type.isUnion()) {
+
             throw new Error(
                 `Union types are not supported for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
             );
-        } else if (type.isIntersection()) {
+        }
+
+        if (type.isIntersection()) {
             throw new Error(
                 `Intersection types are not supported for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
             );
@@ -626,8 +694,196 @@ Please ensure these components are properly imported to your package's entry poi
         );
     }
 
+    private extractEnumMembers(
+        context: { component: string; property: string; typeName?: string },
+        type: typescript.Type,
+        location: typescript.Node,
+    ):
+        | { members: Array<{ name: string; value: string | number; description?: string }>; description?: string }
+        | undefined {
+        // Try to get the symbol from the type first (for enum keyword)
+        let symbol = type.aliasSymbol || type.getSymbol();
+
+        // ... then try to get it from a type reference node (for imports)
+        if (!symbol && ts.isTypeReferenceNode(location)) {
+            symbol = this.checker.getSymbolAtLocation(location.typeName);
+        }
+
+        // ... then search for it by name in the location's source file
+        if (!symbol) {
+            const sourceFile = location.getSourceFile();
+            sourceFile.forEachChild((node) => {
+                if (ts.isVariableStatement(node)) {
+                    for (const decl of node.declarationList.declarations) {
+                        if (ts.isIdentifier(decl.name) && decl.name.text === context.typeName) {
+                            symbol = this.checker.getSymbolAtLocation(decl.name);
+                            return true;
+                        }
+                    }
+                }
+                return undefined;
+            });
+        }
+
+        if (!symbol?.declarations?.[0]) {
+            return undefined;
+        }
+        let declaration = symbol.declarations[0];
+        // If the declaration is an import, follow it to the actual declaration
+        if (ts.isImportSpecifier(declaration) || ts.isImportClause(declaration)) {
+            const importedSymbol = this.checker.getAliasedSymbol(symbol);
+            if (importedSymbol?.declarations?.[0]) {
+                declaration = importedSymbol.declarations[0];
+            }
+        }
+
+        if (ts.isEnumDeclaration(declaration)) {
+            const members: Array<{ name: string; value: string | number }> = [];
+            let lastNumericValue = -1;
+            for (const enumMember of declaration.members) {
+                const memberName = enumMember.name.getText();
+                let memberValue: string | number;
+                if (enumMember.initializer) {
+                    if (ts.isStringLiteral(enumMember.initializer)) {
+                        memberValue = enumMember.initializer.text;
+                    } else if (ts.isNumericLiteral(enumMember.initializer)) {
+                        memberValue = Number(enumMember.initializer.text);
+                        lastNumericValue = memberValue;
+                    } else {
+                        throw new Error(
+                            `Unsupported initializer for enum member ${memberName} in ${this.formatErrorContext(context)}. Must be a string or numeric literal.`,
+                        );
+                    }
+                } else {
+                    // No initializer `enum MyEnum { A, B, C }`
+                    memberValue = lastNumericValue + 1;
+                    lastNumericValue = memberValue;
+                }
+
+                const member: { name: string; value: string | number; description?: string } = {
+                    name: memberName,
+                    value: memberValue,
+                };
+                let memberDescription: string | undefined;
+                const doc = enumMember as docNode;
+                if (doc?.jsDoc && doc.jsDoc.length > 0) {
+                    memberDescription = doc.jsDoc.map((d: typescript.JSDoc) => d.comment).join("\n");
+                }
+                if (memberDescription) {
+                    member.description = memberDescription;
+                }
+                members.push(member);
+            }
+
+            if (members.length === 0) {
+                return undefined;
+            }
+
+            const docNode = declaration as docNode;
+            let enumDescription: string | undefined;
+            if (docNode?.jsDoc && docNode.jsDoc.length > 0) {
+                enumDescription = docNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
+            }
+
+            return { members, description: enumDescription };
+        }
+
+        if (ts.isVariableDeclaration(declaration)) {
+            // `as const` object pattern:
+            //   const MyEnum = { Value1: "Value1", Value2: "Value2" } as const;
+            //   type MyEnum = typeof MyEnum[keyof typeof MyEnum];
+            //
+            // We loop over the object (the initializer), and build a reverse map from values to keys. Then we loop over the
+            // elements of the union (the actual type is the union of the literal values) and fetch the matching object
+            // keys.
+            let initializer = declaration.initializer;
+            // Unwrap `as const` expression
+            if (initializer && ts.isAsExpression(initializer)) {
+                initializer = initializer.expression;
+            }
+
+            if (initializer && ts.isObjectLiteralExpression(initializer) && type.isUnion()) {
+                const valueToMember = new Map<string | number, { key: string; description?: string }>();
+
+                for (const property of initializer.properties) {
+                    if (ts.isPropertyAssignment(property) && ts.isIdentifier(property.name)) {
+                        const memberName = property.name.text;
+                        let memberValue: string | number | undefined;
+
+                        if (ts.isStringLiteral(property.initializer)) {
+                            memberValue = property.initializer.text;
+                        } else if (ts.isNumericLiteral(property.initializer)) {
+                            memberValue = Number(property.initializer.text);
+                        } else {
+                            throw new Error(
+                                `Unsupported initializer for enum member ${memberName} in ${this.formatErrorContext(context)}. Must be a string or numeric literal.`,
+                            );
+                        }
+
+                        // JSDoc for the object property
+                        const propDocNode = property as docNode;
+                        let enumDescription: string | undefined;
+                        if (propDocNode?.jsDoc && propDocNode.jsDoc.length > 0) {
+                            enumDescription = propDocNode.jsDoc.map((d: typescript.JSDoc) => d.comment).join("\n");
+                        }
+
+                        valueToMember.set(memberValue, { key: memberName, description: enumDescription });
+                    }
+                }
+
+                const members: Array<{ name: string; value: string | number; description?: string }> = [];
+                for (const t of type.types) {
+                    let literalValue: string | number | undefined;
+                    if (t.isStringLiteral()) {
+                        literalValue = (t as typescript.StringLiteralType).value;
+                    } else if (t.isNumberLiteral()) {
+                        literalValue = (t as typescript.NumberLiteralType).value;
+                    }
+                    if (literalValue !== undefined) {
+                        const memberInfo = valueToMember.get(literalValue);
+                        if (memberInfo) {
+                            const member: { name: string; value: string | number; description?: string } = {
+                                name: memberInfo.key,
+                                value: literalValue,
+                            };
+                            if (memberInfo.description) {
+                                member.description = memberInfo.description;
+                            }
+                            members.push(member);
+                        }
+                    }
+                }
+
+                if (members.length === 0) {
+                    return undefined;
+                }
+
+                // JSDoc attached to the object itself
+                const variableStatement = declaration.parent?.parent;
+                let description: string | undefined;
+                if (variableStatement && ts.isVariableStatement(variableStatement)) {
+                    const docNode = variableStatement as docNode;
+                    if (docNode?.jsDoc && docNode.jsDoc.length > 0) {
+                        description = docNode.jsDoc.map((doc: typescript.JSDoc) => doc.comment).join("\n");
+                    }
+                }
+
+                return { members, description };
+            }
+        }
+
+        return undefined;
+    }
+
     unwrapTypeReference(
-        context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
+        context: {
+            component: string;
+            property: string;
+            inputOutput: InputOutput;
+            typeName?: string;
+            isPartial?: boolean;
+            isRequired?: boolean;
+        },
         type: typescript.Type,
     ): typescript.Type {
         let typeArguments = (type as typescript.TypeReference).typeArguments;
@@ -648,6 +904,8 @@ Please ensure these components are properly imported to your package's entry poi
         property?: string;
         inputOutput?: InputOutput;
         typeName?: string;
+        isPartial?: boolean;
+        isRequired?: boolean;
     }): string {
         const parts: string[] = [];
         parts.push(`component '${context.component}'`);
@@ -684,12 +942,18 @@ Please ensure these components are properly imported to your package's entry poi
      * @throws Error if the resource type cannot be determined with detailed context information
      */
     private getResourceType(
-        context: { component: string; property: string; inputOutput: InputOutput; typeName?: string },
+        context: {
+            component: string;
+            property: string;
+            inputOutput: InputOutput;
+            typeName?: string;
+            isPartial?: boolean;
+            isRequired?: boolean;
+        },
         type: typescript.Type,
     ): {
-        packageName: string;
-        packageVersion: string;
         pulumiType: string;
+        dependency: Dependency;
     } {
         const symbol = type.getSymbol();
         if (!symbol) {
@@ -752,8 +1016,12 @@ Please ensure these components are properly imported to your package's entry poi
         // Extract the package name and pulumi type from the __pulumiType property.
         const packageName = pulumiType.split(":")[0];
 
-        // Extract package name from the path.
-        const packageMatch = implPath.match(/node_modules\/((@[^/]+\/)?[^/]+)/);
+        // Extract package name from the path. There might be multiple levels of
+        // `node_modules`, we want the right most one.
+        // The optional non-capturing group `(?:.*\/node_modules\/)?` will
+        // greedily match anything until `node_modules`, leaving anything after
+        // that for us to grab.
+        const packageMatch = implPath.match(/node_modules\/(?:.*\/node_modules\/)?((@[^/]+\/)?[^/]+)/);
         if (!packageMatch || packageMatch.length < 2) {
             throw new Error(
                 `Cannot determine resource type: package name not found for '${symbol.name}' for ${this.formatErrorContext(context)}`,
@@ -781,17 +1049,27 @@ Please ensure these components are properly imported to your package's entry poi
             );
         }
 
-        // Read the package version from the package.json file.
         const packageJson = JSON.parse(ts.sys.readFile(packageJsonPath)!);
-        let packageVersion = packageJson.version;
-        if (packageVersion.startsWith("v")) {
-            packageVersion = packageVersion.slice(1);
+        let packageJsonVersion = packageJson.version;
+        if (packageJsonVersion.startsWith("v")) {
+            packageJsonVersion = packageJsonVersion.slice(1);
+        }
+        const dependency: Dependency = {
+            // Older SDKs don't write the version to the `pulumi` section, fall
+            // back to `version` from the package.json.
+            version: packageJson.pulumi.version || packageJsonVersion,
+            name: packageJson.pulumi.name,
+        };
+        if (packageJson.pulumi.server) {
+            dependency.downloadURL = packageJson.pulumi.server;
+        }
+        if (packageJson.pulumi.parameterization) {
+            dependency.parameterization = packageJson.pulumi.parameterization;
         }
 
         return {
-            packageName,
+            dependency,
             pulumiType,
-            packageVersion,
         };
     }
 }
@@ -800,21 +1078,60 @@ function isOptional(symbol: typescript.Symbol): boolean {
     return (symbol.flags & ts.SymbolFlags.Optional) === ts.SymbolFlags.Optional;
 }
 
-function isOptionalType(type: typescript.Type, checker: typescript.TypeChecker): boolean {
+function getOptionalType(type: typescript.Type): typescript.Type | undefined {
     if (!(type.flags & ts.TypeFlags.Union)) {
-        return false;
+        return undefined;
     }
 
     const unionType = type as typescript.UnionType;
     // We only support union types with two types, one of which must be undefined
     if (!unionType.types || unionType.types.length !== 2) {
-        return false;
+        return undefined;
     }
 
     // Check if one of the types in the union is undefined
-    return unionType.types.some(
-        (t) => t.flags & ts.TypeFlags.Undefined || t.flags & ts.TypeFlags.Void, // Also check for void in some cases
+    const undefinedType = unionType.types.find((t) => t.flags & ts.TypeFlags.Undefined || t.flags & ts.TypeFlags.Void); // Also check for void in some cases
+    if (!undefinedType) {
+        return undefined;
+    }
+
+    const nonUndefinedType = unionType.types.find(
+        (t) => !(t.flags & ts.TypeFlags.Undefined || t.flags & ts.TypeFlags.Void),
     );
+    return nonUndefinedType;
+}
+
+// Checks if a type is a union of true | false | undefined, which represents an optional boolean.
+function isBooleanOptionalType(type: typescript.Type, checker: typescript.TypeChecker): boolean {
+    if (!(type.flags & ts.TypeFlags.Union)) {
+        return false;
+    }
+
+    const unionType = type as typescript.UnionType;
+    // We need exactly 3 types in the union
+    if (!unionType.types || unionType.types.length !== 3) {
+        return false;
+    }
+
+    // Check if types are true, false, and undefined
+    let hasTrue = false;
+    let hasFalse = false;
+    let hasUndefined = false;
+
+    for (const t of unionType.types) {
+        if (t.flags & ts.TypeFlags.Undefined) {
+            hasUndefined = true;
+        } else if (t.flags & ts.TypeFlags.BooleanLiteral) {
+            // Check if this is true or false literal
+            if (checker.typeToString(t) === "true") {
+                hasTrue = true;
+            } else if (checker.typeToString(t) === "false") {
+                hasFalse = true;
+            }
+        }
+    }
+
+    return hasTrue && hasFalse && hasUndefined;
 }
 
 function isInterface(symbol: typescript.Symbol): boolean {
@@ -841,17 +1158,59 @@ function isAny(type: typescript.Type): boolean {
     return (type.flags & ts.TypeFlags.Any) === ts.TypeFlags.Any;
 }
 
-function isSimpleType(type: typescript.Type): boolean {
-    return isNumber(type) || isString(type) || isBoolean(type);
+function getSimplePropertyType(type: typescript.Type): PropertyType | undefined {
+    if (isNumber(type)) {
+        return "number";
+    } else if (isString(type)) {
+        return "string";
+    } else if (isBoolean(type)) {
+        return "boolean";
+    }
+    return undefined;
 }
 
-function isMapType(type: typescript.Type, checker: typescript.TypeChecker): boolean {
+function getMapType(type: typescript.Type, checker: typescript.TypeChecker): typescript.Type | undefined {
     const indexInfo = checker.getIndexInfoOfType(type, ts.IndexKind.String);
-    return indexInfo !== undefined;
+    if (!indexInfo) {
+        return undefined;
+    }
+    return indexInfo.type;
 }
 
-function isArrayType(type: typescript.Type): boolean {
-    return (type.flags & ts.TypeFlags.Object) === ts.TypeFlags.Object && type.getSymbol()?.escapedName === "Array";
+function getArrayType(type: typescript.Type): typescript.Type | undefined {
+    const isArray =
+        (type.flags & ts.TypeFlags.Object) === ts.TypeFlags.Object && type.getSymbol()?.escapedName === "Array";
+    if (!isArray) {
+        return undefined;
+    }
+    const typeArguments = (type as typescript.TypeReference).typeArguments;
+    if (!typeArguments || typeArguments.length !== 1) {
+        return undefined;
+    }
+
+    return typeArguments[0];
+}
+
+function getPartialInnerType(type: typescript.Type): typescript.Type | undefined {
+    if (!type.aliasSymbol || type.aliasSymbol.escapedName !== "Partial") {
+        return undefined;
+    }
+    const typeArguments = (type as typescript.TypeReference).aliasTypeArguments;
+    if (!typeArguments || typeArguments.length !== 1) {
+        return undefined;
+    }
+    return typeArguments[0];
+}
+
+function getRequiredInnerType(type: typescript.Type): typescript.Type | undefined {
+    if (!type.aliasSymbol || type.aliasSymbol.escapedName !== "Required") {
+        return undefined;
+    }
+    const typeArguments = (type as typescript.TypeReference).aliasTypeArguments;
+    if (!typeArguments || typeArguments.length !== 1) {
+        return undefined;
+    }
+    return typeArguments[0];
 }
 
 function isPromise(type: typescript.Type): boolean {
@@ -928,23 +1287,25 @@ function unwrapOutputIntersection(type: typescript.Type): typescript.Type {
 /**
  * An input type is a union of Output<T>, Promise<T>, and T.
  */
-function isInput(type: typescript.Type): boolean {
+function getInputInnerType(type: typescript.Type): typescript.Type | undefined {
     if (!type.isUnion()) {
-        return false;
+        return undefined;
     }
     let hasOutput = false;
     let hasPromise = false;
     let hasOther = false;
+    let promiseType: typescript.Type | undefined;
     for (const t of type.types) {
         if (isOutput(t)) {
             hasOutput = true;
         } else if (isPromise(t)) {
             hasPromise = true;
+            promiseType = t;
         } else {
             hasOther = true;
         }
     }
-    return hasOutput && hasPromise && hasOther;
+    return hasOutput && hasPromise && hasOther ? promiseType : undefined;
 }
 
 function isResourceReference(type: typescript.Type, checker: typescript.TypeChecker): boolean {
@@ -963,18 +1324,6 @@ function isResourceReference(type: typescript.Type, checker: typescript.TypeChec
             sourceFile?.fileName.endsWith("resource.ts") || sourceFile?.fileName.endsWith("resource.d.ts");
         return (matchesName && matchesSourceFile) || isResourceReference(baseType, checker);
     });
-}
-
-function tsTypeToPropertyType(type: typescript.Type): PropertyType {
-    if (isNumber(type)) {
-        return "number";
-    } else if (isString(type)) {
-        return "string";
-    } else if (isBoolean(type)) {
-        return "boolean";
-    }
-
-    throw new Error(`Unsupported type '${type.symbol?.name}'`);
 }
 
 function symbolTableToSymbols(table: typescript.SymbolTable): typescript.Symbol[] {

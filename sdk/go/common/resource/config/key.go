@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -97,11 +97,11 @@ func (k *Key) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (k Key) MarshalYAML() (interface{}, error) {
+func (k Key) MarshalYAML() (any, error) {
 	return k.String(), nil
 }
 
-func (k *Key) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (k *Key) UnmarshalYAML(unmarshal func(any) error) error {
 	var s string
 	if err := unmarshal(&s); err != nil {
 		return fmt.Errorf("could not unmarshal key: %w", err)

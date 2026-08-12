@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseSince(t *testing.T) {
@@ -40,7 +41,7 @@ func TestParseSince(t *testing.T) {
 	assert.Equal(t, "2006-01-02T00:00:00Z", d.UTC().Format(time.RFC3339))
 
 	pst, err := time.LoadLocation("America/Los_Angeles")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	e, _ := parseSince("2006-01-02T15:04:05-08:00", time.Now().In(pst))
 	assert.Equal(t, "2006-01-02T15:04:05-08:00", e.In(pst).Format(time.RFC3339))

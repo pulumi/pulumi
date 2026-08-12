@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,15 +16,18 @@ package display
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"gopkg.in/yaml.v3"
@@ -33,8 +36,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
@@ -42,8 +45,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// getIndent computes a step's parent indentation.
-func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata) int {
+// getIndent computes a step's visible parent indentation.
+func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata, opts Options) int {
 	indent := 0
 	for p := step.Res.Parent; p != ""; {
 		par, has := seen[p]
@@ -53,26 +56,24 @@ func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepE
 			//     least, it would be ideal to preserve the indentation.
 			break
 		}
-		indent++
+		if isRootStack(par) || shouldShow(par, opts) {
+			indent++
+		}
 		p = par.Res.Parent
 	}
 	return indent
 }
 
-func printStepHeader(b io.StringWriter, step engine.StepEventMetadata) {
+func printStepHeader(b io.StringWriter, step engine.StepEventMetadata, showURNs bool) {
 	var extra string
 	old := step.Old
 	new := step.New
 	if new != nil && !new.Protect && old != nil && old.Protect {
 		// show an unlocked symbol, since we are unprotecting a resource.
-		extra += "🔓"
+		extra = "🔓"
 	} else if (new != nil && new.Protect) || (old != nil && old.Protect) {
 		// show a locked symbol, since we are either newly protecting this resource, or retaining protection.
-		extra += "🔒"
-	}
-
-	if extra != "" {
-		extra = " " + extra
+		extra = "🔒"
 	}
 
 	maybe := ""
@@ -80,7 +81,29 @@ func printStepHeader(b io.StringWriter, step engine.StepEventMetadata) {
 		maybe = "maybe "
 	}
 
-	writeString(b, fmt.Sprintf("%s: (%s%s)%s\n", string(step.Type), maybe, step.Op, extra))
+	op := addRetainStatusFlag(string(step.Op), step)
+	if showURNs {
+		writeString(b, fmt.Sprintf("%s: (%s%s)%s\n", string(step.URN), maybe, op, extra))
+	} else {
+		writeString(b, fmt.Sprintf("%s: (%s%s)%s\n", string(step.Type), maybe, op, extra))
+	}
+}
+
+// addRetainStatusFlag adds a "[retain]" suffix to the input string if the resource is marked as
+// RetainOnDelete and the step will discard the resource.
+func addRetainStatusFlag(status string, step engine.StepEventMetadata) string {
+	if step.Old == nil || !step.Old.RetainOnDelete {
+		return status
+	}
+
+	switch step.Op {
+	// Deletes and Replacements should indicate retain on delete behavior as they can leave
+	// untracked resources in the environment.
+	case deploy.OpDelete, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
+		status += "[retain]"
+	}
+
+	return status
 }
 
 func getIndentationString(indent int, op display.StepOp, prefix bool) string {
@@ -106,18 +129,18 @@ func writeString(b io.StringWriter, s string) {
 	contract.IgnoreError(err)
 }
 
-func writeIndentedf(b io.StringWriter, indent int, op display.StepOp, prefix bool, format string, a ...interface{}) {
+func writeIndentedf(b io.StringWriter, indent int, op display.StepOp, prefix bool, format string, a ...any) {
 	writeString(b, deploy.Color(op))
 	writeString(b, getIndentationString(indent, op, prefix))
 	writeString(b, fmt.Sprintf(format, a...))
 	writeString(b, colors.Reset)
 }
 
-func writeUnprefixedIndentedf(b io.StringWriter, indent int, op display.StepOp, format string, a ...interface{}) {
+func writeUnprefixedIndentedf(b io.StringWriter, indent int, op display.StepOp, format string, a ...any) {
 	writeIndentedf(b, indent, op, false, format, a...)
 }
 
-func writef(b io.StringWriter, op display.StepOp, format string, a ...interface{}) {
+func writef(b io.StringWriter, op display.StepOp, format string, a ...any) {
 	writeUnprefixedIndentedf(b, 0, op, format, a...)
 }
 
@@ -125,7 +148,7 @@ func writeVerbatim(b io.StringWriter, op display.StepOp, value string) {
 	writeUnprefixedIndentedf(b, 0, op, "%s", value)
 }
 
-func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) string {
+func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int, showURNs bool) string {
 	var b bytes.Buffer
 
 	op := step.Op
@@ -138,8 +161,8 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 	// First, print out the operation's prefix.
 	writeString(&b, deploy.Prefix(step.Conditional, op, true /*done*/))
 
-	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
-	printStepHeader(&b, step)
+	// Next, print the resource type (or full URN if --urns is set).
+	printStepHeader(&b, step, showURNs)
 
 	// For these simple properties, print them as 'same' if they're just an update or replace.
 	simplePropOp := considerSameIfNotCreateOrDelete(op)
@@ -154,8 +177,9 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 	if id != "" {
 		writeUnprefixedIndentedf(&b, indent+1, simplePropOp, "[id=%s]\n", string(id))
 	}
-	if urn != "" {
-		writeUnprefixedIndentedf(&b, indent+1, simplePropOp, "[urn=%s]\n", urn)
+	if urn != "" && !showURNs {
+		// Skip the [urn=...] line when --urns is set, since the URN is already shown in the header.
+		writeUnprefixedIndentedf(&b, indent+1, simplePropOp, "[urn=%s]\n", escapeURN(string(urn)))
 	}
 
 	if step.Provider != "" {
@@ -168,7 +192,7 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 			writef(&b, deploy.OpDelete, "%s", old.Provider)
 			writeVerbatim(&b, deploy.OpUpdate, " => ")
 			if newProv.ID() == providers.UnknownID {
-				writef(&b, deploy.OpCreate, "%s", string(newProv.URN())+"::output<string>")
+				writef(&b, deploy.OpCreate, "%s", string(newProv.URN())+"::[unknown]")
 			} else {
 				writef(&b, deploy.OpCreate, "%s", new.Provider)
 			}
@@ -196,6 +220,13 @@ func getResourcePropertiesDetails(
 	// indent everything an additional level, like other properties.
 	indent++
 
+	var hideDiff []resource.PropertyPath
+	if step.New != nil {
+		hideDiff = step.New.HideDiffs
+	} else if step.Old != nil {
+		hideDiff = step.Old.HideDiffs
+	}
+
 	old, new := step.Old, step.New
 	if old == nil && new != nil {
 		if len(new.Outputs) > 0 {
@@ -212,10 +243,10 @@ func getResourcePropertiesDetails(
 		}
 	} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement {
 		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op,
-			summary, truncateOutput, debug, showSecrets)
+			summary, truncateOutput, debug, showSecrets, hideDiff)
 	} else {
 		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op,
-			summary, truncateOutput, debug, showSecrets)
+			summary, truncateOutput, debug, showSecrets, hideDiff)
 	}
 
 	return b.String()
@@ -297,7 +328,7 @@ func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
 		for i, v := range p.ArrayValue() {
 			arr[i] = massageStackPreviewAdd(v)
 		}
-		return resource.NewArrayProperty(arr)
+		return resource.NewProperty(arr)
 	case p.IsObject():
 		obj := resource.PropertyMap{}
 		for k, v := range p.ObjectValue() {
@@ -305,7 +336,7 @@ func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
 				obj[k] = massageStackPreviewAdd(v)
 			}
 		}
-		return resource.NewObjectProperty(obj)
+		return resource.NewProperty(obj)
 	default:
 		return p
 	}
@@ -351,7 +382,7 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 			delete(diff.Updates, k)
 		} else {
 			massageStackPreviewDiff(d, inResource)
-			if !d.Object.AnyChanges() {
+			if !d.Object.AnyChanges() && d.Old.DeepEquals(d.New) || d.New.IsComputed() {
 				delete(diff.Updates, k)
 			}
 		}
@@ -361,7 +392,14 @@ func massageStackPreviewOutputDiff(diff *resource.ObjectDiff, inResource bool) {
 // getResourceOutputsPropertiesString prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func getResourceOutputsPropertiesString(
-	step engine.StepEventMetadata, indent int, planning, debug, refresh, showSames, showSecrets bool,
+	step engine.StepEventMetadata,
+	indent int,
+	planning,
+	debug,
+	refresh,
+	showSames,
+	showSecrets,
+	truncateOutput bool,
 ) string {
 	// During the actual update we always show all the outputs for the stack, even if they are unchanged.
 	if !showSames && !planning && step.URN.QualifiedType() == resource.RootStackType {
@@ -413,11 +451,34 @@ func getResourceOutputsPropertiesString(
 	}
 	op := step.Op
 
+	var hiddenProperties []resource.PropertyPath
+	if step.New != nil {
+		hiddenProperties = step.New.HideDiffs
+	} else if step.Old != nil {
+		hiddenProperties = step.Old.HideDiffs
+	}
+	var hiddenDiffs []resource.PropertyPath
+
 	// If there was an old state associated with this step, we may have old outputs. If we do, and if they differ from
 	// the new outputs, we want to print the diffs.
 	var outputDiff *resource.ObjectDiff
 	if step.Old != nil && step.Old.Outputs != nil {
-		outputDiff = step.Old.Outputs.Diff(outs, resource.IsInternalPropertyKey)
+		outputDiff = step.Old.Outputs.DiffWithOptions(outs,
+			resource.IgnoreKeyFunc(resource.IsInternalPropertyKey),
+			resource.IgnorePathFunc(func(path resource.PropertyPath) bool {
+				for _, p := range hiddenProperties {
+					if p.Contains(path) {
+						hiddenDiffs = append(hiddenDiffs, p)
+						return true
+					}
+				}
+				return false
+			}),
+		)
+		// If there is no diff only because of hidden properties, construct an empty diff.
+		if outputDiff == nil && len(hiddenDiffs) > 0 {
+			outputDiff = &resource.ObjectDiff{}
+		}
 
 		// If this is the root stack type, we want to strip out any nested resource outputs that are not known if
 		// they have no corresponding output in the old state.
@@ -441,17 +502,34 @@ func getResourceOutputsPropertiesString(
 
 	b := &bytes.Buffer{}
 	p := propertyPrinter{
-		dest:        b,
-		planning:    planning,
-		indent:      indent,
-		op:          op,
-		debug:       debug,
-		showSecrets: showSecrets,
+		dest:           b,
+		planning:       planning,
+		indent:         indent,
+		op:             op,
+		debug:          debug,
+		showSecrets:    showSecrets,
+		truncateOutput: truncateOutput,
+	}
+
+	if len(hiddenDiffs) > 0 {
+		slices.SortFunc(hiddenDiffs, func(a, b resource.PropertyPath) int {
+			return cmp.Compare(a.String(), b.String())
+		})
+		hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b resource.PropertyPath) bool {
+			return a.String() == b.String()
+		})
+		p.printHiddenPaths(hiddenDiffs)
 	}
 
 	// Now sort the keys and enumerate each output property in a deterministic order.
 	for _, k := range keys {
 		out := outs[k]
+
+		for _, p := range hiddenProperties {
+			if p.Contains(resource.PropertyPath{string(k)}) {
+				continue
+			}
+		}
 
 		// Print this property if it is printable and if any of the following are true:
 		// - a property with the same key is not present in the inputs
@@ -459,7 +537,18 @@ func getResourceOutputsPropertiesString(
 		// - we are doing a refresh, in which case we always want to show state differences
 		if outputDiff != nil || (!resource.IsInternalPropertyKey(k) && shouldPrintPropertyValue(out, true)) {
 			if in, has := ins[k]; has && !refresh {
-				if out.Diff(in, resource.IsInternalPropertyKey) == nil {
+				if out.DiffWithOptions(in,
+					resource.IgnoreKeyFunc(resource.IsInternalPropertyKey),
+					resource.IgnorePathFunc(func(path resource.PropertyPath) bool {
+						for _, p := range hiddenProperties {
+							if p.Contains(path) {
+								return true
+							}
+						}
+						return false
+					}),
+					resource.InitialPropertyPath{string(k)},
+				) == nil {
 					continue
 				}
 			}
@@ -546,7 +635,7 @@ func (p *propertyPrinter) writeString(s string) {
 	writeString(p.dest, s)
 }
 
-func (p *propertyPrinter) writeIndentedf(format string, a ...interface{}) {
+func (p *propertyPrinter) writeIndentedf(format string, a ...any) {
 	if p.truncateOutput {
 		for i, item := range a {
 			if item, ok := item.(string); ok {
@@ -557,11 +646,11 @@ func (p *propertyPrinter) writeIndentedf(format string, a ...interface{}) {
 	writeIndentedf(p.dest, p.indent, p.op, p.prefix, format, a...)
 }
 
-func (p *propertyPrinter) writeUnprefixedIndentedf(format string, a ...interface{}) {
+func (p *propertyPrinter) writeUnprefixedIndentedf(format string, a ...any) {
 	writeUnprefixedIndentedf(p.dest, p.indent, p.op, format, a...)
 }
 
-func (p *propertyPrinter) writef(format string, a ...interface{}) {
+func (p *propertyPrinter) writef(format string, a ...any) {
 	writef(p.dest, p.op, format, a...)
 }
 
@@ -580,7 +669,18 @@ func propertyTitlePrinter(name string, align int) func(*propertyPrinter) {
 }
 
 func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
+	p.printPropertyValueRecurse(v)
+	p.writeVerbatim("\n")
+}
+
+func (p *propertyPrinter) printPropertyValueRecurse(v resource.PropertyValue) {
 	switch {
+	case v.IsSecret():
+		if p.showSecrets {
+			p.printPropertyValueRecurse(v.SecretValue().Element)
+		} else {
+			p.printPrimitivePropertyValue(v)
+		}
 	case isPrimitive(v):
 		p.printPrimitivePropertyValue(v)
 	case v.IsArray():
@@ -605,8 +705,8 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 			massaged := a.Text
 
 			// pretty print the text, line by line, with proper breaks.
-			lines := strings.Split(massaged, "\n")
-			for _, line := range lines {
+			lines := strings.SplitSeq(massaged, "\n")
+			for line := range lines {
 				p.writeUnprefixedIndentedf("    %s\n", line)
 			}
 			p.writeUnprefixedIndentedf("}")
@@ -621,7 +721,7 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 		a := v.ArchiveValue()
 		if assets, has := a.GetAssets(); has {
 			p.writef("archive(assets:%s) {\n", shortHash(a.Hash))
-			var names []string
+			names := slice.Prealloc[string](len(assets))
 			for name := range assets {
 				names = append(names, name)
 			}
@@ -654,20 +754,19 @@ func (p *propertyPrinter) printPropertyValue(v resource.PropertyValue) {
 	default:
 		contract.Failf("Unknown PropertyValue type %v", v)
 	}
-	p.writeVerbatim("\n")
 }
 
-func (p *propertyPrinter) printAssetOrArchive(v interface{}, name string) {
+func (p *propertyPrinter) printAssetOrArchive(v any, name string) {
 	p.writeIndentedf("    \"%v\": ", name)
 	p.indented(1).printPropertyValue(assetOrArchiveToPropertyValue(v))
 }
 
-func assetOrArchiveToPropertyValue(v interface{}) resource.PropertyValue {
+func assetOrArchiveToPropertyValue(v any) resource.PropertyValue {
 	switch t := v.(type) {
 	case *asset.Asset:
-		return resource.NewAssetProperty(t)
+		return resource.NewProperty(t)
 	case *archive.Archive:
-		return resource.NewArchiveProperty(t)
+		return resource.NewProperty(t)
 	default:
 		contract.Failf("Unexpected archive element '%v'", reflect.TypeOf(t))
 		return resource.PropertyValue{V: nil}
@@ -684,10 +783,39 @@ func shortHash(hash string) string {
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
 	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool, showSecrets bool,
+	hidePaths []resource.PropertyPath,
 ) {
+	var hiddenDiffs []resource.PropertyPath
+
 	// Get the full diff structure between the two, and print it (recursively).
-	if diff := olds.Diff(news, resource.IsInternalPropertyKey); diff != nil {
-		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets)
+	diff := olds.DiffWithOptions(news,
+		resource.IgnoreKeyFunc(resource.IsInternalPropertyKey),
+		resource.IgnorePathFunc(func(path resource.PropertyPath) bool {
+			for _, v := range hidePaths {
+				if v.Contains(path) {
+					hiddenDiffs = append(hiddenDiffs, v)
+					return true
+				}
+			}
+			return false
+		}),
+	)
+
+	// Ensure that our paths are unique and sorted
+	slices.SortFunc(hiddenDiffs, func(a, b resource.PropertyPath) int {
+		return cmp.Compare(a.String(), b.String())
+	})
+	hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b resource.PropertyPath) bool {
+		return a.String() == b.String()
+	})
+
+	// We have hidden all the diffs, but there was a diff.
+	if diff == nil && len(hiddenDiffs) > 0 {
+		diff = &resource.ObjectDiff{}
+	}
+
+	if diff != nil {
+		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets, hiddenDiffs)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render
 		// so it should be rendered as if nothing changed.
@@ -697,6 +825,7 @@ func printOldNewDiffs(
 
 func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
 	planning bool, indent int, summary bool, truncateOutput bool, debug bool, showSecrets bool,
+	hidden []resource.PropertyPath,
 ) {
 	p := propertyPrinter{
 		dest:           b,
@@ -708,6 +837,7 @@ func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resour
 		truncateOutput: truncateOutput,
 		showSecrets:    showSecrets,
 	}
+	p.printHiddenPaths(hidden)
 	p.printObjectDiff(diff, include)
 }
 
@@ -738,6 +868,13 @@ func (p *propertyPrinter) printObjectDiff(diff resource.ObjectDiff, include []re
 	}
 }
 
+func (p *propertyPrinter) printHiddenPaths(paths []resource.PropertyPath) {
+	p = p.withOp(deploy.OpUpdate).withPrefix(true)
+	for _, k := range paths {
+		p.writeIndentedf("%s (hidden)\n", k)
+	}
+}
+
 func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxkey int, diff resource.ObjectDiff) {
 	titleFunc := propertyTitlePrinter(string(key), maxkey)
 	if add, isadd := diff.Adds[key]; isadd {
@@ -754,6 +891,20 @@ func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxk
 func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter), diff resource.ValueDiff) {
 	p = p.withOp(deploy.OpUpdate).withPrefix(true)
 	contract.Assertf(p.indent > 0, "indentation must be > 0 to print property value diffs")
+
+	if p.showSecrets && (diff.Old.IsSecret() || diff.New.IsSecret()) {
+		old, new := diff.Old, diff.New
+		if old.IsSecret() {
+			old = old.SecretValue().Element
+		}
+		if new.IsSecret() {
+			new = new.SecretValue().Element
+		}
+		if elemDiff := old.Diff(new); elemDiff != nil {
+			p.printPropertyValueDiff(titleFunc, *elemDiff)
+			return
+		}
+	}
 
 	if diff.Array != nil {
 		titleFunc(p)
@@ -798,7 +949,8 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 			if isPrimitive(diff.Old) && isPrimitive(diff.New) {
 				titleFunc(p)
 
-				if diff.Old.IsString() && diff.New.IsString() {
+				if diff.Old.IsString() && diff.New.IsString() &&
+					utf8.ValidString(diff.Old.StringValue()) && utf8.ValidString(diff.New.StringValue()) {
 					p.printTextDiff(diff.Old.StringValue(), diff.New.StringValue())
 					return
 				}
@@ -847,6 +999,10 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 			p.writef("%g", number)
 		}
 	} else if v.IsString() {
+		if !utf8.ValidString(v.StringValue()) {
+			p.writeVerbatim(byteStringDisplay(v.StringValue()))
+			return
+		}
 		if vv, kind, ok := p.decodeValue(v.StringValue()); ok {
 			p.writef("(%s) ", kind)
 			p.printPropertyValue(vv)
@@ -857,25 +1013,17 @@ func (p *propertyPrinter) printPrimitivePropertyValue(v resource.PropertyValue) 
 		} else {
 			p.writef("%q", v.StringValue())
 		}
-	} else if v.IsComputed() || v.IsOutput() {
-		// We render computed and output values differently depending on whether or not we are
-		// planning or deploying: in the former case, we display `computed<type>` or `output<type>`;
-		// in the former we display `undefined`. This is because we currently cannot distinguish
-		// between user-supplied undefined values and input properties that are undefined because
-		// they were sourced from undefined values in other resources' output properties. Once we
-		// have richer information about the dataflow between resources, we should be able to do a
-		// better job here (pulumi/pulumi#234).
-		if p.planning {
-			p.writeVerbatim(v.TypeString())
+	} else if v.IsComputed() {
+		p.writeVerbatim("[unknown]")
+	} else if v.IsOutput() {
+		o := v.OutputValue()
+		if o.Known {
+			p.printPrimitivePropertyValue(o.Element)
 		} else {
-			p.writef("undefined")
+			p.writeVerbatim("[unknown]")
 		}
 	} else if v.IsSecret() {
-		if p.showSecrets {
-			p.printPropertyValue(v.SecretValue().Element)
-		} else {
-			p.writef("[secret]")
-		}
+		p.writeVerbatim("[secret]")
 	} else {
 		contract.Failf("Unexpected property value kind '%v'", v)
 	}
@@ -927,7 +1075,7 @@ func (p *propertyPrinter) printArchiveDiff(titleFunc func(*propertyPrinter),
 	p.printAdd(assetOrArchiveToPropertyValue(newArchive), titleFunc)
 }
 
-func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]interface{}) {
+func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]any) {
 	// Diffing assets proceeds by getting the sorted list of asset names from both the old and
 	// new assets, and then stepwise processing each.  For any asset in old that isn't in new,
 	// we print this out as a delete.  For any asset in new that isn't in old, we print this out
@@ -1069,7 +1217,7 @@ func (p *propertyPrinter) printAssetDiff(titleFunc func(*propertyPrinter), oldAs
 	p.printAdd(assetOrArchiveToPropertyValue(newAsset), titleFunc)
 }
 
-func (p *propertyPrinter) printAssetArchiveDiff(titleFunc func(p *propertyPrinter), old, new interface{}) {
+func (p *propertyPrinter) printAssetArchiveDiff(titleFunc func(p *propertyPrinter), old, new any) {
 	p.printDelete(assetOrArchiveToPropertyValue(old), titleFunc)
 	p.printAdd(assetOrArchiveToPropertyValue(new), titleFunc)
 }
@@ -1243,13 +1391,13 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 // decodeValue attempts to decode a string as JSON or YAML. The second return value is the kind of value that was
 // decoded, either "json" or "yaml".
 func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, string, bool) {
-	decode := func() (interface{}, string, bool) {
+	decode := func() (any, string, bool) {
 		// Strip whitespace for the purposes of decoding.
 		repr = strings.TrimSpace(repr)
 		r := strings.NewReader(repr)
 
 		jsonDecoder := json.NewDecoder(r)
-		var object interface{}
+		var object any
 		if err := jsonDecoder.Decode(&object); err == nil {
 			// Make sure _all_ the string was consumed as JSON.
 			if !jsonDecoder.More() {
@@ -1269,7 +1417,7 @@ func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, stri
 			// Make sure _all_ the string was consumed as YAML. Unlike JsonDecoder above, the YamlDecoder
 			// doesn't give an easy way to do this, so our workaround is we ask it to try and decode another
 			// value, and if it fails with io.EOF, then we know we've consumed the whole string.
-			var ignored interface{}
+			var ignored any
 			eofErr := yamlDecoder.Decode(&ignored)
 			if errors.Is(eofErr, io.EOF) {
 				translated, ok := p.translateYAMLValue(object)
@@ -1286,20 +1434,20 @@ func (p *propertyPrinter) decodeValue(repr string) (resource.PropertyValue, stri
 	object, kind, ok := decode()
 	if ok {
 		switch object.(type) {
-		case []interface{}, map[string]interface{}:
+		case []any, map[string]any:
 			return resource.NewPropertyValue(object), kind, true
 		}
 	}
 	return resource.PropertyValue{}, "", false
 }
 
-// translateYAMLValue attempts to replace map[interface{}]interface{} values in a decoded YAML value with
-// map[string]interface{} values. map[interface{}]interface{} values can arise from YAML mappings with keys that are
+// translateYAMLValue attempts to replace map[any]any values in a decoded YAML value with
+// map[string]any values. map[any]any values can arise from YAML mappings with keys that are
 // not strings. This method only translates such maps if they have purely numeric keys--maps with slice or map keys
 // are not translated.
-func (p *propertyPrinter) translateYAMLValue(v interface{}) (interface{}, bool) {
+func (p *propertyPrinter) translateYAMLValue(v any) (any, bool) {
 	switch v := v.(type) {
-	case []interface{}:
+	case []any:
 		for i, e := range v {
 			ee, ok := p.translateYAMLValue(e)
 			if !ok {
@@ -1308,7 +1456,7 @@ func (p *propertyPrinter) translateYAMLValue(v interface{}) (interface{}, bool) 
 			v[i] = ee
 		}
 		return v, true
-	case map[string]interface{}:
+	case map[string]any:
 		for k, e := range v {
 			ee, ok := p.translateYAMLValue(e)
 			if !ok {
@@ -1317,8 +1465,8 @@ func (p *propertyPrinter) translateYAMLValue(v interface{}) (interface{}, bool) 
 			v[k] = ee
 		}
 		return v, true
-	case map[interface{}]interface{}:
-		vv := make(map[string]interface{}, len(v))
+	case map[any]any:
+		vv := make(map[string]any, len(v))
 		for k, e := range v {
 			var sk string
 			switch k := k.(type) {
@@ -1357,12 +1505,13 @@ func (p *propertyPrinter) truncatePropertyString(propertyString string) string {
 
 	lines := strings.Split(propertyString, "\n")
 	numLines := len(lines)
+	isTruncated := false
 	if numLines > contextLines {
+		isTruncated = true
 		numLines = contextLines
 	}
 
-	isTruncated := false
-	for i := 0; i < numLines; i++ {
+	for i := range numLines {
 		if len(lines[i]) > maxLineLength {
 			lines[i] = lines[i][:maxLineLength] + "..."
 			isTruncated = true

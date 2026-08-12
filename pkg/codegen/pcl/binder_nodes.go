@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,9 @@
 package pcl
 
 import (
+	"context"
+	"slices"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -25,7 +28,7 @@ import (
 // hasReferenceTo returns true if the source node has a reference to the target node.
 // In other words, if the target node is a dependency of the source node.
 func hasReferenceTo(source Node, target Node) bool {
-	for _, dep := range source.getDependencies() {
+	for _, dep := range source.GetDependencies() {
 		if dep.Name() == target.Name() {
 			return true
 		}
@@ -55,7 +58,7 @@ func mutuallyDependantComponents(a Node, b Node) bool {
 
 // bindNode binds a single node in a program. The node's dependencies are bound prior to the node itself; it is an
 // error for a node to depend--directly or indirectly--upon itself.
-func (b *binder) bindNode(node Node) hcl.Diagnostics {
+func (b *binder) bindNode(ctx context.Context, node Node) hcl.Diagnostics {
 	if node.isBound() {
 		return nil
 	}
@@ -89,7 +92,7 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 			// that are components and reference each other (mutually dependant components)
 			continue
 		}
-		diags := b.bindNode(dep)
+		diags := b.bindNode(ctx, dep)
 		diagnostics = append(diagnostics, diags...)
 	}
 
@@ -101,13 +104,22 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 		diags := b.bindLocalVariable(node)
 		diagnostics = append(diagnostics, diags...)
 	case *Resource:
-		diags := b.bindResource(node)
+		diags := b.bindResource(ctx, node)
+		diagnostics = append(diagnostics, diags...)
+	case *ReadResource:
+		diags := b.bindReadResource(ctx, node)
 		diagnostics = append(diagnostics, diags...)
 	case *Component:
 		diags := b.bindComponent(node)
 		diagnostics = append(diagnostics, diags...)
 	case *OutputVariable:
 		diags := b.bindOutputVariable(node)
+		diagnostics = append(diagnostics, diags...)
+	case *Hook:
+		diags := b.bindHook(node)
+		diagnostics = append(diagnostics, diags...)
+	case *PulumiBlock:
+		diags := b.bindPulumi(node)
 		diagnostics = append(diagnostics, diags...)
 	case *Condition:
 		diags := b.bindCondition(node)
@@ -124,7 +136,7 @@ func (b *binder) bindNode(node Node) hcl.Diagnostics {
 func (b *binder) getDependencies(node Node) []Node {
 	depSet := codegen.Set{}
 	var deps []Node
-	diags := hclsyntax.VisitAll(node.SyntaxNode(), func(node hclsyntax.Node) hcl.Diagnostics {
+	visit := func(node hclsyntax.Node) hcl.Diagnostics {
 		var depName string
 		switch node := node.(type) {
 		case *hclsyntax.FunctionCallExpr:
@@ -143,9 +155,59 @@ func (b *binder) getDependencies(node Node) []Node {
 			deps = append(deps, node)
 		}
 		return nil
-	})
-	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
+	}
+
+	if body := resourceSyntaxBody(node); body != nil {
+		walkResourceBodyForDeps(body, visit)
+	} else {
+		diags := hclsyntax.VisitAll(node.SyntaxNode(), visit)
+		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
+	}
 	return SourceOrderNodes(deps)
+}
+
+func resourceSyntaxBody(node Node) *hclsyntax.Body {
+	switch n := node.(type) {
+	case *Resource:
+		if n.syntax != nil {
+			return n.syntax.Body
+		}
+	case *ReadResource:
+		if n.syntax != nil {
+			return n.syntax.Body
+		}
+	}
+	return nil
+}
+
+// walkResourceBodyForDeps mirrors optionsScopes.GetScopeForAttribute: the
+// property-name attributes resolve identifiers against the resource's own
+// inputs, not the root scope, so the dep walker must skip them or it will
+// report spurious circular references.
+func walkResourceBodyForDeps(body *hclsyntax.Body, visit hclsyntax.VisitFunc) {
+	for _, attr := range body.Attributes {
+		_ = hclsyntax.VisitAll(attr.Expr, visit)
+	}
+	for _, block := range body.Blocks {
+		if block.Type == "options" {
+			walkOptionsBlockForDeps(block.Body, visit)
+			continue
+		}
+		_ = hclsyntax.VisitAll(block, visit)
+	}
+}
+
+func walkOptionsBlockForDeps(body *hclsyntax.Body, visit hclsyntax.VisitFunc) {
+	for _, attr := range body.Attributes {
+		switch attr.Name {
+		case "ignoreChanges", "hideDiffs", "replaceOnChanges", "additionalSecretOutputs":
+			continue
+		}
+		_ = hclsyntax.VisitAll(attr.Expr, visit)
+	}
+	for _, block := range body.Blocks {
+		_ = hclsyntax.VisitAll(block, visit)
+	}
 }
 
 func expressionIsLiteralNull(expr model.Expression) bool {
@@ -201,6 +263,19 @@ func (b *binder) bindConfigVariable(node *ConfigVariable) hcl.Diagnostics {
 		}
 	}
 
+	if secretAttr, ok := block.Body.Attribute("secret"); ok {
+		secret, diags := getBooleanAttributeValue(secretAttr)
+		if diags != nil {
+			diagnostics = diagnostics.Append(diags)
+		} else {
+			node.Secret = secret
+		}
+	}
+
+	if node.Secret {
+		node.typ = model.NewOutputType(node.typ)
+	}
+
 	node.Definition = block
 	return diagnostics
 }
@@ -229,6 +304,114 @@ func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
 			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(node.typ), node.Value))
 		}
 	}
+	node.Definition = block
+	return diagnostics
+}
+
+type hookScope struct {
+	root *model.Scope
+	kind HookKind
+}
+
+func (s *hookScope) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes, hcl.Diagnostics) {
+	return model.StaticScope(s.root), nil
+}
+
+func (s *hookScope) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
+	if attr.Name == "command" {
+		scope := s.root.Push(attr)
+
+		properties := map[string]model.Type{
+			"urn":        model.StringType,
+			"id":         model.IDType,
+			"name":       model.StringType,
+			"type":       model.StringType,
+			"newInputs":  model.NewMapType(model.DynamicType),
+			"oldInputs":  model.NewMapType(model.DynamicType),
+			"oldOutputs": model.NewMapType(model.DynamicType),
+		}
+		// Error hooks fire after an operation fails, so there are no new outputs.
+		if s.kind != HookKindError {
+			properties["newOutputs"] = model.NewMapType(model.DynamicType)
+		}
+
+		scope.Define("args", &model.Variable{
+			Name:         "args",
+			VariableType: model.NewObjectType(properties),
+		})
+		return scope, nil
+	}
+	return s.root, nil
+}
+
+func (b *binder) bindHook(node *Hook) hcl.Diagnostics {
+	// Create a child scope that exposes the resource data to the hook.
+	hookScope := &hookScope{root: b.root, kind: node.Kind}
+	block, diagnostics := model.BindBlock(node.syntax, hookScope, b.tokens, b.options.modelOptions()...)
+
+	if cmd, ok := block.Body.Attribute("command"); ok {
+		node.Command = cmd.Value
+		// Command must be a list. Elements may include dynamic expressions (e.g. inputs.X) but must resolve to strings.
+		listType := model.NewListType(model.StringType)
+		if model.InputType(listType).ConversionFrom(node.Command.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(listType), node.Command))
+		}
+	} else {
+		diagnostics = append(diagnostics, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "Missing required attribute",
+			Detail:   "Hook blocks must have a 'command' attribute",
+			Subject:  node.syntax.OpenBraceRange.Ptr(),
+		})
+	}
+
+	if onDryRun, ok := block.Body.Attribute("onDryRun"); ok {
+		node.OnDryRun = onDryRun.Value
+		if model.InputType(model.BoolType).ConversionFrom(node.OnDryRun.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(model.BoolType), node.OnDryRun))
+		}
+	}
+
+	if ignoreErrors, ok := block.Body.Attribute("ignoreErrors"); ok {
+		node.IgnoreErrors = ignoreErrors.Value
+		if model.InputType(model.BoolType).ConversionFrom(node.IgnoreErrors.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(model.BoolType), node.IgnoreErrors))
+		}
+	}
+
+	// Error on any other attribute. Error hooks always run on failures of actual operations,
+	// so onDryRun and ignoreErrors do not apply to them.
+	valid := []string{"onDryRun", "ignoreErrors", "command"}
+	if node.Kind == HookKindError {
+		valid = []string{"command"}
+	}
+	for _, i := range block.Body.Items {
+		switch item := i.(type) {
+		case *model.Attribute:
+			if !slices.Contains(valid, item.Name) {
+				diagnostics = append(diagnostics, model.UnknownObjectProperty(item.Name, item.Syntax.NameRange, valid))
+			}
+		case *model.Block:
+			diagnostics = append(diagnostics, model.UnknownObjectProperty(item.Type, item.Syntax.TypeRange, valid))
+		default:
+			contract.Failf("unrecognized block item type %v", item)
+		}
+	}
+
+	node.Definition = block
+	return diagnostics
+}
+
+func (b *binder) bindPulumi(node *PulumiBlock) hcl.Diagnostics {
+	block, diagnostics := model.BindBlock(node.syntax, model.StaticScope(b.root), b.tokens, b.options.modelOptions()...)
+
+	if value, ok := block.Body.Attribute("requiredVersionRange"); ok {
+		node.RequiredVersion = value.Value
+		if model.InputType(model.StringType).ConversionFrom(node.RequiredVersion.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(model.StringType), node.RequiredVersion))
+		}
+	}
+
 	node.Definition = block
 	return diagnostics
 }

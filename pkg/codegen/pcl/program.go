@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ type Node interface {
 	isBinding() bool
 	isBound() bool
 
-	getDependencies() []Node
+	GetDependencies() []Node
 	setDependencies(nodes []Node)
 
 	isNode()
@@ -76,7 +76,7 @@ func (r *node) isBound() bool {
 	return r.bound
 }
 
-func (r *node) getDependencies() []Node {
+func (r *node) GetDependencies() []Node {
 	return r.deps
 }
 
@@ -298,6 +298,17 @@ func (p *Program) ConfigVariables() []*ConfigVariable {
 	}
 
 	return configVars
+}
+
+// Hooks returns the hook nodes of the program.
+func (p *Program) Hooks() []*Hook {
+	var hooks []*Hook
+	for _, node := range p.Nodes {
+		if h, ok := node.(*Hook); ok {
+			hooks = append(hooks, h)
+		}
+	}
+	return hooks
 }
 
 // OutputVariables returns the output variable nodes of the program

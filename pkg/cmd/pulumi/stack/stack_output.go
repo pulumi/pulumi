@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"runtime"
 	"sort"
 	"strings"
@@ -29,11 +28,15 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -42,17 +45,26 @@ import (
 func newStackOutputCmd() *cobra.Command {
 	var socmd stackOutputCmd
 	cmd := &cobra.Command{
-		Use:   "output [property-name]",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:   "output",
 		Short: "Show a stack's output properties",
 		Long: "Show a stack's output properties.\n" +
 			"\n" +
 			"By default, this command lists all output properties exported from a stack.\n" +
 			"If a specific property-name is supplied, just that property's value is shown.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if socmd.Stdout == nil {
+				socmd.Stdout = cmd.OutOrStdout()
+			}
 			return socmd.Run(cmd.Context(), args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "property-name"},
+		},
+		Required: 0,
+	})
 
 	cmd.PersistentFlags().BoolVarP(
 		&socmd.jsonOut, "json", "j", false, "Emit output as JSON")
@@ -79,8 +91,8 @@ type stackOutputCmd struct {
 	// This is a field on stackOutputCmd so that we can replace it
 	// from tests.
 	requireStack func(
-		ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
-		name string, lopt LoadOption, opts display.Options,
+		ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
+		name string, lopt LoadOption, opts display.Options, configFile string,
 	) (backend.Stack, error)
 
 	Stdout io.Writer // defaults to os.Stdout
@@ -105,10 +117,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		osys = cmd.OS
 	}
 
-	stdout := io.Writer(os.Stdout)
-	if cmd.Stdout != nil {
-		stdout = cmd.Stdout
-	}
+	stdout := cmd.Stdout
 
 	var outw stackOutputWriter
 	if cmd.shellOut && cmd.jsonOut {
@@ -124,26 +133,38 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	// Fetch the current stack and its output properties.
 	s, err := requireStack(
 		ctx,
+		cmdutil.Diag(),
 		cmd.ws,
 		cmdBackend.DefaultLoginManager,
 		cmd.stackName,
 		LoadOnly,
 		opts,
+		"",
 	)
 	if err != nil {
 		return err
 	}
-	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	// When we're not showing secrets, use a blinding provider to prevent secrets from being disclosed.
+	secretsProvider := secrets.DefaultProvider
+	if !cmd.showSecrets {
+		secretsProvider = secrets.BlindingProvider
+	}
+	snapshotStackOutputs, err := s.SnapshotStackOutputs(ctx, secretsProvider)
 	if err != nil {
 		return err
 	}
+	snapshotStackOutputsMap := resource.ToResourcePropertyMap(snapshotStackOutputs)
 
-	outputs, err := getStackOutputs(snap, cmd.showSecrets)
+	// massageSecrets will remove all the secrets from the property map, so it should be safe to pass a panic
+	// crypter. This also ensures that if for some reason we didn't remove everything, we don't accidentally disclose
+	// secret values!
+	outputs, err := stack.SerializeProperties(ctx, display.MassageSecrets(snapshotStackOutputsMap, cmd.showSecrets),
+		config.NewPanicCrypter(), cmd.showSecrets)
 	if err != nil {
 		return fmt.Errorf("getting outputs: %w", err)
 	}
 	if outputs == nil {
-		outputs = make(map[string]interface{})
+		outputs = make(map[string]any)
 	}
 
 	// If there is an argument, just print that property.  Else, print them all (similar to `pulumi stack`).
@@ -173,8 +194,8 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 // stackOutputWriter writes one or more properties to stdout
 // on behalf of 'pulumi stack output'.
 type stackOutputWriter interface {
-	WriteOne(name string, value interface{}) error
-	WriteMany(outputs map[string]interface{}) error
+	WriteOne(name string, value any) error
+	WriteMany(outputs map[string]any) error
 }
 
 // consoleStackOutputWriter writes human-readable stack output to stdout.
@@ -184,12 +205,12 @@ type consoleStackOutputWriter struct {
 
 var _ stackOutputWriter = (*consoleStackOutputWriter)(nil)
 
-func (w *consoleStackOutputWriter) WriteOne(_ string, v interface{}) error {
+func (w *consoleStackOutputWriter) WriteOne(_ string, v any) error {
 	_, err := fmt.Fprintf(w.W, "%v\n", stringifyOutput(v))
 	return err
 }
 
-func (w *consoleStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+func (w *consoleStackOutputWriter) WriteMany(outputs map[string]any) error {
 	return fprintStackOutputs(w.W, outputs)
 }
 
@@ -200,11 +221,11 @@ type jsonStackOutputWriter struct {
 
 var _ stackOutputWriter = (*jsonStackOutputWriter)(nil)
 
-func (w *jsonStackOutputWriter) WriteOne(_ string, v interface{}) error {
+func (w *jsonStackOutputWriter) WriteOne(_ string, v any) error {
 	return ui.FprintJSON(w.W, v)
 }
 
-func (w *jsonStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+func (w *jsonStackOutputWriter) WriteMany(outputs map[string]any) error {
 	return ui.FprintJSON(w.W, outputs)
 }
 
@@ -226,13 +247,13 @@ type bashStackOutputWriter struct {
 
 var _ stackOutputWriter = (*bashStackOutputWriter)(nil)
 
-func (w *bashStackOutputWriter) WriteOne(k string, v interface{}) error {
+func (w *bashStackOutputWriter) WriteOne(k string, v any) error {
 	s := shellquote.Join(stringifyOutput(v))
 	_, err := fmt.Fprintf(w.W, "%v=%v\n", k, s)
 	return err
 }
 
-func (w *bashStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+func (w *bashStackOutputWriter) WriteMany(outputs map[string]any) error {
 	keys := slice.Prealloc[string](len(outputs))
 	for v := range outputs {
 		keys = append(keys, v)
@@ -254,7 +275,7 @@ type powershellStackOutputWriter struct {
 
 var _ stackOutputWriter = (*powershellStackOutputWriter)(nil)
 
-func (w *powershellStackOutputWriter) WriteOne(k string, v interface{}) error {
+func (w *powershellStackOutputWriter) WriteOne(k string, v any) error {
 	// In Powershell, single-quoted strings are taken verbatim.
 	// The only escaping necessary is to ' itself:
 	// replace each instance with two to escape.
@@ -263,7 +284,7 @@ func (w *powershellStackOutputWriter) WriteOne(k string, v interface{}) error {
 	return err
 }
 
-func (w *powershellStackOutputWriter) WriteMany(outputs map[string]interface{}) error {
+func (w *powershellStackOutputWriter) WriteMany(outputs map[string]any) error {
 	keys := slice.Prealloc[string](len(outputs))
 	for v := range outputs {
 		keys = append(keys, v)
@@ -278,18 +299,18 @@ func (w *powershellStackOutputWriter) WriteMany(outputs map[string]interface{}) 
 	return nil
 }
 
-func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]interface{}, error) {
+func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]any, error) {
 	state, err := stack.GetRootStackResource(snap)
 	if err != nil {
 		return nil, err
 	}
 
 	if state == nil {
-		return map[string]interface{}{}, nil
+		return map[string]any{}, nil
 	}
 
 	// massageSecrets will remove all the secrets from the property map, so it should be safe to pass a panic
-	// crypter. This also ensure that if for some reason we didn't remove everything, we don't accidentally disclose
+	// crypter. This also ensures that if for some reason we didn't remove everything, we don't accidentally disclose
 	// secret values!
 	ctx := context.TODO()
 	return stack.SerializeProperties(ctx, display.MassageSecrets(state.Outputs, showSecrets),

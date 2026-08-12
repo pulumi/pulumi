@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewUniqueHex(t *testing.T) {
@@ -28,7 +29,7 @@ func TestNewUniqueHex(t *testing.T) {
 	randlen := 8
 	maxlen := 100
 	id, err := NewUniqueHex(prefix, randlen, maxlen)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, len(prefix)+randlen, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
@@ -40,9 +41,9 @@ func TestNewUniqueHexNonDeterminism(t *testing.T) {
 	randlen := 8
 	maxlen := 100
 	id1, err := NewUniqueHex(prefix, randlen, maxlen)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	id2, err := NewUniqueHex(prefix, randlen, maxlen)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotEqual(t, id1, id2)
 }
 
@@ -64,7 +65,7 @@ func TestNewUniqueHexEnsureRandomness2(t *testing.T) {
 	randlen := 8
 	maxlen := 14
 	id, err := NewUniqueHex(prefix, randlen, maxlen)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, maxlen, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
@@ -74,7 +75,7 @@ func TestNewUniqueDefaults(t *testing.T) {
 
 	prefix := "prefix"
 	id, err := NewUniqueHex(prefix, -1, -1)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
@@ -86,7 +87,7 @@ func TestNewUniqueHexID(t *testing.T) {
 	randlen := 8
 	maxlen := 100
 	id, err := NewUniqueHexID(prefix, randlen, maxlen)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(string(id), prefix))
 }
@@ -98,7 +99,7 @@ func TestNewUniqueHexMaxLenID(t *testing.T) {
 	randlen := 8
 	maxlen := 20
 	id, err := NewUniqueHexID(prefix, randlen, maxlen)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(string(id), prefix))
 }
@@ -108,7 +109,7 @@ func TestNewUniqueDefaultsID(t *testing.T) {
 
 	prefix := "prefix"
 	id, err := NewUniqueHexID(prefix, -1, -1)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, len(prefix)+8, len(id))
 	assert.Equal(t, true, strings.HasPrefix(string(id), prefix))
 }
@@ -122,8 +123,14 @@ func TestUniqueNameDeterminism(t *testing.T) {
 	maxlen := 100
 	randchars := []rune("xyzw")
 	name, err := NewUniqueName(randomSeed, prefix, randlen, maxlen, randchars)
-	assert.NoError(t, err)
-	assert.Equal(t, "prefixywzwwyz", name)
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(name, prefix), "%s does not have prefix %s", name, prefix)
+	require.Len(t, name, len(prefix)+randlen)
+	assert.Subset(t, randchars, []rune(name[len(prefix):]))
+
+	name2, err := NewUniqueName(randomSeed, prefix, randlen, maxlen, randchars)
+	require.NoError(t, err)
+	assert.Equal(t, name, name2)
 }
 
 func TestUniqueNameNonDeterminism(t *testing.T) {
@@ -135,14 +142,14 @@ func TestUniqueNameNonDeterminism(t *testing.T) {
 		randlen := 4
 		maxlen := 100
 		name, err := NewUniqueName(randomSeed, prefix, randlen, maxlen, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(name, prefix), "%s does not have prefix %s", name, prefix)
-		assert.Len(t, name, len(prefix)+randlen)
+		require.Len(t, name, len(prefix)+randlen)
 
 		name2, err := NewUniqueName(randomSeed, prefix, randlen, maxlen, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(name2, prefix), "%s does not have prefix %s", name2, prefix)
-		assert.Len(t, name2, len(prefix)+randlen)
+		require.Len(t, name2, len(prefix)+randlen)
 		assert.NotEqual(t, name, name2)
 	}
 }

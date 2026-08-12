@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Sequence, Mapping, Any
+from typing import Optional, Any
+from collections.abc import Sequence, Mapping
 
 from pulumi import ResourceOptions, Input, Inputs
 
@@ -133,3 +134,6 @@ class Provider:
         """
 
         raise Exception(f"Unknown function {token}")
+
+    def cancel(self) -> None:
+        """Cancel signals the provider to gracefully shut down and abort any ongoing operations."""

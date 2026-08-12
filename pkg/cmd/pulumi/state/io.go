@@ -16,17 +16,22 @@ package state
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
+	"unicode"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/texttheater/golang-levenshtein/levenshtein"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -35,7 +40,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -44,25 +49,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-// runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
-func runStateEdit(
-	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackName string, showPrompt bool,
-	urn resource.URN, operation edit.OperationFunc,
-) error {
-	return runTotalStateEdit(ctx, ws, lm, stackName, showPrompt, func(opts display.Options, snap *deploy.Snapshot) error {
-		res, err := locateStackResource(opts, snap, urn)
-		if err != nil {
-			return err
-		}
-
-		return operation(snap, res)
-	})
-}
-
 // runTotalStateEdit runs a snapshot-mutating function on the entirety of the given stack's snapshot.
 // Before mutating, the user may be prompted to for confirmation if the current session is interactive.
 func runTotalStateEdit(
-	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackName string, showPrompt bool,
+	ctx context.Context,
+	sink diag.Sink,
+	ws pkgWorkspace.Context,
+	lm cmdBackend.LoginManager,
+	stackName string,
+	showPrompt bool,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
 ) error {
 	opts := display.Options{
@@ -70,22 +65,60 @@ func runTotalStateEdit(
 	}
 	s, err := cmdStack.RequireStack(
 		ctx,
+		sink,
 		ws,
 		lm,
 		stackName,
 		cmdStack.OfferNew,
 		opts,
+		"",
 	)
 	if err != nil {
 		return err
 	}
-	return TotalStateEdit(ctx, s, showPrompt, opts, operation)
+	return TotalStateEdit(ctx, s, showPrompt, opts, operation, nil)
 }
 
-func TotalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts display.Options,
+// runTotalStateEditWithPrompt is the same as runTotalStateEdit, but allows the caller to
+// override the prompt message.
+func runTotalStateEditWithPrompt(
+	ctx context.Context,
+	sink diag.Sink,
+	ws pkgWorkspace.Context,
+	lm cmdBackend.LoginManager,
+	stackName string,
+	showPrompt bool,
 	operation func(opts display.Options, snap *deploy.Snapshot) error,
+	overridePromptMessage string,
 ) error {
-	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	opts := display.Options{
+		Color: cmdutil.GetGlobalColorization(),
+	}
+	s, err := cmdStack.RequireStack(
+		ctx,
+		sink,
+		ws,
+		lm,
+		stackName,
+		cmdStack.OfferNew,
+		opts,
+		"",
+	)
+	if err != nil {
+		return err
+	}
+	return TotalStateEdit(ctx, s, showPrompt, opts, operation, &overridePromptMessage)
+}
+
+func TotalStateEdit(
+	ctx context.Context,
+	s backend.Stack,
+	showPrompt bool,
+	opts display.Options,
+	operation func(opts display.Options, snap *deploy.Snapshot) error,
+	overridePromptMessage *string,
+) error {
+	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
 	if err != nil {
 		return err
 	} else if snap == nil {
@@ -96,11 +129,16 @@ func TotalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 		confirm := false
 		surveycore.DisableColor = true
 		prompt := opts.Color.Colorize(colors.Yellow + "warning" + colors.Reset + ": ")
-		prompt += "This command will edit your stack's state directly. Confirm?"
+		if overridePromptMessage != nil {
+			prompt += *overridePromptMessage
+		} else {
+			prompt += "This command will edit your stack's state directly. Confirm?"
+		}
 		if err = survey.AskOne(&survey.Confirm{
 			Message: prompt,
 		}, &confirm, ui.SurveyIcons(opts.Color)); err != nil || !confirm {
-			return result.FprintBailf(os.Stdout, "confirmation declined")
+			// Shared helper; uses process stdout when not given a writer.
+			return result.FprintBailf(os.Stdout, "confirmation declined") //nolint:forbidigo
 		}
 	}
 
@@ -117,31 +155,94 @@ func TotalStateEdit(ctx context.Context, s backend.Stack, showPrompt bool, opts 
 		contract.AssertNoErrorf(snap.VerifyIntegrity(), "state edit produced an invalid snapshot")
 	}
 
-	sdep, err := stack.SerializeDeployment(ctx, snap, false /* showSecrets */)
+	dep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	if err != nil {
 		return fmt.Errorf("serializing deployment: %w", err)
 	}
 
 	// Once we've mutated the snapshot, import it back into the backend so that it can be persisted.
-	bytes, err := json.Marshal(sdep)
-	if err != nil {
-		return err
+	return backend.ImportStackDeployment(ctx, s, dep)
+}
+
+// listURNsHint tells the user how to find the URNs of the resources in a stack's state. stack may be empty to
+// refer to the current stack.
+func listURNsHint(stack string) string {
+	var stackFlag string
+	if stack != "" {
+		stackFlag = " --stack " + stack
 	}
-	dep := apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: bytes,
+	return fmt.Sprintf("To list the resource URNs in the stack, run `pulumi stack --show-urns%[1]s`; "+
+		"to inspect the full state, run `pulumi stack export%[1]s`.", stackFlag)
+}
+
+// snapshotURNs returns the distinct URNs of the resources in the snapshot, which may be nil.
+func snapshotURNs(snap *deploy.Snapshot) []resource.URN {
+	if snap == nil {
+		return nil
 	}
-	return s.ImportDeployment(ctx, &dep)
+	seen := map[resource.URN]struct{}{}
+	urns := slice.Prealloc[resource.URN](len(snap.Resources))
+	for _, res := range snap.Resources {
+		if _, ok := seen[res.URN]; !ok {
+			seen[res.URN] = struct{}{}
+			urns = append(urns, res.URN)
+		}
+	}
+	return urns
+}
+
+// similarURNs returns up to limit candidate URNs ordered by their edit distance to the given URN, keeping only
+// those within a distance proportional to the URN's length.
+func similarURNs(candidates []resource.URN, urn resource.URN, limit int) []resource.URN {
+	op := levenshtein.DefaultOptionsWithSub
+	op.Matches = func(r1, r2 rune) bool {
+		return unicode.ToLower(r1) == unicode.ToLower(r2)
+	}
+	threshold := max(2, len(urn)/4)
+
+	type scored struct {
+		urn      resource.URN
+		distance int
+	}
+	var ranked []scored
+	for _, candidate := range candidates {
+		distance := levenshtein.DistanceForStrings([]rune(string(urn)), []rune(string(candidate)), op)
+		if distance <= threshold {
+			ranked = append(ranked, scored{urn: candidate, distance: distance})
+		}
+	}
+	sort.SliceStable(ranked, func(i, j int) bool { return ranked[i].distance < ranked[j].distance })
+
+	urns := slice.Prealloc[resource.URN](min(limit, len(ranked)))
+	for _, c := range ranked[:min(limit, len(ranked))] {
+		urns = append(urns, c.urn)
+	}
+	return urns
+}
+
+// resourceNotFoundError builds the error returned when a URN does not match any of the candidate URNs eligible for
+// the operation, suggesting close-matching candidates and how to list the URNs in the state.
+func resourceNotFoundError(candidates []resource.URN, urn resource.URN) error {
+	var msg strings.Builder
+	fmt.Fprintf(&msg, "No such resource %q exists in the current state\n", urn)
+	if suggestions := similarURNs(candidates, urn, 3); len(suggestions) > 0 {
+		msg.WriteString("Did you mean:\n")
+		for _, suggestion := range suggestions {
+			fmt.Fprintf(&msg, "  %s\n", suggestion)
+		}
+	}
+	msg.WriteString(listURNsHint(""))
+	return errors.New(msg.String())
 }
 
 // locateStackResource attempts to find a unique resource associated with the given URN in the given snapshot. If the
 // given URN is ambiguous and this is an interactive terminal, it prompts the user to select one of the resources in
 // the list of resources with identical URNs to operate upon.
-func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resource.URN) (*resource.State, error) {
+func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resource.URN) (*pkgresource.State, error) {
 	candidateResources := edit.LocateResource(snap, urn)
 	switch {
 	case len(candidateResources) == 0: // resource was not found
-		return nil, fmt.Errorf("No such resource %q exists in the current state", urn)
+		return nil, resourceNotFoundError(snapshotURNs(snap), urn)
 	case len(candidateResources) == 1: // resource was unambiguously found
 		return candidateResources[0], nil
 	}
@@ -149,11 +250,12 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	// If there exist multiple resources that have the requested URN, prompt the user to select one if we're running
 	// interactively. If we're not, early exit.
 	if !cmdutil.Interactive() {
-		errorMsg := "Resource URN ambiguously referred to multiple resources. Did you mean:\n"
+		var errorMsg strings.Builder
+		errorMsg.WriteString("Resource URN ambiguously referred to multiple resources. Did you mean:\n")
 		for _, res := range candidateResources {
-			errorMsg += fmt.Sprintf("  %s\n", res.ID)
+			fmt.Fprintf(&errorMsg, "  %s\n", res.ID)
 		}
-		return nil, errors.New(errorMsg)
+		return nil, errors.New(errorMsg.String())
 	}
 
 	// Note: this is done to adhere to the same color scheme as the `pulumi new` picker, which also does this.
@@ -162,7 +264,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	prompt = opts.Color.Colorize(colors.SpecPrompt + prompt + colors.Reset)
 
 	options := slice.Prealloc[string](len(candidateResources))
-	optionMap := make(map[string]*resource.State)
+	optionMap := make(map[string]*pkgresource.State)
 	for _, ambiguousResource := range candidateResources {
 		// Prompt the user to select from a list of IDs, since these resources are known to all have the same URN.
 		message := fmt.Sprintf("%q", ambiguousResource.ID)
@@ -190,6 +292,16 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	return optionMap[option], nil
 }
 
+// resolveStateResourceArg resolves a CLI argument (must be a valid resource URN) to a resource
+// in the snapshot, with interactive disambiguation when multiple state entries share the same URN.
+func resolveStateResourceArg(opts display.Options, snap *deploy.Snapshot, arg string) (*pkgresource.State, error) {
+	urn := resource.URN(arg)
+	if !urn.IsValid() {
+		return nil, fmt.Errorf("%q is not a valid resource URN\n%s", arg, listURNsHint(""))
+	}
+	return locateStackResource(opts, snap, urn)
+}
+
 // Prompt the user to select a URN from the passed in state.
 //
 // stackName is the name of the current stack.
@@ -199,7 +311,7 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 //
 // Prompt is displayed to the user when selecting the URN.
 func getURNFromState(
-	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
 	stackName string, snap **deploy.Snapshot, prompt string,
 ) (resource.URN, error) {
 	if snap == nil {
@@ -213,16 +325,18 @@ func getURNFromState(
 
 		s, err := cmdStack.RequireStack(
 			ctx,
+			sink,
 			ws,
 			lm,
 			stackName,
 			cmdStack.LoadOnly,
 			opts,
+			"",
 		)
 		if err != nil {
 			return "", err
 		}
-		*snap, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+		*snap, err = s.Snapshot(ctx, secrets.DefaultProvider)
 		if err != nil {
 			return "", err
 		}

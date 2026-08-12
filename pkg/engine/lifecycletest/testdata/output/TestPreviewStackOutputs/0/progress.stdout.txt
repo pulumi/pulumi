@@ -1,0 +1,14 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack test <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pulumi:pulumi:Stack test <{%fg 2%}>created<{%reset%}> 
+<{%fg 13%}><{%bold%}>Outputs:<{%reset%}>
+<{%fg 2%}>    first : <{%reset%}><{%fg 2%}>"abc"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    second: <{%reset%}><{%fg 2%}>"def"<{%reset%}><{%fg 2%}>
+<{%reset%}>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

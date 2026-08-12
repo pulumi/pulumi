@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,10 @@ import (
 	"context"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -35,16 +38,16 @@ func TestGetStackResourceOutputs(t *testing.T) {
 	typ := "some:invalid:type1"
 
 	resc1 := liveState(typ, "resc1", resource.PropertyMap{
-		resource.PropertyKey("prop1"): resource.NewStringProperty("val1"),
+		resource.PropertyKey("prop1"): resource.NewProperty("val1"),
 	})
 	resc2 := liveState(typ, "resc2", resource.PropertyMap{
-		resource.PropertyKey("prop2"): resource.NewStringProperty("val2"),
+		resource.PropertyKey("prop2"): resource.NewProperty("val2"),
 	})
 
 	// `deleted` will be ignored by `GetStackResourceOutputs`.
 	deletedName := "resc3"
 	deleted := deleteState("deletedType", "resc3", resource.PropertyMap{
-		resource.PropertyKey("deleted"): resource.NewStringProperty("deleted"),
+		resource.PropertyKey("deleted"): resource.NewProperty("deleted"),
 	})
 
 	// Mock backend that implements just enough methods to service `GetStackResourceOutputs`.
@@ -56,7 +59,7 @@ func TestGetStackResourceOutputs(t *testing.T) {
 		GetStackF: func(ctx context.Context, stackRef StackReference) (Stack, error) {
 			return &MockStack{
 				SnapshotF: func(ctx context.Context, sp secrets.Provider) (*deploy.Snapshot, error) {
-					return &deploy.Snapshot{Resources: []*resource.State{
+					return &deploy.Snapshot{Resources: []*pkgresource.State{
 						resc1, resc2, deleted,
 					}}, nil
 				},
@@ -68,37 +71,37 @@ func TestGetStackResourceOutputs(t *testing.T) {
 	client := &backendClient{backend: be}
 
 	// Get resource outputs for mock stack.
-	outs, err := client.GetStackResourceOutputs(context.Background(), "fakeStack")
-	assert.NoError(t, err)
+	outs, err := client.GetStackResourceOutputs(t.Context(), "fakeStack")
+	require.NoError(t, err)
 
 	// Verify resource outputs for resc1.
-	resc1Actual, exists := outs[resource.PropertyKey(testURN(typ, "resc1"))]
+	resc1Actual, exists := outs.GetOk(string(testURN(typ, "resc1")))
 	assert.True(t, exists)
-	assert.True(t, resc1Actual.IsObject())
+	assert.True(t, resc1Actual.IsMap())
 
-	resc1Type, exists := resc1Actual.ObjectValue()["type"]
+	resc1Type, exists := resc1Actual.AsMap().GetOk("type")
 	assert.True(t, exists)
-	assert.Equal(t, typ, resc1Type.V)
+	assert.Equal(t, typ, resc1Type.AsString())
 
-	resc1Outs, exists := resc1Actual.ObjectValue()["outputs"]
+	resc1Outs, exists := resc1Actual.AsMap().GetOk("outputs")
 	assert.True(t, exists)
-	assert.True(t, resc1Outs.IsObject())
+	assert.True(t, resc1Outs.IsMap())
 
 	// Verify resource outputs for resc2.
-	resc2Actual, exists := outs[resource.PropertyKey(testURN(typ, "resc2"))]
+	resc2Actual, exists := outs.GetOk(string(testURN(typ, "resc2")))
 	assert.True(t, exists)
-	assert.True(t, resc2Actual.IsObject())
+	assert.True(t, resc2Actual.IsMap())
 
-	resc2Type, exists := resc2Actual.ObjectValue()["type"]
+	resc2Type, exists := resc2Actual.AsMap().GetOk("type")
 	assert.True(t, exists)
-	assert.Equal(t, typ, resc2Type.V) // Same type.
+	assert.Equal(t, typ, resc2Type.AsString()) // Same type.
 
-	resc2Outs, exists := resc2Actual.ObjectValue()["outputs"]
+	resc2Outs, exists := resc2Actual.AsMap().GetOk("outputs")
 	assert.True(t, exists)
-	assert.True(t, resc2Outs.IsObject())
+	assert.True(t, resc2Outs.IsMap())
 
 	// Verify the deleted resource is not present.
-	_, exists = outs[resource.PropertyKey(deletedName)]
+	_, exists = outs.GetOk(deletedName)
 	assert.False(t, exists)
 }
 
@@ -110,14 +113,14 @@ func testURN(typ, name string) resource.URN {
 	return resource.NewURN("test", "test", "", tokens.Type(typ), name)
 }
 
-func deleteState(typ, name string, outs resource.PropertyMap) *resource.State {
-	return &resource.State{
+func deleteState(typ, name string, outs resource.PropertyMap) *pkgresource.State {
+	return &pkgresource.State{
 		Delete: true, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
 	}
 }
 
-func liveState(typ, name string, outs resource.PropertyMap) *resource.State {
-	return &resource.State{
+func liveState(typ, name string, outs resource.PropertyMap) *pkgresource.State {
+	return &pkgresource.State{
 		Delete: false, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
 	}
 }

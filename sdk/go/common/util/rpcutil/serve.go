@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -136,7 +136,7 @@ func serveWithOptions(opts ServeOptions) (ServeHandle, chan error, error) {
 	return ServeHandle{Port: port, Done: done}, done, nil
 }
 
-// Deprecated. Please use ServeWithOptions and OpenTracingServerInterceptorOptions.
+// Deprecated: Please use [ServeWithOptions] and [TracingServerInterceptorOptions].
 func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
 	parentSpan opentracing.Span, options ...otgrpc.Option,
 ) (int, chan error, error) {
@@ -151,7 +151,7 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error,
 			}
 			return nil
 		},
-		Options: OpenTracingServerInterceptorOptions(parentSpan, options...),
+		Options: TracingServerInterceptorOptions(parentSpan, options...),
 	}
 
 	handle, done, err := serveWithOptions(opts)

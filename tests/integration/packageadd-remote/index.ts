@@ -1,4 +1,4 @@
-import * as tls from "tls-self-signed-cert";
+import * as tls from "@pulumi/tls-self-signed-cert";
 
 const cert = new tls.SelfSignedCertificate("mycert", {
     subject: {

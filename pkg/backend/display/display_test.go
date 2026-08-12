@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -26,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestShowEvents(t *testing.T) {
@@ -35,10 +37,10 @@ func TestShowEvents(t *testing.T) {
 	events := make(chan engine.Event)
 	done := make(chan bool)
 	stack, err := tokens.ParseStackName("stack")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	eventLog, err := os.CreateTemp(t.TempDir(), "event-log-")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	go func() {
 		events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -71,7 +73,77 @@ func TestShowEvents(t *testing.T) {
 	assert.NotContains(t, stdout.String(), "this-is-filtered-from-display")
 
 	read, err := os.ReadFile(eventLog.Name())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, string(read), "not-filtered")
 	assert.Contains(t, string(read), "this-is-filtered-from-display")
+}
+
+func TestStartEventLogger_ClosesOutputOnInputClose(t *testing.T) {
+	t.Parallel()
+
+	// startEventLogger must close its output channel when the input is exhausted,
+	// so consumers can rely on standard `for range` semantics rather than having
+	// to break on CancelEvent.
+	eventLog, err := os.CreateTemp(t.TempDir(), "event-log-")
+	require.NoError(t, err)
+
+	events := make(chan engine.StampedEvent, 1)
+	events <- engine.StampedEvent{Event: engine.NewCancelEvent()}
+	close(events)
+
+	done := make(chan bool)
+	outEvents, outDone := startEventLogger(events, done, Options{
+		EventLogPath: eventLog.Name(),
+	})
+
+	drained := make(chan struct{})
+	go func() {
+		for range outEvents { //nolint:revive // intentional drain
+		}
+		close(drained)
+	}()
+
+	select {
+	case <-drained:
+	case <-time.After(2 * time.Second):
+		t.Fatal("outEvents was not closed after the input was drained")
+	}
+
+	close(outDone)
+	<-done
+}
+
+func TestStartEventLogger_TCPFallsBackOnInvalidTarget(t *testing.T) {
+	t.Parallel()
+
+	// If the TCP target is unusable, startEventLogger must fall back to the
+	// original (events, done) so the rest of the display pipeline still runs.
+	// "tcp://" with an empty address makes grpc.NewClient fail synchronously.
+	events := make(chan engine.StampedEvent)
+	done := make(chan bool)
+
+	outEvents, outDone := startEventLogger(events, done, Options{
+		EventLogPath: "tcp://",
+	})
+
+	// The originals are returned unchanged — same channel identity.
+	assert.Equal(t, (<-chan engine.StampedEvent)(events), outEvents)
+	assert.Equal(t, (chan<- bool)(done), outDone)
+}
+
+func TestEscapeURN(t *testing.T) {
+	t.Parallel()
+
+	// Most characters can safely be displayed as is, including double quotes.
+	require.Equal(t, "\"double quotes\"", escapeURN("\"double quotes\""))
+	require.Equal(t, "escaped double quote \\\"", escapeURN("escaped double quote \\\""))
+	require.Equal(t, "backslashes\\\\\\\\", escapeURN("backslashes\\\\\\\\"))
+	require.Equal(t, "C:\\windows\\paths", escapeURN("C:\\windows\\paths"))
+	require.Equal(t, "Emoji 🦄", escapeURN("Emoji 🦄"))
+	require.Equal(t, "Non breaking space: <\u00a0>", escapeURN("Non breaking space: <\u00a0>"))
+
+	// Non graphic characters need to be escaped, as they can mess up the display layout.
+	require.Equal(t, "newline\\n", escapeURN("newline\n"))
+	require.Equal(t, "tab\\t", escapeURN("tab\t"))
+	require.Equal(t, "ZWJ: <\\u200d>", escapeURN("ZWJ: <\u200d>"))
 }

@@ -1,0 +1,5 @@
+name: provider-ignore-changes-component
+runtime:
+  name: nodejs
+  options:
+    typescript: false

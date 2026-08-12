@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Optional, TypedDict
+from enum import Enum
+from typing import Any, Optional, TypedDict, cast
 from pulumi.errors import InputPropertyError
 from pulumi.output import Input
-from pulumi.provider.experimental.provider import ComponentProvider
+from pulumi.provider.experimental.component import ComponentProvider
 from pulumi.resource import ComponentResource, ResourceOptions
 
 
@@ -68,6 +69,85 @@ def test_map_inputs():
         assert False, "expected an error"
     except InputPropertyError as e:
         assert e.reason == "Missing required input 'a.b.c' on 'MyComponent'"
+
+
+def test_map_inputs_integer():
+    class Nested(TypedDict):
+        n: Input[int]
+
+    class Args(TypedDict):
+        a: Optional[Input[int]]
+        b: Optional[Input[int]]
+        c: Optional[Input[float]]
+        d: Optional[Input[Nested]]
+        e: Optional[Input[list[int]]]
+
+    class MyComponent(ComponentResource):
+        def __init__(self, name: str, args: Args, opts: ResourceOptions):
+            super().__init__("component:index:MyComponent", name, {}, opts)
+            self.register_outputs({})
+
+    provider = ComponentProvider([MyComponent], "my-provider")
+    component_def = provider._component_defs["MyComponent"]  # type: ignore
+
+    inputs = provider.map_inputs(
+        {"a": 123, "b": 123.0, "c": 456.78, "d": {"n": 6}, "e": [1, 2.0]}, component_def
+    )
+    assert inputs["a"] == 123
+    assert inputs["b"] == 123
+    assert inputs["c"] == 456.78
+    assert inputs["d"] == {"n": 6}
+    assert inputs["e"] == [1, 2]
+
+    try:
+        provider.map_inputs({"a": "1.0"}, component_def)
+        assert False, "expected an error"
+    except InputPropertyError as e:
+        assert (
+            e.reason
+            == "Invalid value '1.0' of type <class 'str'> for integer property a"
+        )
+
+    try:
+        provider.map_inputs({"d": {"n": "3.2"}}, component_def)
+        assert False, "expected an error"
+    except InputPropertyError as e:
+        assert (
+            e.reason
+            == "Invalid value '3.2' of type <class 'str'> for integer property d.n"
+        )
+
+
+def test_map_complex_outputs():
+    class Leaf(TypedDict):
+        plain_arg: str
+
+    class Intermediate(TypedDict):
+        leaf_arg: Leaf
+
+    class Complex(TypedDict):
+        intermediate_arg: Intermediate
+
+    class ComponentArgs: ...
+
+    class Component(ComponentResource):
+        complex_arg: Complex
+
+        def __init__(
+            self, name: str, args: ComponentArgs, opts: Optional[ResourceOptions] = None
+        ):
+            self.complex_arg = {
+                "intermediate_arg": {"leaf_arg": {"plain_arg": "hello"}}
+            }
+
+    provider = ComponentProvider([Component], "provider")
+    component_def = provider._component_defs["Component"]
+    constructor = provider._components["Component"]
+    comp_instance = cast(Component, constructor("instance", {}, None))  # type: ignore
+    state = provider.get_state(comp_instance, component_def)
+    assert state == {
+        "complexArg": {"intermediateArg": {"leafArg": {"plainArg": "hello"}}}
+    }
 
 
 def test_map_complex_inputs():
@@ -157,3 +237,27 @@ def test_map_complex_inputs():
             },
         },
     }
+
+
+def test_invalid_enum_value():
+    class MyEnumStr(Enum):
+        A = "a"
+        B = "b"
+
+    class Args(TypedDict):
+        enu: MyEnumStr
+
+    class Component(ComponentResource):
+        def __init__(self, args: Args): ...
+
+    provider = ComponentProvider([Component], "my-provider")
+    component_def = provider._component_defs["Component"]  # type: ignore
+    inputs = {
+        "enu": 7,
+    }
+    try:
+        provider.map_inputs(inputs, component_def)
+        assert False, "Expected an error"
+    except InputPropertyError as e:
+        assert e.reason == "Invalid value 7 of type <class 'int'> for enum 'MyEnumStr'"
+        assert e.property_path == "enu"

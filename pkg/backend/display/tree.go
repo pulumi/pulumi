@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -28,8 +29,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"golang.org/x/exp/maps"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type treeRenderer struct {
@@ -192,17 +194,23 @@ func (r *treeRenderer) render(termWidth int) {
 		r.systemMessages = append(r.systemMessages, splitIntoDisplayableLines(msg)...)
 	}
 
-	if len(r.systemMessages) == 0 && len(r.display.progressEventPayloads) > 0 {
+	keys := []string{}
+	if r.display.progressEventPayloads != nil {
+		r.display.progressEventPayloads.Range(func(key string, value engine.ProgressEventPayload) bool {
+			keys = append(keys, key)
+			return true
+		})
+	}
+	if len(r.systemMessages) == 0 && len(keys) > 0 {
 		// If we don't have system messages, but we do have progress events, show
 		// the progress. For the most part, we shouldn't have both at the same time,
 		// since the most common system messages refer to cancellation/SIGINT
 		// handling, at which point the program will be terminating. That said, if
 		// we do, we'll give the system messages priority.
-		keys := maps.Keys(r.display.progressEventPayloads)
 		slices.Sort(keys)
 
 		for _, key := range keys {
-			payload := r.display.progressEventPayloads[key]
+			payload, _ := r.display.progressEventPayloads.Load(key)
 			r.systemMessages = append(r.systemMessages, renderProgress(
 				renderUnicodeProgressBar,
 				termWidth-4,
@@ -304,10 +312,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 		mergeLastLine := systemMessagesHeight == 0 && statusMessageHeight != 0
 
 		treeTableHeight = termHeight - systemMessagesHeight - statusMessageHeight - 1
-		r.maxTreeTableOffset = len(treeTableRows) - treeTableHeight + 1
-		if r.maxTreeTableOffset < 0 {
-			r.maxTreeTableOffset = 0
-		}
+		r.maxTreeTableOffset = max(len(treeTableRows)-treeTableHeight+1, 0)
 		scrollable := r.maxTreeTableOffset != 0
 
 		if r.treeTableOffset > r.maxTreeTableOffset {
@@ -417,10 +422,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 
 	// Render the status message, if any.
 	if statusMessageHeight != 0 {
-		padding := termWidth - colors.MeasureColorizedString(statusMessage)
-		if padding < 0 {
-			padding = 0
-		}
+		padding := max(termWidth-colors.MeasureColorizedString(statusMessage), 0)
 
 		r.overln("")
 		r.over(statusMessage + strings.Repeat(" ", padding))
@@ -436,7 +438,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 	// the unwriten lines with empty space.
 	if r.rewind > lineCount {
 		delta := r.rewind - lineCount
-		for i := 0; i < delta; i++ {
+		for range delta {
 			r.overln("")
 		}
 		r.term.CursorUp(delta)
@@ -455,10 +457,7 @@ func (r *treeRenderer) clampLine(line string, maxWidth int) string {
 	// msgWithColors having the color code information embedded with it.  So we need to get
 	// the right substring of it, assuming that embedded colors are just markup and do not
 	// actually contribute to the length
-	maxRowLength := maxWidth - 1
-	if maxRowLength < 0 {
-		maxRowLength = 0
-	}
+	maxRowLength := max(maxWidth-1, 0)
 	return colors.TrimColorizedString(line, maxRowLength)
 }
 
@@ -478,7 +477,10 @@ func (r *treeRenderer) handleEvents() {
 func (r *treeRenderer) handleKey(key string) {
 	switch key {
 	case terminal.KeyCtrlC:
-		sigint()
+		if err := cmdutil.Interrupt(os.Getpid()); err != nil {
+			logging.V(6).Infof("failed to interrupt process %d", os.Getpid())
+		}
+
 	case terminal.KeyCtrlO:
 		if r.permalink != "" {
 			if err := browser.OpenURL(r.permalink); err != nil {

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -eo pipefail
 
 # This script implements a general retry mechanism for a command. On each iteration, parallelism
 # flags are halved and the command is retried.
@@ -40,8 +40,10 @@ run_tests() {
 
 run_tests "${@}"
 
-echo "TEST_SUCCESS=${success}" >> "$GITHUB_OUTPUT"
-echo "TEST_RETRIED=${retried}" >> "$GITHUB_OUTPUT"
+if [[ -n $GITHUB_OUTPUT ]]; then
+    echo "TEST_SUCCESS=${success}" >> "$GITHUB_OUTPUT"
+    echo "TEST_RETRIED=${retried}" >> "$GITHUB_OUTPUT"
+fi
 
 if ! "${success}"; then
     exit 1

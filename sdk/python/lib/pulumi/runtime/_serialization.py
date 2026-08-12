@@ -1,4 +1,4 @@
-# Copyright 2016-2024, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from contextvars import ContextVar, copy_context
-from typing import Callable, TypeVar, Tuple
+from typing import TypeVar
+from collections.abc import Callable
 
 
 __all__ = [
@@ -40,7 +41,7 @@ _var_serialization_contained_secrets = ContextVar(
 
 def _serialize(
     allow_secrets: bool, f: Callable[..., _T], *args, **kwargs
-) -> Tuple[_T, bool]:
+) -> tuple[_T, bool]:
     """
     Run the given function with serialization enabled.
     """

@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package netutil
 
 import (
-	"fmt"
 	"net"
 	"testing"
 
@@ -46,16 +45,14 @@ func TestReturnsErrorIfPortNumberTooHigh(t *testing.T) {
 func TestReturnsNextPortIfNotAvailable(t *testing.T) {
 	t.Parallel()
 
-	// "random" port for testing
-	port := 58943
-	if !isPortAvailable(port + 1) {
-		t.Skip("port 58944 is not available")
-	}
-	// Open a listener on the port to make it unavailable.
-	// Ignore the error.  If the port is already open that's also fine.
-	l, _ := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	// Open a listener on a port to make it unavailable.
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
 	defer l.Close()
+
+	port := l.Addr().(*net.TCPAddr).Port
 	availablePort, err := FindNextAvailablePort(port)
 	require.NoError(t, err)
-	require.Equal(t, port+1, availablePort)
+	require.Greater(t, availablePort, port)
+	require.True(t, isPortAvailable(availablePort))
 }

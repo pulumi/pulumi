@@ -6,7 +6,7 @@ paths:
       inner: -2
     string: '{"inner":-2}'
     redacted: '{"inner":-2}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAV/4ISAAEFaW5uZXIFaW50NjQEAgAD
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABX/gBIAAQVpbm5lcgVpbnQ2NAQCAAM=
     secure: false
     isObject: true
   my:outer.inner:

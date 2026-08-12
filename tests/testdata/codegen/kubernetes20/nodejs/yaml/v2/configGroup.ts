@@ -25,7 +25,7 @@ export class ConfigGroup extends pulumi.ComponentResource {
     /**
      * Resources created by the ConfigGroup.
      */
-    public /*out*/ readonly resources!: pulumi.Output<any[]>;
+    declare public /*out*/ readonly resources: pulumi.Output<any[]>;
 
     /**
      * Create a ConfigGroup resource with the given unique name, arguments, and options.
@@ -38,10 +38,10 @@ export class ConfigGroup extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["files"] = args ? args.files : undefined;
-            resourceInputs["objs"] = args ? args.objs : undefined;
-            resourceInputs["resourcePrefix"] = args ? args.resourcePrefix : undefined;
-            resourceInputs["yaml"] = args ? args.yaml : undefined;
+            resourceInputs["files"] = args?.files;
+            resourceInputs["objs"] = args?.objs;
+            resourceInputs["resourcePrefix"] = args?.resourcePrefix;
+            resourceInputs["yaml"] = args?.yaml;
             resourceInputs["resources"] = undefined /*out*/;
         } else {
             resourceInputs["resources"] = undefined /*out*/;
@@ -58,17 +58,17 @@ export interface ConfigGroupArgs {
     /**
      * Set of paths or a URLs that uniquely identify files.
      */
-    files?: pulumi.Input<string | pulumi.Input<string>[]>;
+    files?: pulumi.Input<string | pulumi.Input<string>[] | undefined>;
     /**
      * Objects representing Kubernetes resources.
      */
-    objs?: pulumi.Input<any | any[]>;
+    objs?: pulumi.Input<any | any[] | undefined>;
     /**
      * An optional prefix for the auto-generated resource names. Example: A resource created with resourcePrefix="foo" would produce a resource named "foo-resourceName".
      */
-    resourcePrefix?: pulumi.Input<string>;
+    resourcePrefix?: pulumi.Input<string | undefined>;
     /**
      * YAML text containing Kubernetes resource definitions.
      */
-    yaml?: pulumi.Input<string | pulumi.Input<string>[]>;
+    yaml?: pulumi.Input<string | pulumi.Input<string>[] | undefined>;
 }

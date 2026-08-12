@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ var (
 	// that will match the isOutput method defined above.
 	isOutputType = typeOf[interface{ isOutput() }]()
 
-	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
+	contextType = reflect.TypeFor[context.Context]()
 )
 
 // InputElementType returns the element type of an Input[T]
@@ -206,5 +206,5 @@ func Cast[O OutputOf[T], T any](i Input[T]) O {
 //
 // This may be deleted if https://github.com/golang/go/issues/60088 lands.
 func typeOf[T any]() reflect.Type {
-	return reflect.TypeOf((*T)(nil)).Elem()
+	return reflect.TypeFor[T]()
 }

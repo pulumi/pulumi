@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestArgumentConstruction(t *testing.T) {
@@ -96,6 +97,29 @@ func TestArgumentConstruction(t *testing.T) {
 	})
 }
 
+func TestTemplateWritesPnpmWorkspace(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	opts, err := structpb.NewStruct(map[string]any{"packagemanager": "pnpm"})
+	require.NoError(t, err)
+	indo := &pulumirpc.ProgramInfo{
+		RootDirectory:    dir,
+		ProgramDirectory: dir,
+		EntryPoint:       ".",
+		Options:          opts,
+	}
+	host := &nodeLanguageHost{}
+
+	_, err = host.Template(t.Context(),
+		&pulumirpc.TemplateRequest{Info: indo, ProjectName: "p"})
+
+	require.NoError(t, err)
+	b, err := os.ReadFile(filepath.Join(dir, "pnpm-workspace.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(b), "allowBuilds:")
+	assert.Contains(t, string(b), "protobufjs: false")
+}
+
 func TestConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("Config-Empty", func(t *testing.T) {
@@ -104,7 +128,7 @@ func TestConfig(t *testing.T) {
 		host := &nodeLanguageHost{}
 		rr := &pulumirpc.RunRequest{Project: "foo"}
 		str, err := host.constructConfig(rr)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.JSONEq(t, "{}", str)
 	})
 }
@@ -392,6 +416,56 @@ func setupFiles(t *testing.T, files []filePathAndContents) string {
 	return dir
 }
 
+func TestAbout(t *testing.T) {
+	t.Parallel()
+
+	t.Run("With typescript installed", func(t *testing.T) {
+		t.Parallel()
+
+		testDir := setupFiles(t, []filePathAndContents{
+			{
+				path:    "package.json",
+				content: `{ "name": "test", "dependencies": { "typescript": "^5.4.5" } }`,
+			},
+			{
+				path:    filepath.Join("node_modules", "typescript", "package.json"),
+				content: `{ "name": "typescript", "version": "5.4.5", "main": "./lib/typescript.js" }`,
+			},
+		})
+		host := &nodeLanguageHost{runtime: "nodejs"}
+		resp, err := host.About(t.Context(), &pulumirpc.AboutRequest{
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    testDir,
+				ProgramDirectory: testDir,
+				EntryPoint:       ".",
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, "5.4.5", resp.Metadata["typescriptVersion"])
+	})
+
+	t.Run("Without typescript installed", func(t *testing.T) {
+		t.Parallel()
+
+		testDir := setupFiles(t, []filePathAndContents{
+			{
+				path:    "package.json",
+				content: `{ "name": "test" }`,
+			},
+		})
+		host := &nodeLanguageHost{runtime: "nodejs"}
+		resp, err := host.About(t.Context(), &pulumirpc.AboutRequest{
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    testDir,
+				ProgramDirectory: testDir,
+				EntryPoint:       ".",
+			},
+		})
+		require.NoError(t, err)
+		require.NotContains(t, resp.Metadata, "typescriptVersion")
+	})
+}
+
 func TestGetProgramDependencies(t *testing.T) {
 	t.Parallel()
 
@@ -413,7 +487,7 @@ func TestGetProgramDependencies(t *testing.T) {
 				EntryPoint:       ".",
 			},
 		})
-		require.ErrorContains(t, err, "no package-lock.json or yarn.lock file found (searching upwards from")
+		require.ErrorContains(t, err, "no package-lock.json found (searching upwards from")
 	})
 
 	t.Run("With package.json in project root, no lock files", func(t *testing.T) {
@@ -438,7 +512,7 @@ func TestGetProgramDependencies(t *testing.T) {
 				EntryPoint:       ".",
 			},
 		})
-		require.ErrorContains(t, err, "no package-lock.json or yarn.lock file found (searching upwards from")
+		require.ErrorContains(t, err, "no package-lock.json found (searching upwards from")
 	})
 
 	t.Run("With package.json and yarn.lock in project root", func(t *testing.T) {
@@ -609,7 +683,7 @@ func TestGetProgramDependencies(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		require.Equal(t, 1, len(resp.Dependencies))
+		require.Len(t, resp.Dependencies, 1)
 		require.Equal(t, "random", resp.Dependencies[0].Name)
 		require.Equal(t, "5.1.0", resp.Dependencies[0].Version)
 	})
@@ -666,7 +740,7 @@ func TestGetProgramDependencies(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		require.Equal(t, 1, len(resp.Dependencies))
+		require.Len(t, resp.Dependencies, 1)
 		require.Equal(t, "random", resp.Dependencies[0].Name)
 		require.Equal(t, "5.1.0", resp.Dependencies[0].Version)
 	})
@@ -675,19 +749,34 @@ func TestGetProgramDependencies(t *testing.T) {
 func TestParseOptions(t *testing.T) {
 	t.Parallel()
 
-	opts, err := parseOptions(nil)
+	opts, err := parseOptions(nil, "nodejs")
 	require.NoError(t, err)
 	require.Equal(t, npm.AutoPackageManager, opts.packagemanager)
 
-	_, err = parseOptions(map[string]interface{}{
+	_, err = parseOptions(map[string]any{
 		"typescript": 123,
-	})
+	}, "nodejs")
 	require.ErrorContains(t, err, "typescript option must be a boolean")
 
-	_, err = parseOptions(map[string]interface{}{
+	_, err = parseOptions(map[string]any{
 		"packagemanager": "poetry",
-	})
+	}, "nodejs")
 	require.ErrorContains(t, err, "packagemanager option must be one of")
+
+	opts, err = parseOptions(nil, "nodejs")
+	require.NoError(t, err)
+	require.False(t, opts.production)
+
+	opts, err = parseOptions(map[string]any{
+		"production": true,
+	}, "nodejs")
+	require.NoError(t, err)
+	require.True(t, opts.production)
+
+	_, err = parseOptions(map[string]any{
+		"production": "yes",
+	}, "nodejs")
+	require.ErrorContains(t, err, "production option must be a boolean")
 
 	for _, tt := range []struct {
 		input    string
@@ -697,10 +786,11 @@ func TestParseOptions(t *testing.T) {
 		{"npm", npm.NpmPackageManager},
 		{"yarn", npm.YarnPackageManager},
 		{"pnpm", npm.PnpmPackageManager},
+		{"bun", npm.BunPackageManager},
 	} {
-		opts, err = parseOptions(map[string]interface{}{
+		opts, err = parseOptions(map[string]any{
 			"packagemanager": tt.input,
-		})
+		}, "nodejs")
 		require.NoError(t, err)
 		require.Equal(t, tt.expected, opts.packagemanager)
 	}
@@ -720,10 +810,9 @@ time.sleep(3)
 `
 
 	// Create a named pipe to use as stdout
-	tmp := os.TempDir()
+	tmp := t.TempDir()
 	p := filepath.Join(tmp, "fake-stdout")
 	err := syscall.Mkfifo(p, 0o644)
-	defer os.Remove(p)
 	require.NoError(t, err)
 	// Open fd without O_NONBLOCK, ensuring that os.NewFile does not return a pollable file.
 	// When our python script changes the file to non-blocking, Go does not notice and continues to
@@ -792,7 +881,6 @@ func TestRunWithOutputDoesNotMissData(t *testing.T) {
 	require.Equal(t, 100+2 /* "x\n" */, *stderr.nWrites)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestUseFnm(t *testing.T) {
 	// Set $PATH to to $TMPDIR/bin so that no `fnm` executable can be found.
 	tmpDir := t.TempDir()
@@ -867,7 +955,6 @@ func TestUseFnm(t *testing.T) {
 	})
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestNodeInstall(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip()

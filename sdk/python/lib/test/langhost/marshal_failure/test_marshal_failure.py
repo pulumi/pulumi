@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ class TestMarshalFailure(LanghostTest):
             program=path.join(self.base_path(), "marshal_failure"),
             expected_resource_count=1,
             expected_bail=True,
+            expected_error_log_message="unexpected input of type bytes for value",
         )
 
     def invoke(self, _ctx, token, args, provider, _version):
@@ -47,6 +48,7 @@ class TestMarshalFailure(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         self.assertEqual("test:index:MyResource", ty)
         return {

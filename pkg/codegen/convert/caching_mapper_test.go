@@ -15,14 +15,14 @@
 package convert
 
 import (
-	"context"
 	"sync"
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Tests that a plugin mapper wrapped with a caching layer only attempts to install a plugin once.
@@ -55,26 +55,26 @@ func TestCachingPluginMapper_OnlyInstallsOnce(t *testing.T) {
 		nil, /*mappings*/
 	)
 	mapper := NewCachingMapper(baseMapper)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
 	//
 	// After the first time, we should have attempted an installation.
-	data, err := mapper.GetMapping(context.Background(), "gcp", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{}, data)
 	assert.Equal(t, 1, installCalled, "install should be called the first time when a caching mapper is used")
 
 	// Act.
 	//
 	// After the second time, we should still have only attempted an installation once.
-	data, err = mapper.GetMapping(context.Background(), "gcp", nil /*hint*/)
+	data, err = mapper.GetMapping(t.Context(), "gcp", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{}, data)
 	assert.Equal(t, 1, installCalled, "install should only be called once when a caching mapper is used")
 }
@@ -104,8 +104,8 @@ func TestCachingPluginMapper_ConcurrentAccess(t *testing.T) {
 		nil, /*mappings*/
 	)
 	mapper := NewCachingMapper(baseMapper)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
 	// Run multiple goroutines concurrently that all try to get mappings
@@ -117,7 +117,7 @@ func TestCachingPluginMapper_ConcurrentAccess(t *testing.T) {
 	wg.Add(numGoroutines)
 
 	// Create multiple goroutines that will all try to access the map at the same time
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		// Use two different provider names to enforce multiple map writes
 		provider := "gcp"
 		if i%2 == 0 {
@@ -128,8 +128,8 @@ func TestCachingPluginMapper_ConcurrentAccess(t *testing.T) {
 			defer wg.Done()
 
 			// Get the mapping - this will cause concurrent map writes without proper locking
-			_, err := mapper.GetMapping(context.Background(), p, nil /*hint*/)
-			assert.NoError(t, err)
+			_, err := mapper.GetMapping(t.Context(), p, nil /*hint*/, "" /*ecosystem*/)
+			require.NoError(t, err)
 		}(provider)
 	}
 

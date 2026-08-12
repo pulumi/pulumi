@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,18 +22,21 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // PromiseType represents eventual values that do not carry additional information.
 type PromiseType struct {
 	// ElementType is the element type of the promise.
 	ElementType Type
+
+	cache *gsync.Map[Type, cacheEntry]
 }
 
 // NewPromiseType creates a new promise type with the given element type after replacing any promise types within
 // the element type with their respective element types.
 func NewPromiseType(elementType Type) *PromiseType {
-	return &PromiseType{ElementType: ResolvePromises(elementType)}
+	return &PromiseType{ElementType: ResolvePromises(elementType), cache: &gsync.Map[Type, cacheEntry]{}}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -101,11 +104,17 @@ func (t *PromiseType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *PromiseType) conversionFrom(
-	src Type, unifying bool, seen map[Type]struct{},
+	src Type, unifying bool, seen cycleSet,
 ) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		if src, ok := src.(*PromiseType); ok {
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
+		}
+		if _, ok := src.(*OutputType); ok {
+			// An Output may carry unknowns or dependencies that a Promise cannot represent,
+			// and there is no SDK-level operation that recovers a Promise from an Output, so
+			// there is no valid conversion from output(U) to promise(T).
+			return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 		}
 		return t.ElementType.conversionFrom(src, unifying, seen)
 	})
@@ -127,8 +136,8 @@ func (t *PromiseType) unify(other Type) (Type, ConversionKind) {
 			elementType, conversionKind := t.ElementType.unify(other.ElementType)
 			return NewPromiseType(elementType), conversionKind
 		case *OutputType:
-			// If the other type is an output type, prefer the optional type, but unify the element type.
-			elementType, conversionKind := t.unify(other.ElementType)
+			// If the other type is an output type, prefer the output type, but unify the element types.
+			elementType, conversionKind := t.ElementType.unify(other.ElementType)
 			return NewOutputType(elementType), conversionKind
 		default:
 			// Prefer the promise type.

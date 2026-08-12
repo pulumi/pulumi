@@ -12,12 +12,8 @@ install the following on your machine:
 - [NodeJS](https://nodejs.org/en/download/), for working with the NodeJS SDK.
 - [Python](https://www.python.org/downloads/), for working with the Python SDK.
 - [.NET](https://dotnet.microsoft.com/download), for working with the .Net SDK.
-- [Golangci-lint](https://github.com/golangci/golangci-lint), for linting Go
-  code.
-- [gofumpt](https://github.com/mvdan/gofumpt) for formatting Go code. See
-  [installation](https://github.com/mvdan/gofumpt#installation) for editor setup
-  instructions.
-- [Yarn](https://yarnpkg.com/), for building and working with the NodeJS SDK.
+- [Golangci-lint](https://github.com/golangci/golangci-lint), for linting and
+  formatting Go code.
 - [Pulumictl](https://github.com/pulumi/pulumictl)
 - [jq](https://stedolan.github.io/jq/)
 
@@ -38,12 +34,9 @@ which you can do as follows:
    repository to specify the required tools, all of which are listed in the
    top-level `.mise.toml` file. After this, you should find that the tools you
    need are now available in your `$PATH`.
-5. Run `mise install` to ensure all tools are up to date. You may need to re-run
+5. Run `mise settings experimental=true` or use the `MISE_EXPERIMENTAL` environment variable. 
+   This is currently required to enable the [Go backend](https://mise.jdx.dev/dev-tools/backends/go.html#go-backend).
+6. Run `mise install` to ensure all tools are up to date. You may need to re-run
    this if the tool list changes.
-
-When using Mise `$PULUMI_ROOT` is set to `$REPO/.root`. This is convenient for
-working with multiple Git worktrees, since each worktree will have its binaries
-installed in `$PULUMI_ROOT/bin`. To use these binaries, add `$REPO/.root/bin` to
-your `$PATH`.
 
 Use of Mise is currently experimental and optional.

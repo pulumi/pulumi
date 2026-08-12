@@ -1,0 +1,5 @@
+values:
+  alpha: beta
+  some_object:
+    fn::open::test:
+      beta: gamma

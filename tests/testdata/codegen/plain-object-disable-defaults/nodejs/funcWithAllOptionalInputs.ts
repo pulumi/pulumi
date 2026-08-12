@@ -39,7 +39,7 @@ export function funcWithAllOptionalInputsOutput(args?: FuncWithAllOptionalInputs
     args = args || {};
     opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts || {});
     return pulumi.runtime.invokeOutput("mypkg::funcWithAllOptionalInputs", {
-        "a": args.a ? pulumi.output(args.a).apply(inputs.helmReleaseSettingsProvideDefaults) : undefined,
+        "a": pulumi.output(args.a).apply(v => v === undefined ? undefined : inputs.helmReleaseSettingsProvideDefaults(v)),
         "b": args.b,
     }, opts);
 }
@@ -48,9 +48,9 @@ export interface FuncWithAllOptionalInputsOutputArgs {
     /**
      * Property A
      */
-    a?: pulumi.Input<inputs.HelmReleaseSettingsArgs>;
+    a?: pulumi.Input<inputs.HelmReleaseSettingsArgs | undefined>;
     /**
      * Property B
      */
-    b?: pulumi.Input<string>;
+    b?: pulumi.Input<string | undefined>;
 }

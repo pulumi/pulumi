@@ -1,9 +1,9 @@
-// Copyright 2016-2023, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 import * as pulumi from "@pulumi/pulumi";
 
 class Component extends pulumi.ComponentResource {
-    public readonly result!: pulumi.Output<string>;
+    declare public readonly result: pulumi.Output<string>;
 
     constructor(name: string, opts?: pulumi.ComponentResourceOptions) {
         const inputs = {

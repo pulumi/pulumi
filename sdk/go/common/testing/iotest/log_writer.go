@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ type logWriter struct {
 	// We're not storing testing.TB directly to ensure that
 	// we don't accidentally use other log methods.
 	t interface {
-		Logf(string, ...interface{})
+		Logf(string, ...any)
 		Helper()
 	}
 
@@ -78,15 +78,15 @@ func (w *logWriter) Write(bs []byte) (int, error) {
 	// we use a buffer.
 	total := len(bs)
 	for len(bs) > 0 {
-		idx := bytes.IndexByte(bs, '\n')
-		if idx < 0 {
+		before, after, ok := bytes.Cut(bs, []byte{'\n'})
+		if !ok {
 			// No newline. Buffer it for later.
 			w.buff.Write(bs)
 			break
 		}
 
 		var line []byte
-		line, bs = bs[:idx], bs[idx+1:]
+		line, bs = before, after
 
 		if w.buff.Len() == 0 {
 			// Nothing buffered from a prior partial write.

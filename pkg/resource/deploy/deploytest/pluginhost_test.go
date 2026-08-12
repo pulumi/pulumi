@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,17 +15,17 @@
 package deploytest
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -47,7 +47,7 @@ func TestHostEngine(t *testing.T) {
 			engine := &hostEngine{}
 			req := &pulumirpc.GetRootResourceRequest{}
 
-			_, err := engine.GetRootResource(context.Background(), req)
+			_, err := engine.GetRootResource(t.Context(), req)
 			assert.ErrorContains(t, err, "unsupported")
 		})
 
@@ -56,7 +56,7 @@ func TestHostEngine(t *testing.T) {
 			engine := &hostEngine{}
 			req := &pulumirpc.SetRootResourceRequest{}
 
-			_, err := engine.SetRootResource(context.Background(), req)
+			_, err := engine.SetRootResource(t.Context(), req)
 			assert.ErrorContains(t, err, "unsupported")
 		})
 	})
@@ -104,10 +104,9 @@ func TestHostEngine(t *testing.T) {
 
 			for _, ephemeral := range []bool{true, false} {
 				for _, tt := range tests {
-					tt := tt
 					tt.req.Ephemeral = ephemeral
-					t.Run(tt.name, func(t *testing.T) {
-						output, err := hostEngine.Log(context.Background(), tt.req)
+					t.Run(tt.name, func(t *testing.T) { //nolint:paralleltest // golangci-lint v2 upgrade
+						output, err := hostEngine.Log(t.Context(), tt.req)
 						assert.Equal(t, tt.expectedError, err)
 						assert.Equal(t, tt.expectedOutput, output)
 					})
@@ -123,12 +122,10 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Parallel()
 		expectedVersion := semver.MustParse("1.0.0")
 		host := &pluginHost{}
-		_, err := host.Provider(workspace.PackageDescriptor{
-			PluginSpec: workspace.PluginSpec{
-				Name:    "pkgA",
-				Version: &expectedVersion,
-			},
-		})
+		_, err := host.Provider(nil, workspace.PluginDescriptor{
+			Name:    "pkgA",
+			Version: &expectedVersion,
+		}, nil)
 		assert.ErrorContains(t, err, "Could not find plugin for (pkgA, 1.0.0)")
 	})
 	t.Run("error: plugin host is shutting down", func(t *testing.T) {
@@ -136,19 +133,16 @@ func TestPluginHostProvider(t *testing.T) {
 		t.Run("Provider", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			_, err := host.Provider(workspace.PackageDescriptor{
-				PluginSpec: workspace.PluginSpec{
-					Name:    "pkgA",
-					Version: &semver.Version{},
-				},
-			})
+			_, err := host.Provider(nil, workspace.PluginDescriptor{
+				Name:    "pkgA",
+				Version: &semver.Version{},
+			}, nil)
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 		t.Run("LanguageRuntime", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			programInfo := plugin.NewProgramInfo("/", "/", ".", nil)
-			_, err := host.LanguageRuntime("", programInfo)
+			_, err := host.LanguageRuntime(nil, "")
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 		t.Run("SignalCancellation", func(t *testing.T) {
@@ -157,27 +151,10 @@ func TestPluginHostProvider(t *testing.T) {
 			err := host.SignalCancellation()
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
-		t.Run("Analyzer", func(t *testing.T) {
-			t.Parallel()
-			host := &pluginHost{closed: true}
-			_, err := host.Analyzer("")
-			assert.ErrorIs(t, err, ErrHostIsClosed)
-		})
-		t.Run("CloseProvider", func(t *testing.T) {
-			t.Parallel()
-			host := &pluginHost{closed: true}
-			err := host.CloseProvider(nil)
-			assert.ErrorIs(t, err, ErrHostIsClosed)
-		})
-		t.Run("EnsurePlugins", func(t *testing.T) {
-			t.Parallel()
-			host := &pluginHost{closed: true}
-			assert.ErrorIs(t, host.EnsurePlugins(nil, 0), ErrHostIsClosed)
-		})
 		t.Run("PolicyAnalyzer", func(t *testing.T) {
 			t.Parallel()
 			host := &pluginHost{closed: true}
-			_, err := host.PolicyAnalyzer("", "", nil)
+			_, err := host.PolicyAnalyzer(nil, "", "", nil)
 			assert.ErrorIs(t, err, ErrHostIsClosed)
 		})
 	})
@@ -190,15 +167,15 @@ func TestPluginHostProvider(t *testing.T) {
 			},
 		}
 
-		_, err := host.GetRequiredPackages(plugin.ProgramInfo{}, 0)
+		_, _, err := host.GetRequiredPackages(plugin.ProgramInfo{}, 0)
 		assert.ErrorIs(t, err, ErrLanguageRuntimeIsClosed)
 	})
 	t.Run("Close", func(t *testing.T) {
 		t.Parallel()
 		host := &pluginHost{closed: true}
-		assert.NoError(t, host.Close())
+		require.NoError(t, host.Close())
 		// Is idempotent.
-		assert.NoError(t, host.Close())
+		require.NoError(t, host.Close())
 	})
 	t.Run("Log", func(t *testing.T) {
 		t.Parallel()
@@ -210,7 +187,7 @@ func TestPluginHostProvider(t *testing.T) {
 				host := &pluginHost{
 					closed: true,
 					sink: &NoopSink{
-						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true
 						},
 					},
@@ -224,7 +201,7 @@ func TestPluginHostProvider(t *testing.T) {
 				host := &pluginHost{
 					closed: true,
 					statusSink: &NoopSink{
-						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true
 						},
 					},
@@ -240,7 +217,7 @@ func TestPluginHostProvider(t *testing.T) {
 				var called bool
 				host := &pluginHost{
 					sink: &NoopSink{
-						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true
 						},
 					},
@@ -253,7 +230,7 @@ func TestPluginHostProvider(t *testing.T) {
 				var called bool
 				host := &pluginHost{
 					statusSink: &NoopSink{
-						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+						LogfF: func(sev diag.Severity, diag *diag.Diag, args ...any) {
 							called = true
 						},
 					},

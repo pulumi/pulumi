@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,21 +15,27 @@
 package backend
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
-	"golang.org/x/exp/slices"
-
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	utilenv "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
@@ -44,7 +50,11 @@ var DisableIntegrityChecking bool
 // saving snapshots and invalidating already-persisted snapshots.
 type SnapshotPersister interface {
 	// Persists the given snapshot. Returns an error if the persistence failed.
-	Save(snapshot *deploy.Snapshot) error
+	//
+	// Note that we can't just take a `VersionedDeployment` here, as the patch snapshot
+	// updater for the cloud backend needs the deserialized snapshot object to perform
+	// its update.
+	Save(deployment apitype.TypedDeployment) error
 }
 
 // SnapshotManager is an implementation of engine.SnapshotManager that inspects steps and performs
@@ -63,22 +73,32 @@ type SnapshotPersister interface {
 // This is subtle and a little confusing. The reason for this is that the engine directly mutates resource objects
 // that it creates and expects those mutations to be persisted directly to the snapshot.
 type SnapshotManager struct {
-	persister        SnapshotPersister        // The persister responsible for invalidating and persisting the snapshot
-	baseSnapshot     *deploy.Snapshot         // The base snapshot for this plan
-	secretsManager   secrets.Manager          // The default secrets manager to use
-	resources        []*resource.State        // The list of resources operated upon by this plan
-	operations       []resource.Operation     // The set of operations known to be outstanding in this plan
-	dones            map[*resource.State]bool // The set of resources that have been operated upon already by this plan
-	completeOps      map[*resource.State]bool // The set of resources that have completed their operation
-	mutationRequests chan<- mutationRequest   // The queue of mutation requests, to be retired serially by the manager
-	cancel           chan bool                // A channel used to request cancellation of any new mutation requests.
-	done             <-chan error             // A channel that sends a single result when the manager has shut down.
+	persister      SnapshotPersister       // The persister responsible for invalidating and persisting the snapshot
+	baseSnapshot   *deploy.Snapshot        // The base snapshot for this plan
+	secretsManager secrets.Manager         // The default secrets manager to use
+	resources      []*pkgresource.State    // The list of resources operated upon by this plan
+	operations     []pkgresource.Operation // The set of operations known to be outstanding in this plan
+	snippets       []resource.Snippet      // The snippet list to persist with the next snapshot
+	hasSnippets    bool                    // Whether snippets has been set by the engine
 
-	refreshDeletes map[resource.URN]bool // The set of resources that have been deleted by a refresh in this plan.
+	// The set of resources that have been operated upon already by this plan. These resources could also have
+	// been added to `resources` by other operations but need to be filtered out before writing the snapshot.
+	dones map[*pkgresource.State]bool
 
-	// The set of resources that have been deleted. These resources could also have been added to `resources`
-	// by other operations but need to be filtered out before writing the snapshot.
-	deletes map[*resource.State]bool
+	completeOps      map[*pkgresource.State]bool // The set of resources that have completed their operation
+	mutationRequests chan<- mutationRequest      // The queue of mutation requests, to be retired serially by the manager
+	cancel           chan bool                   // A channel used to request cancellation of any new mutation requests.
+	done             <-chan error                // A channel that sends a single result when the manager has shut down.
+
+	isRefresh bool // Whether or not the snapshot is part of a refresh
+
+	// Extension blobs registered during this plan, keyed by ref. Snap() merges these
+	// with baseSnapshot.Extensions, filtered to refs still referenced by resources.
+	extensions map[apitype.ExtensionRef]apitype.Extension
+
+	// events is an optional channel for emitting engine events. When set, the snapshot manager will emit
+	// ErrorEvents to this channel when it detects and auto-repairs snapshot integrity errors.
+	events chan<- engine.Event
 }
 
 var _ engine.SnapshotManager = (*SnapshotManager)(nil)
@@ -169,10 +189,48 @@ func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutat
 		return &removePendingReplaceSnapshotMutation{sm}, nil
 	case deploy.OpImport, deploy.OpImportReplacement:
 		return sm.doImport(step)
+	case deploy.OpExtendParameterize:
+		return sm.doExtendParameterize(step)
 	}
 
 	contract.Failf("unknown StepOp: %s", step.Op())
 	return nil, nil
+}
+
+// doExtendParameterize records the extension blob attached to a ExtensionParameterizeStep so that
+// Snap() can include it in the final snapshot's Extensions map.
+func (sm *SnapshotManager) doExtendParameterize(step deploy.Step) (engine.SnapshotMutation, error) {
+	ps, ok := step.(*deploy.ExtensionParameterizeStep)
+	contract.Assertf(ok, "doExtendParameterize called on non-ExtensionParameterizeStep: %T", step)
+	sm.extensions[ps.Ref()] = ps.Extension()
+	return &noopSnapshotMutation{}, nil
+}
+
+// noopSnapshotMutation records nothing.
+type noopSnapshotMutation struct{}
+
+func (*noopSnapshotMutation) End(_ deploy.Step, _ bool) error { return nil }
+
+func (sm *SnapshotManager) Write(_ *deploy.Snapshot) error {
+	// We don't need to do anything here. The snapshot manager uses the in-memory snapshot to
+	// produce a new snapshot whenever a mutation occurs. This method is only used by the
+	// journaling snapshot manager, which doesn't have access to the same in-memory state that
+	// gets modified by the engine.
+	return nil
+}
+
+func (sm *SnapshotManager) RebuiltBaseState() error {
+	// Similar to Write() we don't need to do anything here, as the snapshot manager uses the
+	// same in-memory snapshot as the engine, that is already mutated.
+	return nil
+}
+
+func (sm *SnapshotManager) SetSnippets(snippets []resource.Snippet) error {
+	return sm.mutate(func() bool {
+		sm.snippets = slices.Clone(snippets)
+		sm.hasSnippets = true
+		return true
+	})
 }
 
 // All SnapshotMutation implementations in this file follow the same basic formula:
@@ -191,7 +249,7 @@ type sameSnapshotMutation struct {
 // mustWrite returns true if any semantically meaningful difference exists between the old and new states of a same
 // step that forces us to write the checkpoint. If no such difference exists, the checkpoint write that corresponds to
 // this step can be elided.
-func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
+func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	old := step.Old()
 	new := step.New()
 
@@ -201,7 +259,10 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	contract.Assertf(old.External == new.External,
 		"either both or neither resource must be external, got %v (old) != %v (new)",
 		old.External, new.External)
-	contract.Assertf(!step.IsSkippedCreate(), "create cannot be skipped for step")
+
+	if sameStep, isSameStep := step.(*deploy.SameStep); isSameStep {
+		contract.Assertf(!sameStep.IsSkippedCreate(), "create cannot be skipped for SameStep")
+	}
 
 	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
 	// resource is aliased.
@@ -257,6 +318,19 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 		return true
 	}
 
+	// If the ReplaceWith attribute of this resource has changed, we must write the checkpoint.
+	if len(old.ReplaceWith) != len(new.ReplaceWith) {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplaceWith")
+		return true
+	}
+
+	for i, replaceWith := range old.ReplaceWith {
+		if replaceWith != new.ReplaceWith[i] {
+			logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplaceWith")
+			return true
+		}
+	}
+
 	// If the protection attribute of this resource has changed, we must write the checkpoint.
 	if old.Protect != new.Protect {
 		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Protect")
@@ -293,6 +367,16 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 		}
 	}
 
+	if !reflect.DeepEqual(old.ResourceHooks, new.ResourceHooks) {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ResourceHooks")
+		return true
+	}
+
+	if !old.ReplacementTrigger.Equals(new.ReplacementTrigger) {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplacementTrigger")
+		return true
+	}
+
 	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
 	// checkpoint. Likewise source positions are purely metadata and do not affect the system correctness, so
 	// for performance we elide those as well. This prevents _every_ resource needing a snapshot write when
@@ -307,7 +391,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step.Op() == deploy.OpSame, "step.Op()", "must be %q, got %q", deploy.OpSame, step.Op())
 	logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End(..., %v)", successful)
 	return ssm.manager.mutate(func() bool {
-		sameStep := step.(*deploy.SameStep)
+		sameStep, isSameStep := step.(*deploy.SameStep)
 
 		ssm.manager.markOperationComplete(step.New())
 		if successful {
@@ -317,7 +401,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 			// --target list, we *never* want to write this to the checkpoint.  We treat it as if it
 			// doesn't exist at all.  That way when the program runs the next time, we'll actually
 			// create it.
-			if sameStep.IsSkippedCreate() {
+			if isSameStep && sameStep.IsSkippedCreate() {
 				return false
 			}
 
@@ -328,7 +412,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 			//
 			// As such, we diff all of the non-input properties of the resource here and write the snapshot if we find any
 			// changes.
-			if !ssm.mustWrite(sameStep) {
+			if !ssm.mustWrite(step) {
 				logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End() eliding write")
 				return false
 			}
@@ -342,7 +426,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 func (sm *SnapshotManager) doCreate(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.URN())
 	err := sm.mutate(func() bool {
-		sm.markOperationPending(step.New(), resource.OperationTypeCreating)
+		sm.markOperationPending(step.New(), pkgresource.OperationTypeCreating)
 		return true
 	})
 	if err != nil {
@@ -386,7 +470,7 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 func (sm *SnapshotManager) doUpdate(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doUpdate(%s)", step.URN())
 	err := sm.mutate(func() bool {
-		sm.markOperationPending(step.New(), resource.OperationTypeUpdating)
+		sm.markOperationPending(step.New(), pkgresource.OperationTypeUpdating)
 		return true
 	})
 	if err != nil {
@@ -416,7 +500,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 func (sm *SnapshotManager) doDelete(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.URN())
 	err := sm.mutate(func() bool {
-		sm.markOperationPending(step.Old(), resource.OperationTypeDeleting)
+		sm.markOperationPending(step.Old(), pkgresource.OperationTypeDeleting)
 		return true
 	})
 	if err != nil {
@@ -439,24 +523,13 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 			contract.Assertf(
 				!step.Old().Protect ||
 					step.Op() == deploy.OpDiscardReplaced ||
-					step.Op() == deploy.OpDeleteReplaced,
+					step.Op() == deploy.OpDeleteReplaced ||
+					deploy.IgnoresProtect(step),
 				"Old must be unprotected (got %v) or the operation must be a replace (got %q)",
-				step.Old().Protect, step.Op())
+				step.Old().Protect, step.Op(),
+			)
 
 			if !step.Old().PendingReplacement {
-				// If this is a delete-replace operation, we don't want to mark the resource as deleted
-				// because we want to keep the new resource. If this is a normal delete/discard operation we
-				// need to add the resource to the "deletes" set so that we can filter it out when writing the
-				// snapshot.
-				op := step.Op()
-				contract.Assertf(
-					op == deploy.OpDiscardReplaced || op == deploy.OpReadDiscard ||
-						op == deploy.OpDeleteReplaced || op == deploy.OpDelete,
-					"unexpected step.Op(): %q", op)
-
-				if op == deploy.OpDelete || op == deploy.OpReadDiscard {
-					dsm.manager.deletes[step.Old()] = true
-				}
 				dsm.manager.markDone(step.Old())
 			}
 		}
@@ -476,7 +549,7 @@ func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error
 func (sm *SnapshotManager) doRead(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doRead(%s)", step.URN())
 	err := sm.mutate(func() bool {
-		sm.markOperationPending(step.New(), resource.OperationTypeReading)
+		sm.markOperationPending(step.New(), pkgresource.OperationTypeReading)
 		return true
 	})
 	if err != nil {
@@ -521,14 +594,14 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 		// have changed.
 		// The exception to this is persisted refreshes, which are not elided and are treated as normal operations.
 		// These can either update or delete a resource.
-		refreshStep := step.(*deploy.RefreshStep)
-		if refreshStep.Persisted() {
-			if successful {
+		refreshStep, isRefreshStep := step.(*deploy.RefreshStep)
+		viewStep, isViewStep := step.(*deploy.ViewStep)
+		if (isViewStep && viewStep.Persisted()) || (isRefreshStep && refreshStep.Persisted()) {
+			rsm.manager.isRefresh = true
+			if successful && step.Old() != nil {
 				rsm.manager.markDone(step.Old())
 				if step.New() != nil {
 					rsm.manager.markNew(step.New())
-				} else {
-					rsm.manager.refreshDeletes[step.Old().URN] = true
 				}
 			}
 			return true
@@ -557,7 +630,7 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 func (sm *SnapshotManager) doImport(step deploy.Step) (engine.SnapshotMutation, error) {
 	logging.V(9).Infof("SnapshotManager.doImport(%s)", step.URN())
 	err := sm.mutate(func() bool {
-		sm.markOperationPending(step.New(), resource.OperationTypeImporting)
+		sm.markOperationPending(step.New(), pkgresource.OperationTypeImporting)
 		return true
 	})
 	if err != nil {
@@ -587,7 +660,7 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 
 // markDone marks a resource as having been processed. Resources that have been marked
 // in this manner won't be persisted in the snapshot.
-func (sm *SnapshotManager) markDone(state *resource.State) {
+func (sm *SnapshotManager) markDone(state *pkgresource.State) {
 	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.dones[state] = true
 	logging.V(9).Infof("Marked old state snapshot as done: %v", state.URN)
@@ -596,21 +669,21 @@ func (sm *SnapshotManager) markDone(state *resource.State) {
 // markNew marks a resource as existing in the new snapshot. This occurs on
 // successful non-deletion operations where the given state is the new state
 // of a resource that will be persisted to the snapshot.
-func (sm *SnapshotManager) markNew(state *resource.State) {
+func (sm *SnapshotManager) markNew(state *pkgresource.State) {
 	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.resources = append(sm.resources, state)
 	logging.V(9).Infof("Appended new state snapshot to be written: %v", state.URN)
 }
 
 // markOperationPending marks a resource as undergoing an operation that will now be considered pending.
-func (sm *SnapshotManager) markOperationPending(state *resource.State, op resource.OperationType) {
+func (sm *SnapshotManager) markOperationPending(state *pkgresource.State, op pkgresource.OperationType) {
 	contract.Requiref(state != nil, "state", "must not be nil")
-	sm.operations = append(sm.operations, resource.NewOperation(state, op))
+	sm.operations = append(sm.operations, pkgresource.NewOperation(state, op))
 	logging.V(9).Infof("SnapshotManager.markPendingOperation(%s, %s)", state.URN, string(op))
 }
 
 // markOperationComplete marks a resource as having completed the operation that it previously was performing.
-func (sm *SnapshotManager) markOperationComplete(state *resource.State) {
+func (sm *SnapshotManager) markOperationComplete(state *pkgresource.State) {
 	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.completeOps[state] = true
 	logging.V(9).Infof("SnapshotManager.markOperationComplete(%s)", state.URN)
@@ -618,7 +691,7 @@ func (sm *SnapshotManager) markOperationComplete(state *resource.State) {
 
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
 // plan has created.
-func (sm *SnapshotManager) snap() *deploy.Snapshot {
+func (sm *SnapshotManager) Snap() *deploy.Snapshot {
 	// At this point we have two resource DAGs. One of these is the base DAG for this plan; the other is the current DAG
 	// for this plan. Any resource r may be present in both DAGs. In order to produce a snapshot, we need to merge these
 	// DAGs such that all resource dependencies are correctly preserved. Conceptually, the merge proceeds as follows:
@@ -649,11 +722,12 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	//           they would have been appended to the list before r.
 
 	// Start with a copy of the resources produced during the evaluation of the current plan.
-	resources := make([]*resource.State, 0, len(sm.resources))
+	resources := make([]*pkgresource.State, 0, len(sm.resources))
 
-	// if any resources have been deleted we need to filter them out here
+	// If any resources are "done", we need to filter them out here. These could be resources that have been later
+	// deleted, or had some other operation performed on them such as an import then an update.
 	for _, res := range sm.resources {
-		if !sm.deletes[res] {
+		if !sm.dones[res] {
 			resources = append(resources, res)
 		}
 	}
@@ -668,10 +742,12 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	}
 
 	// Filter any refresh deletes
-	engine.FilterRefreshDeletes(sm.refreshDeletes, resources)
+	if sm.isRefresh {
+		engine.FilterRefreshDeletes(resources)
+	}
 
 	// Record any pending operations, if there are any outstanding that have not completed yet.
-	var operations []resource.Operation
+	var operations []pkgresource.Operation
 	for _, op := range sm.operations {
 		if !sm.completeOps[op.Resource] {
 			operations = append(operations, op)
@@ -683,7 +759,7 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	// because these must require user intervention to be cleared or resolved.
 	if base := sm.baseSnapshot; base != nil {
 		for _, pendingOperation := range base.PendingOperations {
-			if pendingOperation.Type == resource.OperationTypeCreating {
+			if pendingOperation.Type == pkgresource.OperationTypeCreating {
 				operations = append(operations, pendingOperation)
 			}
 		}
@@ -704,23 +780,52 @@ func (sm *SnapshotManager) snap() *deploy.Snapshot {
 	}
 
 	var metadata deploy.SnapshotMetadata
+	var snippets []resource.Snippet
 	if sm.baseSnapshot != nil {
 		metadata = sm.baseSnapshot.Metadata
+		snippets = sm.baseSnapshot.Snippets
+	}
+	if sm.hasSnippets {
+		snippets = sm.snippets
 	}
 
 	manifest.Magic = manifest.NewMagic()
-	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata)
+
+	snapExtensions, missing := deploy.MapExtensions(resources, sm.extensions, sm.baseSnapshot)
+	contract.Assertf(len(missing) == 0, "snapshot references unknown extensions: %v", missing)
+
+	return deploy.NewSnapshot(manifest, secretsManager, resources, operations, metadata, snippets, snapExtensions)
+}
+
+func (sm *SnapshotManager) Deployment() (apitype.TypedDeployment, error) {
+	snap, err := sm.Snap().NormalizeURNReferences()
+	if err != nil {
+		return apitype.TypedDeployment{}, fmt.Errorf("failed to normalize URN references: %w", err)
+	}
+
+	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(
+		context.TODO(), snap, false, /*showSecrets*/
+	)
+	if err != nil {
+		return apitype.TypedDeployment{}, fmt.Errorf("failed to serialize snapshot: %w", err)
+	}
+	return apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	}, nil
 }
 
 // saveSnapshot persists the current snapshot. If integrity checking is enabled,
-// the snapshot's integrity is also verified. If the snapshot is invalid,
-// metadata about this write operation is added to the snapshot before it is
-// written, in order to aid debugging should future operations fail with an
-// error.
+// the snapshot's integrity is also verified. If the snapshot is invalid and we're using
+// the httpstate backend, we try to repair it and emit an ErrorEvent. If the snapshot
+// remains invalid after repair metadata about this write operation is added to the
+// snapshot before it is written, in order to aid debugging should future operations
+// fail with an error.
 func (sm *SnapshotManager) saveSnapshot() error {
-	snap, err := sm.snap().NormalizeURNReferences()
+	deployment, err := sm.Deployment()
 	if err != nil {
-		return fmt.Errorf("failed to normalize URN references: %w", err)
+		return err
 	}
 
 	// In order to persist metadata about snapshot integrity issues, we check the
@@ -736,24 +841,91 @@ func (sm *SnapshotManager) saveSnapshot() error {
 	//
 	// Metadata will be cleared out by a successful operation (even if integrity
 	// checking is being enforced).
-	integrityError := snap.VerifyIntegrity()
-	if integrityError == nil {
-		snap.Metadata.IntegrityErrorMetadata = nil
-	} else {
-		snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{
-			Version: version.Version,
-			Command: strings.Join(os.Args, " "),
-			Error:   integrityError.Error(),
+	integrityError := snapshot.VerifyIntegrity(deployment.Deployment)
+
+	// If we detected a snapshot integrity error, and we have an events channel
+	// i.e. in the httpstate backend, try to repair the snapshot.
+	var autoRepairErr error
+	if integrityError != nil && !DisableIntegrityChecking && sm.events != nil {
+		sm.emitSnapshotIntegrityErrorEvent(integrityError)
+
+		repairedDeployment, repairErr := sm.repairAndSerialize()
+		if repairErr != nil {
+			logging.V(3).Infof("SnapshotManager: failed to repair snapshot: %v", repairErr)
+			autoRepairErr = repairErr
+		} else if verifyErr := snapshot.VerifyIntegrity(repairedDeployment.Deployment); verifyErr != nil {
+			logging.V(3).Infof("SnapshotManager: repaired snapshot still invalid: %v", verifyErr)
+			autoRepairErr = verifyErr
+		} else {
+			repairedDeployment.Deployment.Metadata.IntegrityErrorMetadata = nil
+			if err := sm.persister.Save(repairedDeployment); err != nil {
+				return fmt.Errorf("failed to save snapshot: %w", err)
+			}
+			logging.V(3).Infof("SnapshotManager: auto-repaired snapshot integrity error: %v", integrityError)
+			return nil
 		}
 	}
 
-	if err := sm.persister.Save(snap); err != nil {
+	if integrityError == nil {
+		deployment.Deployment.Metadata.IntegrityErrorMetadata = nil
+	} else {
+		deployment.Deployment.Metadata.IntegrityErrorMetadata = &apitype.SnapshotIntegrityErrorMetadataV1{
+			Version: strconv.FormatInt(int64(deployment.Version), 10),
+			Command: strings.Join(os.Args, " "),
+			Error:   integrityError.Error(),
+			EnvVars: utilenv.ConfiguredVariables(),
+		}
+	}
+
+	if err := sm.persister.Save(deployment); err != nil {
 		return fmt.Errorf("failed to save snapshot: %w", err)
 	}
 	if !DisableIntegrityChecking && integrityError != nil {
+		if autoRepairErr != nil {
+			var sie *snapshot.SnapshotIntegrityError
+			if errors.As(integrityError, &sie) {
+				sie.AutoRepairErr = autoRepairErr
+			}
+		}
 		return fmt.Errorf("failed to verify snapshot: %w", integrityError)
 	}
 	return nil
+}
+
+// repairAndSerialize attempts to repair the current snapshot by sorting resources
+// topologically and pruning dangling dependencies, then serializes the result.
+func (sm *SnapshotManager) repairAndSerialize() (apitype.TypedDeployment, error) {
+	snap := sm.Snap()
+
+	if _, err := snap.Repair(); err != nil {
+		return apitype.TypedDeployment{}, err
+	}
+
+	normalizedSnap, err := snap.NormalizeURNReferences()
+	if err != nil {
+		return apitype.TypedDeployment{}, fmt.Errorf("failed to normalize URN references: %w", err)
+	}
+
+	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(
+		context.TODO(), normalizedSnap, false, /*showSecrets*/
+	)
+	if err != nil {
+		return apitype.TypedDeployment{}, fmt.Errorf("failed to serialize repaired snapshot: %w", err)
+	}
+
+	return apitype.TypedDeployment{
+		Deployment: deploymentV3,
+		Version:    version,
+		Features:   features,
+	}, nil
+}
+
+// emitSnapshotIntegrityErrorEvent sends an ErrorEvent to the configured events channel,
+// to notify the backend about a snapshot integrity error.
+func (sm *SnapshotManager) emitSnapshotIntegrityErrorEvent(integrityError error) {
+	sm.events <- engine.NewEvent(engine.ErrorEventPayload{
+		Error: fmt.Sprintf("snapshot integrity error (auto-repaired): %v", integrityError),
+	})
 }
 
 // defaultServiceLoop saves a Snapshot whenever a mutation occurs
@@ -814,6 +986,7 @@ func NewSnapshotManager(
 	persister SnapshotPersister,
 	secretsManager secrets.Manager,
 	baseSnap *deploy.Snapshot,
+	events chan<- engine.Event,
 ) *SnapshotManager {
 	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
 
@@ -821,13 +994,13 @@ func NewSnapshotManager(
 		persister:        persister,
 		secretsManager:   secretsManager,
 		baseSnapshot:     baseSnap,
-		dones:            make(map[*resource.State]bool),
-		completeOps:      make(map[*resource.State]bool),
+		dones:            make(map[*pkgresource.State]bool),
+		completeOps:      make(map[*pkgresource.State]bool),
 		mutationRequests: mutationRequests,
 		cancel:           cancel,
 		done:             done,
-		deletes:          make(map[*resource.State]bool),
-		refreshDeletes:   make(map[resource.URN]bool),
+		extensions:       make(map[apitype.ExtensionRef]apitype.Extension),
+		events:           events,
 	}
 
 	serviceLoop := manager.defaultServiceLoop

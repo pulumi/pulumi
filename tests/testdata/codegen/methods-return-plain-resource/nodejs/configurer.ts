@@ -33,7 +33,7 @@ export class Configurer extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["tlsProxy"] = args ? args.tlsProxy : undefined;
+            resourceInputs["tlsProxy"] = args?.tlsProxy;
         } else {
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
@@ -63,7 +63,7 @@ export class Configurer extends pulumi.ComponentResource {
  * The set of arguments for constructing a Configurer resource.
  */
 export interface ConfigurerArgs {
-    tlsProxy?: pulumi.Input<string>;
+    tlsProxy?: pulumi.Input<string | undefined>;
 }
 
 export namespace Configurer {

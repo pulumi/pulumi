@@ -1,0 +1,1057 @@
+// Copyright 2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package packageinstallation
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"hash/maphash"
+	"maps"
+	"os"
+	"path/filepath"
+	"runtime"
+	"slices"
+	"strings"
+	"sync"
+
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/util/pdag"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+)
+
+// Context represents the way that [InstallPlugin] and [InstallProjectPlugins] interact with
+// the environment.
+//
+// This allows functions like [InstallPlugin] & [InstallProjectPlugins] to remain pure, and
+// thus unit testable.
+type Context interface {
+	pluginstorage.Context
+	pkgWorkspace.Context
+
+	// Get the path that a plugin is at.
+	GetPluginPath(ctx context.Context, plugin workspace.PluginDescriptor) (string, error)
+
+	// Install an already downloaded plugin at a specific path.
+	//
+	// InstallPlugin should assume that all dependencies of the plugin are already
+	// installed.
+	InstallPluginAt(ctx context.Context, dirPath string, project *workspace.PluginProject) error
+
+	GetRequiredPackages(
+		ctx context.Context, dirPath string, project *workspace.PluginProject,
+	) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error)
+
+	// IsExecutable returns if the file at binaryPath can be executed.
+	//
+	// If no file is found at binaryPath, then (false, os.ErrNotExist) should be
+	// returned.
+	IsExecutable(ctx context.Context, binaryPath string) (bool, error)
+
+	// Download a plugin onto disk, returning the path the plugin was downloaded to.
+	DownloadPlugin(ctx context.Context, plugin workspace.PluginDescriptor) (string, MarkInstallationDone, error)
+
+	// Generate a local SDK in preparation for linking.
+	//
+	// project and projectDir describe the where the SDK is being generated and linked into.
+	//
+	// providers is a running instance of the package being linked into the project. If parameterization is
+	// necessary, then it is already parameterized.
+	GenerateLocalSDK(
+		ctx context.Context,
+		project *workspace.ProjectRuntimeInfo, projectDir string,
+		provider plugin.Provider,
+	) (workspace.LinkablePackageDescriptor, error)
+
+	// Link packages into a project.
+	LinkIntoProject(
+		ctx context.Context,
+		project *workspace.ProjectRuntimeInfo, projectDir string,
+		packageDescriptors []workspace.LinkablePackageDescriptor,
+	) error
+
+	// Run a package from a directory, parameterized by params.
+	//
+	// If the package is served from a binary, then pluginPath will point at that
+	// binary. If it's served from a directory, then pluginPath will be that
+	// directory.
+	RunPackage(
+		ctx context.Context,
+		rootDir, pluginPath string, params plugin.ParameterizeParameters,
+		originalSpec workspace.PackageSpec,
+	) (plugin.Provider, error)
+}
+
+type MarkInstallationDone = func(success bool)
+
+// A State represents the work already performed during an install.
+//
+// By passing the State from one install to the next, we can assert that
+// duplicate work won't be performed.
+type State struct {
+	// Plugins that have been resolved/downloaded and are known to be already installed.
+	seen map[pluginHash]pluginInfo
+
+	// A map from projecDirs to plugin path params
+	links map[string]map[string][]plugin.ParameterizeParameters
+}
+
+type Options struct {
+	packageresolution.Options
+	// The maximum number of concurrent operations.
+	//
+	// If Concurrency is less than 1, the number of concurrent operations is unbounded.
+	Concurrency int
+
+	// A [PriorState] representing existing work done that won't be repeated.
+	PriorState State
+}
+
+// A function to run the installed plugin.
+//
+// The returned plugin *may* already be parameterized, depending on if the requested
+// [workspace.PluginSpec] specified parameterization (via the Pulumi registry).
+//
+// The plugin will be launched in wd.
+type RunPlugin = func(ctx context.Context, wd string) (plugin.Provider, error)
+
+// InstallPlugin installs a plugin into a project.
+//
+// If baseProject & projectDir are zero values, then InstallPlugin will just install the
+// plugin.
+//
+// IO operations are intermediates by the passed in [Context] and
+// [registry.Registry]. Both may be operated on in parallel if options.Concurrency > 1 or
+// if it's unset.
+//
+// If a cyclic dependency is found, then an instance of [ErrorCyclicDependencies] will be
+// returned. It can be accessed with [errors.As]:
+//
+//	_, err := packageinstallation.InstallPlugin(...)
+//	var cycle packageinstallation.ErrorCyclicDependencies
+//	if errors.As(err, &cycle) {
+//		fmt.Println(cycle.Cycle)
+//	}
+func InstallPlugin(
+	ctx context.Context,
+	spec workspace.PackageSpec,
+	baseProject workspace.BaseProject, projectDir string,
+	options Options,
+	registry registry.Registry, ws Context,
+) (RunPlugin, workspace.PackageSpec, State, error) {
+	var runBundle runBundle
+	var resolvedSpec workspace.PackageSpec
+
+	token, err := runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
+		enqueueUnresolvedPackage(ctx, state, root, spec, project[workspace.BaseProject]{
+			proj:       baseProject,
+			projectDir: projectDir,
+		}, &runBundle, &resolvedSpec)
+		return nil
+	})
+	if err != nil {
+		return nil, resolvedSpec, token, err
+	}
+
+	return func(ctx context.Context, wd string) (plugin.Provider, error) {
+		return ws.RunPackage(ctx, wd, runBundle.info.pluginPath,
+			runBundle.params, resolvedSpec)
+	}, resolvedSpec, token, nil
+}
+
+// InstallPluginSet installs the plugins for the descriptors, and installs + links the packages descried by specs.
+func InstallPluginSet(
+	ctx context.Context,
+	descriptors []workspace.PackageDescriptor, specs []workspace.PackageSpec,
+	baseProject workspace.BaseProject, projectDir string,
+	options Options,
+	registry registry.Registry, ws Context,
+) (State, error) {
+	specs = slices.Clone(specs)
+	return runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
+		for _, resolved := range descriptors {
+			// Only local-path packages need to be diverted to the spec path so they
+			// resolve from disk. Remote/registry packages are installed via the normal
+			// descriptor path, matching the behavior of project plugin overrides.
+			override, hasOverride := baseProject.GetPackageSpecs()[resolved.Name]
+			if hasOverride && plugin.IsLocalPluginPath(ctx, override.Source) {
+				specs = append(specs, override)
+				continue
+			}
+
+			installed, version, err := packageresolution.IsPluginInstalled(ctx,
+				resolved.PluginDescriptor, ws, options.Options)
+			if err != nil {
+				return err
+			}
+			if installed && version != nil {
+				resolved.Version = version
+			}
+			err = enqueueResolvedProjectDescriptor(ctx, state,
+				resolved.PluginDescriptor, new(runBundle), root, installed)
+			if err != nil {
+				return err
+			}
+		}
+		enqueuePackageSpecLinkedSDKs(ctx, state, root, project[workspace.BaseProject]{
+			proj:       baseProject,
+			projectDir: projectDir,
+		}, specs)
+		return nil
+	})
+}
+
+// InstallProjectPlugins installs all plugins in a project, linking them in as necessary.
+//
+// This is conceptually equivalent to calling [InstallPlugin] for each plugin in a
+// project. InstallProjectPlugins should be preferred because it deduplicates installs across
+// the whole project installation and shares concurrency limit across all project
+// dependencies.
+func InstallProjectPlugins(
+	ctx context.Context,
+	project_ workspace.BaseProject, projectDir string,
+	options Options, registry registry.Registry, ws Context,
+) (State, error) {
+	return runInstall(ctx, options, registry, ws, func(ctx context.Context, state state, root pdag.Node) error {
+		enqueueProjectDependencies(ctx, state, root, project[workspace.BaseProject]{
+			proj:       project_,
+			projectDir: projectDir,
+		})
+		return nil
+	})
+}
+
+// runInstall an install governed by [pdag].
+//
+// enqueue should add some nodes to the passed root, then runInstall will drive the DAG to
+// completion.
+func runInstall(
+	ctx context.Context,
+	options Options, registry registry.Registry, ws Context,
+	enqueue func(ctx context.Context, state state, root pdag.Node) error,
+) (State, error) {
+	dag := pdag.New[step]()
+	root, rootReady := dag.NewNode(noOpStep{})
+
+	// State shared across all nodes.
+	state := state{
+		ws:                ws,
+		registry:          registry,
+		resolutionOptions: options.Options,
+		dag:               dag,
+
+		// Most Installs will install exactly one binary plugin, so pre-allocate for that.
+		seen:  make(map[pluginHash]cachedPlugin, 1),
+		seenM: new(sync.Mutex),
+
+		links:  make(map[string]map[string][]plugin.ParameterizeParameters),
+		linksM: new(sync.Mutex),
+
+		cleanupFuncs: nil,
+		cleanupM:     new(sync.Mutex),
+	}
+
+	// Apply prior state
+	for k, v := range options.PriorState.seen {
+		n, done := dag.NewNode(noOpStep{})
+		state.seen[k] = cachedPlugin{
+			node: n,
+			info: &v,
+		}
+		done()
+	}
+	maps.Copy(state.links, options.PriorState.links)
+
+	defer func() {
+		for _, f := range state.cleanupFuncs {
+			f()
+		}
+	}()
+
+	if err := enqueue(ctx, state, root); err != nil {
+		return State{}, err
+	}
+
+	rootReady() // Now that at least one spec has been added, it's safe to mark the root as ready.
+	err := dag.Walk(ctx, func(ctx context.Context, step step) error {
+		return step.run(ctx, state)
+	}, pdag.MaxProcs(options.Concurrency))
+
+	seen := make(map[pluginHash]pluginInfo, len(state.seen))
+	for k, v := range state.seen {
+		seen[k] = *v.info
+	}
+	return State{seen, state.links}, wrapCycleError(err)
+}
+
+type ErrorCyclicDependencies struct {
+	Cycle []workspace.PluginDescriptor
+
+	underlying error
+}
+
+func (ErrorCyclicDependencies) Error() string { return "cyclic dependency" }
+
+func (err ErrorCyclicDependencies) Unwrap() error { return err.underlying }
+
+func wrapCycleError(err error) error {
+	var cycle pdag.ErrorCycle[step]
+	if !errors.As(err, &cycle) {
+		return err
+	}
+	steps := cycle.Cycle
+	chain := make([]workspace.PluginDescriptor, 0, len(steps)/2)
+	for _, step := range steps {
+		marker, ok := step.(pluginMarkerStep)
+		if !ok {
+			continue
+		}
+		chain = append(chain, marker.spec)
+	}
+	chain = append(chain[1:], chain[0])
+	return ErrorCyclicDependencies{Cycle: chain, underlying: err}
+}
+
+// pluginMarkerStep is a labeling step that tells the [wrapCycleError] that we are requiring
+// a [workspace.PluginDescriptor].
+//
+// Running this step is a no-op.
+type pluginMarkerStep struct{ spec workspace.PluginDescriptor }
+
+func (step pluginMarkerStep) run(context.Context, state) error { return nil }
+
+type pluginHash uint64
+
+var mapHashSeed = maphash.MakeSeed()
+
+func hashPluginSpec(spec workspace.PluginDescriptor) pluginHash {
+	var h maphash.Hash
+	h.SetSeed(mapHashSeed)
+	write := func(b []byte) {
+		_, err := h.Write(b)
+		contract.AssertNoErrorf(err, "Hashing should never error")
+	}
+
+	write([]byte(spec.Name))
+	write([]byte(spec.Kind))
+	write([]byte(spec.PluginDownloadURL))
+	if spec.Version != nil {
+		write([]byte{'v', 's'}) // start version
+		write([]byte(spec.Version.String()))
+		write([]byte{'v', 'e'}) // end version
+	}
+	for k, v := range spec.Checksums {
+		write([]byte{'k', 's'}) // start key
+		write([]byte(k))
+		write([]byte{'k', 'e'}) // end key
+		write(v)
+	}
+	return pluginHash(h.Sum64())
+}
+
+func hashLocalPath(path string) pluginHash {
+	var h maphash.Hash
+	h.SetSeed(mapHashSeed)
+	h.WriteString("local!")
+	h.WriteString(path)
+	return pluginHash(h.Sum64())
+}
+
+// runBundle represents the information necessary to actually run a package.
+//
+// Each in-flight package owns its own runBundle. The plugin-level info field is
+// shared across packages that resolve to the same underlying plugin (so we
+// download/install the plugin only once); params is per-package, so two
+// parameterized packages on the same plugin keep distinct parameterizations.
+type runBundle struct {
+	// Plugin-level state, shared with other packages that resolve to the same plugin.
+	//
+	// The pointer is wired by newSpecNode; the pointee is populated by the
+	// resolveStep/downloadStep chain for the first spec that resolves to this
+	// plugin. Subsequent dup'd specs wait on that chain via the DAG before
+	// reading these fields.
+	info *pluginInfo
+	// The parameterization to apply on top of the underlying plugin. May be nil.
+	params plugin.ParameterizeParameters
+}
+
+// pluginInfo holds the plugin-level state shared across packages that resolve
+// to the same underlying plugin.
+type pluginInfo struct {
+	// The name of the plugin.
+	//
+	// Name is provided on a best-effort basis.
+	name string
+	// Where the plugin is on disk. This may be a folder or an executable.
+	//
+	// This field is required.
+	pluginPath string
+}
+
+// A step in the install/build graph.
+type step interface {
+	run(ctx context.Context, p state) error
+}
+
+// The global state of a package install run.
+//
+// state is available to all running [step]s in parallel.
+type state struct {
+	ws                Context
+	registry          registry.Registry
+	resolutionOptions packageresolution.Options
+	dag               *pdag.DAG[step]
+
+	// A mapping of plugins already managed by dag.
+	seen  map[pluginHash]cachedPlugin
+	seenM *sync.Mutex
+
+	links  map[string]map[string][]plugin.ParameterizeParameters
+	linksM *sync.Mutex
+
+	// A list of functions, to be called in arbitrary order before the install run is
+	// finished.
+	//
+	// [step]s that mutate cleanupFuncs must hold cleanupM.
+	cleanupFuncs []func()
+	cleanupM     *sync.Mutex
+}
+
+type cachedPlugin struct {
+	node pdag.Node
+	info *pluginInfo
+}
+
+// A step that does nothing. Useful for creating nodes in the DAG and then deciding later
+// what you need them for.
+type noOpStep struct{}
+
+func (noOpStep) run(context.Context, state) error { return nil }
+
+type project[T workspace.BaseProject] struct {
+	proj       T
+	projectDir string
+}
+
+// Enqueue an unresolved package to be resolved and then downloaded/installed as
+// appropriate.
+//
+// The full package will be added as a dependency on the passed in parent node.
+func enqueueUnresolvedPackage(
+	_ context.Context,
+	state state, parent pdag.Node,
+	spec workspace.PackageSpec, parentProj project[workspace.BaseProject],
+	runBundleOut *runBundle, // An async out param of where the plugin was installed.
+	resolvedSpec *workspace.PackageSpec, // An async out param of the resolved spec.
+) {
+	specReady, ready := state.dag.NewNode(noOpStep{})
+	contract.AssertNoErrorf(state.dag.NewEdge(specReady, parent), "linking in a new node is safe")
+
+	// First, we need resolve the spec into a concrete option. Since this can involve
+	// network calls, we perform resolves in parallel.
+
+	resolve, resolveReady := state.dag.NewNode(resolveStep{
+		spec:         spec,
+		parentProj:   parentProj,
+		parent:       specReady,
+		done:         ready,
+		runBundleOut: runBundleOut,
+		resolvedSpec: resolvedSpec,
+	})
+	// At minimum, we need to resolve spec before spec is done.
+	contract.AssertNoErrorf(state.dag.NewEdge(resolve, specReady), "linking in a new node is safe")
+	// We know that resolving a spec doesn't have any concrete dependencies, so we can kick that off immediately.
+	resolveReady()
+}
+
+func enqueuePackageSpecLinkedSDKs(
+	ctx context.Context,
+	state state, parent pdag.Node,
+	proj project[workspace.BaseProject],
+	packages []workspace.PackageSpec,
+) {
+	// If we don't have any local packages to create, we don't need to do anything.
+	if len(packages) == 0 {
+		return
+	}
+
+	// We will need to link in the local packages that we generate.
+	//
+	// It is not safe to call link multiple times in parallel, so we call
+	// link only once after all local SDKs have been generated.
+
+	// Each local package owns a slot in descriptors.
+	descriptors := make([]workspace.LinkablePackageDescriptor, len(packages))
+	link, linkReady := state.dag.NewNode(linkPackageStep{
+		project:     proj,
+		descriptors: descriptors,
+	})
+	contract.AssertNoErrorf(state.dag.NewEdge(link, parent), "new nodes cannot be cyclic")
+	defer linkReady()
+
+	// Sort package names for deterministic ordering
+	for i, source := range packages {
+		runBundle := new(runBundle)
+		genLocal, genLocalReady := state.dag.NewNode(generateLocalSDKStep{
+			project:       proj,
+			runBundle:     runBundle, // We don't know this until after we install the spec
+			outDescriptor: &descriptors[i],
+			// Information from the **unresolved** package descriptor, used to
+			// ensure that Git based plugins serve schema that correctly
+			// references the underlying plugin.
+			specSource: source,
+		})
+		defer genLocalReady()
+		contract.AssertNoErrorf(state.dag.NewEdge(genLocal, link), "new nodes cannot be cyclic")
+
+		enqueueUnresolvedPackage(ctx, state, genLocal, source, proj, runBundle, new(workspace.PackageSpec))
+	}
+}
+
+// Add package specs depended on by a project to the graph.
+//
+// parent will not be ready until:
+// 1. Each project dependency is downloaded and installed.
+// 2. Each project dependency has a local SDK generated for it.
+// 3. Local SDKs are linked into the project.
+func enqueueProjectDependencies(
+	ctx context.Context,
+	state state, parent pdag.Node,
+	proj project[workspace.BaseProject],
+) {
+	packages := proj.proj.GetPackageSpecs()
+	sortedPackages := make([]workspace.PackageSpec, len(packages))
+	for i, k := range slices.Sorted(maps.Keys(packages)) {
+		sortedPackages[i] = packages[k]
+	}
+	enqueuePackageSpecLinkedSDKs(ctx, state, parent, proj, sortedPackages)
+}
+
+// Add to the graph an install step for a downloaded plugin if appropriate.
+//
+// We only do an install step for plugins that have a PulumiPlugin.yaml. Binary plugins do
+// not need to be installed.
+func enqueueDownloadedPluginDirHasDependenciesAndIsInstalled(
+	ctx context.Context, state state,
+	parent pdag.Node, name, projectDir string,
+	downloadCleanup *downloadCleanup,
+	runBundleOut *runBundle,
+) error {
+	pluginProject, err := ensureProjectDir(ctx, state, name, projectDir, downloadCleanup, runBundleOut)
+	if err != nil {
+		return err
+	}
+
+	// There is a PulumiPlugin file, so it may have dependencies. We need to
+	// gather dependencies and install them before we can run the install
+	// here.
+	if pluginProject == nil {
+		return nil
+	}
+	proj := project[*workspace.PluginProject]{
+		proj:       pluginProject,
+		projectDir: projectDir,
+	}
+
+	install, installReady := state.dag.NewNode(installStep{
+		downloadCleanup: downloadCleanup,
+		project:         proj,
+	})
+	contract.AssertNoErrorf(state.dag.NewEdge(install, parent), "new nodes cannot be cyclic")
+	defer installReady()
+
+	installDependencies, installDependenciesReady := state.dag.NewNode(gatherPackageDependenciesStep{
+		project: proj,
+	})
+	contract.AssertNoErrorf(state.dag.NewEdge(install, installDependencies), "new nodes cannot be cyclic")
+	installDependenciesReady()
+
+	enqueueProjectDependencies(ctx, state, install, project[workspace.BaseProject]{
+		proj:       pluginProject,
+		projectDir: projectDir,
+	})
+	return nil
+}
+
+func ensureProjectDir(
+	ctx context.Context, state state,
+	name, projectDir string,
+	downloadCleanup *downloadCleanup,
+	runBundleOut *runBundle,
+) (*workspace.PluginProject, error) {
+	pluginProject, _, err := state.ws.LoadPluginProjectAt(ctx, projectDir)
+	switch {
+	case err == nil:
+		runBundleOut.info.pluginPath = projectDir
+		runBundleOut.info.name = name
+		return pluginProject, nil
+
+	// We didn't detect a PulumiPlugin file. This may be a binary plugin, so
+	// let's check. If there is a appropriately named binary there, we are
+	// done.
+	case errors.Is(err, workspace.ErrPluginNotFound):
+		binaryName := "pulumi-resource-" + name
+		binaryPath := filepath.Join(projectDir, binaryName)
+		if runtime.GOOS == "windows" {
+			binaryPath += ".exe"
+		}
+		isExec, err := state.ws.IsExecutable(ctx, binaryPath)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		} else if isExec {
+			runBundleOut.info.pluginPath = binaryPath
+			runBundleOut.info.name = name
+			// A binary was found, so this plugin is done.
+			if downloadCleanup != nil {
+				downloadCleanup.f(true)
+				downloadCleanup.called = true
+			}
+			return nil, nil
+		}
+		return nil, fmt.Errorf("expected %q to have an executable named %q or a PulumiPlugin file", name, binaryName)
+
+	// An unknown error was returned, so bubble the error up.
+	default:
+		return nil, err
+	}
+}
+
+func enqueueResolvedProjectDescriptor(
+	ctx context.Context, p state,
+	descriptor workspace.PluginDescriptor, runBundleOut *runBundle, parent pdag.Node, installed bool,
+) error {
+	specFinished, specReady, isDuplicate, err := newSpecNode(
+		hashPluginSpec(descriptor), descriptor, runBundleOut, p, parent)
+	if err != nil {
+		return err
+	}
+	if isDuplicate {
+		return nil
+	}
+
+	if installed {
+		defer specReady()
+		pluginDir, err := p.ws.GetPluginPath(ctx, descriptor)
+		if err != nil {
+			return err
+		}
+		// If it's already installed in it's Pulumi managed location, then assuming it was installed
+		// successfully we shouldn't need to do anything else.
+		_, err = ensureProjectDir(
+			ctx, p, descriptor.Name, pluginDir, nil, runBundleOut)
+		return err
+	}
+
+	// Start with the download. The downloadStep will take care of attaching
+	// steps for (2) and (3) to specFinished.
+	download, downloadReady := p.dag.NewNode(downloadStep{
+		spec:            descriptor,
+		parent:          specFinished,
+		done:            specReady,
+		runBundleOut:    runBundleOut,
+		downloadCleanup: new(downloadCleanup),
+	})
+	contract.AssertNoErrorf(p.dag.NewEdge(download, specFinished), "new nodes cannot be cyclic")
+	downloadReady()
+	return nil
+}
+
+type generateLocalSDKStep struct {
+	// The directory the plugin was installed into.
+	//
+	// runBundle must be set to a non-empty value by the time this step executes.
+	runBundle *runBundle
+
+	specSource workspace.PackageSpec
+
+	// The project we are linking into.
+	project project[workspace.BaseProject]
+
+	outDescriptor *workspace.LinkablePackageDescriptor
+}
+
+const alreadyLinkedDescriptorPath = "already-linked-517048514783154790"
+
+func (step generateLocalSDKStep) run(ctx context.Context, p state) error {
+	p.linksM.Lock()
+	linked, ok := p.links[step.project.projectDir]
+	if ok && slices.ContainsFunc(linked[step.runBundle.info.pluginPath], paramsEqual(step.runBundle.params)) {
+		p.linksM.Unlock()
+		*step.outDescriptor = workspace.LinkablePackageDescriptor{
+			Path: alreadyLinkedDescriptorPath,
+		}
+		return nil
+	}
+	if !ok {
+		linked = make(map[string][]plugin.ParameterizeParameters, 1)
+		p.links[step.project.projectDir] = linked
+	}
+	linked[step.runBundle.info.pluginPath] = append(linked[step.runBundle.info.pluginPath], step.runBundle.params)
+	p.linksM.Unlock()
+
+	provider, err := p.ws.RunPackage(ctx,
+		step.project.projectDir, step.runBundle.info.pluginPath,
+		step.runBundle.params, step.specSource)
+	if err != nil {
+		return err
+	}
+	descriptor, err := p.ws.GenerateLocalSDK(ctx, step.project.proj.RuntimeInfo(), step.project.projectDir, provider)
+	if err != nil {
+		return err
+	}
+	*step.outDescriptor = descriptor
+	return nil
+}
+
+func paramsEqual(a plugin.ParameterizeParameters) func(plugin.ParameterizeParameters) bool {
+	return func(b plugin.ParameterizeParameters) bool {
+		if a, b := a == nil || a.Empty(), b == nil || b.Empty(); a || b {
+			return a && b
+		}
+		switch a := a.(type) {
+		case *plugin.ParameterizeArgs:
+			b, ok := b.(*plugin.ParameterizeArgs)
+			if !ok {
+				return false
+			}
+			return slices.Equal(a.Args, b.Args)
+
+		case *plugin.ParameterizeValue:
+			b, ok := b.(*plugin.ParameterizeValue)
+			if !ok {
+				return false
+			}
+			return a.Name == b.Name && a.Version.EQ(b.Version) && bytes.Equal(a.Value, b.Value)
+		default:
+			contract.Failf("unknown type of parameters: %T", a)
+			return false
+		}
+	}
+}
+
+// Link an already downloaded and installed package into a project.
+type linkPackageStep struct {
+	// The project we are linking into.
+	project project[workspace.BaseProject]
+
+	// The descriptors that need to be linked.
+	descriptors []workspace.LinkablePackageDescriptor
+}
+
+func (step linkPackageStep) run(ctx context.Context, p state) error {
+	toLink := slices.DeleteFunc(step.descriptors, func(d workspace.LinkablePackageDescriptor) bool {
+		return d.Path == alreadyLinkedDescriptorPath
+	})
+
+	if len(toLink) == 0 {
+		return nil
+	}
+
+	return p.ws.LinkIntoProject(ctx, step.project.proj.RuntimeInfo(), step.project.projectDir, toLink)
+}
+
+// newSpecNode adds a new spec to the DAG, or de-duplicates the spec.
+//
+// Correct usage looks like this:
+//
+//	spec, ready, isDuplicate, err := newSpecNode(...)
+//	if err != nil {
+//		return err
+//	}
+//	if isDuplicate {
+//		return nil
+//	}
+//	// At this point, we are now responsible for ensuring that ready is called.
+func newSpecNode(
+	hash pluginHash, spec workspace.PluginDescriptor, runBundleOut *runBundle, state state, parent pdag.Node,
+) (pdag.Node, pdag.Done, bool, error) {
+	specReady, ready := state.dag.NewNode(pluginMarkerStep{
+		spec: spec,
+	})
+
+	state.seenM.Lock()
+	defer state.seenM.Unlock()
+	if n, ok := state.seen[hash]; ok {
+		// The plugin is already being resolved by another spec. Share the
+		// pluginInfo pointer, and wait for the original spec's node before
+		// declaring our spec ready — that way consumers downstream of `parent`
+		// see fully populated plugin info. Per-package fields on runBundleOut
+		// (e.g., params) are unaffected, since they live outside pluginInfo.
+		//
+		//	original plugin -> spec ready -> parent
+		runBundleOut.info = n.info
+
+		defer ready()
+		contract.AssertNoErrorf(state.dag.NewEdge(specReady, parent),
+			"linking in a new node is safe")
+
+		return n.node, func() {}, true, state.dag.NewEdge(n.node, specReady)
+	}
+
+	runBundleOut.info = new(pluginInfo)
+	err := state.dag.NewEdge(specReady, parent)
+	if err != nil {
+		ready()
+		return pdag.Node{}, nil, false, err
+	}
+	state.seen[hash] = cachedPlugin{
+		node: specReady,
+		info: runBundleOut.info,
+	}
+
+	return specReady, ready, false, nil
+}
+
+// Resolve a spec into a plugin, then add necessary follow up steps.
+type resolveStep struct {
+	spec         workspace.PackageSpec
+	parentProj   project[workspace.BaseProject]
+	parent       pdag.Node
+	done         pdag.Done
+	runBundleOut *runBundle
+	resolvedSpec *workspace.PackageSpec
+}
+
+// Resolve a package into something that we can get.
+//
+// The resolution step is intertwined with de-duplicating nodes
+func (step resolveStep) run(ctx context.Context, p state) error {
+	defer step.done()
+
+	if step.parentProj.proj != nil {
+		override, hasLocalOverride := step.parentProj.proj.GetPackageSpecs()[step.spec.Source]
+		if hasLocalOverride {
+			step.spec = override
+		}
+	}
+
+	// TODO: The registry should be wrapped in a caching layer to de-duplicate calls.
+	result, err := packageresolution.Resolve(ctx, p.registry, p.ws, step.spec,
+		p.resolutionOptions)
+	if err != nil {
+		return fmt.Errorf("unable to resolve: %w", err)
+	}
+
+	switch result := result.(type) {
+	// Just check that the project is there, and install any dependencies if there is
+	// a PulumiPlugin file found.
+	case packageresolution.PathResolution:
+		*step.resolvedSpec = result.Spec
+		projectDir := result.Path
+		if !filepath.IsAbs(projectDir) && step.parentProj.projectDir != "" {
+			projectDir = filepath.Join(step.parentProj.projectDir, result.Path)
+		}
+
+		// Now that we have fully resolved the file path, we can de-duplicate to
+		// make sure that we won't reference the same node twice in the graph.
+		//
+		// Local paths are identified uniquely by their paths, so we use that to
+		// de-duplicate.
+
+		absPath, err := filepath.Abs(projectDir)
+		if err != nil {
+			return err
+		}
+		specNode, ready, isDuplicate, err := newSpecNode(hashLocalPath(absPath),
+			workspace.PluginDescriptor{Name: absPath}, step.runBundleOut, p, step.parent)
+		if err != nil {
+			return err
+		}
+		if isDuplicate {
+			return nil
+		}
+
+		defer ready()
+
+		if isExec, err := p.ws.IsExecutable(ctx, projectDir); err != nil {
+			return err
+		} else if isExec {
+			step.runBundleOut.info.pluginPath = projectDir
+			if name, found := strings.CutPrefix(filepath.Base(projectDir), "pulumi-resource-"); found {
+				if runtime.GOOS == "windows" {
+					name = strings.TrimSuffix(name, ".exe")
+				}
+				step.runBundleOut.info.name = name
+			}
+			return nil
+		}
+
+		// We don't need to download what's at a local path result, but we might
+		// need to download its dependencies.
+		return enqueueDownloadedPluginDirHasDependenciesAndIsInstalled(ctx,
+			p, specNode, "", projectDir, nil, step.runBundleOut)
+
+	// We have a normal spec to download and install, so let's run that process.
+	//
+	// To install from an external source, we need to:
+	//
+	// 1. Download the plugin.
+	//
+	// 2. Check for any dependencies, making sure that dependencies are downloaded
+	// *and* installed.
+	//
+	// 3. Install the downloaded project.
+	case packageresolution.PackageResolution:
+		*step.resolvedSpec = result.Spec
+
+		// Set params before the dedup check: parameterization is per-package
+		// (e.g., two parameterized packages may share one underlying plugin),
+		// so it must be recorded on this call's runBundle even when the plugin
+		// has already been resolved by another spec.
+		if p := result.Pkg.Parameterization; p != nil {
+			step.runBundleOut.params = &plugin.ParameterizeValue{
+				Name:    p.Name,
+				Version: p.Version,
+				Value:   p.Value,
+			}
+		}
+
+		return enqueueResolvedProjectDescriptor(ctx, p, result.Pkg.PluginDescriptor,
+			step.runBundleOut, step.parent, result.InstalledInWorkspace)
+
+	case packageresolution.PluginResolution:
+		*step.resolvedSpec = result.Spec
+
+		// Set params before the dedup check; see PackageResolution above for why.
+		if p := result.Pkg.ParameterizationArgs; len(p) > 0 {
+			step.runBundleOut.params = &plugin.ParameterizeArgs{
+				Args: p,
+			}
+		}
+
+		return enqueueResolvedProjectDescriptor(ctx, p, result.Pkg.PluginDescriptor,
+			step.runBundleOut, step.parent, result.InstalledInWorkspace)
+	default:
+		panic(fmt.Sprintf("unexpected package resolution result of type %T: %[1]s", result))
+	}
+}
+
+// Download an external spec, then attach appropriate follow up nodes to the DAG.
+type downloadStep struct {
+	spec         workspace.PluginDescriptor // An already resolved spec
+	parent       pdag.Node
+	done         pdag.Done
+	runBundleOut *runBundle
+
+	downloadCleanup *downloadCleanup
+}
+
+type downloadCleanup struct {
+	f      func(success bool)
+	called bool
+}
+
+func (step downloadStep) run(ctx context.Context, p state) error {
+	defer step.done()
+	pluginDir, doneF, err := p.ws.DownloadPlugin(ctx, step.spec)
+	if err != nil {
+		return err
+	}
+	step.downloadCleanup.f = doneF
+
+	// Add a hook to cleanup the download after usage.
+	p.cleanupM.Lock()
+	p.cleanupFuncs = append(p.cleanupFuncs, func() {
+		if step.downloadCleanup.called {
+			return
+		}
+		step.downloadCleanup.f(false)
+	})
+	p.cleanupM.Unlock()
+
+	step.runBundleOut.info.pluginPath = pluginDir
+	return enqueueDownloadedPluginDirHasDependenciesAndIsInstalled(
+		ctx, p, step.parent, step.spec.Name, pluginDir, step.downloadCleanup, step.runBundleOut)
+}
+
+type installStep struct {
+	downloadCleanup *downloadCleanup
+	project         project[*workspace.PluginProject]
+}
+
+func (step installStep) run(ctx context.Context, p state) error {
+	err := p.ws.InstallPluginAt(ctx, step.project.projectDir, step.project.proj)
+
+	// If the location we are installing was downloaded, then we need to call the
+	// cleanup function.
+	if step.downloadCleanup != nil {
+		step.downloadCleanup.called = true
+		step.downloadCleanup.f(err == nil)
+	}
+	return err
+}
+
+type gatherPackageDependenciesStep struct {
+	project project[*workspace.PluginProject]
+}
+
+func (step gatherPackageDependenciesStep) run(ctx context.Context, p state) error {
+	pkgs, specs, err := p.ws.GetRequiredPackages(ctx, step.project.projectDir, step.project.proj)
+	if err != nil {
+		return err
+	}
+
+	// Packages already declared in the project's `packages` section are
+	// handled by enqueueProjectDependencies and should not be
+	// re-downloaded here.
+	declaredPackages := step.project.proj.GetPackageSpecs()
+
+	gatheredDependenciesDone, ready := p.dag.NewNode(noOpStep{})
+	defer ready()
+
+	for _, pkg := range pkgs {
+		if _, declared := declaredPackages[pkg.Name]; declared {
+			continue
+		}
+
+		var rb runBundle
+		hash := hashPluginSpec(pkg.PluginDescriptor)
+		spec, ready, isDuplicate, err := newSpecNode(hash, pkg.PluginDescriptor, &rb, p, gatheredDependenciesDone)
+		if err != nil {
+			return err
+		}
+		if isDuplicate {
+			continue
+		}
+		defer ready()
+
+		if p.ws.HasPlugin(ctx, pkg.PluginDescriptor) {
+			continue
+		}
+
+		download, downloadReady := p.dag.NewNode(downloadStep{
+			spec:            pkg.PluginDescriptor,
+			parent:          spec,
+			done:            ready,
+			runBundleOut:    &rb,
+			downloadCleanup: new(downloadCleanup),
+		})
+		contract.AssertNoErrorf(p.dag.NewEdge(download, spec), "new nodes cannot be cyclic")
+		downloadReady()
+	}
+
+	enqueuePackageSpecLinkedSDKs(ctx, p, gatheredDependenciesDone, project[workspace.BaseProject]{
+		proj:       step.project.proj,
+		projectDir: step.project.projectDir,
+	}, specs)
+
+	return nil
+}

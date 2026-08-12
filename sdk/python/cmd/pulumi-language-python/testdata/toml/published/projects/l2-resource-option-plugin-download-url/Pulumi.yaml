@@ -1,0 +1,7 @@
+name: l2-resource-option-plugin-download-url
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

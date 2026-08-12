@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,43 +11,41 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//go:build !xplatform_acceptance
 
 package auto
 
 import (
-	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConcurrentUpdateError(t *testing.T) {
 	t.Parallel()
 
-	// TODO[pulumi/pulumi#8122] - investigate underlying sporadic 404 error
-	t.Skip("disabled as flaky and resource-intensive")
-
-	n := 50
-	ctx := context.Background()
+	ctx := t.Context()
 	pName := "conflict_error"
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
+	// The program blocks until this file is removed, letting us hold one update inside the program while a
+	// second update races to produce a concurrent update error.
+	block := filepath.Join(t.TempDir(), "block")
+	require.NoError(t, os.WriteFile(block, nil, 0o600))
+
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "conflict_error")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoErrorf(t, err, "failed to initialize stack")
+
+	s.Workspace().SetEnvVar("PULUMI_TEST_BLOCK_FILE", block)
 
 	defer func() {
 		// -- pulumi stack rm --
@@ -58,65 +56,41 @@ func TestConcurrentUpdateError(t *testing.T) {
 	c := make(chan error)
 
 	// parallel updates to cause conflict
-	for i := 0; i < n; i++ {
-		go func() {
-			_, err := s.Up(ctx)
-			c <- err
-		}()
+	for range 2 {
+		go func() { _, err := s.Up(ctx); c <- err }()
 	}
 
-	conflicts := 0
-	var otherErrors []error
+	// One stack successfully entered the program and is waiting on the block file to be removed. The only way
+	// for a stack to return is to error before the program, so we assert that's the concurrent update.
+	err = <-c
+	assert.Truef(t, IsConcurrentUpdateError(err), "found %s", err)
 
-	for i := 0; i < n; i++ {
-		err := <-c
-		if err != nil {
-			if IsConcurrentUpdateError(err) {
-				conflicts++
-			} else {
-				otherErrors = append(otherErrors, err)
-			}
-		}
-	}
+	// Release the remaining stack to complete, then block until it does.
+	require.NoError(t, os.Remove(block))
+	assert.Nil(t, <-c)
 
 	// -- pulumi destroy --
-
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
-
-	if len(otherErrors) > 0 {
-		t.Logf("Concurrent updates incurred %d non-conflict errors, including:", len(otherErrors))
-		for _, err := range otherErrors {
-			t.Error(err)
-		}
-	}
-
-	if conflicts == 0 {
-		t.Errorf("Expected at least one conflict error from the %d concurrent updates, but got none", n)
-	}
+	require.NoError(t, err, "destroy failed")
 }
 
 func TestInlineConcurrentUpdateError(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	pName := "inline_conflict_error"
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
+	block := make(chan struct{})
+
 	// initialize
 	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
-		time.Sleep(5 * time.Second)
+		<-block
 		ctx.Export("exp_static", pulumi.String("foo"))
 		return nil
 	})
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoErrorf(t, err, "failed to initialize stack")
 
 	defer func() {
 		// -- pulumi stack rm --
@@ -127,32 +101,22 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 	c := make(chan error)
 
 	// parallel updates to cause conflict
-	for i := 0; i < 50; i++ {
-		go func() {
-			_, err := s.Up(ctx)
-			c <- err
-		}()
+	for range 2 {
+		go func() { _, err := s.Up(ctx); c <- err }()
 	}
 
-	conflicts := 0
+	// One stack successfully entered the program and is waiting on block to close. The only way for a stack
+	// to return is to error before the program, so we assert that's the concurrent update.
+	err = <-c
+	assert.Truef(t, IsConcurrentUpdateError(err), "found %s", err)
 
-	for i := 0; i < 50; i++ {
-		err := <-c
-		if IsConcurrentUpdateError(err) {
-			conflicts++
-		}
-	}
+	// Release the remaining stack to complete, then block until it does.
+	close(block)
+	assert.Nil(t, <-c)
 
 	// -- pulumi destroy --
-
 	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed, err: %v", err)
-		t.FailNow()
-	}
-
-	// should have at least one conflict
-	assert.Greater(t, conflicts, 0)
+	require.NoError(t, err, "destroy failed")
 }
 
 const compilationErrProj = "compilation_error"
@@ -160,7 +124,7 @@ const compilationErrProj = "compilation_error"
 func TestCompilationErrorGo(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
 
@@ -193,7 +157,7 @@ func TestCompilationErrorGo(t *testing.T) {
 func TestSelectStack404Error(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, "testproj", sName)
 
@@ -214,7 +178,7 @@ func TestSelectStack404Error(t *testing.T) {
 func TestCreateStack409Error(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, "testproj", sName)
 
@@ -248,7 +212,7 @@ func TestCreateStack409Error(t *testing.T) {
 func TestCompilationErrorDotnet(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
 
@@ -281,14 +245,14 @@ func TestCompilationErrorDotnet(t *testing.T) {
 func TestCompilationErrorTypescript(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, compilationErrProj, sName)
 
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "compilation_error", "typescript")
 
-	cmd := exec.Command("yarn", "install")
+	cmd := exec.Command("npm", "install")
 	cmd.Dir = pDir
 	err := cmd.Run()
 	if err != nil {
@@ -325,7 +289,7 @@ const runtimeErrProj = "runtime_error"
 func TestRuntimeErrorGo(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
@@ -358,7 +322,7 @@ func TestRuntimeErrorGo(t *testing.T) {
 func TestRuntimeErrorInlineGo(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
@@ -392,7 +356,7 @@ func TestRuntimeErrorInlineGo(t *testing.T) {
 func TestRuntimeErrorPython(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
@@ -412,7 +376,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 		t.Error(err)
 		t.FailNow()
 	}
-	err = tc.InstallDependencies(context.Background(), pDir, false, /*useLanguageVersionTools */
+	err = tc.InstallDependencies(t.Context(), pDir, false, /*useLanguageVersionTools */
 		true /*showOutput*/, os.Stdout, os.Stderr)
 	if err != nil {
 		t.Errorf("failed to create a venv and install project dependencies: %v", err)
@@ -426,7 +390,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 	}
 
 	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
-	pyCmd, err := tc.ModuleCommand(context.Background(), "pip", "install", "-e", pySDK)
+	pyCmd, err := tc.ModuleCommand(t.Context(), "pip", "install", "-e", pySDK)
 	if err != nil {
 		t.Errorf("failed to install the local SDK: %v", err)
 		t.FailNow()
@@ -466,14 +430,14 @@ func TestRuntimeErrorPython(t *testing.T) {
 func TestRuntimeErrorJavascript(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "runtime_error", "javascript")
 
-	cmd := exec.Command("yarn", "install")
+	cmd := exec.Command("npm", "install")
 	cmd.Dir = pDir
 	err := cmd.Run()
 	if err != nil {
@@ -508,14 +472,14 @@ func TestRuntimeErrorJavascript(t *testing.T) {
 func TestRuntimeErrorTypescript(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
 	pDir := filepath.Join(".", "test", "errors", "runtime_error", "typescript")
 
-	cmd := exec.Command("yarn", "install")
+	cmd := exec.Command("npm", "install")
 	cmd.Dir = pDir
 	err := cmd.Run()
 	if err != nil {
@@ -550,7 +514,7 @@ func TestRuntimeErrorTypescript(t *testing.T) {
 func TestRuntimeErrorDotnet(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 

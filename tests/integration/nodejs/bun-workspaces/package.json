@@ -1,0 +1,9 @@
+{
+    "name": "bun-workspaces",
+    "description": "A project that uses bun workspaces. `pulumi install` should successfully install dependencies.",
+    "private": true,
+    "workspaces": [
+        "packages/*",
+        "infra/"
+    ]
+}

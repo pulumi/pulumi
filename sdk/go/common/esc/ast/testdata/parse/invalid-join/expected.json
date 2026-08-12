@@ -1,0 +1,52 @@
+{
+    "decl": {
+        "Description": null,
+        "Imports": null,
+        "Values": {
+            "Entries": [
+                {
+                    "Key": {
+                        "Value": "join"
+                    },
+                    "Value": {
+                        "Delimiter": null,
+                        "Values": null
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "other"
+                    },
+                    "Value": {
+                        "Value": "value"
+                    }
+                }
+            ]
+        }
+    },
+    "diags": [
+        {
+            "Severity": 1,
+            "Summary": "the argument to fn::join must be a two-valued list",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-join",
+                "Start": {
+                    "Line": 3,
+                    "Column": 15,
+                    "Byte": 30
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 19,
+                    "Byte": 34
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.join[\"fn::join\"]"
+        }
+    ]
+}

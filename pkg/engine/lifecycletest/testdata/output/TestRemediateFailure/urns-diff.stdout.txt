@@ -1,0 +1,7 @@
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Policy Packs run:<{%reset%}>
+    <{%underline%}><{%fg 12%}>Name<{%reset%}>       <{%underline%}><{%fg 12%}>Version<{%reset%}>
+    analyzerA  
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

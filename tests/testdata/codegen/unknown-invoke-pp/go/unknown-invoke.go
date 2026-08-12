@@ -8,7 +8,7 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		data, err := unknown.GetData(ctx, map[string]interface{}{
+		data, err := unknown.GetData(ctx, map[string]string{
 			"input": "hello",
 		}, nil)
 		if err != nil {
@@ -18,7 +18,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("content", data.Content)
+		ctx.Export("content", pulumi.Any(data.Content))
 		return nil
 	})
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // TupleType represents values that are a sequence of independently-typed elements.
@@ -35,11 +37,13 @@ type TupleType struct {
 
 	elementUnion Type
 	s            atomic.Value // Value<string>
+
+	cache *gsync.Map[Type, cacheEntry]
 }
 
 // NewTupleType creates a new tuple type with the given element types.
 func NewTupleType(elementTypes ...Type) Type {
-	return &TupleType{ElementTypes: elementTypes}
+	return &TupleType{ElementTypes: elementTypes, cache: &gsync.Map[Type, cacheEntry]{}}
 }
 
 func (t *TupleType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
@@ -182,8 +186,8 @@ func (t *TupleType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+func (t *TupleType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *TupleType:
 			// When unifying, we will unify two tuples of different length to a new tuple, where elements with matching
@@ -192,6 +196,7 @@ func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct
 				var unifier tupleElementUnifier
 				unifier.unify(t)
 				unifier.unify(src)
+				contract.Assertf(unifier.conversionKind.Exists(), "cannot return nil diagnostics when there is no conversion")
 				return unifier.conversionKind, nil
 			}
 

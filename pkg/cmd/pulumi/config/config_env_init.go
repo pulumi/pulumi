@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,21 +21,24 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"text/template"
 
 	"github.com/charmbracelet/glamour"
-	"github.com/erikgeiser/promptkit/confirmation"
-	"github.com/pulumi/esc"
-	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -52,25 +55,30 @@ func newConfigEnvInitCmd(parent *configEnvCmd) *cobra.Command {
 		Long: "Creates an environment for a specific stack based on the stack's configuration values,\n" +
 			"then replaces the stack's configuration values with a reference to that environment.\n" +
 			"The environment will be created in the same organization as the stack.",
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			parent.initArgs()
 			return impl.run(cmd.Context(), args)
 		},
 	}
 
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.Flags().StringVar(
 		&impl.envName, "env", "",
-		`The name of the environment to create. Defaults to "<project name>/<stack name>"`)
+		`The name of the environment to create. Defaults to "<project name>/<stack name>"`,
+	)
 	cmd.Flags().BoolVar(
 		&impl.showSecrets, "show-secrets", false,
-		"Show secret values in plaintext instead of ciphertext")
+		"Show secret values in plaintext instead of ciphertext",
+	)
 	cmd.Flags().BoolVar(
 		&impl.keepConfig, "keep-config", false,
-		"Do not remove configuration values from the stack after creating the environment")
+		"Do not remove configuration values from the stack after creating the environment",
+	)
 	cmd.Flags().BoolVarP(
 		&impl.yes, "yes", "y", false,
-		"True to save the created environment without prompting")
+		"True to save the created environment without prompting",
+	)
 
 	return cmd
 }
@@ -97,23 +105,30 @@ type configEnvInitCmd struct {
 
 func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if !cmd.yes && !cmd.parent.interactive {
-		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
+		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
 	opts := display.Options{Color: cmd.parent.color}
 
-	project, _, err := cmd.parent.ws.ReadProject()
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting current working directory: %w", err)
+	}
+
+	project, _, err := cmd.parent.ws.ReadProject(cwd)
 	if err != nil {
 		return err
 	}
 
 	stack, err := cmd.parent.requireStack(
 		ctx,
+		cmd.parent.diags,
 		cmd.parent.ws,
 		cmdBackend.DefaultLoginManager,
 		*cmd.parent.stackRef,
 		cmdStack.OfferNew|cmdStack.SetCurrent,
 		opts,
+		*cmd.parent.configFile,
 	)
 	if err != nil {
 		return err
@@ -121,7 +136,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	envBackend, ok := stack.Backend().(backend.EnvironmentsBackend)
 	if !ok {
-		return fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
+		return errBackendNoEnvironments(stack.Backend())
 	}
 
 	orgName := stack.(interface{ OrgName() string }).OrgName()
@@ -141,7 +156,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v/%v for stack %v...\n", envProject, envName, stack.Ref().Name())
 
-	projectStack, config, err := cmd.getStackConfig(ctx, project, stack)
+	projectStack, config, err := cmd.getStackConfig(ctx, cmd.parent.diags, project, stack)
 	if err != nil {
 		return err
 	}
@@ -163,12 +178,11 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	fmt.Fprint(cmd.parent.stdout, preview)
 
 	if !cmd.yes {
-		save, err := confirmation.New("Save?", confirmation.Yes).RunPrompt()
-		if err != nil {
-			return err
-		}
-		if !save {
+		response := cmd.parent.prompt("Save?", []string{"yes", "no"}, "yes", cmdutil.GetGlobalColorization())
+		switch response {
+		case "no":
 			return errors.New("canceled")
+		case "yes":
 		}
 	}
 
@@ -192,7 +206,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if !cmd.keepConfig {
 		projectStack.Config = nil
 	}
-	if err = cmd.parent.saveProjectStack(stack, projectStack); err != nil {
+	if err = cmd.parent.saveProjectStack(ctx, stack, projectStack, *cmd.parent.configFile); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil
@@ -200,58 +214,59 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 func (cmd *configEnvInitCmd) getStackConfig(
 	ctx context.Context,
+	sink diag.Sink,
 	project *workspace.Project,
 	stack backend.Stack,
-) (*workspace.ProjectStack, resource.PropertyMap, error) {
-	ps, err := cmd.parent.loadProjectStack(project, stack)
+) (*workspace.ProjectStack, property.Map, error) {
+	ps, err := cmd.parent.loadProjectStack(ctx, sink, project, stack, *cmd.parent.configFile)
 	if err != nil {
-		return nil, nil, err
+		return nil, property.Map{}, err
 	}
 
 	decrypter, state, err := cmd.parent.ssml.GetDecrypter(ctx, stack, ps)
 	if err != nil {
-		return nil, nil, err
+		return nil, property.Map{}, err
 	}
 	// This may have setup the stack's secrets provider, so save the stack if needed.
 	if state != cmdStack.SecretsManagerUnchanged {
-		if err = cmd.parent.saveProjectStack(stack, ps); err != nil {
-			return nil, nil, fmt.Errorf("saving stack config: %w", err)
+		if err = cmd.parent.saveProjectStack(ctx, stack, ps, *cmd.parent.configFile); err != nil {
+			return nil, property.Map{}, fmt.Errorf("saving stack config: %w", err)
 		}
 	}
 
 	m, err := ps.Config.AsDecryptedPropertyMap(ctx, decrypter)
 	if err != nil {
-		return nil, nil, err
+		return nil, property.Map{}, err
 	}
 	return ps, m, nil
 }
 
-func (cmd *configEnvInitCmd) render(v resource.PropertyValue) any {
+func (cmd *configEnvInitCmd) render(v property.Value) any {
 	switch {
+	case v.Secret():
+		return map[string]any{
+			"fn::secret": cmd.render(v.WithSecret(false)),
+		}
 	case v.IsBool():
-		return v.BoolValue()
+		return v.AsBool()
 	case v.IsNumber():
-		return v.NumberValue()
+		return v.AsNumber()
 	case v.IsString():
-		return v.StringValue()
+		return v.AsString()
 	case v.IsArray():
-		arrV := v.ArrayValue()
-		rendered := make([]any, len(arrV))
-		for i, v := range arrV {
+		arrV := v.AsArray()
+		rendered := make([]any, arrV.Len())
+		for i, v := range arrV.All {
 			rendered[i] = cmd.render(v)
 		}
 		return rendered
-	case v.IsObject():
-		objV := v.ObjectValue()
-		rendered := make(map[string]any, len(objV))
-		for k, v := range objV {
-			rendered[string(k)] = cmd.render(v)
+	case v.IsMap():
+		objV := v.AsMap()
+		rendered := make(map[string]any, objV.Len())
+		for k, v := range objV.All {
+			rendered[k] = cmd.render(v)
 		}
 		return rendered
-	case v.IsSecret():
-		return map[string]any{
-			"fn::secret": cmd.render(v.SecretValue().Element),
-		}
 	default:
 		return nil
 	}
@@ -261,7 +276,7 @@ func (cmd *configEnvInitCmd) renderEnvironmentDefinition(
 	ctx context.Context,
 	envName string,
 	encrypter eval.Encrypter,
-	config resource.PropertyMap,
+	config property.Map,
 	showSecrets bool,
 ) ([]byte, error) {
 	var b bytes.Buffer
@@ -269,7 +284,7 @@ func (cmd *configEnvInitCmd) renderEnvironmentDefinition(
 	enc.SetIndent(2)
 	err := enc.Encode(map[string]any{
 		"values": map[string]any{
-			"pulumiConfig": cmd.render(resource.NewObjectProperty(config)),
+			"pulumiConfig": cmd.render(property.New(config)),
 		},
 	})
 	if err != nil {
@@ -347,7 +362,9 @@ func newConfigEnvInitCrypter() (evalCrypter, error) {
 	if _, err := rand.Read(key); err != nil {
 		return nil, fmt.Errorf("generating key: %w", err)
 	}
-	return &configEnvInitCrypter{crypter: config.NewSymmetricCrypter(key)}, nil
+	crypter := config.NewSymmetricCrypter(key)
+	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
+	return &configEnvInitCrypter{crypter: cachedCrypter}, nil
 }
 
 func (c configEnvInitCrypter) Encrypt(ctx context.Context, plaintext []byte) ([]byte, error) {

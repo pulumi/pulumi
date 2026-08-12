@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,13 +15,14 @@
 package convert
 
 import (
-	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
@@ -53,7 +54,8 @@ func TestYamlConvert(t *testing.T) {
 	require.NoError(t, err)
 
 	result := runConvert(
-		context.Background(), pkgWorkspace.Instance, env.Global(), []string{}, cwd, []string{},
+		t.Context(), io.Discard, io.Discard, &cmdBackend.MockLoginManager{}, pkgWorkspace.Instance,
+		env.Global(), []string{}, cwd, []string{},
 		"yaml", "go", "testdata/go", true, true, "")
 	require.Nil(t, result, "convert failed: %v", result)
 }
@@ -68,13 +70,14 @@ func TestPclConvert(t *testing.T) {
 	require.NoError(t, err)
 
 	result := runConvert(
-		context.Background(), pkgWorkspace.Instance, env.Global(), []string{}, cwd,
+		t.Context(), io.Discard, io.Discard, &cmdBackend.MockLoginManager{}, pkgWorkspace.Instance,
+		env.Global(), []string{}, cwd,
 		[]string{}, "pcl", "pcl", tmp, true, true, "")
 	assert.Nil(t, result)
 
 	// Check that we made one file
 	pclBytes, err := os.ReadFile(filepath.Join(tmp, "main.pp"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// On Windows, we need to replace \r\n with \n to match the expected string below
 	pclCode := string(pclBytes)
 	if runtime.GOOS == "windows" {
@@ -89,6 +92,23 @@ output result {
 	assert.Equal(t, expectedPclCode, pclCode)
 }
 
+// Tests that converting a Terraform program to the "hcl" language is rejected,
+// since pulumi-hcl runs Terraform directly and converting would re-home every
+// resource onto a different provider.
+func TestConvertTerraformToHclErrors(t *testing.T) {
+	t.Parallel()
+
+	cwd, err := filepath.Abs("testdata")
+	require.NoError(t, err)
+
+	result := runConvert(
+		t.Context(), io.Discard, io.Discard, &cmdBackend.MockLoginManager{}, pkgWorkspace.Instance,
+		env.Global(), []string{}, cwd, []string{},
+		"terraform", "hcl", t.TempDir(), true, true, "")
+	require.Error(t, result)
+	assert.Contains(t, result.Error(), "pulumi-hcl runs Terraform directly")
+}
+
 // Tests that project names default to the directory of the source project.
 func TestProjectNameDefaults(t *testing.T) {
 	t.Parallel()
@@ -101,7 +121,10 @@ func TestProjectNameDefaults(t *testing.T) {
 
 	// Act.
 	err = runConvert(
-		context.Background(),
+		t.Context(),
+		io.Discard,
+		io.Discard,
+		&cmdBackend.MockLoginManager{},
 		pkgWorkspace.Instance,
 		env.Global(),
 		[]string{}, /*args*/
@@ -114,11 +137,11 @@ func TestProjectNameDefaults(t *testing.T) {
 		true, /*strict*/
 		"",   /*name*/
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert.
 	yamlBytes, err := os.ReadFile(filepath.Join(outDir, "Pulumi.yaml"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, string(yamlBytes), "name: pcl_testdata")
 }
 
@@ -135,7 +158,10 @@ func TestProjectNameOverrides(t *testing.T) {
 
 	// Act.
 	err = runConvert(
-		context.Background(),
+		t.Context(),
+		io.Discard,
+		io.Discard,
+		&cmdBackend.MockLoginManager{},
 		pkgWorkspace.Instance,
 		env.Global(),
 		[]string{}, /*args*/
@@ -148,10 +174,10 @@ func TestProjectNameOverrides(t *testing.T) {
 		true, /*strict*/
 		name,
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert.
 	yamlBytes, err := os.ReadFile(filepath.Join(outDir, "Pulumi.yaml"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, string(yamlBytes), "name: "+name)
 }

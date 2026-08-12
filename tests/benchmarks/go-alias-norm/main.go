@@ -69,12 +69,12 @@ func makeResource(
 	}
 
 	if len(prev) != 0 {
-		ints := []interface{}{}
+		ints := []any{}
 		for _, p := range prev {
 			ints = append(ints, p.Result)
 		}
 
-		var derived pulumi.IntOutput = pulumi.All(ints...).ApplyT(func(data []interface{}) int {
+		var derived pulumi.IntOutput = pulumi.All(ints...).ApplyT(func(data []any) int {
 			s := 10
 			return s
 		}).(pulumi.IntOutput)

@@ -15,32 +15,32 @@
 package deployment
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
-func NewDeploymentCmd() *cobra.Command {
+func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd := &cobra.Command{
-		// This is temporarily hidden while we iterate over the new set of commands,
-		// we will remove before releasing these new set of features.
-		Hidden: true,
-		Use:    "deployment",
-		Short:  "Manage stack deployments on Pulumi Cloud",
-		Long: "Manage stack deployments on Pulumi Cloud.\n" +
+		Use:   "deployment",
+		Short: "[EXPERIMENTAL] Manage stack deployments on Pulumi Cloud",
+		Long: "[EXPERIMENTAL] Manage stack deployments on Pulumi Cloud.\n" +
 			"\n" +
 			"Use this command to trigger deployment jobs and manage deployment settings.",
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(
-		&stackDeploymentConfigFile, "config-file", "",
-		"Override the file name where the deployment settings are specified. Default is Pulumi.[stack].deploy.yaml")
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newDeploymentSettingsCmd())
-	cmd.AddCommand(newDeploymentRunCmd())
+	cmd.AddCommand(newDeploymentRunCmd(ws))
+	cmd.AddCommand(newDeploymentListCmd())
+	cmd.AddCommand(newDeploymentGetCmd())
+	cmd.AddCommand(newDeploymentCancelCmd())
+	cmd.AddCommand(newDeploymentLogCmd())
 
 	return cmd
 }

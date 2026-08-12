@@ -1,0 +1,15 @@
+{
+	"name": "l2-enum",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/enum": "ROOT/artifacts/pulumi-enum-30.0.0.tgz"
+	}
+}

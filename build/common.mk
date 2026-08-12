@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+# Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 # common.mk provides most of the scaffolding for our build system. It
 # provides default targets for each project we want to build.
@@ -6,36 +6,33 @@
 # The default targets we use are:
 #
 #  - ensure: restores any dependencies needed for the build from
-#            remote sources (e.g dep ensure or yarn install)
+#            remote sources (e.g dep ensure or npm install)
 #
 #  - build: builds a project but does not install it.
 #
 #  - install: copies the bits we plan to ship into a layout in
 #             `PULUMI_ROOT` that looks like what a customer would get
 #             when they download and install Pulumi. For JavaScript
-#             projects, installing also runs yarn link to register
+#             projects, installing also runs npm link to register
 #             this package, so that other projects can depend on it.
 #
-#  - lint: runs relevent linters for the project
+#  - lint: runs relevant linters for the project
 #
 #  - test_fast: runs the fast tests for a project. These are often
-#               go unit tests or javascript unit tests, they should
+#               Go or JavaScript unit tests. They should
 #               complete quickly, as we expect developers to run them
-#               fequently as part of their "inner loop" development.
+#               frequently as part of their "inner loop" development.
 #
-#  - test_all: runs all of test_fast and then runs additional testing,
-#              which may take longer (some times a lot longer!). These
-#              are often integration tests which will use `pulumi` to
-#              deploy example Pulumi projects, creating cloud
-#              resources along the way.
+#  - test_all: runs the complete test suite for a project. This includes
+#              integration tests which will use `pulumi` to deploy example
+#              Pulumi projects, creating cloud resources along the way.
 #
 # In addition, we have a few higher level targets that just depend on
 # these targets:
 #
 #  - only_build: this target runs build and install targets
 #
-#  - only_test: this target runs the list and test_all targets
-#               (test_all itself runs test_fast)
+#  - only_test: this target runs the lint and test_all targets
 #
 #  - default: this is the target that is run by default when no
 #             arguments are passed to make, it runs the build, lint,
@@ -46,8 +43,7 @@
 #          that later). In that case, building `core` target does not
 #          build sub projects.
 #
-#  - all: this target runs build, lint, install and test_all (which
-#         itself runs test_fast).
+#  - all: this target runs build, lint, install and test_all.
 #
 # Before including this makefile, a project may define some values
 # that this makefile understands:
@@ -108,13 +104,19 @@ GO_TEST_SHUFFLE         ?= off  # -shuffle flag, randomizes order of tests withi
 GO_TEST_TAGS            ?= all
 GO_TEST_RACE            ?= true
 
-GO_TEST_FLAGS = -count=1 -cover -tags="${GO_TEST_TAGS}" -timeout 1h \
+# google.golang.org/grpc has a build tag `grpcnotrace` which builds the package without x/net/trace. This avoids
+# dead code elimation from being disabled by the compiler, see https://github.com/pulumi/pulumi/pull/22012.
+GO_BUILD_TAGS           ?= grpcnotrace
+
+GO_TEST_BASE_FLAGS = -tags="${GO_TEST_TAGS}" -timeout 1h \
 	-parallel=${GO_TEST_PARALLELISM} \
-	-shuffle=${GO_TEST_SHUFFLE} \
-	-p=${GO_TEST_PKG_PARALLELISM} \
-	-race=${GO_TEST_RACE} \
-	${GO_TEST_OPTIONS}
-GO_TEST_FAST_FLAGS = -short ${GO_TEST_FLAGS}
+	-p=${GO_TEST_PKG_PARALLELISM}
+
+GO_TEST_FLAGS = ${GO_TEST_BASE_FLAGS} -count=1 -shuffle=${GO_TEST_SHUFFLE} -cover -race=${GO_TEST_RACE} ${GO_TEST_OPTIONS}
+# test_fast runs without race detection or coverage, and passes only cacheable
+# test flags (no -count, no -shuffle) so unchanged packages replay from Go's
+# test cache.
+GO_TEST_FAST_FLAGS = ${GO_TEST_BASE_FLAGS} -short -race=false ${GO_TEST_OPTIONS}
 
 GO_TEST      = $(PYTHON) $(ROOT_DIR)/../scripts/go-test.py $(GO_TEST_FLAGS)
 GO_TEST_FAST = $(PYTHON) $(ROOT_DIR)/../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
@@ -122,7 +124,7 @@ GO_TEST_FAST = $(PYTHON) $(ROOT_DIR)/../scripts/go-test.py $(GO_TEST_FAST_FLAGS)
 GOPROXY = https://proxy.golang.org
 export GOPROXY
 
-.PHONY: default all only_build only_test lint install test_all core build
+.PHONY: default all only_build only_test lint install test_all core build clean
 
 # ensure that `default` is the target that is run when no arguments are passed to make
 default::
@@ -135,10 +137,12 @@ only_test:: $(SUB_PROJECTS:%=%_only_test)
 only_test_fast:: $(SUB_PROJECTS:%=%_only_test_fast)
 default:: $(SUB_PROJECTS:%=%_default)
 all:: $(SUB_PROJECTS:%=%_all)
-install_all:: $(SUB_PROJECTS:%=%_install_all)
+build:: $(SUB_PROJECTS:%=%_build)
+install:: $(SUB_PROJECTS:%=%_install)
 test_all:: $(SUB_PROJECTS:%=%_test_all)
 dist:: $(SUB_PROJECTS:%=%_dist)
 brew:: $(SUB_PROJECTS:%=%_brew)
+clean:: $(SUB_PROJECTS:%=%_clean)
 endif
 
 # `core` is like `default` except it does not build sub projects.
@@ -182,6 +186,9 @@ dist::
 brew::
 	$(call STEP_MESSAGE)
 
+clean::
+	$(call STEP_MESSAGE)
+
 test_all::
 	$(call STEP_MESSAGE)
 
@@ -190,12 +197,13 @@ install::
 	[ ! -e "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" ] || rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
 	mkdir -p "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
 	cp -r bin/. "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
-	cp yarn.lock "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
+	cp package-lock.json "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
 	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/node_modules"
 	cd "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" && \
-	yarn install --prefer-offline --production && \
-	(yarn unlink > /dev/null 2>&1 || true) && \
-	yarn link
+	npm install --prefer-offline --omit=dev && \
+	npm link && \
+	yarn link && \
+	bun link
 endif
 
 only_build:: build install
@@ -208,47 +216,55 @@ only_test_fast:: lint test_fast
 # invoking make from the command line
 ifneq ($(SUB_PROJECTS),)
 $(SUB_PROJECTS:%=%_default):
+	@printf "\033[1;37m=== $(@:%_default=%) (default) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_default=%) default
 $(SUB_PROJECTS:%=%_all):
+	@printf "\033[1;37m=== $(@:%_all=%) (all) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_all=%) all
 $(SUB_PROJECTS:%=%_ensure):
+	@printf "\033[1;37m=== $(@:%_ensure=%) (ensure) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_ensure=%) ensure
 $(SUB_PROJECTS:%=%_build):
+	@printf "\033[1;37m=== $(@:%_build=%) (build) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_build=%) build
-$(SUB_PROJECTS:%=%_install_all):
-	@$(MAKE) -C ./$(@:%_install_all=%) install
 $(SUB_PROJECTS:%=%_lint):
+	@printf "\033[1;37m=== $(@:%_lint=%) (lint) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_lint=%) lint
 $(SUB_PROJECTS:%=%_test_fast):
+	@printf "\033[1;37m=== $(@:%_test_fast=%) (test_fast) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_test_fast=%) test_fast
 $(SUB_PROJECTS:%=%_test_all):
+	@printf "\033[1;37m=== $(@:%_test_all=%) (test_all) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_test_all=%) test_all
 $(SUB_PROJECTS:%=%_install):
+	@printf "\033[1;37m=== $(@:%_install=%) (install) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_install=%) install
 $(SUB_PROJECTS:%=%_only_build):
+	@printf "\033[1;37m=== $(@:%_only_build=%) (only_build) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_only_build=%) only_build
 $(SUB_PROJECTS:%=%_only_test):
+	@printf "\033[1;37m=== $(@:%_only_test=%) (only_test) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_only_test=%) only_test
 $(SUB_PROJECTS:%=%_only_test_fast):
+	@printf "\033[1;37m=== $(@:%_only_test_fast=%) (only_test_fast) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_only_test_fast=%) only_test_fast
 $(SUB_PROJECTS:%=%_dist):
+	@printf "\033[1;37m=== $(@:%_dist=%) (dist) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_dist=%) dist
 $(SUB_PROJECTS:%=%_brew):
+	@printf "\033[1;37m=== $(@:%_brew=%) (brew) ===\033[0m\n"
 	@$(MAKE) -C ./$(@:%_brew=%) brew
+$(SUB_PROJECTS:%=%_clean):
+	@$(MAKE) -C ./$(@:%_clean=%) clean
 endif
 
 # As a convenience, we provide a format target that folks can build to run go fmt over all
-# the go code in their tree.
+# the go code in their tree. We delegate to `golangci-lint fmt` so the formatter version
+# stays in lockstep with the linter version pinned in .mise.toml.
 .PHONY: format
-format::
+format:: .make/ensure/golangci-lint
 	$(call STEP_MESSAGE)
-	find . -iname "*.go" -not \( \
-		-path "./.git/*" -or \
-		-path "./sdk/proto/go/*" -or \
-		-path "./vendor/*" -or \
-		-path "./*/compilation_error/*" -or \
-		-path "./*/testdata/*" \
-	\) | xargs gofumpt -w
+	golangci-lint fmt
 
 .SECONDEXPANSION: # Needed by .make/ensure/% and .make/ensure/__%.
 

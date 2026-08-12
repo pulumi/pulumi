@@ -1,0 +1,11 @@
+{
+    "name": "builtin-info-component",
+    "version": "37.0.0",
+    "main": "index.ts",
+    "dependencies": {
+        "@pulumi/pulumi": "^3"
+    },
+    "devDependencies": {
+        "typescript": "^5.0.0"
+    }
+}

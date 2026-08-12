@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,9 @@
 package diy
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -24,22 +26,27 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
+	"go.opentelemetry.io/otel"
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // DisableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
@@ -47,47 +54,26 @@ import (
 // be used as a last resort when a command absolutely must be run.
 var DisableIntegrityChecking bool
 
-// update is an implementation of engine.Update backed by diy state.
-type update struct {
-	root    string
-	proj    *workspace.Project
-	target  *deploy.Target
-	backend *diyBackend
-}
-
-func (u *update) GetRoot() string {
-	return u.root
-}
-
-func (u *update) GetProject() *workspace.Project {
-	return u.proj
-}
-
-func (u *update) GetTarget() *deploy.Target {
-	return u.target
-}
-
 func (b *diyBackend) newUpdate(
 	ctx context.Context,
 	secretsProvider secrets.Provider,
 	ref *diyBackendReference,
 	op backend.UpdateOperation,
-) (*update, error) {
+) (engine.UpdateInfo, error) {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
 	// Construct the deployment target.
 	target, err := b.getTarget(ctx, secretsProvider, ref,
 		op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
-		return nil, err
+		return engine.UpdateInfo{}, err
 	}
 
 	// Construct and return a new update.
-	return &update{
-		root:    op.Root,
-		proj:    op.Proj,
-		target:  target,
-		backend: b,
+	return engine.UpdateInfo{
+		Root:    op.Root,
+		Project: op.Proj,
+		Target:  target,
 	}, nil
 }
 
@@ -107,12 +93,19 @@ func (b *diyBackend) getTarget(
 	if err != nil {
 		return nil, err
 	}
+	// Load stack tags
+	tags, err := b.loadStackTags(ctx, ref)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load stack tags: %w", err)
+	}
+
 	return &deploy.Target{
 		Name:         ref.Name(),
 		Organization: "organization", // diy has no organizations really, but we just always say it's "organization"
 		Config:       cfg,
 		Decrypter:    dec,
 		Snapshot:     snapshot,
+		Tags:         tags,
 	}, nil
 }
 
@@ -140,46 +133,124 @@ func (b *diyBackend) stackExists(
 func (b *diyBackend) getSnapshot(ctx context.Context,
 	secretsProvider secrets.Provider, ref *diyBackendReference,
 ) (*deploy.Snapshot, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "diyBackend.getSnapshot")
+	defer span.End()
+
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
-	checkpoint, err := b.getCheckpoint(ctx, ref)
+	checkpoint, _, _, err := b.getCheckpoint(ctx, ref)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
 	}
 
 	// Materialize an actual snapshot object.
-	snapshot, err := stack.DeserializeCheckpoint(ctx, secretsProvider, checkpoint)
+	snap, err := stack.DeserializeCheckpoint(ctx, secretsProvider, checkpoint)
 	if err != nil {
 		return nil, err
 	}
 
 	// Ensure the snapshot passes verification before returning it, to catch bugs early.
 	if !backend.DisableIntegrityChecking {
-		if err := snapshot.VerifyIntegrity(); err != nil {
-			if sie, ok := deploy.AsSnapshotIntegrityError(err); ok {
-				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForRead(snapshot))
+		if err := snap.VerifyIntegrity(); err != nil {
+			if sie, ok := snapshot.AsSnapshotIntegrityError(err); ok {
+				var metadata *apitype.SnapshotIntegrityErrorMetadataV1
+				if snap.Metadata.IntegrityErrorMetadata != nil {
+					metadata = &apitype.SnapshotIntegrityErrorMetadataV1{
+						Version: snap.Metadata.IntegrityErrorMetadata.Version,
+						Command: snap.Metadata.IntegrityErrorMetadata.Command,
+						Error:   snap.Metadata.IntegrityErrorMetadata.Error,
+					}
+				}
+				return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", sie.ForReadWithMetadata(metadata))
 			}
 
 			return nil, fmt.Errorf("snapshot integrity failure; refusing to use it: %w", err)
 		}
 	}
 
-	return snapshot, nil
+	return snap, nil
 }
 
-// GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
-func (b *diyBackend) getCheckpoint(ctx context.Context, ref *diyBackendReference) (*apitype.CheckpointV3, error) {
-	chkpath := b.stackPath(ctx, ref)
-	bytes, err := b.bucket.ReadAll(ctx, chkpath)
+func (b *diyBackend) getSnapshotStackOutputs(ctx context.Context,
+	secretsProvider secrets.Provider, ref *diyBackendReference,
+) (property.Map, error) {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "diyBackend.getSnapshotStackOutputs")
+	defer span.End()
+
+	contract.Requiref(ref != nil, "ref", "must not be nil")
+
+	checkpoint, _, _, err := b.getCheckpoint(ctx, ref)
 	if err != nil {
+		return property.Map{}, fmt.Errorf("failed to load checkpoint: %w", err)
+	}
+	if checkpoint == nil || checkpoint.Latest == nil {
+		return property.Map{}, nil
+	}
+	outputs, err := stack.DeserializeStackOutputs(ctx, *checkpoint.Latest, secretsProvider)
+	if err != nil {
+		return property.Map{}, err
+	}
+	return resource.FromResourcePropertyMap(outputs), nil
+}
+
+// getCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace,
+// returning the checkpoint, version, and features.
+func (b *diyBackend) getCheckpoint(
+	ctx context.Context,
+	ref *diyBackendReference,
+) (*apitype.CheckpointV3, int, []string, error) {
+	chkpath := b.stackPath(ctx, ref)
+	byts, err := b.bucket.ReadAll(ctx, chkpath)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	m := encoding.Compress(encoding.JSON, encoding.DetectCompression(byts))
+
+	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(m, byts)
+}
+
+func stripCompressionExt(file string) string {
+	if ext := filepath.Ext(file); ext == encoding.GZIPExt || ext == encoding.ZSTDExt {
+		return strings.TrimSuffix(file, ext)
+	}
+	return file
+}
+
+type compactJSONMarshaler struct{}
+
+var diyJSONMarshaler encoding.Marshaler = compactJSONMarshaler{}
+
+func (compactJSONMarshaler) Marshal(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
 		return nil, err
 	}
-	m := encoding.JSON
-	if encoding.IsCompressed(bytes) {
-		m = encoding.Gzip(m)
+	return bytes.TrimSpace(buf.Bytes()), nil
+}
+
+func (compactJSONMarshaler) Unmarshal(data []byte, v any) error {
+	return json.Unmarshal(data, v)
+}
+
+func marshalVersionedCheckpoint(
+	version int,
+	features []string,
+	checkpoint any,
+) (*apitype.VersionedCheckpoint, error) {
+	bytes, err := diyJSONMarshaler.Marshal(checkpoint)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
 	}
 
-	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(m, bytes)
+	return &apitype.VersionedCheckpoint{
+		Version:    version,
+		Features:   features,
+		Checkpoint: json.RawMessage(bytes),
+	}, nil
 }
 
 func (b *diyBackend) saveCheckpoint(
@@ -188,22 +259,32 @@ func (b *diyBackend) saveCheckpoint(
 	checkpoint *apitype.VersionedCheckpoint,
 ) (backupFile string, file string, _ error) {
 	// Make a serializable stack and then use the encoder to encode it.
-	file = b.stackPath(ctx, ref)
-	m, ext := encoding.Detect(strings.TrimSuffix(file, ".gz"))
+	// stackPath does a bucket listing to find which compression variant exists on disk.
+	existingPath := b.stackPath(ctx, ref)
+	existingCompression := encoding.CompressionNone
+	if ext := filepath.Ext(existingPath); ext == encoding.GZIPExt {
+		existingCompression = encoding.CompressionGzip
+	} else if ext == encoding.ZSTDExt {
+		existingCompression = encoding.CompressionZstd
+	}
+
+	baseFile := stripCompressionExt(existingPath)
+	m, ext := encoding.Detect(baseFile)
 	if m == nil {
 		return "", "", fmt.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
 	}
-	if filepath.Ext(file) == "" {
-		file = file + ext
+	if filepath.Ext(baseFile) == "" {
+		baseFile += ext
 	}
-	if b.gzip {
-		if filepath.Ext(file) != encoding.GZIPExt {
-			file = file + ".gz"
-		}
-		m = encoding.Gzip(m)
-	} else {
-		file = strings.TrimSuffix(file, ".gz")
+	file = baseFile
+	compExt := b.compression.Ext()
+	if compExt != "" {
+		file = file + compExt
 	}
+	if ext == encoding.JSONExt {
+		m = diyJSONMarshaler
+	}
+	m = encoding.Compress(m, b.compression)
 
 	byts, err := m.Marshal(checkpoint)
 	if err != nil {
@@ -214,16 +295,21 @@ func (b *diyBackend) saveCheckpoint(
 	// atomically replace it anyway and various other bits of the system depend on being able to find the
 	// .json file to know the stack currently exists (see https://github.com/pulumi/pulumi/issues/9033 for
 	// context).
-	filePlain := strings.TrimSuffix(file, ".gz")
-	fileGzip := filePlain + ".gz"
-	// We need to make sure that an out of date state file doesn't exist so we
-	// only keep the file of the type we are working with.
-	bckGzip := backupTarget(ctx, b.bucket, fileGzip, b.gzip)
-	bckPlain := backupTarget(ctx, b.bucket, filePlain, !b.gzip)
-	if b.gzip {
-		backupFile = bckGzip
-	} else {
-		backupFile = bckPlain
+	//
+	// We only back up the file we're about to write and, if the compression format changed, clean up the
+	// old format.
+	backupFile = backupTarget(ctx, b.bucket, file, true)
+	if existingCompression != b.compression {
+		// The compression format changed — clean up the old file.
+		filePlain := stripCompressionExt(file)
+		switch existingCompression {
+		case encoding.CompressionNone:
+			backupTarget(ctx, b.bucket, filePlain, false)
+		case encoding.CompressionGzip:
+			backupTarget(ctx, b.bucket, filePlain+encoding.GZIPExt, false)
+		case encoding.CompressionZstd:
+			backupTarget(ctx, b.bucket, filePlain+encoding.ZSTDExt, false)
+		}
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
@@ -241,7 +327,7 @@ func (b *diyBackend) saveCheckpoint(
 			Delay:    &delay,
 			MaxDelay: &maxDelay,
 			Backoff:  &backoff,
-			Accept: func(try int, nextRetryTime time.Duration) (bool, interface{}, error) {
+			Accept: func(try int, nextRetryTime time.Duration) (bool, any, error) {
 				// And now write out the new snapshot file, overwriting that location.
 				err := b.bucket.WriteAll(ctx, file, byts, nil)
 				if err != nil {
@@ -273,12 +359,19 @@ func (b *diyBackend) saveCheckpoint(
 
 func (b *diyBackend) saveStack(
 	ctx context.Context,
-	ref *diyBackendReference, snap *deploy.Snapshot,
+	ref *diyBackendReference,
+	deployment apitype.TypedDeployment,
 ) (string, error) {
 	contract.Requiref(ref != nil, "ref", "ref was nil")
-	chk, err := stack.SerializeCheckpoint(ref.FullyQualifiedName(), snap, false /* showSecrets */)
+	chk, err := stack.DeploymentV3ToCheckpointWithMarshaler(
+		diyJSONMarshaler,
+		ref.FullyQualifiedName(),
+		deployment.Deployment,
+		deployment.Version,
+		deployment.Features,
+	)
 	if err != nil {
-		return "", fmt.Errorf("serializaing checkpoint: %w", err)
+		return "", fmt.Errorf("serializing checkpoint: %w", err)
 	}
 
 	backup, file, err := b.saveCheckpoint(ctx, ref, chk)
@@ -290,7 +383,7 @@ func (b *diyBackend) saveStack(
 		// Finally, *after* writing the checkpoint, check the integrity.  This is done afterwards so that we write
 		// out the checkpoint file since it may contain resource state updates.  But we will warn the user that the
 		// file is already written and might be bad.
-		if verifyerr := snap.VerifyIntegrity(); verifyerr != nil {
+		if verifyerr := snapshot.VerifyIntegrity(deployment.Deployment); verifyerr != nil {
 			return "", fmt.Errorf(
 				"%s: snapshot integrity failure; it was already written, but is invalid (backup available at %s): %w",
 				file, backup, verifyerr)
@@ -301,15 +394,59 @@ func (b *diyBackend) saveStack(
 }
 
 // removeStack removes information about a stack from the current workspace.
-func (b *diyBackend) removeStack(ctx context.Context, ref *diyBackendReference) error {
+func (b *diyBackend) removeStack(ctx context.Context, ref *diyBackendReference, removeBackups bool) error {
 	contract.Requiref(ref != nil, "ref", "must not be nil")
 
-	// Just make a backup of the file and don't write out anything new.
+	var resultErr error
+
 	file := b.stackPath(ctx, ref)
-	backupTarget(ctx, b.bucket, file, false)
+	if removeBackups {
+		// Remove the stack file and its backup file.
+		if err := removeTargetAndBackup(ctx, b.bucket, file); err != nil {
+			resultErr = errors.Join(resultErr,
+				fmt.Errorf("removing file for stack %s: %w", ref.FullyQualifiedName(), err))
+		}
+
+		// Remove the backups.
+		backupDir := ref.BackupDir()
+		if err := removeAllByPrefix(ctx, b.bucket, backupDir); err != nil {
+			resultErr = errors.Join(resultErr,
+				fmt.Errorf("removing backups for stack %s: %w", ref.FullyQualifiedName(), err))
+		}
+	} else {
+		// Just make a backup of the file and don't write out anything new.
+		backupTarget(ctx, b.bucket, file, false)
+	}
+
+	// Also remove the tags file if it exists
+	if err := b.deleteStackTags(ctx, ref); err != nil {
+		// Log the error but don't fail the removal for this
+		logging.V(5).Infof("error deleting stack tags: %v", err)
+	}
 
 	historyDir := ref.HistoryDir()
-	return removeAllByPrefix(ctx, b.bucket, historyDir)
+	if err := removeAllByPrefix(ctx, b.bucket, historyDir); err != nil {
+		resultErr = errors.Join(resultErr,
+			fmt.Errorf("removing history for stack %s: %w", ref.FullyQualifiedName(), err))
+	}
+
+	return resultErr
+}
+
+// removeTargetAndBackup deletes the target file and its backup, if they exist.
+func removeTargetAndBackup(ctx context.Context, bucket Bucket, file string) error {
+	contract.Requiref(file != "", "file", "must not be empty")
+	var resultErr error
+	files := []string{file, file + ".bak"}
+	for _, f := range files {
+		if err := bucket.Delete(ctx, f); err != nil {
+			// Ignore NotFound errors, as the file may not exist.
+			if gcerrors.Code(err) != gcerrors.NotFound {
+				resultErr = errors.Join(resultErr, fmt.Errorf("removing file %s: %w", f, err))
+			}
+		}
+	}
+	return resultErr
 }
 
 // backupTarget makes a backup of an existing file, in preparation for writing a new one.
@@ -360,10 +497,10 @@ func (b *diyBackend) backupStack(ctx context.Context, ref *diyBackendReference) 
 	stackFile := filepath.Base(stackPath)
 	ext := filepath.Ext(stackFile)
 	base := strings.TrimSuffix(stackFile, ext)
-	if ext2 := filepath.Ext(base); ext2 != "" && ext == encoding.GZIPExt {
-		// base: stack-name.json, ext: .gz
+	if ext2 := filepath.Ext(base); ext2 != "" && (ext == encoding.GZIPExt || ext == encoding.ZSTDExt) {
+		// base: stack-name.json, ext: .gz|.zst
 		// ->
-		// base: stack-name, ext: .json.gz
+		// base: stack-name, ext: .json.gz|.json.zst
 		ext = ext2 + ext
 		base = strings.TrimSuffix(base, ext2)
 	}
@@ -380,37 +517,44 @@ func (b *diyBackend) stackPath(ctx context.Context, ref *diyBackendReference) st
 	// "dir" option to listBucket is always suffixed with "/". Also means we don't need to save any
 	// results in a slice.
 	plainPath := filepath.ToSlash(ref.StackBasePath()) + ".json"
-	gzipedPath := plainPath + ".gz"
+	gzipPath := plainPath + encoding.GZIPExt
+	zstdPath := plainPath + encoding.ZSTDExt
 
 	bucketIter := b.bucket.List(&blob.ListOptions{
 		Delimiter: "/",
 		Prefix:    plainPath,
 	})
 
-	var plainObj *blob.ListObject
+	type candidate struct {
+		path    string
+		modTime time.Time
+	}
+	var best *candidate
+
 	for {
 		file, err := bucketIter.Next(ctx)
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
-			// Error fetching the available ojects, assume .json
+			// Error fetching the available objects, assume .json
 			return plainPath
 		}
 
-		// plainObj will always come out first since allObjs is sorted by Key
-		if file.Key == plainPath {
-			plainObj = file
-		} else if file.Key == gzipedPath {
-			// We have a plain .json file and it was modified after this gzipped one so use it.
-			if plainObj != nil && plainObj.ModTime.After(file.ModTime) {
-				return plainPath
+		switch file.Key {
+		case plainPath, gzipPath, zstdPath:
+			if best == nil || !file.ModTime.Before(best.modTime) {
+				// Keep the most recently modified variant.
+				best = &candidate{path: file.Key, modTime: file.ModTime}
 			}
-			// else use the gzipped object
-			return gzipedPath
 		}
 	}
-	// Couldn't find any objects, assume nongzipped path?
+
+	if best != nil {
+		return best.path
+	}
+
+	// Couldn't find any objects, assume noncompressed path.
 	return plainPath
 }
 
@@ -446,7 +590,8 @@ func (b *diyBackend) getHistory(
 
 		// ignore checkpoints
 		if !strings.HasSuffix(filepath, ".history.json") &&
-			!strings.HasSuffix(filepath, ".history.json.gz") {
+			!strings.HasSuffix(filepath, ".history.json.gz") &&
+			!strings.HasSuffix(filepath, ".history.json.zst") {
 			continue
 		}
 
@@ -460,10 +605,7 @@ func (b *diyBackend) getHistory(
 			page = 1
 		}
 		start = (page - 1) * pageSize
-		end = start + pageSize - 1
-		if end > len(historyEntries)-1 {
-			end = len(historyEntries) - 1
-		}
+		end = min(start+pageSize-1, len(historyEntries)-1)
 	}
 
 	var updates []backend.UpdateInfo
@@ -477,10 +619,7 @@ func (b *diyBackend) getHistory(
 		if err != nil {
 			return nil, fmt.Errorf("reading history file %s: %w", filepath, err)
 		}
-		m := encoding.JSON
-		if encoding.IsCompressed(b) {
-			m = encoding.Gzip(m)
-		}
+		m := encoding.Compress(encoding.JSON, encoding.DetectCompression(b))
 		err = m.Unmarshal(b, &update)
 		if err != nil {
 			return nil, fmt.Errorf("reading history file %s: %w", filepath, err)
@@ -512,7 +651,7 @@ func (b *diyBackend) renameHistory(ctx context.Context, oldName, newName *diyBac
 		fileName := objectName(file)
 		oldBlob := path.Join(oldHistory, fileName)
 
-		// The filename format is <stack-name>-<timestamp>.[checkpoint|history].json[.gz], we need to change
+		// The filename format is <stack-name>-<timestamp>.[checkpoint|history].json[.gz|.zst], we need to change
 		// the stack name part but retain the other parts. If we find files that don't match this format
 		// ignore them.
 		dashIndex := strings.LastIndex(fileName, "-")
@@ -544,11 +683,8 @@ func (b *diyBackend) addToHistory(ctx context.Context, ref *diyBackendReference,
 	// Prefix for the update and checkpoint files.
 	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", ref.name, time.Now().UnixNano()))
 
-	m, ext := encoding.JSON, "json"
-	if b.gzip {
-		m = encoding.Gzip(m)
-		ext += ".gz"
-	}
+	m := encoding.Compress(diyJSONMarshaler, b.compression)
+	ext := "json" + b.compression.Ext()
 
 	// Save the history file.
 	byts, err := m.Marshal(&update)

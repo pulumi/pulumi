@@ -16,15 +16,15 @@ package fuzzing
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
 
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
 )
 
 // GenerateReproTest generates a string containing Go code for a set of lifecycle tests that reproduce the scenario
@@ -54,7 +54,7 @@ func GenerateReproTest(
 func writeHeader(b *strings.Builder) {
 	year := time.Now().Year()
 
-	b.WriteString(fmt.Sprintf(`// Copyright %d, Pulumi Corporation.
+	fmt.Fprintf(b, `// Copyright %d, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,7 +68,7 @@ func writeHeader(b *strings.Builder) {
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-`, year))
+`, year)
 }
 
 // writePackageImports writes a superset of the imports that we'll need for a generated lifecycle test.
@@ -84,11 +84,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 )
@@ -121,7 +122,7 @@ func (g *generator) writeLine(s string) {
 
 // writeLinef writes a formatted newline-prefixed line of Go code to the generator's strings.Builder, prefixed by the
 // current indentation level.
-func (g *generator) writeLinef(format string, args ...interface{}) {
+func (g *generator) writeLinef(format string, args ...any) {
 	g.writeLine(fmt.Sprintf(format, args...))
 }
 
@@ -236,7 +237,7 @@ func writeSnapshotTestFunction(
 			)
 
 			g.writeLine("")
-			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)")
+			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)")
 			g.writeBlock(
 				"reproOpts := lt.TestUpdateOptions{",
 				func(g *generator) {
@@ -245,6 +246,12 @@ func writeSnapshotTestFunction(
 					g.writeBlock(
 						"UpdateOptions: engine.UpdateOptions{",
 						func(g *generator) {
+							if planSpec.Refresh {
+								g.writeLine("Refresh: true,")
+							}
+							if planSpec.RefreshProgram {
+								g.writeLine("RefreshProgram: true,")
+							}
 							if len(planSpec.TargetURNs) > 0 {
 								g.writeBlock(
 									"Targets: deploy.NewUrnTargets([]string{",
@@ -269,6 +276,8 @@ func writeSnapshotTestFunction(
 				operation = "engine.Update"
 			case PlanOperationRefresh:
 				operation = "engine.Refresh"
+			case PlanOperationRefreshV2:
+				operation = "engine.RefreshV2"
 			case PlanOperationDestroy:
 				operation = "engine.Destroy"
 			case PlanOperationDestroyV2:
@@ -334,7 +343,7 @@ func writeFrameworkTestFunction(
 			)
 
 			g.writeLine("")
-			g.writeLine("setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, setupLoaders...)")
+			g.writeLine("setupHostF := deploytest.NewPluginHostF(nil, nil, setupProgramF, nil, nil, setupLoaders...)")
 			g.writeBlock(
 				"setupOpts := lt.TestUpdateOptions{",
 				func(g *generator) {
@@ -392,7 +401,7 @@ func writeFrameworkTestFunction(
 			)
 
 			g.writeLine("")
-			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)")
+			g.writeLine("reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)")
 			g.writeBlock(
 				"reproOpts := lt.TestUpdateOptions{",
 				func(g *generator) {
@@ -401,6 +410,12 @@ func writeFrameworkTestFunction(
 					g.writeBlock(
 						"UpdateOptions: engine.UpdateOptions{",
 						func(g *generator) {
+							if planSpec.Refresh {
+								g.writeLine("Refresh: true,")
+							}
+							if planSpec.RefreshProgram {
+								g.writeLine("RefreshProgram: true,")
+							}
 							if len(planSpec.TargetURNs) > 0 {
 								g.writeBlock(
 									"Targets: deploy.NewUrnTargets([]string{",
@@ -425,6 +440,8 @@ func writeFrameworkTestFunction(
 				operation = "engine.Update"
 			case PlanOperationRefresh:
 				operation = "engine.Refresh"
+			case PlanOperationRefreshV2:
+				operation = "engine.RefreshV2"
 			case PlanOperationDestroy:
 				operation = "engine.Destroy"
 			case PlanOperationDestroyV2:
@@ -449,7 +466,7 @@ func writeFrameworkTestFunction(
 //
 //	s := &deploy.Snapshot{}
 //
-//	res0 := &resource.State{
+//	res0 := &pkgresource.State{
 //	  Type: ...,
 //	  URN: ...,
 //	  ...
@@ -517,7 +534,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 
 			g.writeLine("")
 			g.writeBlock(
-				varFor(r.URN())+" := &resource.State{",
+				varFor(r.URN())+" := &pkgresource.State{",
 				func(g *generator) {
 					g.writeLinef("Type:               \"%s\",", r.Type)
 					g.writeLinef("URN:                \"%s\",", r.URN())
@@ -563,7 +580,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 
 					if len(r.PropertyDependencies) > 0 {
 						g.writeBlock(
-							"PropertyDeps: map[resource.PropertyKey][]resource.URN{",
+							"PropertyDependencies: map[resource.PropertyKey][]resource.URN{",
 							func(g *generator) {
 								for k, deps := range r.PropertyDependencies {
 									g.writeBlock(
@@ -601,7 +618,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 						g.writeBlock(
 							"Inputs: resource.PropertyMap{",
 							func(g *generator) {
-								g.writeLinef("\"__id\": resource.NewStringProperty(\"%s\"),", r.ID.String())
+								g.writeLinef("\"__id\": resource.NewProperty(\"%s\"),", r.ID.String())
 							},
 							"},",
 						)
@@ -627,8 +644,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 //	...
 func writeSetupLoaderElements(provSpec *ProviderSpec) func(g *generator) {
 	return func(g *generator) {
-		pkgs := maps.Keys(provSpec.Packages)
-		slices.Sort(pkgs)
+		pkgs := slices.Sorted(maps.Keys(provSpec.Packages))
 
 		for _, pkg := range pkgs {
 			g.writeBlock(
@@ -722,10 +738,10 @@ func writeResourceRegistrationStatements(t require.TestingT, rs []*ResourceSpec)
 					}
 
 					if r.Protect {
-						g.writeLine("Protect: true,")
+						g.writeLine("Protect: ptr(true),")
 					}
 					if r.RetainOnDelete {
-						g.writeLine("RetainOnDelete: true,")
+						g.writeLine("RetainOnDelete: ptr(true),")
 					}
 
 					if r.Provider != "" {
@@ -977,8 +993,7 @@ func writeUpdateFStatements(provSpec *ProviderSpec) func(g *generator) {
 
 func writeReproLoaderElements(provSpec *ProviderSpec) func(g *generator) {
 	return func(g *generator) {
-		pkgs := maps.Keys(provSpec.Packages)
-		slices.Sort(pkgs)
+		pkgs := slices.Sorted(maps.Keys(provSpec.Packages))
 
 		for _, pkg := range pkgs {
 			g.writeBlock(

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ export * from "./metadata";
 export * from "./output";
 export * from "./resource";
 export * from "./stackReference";
+export * from "./stash";
 
 // Export submodules individually.
 import * as asset from "./asset";

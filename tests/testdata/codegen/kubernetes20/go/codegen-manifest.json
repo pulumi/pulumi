@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "kubernetes/config/config.go",
     "kubernetes/core/v1/configMap.go",
     "kubernetes/core/v1/configMapList.go",

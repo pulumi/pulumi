@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package install
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -22,27 +23,36 @@ import (
 	"strings"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func NewInstallCmd() *cobra.Command {
+func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var reinstall bool
 	var noPlugins, noDependencies bool
 	var useLanguageVersionTools bool
+	var parallel int
 
 	cmd := &cobra.Command{
 		Use:   "install",
-		Args:  cmdutil.NoArgs,
 		Short: "Install packages and plugins for the current program or policy pack.",
 		Long: "Install packages and plugins for the current program or policy pack.\n" +
 			"\n" +
@@ -69,24 +79,69 @@ func NewInstallCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
-					return policy.InstallPolicyPackDependencies(ctx, root, proj)
+					return policy.InstallPluginDependencies(ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), root, proj.Runtime)
+				}
+			}
+
+			installPluginDeps, err := shouldInstallPluginDependencies()
+			if err != nil {
+				return err
+			}
+			if installPluginDeps {
+				// No project found, check if we are in a plugin project and install the plugin dependencies if so.
+				cwd, err := os.Getwd()
+				if err != nil {
+					return fmt.Errorf("getting the working directory: %w", err)
+				}
+				pluginPath, err := workspace.DetectPluginPathFrom(cwd)
+				if err == nil {
+					// We're in a plugin. First install the packages specified
+					// in the plugin project file, and then install the plugin's
+					// dependencies.
+
+					proj, err := workspace.LoadPluginProject(pluginPath)
+					if err != nil {
+						return err
+					}
+
+					// Cloud registry is linked to a backend, but we don't have one available in a
+					// plugin. Use the global default registry.
+					reg := cmdCmd.NewDefaultRegistry(
+						ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+					if _, err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
+						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global()); err != nil {
+						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
+					}
+
+					return policy.InstallPluginDependencies(
+						ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), filepath.Dir(pluginPath), proj.Runtime)
 				}
 			}
 
 			// Load the project
-			proj, root, err := pkgWorkspace.Instance.ReadProject()
+			proj, root, err := ws.ReadProject("")
 			if err != nil {
 				return err
 			}
 
 			span := opentracing.SpanFromContext(ctx)
 			projinfo := &engine.Projinfo{Proj: proj, Root: root}
+			reg := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
+			pluginHost, err := pkghost.New(
+				context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+				schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(reg))
+			if err != nil {
+				return err
+			}
+			defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 			pwd, main, pctx, err := engine.ProjectInfoContext(
+				ctx,
 				projinfo,
-				nil,
+				pluginHost,
 				cmdutil.Diag(),
 				cmdutil.Diag(),
-				nil,
 				false,
 				span,
 				nil,
@@ -99,43 +154,47 @@ func NewInstallCmd() *cobra.Command {
 
 			// Process packages section from Pulumi.yaml. Do so before installing language-specific dependencies,
 			// so that the SDKs folder is present and references to it from package.json etc are valid.
-			if err := installPackagesFromProject(pctx, proj, root); err != nil {
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, pctx.Diag, env.Global())
+			continuation, err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, root,
+				registry, parallel, useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(),
+			)
+			if err != nil {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)
+			}
+
+			if proj.Runtime.Name() == "" {
+				return nil
 			}
 
 			// First make sure the language plugin is present.  We need this to load the required resource plugins.
 			// TODO: we need to think about how best to version this.  For now, it always picks the latest.
 			runtime := proj.Runtime
-			programInfo := plugin.NewProgramInfo(pctx.Root, pwd, main, runtime.Options())
-			lang, err := pctx.Host.LanguageRuntime(runtime.Name(), programInfo)
+			lang, err := pctx.Host.LanguageRuntime(pctx, runtime.Name())
 			if err != nil {
 				return fmt.Errorf("load language plugin %s: %w", runtime.Name(), err)
 			}
 
+			programInfo := plugin.NewProgramInfo(pctx.Root, pwd, main, runtime.Options())
+
 			if !noDependencies {
-				err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
+				err = pkgCmdUtil.InstallDependencies(ctx, lang, plugin.InstallDependenciesRequest{
 					Info:                    programInfo,
 					UseLanguageVersionTools: useLanguageVersionTools,
-				})
+					IsPlugin:                false,
+				}, cmd.OutOrStdout(), cmd.ErrOrStderr())
 				if err != nil {
 					return fmt.Errorf("installing dependencies: %w", err)
 				}
 			}
 
 			if !noPlugins {
-				// Compute the set of plugins the current project needs.
-				packages, err := lang.GetRequiredPackages(programInfo)
+				// Pass the continuation from InstallPackagesFromProject so the packages it
+				// already installed and linked are not reinstalled or regenerated here.
+				err := newcmd.InstallRequiredPackages(ctx, pctx, proj, root, main,
+					continuation, parallel, useLanguageVersionTools, registry,
+					cmd.OutOrStderr(), cmd.ErrOrStderr())
 				if err != nil {
-					return err
-				}
-
-				pluginSet := engine.NewPluginSet()
-				for _, pkg := range packages {
-					pluginSet.Add(pkg.PluginSpec)
-				}
-
-				if err = engine.EnsurePluginsAreInstalled(ctx, nil, pctx.Diag, pluginSet,
-					pctx.Host.GetProjectPlugins(), reinstall, true); err != nil {
 					return err
 				}
 			}
@@ -143,7 +202,11 @@ func NewInstallCmd() *cobra.Command {
 			return nil
 		},
 	}
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
+	cmd.Flags().IntVar(&parallel,
+		"parallel", 4, "The max number of concurrent installs to perform. "+
+			"Parallelism of less than 1 implies unbounded parallelism")
 	cmd.PersistentFlags().BoolVar(&reinstall,
 		"reinstall", false, "Reinstall a plugin even if it already exists")
 	cmd.PersistentFlags().BoolVar(&noPlugins,
@@ -151,39 +214,9 @@ func NewInstallCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(&noDependencies,
 		"no-dependencies", false, "Skip installing dependencies")
 	cmd.PersistentFlags().BoolVar(&useLanguageVersionTools,
-		"use-language-version-tools", false, "Use language version tools to setup and install the language runtime")
+		"use-language-version-tools", false, "Use language version tools to set up and install the language runtime")
 
 	return cmd
-}
-
-// installPackagesFromProject processes packages specified in the Pulumi.yaml file
-// and installs them using similar logic to the 'pulumi package add' command
-func installPackagesFromProject(pctx *plugin.Context, proj *workspace.Project, root string) error {
-	packages := proj.GetPackageSpecs()
-	if len(packages) == 0 {
-		return nil
-	}
-
-	fmt.Println("Installing packages defined in Pulumi.yaml...")
-
-	for name, packageSpec := range packages {
-		fmt.Printf("Installing package '%s'...\n", name)
-
-		installSource := packageSpec.Source
-		if packageSpec.Version != "" {
-			installSource = fmt.Sprintf("%s@%s", installSource, packageSpec.Version)
-		}
-
-		err := packagecmd.InstallPackage(
-			pkgWorkspace.Instance, pctx, proj.Runtime.Name(), root, installSource, packageSpec.Parameters)
-		if err != nil {
-			return fmt.Errorf("failed to install package '%s': %w", name, err)
-		}
-
-		fmt.Printf("Package '%s' installed successfully\n", name)
-	}
-
-	return nil
 }
 
 func shouldInstallPolicyPackDependencies() (bool, error) {
@@ -199,7 +232,7 @@ func shouldInstallPolicyPackDependencies() (bool, error) {
 		// There's a PulumiPolicy.yaml in cwd or a parent folder. The policy pack might be nested
 		// within a project, or vice-vera, so we need to check if there's a Pulumi.yaml in a parent
 		// folder.
-		projectPath, err := workspace.DetectProjectPath()
+		projectPath, err := workspace.DetectProjectPathFrom(cwd)
 		if err != nil {
 			if errors.Is(err, workspace.ErrProjectNotFound) {
 				// No project found, we should install the dependencies for the policy pack.
@@ -215,4 +248,37 @@ func shouldInstallPolicyPackDependencies() (bool, error) {
 		return strings.Contains(basePolicyPackPath, baseProjectPath), nil
 	}
 	return false, nil
+}
+
+func shouldInstallPluginDependencies() (bool, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false, fmt.Errorf("getting the working directory: %w", err)
+	}
+	pluginPath, err := workspace.DetectPluginPathFrom(cwd)
+	pluginNotFound := errors.Is(err, workspace.ErrPluginNotFound)
+	if err != nil && !pluginNotFound {
+		return false, fmt.Errorf("detecting plugin path: %w", err)
+	}
+	if pluginNotFound {
+		return false, nil
+	}
+
+	// There's a PulumiPlugin.yaml in cwd or a parent folder. The plugin might be nested
+	// within a project, or vice-vera, so we need to check if there's a Pulumi.yaml in a parent
+	// folder.
+	projectPath, err := workspace.DetectProjectPathFrom(cwd)
+	if err != nil {
+		if errors.Is(err, workspace.ErrProjectNotFound) {
+			// No project found, we should install the dependencies for the plugin.
+			return true, nil
+		}
+		return false, fmt.Errorf("detecting project path: %w", err)
+	}
+	// We have both a project and a plugin. If the project path is a parent of the plugin
+	// path, we should install dependencies for the plugin, otherwise we should
+	// install dependencies for the project.
+	baseProjectPath := filepath.Dir(projectPath)
+	basePluginPath := filepath.Dir(pluginPath)
+	return strings.Contains(basePluginPath, baseProjectPath), nil
 }

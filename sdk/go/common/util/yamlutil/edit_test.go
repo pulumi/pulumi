@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,13 +19,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func assertYamlEdit(t *testing.T, original string, edited interface{}, expected string) {
+func assertYamlEdit(t *testing.T, original string, edited any, expected string) {
 	t.Helper()
 
 	actualValue, err := Edit([]byte(original), edited)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, strings.TrimSpace(expected), strings.TrimSpace(string(actualValue)))
 }

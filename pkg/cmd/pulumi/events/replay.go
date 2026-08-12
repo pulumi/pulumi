@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -49,7 +50,7 @@ func NewReplayEventsCmd() *cobra.Command {
 	var period time.Duration
 
 	cmd := &cobra.Command{
-		Use:   "replay-events [kind] [events-file]",
+		Use:   "replay-events <kind> <events-file>",
 		Short: "Replay events from a prior update, refresh, or destroy",
 		Long: "Replay events from a prior update, refresh, or destroy.\n" +
 			"\n" +
@@ -57,8 +58,9 @@ func NewReplayEventsCmd() *cobra.Command {
 			"invocation of the Pulumi CLI (e.g. `pulumi up --event-log [file]`).\n" +
 			"\n" +
 			"This command loads events from the indicated file and renders them\n" +
-			"using either the progress view or the diff view.\n",
-		Args:   cmdutil.ExactArgs(2),
+			"using either the progress view or the diff view.\n" +
+			"\n" +
+			"The <kind> argument must be one of: update, refresh, destroy, import.\n",
 		Hidden: !env.DebugCommands.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var action apitype.UpdateKind
@@ -124,7 +126,10 @@ func NewReplayEventsCmd() *cobra.Command {
 			return nil
 		},
 	}
-
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "kind"}, {Name: "events-file"}},
+		Required:  2,
+	})
 	cmd.PersistentFlags().BoolVarP(
 		&preview, "preview", "p", false,
 		"Must be set for events from a `pulumi preview`.")

@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 import * as pulumi from "@pulumi/pulumi";
 import * as provider from "@pulumi/pulumi/provider";
@@ -9,8 +9,8 @@ interface ComponentArgs {
 }
 
 class Component extends pulumi.ComponentResource {
-    public readonly first!: pulumi.Output<string>;
-    public readonly second!: pulumi.Output<string>;
+    declare public readonly first: pulumi.Output<string>;
+    declare public readonly second: pulumi.Output<string>;
 
     constructor(name: string, args: ComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         if (opts?.urn) {

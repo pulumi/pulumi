@@ -1,0 +1,1517 @@
+{
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "cyclic reference to a.p",
+            "Detail": "",
+            "Subject": {
+                "Filename": "cycle",
+                "Start": {
+                    "Line": 3,
+                    "Column": 8,
+                    "Byte": 20
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 14,
+                    "Byte": 26
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.a.p"
+        },
+        {
+            "Severity": 1,
+            "Summary": "cyclic reference to b.p",
+            "Detail": "",
+            "Subject": {
+                "Filename": "cycle",
+                "Start": {
+                    "Line": 5,
+                    "Column": 8,
+                    "Byte": 39
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 14,
+                    "Byte": 45
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.b.p"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "a": {
+                "range": {
+                    "environment": "cycle",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 17
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 14,
+                        "byte": 26
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "p": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "p"
+                    ]
+                },
+                "keyRanges": {
+                    "p": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 17
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 6,
+                            "byte": 18
+                        }
+                    }
+                },
+                "object": {
+                    "p": {
+                        "range": {
+                            "environment": "cycle",
+                            "begin": {
+                                "line": 3,
+                                "column": 8,
+                                "byte": 20
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 14,
+                                "byte": 26
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "a",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 10,
+                                        "byte": 22
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 11,
+                                        "byte": 23
+                                    }
+                                },
+                                "value": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 17
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 14,
+                                        "byte": 26
+                                    }
+                                }
+                            },
+                            {
+                                "key": "p",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 11,
+                                        "byte": 23
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 13,
+                                        "byte": 25
+                                    }
+                                },
+                                "value": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 8,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 14,
+                                        "byte": 26
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "b": {
+                "range": {
+                    "environment": "cycle",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 36
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 14,
+                        "byte": 45
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "p": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "p"
+                    ]
+                },
+                "keyRanges": {
+                    "p": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 36
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 6,
+                            "byte": 37
+                        }
+                    }
+                },
+                "object": {
+                    "p": {
+                        "range": {
+                            "environment": "cycle",
+                            "begin": {
+                                "line": 5,
+                                "column": 8,
+                                "byte": 39
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 14,
+                                "byte": 45
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "c",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 10,
+                                        "byte": 41
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 11,
+                                        "byte": 42
+                                    }
+                                },
+                                "value": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 5,
+                                        "byte": 55
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 14,
+                                        "byte": 64
+                                    }
+                                }
+                            },
+                            {
+                                "key": "p",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 11,
+                                        "byte": 42
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 13,
+                                        "byte": 44
+                                    }
+                                },
+                                "value": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 8,
+                                        "byte": 58
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 14,
+                                        "byte": 64
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "c": {
+                "range": {
+                    "environment": "cycle",
+                    "begin": {
+                        "line": 7,
+                        "column": 5,
+                        "byte": 55
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 14,
+                        "byte": 64
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "p": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "p"
+                    ]
+                },
+                "keyRanges": {
+                    "p": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 55
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 6,
+                            "byte": 56
+                        }
+                    }
+                },
+                "object": {
+                    "p": {
+                        "range": {
+                            "environment": "cycle",
+                            "begin": {
+                                "line": 7,
+                                "column": 8,
+                                "byte": 58
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 14,
+                                "byte": 64
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "b",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 10,
+                                        "byte": 60
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 61
+                                    }
+                                },
+                                "value": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 36
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 14,
+                                        "byte": 45
+                                    }
+                                }
+                            },
+                            {
+                                "key": "p",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 61
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 13,
+                                        "byte": 63
+                                    }
+                                },
+                                "value": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 8,
+                                        "byte": 39
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 14,
+                                        "byte": 45
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "properties": {
+            "a": {
+                "value": {
+                    "p": {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "cycle",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 8,
+                                    "byte": 20
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 14,
+                                    "byte": 26
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 17
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 14,
+                            "byte": 26
+                        }
+                    }
+                }
+            },
+            "b": {
+                "value": {
+                    "p": {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "cycle",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 8,
+                                    "byte": 39
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 14,
+                                    "byte": 45
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 36
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 14,
+                            "byte": 45
+                        }
+                    }
+                }
+            },
+            "c": {
+                "value": {
+                    "p": {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "cycle",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 8,
+                                    "byte": 58
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 14,
+                                    "byte": 64
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 55
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 14,
+                            "byte": 64
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "a": {
+                    "properties": {
+                        "p": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "p"
+                    ]
+                },
+                "b": {
+                    "properties": {
+                        "p": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "p"
+                    ]
+                },
+                "c": {
+                    "properties": {
+                        "p": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "p"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "a",
+                "b",
+                "c"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "cycle",
+                            "trace": {
+                                "def": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "cycle",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "cycle",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "cycle",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "cycle",
+                            "trace": {
+                                "def": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "cycle",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "cycle"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "cycle"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "a": {
+            "p": "[unknown]"
+        },
+        "b": {
+            "p": "[unknown]"
+        },
+        "c": {
+            "p": "[unknown]"
+        }
+    },
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "cyclic reference to a.p",
+            "Detail": "",
+            "Subject": {
+                "Filename": "cycle",
+                "Start": {
+                    "Line": 3,
+                    "Column": 8,
+                    "Byte": 20
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 14,
+                    "Byte": 26
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.a.p"
+        },
+        {
+            "Severity": 1,
+            "Summary": "cyclic reference to b.p",
+            "Detail": "",
+            "Subject": {
+                "Filename": "cycle",
+                "Start": {
+                    "Line": 5,
+                    "Column": 8,
+                    "Byte": 39
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 14,
+                    "Byte": 45
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.b.p"
+        }
+    ],
+    "eval": {
+        "exprs": {
+            "a": {
+                "range": {
+                    "environment": "cycle",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 17
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 14,
+                        "byte": 26
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "p": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "p"
+                    ]
+                },
+                "keyRanges": {
+                    "p": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 17
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 6,
+                            "byte": 18
+                        }
+                    }
+                },
+                "object": {
+                    "p": {
+                        "range": {
+                            "environment": "cycle",
+                            "begin": {
+                                "line": 3,
+                                "column": 8,
+                                "byte": 20
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 14,
+                                "byte": 26
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "a",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 10,
+                                        "byte": 22
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 11,
+                                        "byte": 23
+                                    }
+                                },
+                                "value": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 5,
+                                        "byte": 17
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 14,
+                                        "byte": 26
+                                    }
+                                }
+                            },
+                            {
+                                "key": "p",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 11,
+                                        "byte": 23
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 13,
+                                        "byte": 25
+                                    }
+                                },
+                                "value": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 8,
+                                        "byte": 20
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 14,
+                                        "byte": 26
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "b": {
+                "range": {
+                    "environment": "cycle",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 36
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 14,
+                        "byte": 45
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "p": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "p"
+                    ]
+                },
+                "keyRanges": {
+                    "p": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 36
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 6,
+                            "byte": 37
+                        }
+                    }
+                },
+                "object": {
+                    "p": {
+                        "range": {
+                            "environment": "cycle",
+                            "begin": {
+                                "line": 5,
+                                "column": 8,
+                                "byte": 39
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 14,
+                                "byte": 45
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "c",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 10,
+                                        "byte": 41
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 11,
+                                        "byte": 42
+                                    }
+                                },
+                                "value": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 5,
+                                        "byte": 55
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 14,
+                                        "byte": 64
+                                    }
+                                }
+                            },
+                            {
+                                "key": "p",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 11,
+                                        "byte": 42
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 13,
+                                        "byte": 44
+                                    }
+                                },
+                                "value": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 8,
+                                        "byte": 58
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 14,
+                                        "byte": 64
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "c": {
+                "range": {
+                    "environment": "cycle",
+                    "begin": {
+                        "line": 7,
+                        "column": 5,
+                        "byte": 55
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 14,
+                        "byte": 64
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "p": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "p"
+                    ]
+                },
+                "keyRanges": {
+                    "p": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 55
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 6,
+                            "byte": 56
+                        }
+                    }
+                },
+                "object": {
+                    "p": {
+                        "range": {
+                            "environment": "cycle",
+                            "begin": {
+                                "line": 7,
+                                "column": 8,
+                                "byte": 58
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 14,
+                                "byte": 64
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "b",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 10,
+                                        "byte": 60
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 61
+                                    }
+                                },
+                                "value": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 36
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 14,
+                                        "byte": 45
+                                    }
+                                }
+                            },
+                            {
+                                "key": "p",
+                                "range": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 61
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 13,
+                                        "byte": 63
+                                    }
+                                },
+                                "value": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 8,
+                                        "byte": 39
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 14,
+                                        "byte": 45
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "properties": {
+            "a": {
+                "value": {
+                    "p": {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "cycle",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 8,
+                                    "byte": 20
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 14,
+                                    "byte": 26
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 17
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 14,
+                            "byte": 26
+                        }
+                    }
+                }
+            },
+            "b": {
+                "value": {
+                    "p": {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "cycle",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 8,
+                                    "byte": 39
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 14,
+                                    "byte": 45
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 36
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 14,
+                            "byte": 45
+                        }
+                    }
+                }
+            },
+            "c": {
+                "value": {
+                    "p": {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "cycle",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 8,
+                                    "byte": 58
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 14,
+                                    "byte": 64
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "cycle",
+                        "begin": {
+                            "line": 7,
+                            "column": 5,
+                            "byte": 55
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 14,
+                            "byte": 64
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "a": {
+                    "properties": {
+                        "p": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "p"
+                    ]
+                },
+                "b": {
+                    "properties": {
+                        "p": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "p"
+                    ]
+                },
+                "c": {
+                    "properties": {
+                        "p": true
+                    },
+                    "type": "object",
+                    "required": [
+                        "p"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "a",
+                "b",
+                "c"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "cycle",
+                            "trace": {
+                                "def": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "cycle",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "cycle",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "cycle",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "cycle",
+                            "trace": {
+                                "def": {
+                                    "environment": "cycle",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "cycle",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "cycle"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "cycle"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "a": {
+            "p": "[unknown]"
+        },
+        "b": {
+            "p": "[unknown]"
+        },
+        "c": {
+            "p": "[unknown]"
+        }
+    },
+    "evalJSONRevealed": {
+        "a": {
+            "p": "[unknown]"
+        },
+        "b": {
+            "p": "[unknown]"
+        },
+        "c": {
+            "p": "[unknown]"
+        }
+    }
+}

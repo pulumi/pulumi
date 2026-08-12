@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,18 +18,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
-	"strings"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -52,7 +58,7 @@ type ImportState struct {
 
 	// A snapshot of the resources in the Pulumi program that new resources are being imported to. This is used to resolve
 	// references to packages providers.
-	Snapshot []*resource.State
+	Snapshot []*pkgresource.State
 }
 
 // filterReferences filters out self-references from the import state so that if a resource has a property
@@ -76,20 +82,22 @@ func filterReferences(resourceName string, importState ImportState) ImportState 
 }
 
 // GenerateHCL2Definition generates a Pulumi HCL2 definition for a given resource.
+//
+// GenerateHCL2Definition will drop map entries who's type doesn't conform to the schema type.
 func GenerateHCL2Definition(
 	loader schema.Loader,
-	state *resource.State,
+	state *pkgresource.State,
 	importState ImportState,
 ) (*model.Block, *schema.PackageDescriptor, error) {
 	// First up, we'll need to load the appropriate package for this resource. We'll do this by grabbing the resource's
 	// provider reference and looking up that provider resource in the current program snapshot. From there, we can build
 	// a package descriptor and load the package and its schema.
-	providerRef, err := providers.ParseReference(state.Provider)
+	providerRef, err := sdkproviders.ParseReference(state.Provider)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse resource provider reference: %w", err)
 	}
 
-	var provider *resource.State
+	var provider *pkgresource.State
 	for _, s := range importState.Snapshot {
 		if s.URN == providerRef.URN() && s.ID == providerRef.ID() {
 			provider = s
@@ -101,6 +109,12 @@ func GenerateHCL2Definition(
 	}
 
 	packageName := state.Type.Package()
+	if sdkproviders.IsProviderType(state.Type) {
+		// When the type is a provider type, the type triple is in the form
+		// pulumi:providers:pkg instead of pkg:mod:type, so use the token "name"
+		// position as the package instead.
+		packageName = tokens.Package(state.Type.Name())
+	}
 	pluginName, err := providers.GetProviderName(packageName, provider.Inputs)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get provider name: %w", err)
@@ -150,7 +164,14 @@ func GenerateHCL2Definition(
 
 	// With the package loaded, we can get the full resource schema and use that to generate an appropriate HCL2
 	// definition.
-	r, ok, err := pkg.Resources().Get(string(state.Type))
+	var r *schema.Resource
+	ok := true
+	if sdkproviders.IsProviderType(state.Type) {
+		r, err = pkg.Provider()
+	} else {
+		r, ok, err = pkg.Resources().Get(string(state.Type))
+	}
+
 	if err != nil {
 		return nil, nil, fmt.Errorf("loading resource '%v': %w", state.Type, err)
 	}
@@ -159,22 +180,26 @@ func GenerateHCL2Definition(
 	}
 
 	var items []model.BodyItem
-	name := sanitizeName(state.URN.Name())
+	name := state.URN.Name()
 	// Check if _this_ urn is in the name table, if so we need to set logicalName and use the mapped name for
 	// the resource block.
 	if mappedName, ok := importState.Names[state.URN]; ok {
-		items = append(items, &model.Attribute{
-			Name: "__logicalName",
-			Value: &model.TemplateExpression{
-				Parts: []model.Expression{
-					&model.LiteralValueExpression{
-						Value: cty.StringVal(state.URN.Name()),
+		if mappedName != name {
+			items = append(items, &model.Attribute{
+				Name: "__logicalName",
+				Value: &model.TemplateExpression{
+					Parts: []model.Expression{
+						&model.LiteralValueExpression{
+							Value: cty.StringVal(state.URN.Name()),
+						},
 					},
 				},
-			},
-		})
-		name = sanitizeName(mappedName)
+			})
+		}
+		name = mappedName
 	}
+
+	contract.Assertf(sanitizeName(name) == name, "names should be sanitized by this point")
 
 	// keep track of a set of added references to avoid adding the same reference to the dependsOn list
 	// when the resource is already implicitly referenced via its properties
@@ -186,7 +211,8 @@ func GenerateHCL2Definition(
 	importStateContext := filterReferences(name, importState)
 	for _, p := range r.InputProperties {
 		input := state.Inputs[resource.PropertyKey(p.Name)]
-		x, err := generatePropertyValue(p, input, importStateContext, onReferenceFound)
+		inputV := resource.FromResourcePropertyValue(input)
+		x, err := generatePropertyValue(p, inputV, importStateContext, onReferenceFound)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -240,7 +266,12 @@ func appendResourceOption(block *model.Block, name string, value model.Expressio
 	return block
 }
 
-func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[string]bool) (*model.Block, error) {
+// makeResourceOptions reads in the resource state and generates an hcl2 block for serializing into
+// the Resource API. Serialization/Deserialization of the resource is handled by apitype package.
+//
+// The corresponding binding pcl function to read these is bindResourceOptions
+// which reads out these options.
+func makeResourceOptions(state *pkgresource.State, names NameTable, addedRefs map[string]bool) (*model.Block, error) {
 	var resourceOptions *model.Block
 	if state.Parent != "" && state.Parent.QualifiedType() != resource.RootStackType {
 		name, ok := names[state.Parent]
@@ -250,11 +281,11 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 		resourceOptions = appendResourceOption(resourceOptions, "parent", newVariableReference(name))
 	}
 	if state.Provider != "" {
-		ref, err := providers.ParseReference(state.Provider)
+		ref, err := sdkproviders.ParseReference(state.Provider)
 		if err != nil {
 			return nil, fmt.Errorf("invalid provider reference %v: %w", state.Provider, err)
 		}
-		if !providers.IsDefaultProvider(ref.URN()) {
+		if !sdkproviders.IsDefaultProvider(ref.URN()) {
 			name, ok := names[ref.URN()]
 			if !ok {
 				return nil, fmt.Errorf("no name for provider %v", state.Provider)
@@ -288,6 +319,65 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 			Value:  cty.True,
 		})
 	}
+	if state.RetainOnDelete {
+		resourceOptions = appendResourceOption(resourceOptions, "retainOnDelete", &model.LiteralValueExpression{
+			Tokens: syntax.NewLiteralValueTokens(cty.True),
+			Value:  cty.True,
+		})
+	}
+	if len(state.IgnoreChanges) > 0 {
+		ignoreChanges := make([]model.Expression, len(state.IgnoreChanges))
+		for i, prop := range state.IgnoreChanges {
+			v := cty.StringVal(prop)
+			ignoreChanges[i] = &model.LiteralValueExpression{
+				Tokens: syntax.NewLiteralValueTokens(v),
+				Value:  v,
+			}
+		}
+		resourceOptions = appendResourceOption(resourceOptions, "ignoreChanges", &model.TupleConsExpression{
+			Tokens:      syntax.NewTupleConsTokens(len(ignoreChanges)),
+			Expressions: ignoreChanges,
+		})
+	}
+	if state.DeletedWith != "" {
+		name, ok := names[state.DeletedWith]
+		if !ok {
+			return nil, fmt.Errorf("no name for deletedWith %v", state.DeletedWith)
+		}
+		resourceOptions = appendResourceOption(resourceOptions, "deletedWith", newVariableReference(name))
+	}
+	if len(state.ReplaceWith) > 0 {
+		newReplaceWith := make([]model.Expression, len(state.ReplaceWith))
+		for i, replaceWith := range state.ReplaceWith {
+			name, ok := names[replaceWith]
+			if !ok {
+				return nil, fmt.Errorf("no name for replaceWith %v", replaceWith)
+			}
+
+			newReplaceWith[i] = newVariableReference(name)
+		}
+		resourceOptions = appendResourceOption(resourceOptions, "replaceWith", &model.TupleConsExpression{
+			Tokens:      syntax.NewTupleConsTokens(len(newReplaceWith)),
+			Expressions: newReplaceWith,
+		})
+	}
+	if state.ImportID != "" {
+		// Using the name import to match the name used in the SDKs,
+		// see https://www.pulumi.com/docs/iac/concepts/options/import/
+		v := cty.StringVal(state.ImportID.String())
+		resourceOptions = appendResourceOption(
+			resourceOptions,
+			"import",
+			&model.TemplateExpression{
+				Parts: []model.Expression{
+					&model.LiteralValueExpression{
+						Value: v,
+					},
+				},
+			},
+		)
+	}
+
 	return resourceOptions, nil
 }
 
@@ -471,15 +561,15 @@ func zeroValue(t schema.Type) model.Expression {
 	}
 	switch t {
 	case schema.BoolType:
-		x, err := generateValue(t, resource.NewBoolProperty(false), emptyImportState, onReferenceAdded)
+		x, err := generateValue(t, property.New(false), emptyImportState, onReferenceAdded)
 		contract.IgnoreError(err)
 		return x
 	case schema.IntType, schema.NumberType:
-		x, err := generateValue(t, resource.NewNumberProperty(0), emptyImportState, onReferenceAdded)
+		x, err := generateValue(t, property.New(0.0), emptyImportState, onReferenceAdded)
 		contract.IgnoreError(err)
 		return x
 	case schema.StringType:
-		x, err := generateValue(t, resource.NewStringProperty(""), emptyImportState, onReferenceAdded)
+		x, err := generateValue(t, property.New(""), emptyImportState, onReferenceAdded)
 		contract.IgnoreError(err)
 		return x
 	case schema.ArchiveType, schema.AssetType:
@@ -495,13 +585,15 @@ func zeroValue(t schema.Type) model.Expression {
 // generatePropertyValue generates the value for the given property. If the value is absent and the property is
 // required, a zero value for the property's type is generated. If the value is absent and the property is not
 // required, no value is generated (i.e. this function returns nil).
+//
+// If the property represents a map and a value doesn't conform to the map shape, it is omitted.
 func generatePropertyValue(
 	property *schema.Property,
-	value resource.PropertyValue,
+	value property.Value,
 	importState ImportState,
 	onReferenceFound func(string),
 ) (model.Expression, error) {
-	if !value.HasValue() {
+	if value.IsComputed() || value.IsNull() {
 		if !property.IsRequired() {
 			return nil, nil
 		}
@@ -512,24 +604,53 @@ func generatePropertyValue(
 }
 
 // valueStructurallyTypedAs returns true if the given value is structurally typed as the given schema type.
-func valueStructurallyTypedAs(value resource.PropertyValue, schemaType schema.Type) bool {
-	if union, ok := schemaType.(*schema.UnionType); ok {
-		schemaType = reduceUnionType(union, value)
+func valueStructurallyTypedAs(value property.Value, schemaType schema.Type) bool {
+removeNonStructuralTypes:
+	for {
+		switch t := schemaType.(type) {
+		case *schema.InputType:
+			schemaType = t.ElementType
+		case *schema.OptionalType:
+			if value.IsNull() {
+				return true
+			}
+			schemaType = t.ElementType
+		case *schema.EnumType:
+			schemaType = t.ElementType
+		case *schema.UnionType:
+			schemaType = reduceUnionType(t, value)
+		default:
+			break removeNonStructuralTypes
+		}
+	}
+
+	// AnyType, JSONType, and AnyResourceType all share the "pulumi:pulumi:Any"
+	// token but are distinct singletons. Each one accepts any value at the
+	// structural level, so short-circuit them together.
+	if schemaType == schema.AnyType || schemaType == schema.JSONType || schemaType == schema.AnyResourceType {
+		return true
 	}
 
 	switch {
-	case value.IsObject():
+	case value.IsMap():
 		switch arg := schemaType.(type) {
+		case *schema.MapType:
+			for _, vv := range value.AsMap().All {
+				if !valueStructurallyTypedAs(vv, arg.ElementType) {
+					return false
+				}
+			}
+			return true
 		case *schema.ObjectType:
 			schemaProperties := make(map[string]schema.Type)
 			for _, schemaProperty := range arg.Properties {
 				schemaProperties[schemaProperty.Name] = schemaProperty.Type
 			}
 
-			objectProperties := value.ObjectValue()
+			objectProperties := value.AsMap()
 			// check that each property is present in the schema and that the value is structurally typed as well
-			for propertyKey, propertyValue := range objectProperties {
-				propertyValueSchema, ok := arg.Property(string(propertyKey))
+			for propertyKey, propertyValue := range objectProperties.All {
+				propertyValueSchema, ok := arg.Property(propertyKey)
 				if !ok {
 					// unknown property
 					return false
@@ -543,7 +664,7 @@ func valueStructurallyTypedAs(value resource.PropertyValue, schemaType schema.Ty
 			// check that all required properties from the schema are present in the object properties
 			for _, schemaProperty := range arg.Properties {
 				if schemaProperty.IsRequired() {
-					if _, ok := objectProperties[resource.PropertyKey(schemaProperty.Name)]; !ok {
+					if _, ok := objectProperties.GetOk(schemaProperty.Name); !ok {
 						// the required property was not present in the object
 						return false
 					}
@@ -614,7 +735,7 @@ func valueStructurallyTypedAs(value resource.PropertyValue, schemaType schema.Ty
 		// basic case: check that each element in the array is structurally typed as the element type of the schenma array
 		switch arg := schemaType.(type) {
 		case *schema.ArrayType:
-			for _, element := range value.ArrayValue() {
+			for _, element := range value.AsArray().All {
 				if !valueStructurallyTypedAs(element, arg.ElementType) {
 					return false
 				}
@@ -630,6 +751,42 @@ func valueStructurallyTypedAs(value resource.PropertyValue, schemaType schema.Ty
 				}
 			}
 		}
+
+	case value.IsArchive():
+		if schemaType == schema.ArchiveType {
+			return true
+		}
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
+
+	case value.IsAsset():
+		if schemaType == schema.AssetType {
+			return true
+		}
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
+
+	case value.IsResourceReference():
+		if _, ok := schemaType.(*schema.ResourceType); ok {
+			return true
+		}
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
 	}
 
 	return false
@@ -638,9 +795,9 @@ func valueStructurallyTypedAs(value resource.PropertyValue, schemaType schema.Ty
 // reduceUnionType reduces the given union type to a simpler type that potentially matches the value.
 // When the value type is primitive, choose the first element type of the union elements that is of the same type.
 // When the value is an object, use the discriminator to choose the element type.
-func reduceUnionType(schemaUnion *schema.UnionType, value resource.PropertyValue) schema.Type {
+func reduceUnionType(schemaUnion *schema.UnionType, value property.Value) schema.Type {
 	switch {
-	case value.IsObject():
+	case value.IsMap():
 		// return the first element type that matches structurally fits the value
 		findBestFitType := func() schema.Type {
 			for _, t := range schemaUnion.ElementTypes {
@@ -658,8 +815,8 @@ func reduceUnionType(schemaUnion *schema.UnionType, value resource.PropertyValue
 			return findBestFitType()
 		}
 
-		obj := value.ObjectValue()
-		discriminatorValue, ok := obj[resource.PropertyKey(schemaUnion.Discriminator)]
+		obj := value.AsMap()
+		discriminatorValue, ok := obj.GetOk(schemaUnion.Discriminator)
 		if !ok {
 			// discriminator property is not present
 			// return the first type that fits the value
@@ -672,7 +829,7 @@ func reduceUnionType(schemaUnion *schema.UnionType, value resource.PropertyValue
 			return findBestFitType()
 		}
 
-		correspondingTypeToken, ok := schemaUnion.Mapping[discriminatorValue.StringValue()]
+		correspondingTypeToken, ok := schemaUnion.Mapping[discriminatorValue.AsString()]
 		if !ok {
 			// discriminator property value is not a key in the union mapping,
 			return findBestFitType()
@@ -722,7 +879,7 @@ func reduceUnionType(schemaUnion *schema.UnionType, value resource.PropertyValue
 // given value.
 func generateValue(
 	typ schema.Type,
-	value resource.PropertyValue,
+	value property.Value,
 	importState ImportState,
 	onReferenceFound func(string),
 ) (model.Expression, error) {
@@ -734,16 +891,16 @@ func generateValue(
 
 	switch {
 	case value.IsArchive():
-		return nil, errors.New("NYI: archives")
+		return generateArchive(value.AsArchive())
 	case value.IsArray():
 		elementType := schema.AnyType
 		if typ, ok := typ.(*schema.ArrayType); ok {
 			elementType = typ.ElementType
 		}
 
-		arr := value.ArrayValue()
-		exprs := make([]model.Expression, len(arr))
-		for i, v := range arr {
+		arr := value.AsArray()
+		exprs := make([]model.Expression, arr.Len())
+		for i, v := range arr.All {
 			x, err := generateValue(elementType, v, importState, onReferenceFound)
 			if err != nil {
 				return nil, err
@@ -755,27 +912,27 @@ func generateValue(
 			Expressions: exprs,
 		}, nil
 	case value.IsAsset():
-		return nil, errors.New("NYI: assets")
+		return generateAsset(value.AsAsset())
 	case value.IsBool():
 		return &model.LiteralValueExpression{
-			Value: cty.BoolVal(value.BoolValue()),
+			Value: cty.BoolVal(value.AsBool()),
 		}, nil
-	case value.IsComputed() || value.IsOutput():
+	case value.IsComputed():
 		return nil, errors.New("cannot define computed values")
 	case value.IsNull():
 		return model.VariableReference(Null), nil
 	case value.IsNumber():
 		return &model.LiteralValueExpression{
-			Value: cty.NumberFloatVal(value.NumberValue()),
+			Value: cty.NumberFloatVal(value.AsNumber()),
 		}, nil
-	case value.IsObject():
-		obj := value.ObjectValue()
-		items := slice.Prealloc[model.ObjectConsItem](len(obj))
+	case value.IsMap():
+		obj := value.AsMap()
+		items := slice.Prealloc[model.ObjectConsItem](obj.Len())
 
 		switch arg := typ.(type) {
 		case *schema.ObjectType:
 			for _, p := range arg.Properties {
-				x, err := generatePropertyValue(p, obj[resource.PropertyKey(p.Name)], importState, onReferenceFound)
+				x, err := generatePropertyValue(p, obj.Get(p.Name), importState, onReferenceFound)
 				if err != nil {
 					return nil, err
 				}
@@ -795,23 +952,20 @@ func generateValue(
 				elementType = mapType.ElementType
 			}
 
-			for _, k := range obj.StableKeys() {
-				// Ignore internal properties.
-				if strings.HasPrefix(string(k), "__") {
+			for k, v := range obj.AllStable {
+				if !valueStructurallyTypedAs(v, elementType) {
+					slog.Info("dropped non-conforming value from object type",
+						slog.Any("expected-type", elementType), slog.Any("found-value", v))
 					continue
 				}
-
-				x, err := generateValue(elementType, obj[k], importState, onReferenceFound)
+				x, err := generateValue(elementType, v, importState, onReferenceFound)
 				if err != nil {
 					return nil, err
 				}
 
-				// Always quote the key in case it includes invalid identifier characters (like '/' or ':')
-				propKey := fmt.Sprintf("%q", string(k))
-
 				items = append(items, model.ObjectConsItem{
 					Key: &model.LiteralValueExpression{
-						Value: cty.StringVal(propKey),
+						Value: cty.StringVal(`"` + model.EscapeString(k) + `"`),
 					},
 					Value: x,
 				})
@@ -821,8 +975,8 @@ func generateValue(
 			Tokens: syntax.NewObjectConsTokens(len(items)),
 			Items:  items,
 		}, nil
-	case value.IsSecret():
-		arg, err := generateValue(typ, value.SecretValue().Element, importState, onReferenceFound)
+	case value.Secret():
+		arg, err := generateValue(typ, value.WithSecret(false), importState, onReferenceFound)
 		if err != nil {
 			return nil, err
 		}
@@ -841,7 +995,7 @@ func generateValue(
 		x := &model.TemplateExpression{
 			Parts: []model.Expression{
 				&model.LiteralValueExpression{
-					Value: cty.StringVal(value.StringValue()),
+					Value: cty.StringVal(value.AsString()),
 				},
 			},
 		}
@@ -858,7 +1012,7 @@ func generateValue(
 			}, nil
 		default:
 			for _, pathedValue := range importState.PathedLiteralValues {
-				if pathedValue.Value == value.StringValue() {
+				if pathedValue.Value == value.AsString() {
 					onReferenceFound(pathedValue.Root)
 					return pathedValue.ExpressionReference, nil
 				}
@@ -870,4 +1024,82 @@ func generateValue(
 		contract.Failf("unexpected property value %v", value)
 		return nil, nil
 	}
+}
+
+// stringLiteralCall builds an HCL call to fn with a single string argument.
+func stringLiteralCall(fn, s string) *model.FunctionCallExpression {
+	return &model.FunctionCallExpression{
+		Name: fn,
+		Args: []model.Expression{
+			&model.TemplateExpression{
+				Parts: []model.Expression{
+					&model.LiteralValueExpression{
+						Value: cty.StringVal(s),
+					},
+				},
+			},
+		},
+	}
+}
+
+// generateAsset emits a PCL function call that constructs the given asset.
+func generateAsset(a *asset.Asset) (model.Expression, error) {
+	switch {
+	case a.IsText():
+		text, _ := a.GetText()
+		return stringLiteralCall("stringAsset", text), nil
+	case a.IsPath():
+		path, _ := a.GetPath()
+		return stringLiteralCall("fileAsset", path), nil
+	case a.IsURI():
+		uri, _ := a.GetURI()
+		return stringLiteralCall("remoteAsset", uri), nil
+	}
+	return nil, errors.New("asset has no text, path, or uri")
+}
+
+// generateArchive emits a PCL function call that constructs the given archive.
+func generateArchive(a *archive.Archive) (model.Expression, error) {
+	switch {
+	case a.IsAssets():
+		assets, _ := a.GetAssets()
+		items := slice.Prealloc[model.ObjectConsItem](len(assets))
+		for k, v := range assets {
+			var elem model.Expression
+			var err error
+			switch v := v.(type) {
+			case *asset.Asset:
+				elem, err = generateAsset(v)
+			case *archive.Archive:
+				elem, err = generateArchive(v)
+			default:
+				return nil, fmt.Errorf("unexpected archive entry type %T", v)
+			}
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, model.ObjectConsItem{
+				Key: &model.LiteralValueExpression{
+					Value: cty.StringVal(fmt.Sprintf("%q", k)),
+				},
+				Value: elem,
+			})
+		}
+		return &model.FunctionCallExpression{
+			Name: "assetArchive",
+			Args: []model.Expression{
+				&model.ObjectConsExpression{
+					Tokens: syntax.NewObjectConsTokens(len(items)),
+					Items:  items,
+				},
+			},
+		}, nil
+	case a.IsPath():
+		path, _ := a.GetPath()
+		return stringLiteralCall("fileArchive", path), nil
+	case a.IsURI():
+		uri, _ := a.GetURI()
+		return stringLiteralCall("remoteArchive", uri), nil
+	}
+	return nil, errors.New("archive has no assets, path, or uri")
 }

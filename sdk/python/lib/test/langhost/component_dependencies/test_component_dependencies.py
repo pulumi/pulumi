@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,11 +19,13 @@ from ..util import LanghostTest
 class ComponentDependenciesTest(LanghostTest):
     def test_component_dependencies(self):
         environ["PULUMI_ERROR_ON_DEPENDENCY_CYCLES"] = "false"
-        self.run_test(
-            program=path.join(self.base_path(), "component_dependencies"),
-            expected_resource_count=16,
-        )
-        del environ["PULUMI_ERROR_ON_DEPENDENCY_CYCLES"]
+        try:
+            self.run_test(
+                program=path.join(self.base_path(), "component_dependencies"),
+                expected_resource_count=16,
+            )
+        finally:
+            del environ["PULUMI_ERROR_ON_DEPENDENCY_CYCLES"]
 
     def register_resource(
         self,
@@ -45,6 +47,7 @@ class ComponentDependenciesTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         if name == "resD":
             self.assertListEqual(_dependencies, ["resA"], msg=f"{name}._dependencies")

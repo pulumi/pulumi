@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package stack
 
 import (
 	"fmt"
+	"io"
 	"sort"
 
 	"github.com/spf13/cobra"
@@ -23,12 +24,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
+
+type stackTagsRenderFunc func(w io.Writer, tags map[apitype.StackTagName]string) error
 
 func newStackTagCmd() *cobra.Command {
 	var stack string
@@ -42,27 +47,28 @@ func newStackTagCmd() *cobra.Command {
 			"and value. The `get`, `ls`, `rm`, and `set` commands can be used to manage tags.\n" +
 			"Some tags are automatically assigned based on the environment each time a stack\n" +
 			"is updated.\n",
-		Args: cmdutil.NoArgs,
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 
 	cmd.AddCommand(newStackTagGetCmd(&stack))
-	cmd.AddCommand(newStackTagLsCmd(&stack))
-	cmd.AddCommand(newStackTagRmCmd(&stack))
+	cmd.AddCommand(newStackTagListCmd(&stack))
+	cmd.AddCommand(newStackTagRemoveCmd(&stack))
 	cmd.AddCommand(newStackTagSetCmd(&stack))
 
 	return cmd
 }
 
 func newStackTagGetCmd(stack *string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "get <name>",
+	cmd := &cobra.Command{
+		Use:   "get",
 		Short: "Get a single stack tag value",
-		Args:  cmdutil.SpecificArgs([]string{"name"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			name := args[0]
 
@@ -71,40 +77,55 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 			}
 			s, err := RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
 			}
 
-			b := s.Backend()
-			if !b.SupportsTags() {
-				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
-			}
-
 			tags := s.Tags()
 			if value, ok := tags[name]; ok {
-				fmt.Printf("%v\n", value)
+				fmt.Fprintf(cmd.OutOrStdout(), "%v\n", value)
 				return nil
 			}
 
 			return fmt.Errorf("stack tag '%s' not found for stack '%s'", name, s.Ref())
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "name"},
+		},
+		Required: 1,
+	})
+
+	return cmd
 }
 
-func newStackTagLsCmd(stack *string) *cobra.Command {
-	var jsonOut bool
+func newStackTagListCmd(stack *string) *cobra.Command {
+	output := outputflag.OutputFlag[stackTagsRenderFunc]{
+		RenderForTerminal: func(w io.Writer, tags map[apitype.StackTagName]string) error {
+			printStackTags(w, tags)
+			return nil
+		},
+		RenderJSON: func(w io.Writer, tags map[apitype.StackTagName]string) error {
+			return ui.FprintJSON(w, tags)
+		},
+	}
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List all stack tags",
-		Args:  cmdutil.NoArgs,
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List all stack tags",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -112,39 +133,32 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 
 			s, err := RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
 				SetCurrent,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
 			}
 
-			b := s.Backend()
-			if !b.SupportsTags() {
-				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
-			}
-
 			tags := s.Tags()
 
-			if jsonOut {
-				return ui.PrintJSON(tags)
-			}
-
-			printStackTags(tags)
-			return nil
+			return output.Get()(cmd.OutOrStdout(), tags)
 		},
 	}
 
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
+	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 
 	return cmd
 }
 
-func printStackTags(tags map[apitype.StackTagName]string) {
+func printStackTags(w io.Writer, tags map[apitype.StackTagName]string) {
 	names := slice.Prealloc[string](len(tags))
 	for n := range tags {
 		names = append(names, n)
@@ -156,19 +170,20 @@ func printStackTags(tags map[apitype.StackTagName]string) {
 		rows = append(rows, cmdutil.TableRow{Columns: []string{name, tags[name]}})
 	}
 
-	ui.PrintTable(cmdutil.Table{
+	ui.FprintTable(w, cmdutil.Table{
 		Headers: []string{"NAME", "VALUE"},
 		Rows:    rows,
 	}, nil)
 }
 
-func newStackTagRmCmd(stack *string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "rm <name>",
-		Short: "Remove a stack tag",
-		Args:  cmdutil.SpecificArgs([]string{"name"}),
+func newStackTagRemoveCmd(stack *string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "remove",
+		Aliases: []string{"rm", "delete"},
+		Short:   "Remove a stack tag",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			name := args[0]
 
@@ -177,19 +192,16 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 			}
 			s, err := RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
 				SetCurrent,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
-			}
-
-			b := s.Backend()
-			if !b.SupportsTags() {
-				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
 			}
 
 			tags := s.Tags()
@@ -198,15 +210,24 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 			return backend.UpdateStackTags(ctx, s, tags)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "name"},
+		},
+		Required: 1,
+	})
+
+	return cmd
 }
 
 func newStackTagSetCmd(stack *string) *cobra.Command {
-	return &cobra.Command{
-		Use:   "set <name> <value>",
+	cmd := &cobra.Command{
+		Use:   "set",
 		Short: "Set a stack tag",
-		Args:  cmdutil.SpecificArgs([]string{"name", "value"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			name := args[0]
 			value := args[1]
@@ -216,19 +237,16 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			}
 			s, err := RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
 				SetCurrent,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
-			}
-
-			b := s.Backend()
-			if !b.SupportsTags() {
-				return fmt.Errorf("the current backend (%s) does not support stack tags", b.Name())
 			}
 
 			tags := s.Tags()
@@ -240,4 +258,14 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			return backend.UpdateStackTags(ctx, s, tags)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "name"},
+			{Name: "value"},
+		},
+		Required: 2,
+	})
+
+	return cmd
 }

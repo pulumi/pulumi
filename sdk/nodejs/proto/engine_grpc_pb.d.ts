@@ -14,6 +14,7 @@ interface IEngineService extends grpc.ServiceDefinition<grpc.UntypedServiceImple
     getRootResource: IEngineService_IGetRootResource;
     setRootResource: IEngineService_ISetRootResource;
     startDebugging: IEngineService_IStartDebugging;
+    requirePulumiVersion: IEngineService_IRequirePulumiVersion;
 }
 
 interface IEngineService_ILog extends grpc.MethodDefinition<pulumi_engine_pb.LogRequest, google_protobuf_empty_pb.Empty> {
@@ -52,6 +53,15 @@ interface IEngineService_IStartDebugging extends grpc.MethodDefinition<pulumi_en
     responseSerialize: grpc.serialize<google_protobuf_empty_pb.Empty>;
     responseDeserialize: grpc.deserialize<google_protobuf_empty_pb.Empty>;
 }
+interface IEngineService_IRequirePulumiVersion extends grpc.MethodDefinition<pulumi_engine_pb.RequirePulumiVersionRequest, pulumi_engine_pb.RequirePulumiVersionResponse> {
+    path: "/pulumirpc.Engine/RequirePulumiVersion";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_engine_pb.RequirePulumiVersionRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_engine_pb.RequirePulumiVersionRequest>;
+    responseSerialize: grpc.serialize<pulumi_engine_pb.RequirePulumiVersionResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_engine_pb.RequirePulumiVersionResponse>;
+}
 
 export const EngineService: IEngineService;
 
@@ -60,6 +70,7 @@ export interface IEngineServer extends grpc.UntypedServiceImplementation {
     getRootResource: grpc.handleUnaryCall<pulumi_engine_pb.GetRootResourceRequest, pulumi_engine_pb.GetRootResourceResponse>;
     setRootResource: grpc.handleUnaryCall<pulumi_engine_pb.SetRootResourceRequest, pulumi_engine_pb.SetRootResourceResponse>;
     startDebugging: grpc.handleUnaryCall<pulumi_engine_pb.StartDebuggingRequest, google_protobuf_empty_pb.Empty>;
+    requirePulumiVersion: grpc.handleUnaryCall<pulumi_engine_pb.RequirePulumiVersionRequest, pulumi_engine_pb.RequirePulumiVersionResponse>;
 }
 
 export interface IEngineClient {
@@ -75,6 +86,9 @@ export interface IEngineClient {
     startDebugging(request: pulumi_engine_pb.StartDebuggingRequest, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     startDebugging(request: pulumi_engine_pb.StartDebuggingRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     startDebugging(request: pulumi_engine_pb.StartDebuggingRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    requirePulumiVersion(request: pulumi_engine_pb.RequirePulumiVersionRequest, callback: (error: grpc.ServiceError | null, response: pulumi_engine_pb.RequirePulumiVersionResponse) => void): grpc.ClientUnaryCall;
+    requirePulumiVersion(request: pulumi_engine_pb.RequirePulumiVersionRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_engine_pb.RequirePulumiVersionResponse) => void): grpc.ClientUnaryCall;
+    requirePulumiVersion(request: pulumi_engine_pb.RequirePulumiVersionRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_engine_pb.RequirePulumiVersionResponse) => void): grpc.ClientUnaryCall;
 }
 
 export class EngineClient extends grpc.Client implements IEngineClient {
@@ -91,4 +105,7 @@ export class EngineClient extends grpc.Client implements IEngineClient {
     public startDebugging(request: pulumi_engine_pb.StartDebuggingRequest, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     public startDebugging(request: pulumi_engine_pb.StartDebuggingRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
     public startDebugging(request: pulumi_engine_pb.StartDebuggingRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: google_protobuf_empty_pb.Empty) => void): grpc.ClientUnaryCall;
+    public requirePulumiVersion(request: pulumi_engine_pb.RequirePulumiVersionRequest, callback: (error: grpc.ServiceError | null, response: pulumi_engine_pb.RequirePulumiVersionResponse) => void): grpc.ClientUnaryCall;
+    public requirePulumiVersion(request: pulumi_engine_pb.RequirePulumiVersionRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_engine_pb.RequirePulumiVersionResponse) => void): grpc.ClientUnaryCall;
+    public requirePulumiVersion(request: pulumi_engine_pb.RequirePulumiVersionRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_engine_pb.RequirePulumiVersionResponse) => void): grpc.ClientUnaryCall;
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -56,7 +57,7 @@ func (se *jsonSnapshotEncoder) TextToSnapshot(ctx context.Context, s snapshotTex
 	dep, err := stack.DeserializeUntypedDeployment(ctx, &apitype.UntypedDeployment{
 		Version:    3,
 		Deployment: []byte(s),
-	}, stack.DefaultSecretsProvider)
+	}, secrets.DefaultProvider)
 	if err != nil {
 		return nil, err
 	}

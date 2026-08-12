@@ -1,4 +1,4 @@
-# Copyright 2016-2023, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ class RemoteComponentProvidersTest(LanghostTest):
         _replace_on_changes,
         providers,
         source_position,
+        stack_trace,
     ):
         if name == "singular" or name == "map" or name == "array":
             self.assertEqual(provider, "myprovider::myprovider")

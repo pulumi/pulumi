@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,28 +18,27 @@ Runtime settings and configuration.
 
 from __future__ import annotations
 
+from ._instrumentation import wrap_with_context
+
 import asyncio
+import base64
 import os
 import threading
-from collections import deque
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union
 
 import grpc
+from google.protobuf import empty_pb2
 
 from .._utils import contextproperty
 from ..errors import RunError
-from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
+from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc, engine_pb2
 from ._callbacks import _CallbackServicer
+from ._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from .rpc_manager import RPCManager
 
 if TYPE_CHECKING:
     from ..resource import Resource
-
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
-
 
 # excessive_debug_output enables, well, pretty excessive debug output pertaining to resources and properties.
 excessive_debug_output = False
@@ -63,7 +62,7 @@ class Settings:
         root_directory: Optional[str] = None,
     ):
         self.rpc_manager = RPCManager()
-        self.outputs = deque()
+        self.outputs = set()
         self.lock = threading.Lock()
 
         # Save the metadata information.
@@ -75,6 +74,11 @@ class Settings:
         self.legacy_apply_enabled = legacy_apply_enabled
         self.feature_support = {}
         self.organization = organization
+        # Caches package references returned by `RegisterPackage` for
+        # parameterized providers. Scoped to the deployment so concurrent inline
+        # programs each register against their own engine and receive distinct
+        # refs.
+        self.package_refs = {}
 
         if self.legacy_apply_enabled is None:
             self.legacy_apply_enabled = (
@@ -112,7 +116,7 @@ class Settings:
     def lock(self) -> threading.Lock: ...  # type: ignore
 
     @contextproperty
-    def outputs(self) -> deque[asyncio.Task]: ...  # type: ignore
+    def outputs(self) -> set[asyncio.Task]: ...  # type: ignore
 
     @contextproperty
     def monitor(self) -> Optional[resource_pb2_grpc.ResourceMonitorStub]: ...
@@ -143,6 +147,9 @@ class Settings:
 
     @contextproperty
     def feature_support(self) -> Optional[dict]: ...
+
+    @contextproperty
+    def package_refs(self) -> Optional[dict]: ...
 
     @contextproperty
     def callbacks(self) -> Optional[_CallbackServicer]: ...
@@ -275,14 +282,14 @@ async def _shutdown_callbacks():
     await _CallbackServicer.shutdown()
 
 
-def get_root_resource() -> Optional["Resource"]:
+def get_root_resource() -> Optional[Resource]:
     """
     Returns the implicit root stack resource for all resources created in this program.
     """
     return ROOT.get()
 
 
-def set_root_resource(root: "Resource"):
+def set_root_resource(root: Resource):
     """
     Sets the current root stack resource for all resources subsequently to be created in this program.
     """
@@ -290,6 +297,32 @@ def set_root_resource(root: "Resource"):
 
 
 ROOT: ContextVar[Optional[Resource]] = ContextVar("root_resource", default=None)
+
+
+def require_pulumi_version(rg: str) -> None:
+    """
+    Checks if the engine we are connected to is compatible with the passed in version range. If the version is not
+    compatible with the specified range, an exception is raised.
+
+    :param str rg: The range to check. The supported syntax for the range is that of
+           https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be
+           AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not
+           exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or
+           greater-than 3.8.0.
+    """
+    engine = get_engine()
+    if engine:
+        try:
+            engine.RequirePulumiVersion(
+                engine_pb2.RequirePulumiVersionRequest(pulumi_version_range=rg)
+            )
+        except grpc.RpcError as exn:
+            if exn.code() == grpc.StatusCode.UNIMPLEMENTED:
+                raise Exception(
+                    "The installed version of the CLI does not support the `RequirePulumiVersion` RPC. "
+                    + "Please upgrade the Pulumi CLI."
+                )
+            raise grpc_error_to_exception(exn) from None
 
 
 async def monitor_supports_feature(feature: str) -> bool:
@@ -320,7 +353,7 @@ def grpc_error_to_exception(exn: grpc.RpcError) -> Exception:
     return Exception(details)
 
 
-def handle_grpc_error(exn: grpc.RpcError) -> None:
+def handle_grpc_error(exn: grpc.RpcError) -> NoReturn:
     raise grpc_error_to_exception(exn)
 
 
@@ -340,6 +373,10 @@ async def monitor_supports_deleted_with() -> bool:
     return await monitor_supports_feature("deletedWith")
 
 
+async def monitor_supports_replace_with() -> bool:
+    return await monitor_supports_feature("replaceWith")
+
+
 async def monitor_supports_alias_specs() -> bool:
     return await monitor_supports_feature("aliasSpecs")
 
@@ -354,6 +391,81 @@ def _sync_monitor_supports_invoke_transforms() -> bool:
 
 def _sync_monitor_supports_parameterization() -> bool:
     return SETTINGS.feature_support.get("parameterization", False)
+
+
+async def register_package(
+    base_provider_name: str,
+    base_provider_version: str,
+    base_provider_download_url: str,
+    package_name: str,
+    package_version: str,
+    base64_parameter: str,
+    extension: bool = False,
+) -> str:
+    """
+    Registers a parameterized provider package with the resource monitor and
+    returns its package reference. The result is cached per deployment so that
+    concurrent inline programs each register against their own engine and
+    receive distinct refs. When extension is True, the package is registered as
+    an extension parameterization rather than a replacement.
+    """
+    key = "\0".join(
+        [
+            base_provider_name,
+            base_provider_version,
+            base_provider_download_url,
+            package_name,
+            package_version,
+            base64_parameter,
+            str(extension),
+        ]
+    )
+
+    package_refs = SETTINGS.package_refs
+    existing = package_refs.get(key)
+    if existing is not None:
+        return existing
+
+    if not _sync_monitor_supports_parameterization():
+        raise Exception(
+            "The Pulumi CLI does not support parameterization. Please update the Pulumi CLI."
+        )
+
+    monitor = get_monitor()
+    if monitor is None:
+        raise Exception("No monitor available")
+
+    parameterization = resource_pb2.Parameterization(
+        name=package_name,
+        version=package_version,
+        value=base64.b64decode(base64_parameter),
+    )
+    request = resource_pb2.RegisterPackageRequest(
+        name=base_provider_name,
+        version=base_provider_version,
+        download_url=base_provider_download_url,
+    )
+    if extension:
+        request.extension.CopyFrom(parameterization)
+    else:
+        request.parameterization.CopyFrom(parameterization)
+    response = monitor.RegisterPackage(request)
+    ref = response.ref
+    package_refs[key] = ref
+    return ref
+
+
+async def monitor_supports_resource_hooks() -> bool:
+    return await monitor_supports_feature("resourceHooks")
+
+
+async def monitor_supports_error_hooks() -> bool:
+    return await monitor_supports_feature("errorHooks")
+
+
+async def monitor_supports_invoke_depends_on() -> bool:
+    # Advertised by GetDeploymentInfo only, so an engine that predates that RPC never has it.
+    return SETTINGS.feature_support.get(_INVOKE_DEPENDS_ON, False)
 
 
 def reset_options(
@@ -398,18 +510,59 @@ async def _monitor_supports_feature(
                 handle_grpc_error(exn)
             return False
 
-    return await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+    return await asyncio.get_running_loop().run_in_executor(
+        None, wrap_with_context(do_rpc_call)
+    )
+
+
+# A frozen map of old feature IDs to the new resource monitor features.
+#
+# This map should never be updated.
+_LEGACY_FEATURE_MAPPING = {
+    "secrets": resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS,
+    "resourceReferences": resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+    "outputValues": resource_pb2.RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES,
+    "deletedWith": resource_pb2.RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+    "replaceWith": resource_pb2.RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+    "aliasSpecs": resource_pb2.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
+    "transforms": resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
+    "invokeTransforms": resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+    "parameterization": resource_pb2.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+    "resourceHooks": resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+    "errorHooks": resource_pb2.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+}
+
+# Features that have no legacy ID, keyed in feature_support by their own name.
+_INVOKE_DEPENDS_ON = "invokeDependsOn"
+
+_FEATURE_MAPPING = {
+    **_LEGACY_FEATURE_MAPPING,
+    _INVOKE_DEPENDS_ON: resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON,
+}
 
 
 async def _load_monitor_feature_support():
-    # Prime the feature support cache.
-    await asyncio.gather(
-        monitor_supports_feature("secrets"),
-        monitor_supports_feature("resourceReferences"),
-        monitor_supports_feature("outputValues"),
-        monitor_supports_feature("deletedWith"),
-        monitor_supports_feature("aliasSpecs"),
-        monitor_supports_feature("transforms"),
-        monitor_supports_feature("invokeTransforms"),
-        monitor_supports_feature("parameterization"),
-    )
+    if not SETTINGS.monitor:
+        return
+
+    try:
+        deployment_info = await asyncio.get_running_loop().run_in_executor(
+            None,
+            wrap_with_context(
+                lambda: SETTINGS.monitor.GetDeploymentInfo(empty_pb2.Empty())
+            ),
+        )
+        for feature, value in _FEATURE_MAPPING.items():
+            SETTINGS.feature_support[feature] = (
+                value in deployment_info.supportedFeatures
+            )
+
+    except grpc.RpcError as exn:
+        if exn.code() != grpc.StatusCode.UNIMPLEMENTED:
+            handle_grpc_error(exn)
+        await asyncio.gather(
+            *(
+                monitor_supports_feature(feature)
+                for feature in sorted(_LEGACY_FEATURE_MAPPING)
+            )
+        )

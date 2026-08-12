@@ -13,7 +13,6 @@ func main() {
 		var multipleSimpleComponents []*SimpleComponent
 		for index := 0; index < 10; index++ {
 			key0 := index
-			_ := index
 			__res, err := NewSimpleComponent(ctx, fmt.Sprintf("multipleSimpleComponents-%v", key0), nil)
 			if err != nil {
 				return err
@@ -26,13 +25,13 @@ func main() {
 		}
 		exampleComponent, err := NewExampleComponent(ctx, "exampleComponent", &ExampleComponentArgs{
 			Input: "doggo",
-			IpAddress: pulumi.IntArray{
-				pulumi.Int(127),
-				pulumi.Int(0),
-				pulumi.Int(0),
-				pulumi.Int(1),
+			IpAddress: []int{
+				127,
+				0,
+				0,
+				1,
 			},
-			CidrBlocks: map[string]interface{}{
+			CidrBlocks: map[string]string{
 				"one": "uno",
 				"two": "dos",
 			},
@@ -41,7 +40,7 @@ func main() {
 				KeyBase64:     "base64 encoded key",
 				WebhookSecret: "very important secret",
 			},
-			Servers: []map[string]interface{}{
+			Servers: []*ServersArgs{
 				&ServersArgs{
 					Name: "First",
 				},
@@ -49,7 +48,7 @@ func main() {
 					Name: "Second",
 				},
 			},
-			DeploymentZones: map[string]interface{}{
+			DeploymentZones: map[string]*DeploymentZonesArgs{
 				"first": &DeploymentZonesArgs{
 					Zone: "First zone",
 				},

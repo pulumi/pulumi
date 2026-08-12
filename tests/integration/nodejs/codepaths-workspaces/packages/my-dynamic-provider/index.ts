@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,13 +13,13 @@
 // limitations under the License.
 
 import * as pulumi from "@pulumi/pulumi"; // @pulumi dependency is not included;
-import * as isFinite from "is-finite"; // npm dependency
+import * as isNumber from "is-number"; // npm dependency
 import * as relative from "./relative"; // local dependency
 
 const dynamicProvider: pulumi.dynamic.ResourceProvider = {
   async create(inputs) {
     return {
-      id: `dyn-${Math.ceil(Math.random() * 1000)}`, outs: { isFinite: isFinite(42), magic: relative.fun() }
+      id: `dyn-${Math.ceil(Math.random() * 1000)}`, outs: { isNumber: isNumber(42), magic: relative.fun() }
     };
   }
 }

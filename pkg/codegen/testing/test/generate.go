@@ -26,8 +26,6 @@ const (
 // GenerateProgramBatchTest returns a batch generator for the given language.
 func GenerateProgramBatchTest(language string) func(*testing.T, string, GenProgram, []ProgramTest) {
 	switch language {
-	case TestDotnet:
-		return GenerateDotnetBatchTest
 	case TestGo:
 		return GenerateGoBatchTest
 	case TestNodeJS:

@@ -1,0 +1,5 @@
+HasPlugin{PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {false, nil, nil}
+HasPlugin{PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {false, nil, nil}
+GetLatestVersion{ctx, PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {nil, nil}

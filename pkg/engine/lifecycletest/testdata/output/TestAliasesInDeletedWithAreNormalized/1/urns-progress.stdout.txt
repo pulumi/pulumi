@@ -1,0 +1,15 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test-stack::test-project::pkgA:modA:type0::res0 <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test-stack::test-project::pkgA:modA:type1::res1 <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test-stack::test-project::pkgA:modA:type0$pkgA:modA:type2::res2 <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test-stack::test-project::pkgA:modA:type0$pkgA:modA:type3::res3 <{%bold%}><{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:test-stack::test-project::pkgA:modA:type0::res0 <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:test-stack::test-project::pkgA:modA:type1::res1 <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    4 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

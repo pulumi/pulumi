@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 //go:build !all
 // +build !all
 
@@ -27,7 +27,7 @@ type Resource struct {
 }
 
 type resourceArgs struct {
-	Echo interface{} `pulumi:"echo"`
+	Echo any `pulumi:"echo"`
 }
 
 type ResourceArgs struct {
@@ -133,7 +133,7 @@ func main() {
 		return makeProvider(host, providerName, version)
 	})
 	if err != nil {
-		cmdutil.ExitError(err.Error())
+		cmdutil.Exit(err)
 	}
 }
 
@@ -227,12 +227,6 @@ func (p *Provider) Invoke(ctx context.Context,
 	req *pulumirpc.InvokeRequest,
 ) (*pulumirpc.InvokeResponse, error) {
 	return nil, fmt.Errorf("Unknown Invoke token '%s'", req.GetTok())
-}
-
-func (p *Provider) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer,
-) error {
-	return fmt.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
 }
 
 func (p *Provider) Call(ctx context.Context,

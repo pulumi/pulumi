@@ -1,4 +1,4 @@
-// Copyright 2023-2024, Pulumi Corporation.
+// Copyright 2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ func TestANSIDecoder(t *testing.T) {
 	t.Parallel()
 
 	// check all key sequences
-	for i := 0; i < 0x7f; i++ {
+	for i := range 0x7f {
 		if i != 0x1b {
 			ansiKeyCase(byte(i)).run(t)
 		}

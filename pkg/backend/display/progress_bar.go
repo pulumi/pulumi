@@ -32,13 +32,24 @@ func renderProgress(
 	width int,
 	payload engine.ProgressEventPayload,
 ) string {
+	// When Total is 0, there is no meaningful progress to show (e.g.
+	// dependency installation). Just display the message without a progress
+	// bar or byte counts.
+	if payload.Total == 0 {
+		if colors.MeasureColorizedString(payload.Message) <= width {
+			return payload.Message
+		}
+		return colors.TrimColorizedString(payload.Message, width)
+	}
+
 	// Determine the counts to display based on the type of progress event:
 	//
 	// * Plugin download -- bytes downloaded/total
 	// * Plugin install -- bytes unpacked/total
 	var completed, total string
 	switch payload.Type {
-	case engine.PluginDownload, engine.PluginInstall:
+	case engine.PluginDownload, engine.PluginInstall,
+		engine.PolicyPackDownload, engine.PolicyPackInstall, engine.PolicyPacksLoading:
 		completed = formatBytes(payload.Completed)
 		total = formatBytes(payload.Total)
 	}
@@ -82,7 +93,7 @@ func renderASCIIProgressBar(width int, completed int64, total int64) string {
 	var b strings.Builder
 	b.Grow(width)
 	b.WriteRune('[')
-	for i := 0; i < innerWidth; i++ {
+	for i := range innerWidth {
 		if i == offset {
 			b.WriteRune('>')
 		} else if i < offset {
@@ -115,7 +126,7 @@ func renderUnicodeProgressBar(width int, completed int64, total int64) string {
 	var b strings.Builder
 	b.Grow(width)
 	b.WriteRune('[')
-	for i := 0; i < innerWidth; i++ {
+	for i := range innerWidth {
 		if i == offset {
 			if subOffset == 0 {
 				b.WriteRune(' ')

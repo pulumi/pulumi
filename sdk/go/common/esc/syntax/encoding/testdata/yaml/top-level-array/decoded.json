@@ -1,0 +1,67 @@
+{
+    "syntax": {
+        "array": [
+            {
+                "literal": "list",
+                "range": {
+                    "Filename": "top-level-array",
+                    "Start": {
+                        "Line": 1,
+                        "Column": 3,
+                        "Byte": 2
+                    },
+                    "End": {
+                        "Line": 1,
+                        "Column": 7,
+                        "Byte": 6
+                    }
+                }
+            },
+            {
+                "literal": "of",
+                "range": {
+                    "Filename": "top-level-array",
+                    "Start": {
+                        "Line": 2,
+                        "Column": 3,
+                        "Byte": 9
+                    },
+                    "End": {
+                        "Line": 2,
+                        "Column": 5,
+                        "Byte": 11
+                    }
+                }
+            },
+            {
+                "literal": "values",
+                "range": {
+                    "Filename": "top-level-array",
+                    "Start": {
+                        "Line": 3,
+                        "Column": 3,
+                        "Byte": 14
+                    },
+                    "End": {
+                        "Line": 3,
+                        "Column": 9,
+                        "Byte": 20
+                    }
+                }
+            }
+        ],
+        "range": {
+            "Filename": "top-level-array",
+            "Start": {
+                "Line": 1,
+                "Column": 1,
+                "Byte": 0
+            },
+            "End": {
+                "Line": 3,
+                "Column": 9,
+                "Byte": 20
+            }
+        }
+    }
+}

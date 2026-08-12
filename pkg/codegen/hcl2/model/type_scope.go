@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -95,6 +95,22 @@ var typeFunctions = map[string]FunctionSignature{
 		}
 		return StaticFunctionSignature{
 			Parameters: []Parameter{{Name: "tupleType", Type: DynamicType}},
+			ReturnType: resultType,
+		}, diagnostics
+	}),
+	"optional": GenericFunctionSignature(func(args []Expression) (StaticFunctionSignature, hcl.Diagnostics) {
+		var diagnostics hcl.Diagnostics
+		resultType := Type(DynamicType)
+		if len(args) == 1 {
+			resultType = NewOptionalType(args[0].Type())
+		} else {
+			diagnostics = hcl.Diagnostics{{
+				Severity: hcl.DiagError,
+				Summary:  "optional() requires exactly one argument",
+			}}
+		}
+		return StaticFunctionSignature{
+			Parameters: []Parameter{{Name: "elementType", Type: DynamicType}},
 			ReturnType: resultType,
 		}, diagnostics
 	}),

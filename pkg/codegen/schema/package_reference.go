@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,9 @@
 package schema
 
 import (
+	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"sort"
 	"sync"
@@ -25,7 +27,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/segmentio/encoding/json"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var schemaTracer = otel.Tracer("github.com/pulumi/pulumi/pkg/v3/codegen/schema")
+
+func (p *PartialPackage) traceCtx() context.Context {
+	if p.ctx != nil {
+		return p.ctx
+	}
+	return context.Background()
+}
 
 // A PackageReference represents a references Pulumi Package. Applications that do not need access to the entire
 // definition of a Pulumi Package should use PackageReference rather than Package, as the former uses memory more
@@ -35,6 +49,11 @@ type PackageReference interface {
 	Name() string
 	// Version returns the package version.
 	Version() *semver.Version
+
+	// The pluginDownloadURL of the schema.
+	PluginDownloadURL() string
+
+	Identity() string
 
 	// Description returns the packages description.
 	Description() string
@@ -61,11 +80,23 @@ type PackageReference interface {
 	// Functions returns the package's functions.
 	Functions() PackageFunctions
 
+	// The language specific metadata for a given language.
+	//
+	// The package must have been originally bound with a matching [Language]
+	// importer.
+	Language(string) (any, error)
+
 	// TokenToModule extracts a package member's module name from its token.
 	TokenToModule(token string) string
 
 	// Definition fully loads the referenced package and returns the result.
 	Definition() (*Package, error)
+
+	// CanonicalizeToken returns the canonical form of a token. This takes into account moduleFormat and index elision.
+	CanonicalizeToken(token string) string
+
+	// InterpretPulumiRefs returns the result of interpreting any references in the given string.
+	InterpretPulumiRefs(string, PulumiRefResolver) (string, error)
 }
 
 // PackageTypes provides random and sequential access to a package's types.
@@ -152,6 +183,7 @@ type PackageFunctions interface {
 type FunctionsIter interface {
 	Token() string
 	Function() (*Function, error)
+	IsMethod() bool
 	Next() bool
 }
 
@@ -166,6 +198,14 @@ func (p packageDefRef) Name() string {
 
 func (p packageDefRef) Version() *semver.Version {
 	return p.pkg.Version
+}
+
+func (p packageDefRef) PluginDownloadURL() string {
+	return p.pkg.PluginDownloadURL
+}
+
+func (p packageDefRef) Identity() string {
+	return packageIdentity(p.Name(), p.Version())
 }
 
 func (p packageDefRef) Description() string {
@@ -208,12 +248,24 @@ func (p packageDefRef) Functions() PackageFunctions {
 	return packageDefFunctions{p.pkg}
 }
 
+func (p packageDefRef) Language(language string) (any, error) {
+	return p.pkg.Language[language], nil
+}
+
+func (p packageDefRef) CanonicalizeToken(token string) string {
+	return p.pkg.CanonicalizeToken(token)
+}
+
 func (p packageDefRef) TokenToModule(token string) string {
 	return p.pkg.TokenToModule(token)
 }
 
 func (p packageDefRef) Definition() (*Package, error) {
 	return p.pkg, nil
+}
+
+func (p packageDefRef) InterpretPulumiRefs(description string, resolver PulumiRefResolver) (string, error) {
+	return p.pkg.InterpretPulumiRefs(description, resolver)
 }
 
 type packageDefTypes struct {
@@ -225,7 +277,7 @@ func (p packageDefTypes) Range() TypesIter {
 }
 
 func (p packageDefTypes) Get(token string) (Type, bool, error) {
-	def, ok := p.typeTable[token]
+	def, ok := lookupToken(p.typeTable, token, p.typeAliases)
 	return def, ok, nil
 }
 
@@ -262,11 +314,12 @@ func (p packageDefResources) Range() ResourcesIter {
 }
 
 func (p packageDefResources) Get(token string) (*Resource, bool, error) {
-	if token == p.Provider.Token {
+	// Extension parameterizations have no provider of their own, so Provider is nil.
+	if p.Provider != nil && token == p.Provider.Token {
 		return p.Provider, true, nil
 	}
 
-	def, ok := p.resourceTable[token]
+	def, ok := lookupToken(p.resourceTable, token, p.resourceAliases)
 	return def, ok, nil
 }
 
@@ -305,7 +358,7 @@ func (p packageDefFunctions) Range() FunctionsIter {
 }
 
 func (p packageDefFunctions) Get(token string) (*Function, bool, error) {
-	def, ok := p.functionTable[token]
+	def, ok := lookupToken(p.functionTable, token, p.functionAliases)
 	return def, ok, nil
 }
 
@@ -320,6 +373,10 @@ func (i *packageDefFunctionsIter) Token() string {
 
 func (i *packageDefFunctionsIter) Function() (*Function, error) {
 	return i.f, nil
+}
+
+func (i *packageDefFunctionsIter) IsMethod() bool {
+	return i.f.IsMethod
 }
 
 func (i *packageDefFunctionsIter) Next() bool {
@@ -343,9 +400,27 @@ type PartialPackage struct {
 	languages map[string]Language
 	types     *types
 
+	ctx context.Context
+
 	config []*Property
 
 	def *Package
+
+	// specAliases maps PCL-normalized tokens to their source-form keys in spec.Types,
+	// spec.Resources, and spec.Functions. Built lazily on first miss in a Get* call.
+	specAliases struct {
+		once      sync.Once
+		types     map[string]string
+		resources map[string]string
+		functions map[string]string
+	}
+
+	// methodTokens is the set of function tokens that implement resource methods, read straight
+	// out of the spec's `methods` maps. Built lazily on first use of FunctionsIter.IsMethod.
+	methodTokens struct {
+		once   sync.Once
+		tokens map[string]struct{}
+	}
 }
 
 func (p *PartialPackage) Name() string {
@@ -366,6 +441,20 @@ func (p *PartialPackage) Version() *semver.Version {
 		return p.def.Version
 	}
 	return p.types.pkg.Version
+}
+
+func (p *PartialPackage) PluginDownloadURL() string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.PluginDownloadURL
+	}
+	return p.types.pkg.PluginDownloadURL
+}
+
+func (p *PartialPackage) Identity() string {
+	return packageIdentity(p.Name(), p.Version())
 }
 
 func (p *PartialPackage) Description() string {
@@ -449,7 +538,9 @@ func (p *PartialPackage) bindConfig() ([]*Property, error) {
 		return nil, fmt.Errorf("unmarshaling config: %w", err)
 	}
 
-	config, diags, err := bindConfig(spec, p.types)
+	config, diags, err := bindConfig(spec, p.types, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -469,7 +560,12 @@ func (p *PartialPackage) Provider() (*Resource, error) {
 		return p.def.Provider, nil
 	}
 
-	provider, diags, err := p.types.bindResourceDef("pulumi:providers:" + p.spec.Name)
+	_, span := schemaTracer.Start(p.traceCtx(), "schema.bindProvider")
+	defer span.End()
+
+	provider, diags, err := p.types.bindResourceDef("pulumi:providers:"+p.spec.Name, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -499,6 +595,54 @@ func (p *PartialPackage) Functions() PackageFunctions {
 	return partialPackageFunctions{p}
 }
 
+func (p *PartialPackage) Language(language string) (any, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		if l, ok := p.def.Language[language]; ok {
+			return l, nil
+		}
+	}
+
+	if p.spec == nil {
+		return nil, nil
+	}
+
+	val, ok := p.spec.Language[language]
+	if !ok {
+		return nil, nil
+	}
+	importer, ok := p.languages[language]
+	if !ok {
+		return nil, nil
+	}
+	imported, err := importer.ImportPackageSpec(json.RawMessage(val))
+	if err != nil {
+		return nil, err
+	}
+	if p.def == nil {
+		p.def = new(Package)
+	}
+	if p.def.Language == nil {
+		p.def.Language = map[string]any{}
+	}
+	p.def.Language[language] = imported
+
+	return imported, nil
+}
+
+func (p *PartialPackage) CanonicalizeToken(token string) string {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.CanonicalizeToken(token)
+	}
+
+	return p.types.pkg.CanonicalizeToken(token)
+}
+
 func (p *PartialPackage) TokenToModule(token string) string {
 	p.m.Lock()
 	defer p.m.Unlock()
@@ -509,6 +653,71 @@ func (p *PartialPackage) TokenToModule(token string) string {
 	return p.types.pkg.TokenToModule(token)
 }
 
+// resolveSpecToken returns the source-form key in m matching token. If token is already
+// a direct key of m it is returned unchanged without forcing the alias build; otherwise
+// the (lazy) alias map is consulted. Returns the input token unchanged if neither hits.
+//
+// The caller must hold p.m.
+func resolveSpecToken[V any](m map[string]V, token string, aliases func() map[string]string) string {
+	if _, ok := m[token]; ok {
+		return token
+	}
+	if src, ok := aliases()[token]; ok {
+		return src
+	}
+	return token
+}
+
+func (p *PartialPackage) typeAliases() map[string]string {
+	p.specAliases.once.Do(p.buildSpecAliases)
+	return p.specAliases.types
+}
+
+func (p *PartialPackage) resourceAliases() map[string]string {
+	p.specAliases.once.Do(p.buildSpecAliases)
+	return p.specAliases.resources
+}
+
+func (p *PartialPackage) functionAliases() map[string]string {
+	p.specAliases.once.Do(p.buildSpecAliases)
+	return p.specAliases.functions
+}
+
+// methodTokenSet returns the set of function tokens that implement resource methods, without
+// binding any package members. Malformed member specs are skipped; they fail with a proper error
+// when the member is bound.
+func (p *PartialPackage) methodTokenSet() map[string]struct{} {
+	p.methodTokens.once.Do(func() {
+		tokens := map[string]struct{}{}
+		collect := func(raw json.RawMessage) {
+			var res struct {
+				Methods map[string]string `json:"methods"`
+			}
+			if err := parseJSONPropertyValue(raw, &res); err != nil {
+				return
+			}
+			for _, tok := range res.Methods {
+				tokens[tok] = struct{}{}
+			}
+		}
+		collect(p.spec.Provider)
+		for _, raw := range p.spec.Resources {
+			collect(raw)
+		}
+		p.methodTokens.tokens = tokens
+	})
+	return p.methodTokens.tokens
+}
+
+// buildSpecAliases builds normalized→source-form alias maps over the spec's token keys.
+// Called via specAliases.once; must not access fields guarded by p.m.
+func (p *PartialPackage) buildSpecAliases() {
+	tokenToModule := p.types.pkg.TokenToModule
+	p.specAliases.types = buildTokenAliases(p.spec.Types, tokenToModule)
+	p.specAliases.resources = buildTokenAliases(p.spec.Resources, tokenToModule)
+	p.specAliases.functions = buildTokenAliases(p.spec.Functions, tokenToModule)
+}
+
 func (p *PartialPackage) Definition() (*Package, error) {
 	p.m.Lock()
 	defer p.m.Unlock()
@@ -517,25 +726,34 @@ func (p *PartialPackage) Definition() (*Package, error) {
 		return p.def, nil
 	}
 
+	_, span := schemaTracer.Start(p.traceCtx(), "schema.bindDefinition")
+	defer span.End()
+
 	config, err := p.bindConfig()
 	if err != nil {
 		return nil, err
 	}
 
 	var diags hcl.Diagnostics
-	provider, resources, resourceDiags, err := p.types.finishResources(sortedKeys(p.spec.Resources))
+	provider, resources, resourceDiags, err := p.types.finishResources(sortedKeys(p.spec.Resources), ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	}
 	diags = diags.Extend(resourceDiags)
 
-	functions, functionDiags, err := p.types.finishFunctions(sortedKeys(p.spec.Functions))
+	functions, functionDiags, err := p.types.finishFunctions(sortedKeys(p.spec.Functions), ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	}
 	diags = diags.Extend(functionDiags)
 
-	typeList, typeDiags, err := p.types.finishTypes(sortedKeys(p.spec.Types))
+	typeList, typeDiags, err := p.types.finishTypes(sortedKeys(p.spec.Types), ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -553,11 +771,31 @@ func (p *PartialPackage) Definition() (*Package, error) {
 	pkg.resourceTypeTable = p.types.resources
 	if p.spec.Parameterization != nil {
 		pkg.Parameterization = &Parameterization{
-			BaseProvider: BaseProvider{
+			BasePlugin: BasePlugin{
 				Name:    p.spec.Parameterization.BaseProvider.Name,
 				Version: semver.MustParse(p.spec.Parameterization.BaseProvider.Version),
 			},
 			Parameter: p.spec.Parameterization.Parameter,
+		}
+	}
+	if p.spec.ExtensionParameterization != nil {
+		base := p.spec.ExtensionParameterization.BaseProvider
+		ref := BaseProvider{
+			Name:    base.Name,
+			Version: semver.MustParse(base.Version),
+		}
+		if pp := base.Parameterization; pp != nil {
+			ref.Parameterization = &Parameterization{
+				BasePlugin: BasePlugin{
+					Name:    pp.BasePlugin.Name,
+					Version: semver.MustParse(pp.BasePlugin.Version),
+				},
+				Parameter: pp.Parameter,
+			}
+		}
+		pkg.ExtensionParameterization = &ExtensionParameterization{
+			BaseProvider: ref,
+			Parameter:    p.spec.ExtensionParameterization.Parameter,
 		}
 	}
 	if err := pkg.ImportLanguages(p.languages); err != nil {
@@ -567,7 +805,6 @@ func (p *PartialPackage) Definition() (*Package, error) {
 		return nil, diags
 	}
 
-	contract.IgnoreClose(p.types)
 	p.spec = nil
 	p.types = nil
 	p.languages = nil
@@ -609,18 +846,16 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 		return functions[i].Token < functions[j].Token
 	})
 
-	typeList, diags, err := p.types.finishTypes(nil)
+	typeList, diags, err := p.types.finishTypes(nil, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	contract.AssertNoErrorf(err, "error snapshotting types")
 	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 
 	typeDefs := make(map[string]Type, len(p.types.typeDefs))
-	for token, typ := range p.types.typeDefs {
-		typeDefs[token] = typ
-	}
+	maps.Copy(typeDefs, p.types.typeDefs)
 	resourceTypes := make(map[string]*ResourceType, len(p.types.resources))
-	for token, typ := range p.types.resources {
-		resourceTypes[token] = typ
-	}
+	maps.Copy(resourceTypes, p.types.resources)
 
 	// NOTE: these writes are very much not concurrency-safe. There is a data race on each write to a slice-typed field
 	// because slices are multi-word values. Unfortunately, fixing this is rather involved. The simplest solution--
@@ -647,6 +882,17 @@ func (p *PartialPackage) Snapshot() (*Package, error) {
 	return pkg, nil
 }
 
+func (p *PartialPackage) InterpretPulumiRefs(description string, resolver PulumiRefResolver) (string, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.def != nil {
+		return p.def.InterpretPulumiRefs(description, resolver)
+	}
+
+	return interpretPulumiRefsInDescription(description, p.types, resolver)
+}
+
 type partialPackageTypes struct {
 	*PartialPackage
 }
@@ -662,7 +908,10 @@ func (p partialPackageTypes) Get(token string) (Type, bool, error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	typ, diags, err := p.types.bindTypeDef(token)
+	token = resolveSpecToken(p.spec.Types, token, p.typeAliases)
+	typ, diags, err := p.types.bindTypeDef(token, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, false, err
 	}
@@ -705,7 +954,15 @@ func (p partialPackageResources) Get(token string) (*Resource, bool, error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	res, diags, err := p.types.bindResourceDef(token)
+	if token != "pulumi:providers:"+p.spec.Name {
+		token = resolveSpecToken(p.spec.Resources, token, p.resourceAliases)
+	}
+	_, span := schemaTracer.Start(p.traceCtx(), "schema.bindResource",
+		trace.WithAttributes(attribute.String("schema.token", token)))
+	defer span.End()
+	res, diags, err := p.types.bindResourceDef(token, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, false, err
 	}
@@ -719,7 +976,12 @@ func (p partialPackageResources) GetType(token string) (*ResourceType, bool, err
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	typ, diags, err := p.types.bindResourceTypeDef(token)
+	if token != "pulumi:providers:"+p.spec.Name {
+		token = resolveSpecToken(p.spec.Resources, token, p.resourceAliases)
+	}
+	typ, diags, err := p.types.bindResourceTypeDef(token, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, false, err
 	}
@@ -762,7 +1024,13 @@ func (p partialPackageFunctions) Get(token string) (*Function, bool, error) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	fn, diags, err := p.types.bindFunctionDef(token)
+	token = resolveSpecToken(p.spec.Functions, token, p.functionAliases)
+	_, span := schemaTracer.Start(p.traceCtx(), "schema.bindFunction",
+		trace.WithAttributes(attribute.String("schema.token", token)))
+	defer span.End()
+	fn, diags, err := p.types.bindFunctionDef(token, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, false, err
 	}
@@ -786,13 +1054,18 @@ func (i *partialPackageFunctionsIter) Function() (*Function, error) {
 	return fn, err
 }
 
+func (i *partialPackageFunctionsIter) IsMethod() bool {
+	_, ok := i.functions.methodTokenSet()[i.Token()]
+	return ok
+}
+
 func (i *partialPackageFunctionsIter) Next() bool {
 	return i.iter.Next()
 }
 
 // parseJSONPropertyValue parses a JSON value from the given RawMessage. If the RawMessage is empty, parsing is skipped
 // and the function returns nil.
-func parseJSONPropertyValue(raw json.RawMessage, dest interface{}) error {
+func parseJSONPropertyValue(raw json.RawMessage, dest any) error {
 	if len(raw) == 0 {
 		return nil
 	}

@@ -1,5 +1,6 @@
 <{%fg 1%}>- component: (delete)
-<{%fg 1%}>    [urn=urn:pulumi:test::test::component::resA]
+<{%fg 1%}>    [id=1]
+<{%reset%}><{%fg 1%}>    [urn=urn:pulumi:test::test::component::resA]
 <{%reset%}><{%reset%}><{%fg 1%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

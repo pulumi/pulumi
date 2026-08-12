@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,11 @@ import (
 )
 
 func getAwsCaller(t *testing.T) (context.Context, aws.Config, *sts.GetCallerIdentityOutput) {
-	ctx := context.Background()
+	if testing.Short() {
+		t.Skip("skipping AWS integration test in short mode")
+	}
+
+	ctx := context.Background() //nolint:usetesting // ctx is used in t.Cleanup, which runs after t.Context is canceled
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		t.Logf("Skipping, could not load aws config: %s", err)
@@ -57,13 +61,12 @@ func createKey(ctx context.Context, t *testing.T, cfg aws.Config) *kms.CreateKey
 		_, err := kmsClient.ScheduleKeyDeletion(ctx, &kms.ScheduleKeyDeletionInput{
 			KeyId: key.KeyMetadata.KeyId,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	return key
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestAWSCloudManager(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
 	ctx, cfg, _ := getAwsCaller(t)
@@ -74,7 +77,6 @@ func TestAWSCloudManager(t *testing.T) {
 	testURL(ctx, t, url)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestAWSCloudManager_SessionToken(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
 	ctx, cfg, _ := getAwsCaller(t)
@@ -93,7 +95,6 @@ func TestAWSCloudManager_SessionToken(t *testing.T) {
 	testURL(ctx, t, url)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestAWSCloudManager_AssumedRole(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/11482
 	t.Setenv("AWS_REGION", "us-west-2")
@@ -123,7 +124,7 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 		_, err := iamClient.DeleteRole(ctx, &iam.DeleteRoleInput{
 			RoleName: &roleName,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}()
 
 	policyName := "test-policy-" + randomName(t)
@@ -148,11 +149,11 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 			PolicyArn: policy.Policy.Arn,
 			RoleName:  &roleName,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, err = iamClient.DeletePolicy(ctx, &iam.DeletePolicyInput{
 			PolicyArn: policy.Policy.Arn,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}()
 	_, err = iamClient.AttachRolePolicy(ctx, &iam.AttachRolePolicyInput{
 		PolicyArn: policy.Policy.Arn,
@@ -170,7 +171,7 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 	// Now assume that role and try and use the secret manager
 	stsClient := sts.NewFromConfig(cfg)
 	var assume *sts.AssumeRoleOutput
-	for i := 0; i < MaxAttempts; i++ {
+	for range MaxAttempts {
 		sessionName := "test-session-" + randomName(t)
 		assume, err = stsClient.AssumeRole(ctx, &sts.AssumeRoleInput{
 			RoleArn:         role.Role.Arn,
@@ -194,7 +195,6 @@ func TestAWSCloudManager_AssumedRole(t *testing.T) {
 	testURL(ctx, t, url)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestAWSKmsExistingKey(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
 	ctx, _, _ := getAwsCaller(t)
@@ -220,7 +220,6 @@ func TestAWSKmsExistingKey(t *testing.T) {
 	assert.Equal(t, "plaintext", plaintext)
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestAWSKmsExistingState(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
 	ctx, _, _ := getAwsCaller(t)
@@ -246,7 +245,6 @@ func TestAWSKmsExistingState(t *testing.T) {
 	assert.JSONEq(t, cloudState, string(manager.State()))
 }
 
-//nolint:paralleltest // mutates environment variables
 func TestAWSKeyEditProjectStack(t *testing.T) {
 	t.Setenv("AWS_REGION", "us-west-2")
 	_, _, _ = getAwsCaller(t)

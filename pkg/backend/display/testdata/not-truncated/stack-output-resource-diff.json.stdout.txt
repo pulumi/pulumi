@@ -14,7 +14,16 @@
 <{%reset%}>        [urn=urn:pulumi:dev::pulumi-stack-output-diff::some:demo:Taxi::taxi]
 <{%reset%}><{%reset%}>    <{%reset%}>  some:demo:Vehicles: (same)
 <{%reset%}>        [urn=urn:pulumi:dev::pulumi-stack-output-diff::some:demo:Vehicles::vehicles]
-<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+<{%reset%}><{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%fg 3%}>  ~ vehicles: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 3%}>      ~ taxi: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%reset%}>            color: <{%reset%}><{%reset%}>"yellow"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            size : <{%reset%}><{%reset%}>"big"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>            urn  : <{%reset%}><{%reset%}>"urn:pulumi:dev::pulumi-stack-output-diff::some:demo:Taxi::taxi"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>        }
+<{%reset%}><{%reset%}>        urn : <{%reset%}><{%reset%}>"urn:pulumi:dev::pulumi-stack-output-diff::some:demo:Vehicles::vehicles"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>    }
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     3 unchanged
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 0s

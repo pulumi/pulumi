@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -248,6 +248,11 @@ export interface StepEventStateMetadata {
      * Protect is true to "protect" this resource (protected resources cannot be deleted).
      */
     protect?: boolean;
+
+    /**
+     * Taint is true to indicate that the resource should be replaced upon the next update.
+     */
+    taint?: boolean;
 
     /**
      * RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.

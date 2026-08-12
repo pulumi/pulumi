@@ -24,10 +24,11 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -49,16 +50,16 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 					Aliases: aliasesFromAliases(req.Options.Aliases),
 					Protect: req.Options.Protect,
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				_, err = monitor.RegisterResource("pkgA:m:typB", "resA", true, deploytest.ResourceOptions{
 					Parent: resp.URN,
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
-				outs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+				outs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
 				err = monitor.RegisterResourceOutputs(resp.URN, outs)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				return plugin.ConstructResponse{
 					URN:     resp.URN,
@@ -76,13 +77,13 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			Remote: true,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
-			"foo": resource.NewStringProperty("bar"),
+			"foo": resource.NewProperty("bar"),
 		}, resp.Outputs)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -90,6 +91,55 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 		Steps:   lt.MakeBasicLifecycleSteps(t, 3),
 	}
 	p.Run(t, nil)
+}
+
+func TestRemoteComponentConstructInfoIncludesOrganization(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					assert.Equal(t, "project-name", req.Info.Project)
+					assert.Equal(t, "stack-name", req.Info.Stack)
+					assert.Equal(t, "organization", req.Info.Organization)
+
+					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+						Parent: req.Parent,
+					})
+					require.NoError(t, err)
+
+					return plugin.ConstructResponse{URN: resp.URN}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Project: "project-name",
+		Stack:   "stack-name",
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+	target := p.GetTarget(t, nil)
+	target.Organization = "organization"
+
+	_, err := lt.TestOp(engine.Update).Run(project, target, p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
 }
 
 // Tests that two remote components implemented by provider Construct methods interact correctly when they have
@@ -191,7 +241,7 @@ func TestComponentDeleteDependencies(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
 	p.Steps = []lt.TestStep{
@@ -205,7 +255,7 @@ func TestComponentDeleteDependencies(t *testing.T) {
 			Validate: func(project workspace.Project, target deploy.Target, entries engine.JournalEntries,
 				evts []engine.Event, err error,
 			) error {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				firstIndex, nestedIndex, sgIndex, secondIndex, ruleIndex := -1, -1, -1, -1, -1
 
@@ -279,7 +329,7 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 					assert.False(t, bar.OutputValue().Secret)
 
 					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
-					assert.NoError(t, err)
+					require.NoError(t, err)
 
 					return plugin.ConstructResponse{
 						URN: resp.URN,
@@ -291,15 +341,13 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 					_ *deploytest.ResourceMonitor,
 				) (plugin.CallResponse, error) {
 					// Assert that "foo" is secret and "bar" is unknown
-					foo := req.Args["foo"]
-					assert.True(t, foo.IsOutput())
-					assert.True(t, foo.OutputValue().Known)
-					assert.True(t, foo.OutputValue().Secret)
+					foo := req.Args.Get("foo")
+					assert.False(t, foo.IsComputed())
+					assert.True(t, foo.Secret())
 
-					bar := req.Args["bar"]
-					assert.True(t, bar.IsOutput())
-					assert.False(t, bar.OutputValue().Known)
-					assert.False(t, bar.OutputValue().Secret)
+					bar := req.Args.Get("bar")
+					assert.True(t, bar.IsComputed())
+					assert.False(t, bar.Secret())
 
 					return plugin.CallResponse{}, nil
 				},
@@ -309,22 +357,22 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		inputs := resource.PropertyMap{
-			"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-			"bar": resource.MakeComputed(resource.NewStringProperty("")),
+			"foo": resource.MakeSecret(resource.NewProperty("foo")),
+			"bar": resource.MakeComputed(resource.NewProperty("")),
 		}
 
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			Remote: true,
 			Inputs: inputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		_, _, _, err = monitor.Call("pkgA:m:typA", inputs, nil, "", "", "")
-		assert.NoError(t, err)
+		_, _, _, err = monitor.Call("pkgA:m:typA", inputs, nil, "", "", "", "", nil, "")
+		require.NoError(t, err)
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -332,7 +380,7 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(engine.Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // Tests that the engine propagates the dependencies of outputs received from Construct (remote component resource) and
@@ -366,20 +414,20 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 						monitor *deploytest.ResourceMonitor,
 					) (plugin.ConstructResponse, error) {
 						resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
-						assert.NoError(t, err)
+						require.NoError(t, err)
 
 						respA, err := monitor.RegisterResource("pkgA:m:typA", req.Name+"-a", true, deploytest.ResourceOptions{
 							Parent: resp.URN,
 						})
-						assert.NoError(t, err)
+						require.NoError(t, err)
 
 						// Return a secret and unknown output depending on some internal resource
 						deps := []resource.URN{respA.URN}
 						return plugin.ConstructResponse{
 							URN: resp.URN,
 							Outputs: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewStringProperty("")),
+								"foo": resource.MakeSecret(resource.NewProperty("foo")),
+								"bar": resource.MakeComputed(resource.NewProperty("")),
 							},
 							OutputDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
@@ -398,14 +446,14 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 							req.Options.ArgDependencies["arg"])
 
 						// Assume a single output arg that this call depends on
-						arg := req.Args["arg"]
-						deps := arg.OutputValue().Dependencies
+						arg := req.Args.Get("arg")
+						deps := arg.Dependencies()
 
 						return plugin.CallResponse{
-							Return: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewStringProperty("")),
-							},
+							Return: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -420,7 +468,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 				Remote: true,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// The urn of the internal resource the component created
 			urn := resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resA-a")
@@ -428,8 +476,8 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
 			// values returned from RegisterResource.
 			assert.Equal(t, resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-				"bar": resource.MakeComputed(resource.NewStringProperty("")),
+				"foo": resource.MakeSecret(resource.NewProperty("foo")),
+				"bar": resource.MakeComputed(resource.NewProperty("")),
 			}, resp.Outputs)
 			assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 				"foo": {urn},
@@ -438,20 +486,20 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 
 			result, deps, _, err := monitor.Call("pkgA:m:typA", resource.PropertyMap{
 				// Send this as an output value using the dependencies returned.
-				"arg": resource.NewOutputProperty(resource.Output{
+				"arg": resource.NewProperty(resource.Output{
 					Element:      resp.Outputs["foo"].SecretValue().Element,
 					Known:        true,
 					Secret:       true,
 					Dependencies: []resource.URN{urn},
 				}),
-			}, nil, "", "", "")
-			assert.NoError(t, err)
+			}, nil, "", "", "", "", nil, "")
+			require.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
 			// values returned from Call.
 			assert.Equal(t, resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-				"bar": resource.MakeComputed(resource.NewStringProperty("")),
+				"foo": resource.MakeSecret(resource.NewProperty("foo")),
+				"bar": resource.MakeComputed(resource.NewProperty("")),
 			}, result)
 			assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 				"foo": {urn},
@@ -460,7 +508,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 
 			return nil
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -468,7 +516,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 
 		project := p.GetProject()
 		_, err := lt.TestOp(engine.Update).Run(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	t.Run("WithGrpc", func(t *testing.T) {
@@ -512,25 +560,25 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 						monitor *deploytest.ResourceMonitor,
 					) (plugin.ConstructResponse, error) {
 						resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
-						assert.NoError(t, err)
+						require.NoError(t, err)
 
 						respA, err := monitor.RegisterResource("pkgA:m:typA", req.Name+"-a", true, deploytest.ResourceOptions{
 							Parent: resp.URN,
 						})
-						assert.NoError(t, err)
+						require.NoError(t, err)
 
 						// Return a secret and unknown output depending on some internal resource
 						deps := []resource.URN{respA.URN}
 						return plugin.ConstructResponse{
 							URN: resp.URN,
 							Outputs: resource.PropertyMap{
-								"foo": resource.NewOutputProperty(resource.Output{
-									Element:      resource.NewStringProperty("foo"),
+								"foo": resource.NewProperty(resource.Output{
+									Element:      resource.NewProperty("foo"),
 									Known:        true,
 									Secret:       true,
 									Dependencies: deps,
 								}),
-								"bar": resource.NewOutputProperty(resource.Output{
+								"bar": resource.NewProperty(resource.Output{
 									Dependencies: deps,
 								}),
 							},
@@ -548,21 +596,14 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 							req.Options.ArgDependencies["arg"])
 
 						// Assume a single output arg that this call depends on
-						arg := req.Args["arg"]
-						deps := arg.OutputValue().Dependencies
+						arg := req.Args.Get("arg")
+						deps := arg.Dependencies()
 
 						return plugin.CallResponse{
-							Return: resource.PropertyMap{
-								"foo": resource.NewOutputProperty(resource.Output{
-									Element:      resource.NewStringProperty("foo"),
-									Known:        true,
-									Secret:       true,
-									Dependencies: deps,
-								}),
-								"bar": resource.NewOutputProperty(resource.Output{
-									Dependencies: deps,
-								}),
-							},
+							Return: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true).WithDependencies(deps),
+								"bar": property.New(property.Computed).WithDependencies(deps),
+							}),
 							ReturnDependencies: nil, // Left blank on purpose because AcceptsOutputs is true
 						}, nil
 					},
@@ -574,7 +615,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 				Remote: true,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// The urn of the internal resource the component created
 			urn := resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resA-a")
@@ -582,8 +623,8 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
 			// values returned from RegisterResource.
 			assert.Equal(t, resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-				"bar": resource.MakeComputed(resource.NewStringProperty("")),
+				"foo": resource.MakeSecret(resource.NewProperty("foo")),
+				"bar": resource.MakeComputed(resource.NewProperty("")),
 			}, resp.Outputs)
 			assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 				"foo": {urn},
@@ -592,20 +633,20 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 
 			result, deps, _, err := monitor.Call("pkgA:m:typA", resource.PropertyMap{
 				// Send this as an output value using the dependencies returned.
-				"arg": resource.NewOutputProperty(resource.Output{
+				"arg": resource.NewProperty(resource.Output{
 					Element:      resp.Outputs["foo"].SecretValue().Element,
 					Known:        true,
 					Secret:       true,
 					Dependencies: []resource.URN{urn},
 				}),
-			}, nil, "", "", "")
-			assert.NoError(t, err)
+			}, nil, "", "", "", "", nil, "")
+			require.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
 			// values returned from Call.
 			assert.Equal(t, resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-				"bar": resource.MakeComputed(resource.NewStringProperty("")),
+				"foo": resource.MakeSecret(resource.NewProperty("foo")),
+				"bar": resource.MakeComputed(resource.NewProperty("")),
 			}, result)
 			assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 				"foo": {urn},
@@ -614,7 +655,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 
 			return nil
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -622,7 +663,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 
 		project := p.GetProject()
 		_, err := lt.TestOp(engine.Update).Run(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	t.Run("WithGrpc", func(t *testing.T) {
 		t.Parallel()
@@ -670,20 +711,20 @@ func TestConstructCallSendDependencies(t *testing.T) {
 							req.Options.PropertyDependencies["arg"])
 
 						resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
-						assert.NoError(t, err)
+						require.NoError(t, err)
 
 						respA, err := monitor.RegisterResource("pkgA:m:typA", req.Name+"-a", true, deploytest.ResourceOptions{
 							Parent: resp.URN,
 						})
-						assert.NoError(t, err)
+						require.NoError(t, err)
 
 						// Return a secret and unknown output depending on some internal resource
 						deps := []resource.URN{respA.URN}
 						return plugin.ConstructResponse{
 							URN: resp.URN,
 							Outputs: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewStringProperty("")),
+								"foo": resource.MakeSecret(resource.NewProperty("foo")),
+								"bar": resource.MakeComputed(resource.NewProperty("")),
 							},
 							OutputDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
@@ -702,14 +743,14 @@ func TestConstructCallSendDependencies(t *testing.T) {
 							req.Options.ArgDependencies["arg"])
 
 						// Assume a single output arg that this call depends on
-						arg := req.Args["arg"]
-						deps := arg.OutputValue().Dependencies
+						arg := req.Args.Get("arg")
+						deps := arg.Dependencies()
 
 						return plugin.CallResponse{
-							Return: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewStringProperty("")),
-							},
+							Return: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -723,22 +764,22 @@ func TestConstructCallSendDependencies(t *testing.T) {
 		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			respC, err := monitor.RegisterResource("pkgA:m:typC", "resC", false, deploytest.ResourceOptions{
 				Inputs: resource.PropertyMap{
-					"arg": resource.NewNumberProperty(1),
+					"arg": resource.NewProperty(1.0),
 				},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 				Remote: true,
 				Inputs: resource.PropertyMap{
-					"arg": resource.NewOutputProperty(resource.Output{
+					"arg": resource.NewProperty(resource.Output{
 						Element:      respC.Outputs["arg"],
 						Known:        true,
 						Dependencies: []resource.URN{respC.URN},
 					}),
 				},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// The urn of the internal resource the component created
 			urn := resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resA-a")
@@ -746,8 +787,8 @@ func TestConstructCallSendDependencies(t *testing.T) {
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
 			// values returned from RegisterResource.
 			assert.Equal(t, resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-				"bar": resource.MakeComputed(resource.NewStringProperty("")),
+				"foo": resource.MakeSecret(resource.NewProperty("foo")),
+				"bar": resource.MakeComputed(resource.NewProperty("")),
 			}, resp.Outputs)
 			assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 				"foo": {urn},
@@ -756,20 +797,20 @@ func TestConstructCallSendDependencies(t *testing.T) {
 
 			result, deps, _, err := monitor.Call("pkgA:m:typA", resource.PropertyMap{
 				// Send this as an output value using the dependencies returned.
-				"arg": resource.NewOutputProperty(resource.Output{
+				"arg": resource.NewProperty(resource.Output{
 					Element:      resp.Outputs["foo"].SecretValue().Element,
 					Known:        true,
 					Secret:       true,
 					Dependencies: []resource.URN{urn},
 				}),
-			}, nil, "", "", "")
-			assert.NoError(t, err)
+			}, nil, "", "", "", "", nil, "")
+			require.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
 			// values returned from Call.
 			assert.Equal(t, resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-				"bar": resource.MakeComputed(resource.NewStringProperty("")),
+				"foo": resource.MakeSecret(resource.NewProperty("foo")),
+				"bar": resource.MakeComputed(resource.NewProperty("")),
 			}, result)
 			assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 				"foo": {urn},
@@ -778,7 +819,7 @@ func TestConstructCallSendDependencies(t *testing.T) {
 
 			return nil
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -786,7 +827,7 @@ func TestConstructCallSendDependencies(t *testing.T) {
 
 		project := p.GetProject()
 		_, err := lt.TestOp(engine.Update).Run(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	t.Run("WithGrpc", func(t *testing.T) {
@@ -835,20 +876,20 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 							req.Options.PropertyDependencies["arg"])
 
 						resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
-						assert.NoError(t, err)
+						require.NoError(t, err)
 
 						respA, err := monitor.RegisterResource("pkgA:m:typA", req.Name+"-a", true, deploytest.ResourceOptions{
 							Parent: resp.URN,
 						})
-						assert.NoError(t, err)
+						require.NoError(t, err)
 
 						// Return a secret and unknown output depending on some internal resource
 						deps := []resource.URN{respA.URN}
 						return plugin.ConstructResponse{
 							URN: resp.URN,
 							Outputs: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewStringProperty("")),
+								"foo": resource.MakeSecret(resource.NewProperty("foo")),
+								"bar": resource.MakeComputed(resource.NewProperty("")),
 							},
 							OutputDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
@@ -867,14 +908,14 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 							req.Options.ArgDependencies["arg"])
 
 						// Assume a single output arg that this call depends on
-						arg := req.Args["arg"]
-						deps := arg.OutputValue().Dependencies
+						arg := req.Args.Get("arg")
+						deps := arg.Dependencies()
 
 						return plugin.CallResponse{
-							Return: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewStringProperty("")),
-							},
+							Return: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							ReturnDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -888,15 +929,15 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			respC, err := monitor.RegisterResource("pkgA:m:typC", "resC", false, deploytest.ResourceOptions{
 				Inputs: resource.PropertyMap{
-					"arg": resource.NewNumberProperty(1),
+					"arg": resource.NewProperty(1.0),
 				},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 				Remote: true,
 				Inputs: resource.PropertyMap{
-					"arg": resource.NewOutputProperty(resource.Output{
+					"arg": resource.NewProperty(resource.Output{
 						Element:      respC.Outputs["arg"],
 						Known:        true,
 						Dependencies: []resource.URN{respC.URN},
@@ -906,7 +947,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 					"arg": {respC.URN},
 				},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// The urn of the internal resource the component created
 			urn := resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resA-a")
@@ -914,8 +955,8 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
 			// values returned from RegisterResource.
 			assert.Equal(t, resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-				"bar": resource.MakeComputed(resource.NewStringProperty("")),
+				"foo": resource.MakeSecret(resource.NewProperty("foo")),
+				"bar": resource.MakeComputed(resource.NewProperty("")),
 			}, resp.Outputs)
 			assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 				"foo": {urn},
@@ -924,7 +965,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 
 			result, deps, _, err := monitor.Call("pkgA:m:typA", resource.PropertyMap{
 				// Send this as an output value using the dependencies returned.
-				"arg": resource.NewOutputProperty(resource.Output{
+				"arg": resource.NewProperty(resource.Output{
 					Element:      resp.Outputs["foo"].SecretValue().Element,
 					Known:        true,
 					Secret:       true,
@@ -932,14 +973,14 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 				}),
 			}, map[resource.PropertyKey][]resource.URN{
 				"arg": {urn},
-			}, "", "", "")
-			assert.NoError(t, err)
+			}, "", "", "", "", nil, "")
+			require.NoError(t, err)
 
 			// Assert that the outputs are received as just plain values because SDKs don't yet support output
 			// values returned from Call.
 			assert.Equal(t, resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewStringProperty("foo")),
-				"bar": resource.MakeComputed(resource.NewStringProperty("")),
+				"foo": resource.MakeSecret(resource.NewProperty("foo")),
+				"bar": resource.MakeComputed(resource.NewProperty("")),
 			}, result)
 			assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 				"foo": {urn},
@@ -948,7 +989,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 
 			return nil
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -956,7 +997,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 
 		project := p.GetProject()
 		_, err := lt.TestOp(engine.Update).Run(project, p.GetTarget(t, nil), p.Options, true, p.BackendClient, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	t.Run("WithGrpc", func(t *testing.T) {
@@ -987,17 +1028,17 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 					Aliases: aliasesFromAliases(req.Options.Aliases),
 					Protect: req.Options.Protect,
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				urn = resp.URN
 
 				_, err = monitor.RegisterResource("pkgA:m:typB", "resA", true, deploytest.ResourceOptions{
 					Parent: resp.URN,
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
-				outs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+				outs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
 				err = monitor.RegisterResourceOutputs(resp.URN, outs)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				return plugin.ConstructResponse{
 					URN:     resp.URN,
@@ -1013,7 +1054,7 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 				_, err := monitor.RegisterResource("pkgA:m:typC", "resA", true, deploytest.ResourceOptions{
 					Parent: urn,
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				return plugin.CallResponse{}, nil
 			}
@@ -1029,16 +1070,16 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			Remote: true,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
-			"foo": resource.NewStringProperty("bar"),
+			"foo": resource.NewProperty("bar"),
 		}, resp.Outputs)
 
-		_, _, _, err = monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{}, nil, "", "", "")
-		assert.NoError(t, err)
+		_, _, _, err = monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{}, nil, "", "", "", "", nil, "")
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -1068,17 +1109,17 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 					Aliases: aliasesFromAliases(req.Options.Aliases),
 					Protect: req.Options.Protect,
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				urn = resp.URN
 
 				_, err = monitor.RegisterResource("pkgA:m:typB", "resA", true, deploytest.ResourceOptions{
 					Parent: urn,
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
-				outs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+				outs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
 				err = monitor.RegisterResourceOutputs(urn, outs)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				return plugin.ConstructResponse{
 					URN:     urn,
@@ -1091,23 +1132,23 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 				req plugin.CallRequest,
 				monitor *deploytest.ResourceMonitor,
 			) (plugin.CallResponse, error) {
-				assert.Equal(t, resource.PropertyMap{
-					"name": resource.NewStringProperty("Alice"),
-				}, req.Args)
-				name := req.Args["name"].StringValue()
+				assert.Equal(t, property.NewMap(map[string]property.Value{
+					"name": property.New("Alice"),
+				}), req.Args)
+				name := req.Args.Get("name").AsString()
 
 				result, _, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
-					"urn": resource.NewStringProperty(string(urn)),
+					"urn": resource.NewProperty(string(urn)),
 				}, "", "", "")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				state := result["state"]
 				foo := state.ObjectValue()["foo"].StringValue()
 
 				message := fmt.Sprintf("%s, %s!", name, foo)
 				return plugin.CallResponse{
-					Return: resource.PropertyMap{
-						"message": resource.NewStringProperty(message),
-					},
+					Return: property.NewMap(map[string]property.Value{
+						"message": property.New(message),
+					}),
 				}, nil
 			}
 
@@ -1122,22 +1163,22 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
 			Remote: true,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
-			"foo": resource.NewStringProperty("bar"),
+			"foo": resource.NewProperty("bar"),
 		}, resp.Outputs)
 
 		outs, _, _, err := monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
-			"name": resource.NewStringProperty("Alice"),
-		}, nil, "", "", "")
-		assert.NoError(t, err)
+			"name": resource.NewProperty("Alice"),
+		}, nil, "", "", "", "", nil, "")
+		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
-			"message": resource.NewStringProperty("Alice, bar!"),
+			"message": resource.NewProperty("Alice, bar!"),
 		}, outs)
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -1189,7 +1230,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByProgram(t *testing.T) {
 						custom, err := rm.RegisterResource("pkgA:index:Custom", "custom", true, deploytest.ResourceOptions{
 							Parent: component.URN,
 							Inputs: resource.PropertyMap{
-								"foo": resource.NewStringProperty("bar"),
+								"foo": resource.NewProperty("bar"),
 							},
 						})
 						require.NoError(t, err)
@@ -1219,7 +1260,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByProgram(t *testing.T) {
 		state, _, err := monitor.Invoke(
 			"pulumi:pulumi:getResource",
 			resource.PropertyMap{
-				"urn": resource.NewStringProperty(string(customResRef.URN)),
+				"urn": resource.NewProperty(string(customResRef.URN)),
 			},
 			"", /*provider*/
 			"", /*version*/
@@ -1237,10 +1278,10 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByProgram(t *testing.T) {
 		require.Equal(
 			t,
 			resource.PropertyMap{
-				"urn": resource.NewStringProperty(string(customResRef.URN)),
-				"id":  resource.NewStringProperty(customResRef.ID.StringValue()),
-				"state": resource.NewObjectProperty(resource.PropertyMap{
-					"foo": resource.NewStringProperty("bar"),
+				"urn": resource.NewProperty(string(customResRef.URN)),
+				"id":  resource.NewProperty(customResRef.ID.StringValue()),
+				"state": resource.NewProperty(resource.PropertyMap{
+					"foo": resource.NewProperty("bar"),
 				}),
 			},
 			state,
@@ -1249,7 +1290,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByProgram(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
@@ -1302,7 +1343,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 						custom, err := rm.RegisterResource("pkgA:index:Custom", "custom", true, deploytest.ResourceOptions{
 							Parent: component.URN,
 							Inputs: resource.PropertyMap{
-								"foo": resource.NewStringProperty("bar"),
+								"foo": resource.NewProperty("bar"),
 							},
 						})
 						require.NoError(t, err)
@@ -1326,7 +1367,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 						state, _, err := rm.Invoke(
 							"pulumi:pulumi:getResource",
 							resource.PropertyMap{
-								"urn": resource.NewStringProperty(string(customResRef.URN)),
+								"urn": resource.NewProperty(string(customResRef.URN)),
 							},
 							"", /*provider*/
 							"", /*version*/
@@ -1344,10 +1385,10 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 						require.Equal(
 							t,
 							resource.PropertyMap{
-								"urn": resource.NewStringProperty(string(customResRef.URN)),
-								"id":  resource.NewStringProperty(customResRef.ID.StringValue()),
-								"state": resource.NewObjectProperty(resource.PropertyMap{
-									"foo": resource.NewStringProperty("bar"),
+								"urn": resource.NewProperty(string(customResRef.URN)),
+								"id":  resource.NewProperty(customResRef.ID.StringValue()),
+								"state": resource.NewProperty(resource.PropertyMap{
+									"foo": resource.NewProperty("bar"),
 								}),
 							},
 							state,
@@ -1382,7 +1423,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
@@ -1440,12 +1481,14 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 							customID,
 							component.URN, /*parent*/
 							resource.PropertyMap{
-								"foo": resource.NewStringProperty("bar"),
+								"foo": resource.NewProperty("bar"),
 							},
-							"", /*provider*/
-							"", /*version*/
-							"", /*sourcePosition*/
-							"", /*packageRef*/
+							"",  /*provider*/
+							"",  /*version*/
+							"",  /*sourcePosition*/
+							nil, /*stackTrace*/
+							"",  /*parentStackTraceHandle*/
+							"",  /*packageRef*/
 						)
 						require.NoError(t, err)
 
@@ -1474,7 +1517,7 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 		state, _, err := monitor.Invoke(
 			"pulumi:pulumi:getResource",
 			resource.PropertyMap{
-				"urn": resource.NewStringProperty(string(customResRef.URN)),
+				"urn": resource.NewProperty(string(customResRef.URN)),
 			},
 			"", /*provider*/
 			"", /*version*/
@@ -1492,10 +1535,10 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 		require.Equal(
 			t,
 			resource.PropertyMap{
-				"urn": resource.NewStringProperty(string(customResRef.URN)),
-				"id":  resource.NewStringProperty(customResRef.ID.StringValue()),
-				"state": resource.NewObjectProperty(resource.PropertyMap{
-					"foo": resource.NewStringProperty("bar"),
+				"urn": resource.NewProperty(string(customResRef.URN)),
+				"id":  resource.NewProperty(customResRef.ID.StringValue()),
+				"state": resource.NewProperty(resource.PropertyMap{
+					"foo": resource.NewProperty("bar"),
 				}),
 			},
 			state,
@@ -1504,7 +1547,7 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
@@ -1563,12 +1606,14 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 							customID,
 							component.URN, /*parent*/
 							resource.PropertyMap{
-								"foo": resource.NewStringProperty("bar"),
+								"foo": resource.NewProperty("bar"),
 							},
-							"", /*provider*/
-							"", /*version*/
-							"", /*sourcePosition*/
-							"", /*packageRef*/
+							"",  /*provider*/
+							"",  /*version*/
+							"",  /*sourcePosition*/
+							nil, /*stackTrace*/
+							"",  /*parentStackTraceHandle*/
+							"",  /*packageRef*/
 						)
 						require.NoError(t, err)
 
@@ -1591,7 +1636,7 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 						state, _, err := rm.Invoke(
 							"pulumi:pulumi:getResource",
 							resource.PropertyMap{
-								"urn": resource.NewStringProperty(string(customResRef.URN)),
+								"urn": resource.NewProperty(string(customResRef.URN)),
 							},
 							"", /*provider*/
 							"", /*version*/
@@ -1609,10 +1654,10 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 						require.Equal(
 							t,
 							resource.PropertyMap{
-								"urn": resource.NewStringProperty(string(customResRef.URN)),
-								"id":  resource.NewStringProperty(customResRef.ID.StringValue()),
-								"state": resource.NewObjectProperty(resource.PropertyMap{
-									"foo": resource.NewStringProperty("bar"),
+								"urn": resource.NewProperty(string(customResRef.URN)),
+								"id":  resource.NewProperty(customResRef.ID.StringValue()),
+								"state": resource.NewProperty(resource.PropertyMap{
+									"foo": resource.NewProperty("bar"),
 								}),
 							},
 							state,
@@ -1647,7 +1692,7 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options = lt.TestUpdateOptions{
 		T:     t,
@@ -1655,5 +1700,83 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 	}
 
 	_, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+}
+
+// Test that if a resource is passed as __self__ the engine uses it's provider for the call.
+func TestCallSelfProvider(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			var state string
+			return &deploytest.Provider{
+				ConfigureF: func(ctx context.Context, cr plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					if in, ok := cr.Inputs["state"]; ok {
+						state = in.StringValue()
+					}
+					return plugin.ConfigureResponse{}, nil
+				},
+				CallF: func(
+					_ context.Context,
+					req plugin.CallRequest,
+					_ *deploytest.ResourceMonitor,
+				) (plugin.CallResponse, error) {
+					return plugin.CallResponse{
+						Return: property.NewMap(map[string]property.Value{
+							"state": property.New(state),
+						}),
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		inputs := resource.PropertyMap{
+			"state": resource.NewProperty("foo"),
+		}
+
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		res, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+
+		id := resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+		if res.ID != "" {
+			id = resource.NewProperty(string(res.ID))
+		}
+		args := resource.PropertyMap{
+			"__self__": resource.NewProperty(resource.ResourceReference{
+				URN: res.URN,
+				ID:  id,
+			}),
+		}
+
+		resp, _, _, err := monitor.Call("pkgA:m:typA/method", args, nil, "", "", "", "", nil, "")
+		require.NoError(t, err)
+
+		assert.Equal(t, resource.PropertyMap{
+			"state": resource.NewProperty("foo"),
+		}, resp)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(engine.Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.NoError(t, err)
 }

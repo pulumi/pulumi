@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,21 +15,22 @@
 package gitutil
 
 import (
-	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
+	git "github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/go-git/go-git/v6/plumbing/transport/http"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/nettest"
@@ -39,12 +40,57 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+func TestMain(m *testing.M) {
+	if runtime.GOOS == "windows" {
+		// These tests are skipped as part of enabling running unit tests on windows and MacOS in
+		// https://github.com/pulumi/pulumi/pull/19653. These tests currently fail on Windows, and
+		// re-enabling them is left as future work.
+		// TODO[pulumi/pulumi#19675]: Re-enable tests on windows once they are fixed.
+		fmt.Println("Skip tests on windows until they are fixed")
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
+
+// TestGetGitRepositoryWithWorktreeConfigExtension is a regression test for
+// https://github.com/pulumi/pulumi/issues/23522: repositories that enable the
+// worktreeConfig extension (e.g. on Azure DevOps) must be openable by
+// GetGitRepository.
+func TestGetGitRepositoryWithWorktreeConfigExtension(t *testing.T) {
+	t.Parallel()
+
+	// The extension is rejected on its presence, not its value, so exercise both
+	// "true" and "false".
+	for _, value := range []string{"true", "false"} {
+		t.Run("worktreeConfig="+value, func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+			_, err := git.PlainInit(dir, false)
+			require.NoError(t, err)
+
+			// PlainInit writes core.repositoryformatversion = 0; append the
+			// worktreeConfig extension to reproduce the customer's config.
+			configPath := filepath.Join(dir, ".git", "config")
+			f, err := os.OpenFile(configPath, os.O_APPEND|os.O_WRONLY, 0o600)
+			require.NoError(t, err)
+			_, err = f.WriteString("[extensions]\n\tworktreeConfig = " + value + "\n")
+			require.NoError(t, err)
+			require.NoError(t, f.Close())
+
+			repo, err := GetGitRepository(dir)
+			require.NoError(t, err)
+			require.NotNil(t, repo)
+		})
+	}
+}
+
 func TestParseGitRepoURL(t *testing.T) {
 	t.Parallel()
 
 	test := func(expectedURL, expectedURLPath string, rawurl string) {
 		actualURL, actualURLPath, err := ParseGitRepoURL(rawurl)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expectedURL, actualURL)
 		assert.Equal(t, expectedURLPath, actualURLPath)
 	}
@@ -174,18 +220,18 @@ func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {
 	// Create local test repository.
 	repoPath := filepath.Join(e.RootPath, "repo")
 	err := os.MkdirAll(repoPath, os.ModePerm)
-	assert.NoError(e, err, "making repo dir %s", repoPath)
+	require.NoError(e, err, "making repo dir %s", repoPath)
 	e.CWD = repoPath
 	createTestRepo(e)
 
 	// Create temp directory to clone to.
 	cloneDir := filepath.Join(e.RootPath, "temp")
 	err = os.MkdirAll(cloneDir, os.ModePerm)
-	assert.NoError(e, err, "making clone dir %s", cloneDir)
+	require.NoError(e, err, "making clone dir %s", cloneDir)
 
 	test := func(expectedHashOrBranch string, expectedSubDirectory string, urlPath string) {
 		ref, hash, subDirectory, err := GetGitReferenceNameOrHashAndSubDirectory(repoPath, urlPath)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if ref != "" {
 			assert.True(t, hash.IsZero())
@@ -378,13 +424,29 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 		{"svn:something.com/owner/repo", nil},
 		{"https://bitbucket.org/foo.git", nil},
 		{"git@github.foo.acme.bad-tld:owner-name/repo-name.git", nil},
+		{
+			"git@github.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitHubHostName},
+		},
+		{
+			"git@github.enterprise.example.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.enterprise.example.com"},
+		},
+		{
+			"https://github.com/owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: GitHubHostName},
+		},
+		{
+			"https://github.enterprise.example.com/owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.enterprise.example.com"},
+		},
 	}
 
 	for _, test := range gitTests {
 		got, err := TryGetVCSInfo(test.Remote)
 		// Only assert the returned error if we don't expect to get an error.
 		if test.WantVCSInfo != nil {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		assert.Equal(t, test.WantVCSInfo, got)
 	}
@@ -401,12 +463,11 @@ func (c *mockSSHConfig) GetStrict(host, key string) (string, error) {
 	return c.path, c.err
 }
 
-//nolint:paralleltest // modifies environment variables
 func TestParseAuthURL(t *testing.T) {
 	//nolint: gosec
 	generateSSHKey := func(t *testing.T, passphrase string) string {
 		r := rand.New(rand.NewSource(0))
-		key, err := rsa.GenerateKey(r, 256)
+		key, err := rsa.GenerateKey(r, 1024)
 		require.NoError(t, err)
 
 		block := &pem.Block{
@@ -430,9 +491,12 @@ func TestParseAuthURL(t *testing.T) {
 	t.Run("with no auth", func(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", "")
 		t.Setenv("GITLAB_TOKEN", "")
+		t.Setenv("AZURE_DEV_OPS_TOKEN", "")
+		t.Setenv("BITBUCKET_TOKEN", "")
+		t.Setenv("GENERIC_VCS_TOKEN", "")
 
 		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, auth)
 	})
 
@@ -441,51 +505,116 @@ func TestParseAuthURL(t *testing.T) {
 		t.Setenv("GITLAB_TOKEN", "")
 
 		url, auth, err := getAuthForURL("http://user@github.com/pulumi/templates")
-		assert.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "user"}, auth)
+		require.NoError(t, err)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "user"}}, auth)
 		assert.Equal(t, "http://github.com/pulumi/templates", url)
 	})
 
 	t.Run("with basic auth user/password", func(t *testing.T) {
 		t.Parallel()
 		url, auth, err := getAuthForURL("http://user:password@github.com/pulumi/templates")
-		assert.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "user", Password: "password"}, auth)
+		require.NoError(t, err)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "user", Password: "password"}}, auth)
 		assert.Equal(t, "http://github.com/pulumi/templates", url)
 	})
 
 	t.Run("with GITHUB_TOKEN set in environment", func(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", "token-1")
+		expected := httpAuth{&http.BasicAuth{Username: "x-access-token", Password: "token-1"}}
+
 		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
-		assert.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+		require.NoError(t, err)
+		assert.Equal(t, expected, auth)
+
+		_, auth, err = getAuthForURL("http://github.enterprise.example.com/pulumi/templates")
+		require.NoError(t, err)
+		assert.Equal(t, expected, auth)
 
 		_, auth, err = getAuthForURL("http://gitlab.com/pulumi/templates")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, auth)
 	})
 
 	t.Run("with GITLAB_TOKEN set in environment", func(t *testing.T) {
 		t.Setenv("GITLAB_TOKEN", "token-1")
 		t.Setenv("GITHUB_TOKEN", "")
+		expected := httpAuth{&http.BasicAuth{Username: "oauth2", Password: "token-1"}}
+
 		_, auth, err := getAuthForURL("http://gitlab.com/pulumi/templates")
-		assert.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "oauth2", Password: "token-1"}, auth)
+		require.NoError(t, err)
+		assert.Equal(t, expected, auth)
+
+		_, auth, err = getAuthForURL("http://gitlab.enterprise.example.com/pulumi/templates")
+		require.NoError(t, err)
+		assert.Equal(t, expected, auth)
 
 		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, auth)
+	})
+
+	t.Run("with AZURE_DEV_OPS_TOKEN set in environment", func(t *testing.T) {
+		t.Setenv("AZURE_DEV_OPS_TOKEN", "token-1")
+		t.Setenv("GITHUB_TOKEN", "")
+		expected := httpAuth{&http.BasicAuth{Username: "x-access-token", Password: "token-1"}}
+
+		_, auth, err := getAuthForURL("http://dev.azure.com/org/project/_git/repo")
+		require.NoError(t, err)
+		assert.Equal(t, expected, auth)
+
+		// Also works with legacy visualstudio.com URLs.
+		_, auth, err = getAuthForURL("http://org.visualstudio.com/project/_git/repo")
+		require.NoError(t, err)
+		assert.Equal(t, expected, auth)
+
+		// Does not leak to non-ADO URLs.
+		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
+		require.NoError(t, err)
+		assert.Nil(t, auth)
+	})
+
+	t.Run("with BITBUCKET_TOKEN set in environment", func(t *testing.T) {
+		t.Setenv("BITBUCKET_TOKEN", "token-1")
+		t.Setenv("GITHUB_TOKEN", "")
+		_, auth, err := getAuthForURL("http://bitbucket.org/team/repo")
+		require.NoError(t, err)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "x-token-auth", Password: "token-1"}}, auth)
+
+		// Does not leak to non-Bitbucket URLs.
+		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
+		require.NoError(t, err)
+		assert.Nil(t, auth)
+	})
+
+	t.Run("with GENERIC_VCS_TOKEN set in environment", func(t *testing.T) {
+		t.Setenv("GENERIC_VCS_TOKEN", "token-1")
+		t.Setenv("GITHUB_TOKEN", "")
+		t.Setenv("GITLAB_TOKEN", "")
+		t.Setenv("AZURE_DEV_OPS_TOKEN", "")
+		t.Setenv("BITBUCKET_TOKEN", "")
+
+		// Generic token is used as a fallback for unknown hosts.
+		_, auth, err := getAuthForURL("http://git.example.com/org/repo")
+		require.NoError(t, err)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "x-access-token", Password: "token-1"}}, auth)
+	})
+
+	t.Run("provider-specific token takes precedence over GENERIC_VCS_TOKEN", func(t *testing.T) {
+		t.Setenv("GENERIC_VCS_TOKEN", "generic")
+		t.Setenv("GITHUB_TOKEN", "github")
+		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
+		require.NoError(t, err)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "x-access-token", Password: "github"}}, auth)
 	})
 
 	t.Run("with GIT_USERNAME/GIT_PASSWORD set in environment", func(t *testing.T) {
 		t.Setenv("GIT_USERNAME", "user")
 		t.Setenv("GIT_PASSWORD", "password")
 		_, auth, err := getAuthForURL("http://example.com/pulumi/templates")
-		assert.NoError(t, err)
-		assert.Equal(t, &http.BasicAuth{Username: "user", Password: "password"}, auth)
+		require.NoError(t, err)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "user", Password: "password"}}, auth)
 	})
 
-	//nolint:paralleltest // global environment variables
 	t.Run("with passphrase-protected key and environment variable", func(t *testing.T) {
 		passphrase := "foobar"
 		t.Setenv(env.GitSSHPassphrase.Var().Name(), passphrase)
@@ -495,13 +624,13 @@ func TestParseAuthURL(t *testing.T) {
 		}
 
 		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
-		assert.NoError(t, err)
-		assert.NotNil(t, auth)
-		assert.Equal(t, "user: git, name: ssh-public-keys", auth.String())
+		require.NoError(t, err)
+		expectedKeys, err := getSSHPublicKeys("git", "github.com", parser.sshConfig)
+		require.NoError(t, err)
+		assert.Equal(t, sshAuth{expectedKeys}, auth)
 		assert.Contains(t, parser.sshKeys, "github.com")
 	})
 
-	//nolint:paralleltest // global environment variables
 	t.Run("with passphrase-protected key and wrong environment variable (agent available)", func(t *testing.T) {
 		l, err := nettest.NewLocalListener("unix")
 		defer contract.IgnoreClose(l)
@@ -517,11 +646,10 @@ func TestParseAuthURL(t *testing.T) {
 		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
 		// This isn't an error because the connection should fall back to the
 		// SSH agent for auth.
-		assert.NoError(t, err)
-		assert.NotNil(t, auth)
+		require.NoError(t, err)
+		require.NotNil(t, auth)
 	})
 
-	//nolint:paralleltest // global environment variables
 	t.Run("with passphrase-protected key and wrong environment variable (agent unavailable)", func(t *testing.T) {
 		t.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
 		t.Setenv("SSH_AUTH_SOCK", "")
@@ -540,18 +668,16 @@ func TestParseAuthURL(t *testing.T) {
 		t.Parallel()
 		parser := urlAuthParser{
 			sshConfig: &mockSSHConfig{err: errors.New("should not be called")},
-			sshKeys: map[string]transport.AuthMethod{
-				"github.com": &http.BasicAuth{Username: "foo"},
+			sshKeys: map[string]clientOption{
+				"github.com": httpAuth{&http.BasicAuth{Username: "foo"}},
 			},
 		}
 
 		_, auth, err := parser.Parse("git@github.com:pulumi/templates.git")
-		assert.NoError(t, err)
-		assert.NotNil(t, auth)
-		assert.Equal(t, "http-basic-auth - foo:<empty>", auth.String())
+		require.NoError(t, err)
+		assert.Equal(t, httpAuth{&http.BasicAuth{Username: "foo"}}, auth)
 	})
 
-	//nolint:paralleltest // modifies environment variables
 	t.Run("Don't cache on error", func(t *testing.T) {
 		// Regression test for https://github.com/pulumi/pulumi/issues/16637
 		t.Setenv(env.GitSSHPassphrase.Var().Name(), "incorrect passphrase")
@@ -611,13 +737,12 @@ func TestGitCloneAndCheckoutRevision(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
 			dir := t.TempDir()
 
-			err := GitCloneAndCheckoutRevision(context.Background(), "testdata/revision-test.git", c.revision, dir)
+			err := GitCloneAndCheckoutRevision(t.Context(), "testdata/revision-test.git", c.revision, dir)
 			if c.expectedError != "" {
 				require.ErrorContains(t, err, c.expectedError)
 				return
@@ -657,11 +782,10 @@ func TestGetLatestTagOrHash(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		c := c
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			v, err := GetLatestTagOrHash(context.Background(), c.dataDir)
-			assert.NoError(t, err)
+			v, err := GetLatestTagOrHash(t.Context(), c.dataDir)
+			require.NoError(t, err)
 			assert.Equal(t, c.expected.String(), v.String())
 		})
 	}

@@ -1,0 +1,16 @@
+<{%reset%}>  urn:pulumi:stack::project::pulumi:providers:pkgA::prov: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:stack::project::pkgA:m:typA::parent: (delete)
+<{%fg 1%}>    [id=1]
+<{%reset%}><{%fg 1%}>    [provider=urn:pulumi:stack::project::pulumi:providers:pkgA::prov::id]
+<{%reset%}><{%reset%}>  urn:pulumi:stack::project::pkgA:m:typA::parent: (same)
+<{%reset%}>    [id=2]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:stack::project::pulumi:providers:pkgA::prov::id]
+<{%reset%}><{%reset%}>    <{%reset%}>  urn:pulumi:stack::project::pkgA:m:typA$pkgA:m:typA::child: (same)
+<{%reset%}>        [id=2]
+<{%reset%}><{%reset%}>        [provider=urn:pulumi:stack::project::pulumi:providers:pkgA::prov::id]
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 1 deleted<{%reset%}>
+    3 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

@@ -21,11 +21,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -49,7 +50,7 @@ func TestBasePluginMapper_UsesEntries(t *testing.T) {
 	mappingFile := tempDir + "/provider.json"
 
 	err := os.WriteFile(mappingFile, []byte("entrydata"), 0o600)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	mapper, err := NewBasePluginMapper(
 		ws,
@@ -58,14 +59,14 @@ func TestBasePluginMapper_UsesEntries(t *testing.T) {
 		installPlugin,
 		[]string{mappingFile},
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "provider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("entrydata"), data)
 }
 
@@ -111,14 +112,65 @@ func TestBasePluginMapper_InstalledPluginMatches(t *testing.T) {
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "provider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	assert.Equal(t, []byte("data"), data)
+}
+
+// Tests that an ecosystem supplied on the request overrides the mapper's configured conversion key.
+func TestBasePluginMapper_EcosystemOverridesConversionKey(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+	ws := &testWorkspace{
+		infos: []workspace.PluginInfo{
+			{
+				Name:    "provider",
+				Kind:    apitype.ResourcePlugin,
+				Version: semverMustParse("1.0.0"),
+			},
+		},
+	}
+
+	testProvider := &testProvider{
+		pkg: "provider",
+		GetMappingF: func(key, provider string) ([]byte, string, error) {
+			// The request ecosystem ("terraform") takes precedence over the configured key ("key").
+			assert.Equal(t, "terraform", key)
+			return []byte("data"), "provider", nil
+		},
+	}
+
+	providerFactory := func(descriptor workspace.PackageDescriptor) (plugin.Provider, error) {
+		return testProvider, nil
+	}
+
+	installPlugin := func(pluginName string) *semver.Version {
+		t.Fatal("should not be called")
+		return nil
+	}
+
+	mapper, err := NewBasePluginMapper(
+		ws,
+		"key", /*conversionKey*/
+		providerFactory,
+		installPlugin,
+		nil, /*mappings*/
+	)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
+
+	// Act.
+	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/, "terraform" /*ecosystem*/)
+
+	// Assert.
+	require.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
 
@@ -172,15 +224,15 @@ func TestBasePluginMapper_MappedNameDiffersFromPulumiName(t *testing.T) {
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "otherProvider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "otherProvider", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	assert.True(t, installCalled, "installPlugin should have been called")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
 
@@ -233,15 +285,15 @@ func TestBasePluginMapper_NoPluginMatches_ButCanBeInstalled(t *testing.T) {
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "yetAnotherProvider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "yetAnotherProvider", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	assert.True(t, installCalled, "installPlugin should have been called")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
 
@@ -293,14 +345,14 @@ func TestBasePluginMapper_UseMatchingNameFirst(t *testing.T) {
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "provider", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "provider", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("data"), data)
 }
 
@@ -361,9 +413,10 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 		// Our first request will be for the gcp provider. Since the workspace doesn't have a plugin with that name, and
 		// there's no hint, we should see an installation attempt for it. The second request will be for aws, which will
 		// trigger the same behaviour since nothing will match in the workspace.
-		if installCalls == 0 {
+		switch installCalls {
+		case 0:
 			assert.Equal(t, "gcp", pluginName)
-		} else if installCalls == 1 {
+		case 1:
 			assert.Equal(t, "aws", pluginName)
 		}
 
@@ -378,23 +431,23 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiName(t *testing.T) {
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "gcp", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	assert.Equal(t, 1, installCalls, "installPlugin should have been called once")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("datagcp"), data)
 
 	// Act.
-	data, err = mapper.GetMapping(context.Background(), "aws", nil /*hint*/)
+	data, err = mapper.GetMapping(t.Context(), "aws", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
 	assert.Equal(t, 2, installCalls, "installPlugin should have been called twice")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("dataaws"), data)
 }
 
@@ -446,16 +499,16 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithHint(t *testing.T) 
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "gcp", &MapperPackageHint{
+	data, err := mapper.GetMapping(t.Context(), "gcp", &MapperPackageHint{
 		PluginName: "pulumiProviderGcp",
-	})
+	}, "" /*ecosystem*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("datagcp"), data)
 }
 
@@ -514,21 +567,21 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithParameterizedHint(t
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "gcp", &MapperPackageHint{
+	data, err := mapper.GetMapping(t.Context(), "gcp", &MapperPackageHint{
 		PluginName: "terraform-provider",
 		Parameterization: &workspace.Parameterization{
 			Name:    "gcp",
 			Version: semver.MustParse("2.0.0"),
 			Value:   []byte("value"),
 		},
-	})
+	}, "" /*ecosystem*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("datagcp"), data)
 }
 
@@ -578,21 +631,21 @@ func TestBasePluginMapper_MappedNamesDifferFromPulumiNameWithUnusableParameteriz
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
-	data, err := mapper.GetMapping(context.Background(), "aws", &MapperPackageHint{
+	data, err := mapper.GetMapping(t.Context(), "aws", &MapperPackageHint{
 		PluginName: "aws",
 		Parameterization: &workspace.Parameterization{
 			Name:    "aws",
 			Version: semver.MustParse("2.0.0"),
 			Value:   []byte("value"),
 		},
-	})
+	}, "" /*ecosystem*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte("dataaws"), data)
 }
 
@@ -645,25 +698,26 @@ func TestBasePluginMapper_InfiniteLoopRegression(t *testing.T) {
 		installPlugin,
 		nil, /*mappings*/
 	)
-	assert.NoError(t, err)
-	assert.NotNil(t, mapper)
+	require.NoError(t, err)
+	require.NotNil(t, mapper)
 
 	// Act.
 
 	// Attempt to get the mapping for the GCP provider, which we don't have a plugin for.
-	data, err := mapper.GetMapping(context.Background(), "gcp", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/, "" /*ecosystem*/)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []byte{}, data)
 }
 
-// testWorkspace implements the Workspace interface with a fixed set of plugins.
+// testWorkspace implements the pluginstorage.Context interface with a fixed set of plugins.
 type testWorkspace struct {
+	pluginstorage.MockContext
 	infos []workspace.PluginInfo
 }
 
-func (ws *testWorkspace) GetPlugins() ([]workspace.PluginInfo, error) {
+func (ws *testWorkspace) GetPlugins(_ context.Context) ([]workspace.PluginInfo, error) {
 	return ws.infos, nil
 }
 
@@ -675,10 +729,6 @@ type testProvider struct {
 
 	GetMappingF  func(key, provider string) ([]byte, string, error)
 	GetMappingsF func(key string) ([]string, error)
-}
-
-func (prov *testProvider) Pkg() tokens.Package {
-	return tokens.Package(prov.pkg)
 }
 
 func (prov *testProvider) GetMapping(

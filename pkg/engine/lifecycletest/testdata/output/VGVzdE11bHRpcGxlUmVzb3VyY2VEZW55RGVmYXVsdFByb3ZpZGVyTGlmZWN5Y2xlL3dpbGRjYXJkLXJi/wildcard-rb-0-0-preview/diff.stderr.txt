@@ -1,0 +1,1 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>Default provider for 'pkgB' disabled. 'urn:pulumi:test::test::pkgB:m:typB::resB' must use an explicit provider.<{%reset%}>

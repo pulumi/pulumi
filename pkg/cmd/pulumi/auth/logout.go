@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,23 +17,24 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewLogoutCmd() *cobra.Command {
+func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var cloudURL string
 	var localMode bool
 	var all bool
 
 	cmd := &cobra.Command{
-		Use:   "logout <url>",
+		Use:   "logout",
 		Short: "Log out of the Pulumi Cloud",
 		Long: "Log out of the Pulumi Cloud.\n" +
 			"\n" +
@@ -45,7 +46,6 @@ func NewLogoutCmd() *cobra.Command {
 			"\n\n" +
 			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n\n" +
 			"    $ pulumi logout --all",
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// If a <cloud> was specified as an argument, use it.
 			if len(args) > 0 {
@@ -65,18 +65,22 @@ func NewLogoutCmd() *cobra.Command {
 
 			var err error
 			if all {
-				err = workspace.DeleteAllAccounts()
-				fmt.Println("Logged out of everything")
+				err = deleteAllAccounts()
+				fmt.Fprintln(cmd.OutOrStdout(), "Logged out of everything")
 			} else {
 				if cloudURL == "" {
+					cwd, err := os.Getwd()
+					if err != nil {
+						return fmt.Errorf("getting current working directory: %w", err)
+					}
+
 					// Try to read the current project
-					ws := pkgWorkspace.Instance
-					project, _, err := ws.ReadProject()
+					project, _, err := ws.ReadProject(cwd)
 					if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 						return err
 					}
 
-					cloudURL, err = pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+					cloudURL, err = pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 					if err != nil {
 						return fmt.Errorf("could not determine current cloud: %w", err)
 					}
@@ -86,13 +90,20 @@ func NewLogoutCmd() *cobra.Command {
 					cloudURL = httpstate.ValueOrDefaultURL(ws, cloudURL)
 				}
 
-				err = workspace.DeleteAccount(cloudURL)
-				fmt.Printf("Logged out of %s\n", cloudURL)
+				err = deleteAccount(cloudURL)
+				fmt.Fprintf(cmd.OutOrStdout(), "Logged out of %s\n", cloudURL)
 			}
 
 			return err
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "url"},
+		},
+		Required: 0,
+	})
 
 	cmd.PersistentFlags().BoolVar(&all, "all", false,
 		"Logout of all backends")
@@ -102,4 +113,41 @@ func NewLogoutCmd() *cobra.Command {
 		"Log out of using local mode")
 
 	return cmd
+}
+
+// deleteAllAccounts removes user credentials and, in agent mode, any shared
+// temporary agent credentials.
+func deleteAllAccounts() error {
+	if !workspace.AgentCredentialsFallbackEnabled() {
+		return workspace.DeleteAllAccounts()
+	}
+	if err := workspace.DeleteAllAccounts(); err != nil {
+		return workspace.DeleteAgentCredentials()
+	}
+	return workspace.DeleteAgentCredentials()
+}
+
+// deleteAccount removes credentials for a cloud URL, falling back to shared
+// temporary agent credentials when default credentials are unavailable.
+func deleteAccount(cloudURL string) error {
+	if !workspace.AgentCredentialsFallbackEnabled() {
+		return workspace.DeleteAccount(cloudURL)
+	}
+	creds, err := workspace.GetStoredCredentials()
+	// Tokenless backends, such as DIY backends, still belong to the default credential store.
+	if err == nil && credentialsContainAccount(creds, cloudURL) {
+		return workspace.DeleteAccount(cloudURL)
+	}
+	return workspace.DeleteAgentAccount(cloudURL)
+}
+
+func credentialsContainAccount(creds workspace.Credentials, cloudURL string) bool {
+	if creds.Current == cloudURL {
+		return true
+	}
+	if _, ok := creds.AccessTokens[cloudURL]; ok {
+		return true
+	}
+	_, ok := creds.Accounts[cloudURL]
+	return ok
 }

@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package deploy
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -25,7 +26,8 @@ import (
 	"github.com/mitchellh/copystructure"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -63,6 +65,19 @@ func NewPlan(config config.Map) Plan {
 
 // Clone makes a deep copy of the given plan and returns a pointer to the clone.
 func (plan *Plan) Clone() *Plan {
+	// Force initialization of time.Local before copying the plan structure. `Plan`
+	// contains a time.Time field, which contains a pointer to time.Location, which is set
+	// to time.Local if we're using `time.Now()`. time.Local is a global variable that's
+	// uninitialized until the first time its name is accessed, which can happen, e.g. when
+	// logging.  If time.Local is uninitialized while copystructure.Copy() is called, the
+	// they can race against eachother, causing https://github.com/pulumi/pulumi/issues/21681.
+	//
+	// It can also lead to the plans containing time.Time field to have the wrong location
+	// set. We work around this issue by accessing time.Local here, which forces it to be
+	// initialized before copying the plan, stopping both the race, and the possibility
+	// of the location being uninitialized in the copied plan.
+	_ = time.Local.String()
+
 	return copystructure.Must(copystructure.Copy(plan)).(*Plan)
 }
 
@@ -75,13 +90,7 @@ type PlanDiff struct {
 
 // Returns true if the Deletes array contains the given key
 func (planDiff *PlanDiff) ContainsDelete(key resource.PropertyKey) bool {
-	found := false
-	for i := range planDiff.Deletes {
-		if planDiff.Deletes[i] == key {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(planDiff.Deletes, key)
 	return found
 }
 
@@ -180,7 +189,7 @@ func NewPlanDiff(inputDiff *resource.ObjectDiff) PlanDiff {
 	return diff
 }
 
-func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *resource.Goal) *GoalPlan {
+func NewGoalPlan(inputDiff *resource.ObjectDiff, goal *pkgresource.Goal) *GoalPlan {
 	if goal == nil {
 		return nil
 	}
@@ -333,9 +342,9 @@ func (rp *ResourcePlan) diffAliases(a, b []resource.Alias) (message string, chan
 // This is similar to ResourcePlan.checkGoal but for the case we're we don't have a goal saved.
 // This simple checks that we're not changing anything.
 func checkMissingPlan(
-	oldState *resource.State,
+	oldState *pkgresource.State,
 	newInputs resource.PropertyMap,
-	programGoal *resource.Goal,
+	programGoal *pkgresource.Goal,
 ) error {
 	// We new up a fake ResourcePlan that matches the old state and then simply call checkGoal on it.
 	goal := &GoalPlan{
@@ -530,7 +539,7 @@ func (rp *ResourcePlan) checkOutputs(
 func (rp *ResourcePlan) checkGoal(
 	oldInputs resource.PropertyMap,
 	newInputs resource.PropertyMap,
-	programGoal *resource.Goal,
+	programGoal *pkgresource.Goal,
 ) error {
 	contract.Requiref(programGoal != nil, "programGoal", "must not be nil")
 	// rp.Goal may be nil, but if it isn't Type and Name should match
@@ -616,6 +625,8 @@ func (rp *ResourcePlan) checkGoal(
 		return fmt.Errorf("update timeout changed (expected %v)", rp.Goal.CustomTimeouts.Update)
 	case rp.Goal.CustomTimeouts.Delete != programGoal.CustomTimeouts.Delete:
 		return fmt.Errorf("delete timeout changed (expected %v)", rp.Goal.CustomTimeouts.Delete)
+	case rp.Goal.CustomTimeouts.Read != programGoal.CustomTimeouts.Read:
+		return fmt.Errorf("read timeout changed (expected %v)", rp.Goal.CustomTimeouts.Read)
 	}
 
 	// Check that the ignoreChanges sets are identical.

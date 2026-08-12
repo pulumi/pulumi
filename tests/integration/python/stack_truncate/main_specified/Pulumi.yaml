@@ -1,5 +1,8 @@
 name: pulumi-python-stack-truncate
 description: |
   A Python program that errors out
-runtime: python
+runtime:
+  name: python
+  options:
+    toolchain: uv
 main: foo.py

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,13 +30,11 @@ import * as plugproto from "../../proto/plugin_pb";
 import * as provrpc from "../../proto/provider_grpc_pb";
 import * as provproto from "../../proto/provider_pb";
 import * as statusproto from "../../proto/status_pb";
+import { grpcChannelOptions } from "../../runtime";
 
 const requireFromString = require("require-from-string");
 
 const providerKey: string = "__provider";
-
-// maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-const maxRPCMessageSize: number = 1024 * 1024 * 400;
 
 // We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
 // code.
@@ -137,18 +135,6 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
 
         // TODO[pulumi/pulumi#406]: implement this.
         callback(new Error(`unknown function ${req.getTok()}`), undefined);
-    }
-
-    async streamInvoke(
-        call: grpc.ServerWritableStream<provproto.InvokeRequest, provproto.InvokeResponse>,
-    ): Promise<void> {
-        const req: any = call.request;
-
-        // TODO[pulumi/pulumi#406]: implement this.
-        call.emit("error", {
-            code: grpc.status.UNIMPLEMENTED,
-            details: `unknown function ${req.getTok()}`,
-        });
     }
 
     async check(call: any, callback: any): Promise<void> {
@@ -292,6 +278,13 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
                 resp.setId(result.id);
                 const resultProps = resultIncludingProvider(result.props, props);
                 resp.setProperties(structproto.Struct.fromJavaScript(resultProps));
+
+                // If the provider returned explicit inputs, use them for subsequent diffs.
+                // This allows the provider to update inputs to match refreshed outputs.
+                if (result.inputs) {
+                    const resultInputs = resultIncludingProvider(result.inputs, props);
+                    resp.setInputs(structproto.Struct.fromJavaScript(resultInputs));
+                }
             } else {
                 // In the event of a missing read, simply return back the input state.
                 resp.setId(id);
@@ -303,6 +296,13 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
             console.error(`${e}: ${e.stack}`);
             callback(e, undefined);
         }
+    }
+
+    list(call: grpc.ServerWritableStream<provproto.ListRequest, provproto.ListResponse>): void {
+        call.emit("error", {
+            code: grpc.status.UNIMPLEMENTED,
+            details: "List is not implemented by the dynamic provider",
+        });
     }
 
     async update(call: any, callback: any): Promise<void> {
@@ -494,7 +494,7 @@ export async function main(args: string[]) {
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({
-        "grpc.max_receive_message_length": maxRPCMessageSize,
+        ...grpcChannelOptions,
     });
     const resourceProvider = new ResourceProviderService();
     server.addService(provrpc.ResourceProviderService, resourceProvider);

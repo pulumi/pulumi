@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package model
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -29,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // ObjectType represents schematized maps from strings to particular types.
@@ -36,19 +38,28 @@ type ObjectType struct {
 	// Properties records the types of the object's properties.
 	Properties map[string]Type
 	// Annotations records any annotations associated with the object type.
-	Annotations []interface{}
+	Annotations []any
 
 	propertyUnion Type
 	s             atomic.Value // Value<string>
+
+	cache *gsync.Map[Type, cacheEntry]
+	// Whether typechecking and traversal emit error or warning diagnostics. Non-strict mode returns warnings.
+	Strict bool
 }
 
 // NewObjectType creates a new object type with the given properties and annotations.
-func NewObjectType(properties map[string]Type, annotations ...interface{}) *ObjectType {
-	return &ObjectType{Properties: properties, Annotations: annotations}
+func NewObjectType(properties map[string]Type, annotations ...any) *ObjectType {
+	return &ObjectType{
+		Properties:  properties,
+		Annotations: annotations,
+		cache:       &gsync.Map[Type, cacheEntry]{},
+		Strict:      true,
+	}
 }
 
 // Annotate adds annotations to the object type. Annotations may be retrieved by GetObjectTypeAnnotation.
-func (t *ObjectType) Annotate(annotations ...interface{}) {
+func (t *ObjectType) Annotate(annotations ...any) {
 	t.Annotations = append(t.Annotations, annotations...)
 }
 
@@ -103,7 +114,11 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 	key, keyType := GetTraverserKey(traverser)
 
 	if !InputType(StringType).ConversionFrom(keyType).Exists() {
-		return DynamicType, hcl.Diagnostics{unsupportedObjectProperty(traverser.SourceRange())}
+		diags := unsupportedObjectProperty(traverser.SourceRange())
+		if !t.Strict {
+			diags.Severity = hcl.DiagWarning
+		}
+		return DynamicType, hcl.Diagnostics{diags}
 	}
 
 	if key == cty.DynamicVal {
@@ -145,7 +160,13 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 		for k := range t.Properties {
 			props = append(props, k)
 		}
-		return DynamicType, hcl.Diagnostics{unknownObjectProperty(propertyName, traverser.SourceRange(), props)}
+
+		diag := UnknownObjectProperty(propertyName, traverser.SourceRange(), props)
+		if !t.Strict {
+			diag.Severity = hcl.DiagWarning
+		}
+
+		return DynamicType, hcl.Diagnostics{diag}
 	}
 	return propertyType, nil
 }
@@ -213,9 +234,7 @@ type objectTypeUnifier struct {
 func (u *objectTypeUnifier) unify(t *ObjectType) {
 	if !u.any {
 		u.properties = map[string]Type{}
-		for k, t := range t.Properties {
-			u.properties[k] = t
-		}
+		maps.Copy(u.properties, t.Properties)
 		u.any, u.conversionKind = true, SafeConversion
 	} else {
 		for key, pt := range u.properties {
@@ -253,19 +272,21 @@ func (t *ObjectType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+func (t *ObjectType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ObjectType:
-			if seen != nil {
-				if _, ok := seen[t]; ok {
-					return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{invalidRecursiveType(t)} }
-				}
-			} else {
-				seen = map[Type]struct{}{}
+			// A `(t, src)` pair already in flight is a true coinductive cycle:
+			// assume it converts and let the outer frame's per-property checks
+			// verify the (always finite) leaves.
+			if seen.has(t, src) {
+				return SafeConversion, nil
 			}
-			seen[t] = struct{}{}
-			defer delete(seen, t)
+			if seen == nil {
+				seen = cycleSet{}
+			}
+			seen.push(t, src)
+			defer seen.pop(t, src)
 
 			if unifying {
 				var unifier objectTypeUnifier

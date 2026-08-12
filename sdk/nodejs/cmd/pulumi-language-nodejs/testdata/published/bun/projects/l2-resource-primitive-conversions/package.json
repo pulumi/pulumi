@@ -1,0 +1,15 @@
+{
+	"name": "l2-resource-primitive-conversions",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/primitive": "ROOT/artifacts/pulumi-primitive-7.0.0.tgz"
+	}
+}

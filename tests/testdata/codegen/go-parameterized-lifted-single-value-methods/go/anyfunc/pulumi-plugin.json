@@ -1,0 +1,10 @@
+{
+  "resource": true,
+  "name": "terraform-provider",
+  "version": "0.0.0-dev",
+  "parameterization": {
+    "name": "anyfunc",
+    "version": "2.1.0",
+    "value": "eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL25vcnRod29vZC1sYWJzL2NvcmVmdW5jIiwidmVyc2lvbiI6IjIuMS4wIn19"
+  }
+}

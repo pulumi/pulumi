@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -28,13 +27,14 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
-	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/http"
-	gitssh "github.com/go-git/go-git/v5/plumbing/transport/ssh"
-	"github.com/go-git/go-git/v5/storage/memory"
+	git "github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/config"
+	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/go-git/go-git/v6/plumbing/client"
+	"github.com/go-git/go-git/v6/plumbing/transport"
+	"github.com/go-git/go-git/v6/plumbing/transport/http"
+	gitssh "github.com/go-git/go-git/v6/plumbing/transport/ssh"
+	"github.com/go-git/go-git/v6/storage/memory"
 	"github.com/kevinburke/ssh_config"
 	"golang.org/x/crypto/ssh"
 
@@ -42,6 +42,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // VCSKind represents the hostname of a specific type of VCS.
@@ -93,10 +96,8 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 	}
 
 	// Open the git repo in the .git folder's parent, not the .git folder itself.
-	repo, err := git.PlainOpenWithOptions(filepath.Dir(gitRoot), &git.PlainOpenOptions{
-		EnableDotGitCommonDir: true,
-	})
-	if err == git.ErrRepositoryNotExists {
+	repo, err := git.PlainOpenWithOptions(filepath.Dir(gitRoot), &git.PlainOpenOptions{})
+	if errors.Is(err, git.ErrRepositoryNotExists) {
 		return nil, nil
 	}
 	if err != nil {
@@ -156,14 +157,14 @@ func TryGetVCSInfo(remoteURL string) (_ *VCSInfo, err error) {
 		}
 	}()
 
-	endpoint, err := transport.NewEndpoint(remoteURL)
+	endpoint, err := transport.ParseURL(remoteURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse endpoint: %w", err)
 	}
 
 	// If the remote is using git SSH, then we extract the named groups by matching
 	// with the pre-compiled regex pattern.
-	switch endpoint.Protocol {
+	switch endpoint.Scheme {
 	case "ssh":
 		// Most cloud-hosted VCS have the ssh URL of the format git@somehostname.com:owner/repo
 		if cloudSourceControlSSHRegex.MatchString(remoteURL) {
@@ -188,7 +189,7 @@ func TryGetVCSInfo(remoteURL string) (_ *VCSInfo, err error) {
 		// So it is safe to use it instead of doing any sort of substring matches.
 		project = strings.TrimPrefix(project, "/")
 	default:
-		return nil, fmt.Errorf("unsupported protocol %q", endpoint.Protocol)
+		return nil, fmt.Errorf("unsupported protocol %q", endpoint.Scheme)
 	}
 
 	// We had a valid endpoint but didn't match any known VCS.
@@ -266,9 +267,30 @@ type urlAuthParser struct {
 
 	// sshKeys memoizes keys we've loaded for given host URLs, to avoid needing to
 	// re-fetch public keys.
-	sshKeys map[string]transport.AuthMethod
+	sshKeys map[string]clientOption
 	// sshConfig allows us to inject config for testing.
 	sshConfig sshUserSettings
+}
+
+type clientOption interface {
+	into() client.Option
+}
+
+type httpAuth struct{ auth client.HTTPAuth }
+
+func (a httpAuth) into() client.Option { return client.WithHTTPAuth(a.auth) }
+
+type sshAuth struct{ auth client.SSHAuth }
+
+func (a sshAuth) into() client.Option { return client.WithSSHAuth(a.auth) }
+
+// gitClientOptions converts resolved auth into go-git transport client
+// options, returning nil when no auth applies.
+func gitClientOptions(auth clientOption) []client.Option {
+	if auth == nil {
+		return nil
+	}
+	return []client.Option{auth.into()}
 }
 
 // defaultURLAuthParser uses the host's SSH configuration.
@@ -278,14 +300,17 @@ var defaultURLAuthParser = &urlAuthParser{
 
 // Parse parses a given URL and returns relevant auth. For SSH URLs, keys are
 // read from the provided sshUserSettings.
-func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, error) {
-	endpoint, err := transport.NewEndpoint(remoteURL)
+func (p *urlAuthParser) Parse(remoteURL string) (string, clientOption, error) {
+	endpoint, err := transport.ParseURL(remoteURL)
 	if err != nil {
 		return "", nil, err
 	}
 
-	if endpoint.Protocol == "ssh" {
-		var auth transport.AuthMethod
+	if endpoint.Scheme == "ssh" {
+		host := endpoint.Host
+		user := endpoint.User.Username()
+
+		var auth clientOption
 		cacheAuthMethod := false
 
 		p.mu.Lock()
@@ -296,19 +321,20 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, e
 				return
 			}
 			if p.sshKeys == nil {
-				p.sshKeys = make(map[string]transport.AuthMethod)
+				p.sshKeys = make(map[string]clientOption)
 			}
-			logging.V(10).Infof("caching auth for %s", endpoint.Host)
-			p.sshKeys[endpoint.Host] = auth
+			logging.V(10).Infof("caching auth for %s", host)
+			p.sshKeys[host] = auth
 		}()
 
 		// See if we've encountered this host before; if yes, use the existing key.
-		if existing, ok := p.sshKeys[endpoint.Host]; ok {
+		if existing, ok := p.sshKeys[host]; ok {
 			return remoteURL, existing, nil
 		}
 
-		auth, err = getSSHPublicKeys(endpoint.User, endpoint.Host, p.sshConfig)
+		publicKeys, err := getSSHPublicKeys(user, host, p.sshConfig)
 		if err == nil {
+			auth = sshAuth{publicKeys}
 			cacheAuthMethod = true
 			return remoteURL, auth, nil
 		}
@@ -317,50 +343,86 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, e
 		// config defined for the host), we still treat the URL as valid
 		// and attempt to use the SSH agent for auth.
 		logging.V(10).Infof("%s: using agent auth instead", err)
-		auth, err = gitssh.DefaultAuthBuilder(endpoint.User)
+		agentAuth, err := gitssh.NewSSHAgentAuth(user)
 		if err != nil {
 			return "", nil, err
 		}
+		auth = sshAuth{agentAuth}
 		cacheAuthMethod = true
-		return remoteURL, auth, err
+		return remoteURL, auth, nil
+	}
+
+	if endpoint.Scheme == "file" {
+		if abs, err := filepath.Abs(endpoint.Path); err == nil {
+			return abs, nil, nil
+		}
 	}
 
 	// For non-SSH URLs, see if there is basic auth info. Strip it from the
 	// endpoint as we go in order to remove it from the string output.
-	if u, p := endpoint.User, endpoint.Password; u != "" || p != "" {
-		auth := &http.BasicAuth{Username: u, Password: p}
-		endpoint.User, endpoint.Password = "", ""
-		return endpoint.String(), auth, nil
+	if endpoint.User != nil {
+		if u, pw := endpoint.User.Username(), passwordOrEmpty(endpoint.User); u != "" || pw != "" {
+			auth := httpAuth{&http.BasicAuth{Username: u, Password: pw}}
+			endpoint.User = nil
+			return endpoint.String(), auth, nil
+		}
 	}
-	return endpoint.String(), nil, nil
+	// Otherwise return the URL unchanged. We avoid round-tripping through
+	// endpoint.String() here: go-git normalizes bare/relative local paths into
+	// malformed file:// URLs (e.g. "repo.git" -> "file://repo.git", which treats
+	// "repo.git" as the host), which breaks local clones.
+	return remoteURL, nil, nil
+}
+
+// passwordOrEmpty returns the password from url userinfo, or "" if unset.
+func passwordOrEmpty(u *url.Userinfo) string {
+	pw, _ := u.Password()
+	return pw
 }
 
 // getAuthForURL extracts HTTP basic auth parameters if provided in the URL.
 //
 // If the URL uses SSH, the user's SSH configuration is parsed and relevant
 // public keys are returned for authentication.
-func getAuthForURL(url string) (string, transport.AuthMethod, error) {
+func getAuthForURL(url string) (string, clientOption, error) {
 	endpoint, auth, err := defaultURLAuthParser.Parse(url)
 	if err != nil {
 		return "", nil, err
 	}
 	// If we have no auth, try to get it from the environment.
 	if auth == nil {
-		if strings.Contains(endpoint, GitHubHostName) && os.Getenv("GITHUB_TOKEN") != "" {
-			auth = &http.BasicAuth{
+		if strings.Contains(endpoint, "github") && os.Getenv("GITHUB_TOKEN") != "" {
+			auth = httpAuth{&http.BasicAuth{
 				Username: "x-access-token",
 				Password: os.Getenv("GITHUB_TOKEN"),
-			}
-		} else if strings.Contains(endpoint, GitLabHostName) && os.Getenv("GITLAB_TOKEN") != "" {
-			auth = &http.BasicAuth{
+			}}
+		} else if strings.Contains(endpoint, "gitlab") && os.Getenv("GITLAB_TOKEN") != "" {
+			auth = httpAuth{&http.BasicAuth{
 				Username: "oauth2",
 				Password: os.Getenv("GITLAB_TOKEN"),
-			}
+			}}
+		} else if (strings.Contains(endpoint, "dev.azure.com") ||
+			strings.Contains(endpoint, "visualstudio.com")) &&
+			os.Getenv("AZURE_DEV_OPS_TOKEN") != "" {
+			auth = httpAuth{&http.BasicAuth{
+				Username: "x-access-token",
+				Password: os.Getenv("AZURE_DEV_OPS_TOKEN"),
+			}}
+		} else if strings.Contains(endpoint, "bitbucket") && os.Getenv("BITBUCKET_TOKEN") != "" {
+			auth = httpAuth{&http.BasicAuth{
+				Username: "x-token-auth",
+				Password: os.Getenv("BITBUCKET_TOKEN"),
+			}}
+		} else if os.Getenv("GENERIC_VCS_TOKEN") != "" {
+			auth = httpAuth{&http.BasicAuth{
+				Username: "x-access-token",
+				Password: os.Getenv("GENERIC_VCS_TOKEN"),
+			}}
 		} else if os.Getenv("GIT_USERNAME") != "" || os.Getenv("GIT_PASSWORD") != "" {
-			auth = &http.BasicAuth{
+			auth = httpAuth{&http.BasicAuth{
 				Username: os.Getenv("GIT_USERNAME"),
 				Password: os.Getenv("GIT_PASSWORD"),
-			}
+			}}
 		}
 	}
 
@@ -462,9 +524,9 @@ func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.
 	if err != nil {
 		return err
 	}
-	repo, err := git.PlainCloneContext(ctx, path, false, &git.CloneOptions{
-		URL:  u,
-		Auth: auth,
+	repo, err := git.PlainCloneContext(ctx, path, &git.CloneOptions{
+		URL:           u,
+		ClientOptions: gitClientOptions(auth),
 	})
 	if err != nil {
 		return err
@@ -489,9 +551,9 @@ func GitCloneAndCheckoutRevision(ctx context.Context, url string, revision plumb
 	if err != nil {
 		return err
 	}
-	repo, err := git.PlainCloneContext(ctx, path, false, &git.CloneOptions{
-		URL:  u,
-		Auth: auth,
+	repo, err := git.PlainCloneContext(ctx, path, &git.CloneOptions{
+		URL:           u,
+		ClientOptions: gitClientOptions(auth),
 	})
 	if err != nil {
 		return err
@@ -519,14 +581,16 @@ func GitCloneAndCheckoutRevision(ctx context.Context, url string, revision plumb
 func GitCloneOrPull(
 	ctx context.Context, rawurl string, referenceName plumbing.ReferenceName, path string, shallow bool,
 ) error {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "git-clone-or-pull",
+		trace.WithAttributes(
+			attribute.String("url", rawurl),
+			attribute.String("ref", referenceName.String()),
+		))
+	defer span.End()
+
 	logging.V(10).Infof("Attempting to clone from %s at ref %s", rawurl, referenceName)
 
-	// TODO: https://github.com/go-git/go-git/pull/613 should have resolved the issue preventing this from cloning.
-	if u, err := parseGitRepoURLParts(rawurl); err == nil && u.Hostname == AzureDevOpsHostName {
-		// system-installed git is used to clone Azure DevOps repositories
-		// due to https://github.com/go-git/go-git/issues/64
-		return gitCloneOrPullSystemGit(ctx, rawurl, referenceName, path, shallow)
-	}
 	return gitCloneOrPull(ctx, rawurl, referenceName, path, shallow)
 }
 
@@ -545,9 +609,9 @@ func gitCloneOrPull(
 		return err
 	}
 	// Attempt to clone the repo.
-	_, cloneErr := git.PlainCloneContext(ctx, path, false, &git.CloneOptions{
+	_, cloneErr := git.PlainCloneContext(ctx, path, &git.CloneOptions{
 		URL:           u,
-		Auth:          auth,
+		ClientOptions: gitClientOptions(auth),
 		ReferenceName: referenceName,
 		SingleBranch:  true,
 		Depth:         depth,
@@ -555,7 +619,7 @@ func gitCloneOrPull(
 	})
 	if cloneErr != nil {
 		// If the repo already exists, open it and pull.
-		if cloneErr == git.ErrRepositoryAlreadyExists {
+		if errors.Is(cloneErr, git.ErrTargetDirNotEmpty) {
 			repo, err := git.PlainOpen(path)
 			if err != nil {
 				return err
@@ -580,13 +644,13 @@ func gitCloneOrPull(
 				ReferenceName: referenceName,
 				SingleBranch:  true,
 				Force:         true,
-			}); cloneErr == git.NoErrAlreadyUpToDate {
+			}); errors.Is(cloneErr, git.NoErrAlreadyUpToDate) {
 				return nil
 			}
 		}
 	}
 
-	if cloneErr == git.ErrUnstagedChanges {
+	if errors.Is(cloneErr, git.ErrUnstagedChanges) {
 		// See https://github.com/pulumi/pulumi/issues/11121. We seem to be getting intermittent unstaged
 		// changes errors, which is very hard to reproduce. This block of code catches this error and tries to
 		// do a diff to see what the unstaged change is and tells the user to report this error to the above
@@ -626,35 +690,6 @@ func gitCloneOrPull(
 	}
 
 	return cloneErr
-}
-
-// gitCloneOrPullSystemGit uses the `git` command to pull or clone repositories.
-func gitCloneOrPullSystemGit(
-	ctx context.Context, url string, referenceName plumbing.ReferenceName, path string, shallow bool,
-) error {
-	// Assume repo already exists, pull changes.
-	gitArgs := []string{
-		"pull",
-	}
-	if _, err := os.Stat(filepath.Join(path, ".git")); os.IsNotExist(err) {
-		// Repo does not exist, clone it.
-		gitArgs = []string{
-			"clone", url, ".",
-		}
-		// For shallow clones, use a depth of 1.
-		if shallow {
-			gitArgs = append(gitArgs, "--depth")
-			gitArgs = append(gitArgs, "1")
-		}
-	}
-
-	cmd := exec.CommandContext(ctx, "git", gitArgs...)
-	cmd.Dir = path
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to run `git %v`", strings.Join(gitArgs, " "))
-	}
-	return nil
 }
 
 // We currently accept Gist URLs in the form: https://gist.github.com/owner/id.
@@ -707,12 +742,12 @@ type gitRepoURLParts struct {
 }
 
 func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
-	endpoint, err := transport.NewEndpoint(rawurl)
+	endpoint, err := transport.ParseURL(rawurl)
 	if err != nil {
 		return gitRepoURLParts{}, err
 	}
 
-	if endpoint.Protocol == "ssh" {
+	if endpoint.Scheme == "ssh" {
 		// Normalize SSH URLs (including scp-style git@github.com URLs) into
 		// ssh:// format so we can parse them the same as https:// URLs.
 		rawurl = endpoint.String()
@@ -801,6 +836,10 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 // For example, "https://github.com/pulumi/platform-team/templates.git/templates/javascript"
 // returns "https://github.com/pulumi/platform-team/templates.git" and "templates/javascript"
 //
+// Paths longer than owner/repo are ambiguous without a ".git" marker: use
+// e.g. "https://gitlab.com/group/subgroup/repo.git" to target a nested
+// GitLab subgroup project.
+//
 // Note: URL with a hostname of `dev.azure.com`, are currently treated as a raw git clone url
 // and currently do not support subpaths.
 func ParseGitRepoURL(rawurl string) (string, string, error) {
@@ -857,8 +896,8 @@ func GetGitReferenceNameOrHashAndSubDirectory(url string, urlPath string) (
 			for _, ref := range refs {
 				shortName := ref.Short()
 				prefix := shortName + "/"
-				if strings.HasPrefix(path, prefix) {
-					subDir := strings.TrimPrefix(path, prefix)
+				if after, ok := strings.CutPrefix(path, prefix); ok {
+					subDir := after
 					return ref, plumbing.ZeroHash, strings.TrimSuffix(subDir, "/"), nil
 				}
 			}
@@ -873,27 +912,30 @@ func GetGitReferenceNameOrHashAndSubDirectory(url string, urlPath string) (
 }
 
 func gitListRefs(ctx context.Context, url string) ([]*plumbing.Reference, error) {
+	// Resolve auth first: getAuthForURL also normalizes the URL (absolutizing
+	// local paths and stripping any embedded credentials), so use its returned
+	// endpoint as the remote URL.
+	endpoint, auth, err := getAuthForURL(url)
+	if err != nil {
+		return nil, err
+	}
+
 	// We're only listing the references, so just use in-memory storage.
-	repo, err := git.Init(memory.NewStorage(), nil)
+	repo, err := git.Init(memory.NewStorage())
 	if err != nil {
 		return nil, err
 	}
 
 	remote, err := repo.CreateRemote(&config.RemoteConfig{
 		Name: "origin",
-		URLs: []string{url},
+		URLs: []string{endpoint},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	_, auth, err := getAuthForURL(url)
-	if err != nil {
-		return nil, err
-	}
-
 	return remote.List(&git.ListOptions{
-		Auth: auth,
+		ClientOptions: gitClientOptions(auth),
 	})
 }
 

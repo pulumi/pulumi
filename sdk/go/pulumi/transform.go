@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 package pulumi
 
-import "golang.org/x/net/context"
+import "context"
 
 // ResourceTransformArgs is the argument bag passed to a resource transform.
 type ResourceTransformArgs struct {

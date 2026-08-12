@@ -46,8 +46,8 @@ export class Component extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["local"] = args ? args.local : undefined;
-            resourceInputs["main"] = args ? args.main : undefined;
+            resourceInputs["local"] = args?.local;
+            resourceInputs["main"] = args?.main;
         } else {
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
@@ -59,6 +59,6 @@ export class Component extends pulumi.CustomResource {
  * The set of arguments for constructing a Component resource.
  */
 export interface ComponentArgs {
-    local?: pulumi.Input<Component2>;
-    main?: pulumi.Input<MainComponent>;
+    local?: pulumi.Input<Component2 | undefined>;
+    main?: pulumi.Input<MainComponent | undefined>;
 }

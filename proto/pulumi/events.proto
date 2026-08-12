@@ -1,0 +1,39 @@
+// Copyright 2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package pulumirpc;
+
+option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
+
+// Events is a service for receiving engine events over gRPC.
+// This service allows the Pulumi CLI to send engine events to clients
+// (such as the Automation API) over a gRPC stream instead of writing them to
+// a file on the filesystem and reading them from there.
+service Events {
+    // StreamEvents allows the client to stream multiple engine events to the server.
+    // The client sends multiple EventRequest messages over the stream, and the server
+    // processes them as they arrive. When the client is done sending events, it closes
+    // the stream.
+    rpc StreamEvents(stream EventRequest) returns (google.protobuf.Empty) {}
+}
+
+// EventRequest contains a single engine event.
+message EventRequest {
+    // event is a JSON-encoded string containing the engine event data.
+    string event = 1;
+}

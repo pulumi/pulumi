@@ -1,0 +1,3227 @@
+{
+    "loadDiags": [
+        {
+            "Severity": 1,
+            "Summary": "missing closing brace '}' in interpolation",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 3,
+                    "Column": 9,
+                    "Byte": 38
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 9,
+                    "Byte": 38
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[0]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "subscript is missing closing bracket ']'",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 4,
+                    "Column": 13,
+                    "Byte": 51
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 19,
+                    "Byte": 57
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[1]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "subscript is missing closing bracket ']'",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 5,
+                    "Column": 13,
+                    "Byte": 71
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 20,
+                    "Byte": 78
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[2]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "key subscript is missing closing quote '\"'",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 5,
+                    "Column": 14,
+                    "Byte": 72
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 20,
+                    "Byte": 78
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[2]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "missing closing brace '}' in interpolation",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 5,
+                    "Column": 20,
+                    "Byte": 78
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 20,
+                    "Byte": 78
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[2]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "missing closing brace '}' in interpolation",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 6,
+                    "Column": 20,
+                    "Byte": 98
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 20,
+                    "Byte": 98
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[3]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "subscript is missing closing bracket ']'",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 7,
+                    "Column": 14,
+                    "Byte": 112
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 16,
+                    "Byte": 114
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[4]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "numeric subscript must be a positive base-10 integer",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 8,
+                    "Column": 15,
+                    "Byte": 130
+                },
+                "End": {
+                    "Line": 8,
+                    "Column": 25,
+                    "Byte": 140
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[5]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "the first accessor must be a property name or key subscript, not a numeric subscript",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 10,
+                    "Column": 9,
+                    "Byte": 161
+                },
+                "End": {
+                    "Line": 10,
+                    "Column": 11,
+                    "Byte": 163
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[7]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "property name must not be empty",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 11,
+                    "Column": 10,
+                    "Byte": 175
+                },
+                "End": {
+                    "Line": 11,
+                    "Column": 11,
+                    "Byte": 176
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[8]"
+        }
+    ],
+    "checkDiags": [
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 3,
+                    "Column": 9,
+                    "Byte": 38
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 9,
+                    "Byte": 38
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[0]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"open\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 4,
+                    "Column": 9,
+                    "Byte": 47
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 13,
+                    "Byte": 51
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[1]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"open\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 5,
+                    "Column": 9,
+                    "Byte": 67
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 13,
+                    "Byte": 71
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[2]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"open\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 6,
+                    "Column": 9,
+                    "Byte": 87
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 13,
+                    "Byte": 91
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[3]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"array\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 7,
+                    "Column": 9,
+                    "Byte": 107
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 14,
+                    "Byte": 112
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[4]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"array\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 8,
+                    "Column": 9,
+                    "Byte": 124
+                },
+                "End": {
+                    "Line": 8,
+                    "Column": 14,
+                    "Byte": 129
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[5]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 9,
+                    "Column": 9,
+                    "Byte": 151
+                },
+                "End": {
+                    "Line": 9,
+                    "Column": 10,
+                    "Byte": 152
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[6]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an object property using an integer index",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 10,
+                    "Column": 9,
+                    "Byte": 161
+                },
+                "End": {
+                    "Line": 10,
+                    "Column": 12,
+                    "Byte": 164
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[7]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"2\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 11,
+                    "Column": 9,
+                    "Byte": 174
+                },
+                "End": {
+                    "Line": 11,
+                    "Column": 10,
+                    "Byte": 175
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[8]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"34\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 12,
+                    "Column": 9,
+                    "Byte": 193
+                },
+                "End": {
+                    "Line": 12,
+                    "Column": 11,
+                    "Byte": 195
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[9]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"bad\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 13,
+                    "Column": 9,
+                    "Byte": 209
+                },
+                "End": {
+                    "Line": 13,
+                    "Column": 13,
+                    "Byte": 213
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[10]"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "propertyAccessTest": {
+                "range": {
+                    "environment": "invalid-access-load",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 34
+                    },
+                    "end": {
+                        "line": 13,
+                        "column": 14,
+                        "byte": 214
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 3,
+                                "column": 7,
+                                "byte": 36
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 9,
+                                "byte": 38
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 9,
+                                        "byte": 38
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 9,
+                                        "byte": 38
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 7,
+                                        "byte": 36
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 9,
+                                        "byte": 38
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 4,
+                                "column": 7,
+                                "byte": 45
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 20,
+                                "byte": 58
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "open",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 9,
+                                        "byte": 47
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 13,
+                                        "byte": 51
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 7,
+                                        "byte": 45
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 20,
+                                        "byte": 58
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 13,
+                                        "byte": 51
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 19,
+                                        "byte": 57
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 7,
+                                        "byte": 45
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 20,
+                                        "byte": 58
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 5,
+                                "column": 7,
+                                "byte": 65
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 20,
+                                "byte": 78
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "open",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 9,
+                                        "byte": 67
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 13,
+                                        "byte": 71
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 7,
+                                        "byte": 65
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 20,
+                                        "byte": 78
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo]}",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 13,
+                                        "byte": 71
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 20,
+                                        "byte": 78
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 7,
+                                        "byte": 65
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 20,
+                                        "byte": 78
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 6,
+                                "column": 7,
+                                "byte": 85
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 20,
+                                "byte": 98
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "open",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 9,
+                                        "byte": 87
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 13,
+                                        "byte": 91
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 7,
+                                        "byte": 85
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 20,
+                                        "byte": 98
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 13,
+                                        "byte": 91
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 20,
+                                        "byte": 98
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 7,
+                                        "byte": 85
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 20,
+                                        "byte": 98
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 105
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 17,
+                                "byte": 115
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "array",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 9,
+                                        "byte": 107
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 14,
+                                        "byte": 112
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 7,
+                                        "byte": 105
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 17,
+                                        "byte": 115
+                                    }
+                                }
+                            },
+                            {
+                                "index": 1,
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 14,
+                                        "byte": 112
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 16,
+                                        "byte": 114
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 7,
+                                        "byte": 105
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 17,
+                                        "byte": 115
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 8,
+                                "column": 7,
+                                "byte": 122
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 27,
+                                "byte": 142
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "array",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 9,
+                                        "byte": 124
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 14,
+                                        "byte": 129
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 7,
+                                        "byte": 122
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 27,
+                                        "byte": 142
+                                    }
+                                }
+                            },
+                            {
+                                "key": "notAnIndex",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 14,
+                                        "byte": 129
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 26,
+                                        "byte": 141
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 7,
+                                        "byte": 122
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 27,
+                                        "byte": 142
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 9,
+                                "column": 7,
+                                "byte": 149
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 10,
+                                "byte": 152
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 9,
+                                        "byte": 151
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 10,
+                                        "byte": 152
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 7,
+                                        "byte": 149
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 10,
+                                        "byte": 152
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 10,
+                                "column": 7,
+                                "byte": 159
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 13,
+                                "byte": 165
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "index": 2,
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 9,
+                                        "byte": 161
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 12,
+                                        "byte": 164
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 7,
+                                        "byte": 159
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 13,
+                                        "byte": 165
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 11,
+                                "column": 7,
+                                "byte": 172
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 19,
+                                "byte": 184
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "2",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 9,
+                                        "byte": 174
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 10,
+                                        "byte": 175
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 7,
+                                        "byte": 172
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 19,
+                                        "byte": 184
+                                    }
+                                }
+                            },
+                            {
+                                "key": "",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 10,
+                                        "byte": 175
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 11,
+                                        "byte": 176
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 7,
+                                        "byte": 172
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 19,
+                                        "byte": 184
+                                    }
+                                }
+                            },
+                            {
+                                "key": "bad",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 11,
+                                        "byte": 176
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 18,
+                                        "byte": 183
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 7,
+                                        "byte": 172
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 19,
+                                        "byte": 184
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 12,
+                                "column": 7,
+                                "byte": 191
+                            },
+                            "end": {
+                                "line": 12,
+                                "column": 16,
+                                "byte": 200
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "34",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 9,
+                                        "byte": 193
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 11,
+                                        "byte": 195
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 7,
+                                        "byte": 191
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 16,
+                                        "byte": 200
+                                    }
+                                }
+                            },
+                            {
+                                "key": "bad",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 11,
+                                        "byte": 195
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 15,
+                                        "byte": 199
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 7,
+                                        "byte": 191
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 16,
+                                        "byte": 200
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 13,
+                                "column": 7,
+                                "byte": 207
+                            },
+                            "end": {
+                                "line": 13,
+                                "column": 14,
+                                "byte": 214
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "bad",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 13,
+                                        "column": 9,
+                                        "byte": 209
+                                    },
+                                    "end": {
+                                        "line": 13,
+                                        "column": 13,
+                                        "byte": 213
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 13,
+                                        "column": 7,
+                                        "byte": 207
+                                    },
+                                    "end": {
+                                        "line": 13,
+                                        "column": 14,
+                                        "byte": 214
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "propertyAccessTest": {
+                "value": [
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 7,
+                                    "byte": 36
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 9,
+                                    "byte": 38
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 7,
+                                    "byte": 45
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 20,
+                                    "byte": 58
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 7,
+                                    "byte": 65
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 20,
+                                    "byte": 78
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 7,
+                                    "byte": 85
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 20,
+                                    "byte": 98
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 105
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 17,
+                                    "byte": 115
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 7,
+                                    "byte": 122
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 27,
+                                    "byte": 142
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 7,
+                                    "byte": 149
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 10,
+                                    "byte": 152
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 159
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 13,
+                                    "byte": 165
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 7,
+                                    "byte": 172
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 19,
+                                    "byte": 184
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 7,
+                                    "byte": 191
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 16,
+                                    "byte": 200
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 13,
+                                    "column": 7,
+                                    "byte": 207
+                                },
+                                "end": {
+                                    "line": 13,
+                                    "column": 14,
+                                    "byte": 214
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "invalid-access-load",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 34
+                        },
+                        "end": {
+                            "line": 13,
+                            "column": 14,
+                            "byte": 214
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "propertyAccessTest": {
+                    "prefixItems": [
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true
+                    ],
+                    "items": false,
+                    "type": "array"
+                }
+            },
+            "type": "object",
+            "required": [
+                "propertyAccessTest"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-access-load",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "invalid-access-load",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-access-load",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-access-load"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-access-load"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "propertyAccessTest": [
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]"
+        ]
+    },
+    "evalDiags": [
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 3,
+                    "Column": 9,
+                    "Byte": 38
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 9,
+                    "Byte": 38
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[0]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"open\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 4,
+                    "Column": 9,
+                    "Byte": 47
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 13,
+                    "Byte": 51
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[1]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"open\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 5,
+                    "Column": 9,
+                    "Byte": 67
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 13,
+                    "Byte": 71
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[2]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"open\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 6,
+                    "Column": 9,
+                    "Byte": 87
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 13,
+                    "Byte": 91
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[3]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"array\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 7,
+                    "Column": 9,
+                    "Byte": 107
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 14,
+                    "Byte": 112
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[4]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"array\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 8,
+                    "Column": 9,
+                    "Byte": 124
+                },
+                "End": {
+                    "Line": 8,
+                    "Column": 14,
+                    "Byte": 129
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[5]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 9,
+                    "Column": 9,
+                    "Byte": 151
+                },
+                "End": {
+                    "Line": 9,
+                    "Column": 10,
+                    "Byte": 152
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[6]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "cannot access an object property using an integer index",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 10,
+                    "Column": 9,
+                    "Byte": 161
+                },
+                "End": {
+                    "Line": 10,
+                    "Column": 12,
+                    "Byte": 164
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[7]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"2\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 11,
+                    "Column": 9,
+                    "Byte": 174
+                },
+                "End": {
+                    "Line": 11,
+                    "Column": 10,
+                    "Byte": 175
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[8]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"34\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 12,
+                    "Column": 9,
+                    "Byte": 193
+                },
+                "End": {
+                    "Line": 12,
+                    "Column": 11,
+                    "Byte": 195
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[9]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "unknown property \"bad\"",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-access-load",
+                "Start": {
+                    "Line": 13,
+                    "Column": 9,
+                    "Byte": 209
+                },
+                "End": {
+                    "Line": 13,
+                    "Column": 13,
+                    "Byte": 213
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.propertyAccessTest[10]"
+        }
+    ],
+    "eval": {
+        "exprs": {
+            "propertyAccessTest": {
+                "range": {
+                    "environment": "invalid-access-load",
+                    "begin": {
+                        "line": 3,
+                        "column": 5,
+                        "byte": 34
+                    },
+                    "end": {
+                        "line": 13,
+                        "column": 14,
+                        "byte": 214
+                    }
+                },
+                "schema": {
+                    "prefixItems": [
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true
+                    ],
+                    "items": false,
+                    "type": "array"
+                },
+                "list": [
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 3,
+                                "column": 7,
+                                "byte": 36
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 9,
+                                "byte": 38
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 9,
+                                        "byte": 38
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 9,
+                                        "byte": 38
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 3,
+                                        "column": 7,
+                                        "byte": 36
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 9,
+                                        "byte": 38
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 4,
+                                "column": 7,
+                                "byte": 45
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 20,
+                                "byte": 58
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "open",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 9,
+                                        "byte": 47
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 13,
+                                        "byte": 51
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 7,
+                                        "byte": 45
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 20,
+                                        "byte": 58
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 13,
+                                        "byte": 51
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 19,
+                                        "byte": 57
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 7,
+                                        "byte": 45
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 20,
+                                        "byte": 58
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 5,
+                                "column": 7,
+                                "byte": 65
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 20,
+                                "byte": 78
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "open",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 9,
+                                        "byte": 67
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 13,
+                                        "byte": 71
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 7,
+                                        "byte": 65
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 20,
+                                        "byte": 78
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo]}",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 13,
+                                        "byte": 71
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 20,
+                                        "byte": 78
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 7,
+                                        "byte": 65
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 20,
+                                        "byte": 78
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 6,
+                                "column": 7,
+                                "byte": 85
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 20,
+                                "byte": 98
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "open",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 9,
+                                        "byte": 87
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 13,
+                                        "byte": 91
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 7,
+                                        "byte": 85
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 20,
+                                        "byte": 98
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 13,
+                                        "byte": 91
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 20,
+                                        "byte": 98
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 7,
+                                        "byte": 85
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 20,
+                                        "byte": 98
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 7,
+                                "column": 7,
+                                "byte": 105
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 17,
+                                "byte": 115
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "array",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 9,
+                                        "byte": 107
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 14,
+                                        "byte": 112
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 7,
+                                        "byte": 105
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 17,
+                                        "byte": 115
+                                    }
+                                }
+                            },
+                            {
+                                "index": 1,
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 14,
+                                        "byte": 112
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 16,
+                                        "byte": 114
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 7,
+                                        "byte": 105
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 17,
+                                        "byte": 115
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 8,
+                                "column": 7,
+                                "byte": 122
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 27,
+                                "byte": 142
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "array",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 9,
+                                        "byte": 124
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 14,
+                                        "byte": 129
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 7,
+                                        "byte": 122
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 27,
+                                        "byte": 142
+                                    }
+                                }
+                            },
+                            {
+                                "key": "notAnIndex",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 14,
+                                        "byte": 129
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 26,
+                                        "byte": 141
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 7,
+                                        "byte": 122
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 27,
+                                        "byte": 142
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 9,
+                                "column": 7,
+                                "byte": 149
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 10,
+                                "byte": 152
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 9,
+                                        "byte": 151
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 10,
+                                        "byte": 152
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 7,
+                                        "byte": 149
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 10,
+                                        "byte": 152
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 10,
+                                "column": 7,
+                                "byte": 159
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 13,
+                                "byte": 165
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "index": 2,
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 9,
+                                        "byte": 161
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 12,
+                                        "byte": 164
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 7,
+                                        "byte": 159
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 13,
+                                        "byte": 165
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 11,
+                                "column": 7,
+                                "byte": 172
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 19,
+                                "byte": 184
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "2",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 9,
+                                        "byte": 174
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 10,
+                                        "byte": 175
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 7,
+                                        "byte": 172
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 19,
+                                        "byte": 184
+                                    }
+                                }
+                            },
+                            {
+                                "key": "",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 10,
+                                        "byte": 175
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 11,
+                                        "byte": 176
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 7,
+                                        "byte": 172
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 19,
+                                        "byte": 184
+                                    }
+                                }
+                            },
+                            {
+                                "key": "bad",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 11,
+                                        "byte": 176
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 18,
+                                        "byte": 183
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 11,
+                                        "column": 7,
+                                        "byte": 172
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 19,
+                                        "byte": 184
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 12,
+                                "column": 7,
+                                "byte": 191
+                            },
+                            "end": {
+                                "line": 12,
+                                "column": 16,
+                                "byte": 200
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "34",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 9,
+                                        "byte": 193
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 11,
+                                        "byte": 195
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 7,
+                                        "byte": 191
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 16,
+                                        "byte": 200
+                                    }
+                                }
+                            },
+                            {
+                                "key": "bad",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 11,
+                                        "byte": 195
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 15,
+                                        "byte": 199
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 7,
+                                        "byte": 191
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 16,
+                                        "byte": 200
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "range": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 13,
+                                "column": 7,
+                                "byte": 207
+                            },
+                            "end": {
+                                "line": 13,
+                                "column": 14,
+                                "byte": 214
+                            }
+                        },
+                        "schema": true,
+                        "symbol": [
+                            {
+                                "key": "bad",
+                                "range": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 13,
+                                        "column": 9,
+                                        "byte": 209
+                                    },
+                                    "end": {
+                                        "line": 13,
+                                        "column": 13,
+                                        "byte": 213
+                                    }
+                                },
+                                "value": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 13,
+                                        "column": 7,
+                                        "byte": 207
+                                    },
+                                    "end": {
+                                        "line": 13,
+                                        "column": 14,
+                                        "byte": 214
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "properties": {
+            "propertyAccessTest": {
+                "value": [
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 7,
+                                    "byte": 36
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 9,
+                                    "byte": 38
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 7,
+                                    "byte": 45
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 20,
+                                    "byte": 58
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 7,
+                                    "byte": 65
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 20,
+                                    "byte": 78
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 7,
+                                    "byte": 85
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 20,
+                                    "byte": 98
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 7,
+                                    "byte": 105
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 17,
+                                    "byte": 115
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 7,
+                                    "byte": 122
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 27,
+                                    "byte": 142
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 7,
+                                    "byte": 149
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 10,
+                                    "byte": 152
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 159
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 13,
+                                    "byte": 165
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 7,
+                                    "byte": 172
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 19,
+                                    "byte": 184
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 7,
+                                    "byte": 191
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 16,
+                                    "byte": 200
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "invalid-access-load",
+                                "begin": {
+                                    "line": 13,
+                                    "column": 7,
+                                    "byte": 207
+                                },
+                                "end": {
+                                    "line": 13,
+                                    "column": 14,
+                                    "byte": 214
+                                }
+                            }
+                        }
+                    }
+                ],
+                "trace": {
+                    "def": {
+                        "environment": "invalid-access-load",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 34
+                        },
+                        "end": {
+                            "line": 13,
+                            "column": 14,
+                            "byte": 214
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "propertyAccessTest": {
+                    "prefixItems": [
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true,
+                        true
+                    ],
+                    "items": false,
+                    "type": "array"
+                }
+            },
+            "type": "object",
+            "required": [
+                "propertyAccessTest"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-access-load",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "invalid-access-load",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "invalid-access-load",
+                            "trace": {
+                                "def": {
+                                    "environment": "invalid-access-load",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "invalid-access-load",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-access-load"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "invalid-access-load"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "propertyAccessTest": [
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]"
+        ]
+    },
+    "evalJSONRevealed": {
+        "propertyAccessTest": [
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]",
+            "[unknown]"
+        ]
+    }
+}

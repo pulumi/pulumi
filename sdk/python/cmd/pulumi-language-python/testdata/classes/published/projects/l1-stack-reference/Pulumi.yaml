@@ -1,0 +1,7 @@
+name: l1-stack-reference
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

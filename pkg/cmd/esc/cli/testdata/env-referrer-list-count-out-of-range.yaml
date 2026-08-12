@@ -1,0 +1,15 @@
+run: |
+  esc env referrer list default/src --count 501
+error: exit status 1
+environments:
+  test-user/default/src:
+    revisions:
+      - yaml:
+          values: {}
+
+---
+> esc env referrer list default/src --count 501
+
+---
+> esc env referrer list default/src --count 501
+Error: --count must be in the range [1, 500]

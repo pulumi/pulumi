@@ -1,4 +1,4 @@
-// Copyright 2023-2024, Pulumi Corporation.
+// Copyright 2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package main
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,14 +28,13 @@ func TestTemplateFilePath(t *testing.T) {
 		give string
 		want string
 	}{
-		{"foo-bar.go.template", "foo/bar.go"},
+		{"foo-bar.go.template", filepath.Join("foo", "bar.go")},
 		{"bar.go.template", "bar.go"},
-		{"fizz-buz-bar.go.template", "fizz/buz/bar.go"},
-		{"foo-bar.tmpl.template", "foo/bar.tmpl"},
+		{"fizz-buz-bar.go.template", filepath.Join("fizz", "buz", "bar.go")},
+		{"foo-bar.tmpl.template", filepath.Join("foo", "bar.tmpl")},
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.give, func(t *testing.T) {
 			t.Parallel()
 

@@ -1,0 +1,114 @@
+{
+    "decl": {
+        "Description": null,
+        "Imports": null,
+        "Values": {
+            "Entries": [
+                {
+                    "Key": {
+                        "Value": "missing-provider"
+                    },
+                    "Value": {
+                        "Provider": null,
+                        "Inputs": {
+                            "Value": "inputs"
+                        }
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "missing-inputs"
+                    },
+                    "Value": {
+                        "Provider": {
+                            "Value": "test"
+                        },
+                        "Inputs": null
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "invalid-provider"
+                    },
+                    "Value": {
+                        "Provider": null,
+                        "Inputs": {
+                            "Value": "inputs"
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "diags": [
+        {
+            "Severity": 1,
+            "Summary": "missing provider name ('provider')",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-open",
+                "Start": {
+                    "Line": 4,
+                    "Column": 7,
+                    "Byte": 48
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 21,
+                    "Byte": 62
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"missing-provider\"][\"fn::open\"]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "missing provider inputs ('inputs')",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-open",
+                "Start": {
+                    "Line": 7,
+                    "Column": 7,
+                    "Byte": 101
+                },
+                "End": {
+                    "Line": 7,
+                    "Column": 21,
+                    "Byte": 115
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"missing-inputs\"][\"fn::open\"]"
+        },
+        {
+            "Severity": 1,
+            "Summary": "provider name must be a string literal",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-open",
+                "Start": {
+                    "Line": 10,
+                    "Column": 17,
+                    "Byte": 166
+                },
+                "End": {
+                    "Line": 10,
+                    "Column": 23,
+                    "Byte": 172
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"invalid-provider\"][\"fn::open\"].provider"
+        }
+    ]
+}

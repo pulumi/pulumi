@@ -16,11 +16,12 @@ package fuzzing
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 )
@@ -64,6 +65,7 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 		//
 		// Hardcoding the URN from the ResourceSpec would cause us to generate bad programs in the second case.
 		actuals := map[resource.URN]*deploytest.RegisterResourceResponse{}
+		failed := map[resource.URN]bool{}
 		rewriteProviderRef := func(oldRef string) string {
 			if oldRef == "" {
 				return ""
@@ -92,29 +94,40 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 		}
 
 		for _, r := range ps.ResourceRegistrations {
+			parent := r.Parent
+			if failed[parent] {
+				parent = ""
+			}
+			deletedWith := r.DeletedWith
+			if failed[deletedWith] {
+				deletedWith = ""
+			}
 			opts := deploytest.ResourceOptions{
 				// TODO(https://github.com/pulumi/pulumi/issues/18934): We should sometimes leave this null
 				Protect:        &r.Protect,
 				RetainOnDelete: &r.RetainOnDelete,
-				Parent:         rewriteURN(r.Parent),
+				Parent:         rewriteURN(parent),
 				Provider:       rewriteProviderRef(r.Provider),
-				DeletedWith:    rewriteURN(r.DeletedWith),
+				DeletedWith:    rewriteURN(deletedWith),
 
 				// We explicitly *don't* want to rewrite aliases since they are not dependencies and refer to (we expect)
 				// resources in the state, not the program we are running.
 				AliasURNs: r.Aliases,
 			}
 
-			deps := make([]resource.URN, len(r.Dependencies))
-			for i, dep := range r.Dependencies {
-				deps[i] = rewriteURN(dep)
+			var deps []resource.URN
+			for _, dep := range r.Dependencies {
+				if !failed[dep] {
+					deps = append(deps, rewriteURN(dep))
+				}
 			}
 
 			propDeps := map[resource.PropertyKey][]resource.URN{}
-			for k, deps := range r.PropertyDependencies {
-				propDeps[k] = make([]resource.URN, len(deps))
-				for i, dep := range deps {
-					propDeps[k][i] = rewriteURN(dep)
+			for k, pds := range r.PropertyDependencies {
+				for _, dep := range pds {
+					if !failed[dep] {
+						propDeps[k] = append(propDeps[k], rewriteURN(dep))
+					}
 				}
 			}
 
@@ -122,9 +135,11 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 			opts.PropertyDeps = propDeps
 
 			res, err := monitor.RegisterResource(r.Type, r.Name, r.Custom, opts)
-			require.NoError(t, err)
-
-			actuals[r.URN()] = res
+			if err == nil {
+				actuals[r.URN()] = res
+			} else {
+				failed[r.URN()] = true
+			}
 		}
 
 		return nil
@@ -134,27 +149,28 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 // Implements PrettySpec.Pretty. Returns a human-readable representation of this ProgramSpec, suitable for use in
 // debugging output and error messages.
 func (ps *ProgramSpec) Pretty(indent string) string {
-	rendered := fmt.Sprintf("%sProgram %p", indent, ps)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "%sProgram %p", indent, ps)
 
 	if len(ps.ResourceRegistrations) == 0 {
-		rendered += fmt.Sprintf("\n%s  No registrations", indent)
+		fmt.Fprintf(&rendered, "\n%s  No registrations", indent)
 	} else {
-		rendered += fmt.Sprintf("\n%s  Registrations (%d):", indent, len(ps.ResourceRegistrations))
+		fmt.Fprintf(&rendered, "\n%s  Registrations (%d):", indent, len(ps.ResourceRegistrations))
 		for _, r := range ps.ResourceRegistrations {
-			rendered += fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    "))
+			fmt.Fprintf(&rendered, "\n%s    %s", indent, r.Pretty(indent+"    "))
 		}
 	}
 
 	if len(ps.Drops) == 0 {
-		rendered += fmt.Sprintf("\n%s  No drops", indent)
+		fmt.Fprintf(&rendered, "\n%s  No drops", indent)
 	} else {
-		rendered += fmt.Sprintf("\n%s  Drops (%d):", indent, len(ps.Drops))
+		fmt.Fprintf(&rendered, "\n%s  Drops (%d):", indent, len(ps.Drops))
 		for _, r := range ps.Drops {
-			rendered += fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    "))
+			fmt.Fprintf(&rendered, "\n%s    %s", indent, r.Pretty(indent+"    "))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // The type of tags that may be added to resources in a ProgramSpec.
@@ -285,16 +301,55 @@ func GeneratedProgramSpec(
 		dropped := map[resource.URN]bool{}
 		rewritten := map[resource.URN]resource.URN{}
 
+		// resolveURN follows the rewritten chain transitively to get the final URN.
+		// This is needed when a URN is rewritten multiple times (e.g. if our URN
+		// changes due to an update, and again due to a parent change)
+		resolveURN := func(urn resource.URN) (resource.URN, bool) {
+			if urn == "" {
+				return "", false
+			}
+			visited := map[resource.URN]bool{}
+			wasRewritten := false
+			for {
+				if visited[urn] {
+					t.Skipf("cycle detected in rewritten URNs: %v", visited)
+					return urn, wasRewritten
+				}
+				visited[urn] = true
+				if newURN, has := rewritten[urn]; has {
+					urn = newURN
+					wasRewritten = true
+				} else {
+					return urn, wasRewritten
+				}
+			}
+		}
+
 		updateDependencies := func(r *ResourceSpec) {
 			deps := []resource.URN{}
 			propDeps := map[resource.PropertyKey][]resource.URN{}
+
+			// If our provider was dropped, we'll have to drop our reference to it and end up with a default provider.
+			if r.Provider != "" {
+				ref, err := providers.ParseReference(r.Provider)
+				require.NoError(t, err)
+
+				if dropped[ref.URN()] {
+					r.Provider = ""
+				} else if newURN, wasRewritten := resolveURN(ref.URN()); wasRewritten {
+					newRef, err := providers.NewReference(newURN, ref.ID())
+					require.NoError(t, err)
+
+					r.Provider = newRef.String()
+				}
+			}
 
 			// We'll start with parents first. If our parent was dropped, we'll need to remove them from our parent reference.
 			// If they were rewritten, we'll update the reference to point to the new URN.
 			oldURN := r.URN()
 			if dropped[r.Parent] {
 				r.Parent = ""
-			} else if newParent, hasNewParent := rewritten[r.Parent]; hasNewParent {
+			} else if newParent, wasRewritten := resolveURN(r.Parent); wasRewritten {
 				r.Parent = newParent
 			}
 
@@ -315,7 +370,7 @@ func GeneratedProgramSpec(
 			for _, dep := range r.Dependencies {
 				if dropped[dep] {
 					continue
-				} else if newDep, hasNewDep := rewritten[dep]; hasNewDep {
+				} else if newDep, wasRewritten := resolveURN(dep); wasRewritten {
 					deps = append(deps, newDep)
 				} else {
 					deps = append(deps, dep)
@@ -326,7 +381,7 @@ func GeneratedProgramSpec(
 				for _, dep := range deps {
 					if dropped[dep] {
 						continue
-					} else if newDep, hasNewDep := rewritten[dep]; hasNewDep {
+					} else if newDep, wasRewritten := resolveURN(dep); wasRewritten {
 						propDeps[k] = append(propDeps[k], newDep)
 					} else {
 						propDeps[k] = append(propDeps[k], dep)
@@ -336,7 +391,7 @@ func GeneratedProgramSpec(
 
 			if dropped[r.DeletedWith] {
 				r.DeletedWith = ""
-			} else if newDep, hasNewDep := rewritten[r.DeletedWith]; hasNewDep {
+			} else if newDep, wasRewritten := resolveURN(r.DeletedWith); wasRewritten {
 				r.DeletedWith = newDep
 			}
 
@@ -354,7 +409,7 @@ func GeneratedProgramSpec(
 			newSS.AddProvider(initialProvider)
 		}
 
-		for i := 0; i < prependCount; i++ {
+		for i := range prependCount {
 			r := generatedNewResourceSpec(
 				newSS,
 				sso,
@@ -366,8 +421,11 @@ func GeneratedProgramSpec(
 
 		for i := 0; i < len(ss.Resources); {
 			if ss.Resources[i].Delete {
+				dropped[ss.Resources[i].URN()] = true
 				i++
 				continue
+			} else {
+				delete(dropped, ss.Resources[i].URN())
 			}
 
 			action := pso.Action.Draw(t, fmt.Sprintf("ProgramSpec.Action[%d]", i))
@@ -396,6 +454,7 @@ func GeneratedProgramSpec(
 				newSS.AddResource(r)
 			} else if action == ProgramSpecUpdate {
 				r := ss.Resources[i].Copy()
+				updateDependencies(r)
 				AddTag(r, UpdatedProgramResource)
 
 				// We'll generate a new set of dependencies for the updated resource, which means we'll automatically take any
@@ -446,7 +505,7 @@ func GeneratedProgramSpec(
 			newSS.AddProvider(initialProvider)
 		}
 
-		for i := 0; i < appendCount; i++ {
+		for i := range appendCount {
 			r := generatedNewResourceSpec(
 				newSS,
 				sso,

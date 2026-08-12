@@ -1,5 +1,5 @@
 <{%reset%}>  pkgA:m:typA: (same)
-<{%reset%}>    [id=0]
+<{%reset%}>    [id=1]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
 <{%reset%}><{%reset%}>  pkgA:m:typA: (same)
 <{%reset%}>    [id=3]

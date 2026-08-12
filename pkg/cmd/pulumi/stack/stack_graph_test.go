@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/graph/dotconv"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -33,7 +35,7 @@ func TestStackGraphCmd(t *testing.T) {
 	t.Run("Single node graph", func(t *testing.T) {
 		t.Parallel()
 		snap := deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:  "urn:pulumi",
 					Type: resource.RootStackType,
@@ -87,7 +89,7 @@ func TestStackGraphCmd(t *testing.T) {
 		child := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet::child")
 
 		snap := deploy.Snapshot{
-			Resources: []*resource.State{
+			Resources: []*pkgresource.State{
 				{
 					URN:  provider,
 					ID:   "provider-id",
@@ -149,5 +151,56 @@ func TestStackGraphCmd(t *testing.T) {
 				require.Contains(t, dotOutput, fmt.Sprintf("[label=\"%s\"]", label))
 			}
 		})
+	})
+
+	t.Run("output is deterministic", func(t *testing.T) {
+		t.Parallel()
+
+		// Create a snapshot with multiple resources and dependencies
+		// that would expose non-determinism in map iteration
+		resA := resource.URN("urn:pulumi:dev::test::pkg:mod:ResA::a")
+		resB := resource.URN("urn:pulumi:dev::test::pkg:mod:ResB::b")
+		resC := resource.URN("urn:pulumi:dev::test::pkg:mod:ResC::c")
+		resD := resource.URN("urn:pulumi:dev::test::pkg:mod:ResD::d")
+
+		snap := deploy.Snapshot{
+			Resources: []*pkgresource.State{
+				{URN: resA, ID: "a-id", Type: "pkg:mod:ResA"},
+				{URN: resB, ID: "b-id", Type: "pkg:mod:ResB", Dependencies: []resource.URN{resA}},
+				{URN: resC, ID: "c-id", Type: "pkg:mod:ResC", Dependencies: []resource.URN{resA, resB}},
+				{
+					URN:          resD,
+					ID:           "d-id",
+					Type:         "pkg:mod:ResD",
+					Dependencies: []resource.URN{resA},
+					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+						"propZ": {resA},
+						"propA": {resA},
+						"propM": {resA},
+					},
+				},
+			},
+		}
+
+		opts := graphCommandOptions{shortNodeName: true}
+
+		var firstOutput string
+		for i := range 10 {
+			dg := makeDependencyGraph(&snap, &opts)
+
+			var outputBuf bytes.Buffer
+			require.NoError(t, dotconv.Print(dg, &outputBuf, opts.dotFragment))
+
+			output := outputBuf.String()
+			if i == 0 {
+				firstOutput = output
+			} else {
+				require.Equal(t, firstOutput, output,
+					"graph output should be deterministic across multiple runs")
+			}
+		}
+
+		require.Contains(t, firstOutput, `label = "propA, propM, propZ"`,
+			"property dependency labels should be sorted alphabetically")
 	})
 }

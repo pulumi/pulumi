@@ -8,7 +8,7 @@ paths:
     - c
     string: '["a","value","c"]'
     redacted: '["a","value","c"]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAALf+EKgADBnN0cmluZwwDAAFhBnN0cmluZwwHAAV2YWx1ZQZzdHJpbmcMAwABYw==
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAALf+CKgADBnN0cmluZwwDAAFhBnN0cmluZwwHAAV2YWx1ZQZzdHJpbmcMAwABYw==
     secure: false
     isObject: true
   my:name[0]:

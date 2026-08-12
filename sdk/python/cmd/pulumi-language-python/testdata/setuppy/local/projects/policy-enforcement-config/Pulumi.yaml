@@ -1,0 +1,7 @@
+name: policy-enforcement-config
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: mypy
+    virtualenv: venv

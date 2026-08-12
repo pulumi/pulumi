@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,13 +35,13 @@ func loginAndCreateStack(t *testing.T, cloudURL string) {
 	require.NoError(t, err, string(out))
 	defer func() {
 		out, err := exec.Command("pulumi", "stack", "rm", "--yes", "-s", stackName).CombinedOutput()
-		assert.NoError(t, err, string(out))
+		require.NoError(t, err, string(out))
 	}()
 
 	out, err = exec.Command("pulumi", "stack", "select", stackName).CombinedOutput()
 	require.NoError(t, err, string(out))
 
 	out, err = exec.Command("pulumi", "stack", "ls").CombinedOutput()
-	assert.NoError(t, err, string(out))
+	require.NoError(t, err, string(out))
 	assert.Contains(t, string(out), stackName+"*")
 }

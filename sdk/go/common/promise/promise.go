@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package promise
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -154,5 +155,12 @@ func Run[T any](f func() (T, error)) *Promise[T] {
 			ps.Fulfill(value)
 		}
 	}()
+	return ps.Promise()
+}
+
+// Errorf creates a promise that is rejected with the given error.
+func Errorf[T any](format string, a ...any) *Promise[T] {
+	ps := &CompletionSource[T]{}
+	ps.Reject(fmt.Errorf(format, a...))
 	return ps.Promise()
 }

@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import functools
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple
 
+import grpc
+from pulumi import Inputs
+from pulumi.errors import (
+    InputPropertyErrorDetails,
+    RunError,
+    InputPropertyError,
+    InputPropertiesError,
+)
+from pulumi.provider.server import ComponentInitError
 import pulumi.output
+from pulumi.provider import CallResult, ConstructResult
+from pulumi.provider.provider import Provider
 import pytest
+
 from google.protobuf import struct_pb2
 from pulumi.provider.server import ProviderServicer
 from pulumi.resource import CustomResource, ResourceOptions
-from pulumi.runtime import Mocks, ResourceModule, proto, rpc, rpc_manager
+from pulumi.runtime import Mocks, ResourceModule, proto, rpc
 from pulumi.runtime.proto.provider_pb2 import ConstructRequest
+from pulumi.runtime.proto import status_pb2, errors_pb2
 from pulumi.runtime.settings import Settings, configure
+from pulumi.runtime import config, settings
 from semver import VersionInfo as Version
+from ..grpc_stubs import provider_servicer_stub
 
 
 def pulumi_test(coro):
@@ -605,3 +621,242 @@ deserialization_tests = [
 @pulumi_test
 async def test_deserialize_correctly(testcase):
     await testcase.run()
+
+
+class MockProvider(Provider):
+    def __init__(
+        self,
+        version: str = "1.0.0",
+        error_type: Optional[str] = None,
+        error_message: str = "test error",
+        property_path: str = "test.property",
+    ):
+        super().__init__(version)
+        self.error_type = error_type
+        self.error_message = error_message
+        self.property_path = property_path
+
+    def construct(
+        self,
+        name: str,
+        resource_type: str,
+        inputs: Inputs,
+        options: Optional[ResourceOptions] = None,
+    ) -> ConstructResult:
+        if self.error_type == "run_error":
+            raise RunError(self.error_message)
+        elif self.error_type == "input_property_error":
+            raise InputPropertyError(self.property_path, self.error_message)
+        elif self.error_type == "input_properties_error":
+            error_details: list[InputPropertyErrorDetails] = [
+                {"property_path": self.property_path, "reason": "this is error 1"},
+                {"property_path": self.property_path, "reason": "this is error 2"},
+            ]
+            raise InputPropertiesError(self.error_message, error_details)
+        elif self.error_type == "component_init_error":
+            inner_error = ValueError(self.error_message)
+            raise ComponentInitError(inner_error)
+
+        return ConstructResult(
+            urn=f"urn:pulumi:{name}::{resource_type}::test-resource",
+            state={"result": "success", "inputs": inputs},
+        )
+
+
+class ConcurrentConstructCallProvider(Provider):
+    def __init__(self):
+        super().__init__("1.0.0")
+        self.construct_waiting = asyncio.Event()
+        self.call_ran = asyncio.Event()
+        self.construct_stack_after_call: Optional[str] = None
+        self.construct_config_after_call: Optional[str] = None
+
+    def construct(
+        self,
+        name: str,
+        resource_type: str,
+        inputs: Inputs,
+        options: Optional[ResourceOptions] = None,
+    ) -> ConstructResult:
+        assert settings.get_stack() == "construct-stack"
+        assert config.get_config("test:key") == "construct-config"
+
+        async def urn() -> str:
+            self.construct_waiting.set()
+            await self.call_ran.wait()
+            self.construct_stack_after_call = settings.get_stack()
+            self.construct_config_after_call = config.get_config("test:key")
+            return f"urn:pulumi:{name}::{resource_type}::test-resource"
+
+        return ConstructResult(urn=urn(), state={"result": "construct"})
+
+    def call(self, token: str, args: Inputs) -> CallResult:
+        assert settings.get_stack() == "call-stack"
+        assert config.get_config("test:key") == "call-config"
+        self.call_ran.set()
+        return CallResult({"result": "call"})
+
+
+@pytest.mark.asyncio
+async def test_construct_success():
+    provider = MockProvider()
+    servicer = ProviderServicer(provider, [], "")
+
+    async with provider_servicer_stub(servicer) as stub:
+        request = proto.ConstructRequest()
+        response = await stub.Construct(request)
+
+        assert response.urn.startswith("urn:pulumi:")
+        assert "test-resource" in response.urn
+
+
+@pytest.mark.asyncio
+async def test_construct_and_call_can_run_concurrently():
+    provider = ConcurrentConstructCallProvider()
+    servicer = ProviderServicer(provider, [], "")
+
+    async with provider_servicer_stub(servicer) as stub:
+        construct_request = proto.ConstructRequest(
+            name="construct",
+            type="test:index:Component",
+            stack="construct-stack",
+            config={"test:key": "construct-config"},
+        )
+        construct_task = asyncio.ensure_future(stub.Construct(construct_request))
+
+        await asyncio.wait_for(provider.construct_waiting.wait(), timeout=2)
+
+        call_request = proto.CallRequest(
+            tok="test:index:call",
+            stack="call-stack",
+            config={"test:key": "call-config"},
+        )
+        call_response = await asyncio.wait_for(stub.Call(call_request), timeout=2)
+        construct_response = await asyncio.wait_for(construct_task, timeout=2)
+
+        assert getattr(call_response, "return")["result"] == "call"
+        assert construct_response.urn.endswith("::test-resource")
+        assert provider.construct_stack_after_call == "construct-stack"
+        assert provider.construct_config_after_call == "construct-config"
+
+
+@pytest.mark.asyncio
+async def test_construct_run_error():
+    provider = MockProvider(error_type="run_error", error_message="monitor shut down")
+    servicer = ProviderServicer(provider, [], "")
+
+    async with provider_servicer_stub(servicer) as stub:
+        request = proto.ConstructRequest()
+
+        try:
+            await stub.Construct(request)
+            assert False, "Expected RunError to be raised"
+        except grpc.aio.AioRpcError as e:
+            assert e.code() == grpc.StatusCode.UNKNOWN
+            assert "monitor shut down" in e.details()
+
+
+@pytest.mark.asyncio
+async def test_construct_input_property_error():
+    provider = MockProvider(
+        error_type="input_property_error",
+        error_message="Invalid property value",
+        property_path="resource.name",
+    )
+    servicer = ProviderServicer(provider, [], "")
+
+    async with provider_servicer_stub(servicer) as stub:
+        request = proto.ConstructRequest()
+
+        try:
+            await stub.Construct(request)
+            assert False, "Expected InputPropertyError to be raised"
+        except grpc.aio.AioRpcError as e:
+            assert e.code() == grpc.StatusCode.INVALID_ARGUMENT
+            error_details = parse_grpc_error_details(e)
+            assert "property_errors" in error_details
+            assert len(error_details["property_errors"]) == 1
+            prop_error = error_details["property_errors"][0]
+            assert prop_error["property_path"] == "resource.name"
+            assert prop_error["reason"] == "Invalid property value"
+
+
+@pytest.mark.asyncio
+async def test_construct_input_properties_error():
+    provider = MockProvider(
+        error_type="input_properties_error",
+        error_message="Multiple property validation errors",
+        property_path="resource.config",
+    )
+    servicer = ProviderServicer(provider, [], "")
+
+    async with provider_servicer_stub(servicer) as stub:
+        request = proto.ConstructRequest()
+
+        try:
+            await stub.Construct(request)
+            assert False, "Expected InputPropertiesError to be raised"
+        except grpc.aio.AioRpcError as e:
+            assert e.code() == grpc.StatusCode.INVALID_ARGUMENT
+            error_details = parse_grpc_error_details(e)
+            assert "property_errors" in error_details
+            assert len(error_details["property_errors"]) == 2
+            prop_error_1 = error_details["property_errors"][0]
+            prop_error_2 = error_details["property_errors"][1]
+            assert prop_error_1["property_path"] == "resource.config"
+            assert prop_error_1["reason"] == "this is error 1"
+            assert prop_error_2["property_path"] == "resource.config"
+            assert prop_error_2["reason"] == "this is error 2"
+            assert (
+                error_details["status_message"] == "Multiple property validation errors"
+            )
+
+
+@pytest.mark.asyncio
+async def test_construct_component_init_error():
+    provider = MockProvider(
+        error_type="component_init_error",
+        error_message="Component initialization failed",
+    )
+    servicer = ProviderServicer(provider, [], "")
+
+    async with provider_servicer_stub(servicer) as stub:
+        request = proto.ConstructRequest()
+
+        try:
+            await stub.Construct(request)
+            assert False, "Expected ComponentInitError to be raised"
+        except grpc.aio.AioRpcError as e:
+            assert e.code() == grpc.StatusCode.UNKNOWN
+            assert "Component initialization failed" in e.details()
+
+
+def parse_grpc_error_details(grpc_error: grpc.aio.AioRpcError) -> dict:
+    error_details = {
+        "message": grpc_error.details(),
+        "status_message": "",
+        "property_errors": [],
+    }
+
+    trailing_metadata = grpc_error.trailing_metadata()
+    if trailing_metadata:
+        for key, value in trailing_metadata:
+            if key == "grpc-status-details-bin":
+                status = status_pb2.Status()
+                status.ParseFromString(value)
+                error_details["status_message"] = status.message
+
+                for detail in status.details:
+                    if detail.Is(errors_pb2.InputPropertiesError.DESCRIPTOR):
+                        input_error = errors_pb2.InputPropertiesError()
+                        detail.Unpack(input_error)
+
+                        for prop_error in input_error.errors:
+                            error_details["property_errors"].append(
+                                {
+                                    "property_path": prop_error.property_path,
+                                    "reason": prop_error.reason,
+                                }
+                            )
+
+    return error_details

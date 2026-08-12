@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "nestedTypes/doc.go",
     "nestedTypes/init.go",
     "nestedTypes/internal/pulumiUtilities.go",

@@ -11,28 +11,60 @@ if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
   USE_GH=true
 fi
 
+retry_with_backoff() {
+    local max_attempts=3
+    local attempt=1
+    local exitcode=0
+
+    while [ ${attempt} -le ${max_attempts} ]; do
+        if "$@"; then
+            return 0
+        fi
+
+        exitcode=$?
+
+        if [ ${attempt} -lt ${max_attempts} ]; then
+            local backoff=$((2 ** (attempt - 1)))
+            sleep ${backoff}
+        fi
+
+        attempt=$((attempt + 1))
+    done
+
+    return ${exitcode}
+}
+
 download_release() {
-  local lang="$1"
-  local tag="$2"
-  local filename="$3"
+  local owner="$1"
+  local lang="$2"
+  local tag="$3"
+  local filename="$4"
 
   if "${USE_GH}"; then
-    gh release download "${tag}" --repo "pulumi/pulumi-${lang}" -p "${filename}"
+    retry_with_backoff gh release download "${tag}" --repo "${owner}/pulumi-${lang}" -p "${filename}"
   else
-    curl -OL --fail "https://github.com/pulumi/pulumi-${lang}/releases/download/${tag}/${filename}"
+    curl -OL --fail --retry 3 "https://github.com/${owner}/pulumi-${lang}/releases/download/${tag}/${filename}"
   fi
 }
 
-# Notes:
+# Each entry is "lang tag [owner]". The owner defaults to "pulumi" when omitted.
 #
-# * When updating .Net, you should also update PulumiDotnetSDKVersion in pulumi/pkg/codegen/testing/test/helpers.go
-#
-# shellcheck disable=SC2043
-for i in "github.com/pulumi/pulumi-java java v1.8.0" "github.com/pulumi/pulumi-yaml yaml v1.15.1" "github.com/pulumi/pulumi-dotnet dotnet v3.77.0"; do
+# Note: the HCL language runtime is no longer bundled. Its pinned version and download URL
+# live in pkg/util/plugin.go (knownLanguageRuntimes) and the CLI fetches it on demand.
+LANGUAGES=(
+  # renovate: datasource=github-releases depName=pulumi/pulumi-dotnet
+  "dotnet v3.111.1"
+  # renovate: datasource=github-releases depName=pulumi/pulumi-java
+  "java v1.36.0"
+  # renovate: datasource=github-releases depName=pulumi/pulumi-yaml
+  "yaml v1.38.1"
+)
+
+for i in "${LANGUAGES[@]}"; do
   set -- $i # treat strings in loop as args
-  REPO="$1"
-  PULUMI_LANG="$2"
-  TAG="$3"
+  PULUMI_LANG="$1"
+  TAG="$2"
+  PULUMI_OWNER="${3:-pulumi}"
 
   LANG_DIST="$(pwd)/bin"
   mkdir -p "${LANG_DIST}"
@@ -70,7 +102,7 @@ for i in "github.com/pulumi/pulumi-java java v1.8.0" "github.com/pulumi/pulumi-y
 
         mkdir -p "${OUTDIR}"
 
-        download_release "${PULUMI_LANG}" "${TAG}" "${ARCHIVE}.tar.gz"
+        download_release "${PULUMI_OWNER}" "${PULUMI_LANG}" "${TAG}" "${ARCHIVE}.tar.gz"
         tar -xzvf "${ARCHIVE}.tar.gz" -C "${OUTDIR}" "pulumi-language-${PULUMI_LANG}${DIST_EXT}"
       done
     done

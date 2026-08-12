@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,8 +33,6 @@ describe("settings", () => {
         runtime._setStack(testStack);
         const isDryRun = true;
         runtime._setIsDryRun(isDryRun);
-        const isQueryMode = true;
-        runtime._setQueryMode(isQueryMode);
         const key = "k";
         const val = "v";
         runtime.setConfig(key, val);
@@ -43,7 +41,6 @@ describe("settings", () => {
         assert.strictEqual(runtime.getProject(), testProject);
         assert.strictEqual(runtime.getStack(), testStack);
         assert.strictEqual(runtime.isDryRun(), isDryRun);
-        assert.strictEqual(runtime.isQueryMode(), isQueryMode);
         assert.strictEqual(runtime.getConfig(key), val);
         assert.strictEqual(runtime.cacheDynamicProviders(), true);
     });

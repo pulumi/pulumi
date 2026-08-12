@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,20 +20,21 @@ package gen
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 const pulumiSDKVersion = "v3"
 
 // DocLanguageHelper is the Go-specific implementation of the DocLanguageHelper.
 type DocLanguageHelper struct {
-	packages map[string]*pkgContext
+	packages    map[string]*pkgContext
+	topLevelPkg schema.PackageReference
+	goPkgInfo   GoPackageInfo
 }
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
@@ -87,21 +88,29 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return link + "Args"
 }
 
+func (d DocLanguageHelper) GetModuleName(pkg schema.PackageReference, module string) string {
+	return moduleToPackage(d.goPkgInfo.ModuleToPackage, module)
+}
+
 // GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
-	modPkg, ok := d.packages[moduleName]
+func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string {
+	goPkg := moduleToPackage(d.goPkgInfo.ModuleToPackage, relativeToModule)
+	modPkg, ok := d.packages[goPkg]
 	if !ok {
-		glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q", t.String(), moduleName)
-		os.Exit(1)
+		logging.Errorf("cannot calculate type string for type %q. could not find a package for module %q",
+			t.String(), goPkg)
+		return ""
 	}
 	return modPkg.typeString(t)
 }
 
 // GeneratePackagesMap generates a map of Go packages for resources, functions and types.
-func (d *DocLanguageHelper) GeneratePackagesMap(pkg *schema.Package, tool string, goInfo GoPackageInfo) {
+func (d *DocLanguageHelper) GeneratePackagesMap(pkg schema.PackageReference, tool string, goInfo GoPackageInfo) {
 	var err error
-	d.packages, err = generatePackageContextMap(tool, pkg.Reference(), goInfo, nil)
-	contract.AssertNoErrorf(err, "Could not generate package context map for %q", pkg.Name)
+	d.packages, err = generatePackageContextMap(tool, pkg, goInfo, nil)
+	d.goPkgInfo = goInfo
+	d.topLevelPkg = pkg
+	contract.AssertNoErrorf(err, "Could not generate package context map for %q", pkg.Name())
 }
 
 // GetPropertyName returns the property name specific to Go.
@@ -118,9 +127,20 @@ func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string,
 	return makeSafeEnumName(name, typeName)
 }
 
-func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
+func (d DocLanguageHelper) GetResourceName(r *schema.Resource) string {
+	pkg, ok := d.packages[tokenToPackage(r.PackageReference, d.goPkgInfo.ModuleToPackage, r.Token)]
+	if !ok {
+		return rawResourceName(r)
+	}
+	return disambiguatedResourceName(r, pkg)
+}
+
+func (d DocLanguageHelper) GetFunctionName(f *schema.Function) string {
 	funcName := tokenToName(f.Token)
-	pkg, ok := d.packages[modName]
+	if d.topLevelPkg == nil {
+		return funcName
+	}
+	pkg, ok := d.packages[tokenToPackage(d.topLevelPkg, d.goPkgInfo.ModuleToPackage, f.Token)]
 	if !ok {
 		return funcName
 	}
@@ -134,48 +154,78 @@ func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) s
 // GetResourceFunctionResultName returns the name of the result type when a function is used to lookup
 // an existing resource.
 func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
-	funcName := d.GetFunctionName(modName, f)
+	funcName := d.GetFunctionName(f)
 	return funcName + "Result"
+}
+
+// ResolveDocRef renders a single doc ref as a Go name. It honours package-level renames and
+// import aliases by consulting the package context map (built and cached on d by
+// GeneratePackagesMap; rebuilt on the fly for pkgs the helper has not seen).
+func (d DocLanguageHelper) ResolveDocRef(pkg schema.PackageReference, selfRef, ref schema.DocRef) (string, bool, error) {
+	packages := d.packages
+	goInfo := d.goPkgInfo
+	if packages == nil || d.topLevelPkg == nil || d.topLevelPkg.Name() != pkg.Name() {
+		if i, err := pkg.Language("go"); err == nil {
+			goInfo, _ = i.(GoPackageInfo)
+		}
+		var err error
+		packages, err = generatePackageContextMap("", pkg, goInfo, nil)
+		if err != nil {
+			return "", false, err
+		}
+	}
+
+	// Pick a representative context for non-resolver fields and synthesise a pkgContext whose
+	// module is set to a sentinel that cannot match any real module. This guarantees that every
+	// ref resolves to a fully-qualified cross-module name, while still routing through the
+	// shared packages map for rename/alias handling.
+	var template *pkgContext
+	for _, c := range packages {
+		template = c
+		break
+	}
+	if template == nil {
+		return "", false, nil
+	}
+	ctx := &pkgContext{
+		pkg:              pkg,
+		mod:              "\x00docrefresolver",
+		packages:         packages,
+		modToPkg:         goInfo.ModuleToPackage,
+		pkgImportAliases: goInfo.PackageImportAliases,
+		importBasePath:   template.importBasePath,
+	}
+	name, ok := ctx.docRefResolver(selfRef)(ref)
+	return name, ok, nil
 }
 
 func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 	return Title(m.Name)
 }
 
-func (d DocLanguageHelper) GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource,
+func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource,
 	m *schema.Method,
 ) string {
-	if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
-		var objectReturnType *schema.ObjectType
-		if m.Function.ReturnType != nil {
-			if objectType, ok := m.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {
-				objectReturnType = objectType
-			}
+	var info GoPackageInfo
+	if i, err := pkg.Language("go"); err == nil {
+		info, _ = i.(GoPackageInfo)
+	}
+	var objectReturnType *schema.ObjectType
+	if m.Function.ReturnType != nil {
+		if objectType, ok := m.Function.ReturnType.(*schema.ObjectType); ok && objectType != nil {
+			objectReturnType = objectType
 		}
+	}
 
-		if info.LiftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1 {
-			t := objectReturnType.Properties[0].Type
-			modPkg, ok := d.packages[modName]
-			if !ok {
-				glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q",
-					t.String(), modName)
-				os.Exit(1)
-			}
-			return modPkg.outputType(t)
+	if info.LiftSingleValueMethodReturns && objectReturnType != nil && len(objectReturnType.Properties) == 1 {
+		t := objectReturnType.Properties[0].Type
+		modPkg, ok := d.packages[modName]
+		if !ok {
+			logging.Errorf("cannot calculate type string for type %q. could not find a package for module %q",
+				t.String(), modName)
+			return ""
 		}
+		return modPkg.outputType(t)
 	}
 	return fmt.Sprintf("%s%sResultOutput", rawResourceName(r), d.GetMethodName(m))
-}
-
-// GetModuleDocLink returns the display name and the link for a module.
-func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
-	var displayName string
-	var link string
-	if modName == "" {
-		displayName = packageName(pkg)
-	} else {
-		displayName = fmt.Sprintf("%s/%s", packageName(pkg), modName)
-	}
-	link = d.GetDocLinkForResourceType(pkg, modName, "")
-	return displayName, link
 }

@@ -1,0 +1,9 @@
+name: iterative-constraints
+description: A minimal TypeScript Pulumi program
+runtime: nodejs
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: typescript
+packages:
+  random: random@4.18.3

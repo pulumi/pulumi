@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,22 +20,20 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFunctionInvokeBindsArgumentObjectType(t *testing.T) {
 	t.Parallel()
 
-	const source = `zones = invoke("aws:index:getAvailabilityZones", {})`
+	const source = `zones = invoke("infra:index:getZones", {})`
 
 	program, diags := parseAndBindProgram(t, source, "bind_func_invoke_args.pp")
 	contract.Ignore(diags)
 
 	g, err := newGenerator(program)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for _, n := range g.program.Nodes {
 		if zones, ok := n.(*pcl.LocalVariable); ok && zones.Name() == "zones" {
@@ -51,19 +49,4 @@ func TestFunctionInvokeBindsArgumentObjectType(t *testing.T) {
 			break
 		}
 	}
-}
-
-func TestGenerateProgramVersionSelection(t *testing.T) {
-	t.Parallel()
-
-	test.GeneratePythonProgramTest(
-		t,
-		GenerateProgram,
-		func(
-			directory string, project workspace.Project,
-			program *pcl.Program, localDependencies map[string]string,
-		) error {
-			return GenerateProject(directory, project, program, localDependencies, "")
-		},
-	)
 }

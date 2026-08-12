@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net/url"
 
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pgavlin/goldmark/renderer"
@@ -30,21 +29,15 @@ import (
 // A RendererOption controls the behavior of a Renderer.
 type RendererOption func(*Renderer)
 
-// A ReferenceRenderer is responsible for rendering references to entities in a schema.
-type ReferenceRenderer func(r *Renderer, w io.Writer, source []byte, link *ast.Link, enter bool) (ast.WalkStatus, error)
-
-// WithReferenceRenderer sets the reference renderer for a renderer.
-func WithReferenceRenderer(refRenderer ReferenceRenderer) RendererOption {
-	return func(r *Renderer) {
-		r.refRenderer = refRenderer
-	}
-}
-
 // A Renderer provides the ability to render parsed documentation back to Markdown source.
 type Renderer struct {
 	md *markdown.Renderer
+}
 
-	refRenderer ReferenceRenderer
+func NewRenderer() *Renderer {
+	return &Renderer{
+		md: &markdown.Renderer{},
+	}
 }
 
 // MarkdownRenderer returns the underlying Markdown renderer used by the Renderer.
@@ -58,6 +51,9 @@ func (r *Renderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 
 	// inlines
 	reg.Register(ast.KindLink, r.renderLink)
+
+	// refs
+	reg.Register(KindRef, r.renderRef)
 }
 
 func (r *Renderer) renderShortcode(w util.BufWriter, source []byte, node ast.Node, enter bool) (ast.WalkStatus, error) {
@@ -80,31 +76,18 @@ func (r *Renderer) renderShortcode(w util.BufWriter, source []byte, node ast.Nod
 	return ast.WalkContinue, nil
 }
 
-func isEntityReference(dest []byte) bool {
-	if len(dest) == 0 {
-		return false
-	}
-
-	parsed, err := url.Parse(string(dest))
-	if err != nil {
-		return false
-	}
-
-	if parsed.IsAbs() {
-		return parsed.Scheme == "schema"
-	}
-
-	return parsed.Host == "" && parsed.Path == "" && parsed.RawQuery == "" && parsed.Fragment != ""
+func (r *Renderer) renderLink(w util.BufWriter, source []byte, node ast.Node, enter bool) (ast.WalkStatus, error) {
+	return r.md.RenderLink(w, source, node, enter)
 }
 
-func (r *Renderer) renderLink(w util.BufWriter, source []byte, node ast.Node, enter bool) (ast.WalkStatus, error) {
-	// If this is an entity reference, pass it off to the reference renderer (if any).
-	link := node.(*ast.Link)
-	if r.refRenderer != nil && isEntityReference(link.Destination) {
-		return r.refRenderer(r, w, source, link, enter)
+func (r *Renderer) renderRef(w util.BufWriter, source []byte, node ast.Node, enter bool) (ast.WalkStatus, error) {
+	if enter {
+		_, err := fmt.Fprintf(r.md.Writer(w), "{{%% ref %s %%}}", node.(*Ref).Destination)
+		if err != nil {
+			return ast.WalkStop, err
+		}
 	}
-
-	return r.md.RenderLink(w, source, node, enter)
+	return ast.WalkContinue, nil
 }
 
 // RenderDocs renders parsed documentation to the given Writer. The source that was used to parse the documentation
@@ -121,7 +104,19 @@ func RenderDocs(w io.Writer, source []byte, node ast.Node, options ...RendererOp
 		util.Prioritized(md, 200),
 	}
 	r := renderer.NewRenderer(renderer.WithNodeRenderers(nodeRenderers...))
-	return r.Render(w, source, node)
+
+	var buf bytes.Buffer
+	if err := r.Render(&buf, source, node); err != nil {
+		return err
+	}
+
+	rendered := buf.Bytes()
+	if !bytes.HasSuffix(source, []byte("\n")) {
+		rendered = bytes.TrimSuffix(rendered, []byte("\n"))
+	}
+
+	_, err := w.Write(rendered)
+	return err
 }
 
 // RenderDocsToString is like RenderDocs, but renders to a string instead of a Writer.

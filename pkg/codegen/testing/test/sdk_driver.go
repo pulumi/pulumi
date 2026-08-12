@@ -1,4 +1,4 @@
-// Copyright 2021-2024, Pulumi Corporation.
+// Copyright 2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package test
 
 import (
 	"flag"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -84,7 +85,14 @@ func (tt *SDKTest) ShouldSkipCodegen(language string) bool {
 	return tt.Skip.Has(language + "/any")
 }
 
-var allLanguages = codegen.NewStringSet("python/any", "nodejs/any", "dotnet/any", "go/any", "docs/any")
+var allLanguages = codegen.NewStringSet(
+	"docs/any",
+	"dotnet/any",
+	"go/any",
+	"java/any",
+	"nodejs/any",
+	"python/any",
+)
 
 var PulumiPulumiSDKTests = []*SDKTest{
 	{
@@ -98,24 +106,15 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:        "external-resource-schema",
 		Description:      "External resource schema",
-		SkipCompileCheck: codegen.NewStringSet(TestGo),
+		SkipCompileCheck: codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
 	},
 	{
 		Directory:   "nested-module",
 		Description: "Nested module",
 	},
 	{
-		Directory:   "simplified-invokes",
-		Description: "Simplified invokes",
-		Skip:        codegen.NewStringSet("python/any", "go/any"),
-	},
-	{
 		Directory:   "nested-module-thirdparty",
 		Description: "Third-party nested module",
-	},
-	{
-		Directory:   "plain-schema-gh6957",
-		Description: "Repro for #6957",
 	},
 	{
 		Directory:   "resource-args-python-case-insensitive",
@@ -124,14 +123,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "resource-args-python",
 		Description: "Resource args with same named resource and type",
-	},
-	{
-		Directory:   "simple-enum-schema",
-		Description: "Simple schema with enum types",
-	},
-	{
-		Directory:   "simple-plain-schema",
-		Description: "Simple schema with plain properties",
 	},
 	{
 		Directory:   "simple-plain-schema-with-root-package",
@@ -175,10 +166,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		SkipCompileCheck: codegen.NewStringSet(TestDotnet, TestGo),
 	},
 	{
-		Directory:   "replace-on-change",
-		Description: "Simple use of replaceOnChange in schema",
-	},
-	{
 		Directory:   "simple-resource-with-aliases",
 		Description: "Simple schema with a resource that has aliases",
 	},
@@ -188,9 +175,10 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		SkipCompileCheck: codegen.NewStringSet(TestDotnet, TestNodeJS),
 	},
 	{
-		Directory:   "hyphen-url",
-		Description: "A resource url with a hyphen in its path",
-		Skip:        codegen.NewStringSet("go/any"),
+		Directory:        "hyphen-url",
+		Description:      "A resource url with a hyphen in its path",
+		Skip:             codegen.NewStringSet("go/any"),
+		SkipCompileCheck: codegen.NewStringSet(TestNodeJS, TestPython),
 	},
 	{
 		Directory:   "output-funcs",
@@ -301,37 +289,25 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	},
 	{
 		Directory: "external-node-compatibility",
-		// In this case, this test's schema has kubernetes20 set, but is referencing a type from Google Native
-		// which doesn't have any compatibility modes set, so the referenced type should be `AuditConfigArgs`
-		// (with the `Args` suffix) and not `AuditConfig`.
-		Description: "Ensure external package compatibility modes are used when referencing external types",
-		Skip:        allLanguages.Except("nodejs/any"),
+		// In this case, this test's schema has kubernetes20 set, but is referencing a type from an
+		// external package (nodecompat) which doesn't have any compatibility modes set, so the
+		// referenced type should be `MyConfigArgs` (with the `Args` suffix) and not `MyConfig`.
+		Description:      "Ensure external package compatibility modes are used when referencing external types",
+		Skip:             allLanguages.Except("nodejs/any"),
+		SkipCompileCheck: codegen.NewStringSet(TestNodeJS),
 	},
 	{
 		Directory: "external-go-import-aliases",
-		// Google Native has its own import aliases, so those should be respected, unless there are local aliases.
-		// AWS Classic doesn't have any import aliases, so none should be used, unless there are local aliases.
-		Description: "Ensure external import aliases are honored, and any local import aliases override them",
-		Skip:        allLanguages.Except("go/any"),
+		// The goalias package has its own import aliases, so those should be respected, unless there are local aliases.
+		// The other package doesn't have any import aliases, so none should be used, unless there are local aliases.
+		Description:      "Ensure external import aliases are honored, and any local import aliases override them",
+		Skip:             allLanguages.Except("go/any"),
+		SkipCompileCheck: codegen.NewStringSet(TestGo),
 	},
 	{
 		Directory:   "external-python-same-module-name",
 		Description: "Ensure referencing external types/resources with the same module name are referenced correctly",
 		Skip:        allLanguages.Except("python/any"),
-	},
-	{
-		Directory:   "enum-reference",
-		Description: "Ensure referencing external types/resources with referenced enums import correctly",
-	},
-	{
-		Directory:   "enum-reference-python",
-		Description: "Ensure referencing external types/resources with referenced enums import correctly in Python",
-		Skip:        allLanguages.Except("python/any"),
-	},
-	{
-		Directory:   "external-enum",
-		Description: "Ensure we generate valid tokens for external enums",
-		Skip:        codegen.NewStringSet("dotnet/any"),
 	},
 	{
 		Directory:   "internal-dependencies-go",
@@ -349,21 +325,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("go/any"),
 	},
 	{
-		Directory:   "go-nested-collections",
-		Description: "Generate a resource that outputs [][][]Foo",
-		Skip:        allLanguages.Except("go/any"),
-	},
-	{
-		Directory: "functions-secrets",
-		// Secret properties for non-Output<T> returning functions cannot be secret because they are plain.
-		Description: "functions that have properties that are secrets in the schema",
-	},
-	{
-		Directory:        "secrets",
-		Description:      "Generate a resource with secret properties",
-		SkipCompileCheck: codegen.NewStringSet(TestDotnet),
-	},
-	{
 		Directory:   "regress-py-tfbridge-611",
 		Description: "Regresses pulumi/pulumi-terraform-bridge#611",
 		Skip:        allLanguages.Except("python/any").Union(codegen.NewStringSet("python/test", "python/py_compile")),
@@ -371,7 +332,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "hyphenated-symbols",
 		Description: "Test that types can have names with hyphens in them",
-		Skip:        allLanguages.Except("go/any").Except("python/any"),
+		Skip:        allLanguages.Except("go/any").Except("python/any").Except("dotnet/any"),
 	},
 	{
 		Directory:   "provider-type-schema",
@@ -381,10 +342,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory:   "embedded-crd-types",
 		Description: "A schema with CRD types with package names different from the main package",
 		Skip:        codegen.NewStringSet("dotnet/any"),
-	},
-	{
-		Directory:   "unions-inside-arrays",
-		Description: "A schema with a union type inside an array",
 	},
 	{
 		Directory:   "assets-and-archives",
@@ -440,10 +397,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("python/any"),
 	},
 	{
-		Directory:   "unions-inline",
-		Description: "Testing the use of unions/oneOf in the schema inline with the property definition.",
-	},
-	{
 		Directory:   "legacy-names",
 		Description: "Testing the use of snake_case names and tokens.",
 		Skip:        codegen.NewStringSet("go/test"),
@@ -469,10 +422,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("python/any"),
 	},
 	{
-		Directory:   "config-variables",
-		Description: "Testing config variables.",
-	},
-	{
 		Directory:   "overlay-supported-languages",
 		Description: "Testing restricting the languages an overlay supports.",
 		Skip:        allLanguages.Except("docs/any"),
@@ -483,12 +432,27 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Regress pulumi/pulumi#17219 affecting Python",
 		Skip:        allLanguages.Except("python/any"),
 	},
+	{
+		Directory: "go-parameterized-lifted-single-value-methods",
+		// Issue seen in pulumi/pulumi#20744 and pulumi/pulumi-terraform-bridge#3247
+		Description: "Testing Go parameterized SDK with a provider method with liftSingleValueMethodReturns",
+		Skip:        allLanguages.Except("go/any"),
+	},
 }
 
 var genSDKOnly bool
 
 func NoSDKCodegenChecks() bool {
 	return genSDKOnly
+}
+
+// runToolchainChecks reports whether the post-generation checks (compile, unit test) should run.
+// The checks invoke real language toolchains — e.g. `go build` over each generated SDK and its
+// full dependency graph — which is expensive, and their results do not depend on the host
+// platform, so CI only pays for them on Linux. All platforms still validate the generated files
+// against the goldens.
+func runToolchainChecks() bool {
+	return os.Getenv("CI") == "" || runtime.GOOS == "linux"
 }
 
 func init() {
@@ -515,8 +479,18 @@ type SDKCodegenOptions struct {
 	Checks map[string]CodegenCheck
 
 	// The tests to run. A testcase `tt` are assumed to be located at
-	// ../testing/test/testdata/${tt.Directory}
+	// "${InputDir}${tt.Directory}"
 	TestCases []*SDKTest
+
+	// The directory to find input test cases.
+	//
+	// Defaults to "../testing/test/testdata".
+	InputDir string
+
+	// The directory to store golden files in.
+	//
+	// Defaults to "../testing/test/testdata/${tt.Directory}/${Language}".
+	ResultDir string
 }
 
 // TestSDKCodegen runs the complete set of SDK code generation tests
@@ -531,7 +505,7 @@ type SDKCodegenOptions struct {
 // directory that contains that information:
 //
 //	testdata/
-//	    my-simple-schema/   # i.e. `simple-enum-schema`
+//	    my-simple-schema/   # i.e. `simple-resource-schema`
 //	        schema.(json|yaml)
 //	        go/
 //	        python/
@@ -577,12 +551,16 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 		t.Skip("TestSDKCodegen is skipped on Windows")
 	}
 
-	testDir := filepath.Join("..", "testing", "test", "testdata")
+	defaultDir := filepath.Join("..", "testing", "test", "testdata")
+	var testInputDir string
+	if opts.InputDir != "" {
+		testInputDir = opts.InputDir
+	} else {
+		testInputDir = defaultDir
+	}
 
 	require.NotNil(t, opts.TestCases, "No test cases were provided. This was probably a mistake")
 	for _, tt := range opts.TestCases {
-		tt := tt // avoid capturing loop variable `sdkTest` in the closure
-
 		t.Run(tt.Directory, func(t *testing.T) {
 			t.Parallel()
 
@@ -591,11 +569,11 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 
 			t.Log(tt.Description)
 
-			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
+			inputDirPath := filepath.Join(testInputDir, filepath.FromSlash(tt.Directory))
 
-			schemaPath := filepath.Join(dirPath, "schema.json")
+			schemaPath := filepath.Join(inputDirPath, "schema.json")
 			if _, err := os.Stat(schemaPath); err != nil && os.IsNotExist(err) {
-				schemaPath = filepath.Join(dirPath, "schema.yaml")
+				schemaPath = filepath.Join(inputDirPath, "schema.yaml")
 			}
 
 			if tt.ShouldSkipCodegen(opts.Language) {
@@ -603,11 +581,18 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				return
 			}
 
-			files, err := GeneratePackageFilesFromSchema(schemaPath, opts.GenPackage)
+			files, err := generatePackageFilesFromSchema(schemaPath, testInputDir, opts.GenPackage)
 			require.NoError(t, err)
 
-			if !RewriteFilesWhenPulumiAccept(t, dirPath, opts.Language, files) {
-				expectedFiles, err := LoadBaseline(dirPath, opts.Language)
+			var resultDirPath string
+			if opts.ResultDir != "" {
+				resultDirPath = filepath.Join(opts.ResultDir, filepath.FromSlash(tt.Directory))
+			} else {
+				resultDirPath = filepath.Join(defaultDir, filepath.FromSlash(tt.Directory), opts.Language)
+			}
+
+			if !rewriteFilesWhenPulumiAccept(t, resultDirPath, files) {
+				expectedFiles, err := loadBaseline(resultDirPath)
 				require.NoError(t, err)
 
 				if !ValidateFileEquality(t, files, expectedFiles) {
@@ -619,18 +604,14 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 				return
 			}
 
-			CopyExtraFiles(t, dirPath, opts.Language)
+			copyExtraFiles(t, resultDirPath)
 
 			// Merge language-specific global and
 			// test-specific checks, with test-specific
 			// having precedence.
 			allChecks := make(map[string]CodegenCheck)
-			for k, v := range opts.Checks {
-				allChecks[k] = v
-			}
-			for k, v := range tt.Checks {
-				allChecks[k] = v
-			}
+			maps.Copy(allChecks, opts.Checks)
+			maps.Copy(allChecks, tt.Checks)
 
 			// Sort the checks in alphabetical order.
 			var checkOrder []string
@@ -639,18 +620,19 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 			}
 			sort.Strings(checkOrder)
 
-			codeDir := filepath.Join(dirPath, opts.Language)
-
 			// Perform the checks.
 			//nolint:paralleltest // test functions are ordered
 			for _, check := range checkOrder {
-				check := check
 				t.Run(check, func(t *testing.T) {
+					if !runToolchainChecks() {
+						t.Skip("Skipping toolchain checks: their results are platform-independent, " +
+							"so they only run on Linux in CI.")
+					}
 					if tt.ShouldSkipTest(opts.Language, check) {
 						t.Skip()
 					}
 					checkFun := allChecks[check]
-					checkFun(t, codeDir)
+					checkFun(t, resultDirPath)
 				})
 			}
 		})

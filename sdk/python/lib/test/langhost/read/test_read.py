@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ class ReadTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         self.assertEqual(ty, "test:index:MyResource")
         self.assertEqual(name, "foo2")
@@ -49,7 +50,18 @@ class ReadTest(LanghostTest):
         }
 
     def read_resource(
-        self, ctx, ty, name, _id, parent, state, dependencies, provider, version
+        self,
+        ctx,
+        ty,
+        name,
+        _id,
+        parent,
+        state,
+        dependencies,
+        provider,
+        version,
+        source_position,
+        stack_trace,
     ):
         if name == "foo":
             self.assertDictEqual(

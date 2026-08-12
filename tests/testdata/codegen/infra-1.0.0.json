@@ -1,0 +1,697 @@
+{
+  "$schema": "https://raw.githubusercontent.com/pulumi/pulumi/master/pkg/codegen/schema/pulumi.json",
+  "name": "infra",
+  "version": "1.0.0",
+  "//": [
+    "A synthetic infrastructure-flavored schema for program-gen tests. It mirrors the shapes the",
+    "tests used from the aws schema (lists of objects, optional nested strings, output list",
+    "traversals, filter-style invoke arguments) without referencing a real cloud provider."
+  ],
+  "types": {
+    "infra:index:BucketLogging": {
+      "type": "object",
+      "properties": {
+        "targetBucket": {
+          "type": "string"
+        },
+        "targetPrefix": {
+          "type": "string"
+        }
+      },
+      "required": ["targetBucket"]
+    },
+    "infra:index:SecurityGroupRule": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "type": "string"
+        },
+        "fromPort": {
+          "type": "integer"
+        },
+        "toPort": {
+          "type": "integer"
+        },
+        "cidrBlocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["protocol", "fromPort", "toPort"]
+    },
+    "infra:index:EndpointDnsEntry": {
+      "type": "object",
+      "properties": {
+        "dnsName": {
+          "type": "string"
+        },
+        "hostedZoneId": {
+          "type": "string"
+        }
+      }
+    },
+    "infra:index:GetAmiFilter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["name", "values"]
+    },
+    "infra:index:GetZonesFilter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["name", "values"]
+    },
+    "infra:index:GetPolicyDocumentStatement": {
+      "type": "object",
+      "properties": {
+        "sid": {
+          "type": "string"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "infra:index:GetRouteTablesFilter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["name", "values"]
+    }
+  },
+  "resources": {
+    "infra:index:Bucket": {
+      "type": "object",
+      "properties": {
+        "bucket": {
+          "type": "string"
+        },
+        "loggings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/infra:index:BucketLogging"
+          }
+        }
+      },
+      "required": ["bucket", "loggings"],
+      "inputProperties": {
+        "loggings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/infra:index:BucketLogging"
+          }
+        }
+      }
+    },
+    "infra:index:Vpc": {
+      "type": "object",
+      "properties": {
+        "cidrBlock": {
+          "type": "string"
+        },
+        "ipv6CidrBlock": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["cidrBlock", "ipv6CidrBlock"],
+      "inputProperties": {
+        "cidrBlock": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "infra:index:Subnet": {
+      "type": "object",
+      "properties": {
+        "vpcId": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "assignIpv6AddressOnCreation": {
+          "type": "boolean"
+        },
+        "availabilityZone": {
+          "type": "string"
+        },
+        "cidrBlock": {
+          "type": "string"
+        },
+        "enableDns64": {
+          "type": "boolean"
+        },
+        "enableResourceNameDnsAaaaRecordOnLaunch": {
+          "type": "boolean"
+        },
+        "enableResourceNameDnsARecordOnLaunch": {
+          "type": "boolean"
+        },
+        "ipv6CidrBlock": {
+          "type": "string"
+        },
+        "ipv6Native": {
+          "type": "boolean"
+        },
+        "vpcId": {
+          "type": "string"
+        }
+      }
+    },
+    "infra:index:RouteTableAssociation": {
+      "type": "object",
+      "properties": {
+        "subnetId": {
+          "type": "string"
+        },
+        "routeTableId": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "subnetId": {
+          "type": "string"
+        },
+        "routeTableId": {
+          "type": "string"
+        }
+      }
+    },
+    "infra:index:SecurityGroup": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "egress": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/infra:index:SecurityGroupRule"
+          }
+        },
+        "ingress": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/infra:index:SecurityGroupRule"
+          }
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "vpcId": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "description": {
+          "type": "string"
+        },
+        "egress": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/infra:index:SecurityGroupRule"
+          }
+        },
+        "ingress": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/infra:index:SecurityGroupRule"
+          }
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "vpcId": {
+          "type": "string"
+        }
+      }
+    },
+    "infra:index:Instance": {
+      "type": "object",
+      "properties": {
+        "ami": {
+          "type": "string"
+        },
+        "instanceType": {
+          "type": "string"
+        },
+        "publicDns": {
+          "type": "string"
+        },
+        "publicIp": {
+          "type": "string"
+        }
+      },
+      "required": ["ami", "publicDns", "publicIp"],
+      "inputProperties": {
+        "ami": {
+          "type": "string"
+        },
+        "instanceType": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "userData": {
+          "type": "string"
+        },
+        "vpcSecurityGroupIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredInputs": ["ami"]
+    },
+    "infra:index:Certificate": {
+      "type": "object",
+      "properties": {
+        "domainName": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "domainName": {
+          "type": "string"
+        },
+        "subjectAlternativeNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "validationMethod": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": ["domainName"]
+    },
+    "infra:index:Policy": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string"
+        }
+      },
+      "required": ["name", "policy"],
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": ["policy"]
+    },
+    "infra:index:SecretVersion": {
+      "type": "object",
+      "properties": {
+        "secretId": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "secretId": {
+          "type": "string"
+        },
+        "secretString": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": ["secretId"]
+    },
+    "infra:index:LocalGatewayRoute": {
+      "type": "object",
+      "properties": {
+        "destinationCidrBlock": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "destinationCidrBlock": {
+          "type": "string"
+        },
+        "localGatewayRouteTableId": {
+          "type": "string"
+        },
+        "localGatewayVirtualInterfaceGroupId": {
+          "type": "string"
+        }
+      }
+    },
+    "infra:index:FileSystem": {
+      "type": "object",
+      "properties": {
+        "deploymentType": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "deploymentType": {
+          "type": "string"
+        },
+        "storageCapacity": {
+          "type": "integer"
+        },
+        "subnetIds": {
+          "type": "string"
+        },
+        "throughputCapacity": {
+          "type": "integer"
+        }
+      }
+    },
+    "infra:index:User": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": ["name"],
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "forceDestroy": {
+          "type": "boolean"
+        }
+      }
+    },
+    "infra:index:UserLoginProfile": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "user": {
+          "type": "string"
+        },
+        "pgpKey": {
+          "type": "string"
+        },
+        "passwordLength": {
+          "type": "integer"
+        },
+        "passwordResetRequired": {
+          "type": "boolean"
+        }
+      },
+      "requiredInputs": ["user"]
+    },
+    "infra:index:AccessKey": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "user": {
+          "type": "string"
+        },
+        "pgpKey": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "requiredInputs": ["user"]
+    },
+    "infra:index:Endpoint": {
+      "type": "object",
+      "properties": {
+        "dnsEntries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/infra:index:EndpointDnsEntry"
+          }
+        },
+        "vpcId": {
+          "type": "string"
+        }
+      },
+      "required": ["dnsEntries"],
+      "inputProperties": {
+        "privateDnsEnabled": {
+          "type": "boolean"
+        },
+        "serviceName": {
+          "type": "string"
+        },
+        "vpcEndpointType": {
+          "type": "string"
+        },
+        "vpcId": {
+          "type": "string"
+        }
+      }
+    },
+    "infra:index:Record": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "zoneId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "ttl": {
+          "type": "string"
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "functions": {
+    "infra:index:getVpc": {
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "default": {
+            "type": "boolean"
+          }
+        }
+      },
+      "outputs": {
+        "type": "object",
+        "properties": {
+          "default": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": ["id"]
+      }
+    },
+    "infra:index:getAmi": {
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/infra:index:GetAmiFilter"
+            }
+          },
+          "mostRecent": {
+            "type": "boolean"
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["owners"]
+      },
+      "outputs": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": ["id"]
+      }
+    },
+    "infra:index:getZones": {
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/infra:index:GetZonesFilter"
+            }
+          }
+        }
+      },
+      "outputs": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/infra:index:GetZonesFilter"
+            }
+          },
+          "names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["names"]
+      }
+    },
+    "infra:index:getPolicyDocument": {
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "statements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/infra:index:GetPolicyDocumentStatement"
+            }
+          }
+        }
+      },
+      "outputs": {
+        "type": "object",
+        "properties": {
+          "json": {
+            "type": "string"
+          }
+        },
+        "required": ["json"]
+      }
+    },
+    "infra:index:getRouteTables": {
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/infra:index:GetRouteTablesFilter"
+            }
+          }
+        }
+      },
+      "outputs": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["ids"]
+      }
+    }
+  },
+  "language": {
+    "go": {
+      "importBasePath": "example.com/pulumi-infra/sdk/go/infra"
+    },
+    "nodejs": {},
+    "python": {}
+  }
+}

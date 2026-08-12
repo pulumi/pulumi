@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,35 @@
 package nodejs
 
 import (
+	"strings"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
+)
+
+var outputMemberNames = codegen.NewStringSet(
+	"allResources",
+	"apply",
+	"constructor",
+	"deploymentOnlyModule",
+	"doNotCapture",
+	"get",
+	"hasOwnProperty",
+	"isKnown",
+	"isPrototypeOf",
+	"isSecret",
+	"promise",
+	"propertyIsEnumerable",
+	"resources",
+	"then",
+	"toJSON",
+	"toLocaleString",
+	"toString",
+	"valueOf",
 )
 
 func isOutputType(t model.Type) bool {
@@ -55,20 +79,66 @@ func isPromiseType(t model.Type) bool {
 	return false
 }
 
-func isParameterReference(parameters codegen.Set, x model.Expression) bool {
+func isDirectParameterReference(parameters codegen.Set, x model.Expression) bool {
 	scopeTraversal, ok := x.(*model.ScopeTraversalExpression)
-	if !ok {
+	if !ok || len(scopeTraversal.Parts) != 1 {
 		return false
 	}
 
 	return parameters.Has(scopeTraversal.Parts[0])
 }
 
-// canLiftTraversal returns true if this traversal can be lifted. Any traversal that does not traverse
-// possibly-undefined values can be lifted.
+func parameterRelativeTraversal(parameters codegen.Set, x model.Expression) (
+	hcl.Traversal, []model.Traversable, bool,
+) {
+	switch x := x.(type) {
+	case *model.ScopeTraversalExpression:
+		if !parameters.Has(x.Parts[0]) {
+			return nil, nil, false
+		}
+		return x.Traversal.SimpleSplit().Rel, x.Parts, true
+	case *model.RelativeTraversalExpression:
+		if !isDirectParameterReference(parameters, x.Source) {
+			return nil, nil, false
+		}
+		return x.Traversal, x.Parts, true
+	default:
+		return nil, nil, false
+	}
+}
+
+func canLiftOutputTraversal(traversal hcl.Traversal) bool {
+	for _, traverser := range traversal {
+		var name string
+		switch traverser := traverser.(type) {
+		case hcl.TraverseAttr:
+			name = traverser.Name
+		case hcl.TraverseIndex:
+			if traverser.Key.Type() != cty.String {
+				continue
+			}
+			name = traverser.Key.AsString()
+		default:
+			continue
+		}
+
+		// The Output proxy resolves real Output and Object members before lifting properties.
+		if strings.HasPrefix(name, "__") || outputMemberNames.Has(name) {
+			return false
+		}
+	}
+	return true
+}
+
+// canLiftTraversal returns true if this traversal can be lifted. Any traversal that does not traverse through
+// possibly-undefined values can be lifted. The result itself may be undefined.
 func (g *generator) canLiftTraversal(parts []model.Traversable) bool {
-	for _, p := range parts {
-		t := model.GetTraversableType(p)
+	if len(parts) < 2 {
+		return false
+	}
+	// Only check nonterminal parts: the final part is the result and may itself be undefined.
+	for _, part := range parts[:len(parts)-1] {
+		t := model.GetTraversableType(part)
 		if model.IsOptionalType(t) || isPromiseType(t) {
 			return false
 		}
@@ -100,35 +170,41 @@ func (g *generator) parseProxyApply(parameters codegen.Set, args []model.Express
 	case *model.IndexExpression:
 		t := arg.Type()
 		skipType := model.IsOptionalType(t) || isPromiseType(t) || isOutputType(t)
-		if !isParameterReference(parameters, then.Collection) || skipType {
+		if !isDirectParameterReference(parameters, then.Collection) || skipType {
 			return nil, false
 		}
-		then.Collection = arg
-	case *model.ScopeTraversalExpression:
-		if !isParameterReference(parameters, then) || isPromiseType(arg.Type()) {
+		newIndex := &model.IndexExpression{
+			Collection: arg,
+			Key:        then.Key,
+		}
+		if diags := newIndex.Typecheck(false); diags.HasErrors() {
 			return nil, false
 		}
-		if !g.canLiftTraversal(then.Parts) {
+		return newIndex, true
+	case *model.ScopeTraversalExpression, *model.RelativeTraversalExpression:
+		traversal, parts, ok := parameterRelativeTraversal(parameters, then)
+		if !ok || isPromiseType(arg.Type()) {
 			return nil, false
 		}
-
-		switch arg := arg.(type) {
-		case *model.RelativeTraversalExpression:
-			arg.Traversal = append(arg.Traversal, then.Traversal[1:]...)
-			arg.Parts = append(arg.Parts, then.Parts...)
-		case *model.ScopeTraversalExpression:
-			arg.Traversal = append(arg.Traversal, then.Traversal[1:]...)
-			arg.Parts = append(arg.Parts, then.Parts...)
-		default:
+		// A direct parameter reference is the identity projection. Preserve its argument so interpolation lowering can
+		// use it without introducing an explicit apply.
+		if len(traversal) == 0 {
+			return arg, true
+		}
+		if !g.canLiftTraversal(parts) || !canLiftOutputTraversal(traversal) {
 			return nil, false
 		}
+		newTraversal := &model.RelativeTraversalExpression{
+			Source:    arg,
+			Traversal: traversal,
+		}
+		if diags := newTraversal.Typecheck(false); diags.HasErrors() {
+			return nil, false
+		}
+		return newTraversal, true
 	default:
 		return nil, false
 	}
-
-	diags := arg.Typecheck(false)
-	contract.Assertf(len(diags) == 0, "unexpected type error: %v", diags)
-	return arg, true
 }
 
 func callbackParameterReferences(expr model.Expression, parameters codegen.Set) []*model.Variable {

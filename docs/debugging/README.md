@@ -10,4 +10,5 @@ See [Debugging Pulumi Provider Packages](https://www.pulumi.com/docs/iac/package
 
 /docs/debugging/engine
 /docs/debugging/providers-and-languages
+/docs/debugging/performance
 :::

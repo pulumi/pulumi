@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build (nodejs || all) && !xplatform_acceptance
-
 package ints
 
 import (
@@ -21,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 func TestNodejsTransformations(t *testing.T) {
@@ -34,7 +33,7 @@ func TestNodejsTransformations(t *testing.T) {
 				Dir:          d,
 				Dependencies: []string{"@pulumi/pulumi"},
 				LocalProviders: []integration.LocalDependency{
-					{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+					{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 				},
 				Quick:                  true,
 				ExtraRuntimeValidation: Validator,

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -175,6 +175,27 @@ export interface RemoteWorkspaceOptions {
      * false.
      */
     inheritSettings?: boolean;
+
+    /**
+     * The image to use for the remote executor.
+     */
+    executorImage?: ExecutorImage;
+}
+
+/**
+ * Information about the remote execution image.
+ */
+export interface ExecutorImage {
+    image: string;
+    credentials?: DockerImageCredentials;
+}
+
+/**
+ * Credentials for the remote execution Docker image.
+ */
+export interface DockerImageCredentials {
+    username: string;
+    password: string;
 }
 
 async function createLocalWorkspace(
@@ -207,6 +228,7 @@ async function createLocalWorkspace(
         remotePreRunCommands: opts?.preRunCommands,
         remoteSkipInstallDependencies: opts?.skipInstallDependencies,
         remoteInheritSettings: opts?.inheritSettings,
+        remoteExecutorImage: opts?.executorImage,
     };
     return await LocalWorkspace.create(localOpts);
 }

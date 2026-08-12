@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,6 +77,21 @@ message PrepareLanguageTestsRequest {
     // desirable to test that feature set) but where program code generation is not yet complete enough to support
     // generating programs which exercise that functionality.
     map<string, ProgramOverride> program_overrides = 9;
+
+    // A folder pointing to policy packs to use for the tests. This is used to test the language plugin's policy pack
+    // support. These must be manually written.
+    string policy_pack_directory = 10;
+
+    // If true, tests will be run in "local" mode, meaning all SDKs will be generated with the `--local` flag and not packed.
+    bool local = 11;
+
+    // The path to a directory containing provider plugins to be used for the "provider-" tests.
+    string providers_directory = 12;
+
+    // If set, the address of the converter plugin.
+    //
+    // Convert will be tested if and only if this is set.
+    string converter_plugin_target = 13;
 }
 
 message PrepareLanguageTestsResponse {
@@ -86,6 +101,9 @@ message PrepareLanguageTestsResponse {
 message RunLanguageTestRequest {
     string token = 1;
     string test = 2;
+
+    // Skip a convert test if applicable.
+    bool skip_convert_tests = 3;
 }
 
 message RunLanguageTestResponse {

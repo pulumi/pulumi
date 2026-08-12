@@ -12,7 +12,7 @@
         "@types/node": "ts4.3",
         "mocha": "latest",
         "ts-node": "latest",
-        "typescript": "^4.3.5"
+        "typescript": "^4.7.0"
     },
     "pulumi": {
         "resource": true,

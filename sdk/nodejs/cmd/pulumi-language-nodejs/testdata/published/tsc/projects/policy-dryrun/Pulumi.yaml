@@ -1,0 +1,5 @@
+name: policy-dryrun
+runtime:
+  name: nodejs
+  options:
+    typescript: false

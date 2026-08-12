@@ -1,0 +1,6 @@
+name: otel-traces-python
+description: A simple program to test OTEL tracing
+runtime:
+  name: python
+  options:
+    toolchain: uv

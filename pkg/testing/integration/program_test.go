@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,9 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,14 +49,14 @@ func TestRunCommandLog(t *testing.T) {
 
 	args := []string{node, "-e", "console.log('output from node');"}
 	err = RunCommand(t, "node", args, tempdir, opts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	matches, err := filepath.Glob(filepath.Join(tempdir, commandOutputFolderName, "node.*"))
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(matches))
+	require.NoError(t, err)
+	require.Len(t, matches, 1)
 
 	output, err := os.ReadFile(matches[0])
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "output from node\n", string(output))
 }
 
@@ -100,7 +102,16 @@ func TestGoModEdits(t *testing.T) {
 
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
-	depRoot := filepath.Clean(filepath.Join(cwd, "../../../.."))
+
+	repoRoot := filepath.Clean(filepath.Join(cwd, "../../.."))
+
+	depRoot := t.TempDir()
+	pulumiRepo := filepath.Join(depRoot, "pulumi")
+	require.NoError(t, os.MkdirAll(filepath.Join(pulumiRepo, "sdk"), 0o700))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(pulumiRepo, "sdk", "go.mod"),
+		[]byte("module github.com/pulumi/pulumi/sdk/v3\n"),
+		0o600))
 
 	gopath, err := GoPath()
 	require.NoError(t, err)
@@ -139,7 +150,7 @@ func TestGoModEdits(t *testing.T) {
 		{
 			name:          "valid-path",
 			dep:           "../../../sdk",
-			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(cwd, "../../../sdk"),
+			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(repoRoot, "sdk"),
 		},
 		{
 			name:          "invalid-path-non-existent",
@@ -155,22 +166,22 @@ func TestGoModEdits(t *testing.T) {
 		{
 			name:          "valid-module-name",
 			dep:           "github.com/pulumi/pulumi/sdk/v3",
-			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(cwd, "../../../sdk"),
+			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(pulumiRepo, "sdk"),
 		},
 		{
 			name:          "valid-module-name-version-skew",
 			dep:           "github.com/pulumi/pulumi/sdk",
-			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(cwd, "../../../sdk"),
+			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(pulumiRepo, "sdk"),
 		},
 		{
 			name:          "valid-rel-path",
 			dep:           "github.com/pulumi/pulumi/sdk/v3=../../../sdk",
-			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(cwd, "../../../sdk"),
+			expectedValue: "github.com/pulumi/pulumi/sdk/v3=" + filepath.Join(repoRoot, "sdk"),
 		},
 		{
 			name:          "valid-rel-path-version-skew",
 			dep:           "github.com/pulumi/pulumi/sdk=../../../sdk",
-			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(cwd, "../../../sdk"),
+			expectedValue: "github.com/pulumi/pulumi/sdk=" + filepath.Join(repoRoot, "sdk"),
 		},
 		{
 			name:          "invalid-rel-path",
@@ -180,7 +191,6 @@ func TestGoModEdits(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			if test.skip {
@@ -192,9 +202,40 @@ func TestGoModEdits(t *testing.T) {
 			if test.expectedError != "" {
 				assert.ErrorContains(t, err, test.expectedError)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, test.expectedValue, editStr)
 			}
 		})
 	}
+}
+
+func TestDefaultPrepareProjectNoOpRuntimes(t *testing.T) {
+	t.Parallel()
+
+	for _, rt := range []string{YAMLRuntime, JavaRuntime, HCLRuntime, PCLRuntime} {
+		t.Run(rt, func(t *testing.T) {
+			t.Parallel()
+			pt := &ProgramTester{t: t, opts: &ProgramTestOptions{}}
+			projinfo := &engine.Projinfo{
+				Proj: &workspace.Project{
+					Runtime: workspace.NewProjectRuntimeInfo(rt, nil),
+				},
+			}
+			require.NoError(t, pt.defaultPrepareProject(projinfo))
+		})
+	}
+}
+
+func TestDefaultPrepareProjectUnknownRuntime(t *testing.T) {
+	t.Parallel()
+
+	pt := &ProgramTester{t: t, opts: &ProgramTestOptions{}}
+	projinfo := &engine.Projinfo{
+		Proj: &workspace.Project{
+			Runtime: workspace.NewProjectRuntimeInfo("not-a-real-runtime", nil),
+		},
+	}
+	err := pt.defaultPrepareProject(projinfo)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unrecognized project runtime")
 }

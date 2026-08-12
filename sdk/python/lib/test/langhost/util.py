@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,15 +34,12 @@ from pulumi.runtime.proto import (
     provider_pb2,
     resource_pb2_grpc,
 )
+from pulumi.runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 
 # gRPC by default logs exceptions to the root `logging` logger. We don't
 # want this because it spews garbage to stderr and messes up our beautiful
 # test output. Just turn it off.
 logging.disable(level=logging.CRITICAL)
-
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
 class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
@@ -79,7 +76,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         ret_proto = loop.run_until_complete(rpc.serialize_properties(ret, {}))
         loop.close()
         fields = {"failures": failures_rpc, "return": ret_proto}
-        return proto.InvokeResponse(**fields)
+        return proto.ResourceInvokeResponse(**fields)
 
     def ReadResource(self, request, context):
         type_ = request.type
@@ -90,8 +87,20 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         dependencies = sorted(list(request.dependencies))
         provider = request.provider
         version = request.version
+        source_position = request.sourcePosition
+        stack_trace = request.stackTrace
         outs = self.langhost_test.read_resource(
-            context, type_, name, id_, parent, state, dependencies, provider, version
+            context,
+            type_,
+            name,
+            id_,
+            parent,
+            state,
+            dependencies,
+            provider,
+            version,
+            source_position,
+            stack_trace,
         )
         if "properties" in outs:
             loop = asyncio.new_event_loop()
@@ -119,6 +128,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
         replace_on_changes = sorted(list(request.replaceOnChanges))
         providers = request.providers
         source_position = request.sourcePosition
+        stack_trace = request.stackTrace
 
         property_dependencies = {}
         for key, value in request.propertyDependencies.items():
@@ -144,6 +154,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
                 replace_on_changes,
                 providers,
                 source_position,
+                stack_trace,
             )
             if outs.get("urn"):
                 urn = outs["urn"]
@@ -195,6 +206,7 @@ class LanghostMockResourceMonitor(proto.ResourceMonitorServicer):
 class MockEngine(proto.EngineServicer):
     def __init__(self):
         self.messages = []
+        self.error_messages = []
 
     """
     Implementation of the proto.EngineServicer protocol for use in tests. Like the
@@ -205,6 +217,7 @@ class MockEngine(proto.EngineServicer):
     def Log(self, request, context):
         self.messages.append(request.message)
         if request.severity == engine_pb2.ERROR:
+            self.error_messages.append(request.message)
             print(f"error: {request.message}")
         return empty_pb2.Empty()
 
@@ -240,6 +253,7 @@ class LanghostTest(unittest.TestCase):
         expected_stderr_contains=None,
         expected_bail=None,
         expected_log_message=None,
+        expected_error_log_message=None,
         organization=None,
     ):
         """
@@ -312,6 +326,18 @@ class LanghostTest(unittest.TestCase):
                     print("log messages:", monitor.engine.messages)
                     self.fail("expected log message '" + expected_log_message + "'")
 
+            if expected_error_log_message:
+                for message in monitor.engine.error_messages:
+                    if expected_error_log_message in message:
+                        break
+                else:
+                    print("error log messages:", monitor.engine.error_messages)
+                    self.fail(
+                        "expected error-level log message '"
+                        + expected_error_log_message
+                        + "'"
+                    )
+
             if expected_stderr_contains:
                 if expected_stderr_contains not in str(stderr):
                     print("stderr:", str(stderr))
@@ -333,7 +359,18 @@ class LanghostTest(unittest.TestCase):
         return ([], {})
 
     def read_resource(
-        self, ctx, ty, name, _id, parent, state, dependencies, provider, version
+        self,
+        ctx,
+        ty,
+        name,
+        _id,
+        parent,
+        state,
+        dependencies,
+        provider,
+        version,
+        source_position,
+        stack_trace,
     ):
         """
         Method corresponding to the `ReadResource` resource monitor RPC call.
@@ -363,6 +400,7 @@ class LanghostTest(unittest.TestCase):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         """
         Method corresponding to the `RegisterResource` resource monitor RPC call.

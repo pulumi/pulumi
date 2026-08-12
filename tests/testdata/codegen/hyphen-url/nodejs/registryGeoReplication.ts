@@ -4,7 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import * as pulumiAzureNative from "@pulumi/azure-native";
+import * as pulumiUsingDashes from "@pulumi/using-dashes";
 
 export class RegistryGeoReplication extends pulumi.ComponentResource {
     /** @internal */
@@ -24,15 +24,15 @@ export class RegistryGeoReplication extends pulumi.ComponentResource {
     /**
      * The login server url
      */
-    public /*out*/ readonly acrLoginServerOut!: pulumi.Output<string>;
+    declare public /*out*/ readonly acrLoginServerOut: pulumi.Output<string>;
     /**
      * The Registry
      */
-    public /*out*/ readonly registry!: pulumi.Output<pulumiAzureNative.containerregistry.Registry>;
+    declare public /*out*/ readonly registry: pulumi.Output<pulumiUsingDashes.Dash>;
     /**
      * The replication policy
      */
-    public /*out*/ readonly replication!: pulumi.Output<pulumiAzureNative.containerregistry.Replication>;
+    declare public /*out*/ readonly replication: pulumi.Output<pulumiUsingDashes.Dash>;
 
     /**
      * Create a RegistryGeoReplication resource with the given unique name, arguments, and options.
@@ -45,10 +45,10 @@ export class RegistryGeoReplication extends pulumi.ComponentResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.resourceGroup === undefined) && !opts.urn) {
+            if (args?.resourceGroup === undefined && !opts.urn) {
                 throw new Error("Missing required property 'resourceGroup'");
             }
-            resourceInputs["resourceGroup"] = args ? args.resourceGroup : undefined;
+            resourceInputs["resourceGroup"] = args?.resourceGroup;
             resourceInputs["acrLoginServerOut"] = undefined /*out*/;
             resourceInputs["registry"] = undefined /*out*/;
             resourceInputs["replication"] = undefined /*out*/;
@@ -69,5 +69,5 @@ export interface RegistryGeoReplicationArgs {
     /**
      * The resource group that hosts the component resource
      */
-    resourceGroup: pulumi.Input<pulumiAzureNative.resources.ResourceGroup>;
+    resourceGroup: pulumi.Input<pulumiUsingDashes.Dash>;
 }

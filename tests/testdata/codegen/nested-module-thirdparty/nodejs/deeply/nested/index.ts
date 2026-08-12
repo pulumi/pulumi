@@ -4,8 +4,8 @@
 import * as utilities from "../../utilities";
 
 // Export sub-modules:
-import * as module from "./module";
+import * as module_ from "./module";
 
 export {
-    module,
+    module_ as module,
 };

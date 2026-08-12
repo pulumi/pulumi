@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ import (
 	"io"
 
 	"github.com/hashicorp/hcl/v2"
+
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 type ResourceImport struct {
@@ -44,15 +46,42 @@ type ConvertStateResponse struct {
 }
 
 type ConvertProgramRequest struct {
-	SourceDirectory string
-	TargetDirectory string
-	MapperTarget    string
-	LoaderTarget    string
-	Args            []string
+	SourceDirectory           string
+	TargetDirectory           string
+	MapperTarget              string
+	LoaderTarget              string
+	Args                      []string
+	GeneratedProjectDirectory string
 }
 
 type ConvertProgramResponse struct {
 	Diagnostics hcl.Diagnostics
+}
+
+type ConvertSnippetRequest struct {
+	Filename     string
+	Source       []byte
+	TargetLoader string
+	// Package identifies the package (and any parameterization) the snippet belongs to so the converter can load
+	// the same schema we did when invoking the provider.
+	Package    *codegenrpc.GetSchemaRequest
+	Token      string
+	Attributes map[string]string
+	Resources  map[string]ConvertSnippetResourceReference
+}
+
+type ConvertSnippetResourceReference struct {
+	Token   string
+	Package *codegenrpc.GetSchemaRequest
+}
+
+type ConvertSnippetResponse struct {
+	Diagnostics hcl.Diagnostics
+	Filename    string
+	Source      []byte
+	Attributes  map[string]string
+	// ResourceNames maps source-language resource names to generated PCL names.
+	ResourceNames map[string]string
 }
 
 type Converter interface {
@@ -61,4 +90,6 @@ type Converter interface {
 	ConvertState(ctx context.Context, req *ConvertStateRequest) (*ConvertStateResponse, error)
 
 	ConvertProgram(ctx context.Context, req *ConvertProgramRequest) (*ConvertProgramResponse, error)
+
+	ConvertSnippet(ctx context.Context, req *ConvertSnippetRequest) (*ConvertSnippetResponse, error)
 }

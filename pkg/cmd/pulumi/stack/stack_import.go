@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,19 +23,23 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newStackImportCmd() *cobra.Command {
+func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp secrets.Provider) *cobra.Command {
 	var force bool
 	var file string
 	var stackName string
 	cmd := &cobra.Command{
 		Use:   "import",
-		Args:  cmdutil.MaximumNArgs(0),
 		Short: "Import a deployment from standard in into an existing stack",
 		Long: "Import a deployment from standard in into an existing stack.\n" +
 			"\n" +
@@ -45,26 +49,28 @@ func newStackImportCmd() *cobra.Command {
 			"The updated deployment will be read from standard in.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
+			diag := cmdutil.Diag()
 
 			// Fetch the current stack and import a deployment.
 			s, err := RequireStack(
 				ctx,
+				diag,
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				stackName,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
 			}
 
 			// Read from stdin or a specified file
-			reader := os.Stdin
+			reader := cmd.InOrStdin()
 			if file != "" {
 				reader, err = os.Open(file)
 				if err != nil {
@@ -82,17 +88,53 @@ func newStackImportCmd() *cobra.Command {
 			// We do, however, now want to unmarshal the json.RawMessage into a real, typed deployment.  We do this so
 			// we can check that the deployment doesn't contain resources from a stack other than the selected one. This
 			// catches errors wherein someone imports the wrong stack's deployment (which can seriously hork things).
-			snapshot, err := stack.DeserializeUntypedDeployment(ctx, &deployment, stack.DefaultSecretsProvider)
+			snapshot, err := stack.DeserializeUntypedDeployment(ctx, &deployment, sp)
 			if err != nil {
-				return checkDeploymentVersionError(err, s.Ref().Name().String())
+				return stack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
 			}
+
+			// If this snapshot is using the service secret manager but for a _different_ stack, we need to
+			// reconfigure it for the target stack we're importing into.
+			if snapshot.SecretsManager != nil && snapshot.SecretsManager.Type() == service.Type {
+				var loadErr error
+				project, _, loadErr := ws.ReadProject("")
+				var ps *workspace.ProjectStack
+				if loadErr == nil {
+					ps, loadErr = LoadProjectStack(ctx, diag, project, s, "")
+				}
+				if loadErr != nil {
+					// Default to an empty ProjectStack if we fail to load the existing one
+					ps = &workspace.ProjectStack{}
+				}
+				oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
+
+				sm, err := s.DefaultSecretManager(ctx, ps)
+				if err != nil {
+					return fmt.Errorf("could not create service secrets manager for stack %q: %w",
+						s.Ref().String(), err)
+				}
+				snapshot.SecretsManager = sm
+
+				// Handle if the configuration changed any of EncryptedKey, etc
+				if needsSaveProjectStackAfterSecretManger(oldConfig, ps) {
+					if loadErr != nil {
+						return fmt.Errorf("could not load existing project stack to update secrets manager configuration: %w", loadErr)
+					}
+					if err = SaveProjectStack(ctx, s, ps, ""); err != nil {
+						return fmt.Errorf("saving stack config: %w", err)
+					}
+				}
+			}
+
 			if err := SaveSnapshot(ctx, s, snapshot, force); err != nil {
 				return err
 			}
-			fmt.Printf("Import complete.\n")
+			fmt.Fprintln(cmd.OutOrStdout(), "Import complete.")
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")

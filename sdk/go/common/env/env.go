@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,6 +35,8 @@ func Global() env.Env {
 	return env.NewEnv(env.Global)
 }
 
+var Home = env.String("HOME", "The directory where Pulumi stores global configuration and plugins in.")
+
 // That Pulumi is running in experimental mode.
 //
 // This is our standard gate for an existing feature that's not quite ready to be stable
@@ -47,6 +49,8 @@ var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself.")
 
 var SkipCheckpoints = env.Bool("SKIP_CHECKPOINTS", "Skip saving state checkpoints and only save "+
 	"the final deployment. See #10668.")
+
+var APIURL = env.String("API", "The URL to use for the Pulumi service.")
 
 var DebugCommands = env.Bool("DEBUG_COMMANDS", "List commands helpful for debugging pulumi itself.")
 
@@ -96,21 +100,30 @@ var ContinueOnError = env.Bool("CONTINUE_ON_ERROR",
 var BackendURL = env.String("BACKEND_URL",
 	"Set the backend that will be used instead of the currently logged in backend or the current project's backend.")
 
-var SuppressCopilotLink = env.Bool("SUPPRESS_COPILOT_LINK",
-	"Suppress showing the 'explainFailure' link to Copilot in the CLI output.")
+// Neo environment variables
 
-var CopilotSummary = env.Bool("COPILOT_SUMMARY",
-	"Enable showing the Copilot summary in the CLI output.")
+var SuppressNeoLink = env.Bool("SUPPRESS_NEO_LINK",
+	"Suppress showing the 'explainFailure' link to Neo in the CLI output.",
+	env.Alternative("SUPPRESS_COPILOT_LINK"))
+
+var NeoEnabled = env.Bool("NEO",
+	"Enable Pulumi Neo's assistance for improved CLI experience and insights.",
+	env.Alternative("COPILOT"))
 
 // TODO: This is a soft-release feature and will be removed after the feature flag is launched
 // https://github.com/pulumi/pulumi/issues/19065
-var CopilotSummaryModel = env.String("COPILOT_SUMMARY_MODEL",
-	"The LLM model to use for the Copilot summary in diagnostics. Allowed values: 'gpt-4o-mini', 'gpt-4o'.")
+var NeoSummaryModel = env.String("NEO_SUMMARY_MODEL",
+	"The LLM model to use for the Neo summary in diagnostics. Allowed values: 'gpt-4o-mini', 'gpt-4o'.",
+	env.Alternative("COPILOT_SUMMARY_MODEL"))
 
 // TODO: This is a soft-release feature and will be removed after the feature flag is launched
 // https://github.com/pulumi/pulumi/issues/19065
-var CopilotSummaryMaxLen = env.Int("COPILOT_SUMMARY_MAXLEN",
-	"Max allowed length of Copilot summary in diagnostics. Allowed values are from 20 to 1920.")
+var NeoSummaryMaxLen = env.Int("NEO_SUMMARY_MAXLEN",
+	"Max allowed length of Neo summary in diagnostics. Allowed values are from 20 to 1920.",
+	env.Alternative("COPILOT_SUMMARY_MAXLEN"))
+
+// Deprecated: Use NeoSummaryMaxLen instead
+var CopilotSummaryMaxLen = NeoSummaryMaxLen
 
 var FallbackToStateSecretsManager = env.Bool("FALLBACK_TO_STATE_SECRETS_MANAGER",
 	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete.")
@@ -119,13 +132,17 @@ var Parallel = env.Int("PARALLEL",
 	"Allow P resource operations to run in parallel at once (1 for no parallelism)")
 
 var AccessToken = env.String("ACCESS_TOKEN",
-	"The access token used to authenticate with the Pulumi Service.")
+	"The access token used to authenticate with the Pulumi Service.",
+	env.Secret)
 
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")
 
 var ParallelDiff = env.Bool("PARALLEL_DIFF",
 	"Enable running diff calculations in parallel.")
+
+var RunProgram = env.Bool("RUN_PROGRAM",
+	"Run the Pulumi program for refresh and destroy operations. This is the same as passing --run-program=true.")
 
 // List of overrides for Plugin Download URLs. The expected format is `regexp=URL`, and multiple pairs can
 // be specified separated by commas, e.g. `regexp1=URL1,regexp2=URL2`
@@ -139,11 +156,20 @@ var ParallelDiff = env.Bool("PARALLEL_DIFF",
 // will capture any GitHub-hosted plugin and redirect to its corresponding folder under https://foo.com/downloads
 var PluginDownloadURLOverrides = env.String("PLUGIN_DOWNLOAD_URL_OVERRIDES", "")
 
+// By default `pulumi preview --json` emits a "PreviewDigest" JSON object to stdout. Setting this envvar changes
+// the behavior of `pulumi preview --json` to match the behavior of `pulumi up|destroy|refresh --json`, that is,
+// to stream JSON events to stdout.
+var EnableStreamingJSONPreview = env.Bool("ENABLE_STREAMING_JSON_PREVIEW",
+	"Enables streaming JSON events to stdout for preview operations when the --json flag is specified.")
+
 // Environment variables that affect the DIY backend.
 var (
 	DIYBackendNoLegacyWarning = env.Bool("DIY_BACKEND_NO_LEGACY_WARNING",
 		"Disables the warning about legacy stack files mixed with project-scoped stack files.",
 		env.Alternative("SELF_MANAGED_STATE_NO_LEGACY_WARNING"))
+
+	DIYBackendIgnoreDeprecationError = env.Bool("DIY_BACKEND_IGNORE_DEPRECATION_ERROR",
+		"Disables the error about legacy stack mode being deprecated.")
 
 	DIYBackendLegacyLayout = env.Bool("DIY_BACKEND_LEGACY_LAYOUT",
 		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.",
@@ -152,6 +178,10 @@ var (
 	DIYBackendGzip = env.Bool("DIY_BACKEND_GZIP",
 		"Enables gzip compression when writing state files.",
 		env.Alternative("SELF_MANAGED_STATE_GZIP"))
+
+	DIYBackendZstd = env.Bool("DIY_BACKEND_ZSTD",
+		"Enables zstd compression when writing state files.",
+		env.Alternative("SELF_MANAGED_STATE_ZSTD"))
 
 	DIYBackendRetainCheckpoints = env.Bool("DIY_BACKEND_RETAIN_CHECKPOINTS",
 		"If set every checkpoint will be duplicated to a timestamped file.",
@@ -165,11 +195,6 @@ var (
 		"Number of parallel operations when fetching stacks and resources from the DIY backend.")
 )
 
-// Environment variables which affect Pulumi AI integrations
-var (
-	AIServiceEndpoint = env.String("AI_SERVICE_ENDPOINT", "Endpoint for Pulumi AI service")
-)
-
 var DisableValidation = env.Bool(
 	"DISABLE_VALIDATION",
 	`Disables format validation of system inputs.
@@ -180,3 +205,68 @@ Currently this disables validation of the following formats:
 This should only be used in cases where current data does not conform to the format and either cannot be migrated
 without using the system itself, or show that the validation is too strict. Over time entries in the list above will be
 removed and enforced to be validated.`)
+
+var DisableRegistryResolve = env.Bool("DISABLE_REGISTRY_RESOLVE", "Use the Pulumi Registry to resolve package names")
+
+// Environment variables that affect template discovery and caching
+var (
+	// TemplatePath is a path to the folder where templates are stored.
+	// It is used in sandboxed environments where the classic template folder may not be writable.
+	TemplatePath = env.String("TEMPLATE_PATH", "Path to a writable template cache directory.")
+
+	// PolicyTemplatePath is a path to the folder where policy templates are stored.
+	// It is used in sandboxed environments where the classic policy template folder may not be writable.
+	PolicyTemplatePath = env.String("POLICY_TEMPLATE_PATH", "Path to a writable policy template cache directory.")
+
+	// PackageTemplatePath is a path to the folder where package templates are stored.
+	// It is used in sandboxed environments where the classic package template folder may not be writable.
+	PackageTemplatePath = env.String("PACKAGE_TEMPLATE_PATH", "Path to a writable package template cache directory.")
+
+	// TemplateGitRepository is the Git URL for Pulumi program templates.
+	// If set, it overrides the compile-time default pulumiTemplateGitRepository.
+	TemplateGitRepository = env.String("TEMPLATE_GIT_REPOSITORY",
+		"Git URL for Pulumi program templates (overrides default).")
+
+	// TemplateBranch is the branch name for the template repository.
+	// If set, it overrides the compile-time default pulumiTemplateBranch.
+	TemplateBranch = env.String("TEMPLATE_BRANCH", "Branch name for Pulumi program templates repository.")
+
+	// PolicyTemplateGitRepository is the Git URL for Pulumi Policy Pack templates.
+	// If set, it overrides the compile-time default pulumiPolicyTemplateGitRepository.
+	PolicyTemplateGitRepository = env.String("POLICY_TEMPLATE_GIT_REPOSITORY",
+		"Git URL for Pulumi Policy Pack templates (overrides default).")
+
+	// PolicyTemplateBranch is the branch name for the policy pack template repository.
+	// If set, it overrides the compile-time default pulumiPolicyTemplateBranch.
+	PolicyTemplateBranch = env.String("POLICY_TEMPLATE_BRANCH", "Branch name for Pulumi Policy Pack templates repository.")
+
+	// PackageTemplateGitRepository is the Git URL for Pulumi package templates.
+	// If set, it overrides the compile-time default pulumiPackageTemplateGitRepository.
+	PackageTemplateGitRepository = env.String("PACKAGE_TEMPLATE_GIT_REPOSITORY",
+		"Git URL for Pulumi package templates (overrides default).")
+
+	// PackageTemplateBranch is the branch name for the package template repository.
+	// If set, it overrides the compile-time default pulumiPackageTemplateBranch.
+	PackageTemplateBranch = env.String("PACKAGE_TEMPLATE_BRANCH",
+		"Branch name for Pulumi package templates repository.")
+)
+
+var DisableJournaling = env.Bool("DISABLE_JOURNALING",
+	"Disable journaling of engine operations to the backend")
+
+var LogRotationMaxAgeDays = env.Int("LOG_ROTATION_MAX_AGE_DAYS",
+	"Maximum age in days for automatic log files before rotation deletes them (default 7)")
+
+var LogRotationMaxTotalMB = env.Int("LOG_ROTATION_MAX_TOTAL_MB",
+	"Maximum total size in MB for automatic log files before rotation deletes oldest (default 500)")
+
+var JournalingBatchSize = env.Int("JOURNALING_BATCH_SIZE", "Maximum batch size for journal entries")
+
+var JournalingBatchPeriod = env.Int("JOURNALING_BATCH_PERIOD",
+	"Maximum period in milliseconds between batches of journal entries")
+
+var GoroutinePanicRecovery = env.Bool("GOROUTINE_PANIC_RECOVERY",
+	"Enable recovery from panics in goroutines to prevent the process from crashing.", env.Needs(Dev))
+
+var ParallelAnalyze = env.Int("PARALLEL_ANALYZE",
+	"(Experimental) Number of parallel analyze calls per resource (1 for no parallelism)")

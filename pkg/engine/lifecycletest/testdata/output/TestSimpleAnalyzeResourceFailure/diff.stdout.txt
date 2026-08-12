@@ -1,4 +1,4 @@
-    <{%fg 5%}>analyzerA@v <{%reset%}><{%fg 1%}>[mandatory]  always-fails<{%reset%}>  (pulumi:providers:pkgA: default)<{%reset%}>a policy failed<{%reset%}>
+    <{%fg 5%}>analyzerA@v <{%reset%}><{%fg 1%}>[mandatory] [severity: high]  always-fails<{%reset%}>  (pkgA:m:typA: resA)<{%reset%}>a policy failed<{%reset%}>
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Policy Packs run:<{%reset%}>

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import (
 	"io"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/zclconf/go-cty/cty"
@@ -32,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // A LangaugeGenerator generates code for a given Pulumi program to an io.Writer.
@@ -90,7 +93,7 @@ func nextPropertyPath(path hcl.Traversal, key hcl.Traverser) hcl.Traversal {
 
 func createPathedValue(
 	root string,
-	property resource.PropertyValue,
+	property property.Value,
 	currentPath hcl.Traversal,
 ) *PathedLiteralValue {
 	if property.IsNull() {
@@ -100,7 +103,7 @@ func createPathedValue(
 	if property.IsString() {
 		return &PathedLiteralValue{
 			Root:  root,
-			Value: property.StringValue(),
+			Value: property.AsString(),
 			ExpressionReference: &model.ScopeTraversalExpression{
 				RootName:  root,
 				Traversal: currentPath,
@@ -108,10 +111,10 @@ func createPathedValue(
 		}
 	}
 
-	if property.IsSecret() {
+	if property.Secret() {
 		// unwrap the secret
-		secret := property.SecretValue()
-		return createPathedValue(root, secret.Element, currentPath)
+		secret := property.WithSecret(false)
+		return createPathedValue(root, secret, currentPath)
 	}
 
 	return nil
@@ -121,15 +124,22 @@ func sanitizeName(name string) string {
 	return strings.ReplaceAll(name, ".", "_")
 }
 
-func createImportState(states []*resource.State, snapshot []*resource.State, names NameTable) ImportState {
+func createImportState(states []*pkgresource.State, snapshot []*pkgresource.State, names NameTable) ImportState {
 	pathedLiteralValues := make([]PathedLiteralValue, 0)
 	for _, state := range states {
+		// Ensure all names are sanitized, at this point
+		name := state.URN.Name()
+		if mappedName, ok := names[state.URN]; ok {
+			name = mappedName
+		}
+		name = sanitizeName(name)
+		names[state.URN] = name
+
 		resourceID := state.ID.String()
 		if resourceID == "" {
 			continue
 		}
 
-		name := sanitizeName(state.URN.Name())
 		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
 			Root:  name,
 			Value: resourceID,
@@ -147,7 +157,8 @@ func createImportState(states []*resource.State, snapshot []*resource.State, nam
 		for key, value := range state.Outputs {
 			if string(key) == "name" || string(key) == "arn" {
 				nextPath := nextPropertyPath(initialPath, hcl.TraverseAttr{Name: string(key)})
-				if output := createPathedValue(name, value, nextPath); output != nil {
+				valueV := resource.FromResourcePropertyValue(value)
+				if output := createPathedValue(name, valueV, nextPath); output != nil {
 					pathedLiteralValues = append(pathedLiteralValues, *output)
 				}
 			}
@@ -167,8 +178,8 @@ func GenerateLanguageDefinitions(
 	w io.Writer,
 	loader schema.Loader,
 	gen LanguageGenerator,
-	states []*resource.State,
-	snapshot []*resource.State,
+	states []*pkgresource.State,
+	snapshot []*pkgresource.State,
 	names NameTable,
 ) error {
 	generateProgramText := func(importState ImportState) (*pcl.Program, hcl.Diagnostics, error) {
@@ -277,13 +288,25 @@ func GenerateLanguageDefinitions(
 			})
 		}
 
-		return pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
+		return pcl.BindProgram(parser.Files, loader, pcl.AllowMissingVariables)
+	}
+
+	if names == nil {
+		names = NameTable{}
 	}
 
 	importState := createImportState(states, snapshot, names)
 	program, diags, err := generateProgramText(importState)
 	if err != nil {
-		if strings.Contains(err.Error(), "circular reference") {
+		// See if _any_ diagnostics are about circular references
+		diagHasCircularRef := false
+		for _, diag := range diags {
+			if strings.Contains(diag.Summary, "circular reference") {
+				diagHasCircularRef = true
+				break
+			}
+		}
+		if diagHasCircularRef {
 			// hitting an edge case when guessing references between resources
 			// this happens when an input of a _parent_ resource is equal to the ID of a _child_ resource
 			// for example importing the following program:

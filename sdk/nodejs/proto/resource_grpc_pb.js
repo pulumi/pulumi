@@ -1,7 +1,7 @@
 // GENERATED CODE -- DO NOT EDIT!
 
 // Original file comments:
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,15 +58,15 @@ function deserialize_pulumirpc_Callback(buffer_arg) {
   return pulumi_callback_pb.Callback.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_InvokeResponse(arg) {
-  if (!(arg instanceof pulumi_provider_pb.InvokeResponse)) {
-    throw new Error('Expected argument of type pulumirpc.InvokeResponse');
+function serialize_pulumirpc_DeploymentInfo(arg) {
+  if (!(arg instanceof pulumi_resource_pb.DeploymentInfo)) {
+    throw new Error('Expected argument of type pulumirpc.DeploymentInfo');
   }
   return Buffer.from(arg.serializeBinary());
 }
 
-function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
-  return pulumi_provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_pulumirpc_DeploymentInfo(buffer_arg) {
+  return pulumi_resource_pb.DeploymentInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_ReadResourceRequest(arg) {
@@ -91,6 +91,17 @@ function deserialize_pulumirpc_ReadResourceResponse(buffer_arg) {
   return pulumi_resource_pb.ReadResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_RegisterErrorHookRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.RegisterErrorHookRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterErrorHookRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterErrorHookRequest(buffer_arg) {
+  return pulumi_resource_pb.RegisterErrorHookRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_RegisterPackageRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.RegisterPackageRequest)) {
     throw new Error('Expected argument of type pulumirpc.RegisterPackageRequest');
@@ -111,6 +122,17 @@ function serialize_pulumirpc_RegisterPackageResponse(arg) {
 
 function deserialize_pulumirpc_RegisterPackageResponse(buffer_arg) {
   return pulumi_resource_pb.RegisterPackageResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RegisterResourceHookRequest(arg) {
+  if (!(arg instanceof pulumi_resource_pb.RegisterResourceHookRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RegisterResourceHookRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RegisterResourceHookRequest(buffer_arg) {
+  return pulumi_resource_pb.RegisterResourceHookRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_RegisterResourceOutputsRequest(arg) {
@@ -168,6 +190,17 @@ function deserialize_pulumirpc_ResourceInvokeRequest(buffer_arg) {
   return pulumi_resource_pb.ResourceInvokeRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ResourceInvokeResponse(arg) {
+  if (!(arg instanceof pulumi_resource_pb.ResourceInvokeResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ResourceInvokeResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ResourceInvokeResponse(buffer_arg) {
+  return pulumi_resource_pb.ResourceInvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_SupportsFeatureRequest(arg) {
   if (!(arg instanceof pulumi_resource_pb.SupportsFeatureRequest)) {
     throw new Error('Expected argument of type pulumirpc.SupportsFeatureRequest');
@@ -193,6 +226,26 @@ function deserialize_pulumirpc_SupportsFeatureResponse(buffer_arg) {
 
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 var ResourceMonitorService = exports.ResourceMonitorService = {
+  // GetDeploymentInfo returns the execution context associated with this monitor instance.
+//
+// This is an additive API intended to reduce duplicated state passed through
+// environment variables and per-request protobuf fields. New clients should
+// prefer this over piecemeal feature probing via SupportsFeature.
+//
+// Backward compatibility:
+// - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+// - Clients should fall back to existing request fields/env vars/SupportsFeature.
+getDeploymentInfo: {
+    path: '/pulumirpc.ResourceMonitor/GetDeploymentInfo',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: pulumi_resource_pb.DeploymentInfo,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_pulumirpc_DeploymentInfo,
+    responseDeserialize: deserialize_pulumirpc_DeploymentInfo,
+  },
   supportsFeature: {
     path: '/pulumirpc.ResourceMonitor/SupportsFeature',
     requestStream: false,
@@ -209,22 +262,11 @@ var ResourceMonitorService = exports.ResourceMonitorService = {
     requestStream: false,
     responseStream: false,
     requestType: pulumi_resource_pb.ResourceInvokeRequest,
-    responseType: pulumi_provider_pb.InvokeResponse,
+    responseType: pulumi_resource_pb.ResourceInvokeResponse,
     requestSerialize: serialize_pulumirpc_ResourceInvokeRequest,
     requestDeserialize: deserialize_pulumirpc_ResourceInvokeRequest,
-    responseSerialize: serialize_pulumirpc_InvokeResponse,
-    responseDeserialize: deserialize_pulumirpc_InvokeResponse,
-  },
-  streamInvoke: {
-    path: '/pulumirpc.ResourceMonitor/StreamInvoke',
-    requestStream: false,
-    responseStream: true,
-    requestType: pulumi_resource_pb.ResourceInvokeRequest,
-    responseType: pulumi_provider_pb.InvokeResponse,
-    requestSerialize: serialize_pulumirpc_ResourceInvokeRequest,
-    requestDeserialize: deserialize_pulumirpc_ResourceInvokeRequest,
-    responseSerialize: serialize_pulumirpc_InvokeResponse,
-    responseDeserialize: deserialize_pulumirpc_InvokeResponse,
+    responseSerialize: serialize_pulumirpc_ResourceInvokeResponse,
+    responseDeserialize: deserialize_pulumirpc_ResourceInvokeResponse,
   },
   call: {
     path: '/pulumirpc.ResourceMonitor/Call',
@@ -294,6 +336,33 @@ registerStackInvokeTransform: {
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
+  // Register a resource hook that can be called by the engine during certain
+// steps of a resource's lifecycle.
+registerResourceHook: {
+    path: '/pulumirpc.ResourceMonitor/RegisterResourceHook',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_resource_pb.RegisterResourceHookRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_RegisterResourceHookRequest,
+    requestDeserialize: deserialize_pulumirpc_RegisterResourceHookRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // Register an error hook that can be called by the engine when an operation fails and is retryable.
+//
+// Error hooks are a separate type of hook to other life cycle hooks as they have different inputs and outputs.
+registerErrorHook: {
+    path: '/pulumirpc.ResourceMonitor/RegisterErrorHook',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_resource_pb.RegisterErrorHookRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_pulumirpc_RegisterErrorHookRequest,
+    requestDeserialize: deserialize_pulumirpc_RegisterErrorHookRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
   // Registers a package and allocates a packageRef. The same package can be registered multiple times in Pulumi.
 // Multiple requests are idempotent and guaranteed to return the same result.
 registerPackage: {
@@ -307,6 +376,23 @@ registerPackage: {
     responseSerialize: serialize_pulumirpc_RegisterPackageResponse,
     responseDeserialize: deserialize_pulumirpc_RegisterPackageResponse,
   },
+  // SignalAndWaitForShutdown lets the resource monitor know that no more
+// events will be generated. This call blocks until the resource monitor is
+// finished, which will happen once all the steps have executed. This allows
+// the language runtime to stay running and handle callback requests, even
+// after the user program has completed. Runtime SDKs should call this after
+// executing the user's program. This can only be called once.
+signalAndWaitForShutdown: {
+    path: '/pulumirpc.ResourceMonitor/SignalAndWaitForShutdown',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
 };
 
-exports.ResourceMonitorClient = grpc.makeGenericClientConstructor(ResourceMonitorService);
+exports.ResourceMonitorClient = grpc.makeGenericClientConstructor(ResourceMonitorService, 'ResourceMonitor');

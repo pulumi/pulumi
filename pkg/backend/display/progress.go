@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,13 +16,16 @@ package display
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 	"io"
 	"os"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unicode"
 
@@ -38,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // DiagInfo contains the bundle of diagnostic information for a single resource.
@@ -132,7 +136,7 @@ type ProgressDisplay struct {
 	systemEventPayloads []engine.StdoutEventPayload
 
 	// Any active download progress events that we've received.
-	progressEventPayloads map[string]engine.ProgressEventPayload
+	progressEventPayloads *gsync.Map[string, engine.ProgressEventPayload]
 
 	// Used to record the order that rows are created in.  That way, when we present in a tree, we
 	// can keep things ordered so they will not jump around.
@@ -154,7 +158,7 @@ type ProgressDisplay struct {
 	isTerminal bool
 
 	// If all progress messages are done and we can print out the final display.
-	done bool
+	done atomic.Bool
 
 	// True if one or more resource operations have failed.
 	failed bool
@@ -185,9 +189,6 @@ func newOpStopwatch() opStopwatch {
 		end:   map[resource.URN]time.Time{},
 	}
 }
-
-// policyPayloads is a collection of policy violation events for a single resource.
-var policyPayloads []engine.PolicyViolationEventPayload
 
 // getEventUrnAndMetadata returns the resource URN associated with an event, or the empty URN if this is not an
 // event that has a URN.  If this is also a 'step' event, then this will return the step metadata as
@@ -264,12 +265,17 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
+		suffixColumn:          suffixColumnIndex(opts),
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
 		permalink:             permalink,
 	}
+	defer func() {
+		contract.IgnoreClose(display.renderer)
+		// let our caller know we're done.
+		close(done)
+	}()
 	renderer.initializeDisplay(display)
 
 	ticker := time.NewTicker(1 * time.Second)
@@ -277,11 +283,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		ticker.Stop()
 	}
 	display.processEvents(ticker, events)
-	contract.IgnoreClose(display.renderer)
 	ticker.Stop()
-
-	// let our caller know we're done.
-	close(done)
 }
 
 // RenderProgressEvents renders the engine events as if to a terminal, providing a simple interface
@@ -327,7 +329,7 @@ func RenderProgressEvents(
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
+		suffixColumn:          suffixColumnIndex(o),
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -357,6 +359,8 @@ func NewCaptureProgressEvents(
 	stack tokens.StackName,
 	proj tokens.PackageName,
 	opts Options,
+	isPreview bool,
+	action apitype.UpdateKind,
 ) *CaptureProgressEvents {
 	buffer := bytes.NewBuffer([]byte{})
 	width, height := 200, 80
@@ -370,8 +374,6 @@ func NewCaptureProgressEvents(
 	o.Stderr = io.Discard
 	o.term = terminal.NewSimpleTerminal(buffer, width, height)
 
-	isPreview := false
-	action := apitype.UpdateUpdate
 	permalink := ""
 
 	printPermalinkInteractive(o.term, o, permalink, "")
@@ -386,7 +388,7 @@ func NewCaptureProgressEvents(
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
+		suffixColumn:          suffixColumnIndex(o),
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -411,20 +413,60 @@ func (r *CaptureProgressEvents) ProcessEvents(
 	close(renderDone)
 }
 
-func (r *CaptureProgressEvents) Output() []string {
-	v := strings.TrimSpace(r.Buffer.String())
-	if v == "" {
-		return nil
+func (r *CaptureProgressEvents) ProcessEventSlice(events []engine.Event) {
+	eventsChan := make(chan engine.Event)
+	renderDone := make(chan bool)
+	go r.ProcessEvents(eventsChan, renderDone)
+	for _, event := range events {
+		eventsChan <- event
 	}
-	return strings.Split(v, "\n")
+	close(eventsChan)
+	<-renderDone
+}
+
+func (r *CaptureProgressEvents) Output() string {
+	return strings.TrimSpace(r.Buffer.String())
 }
 
 func (r *CaptureProgressEvents) OutputIncludesFailure() bool {
-	return r.display.failed
+	// Display layer has detected a ResourceOperationFailed event.
+	// Only happens in non-preview updates.
+	if r.display.failed {
+		return true
+	}
+
+	// Diagnostic events have an error.
+	// This can include things like Auth errors which are not ResourceOperationFailed events.
+	for _, row := range r.display.resourceRows {
+		diagInfo := row.DiagInfo()
+		if diagInfo != nil && diagInfo.ErrorCount > 0 {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (display *ProgressDisplay) println(line string) {
 	display.renderer.println(line)
+}
+
+// suffixColumnIndex returns the column index where the progress suffix (ellipsis)
+// should be appended. In URN mode the Name column is dropped, so Status shifts
+// left by one.
+func suffixColumnIndex(opts Options) int {
+	if opts.ShowURNs {
+		return int(urnStatusColumn)
+	}
+	return int(statusColumn)
+}
+
+// resourceHeader formats a resource header for diagnostics/changes sections.
+func (display *ProgressDisplay) resourceHeader(columns []string) string {
+	if display.opts.ShowURNs {
+		return "  " + colors.BrightBlue + columns[urnColumn] + ":" + colors.Reset
+	}
+	return "  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset
 }
 
 type treeNode struct {
@@ -486,12 +528,12 @@ func (display *ProgressDisplay) generateTreeNodes() []*treeNode {
 	display.eventMutex.RLock()
 	defer display.eventMutex.RUnlock()
 
-	result := []*treeNode{}
-
-	result = append(result, &treeNode{
-		row:              display.headerRow,
-		colorizedColumns: display.headerRow.ColorizedColumns(),
-	})
+	result := []*treeNode{
+		{
+			row:              display.headerRow,
+			colorizedColumns: display.headerRow.ColorizedColumns(),
+		},
+	}
 
 	urnToTreeNode := make(map[resource.URN]*treeNode)
 	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
@@ -522,7 +564,11 @@ func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bo
 			}
 		}
 
-		node.colorizedColumns[typeColumn] = prefix + node.colorizedColumns[typeColumn]
+		nameCol := typeColumn
+		if display.opts.ShowURNs {
+			nameCol = urnColumn
+		}
+		node.colorizedColumns[nameCol] = prefix + node.colorizedColumns[nameCol]
 		display.addIndentations(node.childNodes, false /*isRoot*/, nestedIndentation)
 	}
 }
@@ -588,8 +634,14 @@ func (display *ProgressDisplay) filterOutUnnecessaryNodesAndSetDisplayTimes(node
 	for _, node := range nodes {
 		node.childNodes = display.filterOutUnnecessaryNodesAndSetDisplayTimes(node.childNodes)
 
-		if node.row.HideRowIfUnnecessary() && len(node.childNodes) == 0 {
-			continue
+		if node.row.HideRowIfUnnecessary() {
+			if len(node.childNodes) == 0 {
+				continue
+			}
+			if rr, ok := node.row.(*resourceRowData); ok && rr.syntheticStackRow {
+				result = append(result, node.childNodes...)
+				continue
+			}
 		}
 
 		display.displayOrderCounter++
@@ -633,7 +685,7 @@ func (display *ProgressDisplay) processEndSteps() {
 
 	// Transition the display to the 'done' state.  This will transitively cause all
 	// rows to become done.
-	display.done = true
+	display.done.Store(true)
 
 	// Now print out all those rows that were in progress.  They will now be 'done'
 	// since the display was marked 'done'.
@@ -713,8 +765,7 @@ func (display *ProgressDisplay) printResourceDiffs() {
 		}
 
 		columns := row.ColorizedColumns()
-		display.println(
-			"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset)
+		display.println(display.resourceHeader(columns))
 
 		lines := splitIntoDisplayableLines(diff)
 		for _, line := range lines {
@@ -775,8 +826,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 				if !wroteResourceHeader {
 					wroteResourceHeader = true
 					columns := row.ColorizedColumns()
-					display.println(
-						"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset)
+					display.println(display.resourceHeader(columns))
 				}
 
 				for _, line := range lines {
@@ -793,13 +843,17 @@ func (display *ProgressDisplay) printDiagnostics() {
 		}
 	}
 
-	// Print a link to Copilot to explain the failure.
+	// Print a link to Neo to explain the failure.
+	// "ShowNeoFeatures" renders the link if it is enabled so don't render it here.
+	showNeoLink := display.opts.ShowLinkToNeo && !display.opts.ShowNeoFeatures
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && display.opts.ShowLinkToCopilot {
+	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && showNeoLink {
 		display.println("    " +
-			colors.SpecCreateReplacement + "[Pulumi Copilot]" + colors.Reset + " Would you like help with these diagnostics?")
+			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
-			colors.Underline + colors.Blue + display.permalink + "?explainFailure" + colors.Reset)
+			colors.Underline + colors.Blue + ExplainFailureLink(display.permalink) + colors.Reset)
+		display.println("    " + "Or run `" + neoDebugCommand(display.isPreview) +
+			"` for an interactive agent in your terminal.")
 		display.println("")
 	}
 }
@@ -892,24 +946,24 @@ func (display *ProgressDisplay) printPolicies() bool {
 			// do not break; subsequent mandatory violations will override this.
 		}
 
-		var localMark string
+		var localMark strings.Builder
 		if len(info.LocalPaths) > 0 {
-			localMark = " (local: "
+			localMark.WriteString(" (local: ")
 			sort.Strings(info.LocalPaths)
 			for i, path := range info.LocalPaths {
 				if i > 0 {
-					localMark += "; "
+					localMark.WriteString("; ")
 				}
-				localMark += path
+				localMark.WriteString(path)
 			}
-			localMark += ")"
+			localMark.WriteString(")")
 
 			if info.HasCloudPack {
-				localMark += " + (cloud)"
+				localMark.WriteString(" + (cloud)")
 			}
 		}
 
-		display.println(fmt.Sprintf("    %s %s%s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset, localMark))
+		display.println(fmt.Sprintf("    %s %s%s%s%s", passFailWarn, colors.SpecInfo, key, colors.Reset, localMark.String()))
 		subItemIndent := "        "
 
 		// First show any remediations since they happen first.
@@ -945,18 +999,19 @@ func (display *ProgressDisplay) printPolicies() bool {
 			}
 		}
 
-		// Next up, display all violations. Sort policy events by: policy pack name, policy pack version,
-		// enforcement level, policy name, and finally the URN of the resource.
-		sort.SliceStable(info.ViolationEvents, func(i, j int) bool {
-			eventI, eventJ := info.ViolationEvents[i], info.ViolationEvents[j]
-			if enfLevelCmp := strings.Compare(
-				string(eventI.EnforcementLevel), string(eventJ.EnforcementLevel)); enfLevelCmp != 0 {
-				return enfLevelCmp < 0
+		// Next up, display all violations. Sort policy events by: enforcement level, severity, policy name,
+		// and finally the URN of the resource.
+		slices.SortStableFunc(info.ViolationEvents, func(a, b engine.PolicyViolationEventPayload) int {
+			if d := cmp.Compare(enforcementRank(a.EnforcementLevel), enforcementRank(b.EnforcementLevel)); d != 0 {
+				return d
 			}
-			if policyNameCmp := strings.Compare(eventI.PolicyName, eventJ.PolicyName); policyNameCmp != 0 {
-				return policyNameCmp < 0
+			if d := cmp.Compare(severityRank(a.Severity), severityRank(b.Severity)); d != 0 {
+				return d
 			}
-			return strings.Compare(string(eventI.ResourceURN), string(eventJ.ResourceURN)) < 0
+			if d := cmp.Compare(a.PolicyName, b.PolicyName); d != 0 {
+				return d
+			}
+			return cmp.Compare(string(a.ResourceURN), string(b.ResourceURN))
 		})
 		for _, policyEvent := range info.ViolationEvents {
 			// Print the individual policy event.
@@ -977,20 +1032,47 @@ func (display *ProgressDisplay) printOutputs() {
 	if display.opts.SuppressOutputs {
 		return
 	}
-	// Cannot display outputs for the stack if we don't know its URN.
-	if display.stackUrn == "" {
+	step, ok := display.outputsStep()
+	if !ok {
 		return
 	}
 
-	stackStep := display.eventUrnToResourceRow[display.stackUrn].Step()
-
 	props := getResourceOutputsPropertiesString(
-		stackStep, 1, display.isPreview, display.opts.Debug,
-		false /* refresh */, display.opts.ShowSameResources, display.opts.ShowSecrets)
+		step,
+		1, /* indent */
+		display.isPreview,
+		display.opts.Debug,
+		false, /* refresh */
+		display.opts.ShowSameResources,
+		display.opts.ShowSecrets,
+		display.opts.TruncateOutput)
 	if props != "" {
 		display.println(colors.SpecHeadline + "Outputs:" + colors.Reset)
 		display.println(props)
 	}
+}
+
+// outputsStep picks the step whose outputs the Outputs section prints: normally the root stack's;
+// with SuppressStackRow (no stack participates), the single operated resource's.
+func (display *ProgressDisplay) outputsStep() (engine.StepEventMetadata, bool) {
+	if display.stackUrn != "" {
+		return display.eventUrnToResourceRow[display.stackUrn].Step(), true
+	}
+	if !display.opts.SuppressStackRow {
+		return engine.StepEventMetadata{}, false
+	}
+	var step engine.StepEventMetadata
+	found := false
+	for urn, row := range display.eventUrnToResourceRow {
+		if urn == "" {
+			continue
+		}
+		if found {
+			return engine.StepEventMetadata{}, false
+		}
+		step, found = row.Step(), true
+	}
+	return step, found
 }
 
 // printSummary prints the Stack's SummaryEvent in a new section if applicable.
@@ -999,8 +1081,17 @@ func (display *ProgressDisplay) printSummary() {
 	if display.summaryEventPayload == nil {
 		return
 	}
+	// track resources errored
+	resourcesErrored := 0
 
-	msg := renderSummaryEvent(*display.summaryEventPayload, false, display.opts)
+	rr := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
+
+	for _, r := range rr {
+		if r.DiagInfo().ErrorCount > 0 {
+			resourcesErrored++
+		}
+	}
+	msg := renderSummaryEvent(*display.summaryEventPayload, resourcesErrored, false, display.opts)
 	display.println(msg)
 }
 
@@ -1053,13 +1144,16 @@ func (display *ProgressDisplay) processTick() {
 }
 
 func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.StepEventMetadata) ResourceRow {
-	// Take the write lock here because this can write the the eventUrnToResourceRow map
+	// Take the write lock here because this can write the eventUrnToResourceRow map
 	display.eventMutex.Lock()
 	defer display.eventMutex.Unlock()
 
 	// If there's already a row for this URN, return it.
 	row, has := display.eventUrnToResourceRow[urn]
 	if has {
+		// Even for existing rows, ensure parent placeholder rows exist so the tree
+		// displays correct nesting when child events arrive before parent events.
+		display.ensureParentRow(metadata)
 		return row
 	}
 
@@ -1086,22 +1180,65 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyPayloads:       policyPayloads,
 		step:                 step,
 		hideRowIfUnnecessary: true,
 	}
 
 	display.eventUrnToResourceRow[urn] = row
 
+	display.ensureParentRow(metadata)
+
 	display.ensureHeaderAndStackRows()
 	display.resourceRows = append(display.resourceRows, row)
 	return row
 }
 
+// ensureParentRow pre-creates a placeholder row for the parent resource if it doesn't
+// exist yet. This ensures the tree displays correct parent-child nesting even when child
+// events arrive before parent events (e.g., during destroy). The placeholder is created
+// with hideRowIfUnnecessary=true and OpSame so it only shows if it has children. When
+// the parent's real event arrives later, getRowForURN finds the existing row and
+// processNormalEvent updates it with real metadata via SetStep.
+func (display *ProgressDisplay) ensureParentRow(metadata *engine.StepEventMetadata) {
+	if metadata == nil || metadata.Res == nil {
+		return
+	}
+	parentURN := metadata.Res.Parent
+	if parentURN == "" || parentURN == display.stackUrn {
+		return
+	}
+	if _, has := display.eventUrnToResourceRow[parentURN]; has {
+		return
+	}
+	parentStep := engine.StepEventMetadata{URN: parentURN, Op: deploy.OpSame}
+	parentRow := &resourceRowData{
+		display:              display,
+		tick:                 display.currentTick,
+		diagInfo:             &DiagInfo{},
+		step:                 parentStep,
+		hideRowIfUnnecessary: true,
+	}
+	display.eventUrnToResourceRow[parentURN] = parentRow
+	display.ensureHeaderAndStackRows()
+	display.resourceRows = append(display.resourceRows, parentRow)
+}
+
 func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
+	policyLoadingMessage := "Loading policy packs..."
+
 	//nolint:exhaustive // we are only interested in a subset of events
 	switch event.Type {
 	case engine.PreludeEvent:
+		// Dismiss the "Loading policy packs..." message now that loading is complete.
+		if display.shownPolicyLoadEvent {
+			display.handleProgressEvent(engine.ProgressEventPayload{
+				Type:    engine.PolicyPacksLoading,
+				ID:      "policy-loading",
+				Message: policyLoadingMessage,
+				Done:    true,
+			})
+		}
+
 		// A prelude event can just be printed out directly to the console.
 		// Note: we should probably make sure we don't get any prelude events
 		// once we start hearing about actual resource events.
@@ -1120,9 +1257,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		return
 	case engine.PolicyLoadEvent:
 		if !display.shownPolicyLoadEvent {
-			policyLoadEventString := colors.SpecInfo + "Loading policy packs..." + colors.Reset + "\n"
-			display.println(policyLoadEventString)
 			display.shownPolicyLoadEvent = true
+			display.handleProgressEvent(engine.ProgressEventPayload{
+				Type:    engine.PolicyPacksLoading,
+				ID:      "policy-loading",
+				Message: policyLoadingMessage,
+			})
 		}
 		return
 	case engine.SummaryEvent:
@@ -1143,6 +1283,12 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		return
 	case engine.ProgressEvent:
 		display.handleProgressEvent(event.Payload().(engine.ProgressEventPayload))
+		return
+	case engine.ErrorEvent:
+		return
+	case engine.PolicyAnalyzeSummaryEvent,
+		engine.PolicyAnalyzeStackSummaryEvent,
+		engine.PolicyRemediateSummaryEvent:
 		return
 	}
 
@@ -1195,7 +1341,8 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		row.SetHideRowIfUnnecessary(false)
 	}
 
-	if event.Type == engine.ResourcePreEvent {
+	switch event.Type { //nolint:exhaustive // golangci-lint v2 upgrade
+	case engine.ResourcePreEvent:
 		step := event.Payload().(engine.ResourcePreEventPayload).Metadata
 
 		// Register the resource update start time to calculate duration
@@ -1209,7 +1356,7 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		display.stopwatchMutex.Unlock()
 
 		row.SetStep(step)
-	} else if event.Type == engine.ResourceOutputsEvent {
+	case engine.ResourceOutputsEvent:
 		isRefresh := display.getStepOp(row.Step()) == deploy.OpRefresh
 		step := event.Payload().(engine.ResourceOutputsEventPayload).Metadata
 
@@ -1239,19 +1386,19 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		if !display.isTerminal && !hasMeaningfulOutput {
 			return
 		}
-	} else if event.Type == engine.ResourceOperationFailed {
+	case engine.ResourceOperationFailed:
 		display.failed = true
 		row.SetFailed()
-	} else if event.Type == engine.DiagEvent {
+	case engine.DiagEvent:
 		// also record this diagnostic so we print it at the end.
 		row.RecordDiagEvent(event)
-	} else if event.Type == engine.PolicyViolationEvent {
+	case engine.PolicyViolationEvent:
 		// also record this policy violation so we print it at the end.
 		row.RecordPolicyViolationEvent(event)
-	} else if event.Type == engine.PolicyRemediationEvent {
+	case engine.PolicyRemediationEvent:
 		// record this remediation so we print it at the end.
 		row.RecordPolicyRemediationEvent(event)
-	} else {
+	default:
 		contract.Failf("Unhandled event type '%s'", event.Type)
 	}
 
@@ -1262,12 +1409,15 @@ func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayl
 	// We need to take the writer lock here because ensureHeaderAndStackRows expects to be
 	// called under the write lock.
 	display.eventMutex.Lock()
-	defer display.eventMutex.Unlock()
 
 	// Make sure we have a header to display
 	display.ensureHeaderAndStackRows()
 
 	display.systemEventPayloads = append(display.systemEventPayloads, payload)
+
+	// Release the lock before calling the renderer, because it may call back into a method (like generateTreeNodes)
+	// that acquires eventMutex.RLock(), causing a deadlock.
+	display.eventMutex.Unlock()
 
 	display.renderer.systemMessage(payload)
 }
@@ -1276,24 +1426,28 @@ func (display *ProgressDisplay) handleProgressEvent(payload engine.ProgressEvent
 	// We need to take the writer lock here because ensureHeaderAndStackRows expects to be
 	// called under the write lock.
 	display.eventMutex.Lock()
-	defer display.eventMutex.Unlock()
 
 	// Make sure we have a header to display
 	display.ensureHeaderAndStackRows()
 
 	if display.progressEventPayloads == nil {
-		display.progressEventPayloads = make(map[string]engine.ProgressEventPayload)
+		display.progressEventPayloads = &gsync.Map[string, engine.ProgressEventPayload]{}
 	}
 
-	_, seen := display.progressEventPayloads[payload.ID]
+	_, seen := display.progressEventPayloads.Load(payload.ID)
 	first := !seen
 
 	if payload.Done {
-		delete(display.progressEventPayloads, payload.ID)
+		display.progressEventPayloads.Delete(payload.ID)
 	} else {
-		display.progressEventPayloads[payload.ID] = payload
+		display.progressEventPayloads.Store(payload.ID, payload)
 	}
 
+	// We have to release the lock before we call renderer.progress, because that may call back into a method that wants
+	// eventMutex.Lock(), causing a deadlock.
+	display.eventMutex.Unlock()
+
+	// Now call renderer.progress outside the lock.
 	display.renderer.progress(payload, first)
 }
 
@@ -1317,9 +1471,9 @@ func (display *ProgressDisplay) ensureHeaderAndStackRows() {
 		display:              display,
 		tick:                 display.currentTick,
 		diagInfo:             &DiagInfo{},
-		policyPayloads:       policyPayloads,
 		step:                 engine.StepEventMetadata{Op: deploy.OpSame},
-		hideRowIfUnnecessary: false,
+		hideRowIfUnnecessary: display.opts.SuppressStackRow,
+		syntheticStackRow:    true,
 	}
 
 	display.eventUrnToResourceRow[display.stackUrn] = stackRow
@@ -1363,15 +1517,67 @@ func (display *ProgressDisplay) renderProgressDiagEvent(payload engine.DiagEvent
 }
 
 // getStepStatus handles getting the value to put in the status column.
-func (display *ProgressDisplay) getStepStatus(step engine.StepEventMetadata, done bool, failed bool) string {
+func (display *ProgressDisplay) getStepStatus(step engine.StepEventMetadata, done, failed, interrupted bool) string {
 	var status string
-	if done {
+	switch {
+	case interrupted:
+		status = display.getStepInterruptedDescription(step)
+	case done:
 		status = display.getStepDoneDescription(step, failed)
-	} else {
+	default:
 		status = display.getStepInProgressDescription(step)
 	}
 	status = addRetainStatusFlag(status, step)
 	return status
+}
+
+// getStepInterruptedDescription returns the status for a custom resource whose
+// operation was still in flight when the update was cancelled or terminated. We
+// avoid the success verb (e.g. "created") because the operation never completed;
+// the resource is left as a pending operation in the snapshot.
+func (display *ProgressDisplay) getStepInterruptedDescription(step engine.StepEventMetadata) string {
+	opText := getStepInProgressOpText(display.getStepOp(step))
+	return colors.SpecWarning + opText + " (interrupted)" + colors.Reset
+}
+
+// getStepInProgressOpText returns the present-tense text for the given step
+// operation, e.g. "creating".
+func getStepInProgressOpText(op display.StepOp) string {
+	switch op {
+	case deploy.OpSame:
+		return ""
+	case deploy.OpCreate:
+		return "creating"
+	case deploy.OpUpdate:
+		return "updating"
+	case deploy.OpDelete:
+		return "deleting"
+	case deploy.OpReplace:
+		return "replacing"
+	case deploy.OpCreateReplacement:
+		return "creating replacement"
+	case deploy.OpDeleteReplaced:
+		return "deleting original"
+	case deploy.OpRead:
+		return "reading"
+	case deploy.OpReadReplacement:
+		return "reading for replacement"
+	case deploy.OpRefresh:
+		return "refreshing"
+	case deploy.OpReadDiscard:
+		return "discarding"
+	case deploy.OpDiscardReplaced:
+		return "discarding original"
+	case deploy.OpImport:
+		return "importing"
+	case deploy.OpImportReplacement:
+		return "importing replacement"
+	case deploy.OpRemovePendingReplace:
+		return ""
+	default:
+		contract.Failf("Unrecognized resource step op: %v", op)
+		return ""
+	}
 }
 
 func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMetadata, failed bool) string {
@@ -1609,7 +1815,7 @@ func (display *ProgressDisplay) getStepOp(step engine.StepEventMetadata) display
 	// * During preview -- we'll show a single "replace" plan.
 	// * During update -- we'll show the individual steps.
 	// * When done -- we'll show a single "replaced" step.
-	if display.isPreview || display.done {
+	if display.isPreview || display.done.Load() {
 		if op == deploy.OpCreateReplacement || op == deploy.OpDeleteReplaced || op == deploy.OpDiscardReplaced {
 			return deploy.OpReplace
 		}
@@ -1636,42 +1842,7 @@ func (display *ProgressDisplay) getStepInProgressDescription(step engine.StepEve
 			return display.getPreviewText(step)
 		}
 
-		var opText string
-		switch op {
-		case deploy.OpSame:
-			opText = ""
-		case deploy.OpCreate:
-			opText = "creating"
-		case deploy.OpUpdate:
-			opText = "updating"
-		case deploy.OpDelete:
-			opText = "deleting"
-		case deploy.OpReplace:
-			opText = "replacing"
-		case deploy.OpCreateReplacement:
-			opText = "creating replacement"
-		case deploy.OpDeleteReplaced:
-			opText = "deleting original"
-		case deploy.OpRead:
-			opText = "reading"
-		case deploy.OpReadReplacement:
-			opText = "reading for replacement"
-		case deploy.OpRefresh:
-			opText = "refreshing"
-		case deploy.OpReadDiscard:
-			opText = "discarding"
-		case deploy.OpDiscardReplaced:
-			opText = "discarding original"
-		case deploy.OpImport:
-			opText = "importing"
-		case deploy.OpImportReplacement:
-			opText = "importing replacement"
-		case deploy.OpRemovePendingReplace:
-			opText = ""
-		default:
-			contract.Failf("Unrecognized resource step op: %v", op)
-			return ""
-		}
+		opText := getStepInProgressOpText(op)
 
 		if op == deploy.OpSame || display.opts.DeterministicOutput || display.opts.SuppressTimings {
 			return opText
@@ -1726,4 +1897,36 @@ func sortResourceRows(rows []ResourceRow) {
 
 		return a.Res.URN < b.Res.URN
 	})
+}
+
+func enforcementRank(el apitype.EnforcementLevel) int {
+	switch el {
+	case apitype.Remediate:
+		return 0
+	case apitype.Mandatory:
+		return 1
+	case apitype.Advisory:
+		return 2
+	case apitype.Disabled:
+		return 3
+	default:
+		return 99 // unknowns last
+	}
+}
+
+func severityRank(s apitype.PolicySeverity) int {
+	switch s {
+	case apitype.PolicySeverityCritical:
+		return 0
+	case apitype.PolicySeverityHigh:
+		return 1
+	case apitype.PolicySeverityMedium:
+		return 2
+	case apitype.PolicySeverityLow:
+		return 3
+	case apitype.PolicySeverityUnspecified:
+		return 4
+	default:
+		return 99 // unknowns last
+	}
 }

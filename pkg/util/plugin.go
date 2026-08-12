@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,57 +12,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//nolint:revive // Legacy package name we don't want to change
 package util
 
 import (
-	"runtime/debug"
+	"slices"
 
 	"github.com/blang/semver"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// SetKnownPluginDownloadURL sets the PluginDownloadURL for the given PluginSpec if it's a known plugin.
-// Returns true if it filled in the URL.
-func SetKnownPluginDownloadURL(spec *workspace.PluginSpec) bool {
+// knownLanguageRuntimes pins the release of each language runtime that is no longer
+// bundled with the `pulumi` binary and must be downloaded on demand.
+var knownLanguageRuntimes = map[string]semver.Version{
+	// renovate: datasource=github-releases depName=pulumi/pulumi-hcl extractVersion=^v(?<version>.+)$
+	"hcl": semver.MustParse("0.14.0"),
+}
+
+// SetKnownPluginDownloadURL fills in metadata on the given PluginDescriptor that the CLI
+// knows about for well-known plugins: a PluginDownloadURL for plugins hosted outside the
+// default locations, and a pinned Version for unbundled language runtimes. Returns true
+// if the descriptor names a plugin the CLI knows how to fetch.
+func SetKnownPluginDownloadURL(spec *workspace.PluginDescriptor) bool {
 	// If the download url is already set don't touch it
 	if spec.PluginDownloadURL != "" {
 		return false
 	}
 
 	if spec.Kind == apitype.ResourcePlugin {
-		for _, plugin := range pulumiversePlugins {
-			if spec.Name == plugin {
-				spec.PluginDownloadURL = "github://api.github.com/pulumiverse"
-				return true
-			}
+		if slices.Contains(pulumiversePlugins, spec.Name) {
+			spec.PluginDownloadURL = "github://api.github.com/pulumiverse"
+			return true
 		}
 	}
 
-	return false
-}
-
-// SetKnownPluginVersion sets the Version for the given PluginSpec if it's a known plugin.
-// Returns true if it filled in the version.
-func SetKnownPluginVersion(spec *workspace.PluginSpec) bool {
-	// If the version is already set don't touch it
-	if spec.Version != nil {
-		return false
-	}
-
-	if spec.Kind == apitype.ConverterPlugin && spec.Name == "yaml" {
-		// By default use the version of yaml we've linked to. N.B. This has to be tested manually because
-		// ReadBuildInfo doesn't return anything in test builds (https://github.com/golang/go/issues/33976).
-		info, ok := debug.ReadBuildInfo()
-		contract.Assertf(ok, "expected to be able to read build info")
-		for _, dep := range info.Deps {
-			if dep.Path == "github.com/pulumi/pulumi-yaml" {
-				v, err := semver.ParseTolerant(dep.Version)
-				contract.AssertNoErrorf(err, "expected to be able to parse version for yaml got %q", dep.Version)
-				spec.Version = &v
-				return true
-			}
+	if spec.Kind == apitype.LanguagePlugin {
+		if version, ok := knownLanguageRuntimes[spec.Name]; ok && spec.Version == nil {
+			spec.Version = &version
+			return true
 		}
 	}
 

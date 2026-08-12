@@ -1,0 +1,5 @@
+runtime: nodejs
+template:
+  description: A Node.js component package starter
+  quickstart: |
+    Edit index.ts to define your component.

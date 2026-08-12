@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package cmdutil
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -23,14 +24,28 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pulumi/appdash"
 	appdash_opentracing "github.com/pulumi/appdash/opentracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/otelreceiver"
+	otellog "github.com/pulumi/pulumi/sdk/v3/go/common/util/otelreceiver/logging"
 	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/transport/zipkin"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // TracingEndpoint is the Zipkin-compatible tracing endpoint where tracing data will be sent.
@@ -46,6 +61,21 @@ var TracingToFile bool
 var TracingRootSpan opentracing.Span
 
 var traceCloser io.Closer
+
+// otelMu protects otelEndpoint, otelReceiver, and otelTracerProvider from concurrent access.
+var otelMu sync.RWMutex
+
+// otelEndpoint is the OTLP gRPC endpoint where plugins should send OpenTelemetry telemetry.
+var otelEndpoint string
+
+// logReceiverEndpoint is the OTLP gRPC endpoint for log collection.
+var logReceiverEndpoint string
+
+var (
+	otelReceiver       *otelreceiver.Receiver
+	otelTracerProvider *sdktrace.TracerProvider
+	appdashBridge      *otelreceiver.AppDashBridge
+)
 
 type localStore struct {
 	path  string
@@ -78,8 +108,8 @@ func InitTracing(name, rootSpanName, tracingEndpoint string) {
 	}
 
 	var tracer opentracing.Tracer
-	switch {
-	case endpointURL.Scheme == "file":
+	switch endpointURL.Scheme {
+	case "file":
 		// If the endpoint is a file:// URL, use a local tracer.
 		TracingToFile = true
 
@@ -113,7 +143,7 @@ func InitTracing(name, rootSpanName, tracingEndpoint string) {
 		// process.
 		TracingEndpoint = proxyEndpoint
 
-	case endpointURL.Scheme == "tcp":
+	case "tcp":
 		// Store the tracing endpoint
 		TracingEndpoint = tracingEndpoint
 
@@ -170,7 +200,242 @@ func CloseTracing() {
 		TracingRootSpan.Finish()
 	}
 
-	contract.IgnoreClose(traceCloser)
+	if traceCloser != nil {
+		contract.IgnoreClose(traceCloser)
+	}
+}
+
+// IsOTelEnabled returns true if OTEL is enabled via environment variable or endpoint is set.
+func IsOTelEnabled() bool {
+	otelMu.RLock()
+	defer otelMu.RUnlock()
+	return otelEndpoint != ""
+}
+
+// OTelEndpoint returns the OTLP gRPC endpoint where plugins should send OpenTelemetry telemetry.
+func OTelEndpoint() string {
+	otelMu.RLock()
+	defer otelMu.RUnlock()
+	return otelEndpoint
+}
+
+// LogReceiverEndpoint returns the OTLP gRPC endpoint for log collection.
+func LogReceiverEndpoint() string {
+	otelMu.RLock()
+	defer otelMu.RUnlock()
+	return logReceiverEndpoint
+}
+
+// InitOtelReceiver starts the OTLP receiver with the given endpoint and
+// optional log exporter.
+func InitOtelReceiver(endpoint string, logExporter otellog.LogExporter) error {
+	if endpoint == "" && logExporter == nil {
+		return nil
+	}
+
+	var spanExporter otelreceiver.SpanExporter
+	if endpoint != "" {
+		var err error
+		spanExporter, err = otelreceiver.NewExporter(endpoint)
+		if err != nil {
+			return fmt.Errorf("failed to create OTLP exporter: %w", err)
+		}
+	}
+
+	receiver, err := otelreceiver.Start(spanExporter, logExporter)
+	if err != nil {
+		if spanExporter != nil {
+			_ = spanExporter.Shutdown(context.Background())
+		}
+		return fmt.Errorf("failed to start OTLP receiver: %w", err)
+	}
+
+	ep := receiver.Endpoint()
+
+	otelMu.Lock()
+	otelReceiver = receiver
+	logReceiverEndpoint = ep
+	if spanExporter != nil {
+		otelEndpoint = ep
+	}
+	otelMu.Unlock()
+
+	if spanExporter != nil {
+		// Start the AppDash bridge so that legacy OpenTracing plugins can send
+		// spans that get converted to OTLP and forwarded to the same exporter.
+		bridge, err := otelreceiver.StartAppDashBridge(spanExporter)
+		if err != nil {
+			_ = receiver.Shutdown(context.Background())
+			_ = spanExporter.Shutdown(context.Background())
+			return fmt.Errorf("failed to start AppDash bridge: %w", err)
+		}
+
+		otelMu.Lock()
+		appdashBridge = bridge
+		otelMu.Unlock()
+
+		// Set TracingEndpoint to the AppDash bridge so legacy plugins
+		// (providers that only speak OpenTracing) send their spans through
+		// it.  We intentionally do NOT call InitTracing() here: the CLI
+		// uses OTel for its own spans and does not need an OpenTracing
+		// tracer.  Keeping the global tracer as a no-op avoids duplicate
+		// spans on the engine's gRPC server interceptors while still
+		// letting provider plugins connect via --tracing.  Root provider
+		// spans are grafted onto the OTel trace via SetTraceParent().
+		TracingEndpoint = bridge.Endpoint()
+
+		logging.V(5).Infof("Started local OTLP receiver at %s with exporter for %s", ep, endpoint)
+		logging.V(5).Infof("Started AppDash bridge at %s for legacy OpenTracing plugins", bridge.Endpoint())
+
+		// Set up Otel TracerProvider for CLI's own spans
+		if err := InitOtelTracing("pulumi-cli", ep); err != nil {
+			logging.V(3).Infof("failed to initialize OTel tracer provider: %v", err)
+		}
+	} else {
+		logging.V(5).Infof("Started local OTLP receiver at %s (logs only)", ep)
+	}
+
+	return nil
+}
+
+// InitOTelTracing initializes OTel tracing for a service connecting to the given OTLP endpoint.
+func InitOtelTracing(serviceName, endpoint string) error {
+	if endpoint == "" {
+		return nil
+	}
+	ctx := context.Background()
+
+	conn, err := grpc.NewClient(endpoint,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create gRPC connection: %w", err)
+	}
+
+	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
+	if err != nil {
+		return fmt.Errorf("failed to create trace exporter: %w", err)
+	}
+
+	res, err := resource.Merge(
+		resource.Environment(),
+		resource.NewWithAttributes("", semconv.ServiceName(serviceName)),
+	)
+	contract.AssertNoErrorf(err, "resource.Merge should never fail")
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(traceExporter),
+		sdktrace.WithResource(res),
+	)
+
+	otelMu.Lock()
+	otelTracerProvider = tp
+	otelMu.Unlock()
+
+	otel.SetTracerProvider(tp)
+
+	// Set up W3C Trace Context propagator for context propagation across process boundaries
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	return nil
+}
+
+// SetAppDashTraceParent tells the AppDash bridge to remap all incoming
+// AppDash trace IDs to the given OTel trace ID, and to parent root AppDash
+// spans under the given OTel span ID.  This grafts legacy OpenTracing spans
+// onto the CLI's native OTel trace.
+func SetAppDashTraceParent(traceID [16]byte, spanID [8]byte) {
+	otelMu.RLock()
+	b := appdashBridge
+	otelMu.RUnlock()
+
+	if b != nil {
+		b.SetTraceParent(traceID, spanID)
+	}
+}
+
+func CloseOtelTracing() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	otelMu.Lock()
+	tp := otelTracerProvider
+	otelTracerProvider = nil
+	recv := otelReceiver
+	otelReceiver = nil
+	bridge := appdashBridge
+	appdashBridge = nil
+	otelEndpoint = ""
+	logReceiverEndpoint = ""
+	otelMu.Unlock()
+
+	if tp != nil {
+		if err := tp.Shutdown(ctx); err != nil {
+			logging.V(3).Infof("error closing OTel tracer provider: %v", err)
+		}
+	}
+
+	if bridge != nil {
+		if err := bridge.Shutdown(ctx); err != nil {
+			logging.V(3).Infof("error closing AppDash bridge: %v", err)
+		}
+	}
+
+	if recv != nil {
+		if err := recv.Shutdown(ctx); err != nil {
+			logging.V(3).Infof("error closing OTLP receiver: %v", err)
+		}
+	}
+}
+
+// StartSpan starts a new OTel span with a stack trace attribute.
+// This is a convenience wrapper around tracer.Start that automatically
+// captures the call stack.
+func StartSpan(
+	ctx context.Context,
+	tracer trace.Tracer,
+	name string,
+	opts ...trace.SpanStartOption,
+) (context.Context, trace.Span) {
+	// Capture stack trace, skipping this function and the runtime
+	const maxDepth = 32
+	var pcs [maxDepth]uintptr
+	n := runtime.Callers(2, pcs[:])
+	frames := runtime.CallersFrames(pcs[:n])
+
+	var stackBuilder strings.Builder
+	more := true
+	for more {
+		var frame runtime.Frame
+		frame, more = frames.Next()
+		fmt.Fprintf(&stackBuilder, "%s\n\t%s:%d\n", frame.Function, frame.File, frame.Line)
+	}
+
+	opts = append(opts, trace.WithAttributes(attribute.String("code.stacktrace", stackBuilder.String())))
+	return tracer.Start(ctx, name, opts...)
+}
+
+type processStartTimeKey struct{}
+
+// ContextWithProcessStartTime returns a new context with the given process start time.
+func ContextWithProcessStartTime(ctx context.Context, t time.Time) context.Context {
+	return context.WithValue(ctx, processStartTimeKey{}, t)
+}
+
+// ProcessStartTimeFromContext retrieves the process start time from the context.
+func ProcessStartTimeFromContext(ctx context.Context) (time.Time, bool) {
+	t, ok := ctx.Value(processStartTimeKey{}).(time.Time)
+	return t, ok
+}
+
+func SetStringSpanAttributes(ctx context.Context, attrs map[string]string) {
+	span := trace.SpanFromContext(ctx)
+	if !span.SpanContext().IsValid() {
+		return
+	}
+	for k, v := range attrs {
+		span.SetAttributes(attribute.String(k, v))
+	}
 }
 
 // Starts an AppDash server listening on any available TCP port
@@ -231,9 +496,9 @@ func rootSpanTags() []opentracing.Tag {
 		envVarName := strings.ToLower(pair[0])
 		envVarValue := pair[1]
 
-		if strings.HasPrefix(envVarName, envPrefix) {
+		if after, ok := strings.CutPrefix(envVarName, envPrefix); ok {
 			tags = append(tags, opentracing.Tag{
-				Key:   strings.TrimPrefix(envVarName, envPrefix),
+				Key:   after,
 				Value: envVarValue,
 			})
 		}

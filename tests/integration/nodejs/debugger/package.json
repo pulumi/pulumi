@@ -1,0 +1,4 @@
+{
+    "name": "nodejs-debugger",
+    "peerDependencies": { "@pulumi/pulumi": "latest" }
+}

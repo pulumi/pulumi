@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,22 +17,24 @@ package pulumi
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"reflect"
-	"sort"
+	"slices"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
 	grpc "google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -88,7 +90,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Provider(aws2))
-		assert.Equal(t, 1, len(opts.Providers))
+		require.Len(t, opts.Providers, 1)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, aws2, opts.Provider,
 			"Provider should be set to the last specified provider")
@@ -98,7 +100,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Provider(azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws1, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Equal(t, azure, opts.Provider,
@@ -109,7 +111,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Providers(aws2, azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Equal(t, aws1, opts.Provider,
@@ -120,7 +122,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), Providers(aws2))
-		assert.Equal(t, 1, len(opts.Providers))
+		require.Len(t, opts.Providers, 1)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, aws1, opts.Provider,
 			"Provider should be set to the last specified provider")
@@ -130,7 +132,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Providers(aws1), Providers(azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws1, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Nil(t, opts.Provider,
@@ -141,7 +143,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Providers(aws1, aws2), Providers(aws1, azure))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws1, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Nil(t, opts.Provider,
@@ -156,7 +158,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(ProviderMap(m1), ProviderMap(m2))
-		assert.Equal(t, 1, len(opts.Providers))
+		require.Len(t, opts.Providers, 1)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Nil(t, opts.Provider,
 			"Providers should not upgrade to Provider")
@@ -166,7 +168,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Provider(aws1), ProviderMap(m3))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Equal(t, aws1, opts.Provider,
@@ -177,7 +179,7 @@ func TestResourceOptionMergingProvider(t *testing.T) {
 		t.Parallel()
 
 		opts := merge(Providers(aws2, aws1), ProviderMap(m3))
-		assert.Equal(t, 2, len(opts.Providers))
+		require.Len(t, opts.Providers, 2)
 		assert.Equal(t, aws2, opts.Providers["aws"])
 		assert.Equal(t, azure, opts.Providers["azure"])
 		assert.Nil(t, opts.Provider,
@@ -193,7 +195,7 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 	newRes := func(name string) (Resource, URN) {
 		res := &testRes{foo: name}
 		res.urn = CreateURN(String(name), String("t"), nil, String("stack"), String("project"))
-		urn, _, _, err := res.urn.awaitURN(context.Background())
+		urn, _, _, err := res.urn.awaitURN(t.Context())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -207,13 +209,11 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 	resolveDependsOn := func(opts *resourceOptions) []URN {
 		allDeps := map[URN]Resource{}
 		for _, ds := range opts.DependsOn {
-			if err := ds.addDeps(context.Background(), allDeps, nil /* from */); err != nil {
+			if err := ds.addDeps(t.Context(), allDeps, nil /* from */); err != nil {
 				t.Fatal(err)
 			}
 		}
-		urns := maps.Keys(allDeps)
-		sort.Slice(urns, func(i, j int) bool { return urns[i] < urns[j] })
-		return urns
+		return slices.Sorted(maps.Keys(allDeps))
 	}
 
 	// two singleton options
@@ -312,7 +312,6 @@ func TestResourceOptionComposite(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -380,7 +379,6 @@ func TestInvokeOptionComposite(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -545,6 +543,80 @@ func assertTransformations(t *testing.T, t1 []ResourceTransformation, t2 []Resou
 	}
 }
 
+func TestTransformationPreservesParent(t *testing.T) {
+	t.Parallel()
+
+	identity := func(args *ResourceTransformationArgs) *ResourceTransformationResult {
+		return &ResourceTransformationResult{
+			Props: args.Props,
+			Opts:  args.Opts,
+		}
+	}
+
+	var parents gsync.Map[string, string]
+	monitor := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			parents.Store(args.Name, args.RegisterRPC.GetParent())
+			return args.Name, resource.PropertyMap{}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var withoutT testResource2
+		require.NoError(t, ctx.RegisterResource(
+			"test:resource:type", "without-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withoutT))
+
+		var withT testResource2
+		require.NoError(t, ctx.RegisterResource(
+			"test:resource:type", "with-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withT,
+			Transformations([]ResourceTransformation{identity})))
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+
+	withoutParent, _ := parents.Load("without-transform")
+	withParent, _ := parents.Load("with-transform")
+	require.NotEmpty(t, withoutParent, "baseline should have a parent")
+	assert.Equal(t, withoutParent, withParent,
+		"transformation must not drop the parent")
+}
+
+func TestTransformationCannotChangeParent(t *testing.T) {
+	t.Parallel()
+
+	var parents gsync.Map[string, string]
+	monitor := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			parents.Store(args.Name, args.RegisterRPC.GetParent())
+			return args.Name, resource.PropertyMap{}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var withoutT testResource2
+		require.NoError(t, ctx.RegisterResource(
+			"test:resource:type", "without-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withoutT))
+
+		var withT testResource2
+		return ctx.RegisterResource(
+			"test:resource:type", "with-transform",
+			&testResource2Inputs{Foo: String("oof")}, &withT,
+			Transformations([]ResourceTransformation{
+				func(args *ResourceTransformationArgs) *ResourceTransformationResult {
+					return &ResourceTransformationResult{
+						Props: args.Props,
+						Opts:  append(args.Opts, Parent(&withoutT)),
+					}
+				},
+			}))
+	}, WithMocks("project", "stack", monitor))
+	assert.ErrorIs(t, err, errTransformationsCannotChangeParent)
+}
+
 func TestResourceOptionMergingReplaceOnChanges(t *testing.T) {
 	t.Parallel()
 
@@ -570,6 +642,34 @@ func TestResourceOptionMergingReplaceOnChanges(t *testing.T) {
 	assert.Equal(t, []string{i1, i2, i2, i3}, opts.ReplaceOnChanges)
 }
 
+func TestResourceOptionMergingEnvVarMappings(t *testing.T) {
+	t.Parallel()
+
+	// EnvVarMappings maps are merged together, last value for a key wins
+	m1 := map[string]string{"SOURCE_VAR": "TARGET_VAR"}
+	m2 := map[string]string{"OTHER_VAR": "ANOTHER_VAR"}
+	m3 := map[string]string{"SOURCE_VAR": "DIFFERENT_TARGET"}
+
+	// two singleton options with different keys
+	opts := merge(EnvVarMappings(m1), EnvVarMappings(m2))
+	assert.Equal(t, map[string]string{
+		"SOURCE_VAR": "TARGET_VAR",
+		"OTHER_VAR":  "ANOTHER_VAR",
+	}, opts.EnvVarMappings)
+
+	// nil m1
+	opts = merge(EnvVarMappings(nil), EnvVarMappings(m2))
+	assert.Equal(t, map[string]string{"OTHER_VAR": "ANOTHER_VAR"}, opts.EnvVarMappings)
+
+	// nil m2
+	opts = merge(EnvVarMappings(m1), EnvVarMappings(nil))
+	assert.Equal(t, map[string]string{"SOURCE_VAR": "TARGET_VAR"}, opts.EnvVarMappings)
+
+	// overlapping keys - last value wins
+	opts = merge(EnvVarMappings(m1), EnvVarMappings(m3))
+	assert.Equal(t, map[string]string{"SOURCE_VAR": "DIFFERENT_TARGET"}, opts.EnvVarMappings)
+}
+
 func TestNewResourceInput(t *testing.T) {
 	t.Parallel()
 
@@ -578,8 +678,8 @@ func TestNewResourceInput(t *testing.T) {
 
 	resourceOutput := resourceInput.ToResourceOutput()
 
-	channel := make(chan interface{})
-	resourceOutput.ApplyT(func(res interface{}) interface{} {
+	channel := make(chan any)
+	resourceOutput.ApplyT(func(res any) any {
 		channel <- res
 		return res
 	})
@@ -656,7 +756,6 @@ func TestUninitializedParentResource(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -675,7 +774,8 @@ func TestUninitializedParentResource(t *testing.T) {
 				var buff bytes.Buffer
 				ctx.state.engine.(*mockEngine).logger = log.New(&buff, "", 0)
 
-				opts := []ResourceOption{Parent(tt.parent)}
+				opts := slice.Prealloc[ResourceOption](1 + len(tt.opts))
+				opts = append(opts, Parent(tt.parent))
 				opts = append(opts, tt.opts...)
 
 				var res testRes
@@ -686,7 +786,7 @@ func TestUninitializedParentResource(t *testing.T) {
 				assert.Contains(t, buff.String(), tt.wantErr)
 				return nil
 			}, WithMocks("project", "stack", &testMonitor{}))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -711,7 +811,7 @@ func TestDependsOnInputs(t *testing.T) {
 			assertHasDeps(t, ctx, depTracker, res, dep1, dep2)
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("dynamic", func(t *testing.T) {
@@ -742,7 +842,7 @@ func TestDependsOnInputs(t *testing.T) {
 
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}), WrapResourceMonitorClient(depTracker.Wrap))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -772,7 +872,7 @@ func TestComponentResourcePropagatesProvider(t *testing.T) {
 			assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("providers option", func(t *testing.T) {
@@ -797,7 +897,7 @@ func TestComponentResourcePropagatesProvider(t *testing.T) {
 			assert.True(t, &prov == custom.provider, "provider not propagated: %v", custom.provider)
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -855,7 +955,7 @@ func TestRemoteComponentResourcePropagatesProvider(t *testing.T) {
 			return args.Name, resource.PropertyMap{}, nil
 		},
 	}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // Verifies that Provider takes precedence over Providers.
@@ -943,7 +1043,7 @@ func TestComponentResourceMultipleSingletonProviders(t *testing.T) {
 
 		return nil
 	}, WithMocks("project", "stack", &testMonitor{}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestNewResourceOptions(t *testing.T) {
@@ -1141,10 +1241,29 @@ func TestNewResourceOptions(t *testing.T) {
 			give: DeletedWith(&testRes{foo: "a"}),
 			want: ResourceOptions{DeletedWith: &testRes{foo: "a"}},
 		},
+		{
+			desc: "EnvVarMappings",
+			give: EnvVarMappings(map[string]string{"SOURCE_VAR": "TARGET_VAR"}),
+			want: ResourceOptions{
+				EnvVarMappings: map[string]string{"SOURCE_VAR": "TARGET_VAR"},
+			},
+		},
+		{
+			desc: "EnvVarMappings/multiple options",
+			give: Composite(
+				EnvVarMappings(map[string]string{"VAR1": "TARGET1"}),
+				EnvVarMappings(map[string]string{"VAR2": "TARGET2"}),
+			),
+			want: ResourceOptions{
+				EnvVarMappings: map[string]string{
+					"VAR1": "TARGET1",
+					"VAR2": "TARGET2",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -1208,7 +1327,6 @@ func TestNewInvokeOptions(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -1252,7 +1370,7 @@ func outputDependingOnResource(res Resource, isKnown bool) IntOutput {
 func newTestRes(t *testing.T, ctx *Context, name string, opts ...ResourceOption) Resource {
 	var res testRes
 	err := ctx.RegisterResource(fmt.Sprintf("test:resource:%stype", name), name, nil, &res, opts...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return &res
 }
 
@@ -1290,7 +1408,7 @@ func (dt *dependenciesTracker) Wrap(cl pulumirpc.ResourceMonitorClient) pulumirp
 		resp *pulumirpc.RegisterResourceResponse,
 		err error,
 	) {
-		var deps []URN
+		deps := slice.Prealloc[URN](len(in.GetDependencies()))
 		for _, dep := range in.GetDependencies() {
 			deps = append(deps, URN(dep))
 		}
@@ -1346,7 +1464,7 @@ func TestRehydratedComponentConsideredRemote(t *testing.T) {
 			&component))
 		require.False(t, component.keepDependency())
 
-		urn, _, _, err := component.URN().awaitURN(context.Background())
+		urn, _, _, err := component.URN().awaitURN(t.Context())
 		require.NoError(t, err)
 
 		var rehydrated testComp
@@ -1405,7 +1523,7 @@ type DoEchoArgs struct {
 type DoEchoResultOutput struct{ *OutputState }
 
 func (DoEchoResultOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*DoEchoResult)(nil)).Elem()
+	return reflect.TypeFor[DoEchoResult]()
 }
 
 func TestInvokeDependsOn(t *testing.T) {
@@ -1416,7 +1534,7 @@ func TestInvokeDependsOn(t *testing.T) {
 	monitor := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
-				"echo": resource.NewStringProperty("hello"),
+				"echo": resource.NewProperty("hello"),
 			}, nil
 		},
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -1457,7 +1575,7 @@ func TestInvokeDependsOnInputs(t *testing.T) {
 	monitor := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
-				"echo": resource.NewStringProperty("hello"),
+				"echo": resource.NewProperty("hello"),
 			}, nil
 		},
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -1544,6 +1662,217 @@ func TestInvokeDependsOnUnknownChild(t *testing.T) {
 	require.NoError(t, err)
 }
 
+type DoEchoOutputArgs struct {
+	Echo StringPtrInput `pulumi:"echo"`
+}
+
+func (DoEchoOutputArgs) ElementType() reflect.Type {
+	return reflect.TypeFor[DoEchoArgs]()
+}
+
+// An invoke's resource dependencies are inferred from its arguments and recorded on the result
+// output. (pulumi/pulumi#18298)
+func TestInvokeOutputArgsDependencies(t *testing.T) {
+	t.Parallel()
+
+	resolved := false
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			return resource.PropertyMap{
+				"echo": args.Args["echo"],
+			}, nil
+		},
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			time.Sleep(1 * time.Second)
+			resolved = true
+			return args.Name + "_id", nil, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		dep := newTestRes(t, ctx, "dep")
+		args := DoEchoOutputArgs{
+			Echo: dep.URN().ApplyT(func(urn URN) *string {
+				s := string(urn)
+				return &s
+			}).(StringPtrOutput),
+		}
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{})
+
+		v, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.True(t, known)
+		require.False(t, secret)
+		require.True(t, resolved, "expected the invoke to wait for its argument dependency")
+		require.NotEmpty(t, *v.(DoEchoResult).Echo)
+		require.Len(t, deps, 1)
+		require.Equal(t, dep.URN(), deps[0].(Resource).URN())
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+// During a preview, a resource's outputs can be known while the resource has not been created yet
+// (its ID is unknown). An invoke whose arguments depend on such a resource must not run.
+// (pulumi/pulumi#18298)
+func TestInvokeOutputArgsDependencyPendingCreate(t *testing.T) {
+	t.Parallel()
+
+	invoked := false
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			invoked = true
+			return resource.PropertyMap{
+				"echo": resource.NewProperty("hello"),
+			}, nil
+		},
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			// No ID: the resource is pending creation.
+			return "", nil, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		dep := newTestRes(t, ctx, "dep")
+		args := DoEchoOutputArgs{
+			// The argument's value is known, but it depends on dep, whose ID is unknown.
+			Echo: dep.URN().ApplyT(func(URN) *string {
+				s := "known value"
+				return &s
+			}).(StringPtrOutput),
+		}
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{})
+
+		_, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.False(t, known)
+		require.False(t, secret)
+		require.False(t, invoked, "expected the invoke to be skipped")
+		require.Len(t, deps, 1)
+		require.Equal(t, dep.URN(), deps[0].(Resource).URN())
+
+		return nil
+	}, WithMocks("project", "stack", monitor), func(info *RunInfo) {
+		info.DryRun = true
+	})
+	require.NoError(t, err)
+}
+
+// If any argument is unknown, the invoke is skipped and its result is unknown.
+func TestInvokeOutputArgsUnknown(t *testing.T) {
+	t.Parallel()
+
+	invoked := false
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			invoked = true
+			return resource.PropertyMap{
+				"echo": resource.NewProperty("hello"),
+			}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		dep := newUnknownRes()
+		args := DoEchoOutputArgs{
+			Echo: UnsafeUnknownOutput([]Resource{dep}).ApplyT(func(any) *string {
+				return nil
+			}).(StringPtrOutput),
+		}
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{})
+
+		_, known, secret, deps, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.False(t, known)
+		require.False(t, secret)
+		require.False(t, invoked, "expected the invoke to be skipped")
+		require.Len(t, deps, 1)
+		require.True(t, deps[0] == dep)
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+// Secret arguments are sent to the provider as their raw values and make the result secret.
+func TestInvokeOutputArgsSecret(t *testing.T) {
+	t.Parallel()
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			require.Equal(t, resource.NewProperty("shh"), args.Args["echo"])
+			return resource.PropertyMap{
+				"echo": args.Args["echo"],
+			}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		args := DoEchoOutputArgs{
+			Echo: ToSecret(String("shh")).(StringOutput).ApplyT(func(s string) *string {
+				return &s
+			}).(StringPtrOutput),
+		}
+
+		o := ctx.InvokeOutput("pkg:index:doEcho", args, DoEchoResultOutput{}, InvokeOutputOptions{})
+
+		v, known, secret, _, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.True(t, known)
+		require.True(t, secret)
+		require.Equal(t, "shh", *v.(DoEchoResult).Echo)
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
+// PackageRefF resolves the package reference on the invoke's goroutine; its error rejects the
+// result output.
+func TestInvokeOutputPackageRefF(t *testing.T) {
+	t.Parallel()
+
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			return resource.PropertyMap{
+				"echo": resource.NewProperty("hello"),
+			}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		o := ctx.InvokeOutput("pkg:index:doEcho", DoEchoArgs{}, DoEchoResultOutput{}, InvokeOutputOptions{
+			PackageRefF: func(*Context) (string, error) {
+				return "some-package-ref", nil
+			},
+		})
+
+		v, known, _, _, err := internal.AwaitOutput(ctx.Context(), o)
+		require.NoError(t, err)
+		require.True(t, known)
+		require.Equal(t, "hello", *v.(DoEchoResult).Echo)
+
+		o = ctx.InvokeOutput("pkg:index:doEcho", DoEchoArgs{}, DoEchoResultOutput{}, InvokeOutputOptions{
+			PackageRefF: func(*Context) (string, error) {
+				return "", errors.New("package ref failure")
+			},
+		})
+
+		_, _, _, _, err = internal.AwaitOutput(ctx.Context(), o)
+		require.ErrorContains(t, err, "package ref failure")
+
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
 func TestInvokeDependsOnIgnored(t *testing.T) {
 	t.Parallel()
 
@@ -1552,7 +1881,7 @@ func TestInvokeDependsOnIgnored(t *testing.T) {
 	monitor := &testMonitor{
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
-				"echo": resource.NewStringProperty("hello"),
+				"echo": resource.NewProperty("hello"),
 			}, nil
 		},
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -1600,7 +1929,7 @@ func TestInvokeSecret(t *testing.T) {
 		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
 			return resource.PropertyMap{
 				// The invoke result contains a secret.
-				"echo": resource.MakeSecret(resource.NewStringProperty("hello")),
+				"echo": resource.MakeSecret(resource.NewProperty("hello")),
 			}, nil
 		},
 	}

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,27 +19,27 @@ import (
 )
 
 // AsObject attempts to coerce an existing value to an object map, returning a non-nil error if it cannot be done.
-func AsObject(v interface{}, ty reflect.Type, key string) (map[string]interface{}, FieldError) {
-	if vmap, ok := v.(map[string]interface{}); ok {
+func AsObject(v any, ty reflect.Type, key string) (map[string]any, FieldError) {
+	if vmap, ok := v.(map[string]any); ok {
 		return vmap, nil
 	}
 	return nil, NewWrongTypeError(
-		ty, key, reflect.TypeOf(make(map[string]interface{})), reflect.TypeOf(v))
+		ty, key, reflect.TypeFor[map[string]any](), reflect.TypeOf(v))
 }
 
 // AsString attempts to coerce an existing value to a string, returning a non-nil error if it cannot be done.
-func AsString(v interface{}, ty reflect.Type, key string) (*string, FieldError) {
+func AsString(v any, ty reflect.Type, key string) (*string, FieldError) {
 	if s, ok := v.(string); ok {
 		return &s, nil
 	}
-	return nil, NewWrongTypeError(ty, key, reflect.TypeOf(""), reflect.TypeOf(v))
+	return nil, NewWrongTypeError(ty, key, reflect.TypeFor[string](), reflect.TypeOf(v))
 }
 
 // FieldObject looks up a field by name within an object map, coerces it to an object itself, and returns it.  If the
 // field exists but is not an object map, or it is missing and optional is false, a non-nil error is returned.
-func FieldObject(obj map[string]interface{}, ty reflect.Type,
+func FieldObject(obj map[string]any, ty reflect.Type,
 	key string, optional bool,
-) (map[string]interface{}, FieldError) {
+) (map[string]any, FieldError) {
 	if o, has := obj[key]; has {
 		return AsObject(o, ty, key)
 	} else if !optional {
@@ -51,7 +51,7 @@ func FieldObject(obj map[string]interface{}, ty reflect.Type,
 
 // FieldString looks up a field by name within an object map, coerces it to a string, and returns it.  If the
 // field exists but is not a string, or it is missing and optional is false, a non-nil error is returned.
-func FieldString(obj map[string]interface{}, ty reflect.Type, key string, optional bool) (*string, FieldError) {
+func FieldString(obj map[string]any, ty reflect.Type, key string, optional bool) (*string, FieldError) {
 	if s, has := obj[key]; has {
 		return AsString(s, ty, key)
 	} else if !optional {

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,4 +27,19 @@ var (
 	ResourcePropertyType model.Type = model.NewOpaqueType("Property")
 	// AssetOrArchiveType represents the set of Pulumi Archive values.
 	AssetOrArchiveType model.Type = model.NewUnionType(ArchiveType, AssetType)
+	// AliasType represents a type for the alias resource option. Aliases are either a string (single URN) or an object
+	// (with "name" and "parent", etc fields).
+	AliasType = model.NewUnionType(model.StringType, model.NewObjectType(map[string]model.Type{
+		"name":     model.NewOptionalType(model.StringType),
+		"type":     model.NewOptionalType(model.StringType),
+		"noParent": model.NewOptionalType(model.BoolType),
+		"parent":   model.NewOptionalType(model.DynamicType),
+	}))
+	// CustomTimeoutsType represents the type for custom timeouts resource option.
+	CustomTimeoutsType = model.NewObjectType(map[string]model.Type{
+		"create": model.NewOptionalType(model.StringType),
+		"update": model.NewOptionalType(model.StringType),
+		"delete": model.NewOptionalType(model.StringType),
+		"read":   model.NewOptionalType(model.StringType),
+	})
 )

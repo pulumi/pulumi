@@ -1,0 +1,4 @@
+name: requiredversion
+description: project with a required version range
+runtime: go
+requiredPulumiVersion: "<1.0.0"

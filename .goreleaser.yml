@@ -9,7 +9,7 @@ builds:
   binary: pulumi
   dir: pkg
   main: ./cmd/pulumi
-  gobinary: ../scripts/go-wrapper.sh
+  tool: ../scripts/go-wrapper.sh
   env:
   - GO111MODULE=on
   goos: ['linux', 'darwin', 'windows']
@@ -24,24 +24,39 @@ builds:
     # Enforce the pure Go implementation of os/user, even when cgo is available.
     # See https://pkg.go.dev/os/user#pkg-overview.
     - osusergo
+    # google.golang.org/grpc has a build tag `grpcnotrace` which builds the package without x/net/trace. This avoids
+    # dead code elimation from being disabled by the compiler, see https://github.com/pulumi/pulumi/pull/22012.
+    - grpcnotrace
 - <<: *pulumibin
   id: pulumi-language-go
   binary: pulumi-language-go
   dir: sdk/go/pulumi-language-go
   main: ./
-  gobinary: ../../../scripts/go-wrapper.sh
+  tool: ../../../scripts/go-wrapper.sh
 - <<: *pulumibin
   id: pulumi-language-nodejs
   binary: pulumi-language-nodejs
   dir: sdk/nodejs/cmd/pulumi-language-nodejs
   main: ./
-  gobinary: ../../../../scripts/go-wrapper.sh
+  tool: ../../../../scripts/go-wrapper.sh
+- <<: *pulumibin
+  id: pulumi-language-bun
+  binary: pulumi-language-bun
+  dir: sdk/nodejs/cmd/pulumi-language-bun
+  main: ./
+  tool: ../../../../scripts/go-wrapper.sh
 - <<: *pulumibin
   id: pulumi-language-python
   binary: pulumi-language-python
   dir: sdk/python/cmd/pulumi-language-python
   main: ./
-  gobinary: ../../../../scripts/go-wrapper.sh
+  tool: ../../../../scripts/go-wrapper.sh
+- <<: *pulumibin
+  id: pulumi-language-pcl
+  binary: pulumi-language-pcl
+  dir: sdk/pcl
+  main: ./cmd/pulumi-language-pcl
+  tool: ../../scripts/go-wrapper.sh
 - <<: *pulumibin
   id: pulumi-display-wasm
   binary: pulumi-display
@@ -51,16 +66,14 @@ builds:
   goarch: ['wasm']
   hooks:
     post:
-      # Check the size of the WASM module.
-      - |
-        sh -c "[ `du -k {{ .Path }} | cut -f1` -le 79182 ] || (echo 'error: WASM module > 77M'; exit 1)"
+      - python3 scripts/wasm-size-check.py {{ .Path }} pkg/backend/display/wasm/gold-size.txt
 
 archives:
 - id: pulumi
   wrap_in_directory: pulumi{{ if eq .Os "windows" }}/bin{{ end }}
   format_overrides:
     - goos: windows
-      format: zip
+      formats: zip
   files:
       # OS specific scripts, not compiled
     - src: bin/{{ .Os }}/*
@@ -73,7 +86,7 @@ archives:
   name_template: '{{ .ProjectName }}-{{ .Tag }}-{{ .Os }}-{{ if eq .Arch "amd64" }}x64{{ else }}{{ .Arch }}{{ end }}'
 
 snapshot:
-  name_template: "{{ .Version }}-SNAPSHOT"
+  version_template: "{{ .Version }}-SNAPSHOT"
 
 checksum:
   name_template: "{{ .ProjectName }}-{{ .Version }}-checksums.txt"

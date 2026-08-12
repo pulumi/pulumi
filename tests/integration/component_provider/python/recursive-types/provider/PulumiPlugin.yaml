@@ -1,1 +1,4 @@
-runtime: python
+runtime:
+  name: python
+  options:
+    toolchain: uv

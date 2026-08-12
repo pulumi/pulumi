@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,12 +17,36 @@ package httputil
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 )
+
+const maxRetryAfterDelay = 30 * time.Second
+
+// retryAfterDelay returns the capped delay from a Retry-After header (RFC 9110
+// delay-seconds or HTTP-date), or 0 if absent or unparseable.
+func retryAfterDelay(res *http.Response, now time.Time) time.Duration {
+	header := res.Header.Get("Retry-After")
+	if header == "" {
+		return 0
+	}
+	var delay time.Duration
+	if seconds, err := strconv.Atoi(header); err == nil {
+		delay = time.Duration(seconds) * time.Second
+	} else if date, err := http.ParseTime(header); err == nil {
+		delay = date.Sub(now)
+	} else {
+		return 0
+	}
+	if delay <= 0 {
+		return 0
+	}
+	return min(delay, maxRetryAfterDelay)
+}
 
 // RetryOpts defines options to configure the retry behavior.
 // Leave nil for defaults.
@@ -71,7 +95,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 		Backoff:  opts.Backoff,
 		MaxDelay: opts.MaxDelay,
 
-		Accept: func(try int, _ time.Duration) (bool, interface{}, error) {
+		Accept: func(try int, _ time.Duration) (bool, any, error) {
 			if try > 0 && req.GetBody != nil {
 				// Reset request body, if present, for retries.
 				rc, bodyErr := req.GetBody()
@@ -89,6 +113,22 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 				}
 				return true, res, resErr
 			}
+
+			// 429s are retried like 5xxs, but honor the server's Retry-After (capped)
+			// before the regular backoff.
+			if resErr == nil && res.StatusCode == http.StatusTooManyRequests && try < maxRetryCount-1 {
+				delay := retryAfterDelay(res, time.Now())
+				contract.IgnoreClose(res.Body)
+				if delay > 0 {
+					select {
+					case <-req.Context().Done():
+						return true, nil, req.Context().Err()
+					case <-time.After(delay):
+					}
+				}
+				return false, nil, nil
+			}
+
 			if resErr == nil && !inRange(res.StatusCode, 500, 599) {
 				return true, res, nil
 			}
@@ -99,7 +139,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 
 			// Close the response body, if present, since our caller can't.
 			if resErr == nil {
-				contract.IgnoreError(res.Body.Close())
+				contract.IgnoreClose(res.Body)
 			}
 			return false, nil, nil
 		},

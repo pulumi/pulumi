@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 //go:build !all
 // +build !all
 
@@ -207,7 +207,7 @@ func (o ComponentArrayOutput) ToComponentArrayOutputWithContext(ctx context.Cont
 }
 
 func (o ComponentArrayOutput) Index(i pulumi.IntInput) ComponentOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Component {
+	return pulumi.All(o, i).ApplyT(func(vs []any) Component {
 		return vs[0].([]Component)[vs[1].(int)]
 	}).(ComponentOutput)
 }
@@ -227,7 +227,7 @@ func (o ComponentMapOutput) ToComponentMapOutputWithContext(ctx context.Context)
 }
 
 func (o ComponentMapOutput) MapIndex(k pulumi.StringInput) ComponentOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Component {
+	return pulumi.All(o, k).ApplyT(func(vs []any) Component {
 		return vs[0].(map[string]Component)[vs[1].(string)]
 	}).(ComponentOutput)
 }

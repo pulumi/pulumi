@@ -27,6 +27,16 @@ from pulumi.automation import (
 
 
 class TestProjectSettings(unittest.TestCase):
+    def test_serialize_deserialize_project_settings_without_runtime(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            expected = ProjectSettings(name="project_name")
+            ws = LocalWorkspace(work_dir=tmp_dir)
+
+            ws.save_project_settings(expected)
+            actual = ws.project_settings()
+
+            self.assertDictEqual({"name": "project_name"}, actual.to_dict())
+
     def test_serialize_deserialize_project_settings(self):
         """Tests that ProjectSettings serialization and deserialization is a
         round-trip operation."""

@@ -19,6 +19,8 @@ venv/
 # Ignore VSCode created solution file
 /pulumi.sln
 .mono
+# Ignore VSCode created cache files (https://github.com/microsoft/vscode-dotnettools/issues/2952)
+*.lscache
 
 # Ignore user-provided go.work files.
 /go.work
@@ -40,7 +42,7 @@ venv/
 # Likewise, we don't want to keep the typechecked version of our codegen tests.
 tests/testdata/codegen/*/typecheck/**
 
-# We don't need to keep testing python __pycache__ either either
+# We don't need to keep testing python __pycache__ either
 tests/testdata/codegen/*-pp/*/*.csproj
 tests/testdata/codegen/*-pp/*/go.mod
 tests/testdata/codegen/*-pp/*/go.sum
@@ -49,8 +51,20 @@ tests/testdata/codegen/*-pp/*/package.json
 tests/testdata/codegen/*-pp/*/go.sum
 tests/testdata/codegen/*-pp/*/tsconfig.json
 
-# By default, we don't check in yarn.lock files
+# We don't need to keep fuzzing failures around
+pkg/engine/lifecycletest/testdata/rapid/
+
+# By default, we don't check in lock files
 **/yarn.lock
+**/package-lock.json
+**/pnpm-lock.yaml
+
+# ...except for the yarn-based integration test fixtures, where a committed
+# yarn.lock pins dependencies (yarn classic has no release-age cooldown).
+!tests/integration/nodejs/npm-and-yarn-workspaces/yarn.lock
+!tests/integration/nodejs/yarn-workspaces-nohoist/yarn.lock
+!tests/integration/nodejs/packageadd_yarn/yarn.lock
+!tests/integration/packageadd-tsc/program-yarn/yarn.lock
 
 # By default, we don't check in Pipfile.lock files
 **/Pipfile.lock
@@ -63,15 +77,9 @@ tests/testdata/codegen/*-pp/*/tsconfig.json
 goreleaser
 pulumi-resource-pulumi-nodejs
 pulumi-resource-pulumi-python
-pulumi-analyzer-policy
-pulumi-analyzer-policy-python
 pulumi-language-python-exec
 pulumi-resource-pulumi-nodejs.cmd
 pulumi-resource-pulumi-python.cmd
-pulumi-python3-shim.cmd
-pulumi-python-shim.cmd
-pulumi-analyzer-policy.cmd
-pulumi-analyzer-policy-python.cmd
 artifacts/
 goreleaser-downloads/
 goreleaser-prebuilt/
@@ -94,3 +102,8 @@ yarn-error.log
 
 # Local environment settings
 .env
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Local mise.toml
+.mise.local.toml

@@ -1,0 +1,4 @@
+[project]
+name = "create_inside_apply"
+version = "0.0.0"
+dependencies = []

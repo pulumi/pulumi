@@ -1,3 +1,6 @@
 name: enum_outputs_python
-runtime: python
+runtime:
+  name: python
+  options:
+    toolchain: uv
 description: Enum outputs in python

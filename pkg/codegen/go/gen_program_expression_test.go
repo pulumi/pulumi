@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,8 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,7 +34,7 @@ type exprTestCase struct {
 	goCode   string
 }
 
-type environment map[string]interface{}
+type environment map[string]any
 
 func (e environment) scope() *model.Scope {
 	s := model.NewRootScope(syntax.None)
@@ -80,7 +82,6 @@ func TestLiteralExpression(t *testing.T) {
 }` + "`, Sid, newpolicy, Effect, Allow)"},
 	}
 	for _, c := range cases {
-		c := c
 		testGenerateExpression(t, c.hcl2Expr, c.goCode, nil, nil)
 	}
 }
@@ -88,7 +89,7 @@ func TestLiteralExpression(t *testing.T) {
 func TestBinaryOpExpression(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": model.BoolType,
 		"b": model.BoolType,
 		"c": model.NumberType,
@@ -125,7 +126,7 @@ func TestBinaryOpExpression(t *testing.T) {
 func TestUnaryOpExrepssion(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": model.NumberType,
 		"b": model.BoolType,
 	})
@@ -146,7 +147,7 @@ func TestUnaryOpExrepssion(t *testing.T) {
 func TestArgumentTypeName(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 	noneTypeName := g.argumentTypeName(model.NoneType, false /*isInput*/)
 	assert.Equal(t, "", noneTypeName)
 
@@ -191,7 +192,7 @@ func TestArgumentTypeName(t *testing.T) {
 	})
 
 	plainUniformObjectType := g.argumentTypeName(uniformObjectType, false /*isInput*/)
-	assert.Equal(t, "map[string]interface{}", plainUniformObjectType)
+	assert.Equal(t, "map[string]int", plainUniformObjectType)
 	inputUniformObjectType := g.argumentTypeName(uniformObjectType, true /*isInput*/)
 	assert.Equal(t, "pulumi.IntMap", inputUniformObjectType)
 
@@ -210,6 +211,19 @@ func TestArgumentTypeName(t *testing.T) {
 	inputDynamicListType := g.argumentTypeName(model.NewListType(model.DynamicType), true /*isInput*/)
 	assert.Equal(t, "pulumi.Array", inputDynamicListType)
 
+	// Asset and Archive opaque types must be qualified with the pulumi package, otherwise nested compositions
+	// render bare names like []AssetMap which is invalid Go.
+	assert.Equal(t, "pulumi.AssetOrArchive", g.argumentTypeName(pcl.AssetType, false /*isInput*/))
+	assert.Equal(t, "pulumi.AssetOrArchive", g.argumentTypeName(pcl.AssetType, true /*isInput*/))
+	assert.Equal(t, "pulumi.Archive", g.argumentTypeName(pcl.ArchiveType, false /*isInput*/))
+	assert.Equal(t, "pulumi.Archive", g.argumentTypeName(pcl.ArchiveType, true /*isInput*/))
+	assert.Equal(t,
+		"pulumi.AssetOrArchiveArrayMap",
+		g.argumentTypeName(
+			model.NewObjectType(map[string]model.Type{"k": model.NewListType(pcl.AssetType)}),
+			true, /*isInput*/
+		))
+
 	// assert that the Output[T] + input=false is the same as T + input=true
 	// in this case where T = string
 	assert.Equal(t,
@@ -220,11 +234,9 @@ func TestArgumentTypeName(t *testing.T) {
 func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 
 	notYetImplementedFunctions := []string{
-		"split",
-		"element",
 		"entries",
 		"lookup",
 		"range",
@@ -243,7 +255,7 @@ func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {
 func TestGeneratingGoOptionalFunctions(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 
 	testCases := []struct {
 		expr      *model.FunctionCallExpression
@@ -300,20 +312,20 @@ func TestConditionalExpression(t *testing.T) {
 
 	cases := []exprTestCase{
 		{
-			hcl2Expr: "true ? 1 : 0",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 1\n} else {\ntmp0 = 0\n}\ntmp0",
+			hcl2Expr: "true ? 1.5 : 0.5",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 1.5\n} else {\ntmp0 = 0.5\n}\ntmp0",
 		},
 		{
-			hcl2Expr: "true ? 1 : true ? 0 : -1",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 0\n} else {\ntmp0 = -1\n}\nvar tmp1 float64\nif true {\ntmp1 = 1\n} else {\ntmp1 = tmp0\n}\ntmp1",
+			hcl2Expr: "true ? 1.5 : true ? 0.5 : -1.5",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 0.5\n} else {\ntmp0 = -1.5\n}\nvar tmp1 float64\nif true {\ntmp1 = 1.5\n} else {\ntmp1 = tmp0\n}\ntmp1",
 		},
 		{
-			hcl2Expr: "true ? true ? 0 : -1 : 0",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 0\n} else {\ntmp0 = -1\n}\nvar tmp1 float64\nif true {\ntmp1 = tmp0\n} else {\ntmp1 = 0\n}\ntmp1",
+			hcl2Expr: "true ? true ? 0.5 : -1.5 : 0.5",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 0.5\n} else {\ntmp0 = -1.5\n}\nvar tmp1 float64\nif true {\ntmp1 = tmp0\n} else {\ntmp1 = 0.5\n}\ntmp1",
 		},
 		{
-			hcl2Expr: "{foo = true ? 2 : 0}",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2\n} else {\ntmp0 = 0\n}\nmap[string]interface{}{\n\"foo\": tmp0,\n}",
+			hcl2Expr: "{foo = true ? 2.5 : 0.5}",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2.5\n} else {\ntmp0 = 0.5\n}\nmap[string]float64{\n\"foo\": tmp0,\n}",
 		},
 	}
 	genFunc := func(w io.Writer, g *generator, e model.Expression) {
@@ -329,31 +341,35 @@ func TestConditionalExpression(t *testing.T) {
 func TestObjectConsExpression(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": model.StringType,
 	})
 	scope := env.scope()
 	cases := []exprTestCase{
 		{
+			hcl2Expr: "{foo = 1.5, bar = \"baz\"}",
+			goCode:   "map[string]interface{}{\n\"foo\": 1.5,\n\"bar\": \"baz\",\n}",
+		},
+		{
 			// TODO probably a bug in the binder. Single value objects should just be maps
-			hcl2Expr: "{foo = 1}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1,\n}",
+			hcl2Expr: "{foo = 1.5}",
+			goCode:   "map[string]float64{\n\"foo\": 1.5,\n}",
 		},
 		{
-			hcl2Expr: "{\"foo\" = 1}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1,\n}",
+			hcl2Expr: "{\"foo\" = 1.5}",
+			goCode:   "map[string]float64{\n\"foo\": 1.5,\n}",
 		},
 		{
-			hcl2Expr: "{1 = 1}",
-			goCode:   "map[string]interface{}{\n\"1\": 1,\n}",
+			hcl2Expr: "{1 = 1.5}",
+			goCode:   "map[string]float64{\n\"1\": 1.5,\n}",
 		},
 		{
-			hcl2Expr: "{(a) = 1}",
-			goCode:   "map[string]float64{\na: 1,\n}",
+			hcl2Expr: "{(a) = 1.5}",
+			goCode:   "map[string]float64{\na: 1.5,\n}",
 		},
 		{
-			hcl2Expr: "{(a+a) = 1}",
-			goCode:   "map[string]float64{\na + a: 1,\n}",
+			hcl2Expr: "{(a+a) = 1.5}",
+			goCode:   "map[string]float64{\na + a: 1.5,\n}",
 		},
 	}
 	for _, c := range cases {
@@ -361,10 +377,48 @@ func TestObjectConsExpression(t *testing.T) {
 	}
 }
 
+func TestIntrinsicConvertScopeTraversalToOutputScalar(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
+	var index bytes.Buffer
+
+	expr := pcl.NewConvertCall(
+		model.VariableReference(&model.Variable{Name: "notSecret", VariableType: model.StringType}),
+		model.NewOutputType(model.StringType),
+	)
+
+	g.Fgenf(&index, "%v", expr)
+	assert.Equal(t, "pulumi.String(notSecret)", index.String())
+}
+
+// Regression test for pulumi/pulumi#22256.
+func TestIntrinsicConvertScopeTraversalToInputScalarNoDoubleWrap(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
+	var index bytes.Buffer
+
+	// Resource argument Input<T> binds as union(T, Output<T>) annotated with
+	// schema.InputType.
+	inputType := model.NewUnionTypeAnnotated(
+		[]model.Type{model.StringType, model.NewOutputType(model.StringType)},
+		&schema.InputType{ElementType: schema.StringType},
+	)
+
+	expr := pcl.NewConvertCall(
+		model.VariableReference(&model.Variable{Name: "bucketName", VariableType: model.StringType}),
+		inputType,
+	)
+
+	g.Fgenf(&index, "%v", expr)
+	assert.Equal(t, "pulumi.String(bucketName)", index.String())
+}
+
 func TestTupleConsExpression(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]interface{}{
+	env := environment(map[string]any{
 		"a": model.StringType,
 	})
 	scope := env.scope()
@@ -378,20 +432,19 @@ func TestTupleConsExpression(t *testing.T) {
 			goCode:   "[]string{\n\"foo\",\n\"bar\",\n\"baz\",\n}",
 		},
 		{
-			hcl2Expr: "[1]",
-			goCode:   "[]float64{\n1,\n}",
+			hcl2Expr: "[1.5]",
+			goCode:   "[]float64{\n1.5,\n}",
 		},
 		{
-			hcl2Expr: "[1,2,3]",
-			goCode:   "[]float64{\n1,\n2,\n3,\n}",
+			hcl2Expr: "[1.5,2.5,3.5]",
+			goCode:   "[]float64{\n1.5,\n2.5,\n3.5,\n}",
 		},
 		{
-			hcl2Expr: "[1,\"foo\"]",
-			goCode:   "[]interface{}{\n1,\n\"foo\",\n}",
+			hcl2Expr: "[1.5,\"foo\"]",
+			goCode:   "[]interface{}{\n1.5,\n\"foo\",\n}",
 		},
 	}
 	for _, c := range cases {
-		c := c
 		testGenerateExpression(t, c.hcl2Expr, c.goCode, scope, nil)
 	}
 }
@@ -406,7 +459,7 @@ func testGenerateExpression(
 		t.Parallel()
 
 		// test program is only for schema info
-		g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+		g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 		var index bytes.Buffer
 		expr, _ := model.BindExpressionText(hcl2Expr, scope, hcl.Pos{})
 		if gen != nil {

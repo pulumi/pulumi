@@ -1,0 +1,142 @@
+// Copyright 2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package ints
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/tests/testutil"
+	"github.com/stretchr/testify/require"
+)
+
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonResourceHooks(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "step-1"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "..", "sdk", "python"),
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			testutil.RequirePrinted(t, stack, "info", "before_create was called with length = 10")
+			testutil.RequirePrinted(t, stack, "info", "fun_comp was called with child")
+		},
+		EditDirs: []integration.EditDir{{
+			Additive: true,
+			Dir:      filepath.Join("python", "step-2"),
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				testutil.RequirePrinted(t, stack, "info", "before_delete was called with length = 10")
+			},
+		}},
+	})
+}
+
+// Test that a transform can modify resource hooks
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonResourceHooksTransform(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: "python_transform",
+		Dependencies: []string{
+			filepath.Join("..", "..", "..", "sdk", "python"),
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			text := "fun was called with length = 10"
+			found := false
+			textComp := "fun_comp was called with child"
+			foundComp := false
+			textChild := "fun_child was called with length = 7"
+			foundChild := false
+			for _, event := range stackInfo.Events {
+				if event.DiagnosticEvent != nil {
+					if strings.Contains(event.DiagnosticEvent.Message, text) {
+						found = true
+					}
+					if strings.Contains(event.DiagnosticEvent.Message, textComp) {
+						foundComp = true
+					}
+					if strings.Contains(event.DiagnosticEvent.Message, textChild) {
+						foundChild = true
+					}
+				}
+			}
+			b, err := json.Marshal(stackInfo.Events)
+			require.NoError(t, err)
+			require.True(t, found, "expected hook to print a message for the resource, got: %s", b)
+			require.True(t, foundComp, "expected hook to print a message for the component, got: %s", b)
+			require.True(t, foundChild, "expected hook to print a message for the component's child, got: %s", b)
+		},
+	})
+}
+
+// Test that hooks receives secrets as secret outputs
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonResourceHooksSecrets(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: "python_secret",
+		Dependencies: []string{
+			filepath.Join("..", "..", "..", "sdk", "python"),
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			testutil.RequirePrinted(t, stack, "info", "hook called")
+		},
+	})
+}
+
+// Test that a hook can be declared via a decorator on a function.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonHookDecorator(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: "python_hook_decorator",
+		Dependencies: []string{
+			filepath.Join("..", "..", "..", "sdk", "python"),
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
+		},
+		PreviewCompletedHook: func(dir string) error {
+			matches, err := filepath.Glob(filepath.Join(dir, "command-output", "pulumi-preview-initial*.log"))
+			require.NoError(t, err)
+			require.NotEmpty(t, matches, "expected pulumi preview log file")
+
+			previewLog, err := os.ReadFile(matches[0])
+			require.NoError(t, err)
+			require.Contains(t, string(previewLog), "hook called True")
+			return nil
+		},
+		SkipEmptyPreviewUpdate: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			testutil.RequirePrinted(t, stack, "info", "hook called False")
+		},
+	})
+}

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,20 +36,20 @@ import (
 func TestTokenSource(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	dur := 20 * time.Millisecond
 	clock := clockwork.NewFakeClock()
 	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock, t: t}
 
 	tok0, tok0Expires := backend.NewToken(dur)
 	ts, err := newTokenSource(ctx, clock, tok0, tok0Expires, dur, backend.Refresh)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer ts.Close()
 
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		tok, err := ts.GetToken(ctx)
-		assert.NoError(t, err)
-		assert.NoError(t, backend.VerifyToken(tok))
+		require.NoError(t, err)
+		require.NoError(t, backend.VerifyToken(tok))
 		t.Logf("STEP: %d, TOKEN: %s", i, tok)
 
 		// tok0 initially
@@ -70,7 +70,7 @@ func TestTokenSource(t *testing.T) {
 func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	dur := 80 * time.Millisecond
 	clock := clockwork.NewFakeClock()
 	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock, t: t}
@@ -80,7 +80,7 @@ func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 	require.NoError(t, err)
 	defer ts.Close()
 
-	for i := 0; i < 80; i++ {
+	for i := range 80 {
 		tok, err := ts.GetToken(ctx)
 		require.NoError(t, err)
 		require.NoError(t, backend.VerifyToken(tok))
@@ -112,7 +112,7 @@ func TestTokenSourceWithClient(t *testing.T) {
 	defer server.Close()
 
 	apiClient := client.NewClient(server.URL, "fake-token", true, nil)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	clock := clockwork.NewFakeClock()
 

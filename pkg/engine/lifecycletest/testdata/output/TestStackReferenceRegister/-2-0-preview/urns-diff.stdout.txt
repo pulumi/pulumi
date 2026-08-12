@@ -1,0 +1,4 @@
+<{%reset%}>  urn:pulumi:test::test::pulumi:pulumi:StackReference::other: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged

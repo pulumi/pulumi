@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package python
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -82,9 +83,7 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 
 		if objectKey && isLegalIdentifier(keyVal) {
 			currentTraversal = append(currentTraversal, traverser)
-			if i < len(traversal)-1 {
-				currentParts = append(currentParts, parts[i+1])
-			}
+			currentParts = append(currentParts, parts[i+1])
 			continue
 		}
 
@@ -292,10 +291,8 @@ func (qa *quoteAllocator) freeExpression(x model.Expression) (model.Expression, 
 }
 
 func (g *generator) rewriteQuotes(x model.Expression) (model.Expression, []*quoteTemp, hcl.Diagnostics) {
-	var diagnostics hcl.Diagnostics
-
 	// First, rewrite traversals that require string indices into index expressions.
-	x, rewriteDiags := model.VisitExpression(x, nil, func(x model.Expression) (model.Expression, hcl.Diagnostics) {
+	x, rewriteDiags1 := model.VisitExpression(x, nil, func(x model.Expression) (model.Expression, hcl.Diagnostics) {
 		switch x := x.(type) {
 		case *model.RelativeTraversalExpression:
 			idx := g.rewriteTraversal(x.Traversal, x.Source, x.Parts)
@@ -303,6 +300,9 @@ func (g *generator) rewriteQuotes(x model.Expression) (model.Expression, []*quot
 				return idx, nil
 			}
 		case *model.ScopeTraversalExpression:
+			if isHookArgsTraversal(x) {
+				return x, nil
+			}
 			idx := g.rewriteTraversal(x.Traversal, nil, x.Parts)
 			if idx != nil {
 				return idx, nil
@@ -310,15 +310,15 @@ func (g *generator) rewriteQuotes(x model.Expression) (model.Expression, []*quot
 		}
 		return x, nil
 	})
-	diagnostics = append(diagnostics, rewriteDiags...)
 
 	// Then lift any expressions that cannot be allocated quotes into temps.
 	allocations := &quoteAllocations{
 		quotes: g.quotes,
 	}
 	allocator := &quoteAllocator{allocated: codegen.StringSet{}, allocations: allocations}
-	x, rewriteDiags = model.VisitExpression(x, allocator.allocateExpression, allocator.freeExpression)
-	diagnostics = append(diagnostics, rewriteDiags...)
+	x, rewriteDiags2 := model.VisitExpression(x, allocator.allocateExpression, allocator.freeExpression)
+
+	diagnostics := slices.Concat(rewriteDiags1, rewriteDiags2)
 
 	return x, allocations.temps, diagnostics
 }

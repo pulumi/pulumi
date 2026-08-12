@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package operations
 
 import (
+	"context"
 	"time"
 )
 
@@ -51,6 +52,6 @@ type LogQuery struct {
 // state of a Component (or Components)
 type Provider interface {
 	// GetLogs returns logs matching a query
-	GetLogs(query LogQuery) (*[]LogEntry, error)
+	GetLogs(ctx context.Context, query LogQuery) (*[]LogEntry, error)
 	// TODO[pulumi/pulumi#609] Add support for metrics
 }

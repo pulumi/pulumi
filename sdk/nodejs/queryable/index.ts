@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,12 +15,11 @@
 import { OutputInstance } from "../index";
 import { Resource } from "../resource";
 
+// Note: The @pulumi/policy npm package depends on ResolvedResource.
+
 /**
  * {@link ResolvedResource} is a {@link Resource} with all fields containing
- * {@link Output} values fully resolved. This is useful primarily when we're
- * querying over resource outputs (e.g., using
- * `pulumi.runtime.listResourceOutputs`), and we expect all values to be present
- * and fully-resolved.
+ * {@link Output} values fully resolved.
  */
 export type ResolvedResource<T extends Resource> = Omit<Resolved<T>, "urn" | "getProvider">;
 

@@ -55,11 +55,6 @@ class ResourceProviderStub(object):
                 request_serializer=pulumi_dot_provider__pb2.InvokeRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.InvokeResponse.FromString,
                 )
-        self.StreamInvoke = channel.unary_stream(
-                '/pulumirpc.ResourceProvider/StreamInvoke',
-                request_serializer=pulumi_dot_provider__pb2.InvokeRequest.SerializeToString,
-                response_deserializer=pulumi_dot_provider__pb2.InvokeResponse.FromString,
-                )
         self.Call = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Call',
                 request_serializer=pulumi_dot_provider__pb2.CallRequest.SerializeToString,
@@ -84,6 +79,11 @@ class ResourceProviderStub(object):
                 '/pulumirpc.ResourceProvider/Read',
                 request_serializer=pulumi_dot_provider__pb2.ReadRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.ReadResponse.FromString,
+                )
+        self.List = channel.unary_stream(
+                '/pulumirpc.ResourceProvider/List',
+                request_serializer=pulumi_dot_provider__pb2.ListRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.ListResponse.FromString,
                 )
         self.Update = channel.unary_unary(
                 '/pulumirpc.ResourceProvider/Update',
@@ -265,14 +265,6 @@ class ResourceProviderServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def StreamInvoke(self, request, context):
-        """StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
-        of responses.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
     def Call(self, request, context):
         """Call dynamically executes a method in the provider associated with a component resource.
         """
@@ -327,6 +319,14 @@ class ResourceProviderServicer(object):
         """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
         must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
         include other properties.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def List(self, request, context):
+        """`List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+        emit a continuation token indicating another page is available.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -472,11 +472,6 @@ def add_ResourceProviderServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_provider__pb2.InvokeRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.InvokeResponse.SerializeToString,
             ),
-            'StreamInvoke': grpc.unary_stream_rpc_method_handler(
-                    servicer.StreamInvoke,
-                    request_deserializer=pulumi_dot_provider__pb2.InvokeRequest.FromString,
-                    response_serializer=pulumi_dot_provider__pb2.InvokeResponse.SerializeToString,
-            ),
             'Call': grpc.unary_unary_rpc_method_handler(
                     servicer.Call,
                     request_deserializer=pulumi_dot_provider__pb2.CallRequest.FromString,
@@ -501,6 +496,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
                     servicer.Read,
                     request_deserializer=pulumi_dot_provider__pb2.ReadRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.ReadResponse.SerializeToString,
+            ),
+            'List': grpc.unary_stream_rpc_method_handler(
+                    servicer.List,
+                    request_deserializer=pulumi_dot_provider__pb2.ListRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.ListResponse.SerializeToString,
             ),
             'Update': grpc.unary_unary_rpc_method_handler(
                     servicer.Update,
@@ -676,23 +676,6 @@ class ResourceProvider(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def StreamInvoke(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/pulumirpc.ResourceProvider/StreamInvoke',
-            pulumi_dot_provider__pb2.InvokeRequest.SerializeToString,
-            pulumi_dot_provider__pb2.InvokeResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
     def Call(request,
             target,
             options=(),
@@ -774,6 +757,23 @@ class ResourceProvider(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Read',
             pulumi_dot_provider__pb2.ReadRequest.SerializeToString,
             pulumi_dot_provider__pb2.ReadResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def List(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/pulumirpc.ResourceProvider/List',
+            pulumi_dot_provider__pb2.ListRequest.SerializeToString,
+            pulumi_dot_provider__pb2.ListResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

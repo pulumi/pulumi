@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ func columnPadding(columns []string, columnIndex int, maxColumnWidths []int) str
 // the msg will be truncated to try to make it fit.
 func renderRow(columns []string, maxColumnWidths []int) string {
 	var row strings.Builder
-	for i := 0; i < len(columns); i++ {
+	for i := range columns {
 		row.WriteString(columnPadding(columns, i-1, maxColumnWidths))
 		row.WriteString(columns[i])
 	}

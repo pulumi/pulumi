@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,14 +18,17 @@ import (
 	"context"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 // TestResourceReferences tests that resource references can be marshaled between the engine, language host,
@@ -62,6 +65,7 @@ func TestResourceReferences(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  req.Inputs,
 							Outputs: req.State,
 						},
@@ -76,14 +80,14 @@ func TestResourceReferences(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
 		respA, err := monitor.RegisterResource("component", "resA", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnA = respA.URN
 
 		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnB, idB = respB.URN, respB.ID
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
@@ -92,7 +96,7 @@ func TestResourceReferences(t *testing.T) {
 				"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
 			},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		assert.True(t, resp.Outputs.DeepEquals(resource.PropertyMap{
 			"resA": resource.MakeComponentResourceReference(urnA, ""),
@@ -100,7 +104,7 @@ func TestResourceReferences(t *testing.T) {
 		}))
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -145,6 +149,7 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  req.Inputs,
 							Outputs: req.State,
 						},
@@ -160,28 +165,28 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
 		respA, err := monitor.RegisterResource("component", "resA", false, opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnA = respA.URN
 
 		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnB, idB = respB.URN, respB.ID
 
 		respC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, opts)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		assert.Equal(t, resource.NewStringProperty(string(urnA)), respC.Outputs["resA"])
+		assert.Equal(t, resource.NewProperty(string(urnA)), respC.Outputs["resA"])
 		if idB != "" {
-			assert.Equal(t, resource.NewStringProperty(string(idB)), respC.Outputs["resB"])
+			assert.Equal(t, resource.NewProperty(string(idB)), respC.Outputs["resB"])
 		} else {
 			assert.True(t, respC.Outputs["resB"].IsComputed())
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -210,7 +215,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 
 					// If we have resource references here, the engine has not properly disabled them.
 					if req.URN.Name() == "resC" {
-						assert.Equal(t, resource.NewStringProperty(string(urnA)), req.Properties["resA"])
+						assert.Equal(t, resource.NewProperty(string(urnA)), req.Properties["resA"])
 						assert.Equal(t, refB.ResourceReferenceValue().ID, req.Properties["resB"])
 					}
 
@@ -223,6 +228,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  req.Inputs,
 							Outputs: req.State,
 						},
@@ -237,14 +243,14 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		var err error
 		respA, err := monitor.RegisterResource("component", "resA", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		urnA = respA.URN
 
 		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		refB = resource.MakeCustomResourceReference(respB.URN, respB.ID, "")
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
@@ -253,9 +259,9 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 				"resB": refB,
 			},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		assert.Equal(t, resource.NewStringProperty(string(urnA)), resp.Outputs["resA"])
+		assert.Equal(t, resource.NewProperty(string(urnA)), resp.Outputs["resA"])
 		if refB.ResourceReferenceValue().ID.IsComputed() {
 			assert.True(t, resp.Outputs["resB"].IsComputed())
 		} else {
@@ -264,7 +270,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -301,6 +307,7 @@ func TestResourceReferences_GetResource(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  req.Inputs,
 							Outputs: req.State,
 						},
@@ -314,7 +321,7 @@ func TestResourceReferences_GetResource(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		childResp, err := monitor.RegisterResource("pkgA:m:typChild", "resChild", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		refChild := resource.MakeCustomResourceReference(childResp.URN, childResp.ID, "")
 		resp, err := monitor.RegisterResource("pkgA:m:typContainer", "resContainer", true,
@@ -323,24 +330,24 @@ func TestResourceReferences_GetResource(t *testing.T) {
 					"child": refChild,
 				},
 			})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Expect the `child` property from `resContainer`'s state to come back from 'pulumi:pulumi:getResource'
 		// as a resource reference.
 		result, failures, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
-			"urn": resource.NewStringProperty(string(resp.URN)),
+			"urn": resource.NewProperty(string(resp.URN)),
 		}, "", "", "")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, failures)
-		assert.Equal(t, resource.NewStringProperty(string(resp.URN)), result["urn"])
-		assert.Equal(t, resource.NewStringProperty(string(resp.ID)), result["id"])
+		assert.Equal(t, resource.NewProperty(string(resp.URN)), result["urn"])
+		assert.Equal(t, resource.NewProperty(string(resp.ID)), result["id"])
 		state := result["state"].ObjectValue()
 		assert.Equal(t, refChild, state["child"])
 
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -348,4 +355,115 @@ func TestResourceReferences_GetResource(t *testing.T) {
 		Steps:   lt.MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
+}
+
+// TestResourceReferences_NameAndTypeFilledByEngine tests that Name and Type are filled in by the engine before
+// passing resource references to Construct calls and program code, even when the originating side omitted them.
+func TestResourceReferences_NameAndTypeFilledByEngine(t *testing.T) {
+	t.Parallel()
+
+	var sourceURN resource.URN
+	var sourceID resource.ID
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id := "created-id"
+					if req.Preview {
+						id = ""
+					}
+					return plugin.CreateResponse{
+						ID:         resource.ID(id),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					ref := req.Inputs["ref"].ResourceReferenceValue()
+					assert.Equal(t, sourceURN, ref.URN)
+					assert.Equal(t, sourceURN.Name(), ref.Name)
+					assert.Equal(t, string(sourceURN.Type()), ref.Type)
+
+					component, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+						Parent: req.Parent,
+					})
+					require.NoError(t, err)
+
+					// Echo the reference back while intentionally omitting Name/Type to validate
+					// the engine fills them before they reach the program.
+					outputs := resource.PropertyMap{
+						"echo": resource.NewProperty(resource.ResourceReference{
+							URN: ref.URN,
+							ID:  ref.ID,
+						}),
+					}
+					err = monitor.RegisterResourceOutputs(component.URN, outputs)
+					require.NoError(t, err)
+
+					return plugin.ConstructResponse{
+						URN:     component.URN,
+						Outputs: outputs,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		sourceResp, err := monitor.RegisterResource("pkgA:m:source", "source", true)
+		require.NoError(t, err)
+		sourceURN, sourceID = sourceResp.URN, sourceResp.ID
+
+		refID := resource.NewProperty(string(sourceID))
+		if sourceID == "" {
+			refID = resource.MakeComputed(resource.NewProperty(""))
+		}
+		inputRef := resource.NewProperty(resource.ResourceReference{
+			URN: sourceURN,
+			ID:  refID,
+		})
+		assert.Empty(t, inputRef.ResourceReferenceValue().Name)
+		assert.Empty(t, inputRef.ResourceReferenceValue().Type)
+
+		componentResp, err := monitor.RegisterResource("pkgA:m:component", "component", false, deploytest.ResourceOptions{
+			Remote: true,
+			Inputs: resource.PropertyMap{
+				"ref": inputRef,
+			},
+		})
+		require.NoError(t, err)
+
+		echo := componentResp.Outputs["echo"].ResourceReferenceValue()
+		assert.Equal(t, sourceURN, echo.URN)
+		assert.Equal(t, sourceURN.Name(), echo.Name)
+		assert.Equal(t, string(sourceURN.Type()), echo.Type)
+		assert.True(t, echo.ID.DeepEquals(refID))
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	snap, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil),
+		p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	var componentState *pkgresource.State
+	for _, res := range snap.Resources {
+		if res.URN.Name() == "component" && res.Type == "pkgA:m:component" {
+			componentState = res
+			break
+		}
+	}
+	require.NotNil(t, componentState)
+
+	echo := componentState.Outputs["echo"]
+	assert.True(t, echo.IsResourceReference())
 }

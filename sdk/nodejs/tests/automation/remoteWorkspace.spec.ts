@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -221,6 +221,35 @@ describe("RemoteWorkspace", () => {
                     remoteInheritSettings: true,
                 },
                 expected: ["--remote", "--remote-inherit-settings"],
+            },
+            {
+                name: "remote image",
+                opts: {
+                    remote: true,
+                    remoteExecutorImage: {
+                        image: "test-image",
+                    },
+                },
+                expected: ["--remote", "--remote-executor-image=test-image"],
+            },
+            {
+                name: "remote image credentials",
+                opts: {
+                    remote: true,
+                    remoteExecutorImage: {
+                        image: "test-image",
+                        credentials: {
+                            username: "foo",
+                            password: "bar",
+                        },
+                    },
+                },
+                expected: [
+                    "--remote",
+                    "--remote-executor-image=test-image",
+                    "--remote-executor-image-username=foo",
+                    "--remote-executor-image-password=bar",
+                ],
             },
         ];
         tests.forEach((test) => {

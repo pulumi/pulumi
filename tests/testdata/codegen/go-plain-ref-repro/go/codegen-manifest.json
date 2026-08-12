@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "repro/doc.go",
     "repro/ecs/fargateTaskDefinition.go",
     "repro/ecs/init.go",

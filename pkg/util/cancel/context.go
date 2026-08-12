@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,6 +59,10 @@ func NewContext(ctx context.Context) (*Context, *Source) {
 		cancel:    cancel,
 	}
 	return c, s
+}
+
+func (c *Context) Base() context.Context {
+	return c.cancel
 }
 
 // Canceled returns a channel that will be closed when the context is canceled or terminated.

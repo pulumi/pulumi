@@ -1,0 +1,5 @@
+[project]
+name = "some-project"
+version = "0.1.0"
+description = "A Python project inside a uv workspace"
+dependencies = []

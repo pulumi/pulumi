@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
@@ -83,9 +84,7 @@ func TestInvalidRemoteFlags(t *testing.T) {
 	}
 
 	for _, command := range commands {
-		command := command
 		for name, tc := range tests {
-			tc := tc
 			t.Run(command+"_"+name, func(t *testing.T) {
 				t.Parallel()
 
@@ -129,7 +128,7 @@ func TestRemoteLifecycle(t *testing.T) {
 	randomSuffix := func() string {
 		b := make([]byte, 4)
 		_, err := rand.Read(b)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return hex.EncodeToString(b)
 	}
 

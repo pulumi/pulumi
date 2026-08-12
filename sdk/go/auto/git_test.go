@@ -1,10 +1,10 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,15 +15,16 @@
 package auto
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
-	git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
+	git "github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/config"
+	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/go-git/go-git/v6/plumbing/object"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // This takes the unusual step of testing an unexported func. The rationale is to be able to test
@@ -39,9 +40,19 @@ func TestGitClone(t *testing.T) {
 	originDir := filepath.Join(tmpDir, "origin")
 
 	origin, err := git.PlainInit(originDir, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+
+	// go-git v6 honors commit.gpgSign / tag.gpgSign from the user's git config.
+	// Disable it on this scratch repo so committing here doesn't
+	// depend on the environment's signing configuration.
+	cfg, err := origin.Config()
+	require.NoError(t, err)
+	cfg.Commit.GpgSign = config.OptBoolFalse
+	cfg.Tag.GpgSign = config.OptBoolFalse
+	require.NoError(t, origin.SetConfig(cfg))
+
 	w, err := origin.Worktree()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	nondefaultHead, err := w.Commit("nondefault branch", &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  "testo",
@@ -49,27 +60,27 @@ func TestGitClone(t *testing.T) {
 		},
 		AllowEmptyCommits: true,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// The following sets up some tags and branches: with `default` becoming the "default" branch
 	// when cloning, since it's left as the HEAD of the repo.
 
-	assert.NoError(t, w.Checkout(&git.CheckoutOptions{
+	require.NoError(t, w.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName("nondefault"),
 		Create: true,
 	}))
 
 	// tag the nondefault head so we can test getting a tag too
 	_, err = origin.CreateTag("v0.0.1", nondefaultHead, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// make a branch with slashes in it, so that can be tested too
-	assert.NoError(t, w.Checkout(&git.CheckoutOptions{
+	require.NoError(t, w.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName("branch/with/slashes"),
 		Create: true,
 	}))
 
-	assert.NoError(t, w.Checkout(&git.CheckoutOptions{
+	require.NoError(t, w.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName("default"),
 		Create: true,
 	}))
@@ -80,7 +91,7 @@ func TestGitClone(t *testing.T) {
 		},
 		AllowEmptyCommits: true,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	type testcase struct {
 		branchName    string
@@ -110,7 +121,6 @@ func TestGitClone(t *testing.T) {
 		{testName: "head of default as hash", commitHash: defaultHead.String(), expectedHead: defaultHead},
 		{testName: "head of nondefault as hash", commitHash: nondefaultHead.String(), expectedHead: nondefaultHead},
 	} {
-		tc := tc
 		if tc.testName == "" {
 			tc.testName = tc.branchName
 		}
@@ -124,15 +134,15 @@ func TestGitClone(t *testing.T) {
 
 			//nolint:usetesting // Need to use a specific location for the tmp dir
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			_, err = setupGitRepo(context.Background(), tmp, repo)
-			assert.NoError(t, err)
+			_, err = setupGitRepo(t.Context(), tmp, repo)
+			require.NoError(t, err)
 
 			r, err := git.PlainOpen(tmp)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			head, err := r.Head()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tc.expectedHead, head.Hash())
 		})
 	}
@@ -166,7 +176,6 @@ func TestGitClone(t *testing.T) {
 				"but got \"refs/remotes/upstream/default\"",
 		},
 	} {
-		tc := tc
 		if tc.testName == "" {
 			tc.testName = tc.branchName
 		}
@@ -180,9 +189,9 @@ func TestGitClone(t *testing.T) {
 
 			//nolint:usetesting // Need to use a specific location for the tmp dir
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			_, err = setupGitRepo(context.Background(), tmp, repo)
+			_, err = setupGitRepo(t.Context(), tmp, repo)
 			assert.EqualError(t, err, tc.expectedError)
 		})
 	}

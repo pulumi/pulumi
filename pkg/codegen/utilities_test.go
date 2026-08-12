@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,54 +16,32 @@ package codegen
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 )
-
-func readSchemaFile(file string) (pkgSpec schema.PackageSpec) {
-	// Read in, decode, and import the schema.
-	schemaBytes, err := os.ReadFile(filepath.Join("testing", "test", "testdata", file))
-	if err != nil {
-		panic(err)
-	}
-
-	if strings.HasSuffix(file, ".json") {
-		if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
-			panic(err)
-		}
-	} else if strings.HasSuffix(file, ".yaml") || strings.HasSuffix(file, ".yml") {
-		if err = yaml.Unmarshal(schemaBytes, &pkgSpec); err != nil {
-			panic(err)
-		}
-	} else {
-		panic("unknown schema file extension while parsing " + file)
-	}
-
-	return pkgSpec
-}
 
 func TestResolvingPackageReferences(t *testing.T) {
 	t.Parallel()
 
 	testdataPath := filepath.Join("testing", "test", "testdata")
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkgSpec := readSchemaFile("awsx-1.0.0-beta.5.json")
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
+	var pkgSpec schema.PackageSpec
+	require.NoError(t, json.Unmarshal(utils.ReadSchema(t, "remoteref", "1.0.0"), &pkgSpec))
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NotNil(t, pkg)
 	require.NoError(t, err)
 	require.Empty(t, diags)
-	// ensure that package references return aws because awsx depends on aws
+	// ensure that package references return goalias because remoteref depends on goalias
 	references := PackageReferences(pkg)
-	require.Equal(t, 1, len(references))
-	assert.Equal(t, "aws", references[0].Name())
+	require.Len(t, references, 1)
+	assert.Equal(t, "goalias", references[0].Name())
 }
 
 func TestStringSetContains(t *testing.T) {
@@ -92,23 +70,4 @@ func TestStringSetSubtract(t *testing.T) {
 	assert.Equal(t, set34, set1234.Subtract(set125))
 	assert.Equal(t, setEmpty, set1234.Subtract(set1234))
 	assert.Equal(t, set1234, set1234.Subtract(setEmpty))
-}
-
-func TestSimplifyInputUnion(t *testing.T) {
-	t.Parallel()
-
-	u1 := &schema.UnionType{
-		ElementTypes: []schema.Type{
-			&schema.InputType{ElementType: schema.StringType},
-			schema.NumberType,
-		},
-	}
-
-	u2 := SimplifyInputUnion(u1)
-	assert.Equal(t, &schema.UnionType{
-		ElementTypes: []schema.Type{
-			schema.StringType,
-			schema.NumberType,
-		},
-	}, u2)
 }

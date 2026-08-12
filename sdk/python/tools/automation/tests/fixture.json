@@ -1,0 +1,139 @@
+{
+  "type": "menu",
+  "flags": {
+    "color": {
+      "name": "color",
+      "type": "string",
+      "description": "Colorize output",
+      "omit": true
+    },
+    "verbose": {
+      "name": "verbose",
+      "type": "int",
+      "description": "Enable verbose logging"
+    }
+  },
+  "commands": {
+    "cancel": {
+      "type": "command",
+      "flags": {
+        "yes": {
+          "name": "yes",
+          "type": "boolean",
+          "description": "Skip confirmation prompts",
+          "omit": true,
+          "preset": true
+        },
+        "stack": {
+          "name": "stack",
+          "type": "string",
+          "description": "The name of the stack"
+        }
+      },
+      "arguments": {
+        "arguments": [
+          {
+            "name": "stack-name"
+          }
+        ]
+      }
+    },
+    "org": {
+      "type": "menu",
+      "executable": true,
+      "commands": {
+        "get-default": {
+          "type": "command",
+          "arguments": {
+            "arguments": []
+          }
+        },
+        "set-default": {
+          "type": "command",
+          "arguments": {
+            "arguments": [
+              {
+                "name": "name"
+              }
+            ],
+            "requiredArguments": 1
+          }
+        },
+        "search": {
+          "type": "menu",
+          "executable": true,
+          "flags": {
+            "org": {
+              "name": "org",
+              "type": "string",
+              "description": "Organization name"
+            },
+            "output": {
+              "name": "output",
+              "type": "string",
+              "description": "Output format"
+            },
+            "query": {
+              "name": "query",
+              "type": "string",
+              "repeatable": true,
+              "description": "Search query"
+            }
+          },
+          "commands": {
+            "ai": {
+              "type": "command",
+              "flags": {
+                "query": {
+                  "name": "query",
+                  "type": "string",
+                  "description": "Natural language query"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "state": {
+      "type": "menu",
+      "commands": {
+        "move": {
+          "type": "command",
+          "flags": {
+            "dest": {
+              "name": "dest",
+              "type": "string",
+              "description": "Destination stack"
+            },
+            "include-parents": {
+              "name": "include-parents",
+              "type": "boolean",
+              "description": "Include parent resources"
+            },
+            "source": {
+              "name": "source",
+              "type": "string",
+              "description": "Source stack"
+            },
+            "yes": {
+              "name": "yes",
+              "type": "boolean",
+              "description": "Skip confirmation",
+              "omit": true,
+              "preset": true
+            }
+          },
+          "arguments": {
+            "arguments": [
+              {
+                "name": "urn"
+              }
+            ],
+            "variadic": true
+          }
+        }
+      }
+    }
+  }
+}

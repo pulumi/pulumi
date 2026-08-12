@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@ package pcl
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // LocalVariable represents a program- or component-scoped local variable.
@@ -33,6 +35,13 @@ type LocalVariable struct {
 // SyntaxNode returns the syntax node associated with the local variable.
 func (lv *LocalVariable) SyntaxNode() hclsyntax.Node {
 	return lv.syntax
+}
+
+func (lv *LocalVariable) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	if value, hasValue := hcl2.LookupVariable(context, lv.Name()); hasValue {
+		return value, nil
+	}
+	return cty.DynamicVal, nil
 }
 
 func (lv *LocalVariable) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {

@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	codegenGo "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -28,11 +28,11 @@ import (
 
 // This specifically tests the synced examples from pulumi/yaml with
 // testing/test/testdata/transpiled_examples, as it requires a different SDK path in Check
+//
+//nolint:paralleltest // uses t.Chdir
 func TestGenerateProgram(t *testing.T) {
-	t.Parallel()
-
 	rootDir, err := filepath.Abs(filepath.Join("..", "..", "..", "..", ".."))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	test.GenerateGoYAMLBatchTest(
 		t,

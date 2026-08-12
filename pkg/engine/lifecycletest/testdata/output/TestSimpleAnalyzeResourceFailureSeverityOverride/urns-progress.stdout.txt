@@ -1,0 +1,11 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+Loading policy packs...: starting
+Loading policy packs...: done
+
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Policies:<{%reset%}>
+    ❌ <{%fg 5%}>analyzerA@v<{%reset%}>
+        - <{%fg 1%}>[mandatory] [severity: critical]  always-fails<{%reset%}>  (pkgA:m:typA: urn:pulumi:test::test::pkgA:m:typA::resA)
+          <{%reset%}>a policy failed<{%reset%}>
+

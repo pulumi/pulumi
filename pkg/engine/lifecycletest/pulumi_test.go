@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,8 +19,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"maps"
 	"os"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -35,31 +37,36 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func SuccessfulSteps(entries JournalEntries) []deploy.Step {
 	var steps []deploy.Step
 	for _, entry := range entries {
-		if entry.Kind == JournalEntrySuccess {
+		if entry.Kind == TestJournalEntrySuccess {
 			steps = append(steps, entry.Step)
 		}
 	}
@@ -82,6 +89,20 @@ func AssertSameSteps(t *testing.T, expected []StepSummary, actual []deploy.Step)
 		}
 	}
 	return true
+}
+
+func AssertSameStepsUnordered(t *testing.T, expected []StepSummary, actual []deploy.Step) {
+	require.Equal(t, len(expected), len(actual))
+	for _, exp := range expected {
+		found := false
+		for _, act := range actual {
+			if exp.Op == act.Op() && exp.URN == act.URN() {
+				found = true
+				break
+			}
+		}
+		require.True(t, found, "Expected step %v not found in actual steps.  Actual steps: %v", exp, actual)
+	}
 }
 
 func ExpectDiagMessage(t *testing.T, messagePattern string) lt.ValidateFunc {
@@ -126,6 +147,14 @@ func pickURN(t *testing.T, urns []resource.URN, names []string, target string) r
 
 func TestMain(m *testing.M) {
 	grpcDefault := flag.Bool("grpc-plugins", false, "enable or disable gRPC providers by default")
+	if (runtime.GOOS == "windows") && os.Getenv("PULUMI_FORCE_RUN_TESTS") == "" {
+		// These tests are skipped as part of enabling running unit tests on windows in
+		// https://github.com/pulumi/pulumi/pull/19653. These tests currently fail on Windows, and
+		// re-enabling them is left as future work.
+		// TODO[pulumi/pulumi#19675]: Re-enable tests on windows once they are fixed.
+		fmt.Println("Skip tests on windows until they are fixed")
+		os.Exit(0)
+	}
 
 	flag.Parse()
 
@@ -142,11 +171,27 @@ func TestEmptyProgramLifecycle(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   lt.MakeBasicLifecycleSteps(t, 0),
+	}
+	p.Run(t, nil)
+}
+
+func TestNoRuntimeLifecycle(t *testing.T) {
+	t.Parallel()
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
+		return errors.New("program should not run")
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil)
+
+	p := &lt.TestPlan{
+		NoRuntime: true,
+		Options:   lt.TestUpdateOptions{T: t, HostF: hostF},
+		Steps:     lt.MakeBasicLifecycleSteps(t, 0),
 	}
 	p.Run(t, nil)
 }
@@ -157,22 +202,30 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
-					return plugin.DiffResult{}, plugin.DiffUnavailable("diff unavailable")
+				DiffConfigF: func(ctx context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
+					return plugin.DiffConfigResponse{}, status.New(codes.Unimplemented, "DiffConfig not implemented").Err()
 				},
 			}, nil
-		}),
+		}, deploytest.WithGrpc),
 	}
 
 	inputs := resource.PropertyMap{}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(resp.URN, resp.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -181,11 +234,14 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
 
 	// Now run a preview. Expect a warning because the diff is unavailable.
-	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
+	inputs = resource.PropertyMap{
+		"input": resource.MakeComputed(resource.NewProperty("")),
+	}
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, err error,
 		) error {
@@ -193,16 +249,18 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 			for _, e := range events {
 				if e.Type == DiagEvent {
 					p := e.Payload().(DiagEventPayload)
-					if p.URN == resURN && p.Severity == diag.Warning && p.Message == "<{%reset%}>diff unavailable<{%reset%}>\n" {
+					if p.URN == resURN &&
+						p.Severity == diag.Warning &&
+						strings.Contains(p.Message, "The provider for this resource has inputs that are not known during preview.") {
 						found = true
 						break
 					}
 				}
 			}
-			assert.True(t, found)
+			assert.True(t, found, "Expected warning for resource %q saw %q", resURN, events)
 			return err
-		})
-	assert.NoError(t, err)
+		}, "1")
+	require.NoError(t, err)
 }
 
 // Test that ensures that we log diagnostics for resources that receive an error from Check. (Note that this
@@ -229,7 +287,7 @@ func TestCheckFailureRecord(t *testing.T) {
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []lt.TestStep{{
@@ -285,7 +343,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []lt.TestStep{{
@@ -332,7 +390,7 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 		return errors.New(errorText)
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []lt.TestStep{{
@@ -389,7 +447,7 @@ func TestBrokenDecrypter(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	key := config.MustMakeKey("foo", "bar")
 	msg := "decryption failed"
 	configMap := make(config.Map)
@@ -417,70 +475,6 @@ func TestBrokenDecrypter(t *testing.T) {
 	p.Run(t, nil)
 }
 
-func TestConfigPropertyMapMatches(t *testing.T) {
-	t.Parallel()
-
-	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		// Check that the config property map matches what we expect.
-		assert.Equal(t, 8, len(info.Config))
-		assert.Equal(t, 8, len(info.ConfigPropertyMap))
-
-		assert.Equal(t, "hunter2", info.Config[config.MustMakeKey("pkgA", "secret")])
-		assert.True(t, info.ConfigPropertyMap["pkgA:secret"].IsSecret())
-		assert.Equal(t, "hunter2", info.ConfigPropertyMap["pkgA:secret"].SecretValue().Element.StringValue())
-
-		assert.Equal(t, "all I see is ******", info.Config[config.MustMakeKey("pkgA", "plain")])
-		assert.False(t, info.ConfigPropertyMap["pkgA:plain"].IsSecret())
-		assert.Equal(t, "all I see is ******", info.ConfigPropertyMap["pkgA:plain"].StringValue())
-
-		assert.Equal(t, "1234", info.Config[config.MustMakeKey("pkgA", "int")])
-		assert.Equal(t, 1234.0, info.ConfigPropertyMap["pkgA:int"].NumberValue())
-
-		assert.Equal(t, "12.34", info.Config[config.MustMakeKey("pkgA", "float")])
-		// This is a string because adjustObjectValue only parses integers, not floats.
-		assert.Equal(t, "12.34", info.ConfigPropertyMap["pkgA:float"].StringValue())
-
-		assert.Equal(t, "012345", info.Config[config.MustMakeKey("pkgA", "string")])
-		assert.Equal(t, "012345", info.ConfigPropertyMap["pkgA:string"].StringValue())
-
-		assert.Equal(t, "true", info.Config[config.MustMakeKey("pkgA", "bool")])
-		assert.Equal(t, true, info.ConfigPropertyMap["pkgA:bool"].BoolValue())
-
-		assert.Equal(t, "[1,2,3]", info.Config[config.MustMakeKey("pkgA", "array")])
-		assert.Equal(t, 1.0, info.ConfigPropertyMap["pkgA:array"].ArrayValue()[0].NumberValue())
-		assert.Equal(t, 2.0, info.ConfigPropertyMap["pkgA:array"].ArrayValue()[1].NumberValue())
-		assert.Equal(t, 3.0, info.ConfigPropertyMap["pkgA:array"].ArrayValue()[2].NumberValue())
-
-		assert.Equal(t, `{"bar":"02","foo":1}`, info.Config[config.MustMakeKey("pkgA", "map")])
-		assert.Equal(t, 1.0, info.ConfigPropertyMap["pkgA:map"].ObjectValue()["foo"].NumberValue())
-		assert.Equal(t, "02", info.ConfigPropertyMap["pkgA:map"].ObjectValue()["bar"].StringValue())
-		return nil
-	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF)
-
-	crypter := config.NewSymmetricCrypter(make([]byte, 32))
-	secret, err := crypter.EncryptValue(context.Background(), "hunter2")
-	assert.NoError(t, err)
-
-	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
-		Steps:   lt.MakeBasicLifecycleSteps(t, 0),
-		Config: config.Map{
-			config.MustMakeKey("pkgA", "secret"): config.NewSecureValue(secret),
-			config.MustMakeKey("pkgA", "plain"):  config.NewValue("all I see is ******"),
-			config.MustMakeKey("pkgA", "int"):    config.NewValue("1234"),
-			config.MustMakeKey("pkgA", "float"):  config.NewValue("12.34"),
-			config.MustMakeKey("pkgA", "string"): config.NewValue("012345"),
-			config.MustMakeKey("pkgA", "bool"):   config.NewValue("true"),
-			config.MustMakeKey("pkgA", "array"):  config.NewObjectValue("[1, 2, 3]"),
-			config.MustMakeKey("pkgA", "map"):    config.NewObjectValue(`{"foo": 1, "bar": "02"}`),
-		},
-		Decrypter: crypter,
-	}
-
-	p.Run(t, nil)
-}
-
 func TestBadResourceType(t *testing.T) {
 	t.Parallel()
 
@@ -498,7 +492,19 @@ func TestBadResourceType(t *testing.T) {
 		assert.Equal(t, codes.InvalidArgument, rpcerr.Code())
 		assert.Contains(t, rpcerr.Message(), "Type 'very:bad' is not a valid type token")
 
-		_, _, err = mon.ReadResource("very:bad", "someResource", "someId", "", resource.PropertyMap{}, "", "", "", "")
+		_, _, err = mon.ReadResource(
+			"very:bad",
+			"someResource",
+			"someId",
+			"",
+			resource.PropertyMap{},
+			"",
+			"",
+			"",
+			nil,
+			"",
+			"",
+		)
 		assert.Error(t, err)
 		rpcerr, ok = rpcerror.FromError(err)
 		assert.True(t, ok)
@@ -507,15 +513,15 @@ func TestBadResourceType(t *testing.T) {
 
 		// Component resources may have any format type.
 		_, noErr := mon.RegisterResource("a:component", "resB", false)
-		assert.NoError(t, noErr)
+		require.NoError(t, noErr)
 
 		_, noErr = mon.RegisterResource("singlename", "resC", false)
-		assert.NoError(t, noErr)
+		require.NoError(t, noErr)
 
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []lt.TestStep{{
@@ -535,6 +541,7 @@ func TestProviderCancellation(t *testing.T) {
 	const resourceCount = 4
 
 	// Set up a cancelable context for the refresh operation.
+	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Wait for our resource ops, then cancel.
@@ -546,6 +553,7 @@ func TestProviderCancellation(t *testing.T) {
 	}()
 
 	// Set up an independent cancelable context for the provider's operations.
+	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
 	provCtx, provCancel := context.WithCancel(context.Background())
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -574,7 +582,7 @@ func TestProviderCancellation(t *testing.T) {
 		errors := make([]error, resourceCount)
 		var resources sync.WaitGroup
 		resources.Add(resourceCount)
-		for i := 0; i < resourceCount; i++ {
+		for i := range resourceCount {
 			go func(idx int) {
 				_, errors[idx] = monitor.RegisterResource("pkgA:m:typA", fmt.Sprintf("res%d", idx), true)
 				resources.Done()
@@ -582,7 +590,7 @@ func TestProviderCancellation(t *testing.T) {
 		}
 		resources.Wait()
 		for _, err := range errors {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		close(done)
 		return nil
@@ -593,7 +601,7 @@ func TestProviderCancellation(t *testing.T) {
 	options := lt.TestUpdateOptions{
 		T: t,
 
-		HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+		HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 		UpdateOptions: UpdateOptions{
 			Parallel: resourceCount,
 		},
@@ -607,6 +615,43 @@ func TestProviderCancellation(t *testing.T) {
 	<-done
 }
 
+func TestLanguageRuntimeCancellation(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	// The program cancels the deployment context then blocks until
+	// the engine acknowledges cancellation via the language runtime's
+	// Cancel method (called from SignalCancellation). Because the
+	// program is blocked, the source iterator stays blocked too, so
+	// the executor's event loop can only exit via ctx.Done() — no
+	// race with the source completion event.
+	shutdownCh := make(chan struct{})
+	gracefulShutdown := false
+	programF := func() plugin.LanguageRuntime {
+		return deploytest.NewLanguageRuntimeWithShutdown(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			cancel()
+			<-shutdownCh
+			return nil
+		}, func() {
+			gracefulShutdown = true
+			close(shutdownCh)
+		})
+	}
+
+	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil)}
+
+	p := &lt.TestPlan{}
+	project, target := p.GetProject(), p.GetTarget(t, nil)
+
+	op := lt.TestOp(Update)
+	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
+
+	assert.Error(t, err)
+	assert.Equal(t, "BAIL: canceled", err.Error())
+	assert.True(t, gracefulShutdown)
+}
+
 // Tests that a preview works for a stack with pending operations.
 func TestPreviewWithPendingOperations(t *testing.T) {
 	t.Parallel()
@@ -616,8 +661,8 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 	const resType = "pkgA:m:typA"
 	urnA := p.NewURN(resType, "resA", "")
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -630,11 +675,11 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 	}
 
 	old := &deploy.Snapshot{
-		PendingOperations: []resource.Operation{{
+		PendingOperations: []pkgresource.Operation{{
 			Resource: newResource(urnA, "0", false),
-			Type:     resource.OperationTypeUpdating,
+			Type:     pkgresource.OperationTypeUpdating,
 		}},
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			newResource(urnA, "0", false),
 		},
 	}
@@ -647,18 +692,18 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 
 	op := lt.TestOp(Update)
 
-	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// A preview should succeed despite the pending operations.
 	_, err := op.Run(project, target, options, true, nil, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // Tests that a refresh works for a stack with pending operations.
@@ -670,8 +715,8 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 	const resType = "pkgA:m:typA"
 	urnA := p.NewURN(resType, "resA", "")
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -684,11 +729,11 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 	}
 
 	old := &deploy.Snapshot{
-		PendingOperations: []resource.Operation{{
+		PendingOperations: []pkgresource.Operation{{
 			Resource: newResource(urnA, "0", false),
-			Type:     resource.OperationTypeUpdating,
+			Type:     pkgresource.OperationTypeUpdating,
 		}},
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			newResource(urnA, "0", false),
 		},
 	}
@@ -701,28 +746,28 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 
 	op := lt.TestOp(Update)
-	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// With a refresh, the update should succeed.
 	withRefresh := options
 	withRefresh.Refresh = true
 	new, err := op.RunStep(project, target, withRefresh, false, nil, nil, "0")
-	assert.NoError(t, err)
-	assert.Len(t, new.PendingOperations, 0)
+	require.NoError(t, err)
+	require.Len(t, new.PendingOperations, 0)
 
 	// Similarly, the update should succeed if performed after a separate refresh.
 	new, err = lt.TestOp(Refresh).RunStep(project, target, options, false, nil, nil, "1")
-	assert.NoError(t, err)
-	assert.Len(t, new.PendingOperations, 0)
+	require.NoError(t, err)
+	require.Len(t, new.PendingOperations, 0)
 
 	_, err = op.RunStep(project, p.GetTarget(t, new), options, false, nil, nil, "2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // Test to make sure that if we pulumi refresh
@@ -737,8 +782,8 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	urnA := p.NewURN(resType, "resA", "")
 	urnB := p.NewURN(resType, "resB", "")
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -756,17 +801,17 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 	resA := newResource(urnA, "0", false)
 	resB := newResource(urnB, "0", false)
 	old := &deploy.Snapshot{
-		PendingOperations: []resource.Operation{
+		PendingOperations: []pkgresource.Operation{
 			{
 				Resource: resA,
-				Type:     resource.OperationTypeUpdating,
+				Type:     pkgresource.OperationTypeUpdating,
 			},
 			{
 				Resource: resB,
-				Type:     resource.OperationTypeCreating,
+				Type:     pkgresource.OperationTypeCreating,
 			},
 		},
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			resA,
 		},
 	}
@@ -779,27 +824,27 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 
 	op := lt.TestOp(Update)
-	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// With a refresh, the update should succeed.
 	withRefresh := options
 	withRefresh.Refresh = true
 	new, err := op.Run(project, target, withRefresh, false, nil, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	// Assert that pending CREATE operation was preserved
-	assert.Len(t, new.PendingOperations, 1)
-	assert.Equal(t, resource.OperationTypeCreating, new.PendingOperations[0].Type)
+	require.Len(t, new.PendingOperations, 1)
+	assert.Equal(t, pkgresource.OperationTypeCreating, new.PendingOperations[0].Type)
 	assert.Equal(t, urnB, new.PendingOperations[0].Resource.URN)
 }
 
-func findPendingOperationsByType(opType resource.OperationType, snapshot *deploy.Snapshot) []resource.Operation {
-	var operations []resource.Operation
+func findPendingOperationsByType(opType pkgresource.OperationType, snapshot *deploy.Snapshot) []pkgresource.Operation {
+	var operations []pkgresource.Operation
 	for _, operation := range snapshot.PendingOperations {
 		if operation.Type == opType {
 			operations = append(operations, operation)
@@ -818,8 +863,8 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	urnA := p.NewURN(resType, "resA", "")
 	urnB := p.NewURN(resType, "resB", "")
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -832,17 +877,17 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	}
 
 	old := &deploy.Snapshot{
-		PendingOperations: []resource.Operation{
+		PendingOperations: []pkgresource.Operation{
 			{
 				Resource: newResource(urnA, "0", false),
-				Type:     resource.OperationTypeUpdating,
+				Type:     pkgresource.OperationTypeUpdating,
 			},
 			{
 				Resource: newResource(urnB, "1", false),
-				Type:     resource.OperationTypeCreating,
+				Type:     pkgresource.OperationTypeCreating,
 			},
 		},
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			newResource(urnA, "0", false),
 		},
 	}
@@ -855,12 +900,12 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 
 	op := lt.TestOp(Update)
-	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}
 	project, target := p.GetProject(), p.GetTarget(t, old)
 
 	// The update should succeed but give a warning
@@ -884,15 +929,15 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 	}
 
 	new, _ := op.Run(project, target, options, false, nil, validate)
-	assert.NotNil(t, new)
+	require.NotNil(t, new)
 
-	assert.Equal(t, resource.OperationTypeCreating, new.PendingOperations[0].Type)
+	assert.Equal(t, pkgresource.OperationTypeCreating, new.PendingOperations[0].Type)
 
 	// Assert that CREATE pending operations are retained
 	// TODO: should revisit whether non-CREATE pending operations should also be retained
-	assert.Equal(t, 1, len(new.PendingOperations))
-	createOperations := findPendingOperationsByType(resource.OperationTypeCreating, new)
-	assert.Equal(t, 1, len(createOperations))
+	require.Len(t, new.PendingOperations, 1)
+	createOperations := findPendingOperationsByType(pkgresource.OperationTypeCreating, new)
+	require.Len(t, createOperations, 1)
 	assert.Equal(t, urnB, createOperations[0].Resource.URN)
 }
 
@@ -908,7 +953,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 				},
 
 				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+					outputs := resource.NewPropertyMapFromMap(map[string]any{
 						"output_prop": 42,
 					})
 
@@ -923,14 +968,14 @@ func TestUpdatePartialFailure(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, err := mon.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"input_prop": "new inputs",
 			}),
 		})
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
@@ -948,17 +993,17 @@ func TestUpdatePartialFailure(t *testing.T) {
 					assert.Equal(t, deploy.OpUpdate, entry.Step.Op())
 					//nolint:exhaustive // default case signifies testing failure
 					switch entry.Kind {
-					case JournalEntryBegin:
+					case TestJournalEntryBegin:
 						continue
-					case JournalEntrySuccess:
+					case TestJournalEntrySuccess:
 						inputs := entry.Step.New().Inputs
 						outputs := entry.Step.New().Outputs
-						assert.Len(t, inputs, 1)
-						assert.Len(t, outputs, 1)
+						require.Len(t, inputs, 1)
+						require.Len(t, outputs, 1)
 						assert.Equal(t,
-							resource.NewStringProperty("old inputs"), inputs[resource.PropertyKey("input_prop")])
+							resource.NewProperty("old inputs"), inputs[resource.PropertyKey("input_prop")])
 						assert.Equal(t,
-							resource.NewNumberProperty(42), outputs[resource.PropertyKey("output_prop")])
+							resource.NewProperty(42.0), outputs[resource.PropertyKey("output_prop")])
 					default:
 						t.Fatalf("unexpected journal operation: %d", entry.Kind)
 					}
@@ -970,16 +1015,16 @@ func TestUpdatePartialFailure(t *testing.T) {
 	}}
 
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   resURN.Type(),
 				URN:    resURN,
 				Custom: true,
 				ID:     "1",
-				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{
 					"input_prop": "old inputs",
 				}),
-				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
 					"output_prop": 1,
 				}),
 			},
@@ -998,10 +1043,10 @@ func TestStackReference(t *testing.T) {
 	// Test that the normal lifecycle works correctly.
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, state, err := mon.ReadResource("pulumi:pulumi:StackReference", "other", "other", "",
-			resource.NewPropertyMapFromMap(map[string]interface{}{
+			resource.NewPropertyMapFromMap(map[string]any{
 				"name": "other",
-			}), "", "", "", "")
-		assert.NoError(t, err)
+			}), "", "", "", nil, "", "")
+		require.NoError(t, err)
 		if !info.DryRun {
 			assert.Equal(t, "bar", state["outputs"].ObjectValue()["foo"].StringValue())
 		}
@@ -1009,18 +1054,18 @@ func TestStackReference(t *testing.T) {
 	})
 	p := &lt.TestPlan{
 		BackendClient: &deploytest.BackendClient{
-			GetStackOutputsF: func(ctx context.Context, name string) (resource.PropertyMap, error) {
+			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (property.Map, error) {
 				switch name {
 				case "other":
-					return resource.NewPropertyMapFromMap(map[string]interface{}{
-						"foo": "bar",
+					return property.NewMap(map[string]property.Value{
+						"foo": property.New("bar"),
 					}), nil
 				default:
-					return nil, fmt.Errorf("unknown stack \"%s\"", name)
+					return property.Map{}, fmt.Errorf("unknown stack \"%s\"", name)
 				}
 			},
 		},
-		Options: lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)},
+		Options: lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)},
 		Steps:   lt.MakeBasicLifecycleSteps(t, 2),
 	}
 	p.Run(t, nil)
@@ -1028,17 +1073,17 @@ func TestStackReference(t *testing.T) {
 	// Test that changes to `name` cause replacement.
 	resURN := p.NewURN("pulumi:pulumi:StackReference", "other", "")
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:     resURN.Type(),
 				URN:      resURN,
 				Custom:   true,
 				ID:       "1",
 				External: true,
-				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{
 					"name": "other2",
 				}),
-				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
 					"name":    "other2",
 					"outputs": resource.PropertyMap{},
 				}),
@@ -1051,7 +1096,7 @@ func TestStackReference(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case resURN:
@@ -1067,20 +1112,18 @@ func TestStackReference(t *testing.T) {
 			return err
 		},
 	}}
-	p.Options.SkipDisplayTests = true
 	p.Run(t, old)
-	p.Options.SkipDisplayTests = false
 
 	// Test that unknown stacks are handled appropriately.
 	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, _, err := mon.ReadResource("pulumi:pulumi:StackReference", "other", "other", "",
-			resource.NewPropertyMapFromMap(map[string]interface{}{
+			resource.NewPropertyMapFromMap(map[string]any{
 				"name": "rehto",
-			}), "", "", "", "")
+			}), "", "", "", nil, "", "")
 		assert.Error(t, err)
 		return err
 	})
-	p.Options = lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	p.Options = lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}
 	p.Steps = []lt.TestStep{{
 		Op:            Update,
 		ExpectFailure: true,
@@ -1091,14 +1134,14 @@ func TestStackReference(t *testing.T) {
 	// Test that unknown properties cause errors.
 	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, _, err := mon.ReadResource("pulumi:pulumi:StackReference", "other", "other", "",
-			resource.NewPropertyMapFromMap(map[string]interface{}{
+			resource.NewPropertyMapFromMap(map[string]any{
 				"name": "other",
 				"foo":  "bar",
-			}), "", "", "", "")
+			}), "", "", "", nil, "", "")
 		assert.Error(t, err)
 		return err
 	})
-	p.Options = lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	p.Options = lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}
 	p.Run(t, nil)
 }
 
@@ -1112,11 +1155,11 @@ func TestStackReferenceRegister(t *testing.T) {
 	// Test that the normal lifecycle works correctly.
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		resp, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"name": "other",
 			}),
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		if !info.DryRun {
 			assert.Equal(t, "bar", resp.Outputs["outputs"].ObjectValue()["foo"].StringValue())
 		}
@@ -1167,18 +1210,18 @@ func TestStackReferenceRegister(t *testing.T) {
 
 	p := &lt.TestPlan{
 		BackendClient: &deploytest.BackendClient{
-			GetStackOutputsF: func(ctx context.Context, name string) (resource.PropertyMap, error) {
+			GetStackOutputsF: func(ctx context.Context, name string, _ func(error) error) (property.Map, error) {
 				switch name {
 				case "other":
-					return resource.NewPropertyMapFromMap(map[string]interface{}{
-						"foo": "bar",
+					return property.NewMap(map[string]property.Value{
+						"foo": property.New("bar"),
 					}), nil
 				default:
-					return nil, fmt.Errorf("unknown stack \"%s\"", name)
+					return property.Map{}, fmt.Errorf("unknown stack \"%s\"", name)
 				}
 			},
 		},
-		Options: lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)},
+		Options: lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)},
 		Steps:   steps,
 	}
 	p.Run(t, nil)
@@ -1186,16 +1229,16 @@ func TestStackReferenceRegister(t *testing.T) {
 	// Test that changes to `name` cause replacement.
 	resURN := p.NewURN("pulumi:pulumi:StackReference", "other", "")
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:   resURN.Type(),
 				URN:    resURN,
 				Custom: true,
 				ID:     "1",
-				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{
 					"name": "other2",
 				}),
-				Outputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+				Outputs: resource.NewPropertyMapFromMap(map[string]any{
 					"name":    "other2",
 					"outputs": resource.PropertyMap{},
 				}),
@@ -1208,7 +1251,7 @@ func TestStackReferenceRegister(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case resURN:
@@ -1229,14 +1272,14 @@ func TestStackReferenceRegister(t *testing.T) {
 	// Test that unknown stacks are handled appropriately.
 	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"name": "rehto",
 			}),
 		})
 		assert.Error(t, err)
 		return err
 	})
-	p.Options = lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	p.Options = lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}
 	p.Steps = []lt.TestStep{{
 		Op:            Update,
 		ExpectFailure: true,
@@ -1247,7 +1290,7 @@ func TestStackReferenceRegister(t *testing.T) {
 	// Test that unknown properties cause errors.
 	programF = deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, err := mon.RegisterResource("pulumi:pulumi:StackReference", "other", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"name": "other",
 				"foo":  "bar",
 			}),
@@ -1255,7 +1298,7 @@ func TestStackReferenceRegister(t *testing.T) {
 		assert.Error(t, err)
 		return err
 	})
-	p.Options = lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...)}
+	p.Options = lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}
 	p.Run(t, nil)
 }
 
@@ -1328,17 +1371,17 @@ func TestLoadFailureShutdown(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		_, err = monitor.RegisterResource(providers.MakeProviderType("pkgB"), "provB", true)
-		assert.NoError(t, err)
+		_, _ = monitor.RegisterResource(providers.MakeProviderType("pkgB"), "provB", true)
+		require.Fail(t, "RegisterResource should not return")
 
 		return nil
 	})
 
 	op := lt.TestOp(Update)
 	sink := diag.DefaultSink(sinkWriter, sinkWriter, diag.FormatOptions{Color: colors.Raw})
-	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(sink, sink, programF, loaders...)}
+	options := lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(sink, sink, programF, nil, nil, loaders...)}
 	p := &lt.TestPlan{}
 	project, target := p.GetProject(), p.GetTarget(t, nil)
 
@@ -1379,10 +1422,10 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 				Inputs:        props,
 				IgnoreChanges: ignoreChanges,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil
 		})
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 		p := &lt.TestPlan{
 			// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
@@ -1410,109 +1453,109 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 		return p.RunWithName(t, snap, name)
 	}
 
-	snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 1,
-		"b": map[string]interface{}{
+		"b": map[string]any{
 			"c": "foo",
 		},
-		"d": []interface{}{1},
-		"e": []interface{}{1},
-		"f": map[string]interface{}{
-			"g": map[string]interface{}{
+		"d": []any{1},
+		"e": []any{1},
+		"f": map[string]any{
+			"g": map[string]any{
 				"h": "bar",
 			},
 		},
 	}), []string{"a", "b.c", "d", "e[0]", "f.g[\"h\"]"}, []display.StepOp{deploy.OpCreate}, "initial")
 
 	// Ensure that a change to an ignored property results in an OpSame
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 2,
-		"b": map[string]interface{}{
+		"b": map[string]any{
 			"c": "bar",
 		},
-		"d": []interface{}{2},
-		"e": []interface{}{2},
-		"f": map[string]interface{}{
-			"g": map[string]interface{}{
+		"d": []any{2},
+		"e": []any{2},
+		"f": map[string]any{
+			"g": map[string]any{
 				"h": "baz",
 			},
 		},
 	}), []string{"a", "b.c", "d", "e[0]", "f.g[\"h\"]"}, []display.StepOp{deploy.OpSame}, "ignored-property")
 
 	// Ensure that a change to an un-ignored property results in an OpUpdate
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 3,
-		"b": map[string]interface{}{
+		"b": map[string]any{
 			"c": "qux",
 		},
-		"d": []interface{}{3},
-		"e": []interface{}{3},
-		"f": map[string]interface{}{
-			"g": map[string]interface{}{
+		"d": []any{3},
+		"e": []any{3},
+		"f": map[string]any{
+			"g": map[string]any{
 				"h": "qux",
 			},
 		},
 	}), nil, []display.StepOp{deploy.OpUpdate}, "unignored-property")
 
 	// Ensure that a removing an ignored property results in an OpSame
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"e": []interface{}{},
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
+		"e": []any{},
 	}), []string{"a", "b", "d", "e", "f"}, []display.StepOp{deploy.OpSame}, "ignored-property-removed")
 
 	// Ensure that a removing an un-ignored property results in an OpUpdate
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"e": []interface{}{},
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
+		"e": []any{},
 	}), nil, []display.StepOp{deploy.OpUpdate}, "unignored-property-removed")
 
 	// Ensure that adding an ignored property results in an OpSame
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 4,
-		"b": map[string]interface{}{
+		"b": map[string]any{
 			"c": "zed",
 		},
-		"d": []interface{}{4},
-		"e": []interface{}{},
+		"d": []any{4},
+		"e": []any{},
 	}), []string{"a", "b", "d", "e[0]", "f"}, []display.StepOp{deploy.OpSame}, "ignored-property-added")
 
 	// Ensure that adding an un-ignored property results in an OpUpdate
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
-		"e": []interface{}{},
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
+		"e": []any{},
 		"i": 4,
 	}), []string{"a", "b", "d", "e", "f"}, []display.StepOp{deploy.OpUpdate}, "unignored-property-added")
 
 	// Ensure that sub-elements of arrays can be ignored, first reset to a simple state
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 3,
 		"b": []string{"foo", "bar"},
 	}), nil, []display.StepOp{deploy.OpUpdate}, "sub-elements-ignored")
 
 	// Check that ignoring a specific sub-element of an array works
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 3,
 		"b": []string{"foo", "baz"},
 	}), []string{"b[1]"}, []display.StepOp{deploy.OpSame}, "ignore-specific-subelement")
 
 	// Check that ignoring all sub-elements of an array works
-	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 		"a": 3,
 		"b": []string{"foo", "baz"},
 	}), []string{"b[*]"}, []display.StepOp{deploy.OpSame}, "ignore-all-subelements")
 
 	// Check that ignoring a secret value works, first update to make foo, bar secret
 	snap = updateProgramWithProps(snap, resource.PropertyMap{
-		"a": resource.NewNumberProperty(3),
-		"b": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("foo"),
-			resource.NewStringProperty("bar"),
+		"a": resource.NewProperty(3.0),
+		"b": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("foo"),
+			resource.NewProperty("bar"),
 		})),
 	}, nil, []display.StepOp{deploy.OpUpdate}, "ignore-secret")
 
 	// Now check that changing a value (but not secretness) can be ignored
 	_ = updateProgramWithProps(snap, resource.PropertyMap{
-		"a": resource.NewNumberProperty(3),
-		"b": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewStringProperty("foo"),
-			resource.NewStringProperty("baz"),
+		"a": resource.NewProperty(3.0),
+		"b": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty("foo"),
+			resource.NewProperty("baz"),
 		})),
 	}, []string{"b[1]"}, []display.StepOp{deploy.OpSame}, "change-value-not-secretness")
 }
@@ -1529,22 +1572,22 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 	program := func(monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"foo": resource.NewObjectProperty(resource.PropertyMap{
-					"bar": resource.NewStringProperty("baz"),
+				"foo": resource.NewProperty(resource.PropertyMap{
+					"bar": resource.NewProperty("baz"),
 				}),
-				"qux": resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewStringProperty("zed"),
+				"qux": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty("zed"),
 				}),
 			},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	}
 
 	runtimeF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		return program(monitor)
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, runtimeF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, runtimeF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1552,62 +1595,73 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:        resource.PropertyMap{},
 			IgnoreChanges: []string{"foo.bar"},
 		})
-		assert.Error(t, err)
+		require.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{}, resp.Outputs)
 		return nil
 	}
 
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.Error(t, err)
+	require.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"qux": resource.NewArrayProperty([]resource.PropertyValue{}),
+				"qux": resource.NewProperty([]resource.PropertyValue{}),
 			},
 			IgnoreChanges: []string{"qux[0]"},
 		})
-		assert.Error(t, err)
+		require.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{
+			"qux": resource.NewProperty([]resource.PropertyValue{}),
+		}, resp.Outputs)
 		return nil
 	}
 
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
-	assert.Error(t, err)
+	require.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:        resource.PropertyMap{},
 			IgnoreChanges: []string{"qux[0]"},
 		})
-		assert.Error(t, err)
+		require.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{}, resp.Outputs)
 		return nil
 	}
 
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
-	assert.Error(t, err)
+	require.NoError(t, err)
 
 	program = func(monitor *deploytest.ResourceMonitor) error {
-		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"qux": resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewStringProperty("zed"),
-					resource.NewStringProperty("zob"),
+				"qux": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty("zed"),
+					resource.NewProperty("zob"),
 				}),
 			},
 			IgnoreChanges: []string{"qux[1]"},
 		})
-		assert.Error(t, err)
+		require.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{
+			"qux": resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty("zed"),
+				resource.NewProperty("zob"),
+			}),
+		}, resp.Outputs)
 		return nil
 	}
 
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "4")
-	assert.Error(t, err)
+	require.NoError(t, err)
 }
 
 type DiffFunc = func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error)
@@ -1639,10 +1693,10 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 					Inputs:           props,
 					ReplaceOnChanges: replaceOnChanges,
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				return nil
 			})
-			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 			p := &lt.TestPlan{
 				Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 				Steps: []lt.TestStep{
@@ -1668,41 +1722,41 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 			return p.RunWithName(t, snap, strings.ReplaceAll(fmt.Sprintf("%v", props), " ", "_"))
 		}
 
-		snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]interface{}{
+		snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]any{
 			"a": 1,
-			"b": map[string]interface{}{
+			"b": map[string]any{
 				"c": "foo",
 			},
 		}), []string{"a", "b.c"}, []display.StepOp{deploy.OpCreate})
 
 		// Ensure that a change to a replaceOnChange property results in an OpReplace
-		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 			"a": 2,
-			"b": map[string]interface{}{
+			"b": map[string]any{
 				"c": "foo",
 			},
 		}), []string{"a"}, []display.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
 
 		// Ensure that a change to a nested replaceOnChange property results in an OpReplace
-		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 			"a": 2,
-			"b": map[string]interface{}{
+			"b": map[string]any{
 				"c": "bar",
 			},
 		}), []string{"b.c"}, []display.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
 
 		// Ensure that a change to any property of a "*" replaceOnChange results in an OpReplace
-		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 			"a": 3,
-			"b": map[string]interface{}{
+			"b": map[string]any{
 				"c": "baz",
 			},
 		}), []string{"*"}, []display.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
 
 		// Ensure that a change to an non-replaceOnChange property results in an OpUpdate
-		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 			"a": 4,
-			"b": map[string]interface{}{
+			"b": map[string]any{
 				"c": "qux",
 			},
 		}), nil, []display.StepOp{deploy.OpUpdate})
@@ -1713,9 +1767,9 @@ func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
 		if diffFunc != nil {
 			allowed = []display.StepOp{deploy.OpSame}
 		}
-		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
 			"a": 42, // 42 is a special value in the "provider" diff function.
-			"b": map[string]interface{}{
+			"b": map[string]any{
 				"c": "qux",
 			},
 		}), []string{"a"}, allowed)
@@ -1734,7 +1788,7 @@ func TestReplaceOnChanges(t *testing.T) {
 			// we treat 42 as an OpSame. We use this to check that the right diff function is being
 			// used.
 			for k, v := range req.NewInputs {
-				if v == resource.NewNumberProperty(42) {
+				if v == resource.NewProperty(42.0) {
 					req.NewInputs[k] = req.OldOutputs[k]
 				}
 			}
@@ -1775,10 +1829,10 @@ func TestPersistentDiff(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1788,7 +1842,7 @@ func TestPersistentDiff(t *testing.T) {
 	// Run the initial update.
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
 	// provider diffing.
@@ -1809,7 +1863,7 @@ func TestPersistentDiff(t *testing.T) {
 			assert.True(t, found)
 			return err
 		})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Next, enable legacy diff behavior. We should see no changes to the resource.
 	p.Options.UseLegacyDiff = true
@@ -1830,7 +1884,7 @@ func TestPersistentDiff(t *testing.T) {
 			assert.True(t, found)
 			return err
 		})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestDetailedDiffReplace(t *testing.T) {
@@ -1856,10 +1910,10 @@ func TestDetailedDiffReplace(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1868,12 +1922,12 @@ func TestDetailedDiffReplace(t *testing.T) {
 
 	// Run the initial update.
 	project := p.GetProject()
-	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
 
 	// First, make no change to the inputs and run a preview. We should see an update to the resource due to
 	// provider diffing.
-	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, err error,
 		) error {
@@ -1888,8 +1942,8 @@ func TestDetailedDiffReplace(t *testing.T) {
 			}
 			assert.True(t, found)
 			return err
-		})
-	assert.NoError(t, err)
+		}, "1")
+	require.NoError(t, err)
 }
 
 func TestCustomTimeouts(t *testing.T) {
@@ -1904,13 +1958,13 @@ func TestCustomTimeouts(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			CustomTimeouts: &resource.CustomTimeouts{
-				Create: 60, Delete: 60, Update: 240,
+				Create: 60, Delete: 60, Update: 240, Read: 30,
 			},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -1919,13 +1973,14 @@ func TestCustomTimeouts(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default")
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
-	assert.NotNil(t, snap.Resources[1].CustomTimeouts)
+	require.NotNil(t, snap.Resources[1].CustomTimeouts)
 	assert.Equal(t, snap.Resources[1].CustomTimeouts.Create, float64(60))
 	assert.Equal(t, snap.Resources[1].CustomTimeouts.Update, float64(240))
 	assert.Equal(t, snap.Resources[1].CustomTimeouts.Delete, float64(60))
+	assert.Equal(t, snap.Resources[1].CustomTimeouts.Read, float64(30))
 }
 
 func TestProviderDiffMissingOldOutputs(t *testing.T) {
@@ -1940,7 +1995,7 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 				) (plugin.DiffResult, error) {
 					// Always require replacement if any diff exists.
 					if !req.OldOutputs.DeepEquals(req.NewInputs) {
-						keys := []resource.PropertyKey{}
+						keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
 						for k := range req.NewInputs {
 							keys = append(keys, k)
 						}
@@ -1954,10 +2009,10 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -2002,7 +2057,7 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 			// Look for replace steps on the provider and the resource.
 			replacedProvider, replacedResource := false, false
 			for _, entry := range entries {
-				if entry.Kind != JournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
+				if entry.Kind != TestJournalEntrySuccess || entry.Step.Op() != deploy.OpDeleteReplaced {
 					continue
 				}
 
@@ -2039,11 +2094,23 @@ func TestMissingRead(t *testing.T) {
 
 	// Our program reads a resource and exits.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "", "", "")
+		_, _, err := monitor.ReadResource(
+			"pkgA:m:typA",
+			"resA",
+			"resA-some-id",
+			"",
+			resource.PropertyMap{},
+			"",
+			"",
+			"",
+			nil,
+			"",
+			"",
+		)
 		assert.Error(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   []lt.TestStep{{Op: Update, ExpectFailure: true}},
@@ -2087,18 +2154,18 @@ func TestProviderPreview(t *testing.T) {
 
 	preview := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+		computed := any(resource.Computed{Element: resource.NewProperty("")})
 		if !preview {
 			computed = "alpha"
 		}
 
-		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		ins := resource.NewPropertyMapFromMap(map[string]any{
 			"foo": "bar",
-			"baz": map[string]interface{}{
+			"baz": map[string]any{
 				"a": 42,
 				"b": computed,
 			},
-			"qux": []interface{}{
+			"qux": []any{
 				computed,
 				24,
 			},
@@ -2108,13 +2175,13 @@ func TestProviderPreview(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		assert.True(t, resp.Outputs.DeepEquals(ins))
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -2125,19 +2192,19 @@ func TestProviderPreview(t *testing.T) {
 	// Run a preview. The inputs should be propagated to the outputs by the provider during the create.
 	preview, sawPreview = true, false
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should be propagated to the outputs during the update.
 	preview, sawPreview = true, false
 	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, sawPreview)
 }
 
@@ -2177,18 +2244,18 @@ func TestProviderPreviewGrpc(t *testing.T) {
 
 	preview := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+		computed := any(resource.Computed{Element: resource.NewProperty("")})
 		if !preview {
 			computed = "alpha"
 		}
 
-		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		ins := resource.NewPropertyMapFromMap(map[string]any{
 			"foo": "bar",
-			"baz": map[string]interface{}{
+			"baz": map[string]any{
 				"a": 42,
 				"b": computed,
 			},
-			"qux": []interface{}{
+			"qux": []any{
 				computed,
 				24,
 			},
@@ -2198,13 +2265,13 @@ func TestProviderPreviewGrpc(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		assert.True(t, resp.Outputs.DeepEquals(ins))
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -2215,19 +2282,19 @@ func TestProviderPreviewGrpc(t *testing.T) {
 	// Run a preview. The inputs should be propagated to the outputs by the provider during the create.
 	preview, sawPreview = true, false
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should be propagated to the outputs during the update.
 	preview, sawPreview = true, false
 	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.True(t, sawPreview)
 }
 
@@ -2248,7 +2315,7 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 					}
 
 					return plugin.InvokeResponse{
-						Properties: resource.NewPropertyMapFromMap(map[string]interface{}{
+						Properties: resource.NewPropertyMapFromMap(map[string]any{
 							"message": ret,
 						}),
 					}, nil
@@ -2286,13 +2353,14 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 					assert.Equal(t, []resource.URN{"urn:pulumi:test::test::pkgA:m:typB::resB"}, req.Options.ArgDependencies["name"])
 
 					ret := "unexpected"
-					if req.Args["name"].IsString() {
-						ret = "Hello, " + req.Args["name"].StringValue() + "!"
+					name := req.Args.Get("name")
+					if name.IsString() {
+						ret = "Hello, " + name.AsString() + "!"
 					}
 
 					return plugin.CallResponse{
-						Return: resource.NewPropertyMapFromMap(map[string]interface{}{
-							"message": ret,
+						Return: property.NewMap(map[string]property.Value{
+							"message": property.New(ret),
 						}),
 					}, nil
 				},
@@ -2311,16 +2379,16 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 						Aliases: aliasesFromAliases(req.Options.Aliases),
 						Protect: req.Options.Protect,
 					})
-					assert.NoError(t, err)
+					require.NoError(t, err)
 
 					_, err = monitor.RegisterResource("pkgA:m:typB", req.Name+"-resB", true, deploytest.ResourceOptions{
 						Parent: resp.URN,
 					})
-					assert.NoError(t, err)
+					require.NoError(t, err)
 
 					outs := resource.PropertyMap{"foo": req.Inputs["name"]}
 					err = monitor.RegisterResourceOutputs(resp.URN, outs)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 
 					return plugin.ConstructResponse{
 						URN:     resp.URN,
@@ -2333,26 +2401,26 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 
 	preview := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+		computed := any(resource.Computed{Element: resource.NewProperty("")})
 		if !preview {
 			computed = "alpha"
 		}
 
 		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true,
 			deploytest.ResourceOptions{
-				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": computed}),
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{"foo": computed}),
 			})
 		require.NoError(t, err)
 
 		provRef, err := providers.NewReference(resp.URN, resp.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+		ins := resource.NewPropertyMapFromMap(map[string]any{
 			"foo": "bar",
-			"baz": map[string]interface{}{
+			"baz": map[string]any{
 				"a": 42,
 			},
-			"qux": []interface{}{
+			"qux": []any{
 				24,
 			},
 		})
@@ -2379,33 +2447,33 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 		if preview {
 			// We expect construction of remote component resources to fail during previews if the provider is
 			// configured with unknowns.
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.True(t, respC.Outputs.DeepEquals(resource.PropertyMap{}))
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.True(t, respC.Outputs.DeepEquals(resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
+				"foo": resource.NewProperty("bar"),
 			}))
 		}
 
 		var outs resource.PropertyMap
 		if preview {
 			// We can't send any args or dependencies in preview because the RegisterResource call above failed.
-			outs, _, _, err = monitor.Call("pkgA:m:typA/methodA", nil, nil, provRef.String(), "", "")
-			assert.NoError(t, err)
+			outs, _, _, err = monitor.Call("pkgA:m:typA/methodA", nil, nil, provRef.String(), "", "", "", nil, "")
+			require.NoError(t, err)
 		} else {
 			outs, _, _, err = monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
 				"name": respC.Outputs["foo"],
 			}, map[resource.PropertyKey][]resource.URN{
 				"name": {respC.URN},
-			}, provRef.String(), "", "")
-			assert.NoError(t, err)
+			}, provRef.String(), "", "", "", nil, "")
+			require.NoError(t, err)
 		}
 		if preview {
 			assert.True(t, outs.DeepEquals(resource.PropertyMap{}), "outs was %v", outs)
 		} else {
 			assert.True(t, outs.DeepEquals(resource.PropertyMap{
-				"message": resource.NewStringProperty("Hello, bar!"),
+				"message": resource.NewProperty("Hello, bar!"),
 			}), "outs was %v", outs)
 		}
 
@@ -2418,18 +2486,18 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 				"name": respC.Outputs["foo"],
 			}, provRef.String(), "", "")
 		}
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		if preview {
 			assert.True(t, outs.DeepEquals(resource.PropertyMap{}), "outs was %v", outs)
 		} else {
 			assert.True(t, outs.DeepEquals(resource.PropertyMap{
-				"message": resource.NewStringProperty("Hello, bar!"),
+				"message": resource.NewProperty("Hello, bar!"),
 			}), "outs was %v", outs)
 		}
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -2440,20 +2508,20 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 	// Run a preview. The inputs should not be propagated to the outputs by the provider during the create because the
 	// provider has unknown inputs.
 	preview, sawPreview = true, false
-	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
+	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.False(t, sawPreview)
 
 	// Run an update.
 	preview, sawPreview = false, false
-	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil)
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, preview, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	assert.False(t, sawPreview)
 
 	// Run another preview. The inputs should not be propagated to the outputs during the update because the provider
 	// has unknown inputs.
 	preview, sawPreview = true, false
-	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil)
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, preview, p.BackendClient, nil, "2")
 	require.NoError(t, err)
 	assert.False(t, sawPreview)
 }
@@ -2478,12 +2546,13 @@ func startUpdate(t *testing.T, hostF deploytest.PluginHostFactory) (*updateConte
 	}
 
 	stop := make(chan bool)
-	port, _, err := rpcutil.Serve(0, stop, []func(*grpc.Server) error{
-		func(srv *grpc.Server) error {
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: stop,
+		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterLanguageRuntimeServer(srv, ctx)
 			return nil
 		},
-	}, nil)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -2491,8 +2560,8 @@ func startUpdate(t *testing.T, hostF deploytest.PluginHostFactory) (*updateConte
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Runtime: "client",
-		RuntimeOptions: map[string]interface{}{
-			"address": fmt.Sprintf("127.0.0.1:%d", port),
+		RuntimeOptions: map[string]any{
+			"address": fmt.Sprintf("127.0.0.1:%d", handle.Port),
 		},
 	}
 
@@ -2567,18 +2636,18 @@ func TestLanguageClient(t *testing.T) {
 		}),
 	}
 
-	update, err := startUpdate(t, deploytest.NewPluginHostF(nil, nil, nil, loaders...))
+	update, err := startUpdate(t, deploytest.NewPluginHostF(nil, nil, nil, nil, nil, loaders...))
 	if err != nil {
 		t.Fatalf("failed to start update: %v", err)
 	}
 
 	// Register resources, etc.
 	_, err = update.RegisterResource("pkgA:m:typA", "resA", true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	snap, err := update.Finish(nil)
-	assert.NoError(t, err)
-	assert.Len(t, snap.Resources, 2)
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
 }
 
 func TestConfigSecrets(t *testing.T) {
@@ -2592,14 +2661,15 @@ func TestConfigSecrets(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	crypter := config.NewSymmetricCrypter(make([]byte, 32))
+	//nolint:usetesting // outlives t.Context inside the engine
 	secret, err := crypter.EncryptValue(context.Background(), "hunter2")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	p := &lt.TestPlan{
 		// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
@@ -2613,11 +2683,9 @@ func TestConfigSecrets(t *testing.T) {
 
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	if !assert.Len(t, snap.Resources, 2) {
-		return
-	}
+	require.Len(t, snap.Resources, 2)
 
 	provider := snap.Resources[0]
 	assert.True(t, provider.Inputs["secret"].IsSecret())
@@ -2631,16 +2699,16 @@ func TestComponentOutputs(t *testing.T) {
 	// outputs from a prior deployment and the component's inputs have not changed.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("component", "resA", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{}, resp.Outputs)
 
 		err = monitor.RegisterResourceOutputs(resp.URN, resource.PropertyMap{
-			"foo": resource.NewStringProperty("bar"),
+			"foo": resource.NewProperty("bar"),
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -2685,12 +2753,13 @@ func TestProtect(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 
 	shouldProtect := true
 	createResource := true
+	expectError := false
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if createResource {
@@ -2698,12 +2767,16 @@ func TestProtect(t *testing.T) {
 				Inputs:  ins,
 				Protect: &shouldProtect,
 			})
-			assert.NoError(t, err)
+			if expectError {
+				require.Fail(t, "RegisterResource should not return")
+			} else {
+				require.NoError(t, err)
+			}
 		}
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -2713,9 +2786,9 @@ func TestProtect(t *testing.T) {
 
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 	assert.Equal(t, 0, deleteCounter)
 
@@ -2743,7 +2816,7 @@ func TestProtect(t *testing.T) {
 	expectedMessage = "<{%reset%}>unable to replace resource \"urn:pulumi:test::test::pkgA:m:typA::resA\"\n" +
 		"as it is currently marked for protection. To unprotect the resource, remove the `protect` flag from " +
 		"the resource in your Pulumi program and run `pulumi up`<{%reset%}>\n"
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, validate, "1")
@@ -2751,10 +2824,11 @@ func TestProtect(t *testing.T) {
 
 	// Run an update which will cause a replace, we should get an error.
 	// Contrary to the preview, the error is a bail, so no resources are created.
+	expectError = true
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "2")
 	assert.Error(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 	assert.Equal(t, 0, deleteCounter)
 
@@ -2766,20 +2840,21 @@ func TestProtect(t *testing.T) {
 	createResource = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "3")
 	assert.Error(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 	assert.Equal(t, true, snap.Resources[1].Protect)
 	assert.Equal(t, 0, deleteCounter)
 
 	// Run a new update to remove the protect and replace in the same update, this should delete the old one
 	// and create the new one
+	expectError = false
 	createResource = true
 	shouldProtect = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "4")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-2", snap.Resources[1].ID.String())
 	assert.Equal(t, false, snap.Resources[1].Protect)
 	assert.Equal(t, 1, deleteCounter)
@@ -2787,24 +2862,123 @@ func TestProtect(t *testing.T) {
 	// Run a new update to add the protect flag, nothing else should change
 	shouldProtect = true
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "5")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-2", snap.Resources[1].ID.String())
 	assert.Equal(t, true, snap.Resources[1].Protect)
 	assert.Equal(t, 1, deleteCounter)
 
 	// Edit the snapshot to remove the protect flag and try and replace
 	snap.Resources[1].Protect = false
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "daz",
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "6")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-3", snap.Resources[1].ID.String())
 	assert.Equal(t, 2, deleteCounter)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/20486. Check that if a resource declares an import ID and
+// wants to replace we print a diff of why.
+func TestImportDiff(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					props := resource.NewPropertyMapFromMap(map[string]any{
+						"foo": "bar",
+					})
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  props,
+							Outputs: props,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						// If foo changes do a replace, we use this to check we don't delete on replace
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := resource.NewPropertyMapFromMap(map[string]any{
+		"foo": "bar",
+	})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:   ins,
+			ImportID: "imported-id",
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
+	assert.Equal(t, "imported-id", snap.Resources[1].ID.String())
+
+	expectedUrn := snap.Resources[1].URN
+	expectedMessage := ""
+
+	// Both updates below should give a diagnostic event
+	validate := func(project workspace.Project,
+		target deploy.Target, entries JournalEntries,
+		events []Event, err error,
+	) error {
+		for _, event := range events {
+			if event.Type == DiagEvent {
+				payload := event.Payload().(DiagEventPayload)
+				assert.Equal(t, expectedUrn, payload.URN)
+				assert.Equal(t, "<{%reset%}>"+expectedMessage+"<{%reset%}>\n", payload.Message)
+			}
+		}
+		return err
+	}
+
+	// Run a dry-run (preview) which will cause a replace, we should get a warning. However, the preview doesn't bail.
+	expectedMessage = "previously-imported resources that still specify an ID may not be replaced; " +
+		"please remove the `import` declaration from your program;\nfoo: {bar} => {baz}"
+	ins = resource.NewPropertyMapFromMap(map[string]any{
+		"foo": "baz",
+	})
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, validate, "1")
+	require.NoError(t, err)
+
+	// Run an update which will cause a replace, we should get an error. Contrary to the preview, the error is a bail.
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "2")
+	require.ErrorContains(t, err, "BAIL: "+expectedMessage)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
+	assert.Equal(t, "imported-id", snap.Resources[1].ID.String())
 }
 
 func TestDeletedWith(t *testing.T) {
@@ -2847,7 +3021,7 @@ func TestDeletedWith(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 
@@ -2858,25 +3032,25 @@ func TestDeletedWith(t *testing.T) {
 			respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: ins,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			topURN = respA.URN
 
 			respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Inputs:      ins,
 				DeletedWith: respA.URN,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 				Inputs:      ins,
 				DeletedWith: respB.URN,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -2886,22 +3060,22 @@ func TestDeletedWith(t *testing.T) {
 
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
 	assert.Equal(t, "created-id-1", snap.Resources[2].ID.String())
 	assert.Equal(t, "created-id-2", snap.Resources[3].ID.String())
 
 	// Run a new update which will cause a replace, we should only see a provider delete for aURN but should
 	// get a new id for everything
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, "created-id-3", snap.Resources[1].ID.String())
 	assert.Equal(t, "created-id-4", snap.Resources[2].ID.String())
 	assert.Equal(t, "created-id-5", snap.Resources[3].ID.String())
@@ -2909,9 +3083,107 @@ func TestDeletedWith(t *testing.T) {
 	// Run a new update which will cause a delete, we still shouldn't see a provider delete for anything but aURN
 	createResource = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 0)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 0)
+}
+
+func TestReplaceWithAndPropertyChange(t *testing.T) {
+	t.Parallel()
+
+	created := []resource.URN{}
+	deleted := []resource.URN{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					// Both "foo" and "bar" properties require replacement when changed
+					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					if !req.OldOutputs["bar"].DeepEquals(req.NewInputs["bar"]) {
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"bar"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					created = append(created, req.URN)
+					resourceID := resource.ID(fmt.Sprintf("created-id-%d", len(created)))
+					return plugin.CreateResponse{
+						ID:         resourceID,
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					deleted = append(deleted, req.URN)
+					return plugin.DeleteResponse{}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	insA := resource.NewPropertyMapFromMap(map[string]any{
+		"foo": "initial-value-a",
+	})
+
+	insB := resource.NewPropertyMapFromMap(map[string]any{
+		"bar": "initial-value-b",
+	})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{Inputs: insA})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs:      insB,
+			ReplaceWith: []resource.URN{respA.URN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
+
+	require.Len(t, created, 2)
+	require.Equal(t, "created-id-1", snap.Resources[1].ID.String())
+	require.Equal(t, "created-id-2", snap.Resources[2].ID.String())
+	require.Len(t, deleted, 0)
+
+	// Step 1: Change BOTH A's and B's properties, both should replace
+	insA["foo"] = resource.NewProperty("changed-value-a")
+	insB["bar"] = resource.NewProperty("changed-value-b")
+
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+
+	require.Len(t, created, 4)
+	require.Equal(t, "created-id-3", snap.Resources[1].ID.String())
+	require.Equal(t, "created-id-4", snap.Resources[2].ID.String())
+
+	require.Len(t, deleted, 2)
+	require.Contains(t, deleted, snap.Resources[1].URN)
+	require.Contains(t, deleted, snap.Resources[2].URN)
 }
 
 func TestInvalidGetIDReportsUserError(t *testing.T) {
@@ -2924,11 +3196,11 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "", "", resource.PropertyMap{}, "", "", "", "")
+		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "", "", resource.PropertyMap{}, "", "", "", nil, "", "")
 		assert.Error(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -2940,9 +3212,9 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 		"<{%reset%}>Expected an ID for urn:pulumi:test::test::pkgA:m:typA::resA<{%reset%}>"))
 
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 1)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 1)
 }
 
 func TestEventSecrets(t *testing.T) {
@@ -2982,10 +3254,10 @@ func TestEventSecrets(t *testing.T) {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
@@ -2997,10 +3269,10 @@ func TestEventSecrets(t *testing.T) {
 	}
 
 	inputs = resource.PropertyMap{
-		"webhooks": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewObjectProperty(resource.PropertyMap{
-				"clientConfig": resource.NewObjectProperty(resource.PropertyMap{
-					"service": resource.NewStringProperty("foo"),
+		"webhooks": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty(resource.PropertyMap{
+				"clientConfig": resource.NewProperty(resource.PropertyMap{
+					"service": resource.NewProperty("foo"),
 				}),
 			}),
 		})),
@@ -3008,10 +3280,10 @@ func TestEventSecrets(t *testing.T) {
 	snap := p.Run(t, nil)
 
 	inputs = resource.PropertyMap{
-		"webhooks": resource.MakeSecret(resource.NewArrayProperty([]resource.PropertyValue{
-			resource.NewObjectProperty(resource.PropertyMap{
-				"clientConfig": resource.NewObjectProperty(resource.PropertyMap{
-					"service": resource.NewStringProperty("bar"),
+		"webhooks": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
+			resource.NewProperty(resource.PropertyMap{
+				"clientConfig": resource.NewProperty(resource.PropertyMap{
+					"service": resource.NewProperty("bar"),
 				}),
 			}),
 		})),
@@ -3068,10 +3340,10 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 			Inputs:                  inputs,
 			AdditionalSecretOutputs: []resource.PropertyKey{"a", "b"},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -3080,9 +3352,9 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 	project := p.GetProject()
 
 	inputs = resource.PropertyMap{
-		"a": resource.NewStringProperty("testA"),
+		"a": resource.NewProperty("testA"),
 		// b is missing
-		"c": resource.MakeSecret(resource.NewStringProperty("testC")),
+		"c": resource.MakeSecret(resource.NewProperty("testC")),
 	}
 
 	// Run an update to create the resource and check we warn about b
@@ -3109,10 +3381,10 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 		return errors.New("Expected a diagnostic message, got none")
 	}
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Should have the provider and resA
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	resA := snap.Resources[1]
 	assert.Equal(t, []resource.PropertyKey{"a", "b"}, resA.AdditionalSecretOutputs)
 	assert.True(t, resA.Outputs["a"].IsSecret())
@@ -3143,18 +3415,18 @@ func TestDefaultParents(t *testing.T) {
 			info.Project+"-"+info.Stack,
 			false,
 			deploytest.ResourceOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource(
 			"pkgA:m:typA",
 			"resA",
 			true,
 			deploytest.ResourceOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -3164,9 +3436,9 @@ func TestDefaultParents(t *testing.T) {
 
 	// Run an update to create the resource
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
 
 	// Assert that resource 0 is the stack
 	assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
@@ -3278,26 +3550,30 @@ func TestPendingDeleteOrder(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"parent": resp.ID,
 			}),
 			Dependencies: []resource.URN{resp.URN},
 		})
-		assert.NoError(t, err)
+		if failCreationOfTypB {
+			require.Fail(t, "RegisterResource should not return")
+		} else {
+			require.NoError(t, err)
+		}
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -3308,19 +3584,19 @@ func TestPendingDeleteOrder(t *testing.T) {
 	// Run an update to create the resources
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
 
 	// Trigger a replacement of A but fail to create B
 	failCreationOfTypB = true
-	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	// Assert that this fails, we should have two copies of A now, one new one and one old one pending delete
 	assert.Error(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
 	assert.False(t, snap.Resources[1].Delete)
 	assert.Equal(t, snap.Resources[2].Type, tokens.Type("pkgA:m:typA"))
@@ -3329,9 +3605,9 @@ func TestPendingDeleteOrder(t *testing.T) {
 	// Now allow B to create and try again
 	failCreationOfTypB = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
 }
 
 func TestPendingDeleteReplacement(t *testing.T) {
@@ -3434,7 +3710,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	insA := resource.NewPropertyMapFromMap(map[string]interface{}{
+	insA := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	inB := "active"
@@ -3442,10 +3718,10 @@ func TestPendingDeleteReplacement(t *testing.T) {
 		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: insA,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{
 				"parent": respA.ID,
 				"frob":   inB,
 			}),
@@ -3454,11 +3730,11 @@ func TestPendingDeleteReplacement(t *testing.T) {
 			},
 			Dependencies: []resource.URN{respA.URN},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -3468,17 +3744,17 @@ func TestPendingDeleteReplacement(t *testing.T) {
 
 	// Run an update to create the resources
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
 
 	// Trigger a replacement of B but fail to delete it
 	inB = "inactive"
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	// Assert that this fails, we should have two B's one marked to delete
 	assert.Error(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 4)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
 	assert.False(t, snap.Resources[1].Delete)
 	assert.Equal(t, snap.Resources[2].Type, tokens.Type("pkgA:m:typB"))
@@ -3487,15 +3763,15 @@ func TestPendingDeleteReplacement(t *testing.T) {
 	assert.True(t, snap.Resources[3].Delete)
 
 	// Now trigger a replacment of A, which will also trigger B to replace
-	insA = resource.NewPropertyMapFromMap(map[string]interface{}{
+	insA = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	failDeletionOfTypB = false
 	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil)
 	// Assert this is ok, we should have just one A and B
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 3)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
 	assert.False(t, snap.Resources[1].Delete)
 	assert.Equal(t, snap.Resources[2].Type, tokens.Type("pkgA:m:typB"))
@@ -3521,7 +3797,7 @@ func TestTimestampTracking(t *testing.T) {
 					return plugin.DiffResult{Changes: plugin.DiffSome}, nil
 				},
 				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+					outputs := resource.NewPropertyMapFromMap(map[string]any{
 						"foo": "bar",
 					})
 					return plugin.UpdateResponse{
@@ -3551,7 +3827,7 @@ func TestTimestampTracking(t *testing.T) {
 		return nil
 	})
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Options.T = t
 	// Run an update to create the resource -- created and updated should be set and equal.
 	p.Steps = []lt.TestStep{{Op: Update, SkipPreview: true}}
@@ -3560,8 +3836,8 @@ func TestTimestampTracking(t *testing.T) {
 
 	creationTimes := make(map[resource.URN]time.Time, len(snap.Resources))
 	for _, resource := range snap.Resources {
-		assert.NotNil(t, resource.Created, "missing created time: %v", resource.URN)
-		assert.NotNil(t, resource.Modified, "missing modified time: %v", resource.URN)
+		require.NotNil(t, resource.Created, "missing created time: %v", resource.URN)
+		require.NotNil(t, resource.Modified, "missing modified time: %v", resource.URN)
 		tz, _ := resource.Created.Zone()
 		assert.Equal(t, "UTC", tz, "time zone is not UTC: %v", resource.URN)
 		assert.Equal(t, resource.Created, resource.Modified,
@@ -3575,8 +3851,8 @@ func TestTimestampTracking(t *testing.T) {
 	snap = p.Run(t, snap)
 	require.NotEmpty(t, snap.Resources)
 	for _, resource := range snap.Resources {
-		assert.NotNil(t, resource.Created, "missing created time: %v", resource.URN)
-		assert.NotNil(t, resource.Modified, "missing modified time: %v", resource.URN)
+		require.NotNil(t, resource.Created, "missing created time: %v", resource.URN)
+		require.NotNil(t, resource.Modified, "missing modified time: %v", resource.URN)
 		assert.Equal(t, *resource.Created, creationTimes[resource.URN],
 			"created time changed: %v", resource.URN)
 		assert.Equal(t, resource.Created, resource.Modified,
@@ -3589,8 +3865,8 @@ func TestTimestampTracking(t *testing.T) {
 	snap = p.Run(t, snap)
 	require.NotEmpty(t, snap.Resources)
 	for _, resource := range snap.Resources {
-		assert.NotNil(t, resource.Created, resource.URN, "missing created time: %v", resource.URN)
-		assert.NotNil(t, resource.Modified, resource.URN, "missing modified time: %v", resource.URN)
+		require.NotNil(t, resource.Created, resource.URN, "missing created time: %v", resource.URN)
+		require.NotNil(t, resource.Modified, resource.URN, "missing modified time: %v", resource.URN)
 		assert.Equal(t, creationTimes[resource.URN], *resource.Created,
 			"created time changed: %v", resource.URN)
 
@@ -3606,8 +3882,8 @@ func TestTimestampTracking(t *testing.T) {
 		case "pulumi:providers:pkgA", "pulumi:pulumi:Stack":
 			tz, _ := resource.Modified.Zone()
 			assert.Equal(t, "UTC", tz, "time zone is not UTC: %v", resource.URN)
-			assert.NotNil(t, *resource.Created, "missing created time: %v", resource.URN)
-			assert.NotNil(t, *resource.Modified, "missing modified time: %v", resource.URN)
+			require.NotNil(t, *resource.Created, "missing created time: %v", resource.URN)
+			require.NotNil(t, *resource.Modified, "missing modified time: %v", resource.URN)
 		default:
 			require.FailNow(t, "unrecognized resource type", resource.Type)
 		}
@@ -3631,25 +3907,23 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					// Check that the old inputs are passed to CheckF
 					if firstUpdate {
 						assert.Nil(t, req.Olds)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo": "bar",
 						}), req.News)
 					} else {
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo":     "bar",
 							"default": "default",
 						}), req.Olds)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo": "baz",
 						}), req.News)
 					}
 
 					// Add a default property
 					results := resource.PropertyMap{}
-					for k, v := range req.News {
-						results[k] = v
-					}
-					results["default"] = resource.NewStringProperty("default")
+					maps.Copy(results, req.News)
+					results["default"] = resource.NewProperty("default")
 
 					return plugin.CheckResponse{Properties: results}, nil
 				},
@@ -3658,20 +3932,20 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					if firstUpdate {
 						assert.Nil(t, req.OldInputs)
 						assert.Nil(t, req.OldOutputs)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo": "bar",
 						}), req.NewInputs)
 					} else {
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo":     "bar",
 							"default": "default",
 						}), req.OldInputs)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo":      "bar",
 							"default":  "default",
 							"computed": "computed",
 						}), req.OldOutputs)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 							"foo":     "baz",
 							"default": "default",
 						}), req.NewInputs)
@@ -3683,15 +3957,13 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id := resource.ID("")
 					results := resource.PropertyMap{}
-					for k, v := range req.Properties {
-						results[k] = v
-					}
+					maps.Copy(results, req.Properties)
 					// Add a computed property
-					results["computed"] = resource.MakeComputed(resource.NewStringProperty(""))
+					results["computed"] = resource.MakeComputed(resource.NewProperty(""))
 
 					if !req.Preview {
 						id = resource.ID("1")
-						results["computed"] = resource.NewStringProperty("computed")
+						results["computed"] = resource.NewProperty("computed")
 					}
 					return plugin.CreateResponse{
 						ID:         id,
@@ -3701,29 +3973,27 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					// Check that the old inputs and outputs are passed to UpdateF
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":     "bar",
 						"default": "default",
 					}), req.OldInputs)
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":      "bar",
 						"default":  "default",
 						"computed": "computed",
 					}), req.OldOutputs)
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":     "baz",
 						"default": "default",
 					}), req.NewInputs)
 
 					results := resource.PropertyMap{}
-					for k, v := range req.NewInputs {
-						results[k] = v
-					}
+					maps.Copy(results, req.NewInputs)
 					// Add a computed property
-					results["computed"] = resource.MakeComputed(resource.NewStringProperty(""))
+					results["computed"] = resource.MakeComputed(resource.NewProperty(""))
 
 					if !req.Preview {
-						results["computed"] = resource.NewStringProperty("computed")
+						results["computed"] = resource.NewProperty("computed")
 					}
 
 					return plugin.UpdateResponse{
@@ -3733,11 +4003,11 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					// Check that the old inputs and outputs are passed to UpdateF
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":     "baz",
 						"default": "default",
 					}), req.Inputs)
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":      "baz",
 						"default":  "default",
 						"computed": "computed",
@@ -3749,17 +4019,17 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	insA := resource.NewPropertyMapFromMap(map[string]interface{}{
+	insA := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: insA,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -3769,37 +4039,37 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 
 	// Run an update to create the resources
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	resA := snap.Resources[1]
 	assert.Equal(t, tokens.Type("pkgA:m:typA"), resA.Type)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"foo":     "bar",
 		"default": "default",
 	}), resA.Inputs)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"foo":      "bar",
 		"default":  "default",
 		"computed": "computed",
 	}), resA.Outputs)
 
 	// Now run another update with new inputs
-	insA = resource.NewPropertyMapFromMap(map[string]interface{}{
+	insA = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "baz",
 	})
 	firstUpdate = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	resA = snap.Resources[1]
 	assert.Equal(t, tokens.Type("pkgA:m:typA"), resA.Type)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"foo":     "baz",
 		"default": "default",
 	}), resA.Inputs)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 		"foo":      "baz",
 		"default":  "default",
 		"computed": "computed",
@@ -3807,9 +4077,9 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 
 	// Now run a destroy to delete the resource and check the stored inputs and outputs are sent
 	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 0)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 0)
 }
 
 func TestResourceNames(t *testing.T) {
@@ -3836,7 +4106,6 @@ func TestResourceNames(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt, func(t *testing.T) {
 			t.Parallel()
 
@@ -3856,27 +4125,27 @@ func TestResourceNames(t *testing.T) {
 			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				// Check the name works as a provider
 				resp, err := monitor.RegisterResource("pulumi:providers:pkgA", tt, true)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				provRef, err := providers.NewReference(resp.URN, resp.ID)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				// And a custom resource
 				respCustom, err := monitor.RegisterResource("pkgA:m:typA", tt, true, deploytest.ResourceOptions{
 					Provider: provRef.String(),
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				// And a component resource
 				_, err = monitor.RegisterResource("pkgA:m:typB", tt, false, deploytest.ResourceOptions{
 					// And as a URN parameter
 					Parent: respCustom.URN,
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				return nil
 			})
-			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 			p := &lt.TestPlan{
 				Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 			}
@@ -3895,9 +4164,77 @@ func TestResourceNames(t *testing.T) {
 func TestSourcePositions(t *testing.T) {
 	t.Parallel()
 
+	inputs := resource.PropertyMap{}
+
+	fileURL := func(path string) string { return "file://" + path }
+
+	const providerPos = "/test/provider/main#1,1"
+	const providerRegPos = "/test/provider/positions#1,2"
+	const providerCallPos = "/test/provider/positions#3,4"
+	const providerReadPos = "/test/provider/positions#5,6"
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
+				ConstructF: func(
+					ctx context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					resp, err := monitor.RegisterResource("pkgA:m:typA", req.Name+"/resA", true, deploytest.ResourceOptions{
+						Inputs:         inputs,
+						SourcePosition: fileURL(providerRegPos),
+						StackTrace: []pkgresource.StackFrame{
+							{SourcePosition: fileURL(providerPos)},
+							{SourcePosition: fileURL(providerRegPos)},
+						},
+						ParentStackTraceHandle: req.Info.StackTraceHandle,
+					})
+					require.NoError(t, err)
+
+					callInputs := resource.PropertyMap{"name": resource.NewProperty(req.Name)}
+					_, _, _, err = monitor.Call(
+						"pkgA:m:callA",
+						callInputs,
+						nil,
+						"",
+						"",
+						"",
+						fileURL(providerCallPos),
+						[]pkgresource.StackFrame{
+							{SourcePosition: fileURL(providerPos)},
+							{SourcePosition: fileURL(providerCallPos)},
+						}, req.Info.StackTraceHandle,
+					)
+					require.NoError(t, err)
+
+					return plugin.ConstructResponse{URN: resp.URN}, nil
+				},
+				CallF: func(
+					ctx context.Context,
+					req plugin.CallRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.CallResponse, error) {
+					_, _, err := monitor.ReadResource(
+						"pkgA:m:typA",
+						req.Args.Get("name").AsString()+"/resB",
+						"id",
+						"",
+						inputs,
+						"",
+						"",
+						fileURL(providerReadPos),
+						[]pkgresource.StackFrame{
+							{SourcePosition: fileURL(providerPos)},
+							{SourcePosition: fileURL(providerReadPos)},
+						},
+						req.Info.StackTraceHandle,
+						"",
+					)
+					require.NoError(t, err)
+
+					return plugin.CallResponse{}, nil
+				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         "created-id",
@@ -3918,43 +4255,128 @@ func TestSourcePositions(t *testing.T) {
 		}),
 	}
 
+	const progPos = "/test/source/main#1,1"
 	const regPos = "/test/source/positions#1,2"
 	const readPos = "/test/source/positions#3,4"
-	inputs := resource.PropertyMap{}
+	const constructPos = "/test/source/positions#5,6"
+	const callPos = "/test/source/poitions#7,8"
+
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:         inputs,
-			SourcePosition: "file://" + regPos,
+			SourcePosition: fileURL(regPos),
+			StackTrace: []pkgresource.StackFrame{
+				{SourcePosition: fileURL(progPos)},
+				{SourcePosition: fileURL(regPos)},
+			},
 		})
 		require.NoError(t, err)
 
-		_, _, err = monitor.ReadResource("pkgA:m:typA", "resB", "id", "", inputs, "", "", "file://"+readPos, "")
+		_, _, err = monitor.ReadResource(
+			"pkgA:m:typA",
+			"resB",
+			"id",
+			"",
+			inputs,
+			"",
+			"",
+			fileURL(readPos),
+			[]pkgresource.StackFrame{
+				{SourcePosition: fileURL(progPos)},
+				{SourcePosition: fileURL(readPos)},
+			},
+			"",
+			"",
+		)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typB", "resC", false, deploytest.ResourceOptions{
+			Remote:         true,
+			Inputs:         inputs,
+			SourcePosition: fileURL(constructPos),
+			StackTrace: []pkgresource.StackFrame{
+				{SourcePosition: fileURL(progPos)},
+				{SourcePosition: fileURL(constructPos)},
+			},
+		})
+		require.NoError(t, err)
+
+		callInputs := resource.PropertyMap{"name": resource.NewProperty("progCall")}
+		_, _, _, err = monitor.Call("pkgA:m:callA", callInputs, nil, "", "", "", fileURL(callPos), []pkgresource.StackFrame{
+			{SourcePosition: fileURL(progPos)},
+			{SourcePosition: fileURL(callPos)},
+		}, "")
 		require.NoError(t, err)
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	regURN := p.NewURN("pkgA:m:typA", "resA", "")
 	readURN := p.NewURN("pkgA:m:typA", "resB", "")
+	reg2URN := p.NewURN("pkgA:m:typA", "resC/resA", "")
+	read2URN := p.NewURN("pkgA:m:typA", "resC/resB", "")
+	read3URN := p.NewURN("pkgA:m:typA", "progCall/resB", "")
 
 	// Run the initial update.
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 6)
+
+	projURL := func(path string) string { return "project://" + path }
 
 	reg := snap.Resources[1]
 	assert.Equal(t, regURN, reg.URN)
-	assert.Equal(t, "project://"+regPos, reg.SourcePosition)
+	assert.Equal(t, projURL(regPos), reg.SourcePosition)
+	assert.Equal(t, []pkgresource.StackFrame{
+		{SourcePosition: projURL(progPos)},
+		{SourcePosition: projURL(regPos)},
+	}, reg.StackTrace)
 
 	read := snap.Resources[2]
 	assert.Equal(t, readURN, read.URN)
-	assert.Equal(t, "project://"+readPos, read.SourcePosition)
+	assert.Equal(t, projURL(readPos), read.SourcePosition)
+	assert.Equal(t, []pkgresource.StackFrame{
+		{SourcePosition: projURL(progPos)},
+		{SourcePosition: projURL(readPos)},
+	}, read.StackTrace)
+
+	reg2 := snap.Resources[3]
+	assert.Equal(t, reg2URN, reg2.URN)
+	assert.Equal(t, projURL(providerRegPos), reg2.SourcePosition)
+	assert.Equal(t, []pkgresource.StackFrame{
+		{SourcePosition: projURL(progPos)},
+		{SourcePosition: projURL(constructPos)},
+		{SourcePosition: projURL(providerPos)},
+		{SourcePosition: projURL(providerRegPos)},
+	}, reg2.StackTrace)
+
+	read2 := snap.Resources[4]
+	assert.Equal(t, read2URN, read2.URN)
+	assert.Equal(t, projURL(providerReadPos), read2.SourcePosition)
+	assert.Equal(t, []pkgresource.StackFrame{
+		{SourcePosition: projURL(progPos)},
+		{SourcePosition: projURL(constructPos)},
+		{SourcePosition: projURL(providerPos)},
+		{SourcePosition: projURL(providerCallPos)},
+		{SourcePosition: projURL(providerPos)},
+		{SourcePosition: projURL(providerReadPos)},
+	}, read2.StackTrace)
+
+	read3 := snap.Resources[5]
+	assert.Equal(t, read3URN, read3.URN)
+	assert.Equal(t, projURL(providerReadPos), read3.SourcePosition)
+	assert.Equal(t, []pkgresource.StackFrame{
+		{SourcePosition: projURL(progPos)},
+		{SourcePosition: projURL(callPos)},
+		{SourcePosition: projURL(providerPos)},
+		{SourcePosition: projURL(providerReadPos)},
+	}, read3.StackTrace)
 }
 
 func TestBadResourceOptionURNs(t *testing.T) {
@@ -4020,7 +4442,6 @@ func TestBadResourceOptionURNs(t *testing.T) {
 	}
 
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -4035,7 +4456,7 @@ func TestBadResourceOptionURNs(t *testing.T) {
 				tt.assertFn(err)
 				return nil
 			})
-			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 			p := &lt.TestPlan{
 				Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -4044,8 +4465,8 @@ func TestBadResourceOptionURNs(t *testing.T) {
 			project := p.GetProject()
 
 			snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-			assert.NoError(t, err)
-			assert.NotNil(t, snap)
+			require.NoError(t, err)
+			require.NotNil(t, snap)
 		})
 	}
 }
@@ -4059,7 +4480,7 @@ func TestProviderChecksums(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+	ins := resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 	})
 
@@ -4072,11 +4493,11 @@ func TestProviderChecksums(t *testing.T) {
 					"windows-x64": {0, 1, 2, 3, 4},
 				},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -4086,9 +4507,9 @@ func TestProviderChecksums(t *testing.T) {
 
 	// Run an update
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 2)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
 	// Check the checksum was saved in the provider resource
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[0].Type)
 	checksums := snap.Resources[0].Inputs["__internal"].ObjectValue()["pluginChecksums"].ObjectValue()
@@ -4097,9 +4518,9 @@ func TestProviderChecksums(t *testing.T) {
 	// Delete the resource and ensure the checksums are passed to EnsurePlugins
 	createResource = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.NoError(t, err)
-	assert.NotNil(t, snap)
-	assert.Len(t, snap.Resources, 0)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 0)
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/14040, ensure the step generators automatic
@@ -4114,16 +4535,16 @@ func TestAutomaticDiff(t *testing.T) {
 	}
 
 	inputs := resource.PropertyMap{
-		"foo": resource.NewNumberProperty(1),
+		"foo": resource.NewProperty(1.0),
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: inputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -4133,11 +4554,11 @@ func TestAutomaticDiff(t *testing.T) {
 	// Run the initial update.
 	project := p.GetProject()
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Change the inputs and run again
 	inputs = resource.PropertyMap{
-		"foo": resource.NewNumberProperty(2),
+		"foo": resource.NewProperty(2.0),
 	}
 	_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
@@ -4164,7 +4585,7 @@ func TestAutomaticDiff(t *testing.T) {
 			assert.True(t, found)
 			return err
 		})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // TestStackOutputsProgramError tests that previous stack outputs aren't deleted when an update fails because
@@ -4182,7 +4603,7 @@ func TestStackOutputsProgramError(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(resource.RootStackType, "test", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		val := resource.NewProperty(fmt.Sprintf("step %v", step))
 
@@ -4208,7 +4629,7 @@ func TestStackOutputsProgramError(t *testing.T) {
 		}
 
 		err = monitor.RegisterResourceOutputs(resp.URN, outputs)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if step == 1 || step == 2 {
 			return errors.New("program error")
@@ -4217,13 +4638,13 @@ func TestStackOutputsProgramError(t *testing.T) {
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 
 	validateSnapshot := func(snap *deploy.Snapshot, expectedResourceCount int, expectedOutputs resource.PropertyMap) {
-		assert.Len(t, snap.Resources, expectedResourceCount)
+		require.Len(t, snap.Resources, expectedResourceCount)
 		assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
 		assert.Equal(t, expectedOutputs, snap.Resources[0].Outputs)
 	}
@@ -4231,7 +4652,7 @@ func TestStackOutputsProgramError(t *testing.T) {
 	// Run the initial update which sets some stack outputs.
 	snap, err := lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	validateSnapshot(snap, 1, resource.PropertyMap{
 		"first":  resource.NewProperty("step 0"),
 		"second": resource.NewProperty("step 0"),
@@ -4264,7 +4685,7 @@ func TestStackOutputsProgramError(t *testing.T) {
 	step = 3
 	snap, err = lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	validateSnapshot(snap, 1, resource.PropertyMap{
 		"first":  resource.NewProperty("step 3"),
 		"second": resource.NewProperty("step 3"),
@@ -4290,7 +4711,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource(resource.RootStackType, "test", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		val := resource.NewProperty(fmt.Sprintf("step %v", step))
 
@@ -4300,11 +4721,11 @@ func TestStackOutputsResourceError(t *testing.T) {
 				"first":  val,
 				"second": val,
 			})
-			assert.NoError(t, outsErr)
+			require.NoError(t, outsErr)
 
 		case 1:
-			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.ErrorContains(t, err, "oh no")
+			_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+			require.Fail(t, "RegisterResource should not return")
 			// RegisterResourceOutputs not called here, simulating what happens in SDKs when an output of resA
 			// is exported as a stack output.
 
@@ -4313,23 +4734,23 @@ func TestStackOutputsResourceError(t *testing.T) {
 				"first":  val,
 				"second": val,
 			})
-			assert.NoError(t, outsErr)
+			require.NoError(t, outsErr)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.ErrorContains(t, err, "oh no")
+			require.Fail(t, "RegisterResource should not return")
 		}
 
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		// Skip display tests because secrets are serialized with the blinding crypter and can't be restored
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
 	validateSnapshot := func(snap *deploy.Snapshot, expectedResourceCount int, expectedOutputs resource.PropertyMap) {
-		assert.Len(t, snap.Resources, expectedResourceCount)
+		require.Len(t, snap.Resources, expectedResourceCount)
 		assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
 		assert.Equal(t, expectedOutputs, snap.Resources[0].Outputs)
 	}
@@ -4337,7 +4758,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 	// Run the initial update which sets some stack outputs.
 	snap, err := lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	validateSnapshot(snap, 1, resource.PropertyMap{
 		"first":  resource.NewProperty("step 0"),
 		"second": resource.NewProperty("step 0"),
@@ -4369,7 +4790,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 	step = 3
 	snap, err = lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	validateSnapshot(snap, 1, resource.PropertyMap{
 		"first":  resource.NewProperty("step 3"),
 		"second": resource.NewProperty("step 3"),
@@ -4404,20 +4825,20 @@ func TestParallelDiff(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}()
 
 		go func() {
 			defer wg.Done()
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}()
 
 		wg.Wait()
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -4426,9 +4847,8 @@ func TestParallelDiff(t *testing.T) {
 				// Need at least two workers for this
 				Parallel: 2,
 			},
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -4459,4 +4879,146 @@ func TestParallelDiff(t *testing.T) {
 
 	// Wait for the diff to complete, but don't wait forever
 	assert.False(t, waitTimeout(&wg, 10*time.Second), "waiting for diff to complete timed out")
+}
+
+func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
+	t.Parallel()
+
+	done := make(chan struct{}, 1)
+	defer close(done)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					// Always fail the create operation
+					return plugin.CreateResponse{}, errors.New("create failed intentionally")
+				},
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					// Try to register a resource, which should fail
+					_, err := monitor.RegisterResource("pkgA:m:typB", req.Name+"-child", true, deploytest.ResourceOptions{
+						Parent: req.Parent,
+					})
+					require.Error(t, err)
+					<-done // Simulate the construct call not returning.
+					return plugin.ConstructResponse{}, err
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.ErrorContains(t, err, "resource monitor shut down while waiting for construct to complete")
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	// Run the update - it should complete with an error even though ConstructF hangs
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.True(t, result.IsBail(err))
+	require.ErrorContains(t, err, "create failed intentionally")
+	done <- struct{}{}
+}
+
+// This test ensures that we do not proceed to deletions if a program throws an error.
+func TestProgramError(t *testing.T) {
+	t.Parallel()
+
+	returnError := false
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		require.NoError(t, err)
+
+		if returnError {
+			return errors.New("program error")
+		}
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		require.NoError(t, err)
+
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NotNil(t, snap)
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.Equal(t, snap.Resources[2].URN.Name(), "resB")
+
+	returnError = true
+
+	snap, err = lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NotNil(t, snap)
+	require.Error(t, err)
+	require.True(t, result.IsBail(err))
+	require.ErrorContains(t, err, "program error")
+	require.Len(t, snap.Resources, 3)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.Equal(t, snap.Resources[2].URN.Name(), "resB")
+}
+
+func TestResourceError(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					// Always fail the create operation
+					return plugin.CreateResponse{}, errors.New("create failed intentionally")
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		// The resource registration fails, and the engine knows this and
+		// cancels the deployment. RegisterResource will not return.
+		t.Fatalf("We should not return from RegisterResource")
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	_, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.True(t, result.IsBail(err))
+	require.ErrorContains(t, err, "create failed intentionally")
 }

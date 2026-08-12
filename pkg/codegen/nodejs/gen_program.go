@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,14 +18,17 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -40,6 +43,11 @@ import (
 
 const PulumiToken = "pulumi"
 
+// rangeLoopFmt renders a `range`-over-count loop. `range` is a `let`-bound
+// number, so each iteration has its own binding and deferred applies in the loop
+// body capture the value for their own iteration rather than the final one.
+const rangeLoopFmt = "%sfor (let range = 0; range < %.12o; range++) {\n"
+
 type generator struct {
 	// The formatter to use when generating code.
 	*format.Formatter
@@ -47,19 +55,45 @@ type generator struct {
 	program     *pcl.Program
 	diagnostics hcl.Diagnostics
 
+	// Generate ESM (ECMAScript modules) output instead of CJS (CommonJS), see https://nodejs.org/api/esm.html
+	esm                     bool
 	asyncMain               bool
 	configCreated           bool
 	isComponent             bool
+	declaredNodeIdentifiers map[string]bool
+	nodeIdentifiers         map[string]string
+	packageImportAliases    map[string]string
+	importIdentifiers       codegen.StringSet
 	deferredOutputVariables []*pcl.DeferredOutputVariable
+
+	// rangeValueIsScalar is true while generating the body of a numeric `range`
+	// loop, where `range` is a plain number. References to `range.value` and
+	// `range.key` are then rendered as `range`.
+	rangeValueIsScalar bool
 }
 
+// ProgramOptions controls optional code generation behaviour for GenerateProgramWithOptions.
+type ProgramOptions struct {
+	// The runtime we are generating code for ("nodejs", "bun").
+	Runtime string
+}
+
+// GenerateProgram generates a Node.js program from a PCL program using default options.
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
+	return GenerateProgramWithOptions(program, ProgramOptions{
+		Runtime: "nodejs",
+	})
+}
+
+// GenerateProgramWithOptions generates a TypeScript program from a PCL program.
+func GenerateProgramWithOptions(program *pcl.Program, opts ProgramOptions) (map[string][]byte, hcl.Diagnostics, error) {
 	pcl.MapProvidersAsResources(program)
 	// Linearize the nodes into an order appropriate for procedural code generation.
 	nodes := pcl.Linearize(program)
 
 	g := &generator{
 		program: program,
+		esm:     opts.Runtime == "bun",
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -73,11 +107,6 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		}
 	}
 
-	var index bytes.Buffer
-	err = g.genPreamble(&index, program)
-	if err != nil {
-		return nil, nil, err
-	}
 	// used to track declared variables in the main program
 	// since outputs have identifiers which can conflict with other program nodes' identifiers
 	// we switch the entry point to async which allows for declaring arbitrary output names
@@ -89,6 +118,11 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 		switch x := n.(type) {
 		case *pcl.Resource:
 			if resourceRequiresAsyncMain(x) {
+				g.asyncMain = true
+			}
+			declaredNodeIdentifiers[makeValidIdentifier(x.Name())] = true
+		case *pcl.ReadResource:
+			if x.Options != nil && x.Options.Range != nil && model.ContainsPromises(x.Options.Range.Type()) {
 				g.asyncMain = true
 			}
 			declaredNodeIdentifiers[makeValidIdentifier(x.Name())] = true
@@ -109,11 +143,23 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 			}
 		}
 	}
+	g.declaredNodeIdentifiers = declaredNodeIdentifiers
+
+	var index bytes.Buffer
+	err = g.genPreamble(&index, program)
+	if err != nil {
+		return nil, nil, err
+	}
+	g.assignRootNodeIdentifiers(program, g.importIdentifiers)
 
 	indenter := func(f func()) { f() }
 	if g.asyncMain {
 		indenter = g.Indented
-		g.Fgenf(&index, "export = async () => {\n")
+		if g.esm {
+			g.Fgenf(&index, "export default async () => {\n")
+		} else {
+			g.Fgenf(&index, "export = async () => {\n")
+		}
 	}
 
 	indenter(func() {
@@ -152,6 +198,7 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	for componentDir, component := range program.CollectComponents() {
 		componentFilename := filepath.Base(componentDir)
 		componentName := component.DeclarationName()
+		pcl.MapProvidersAsResources(component.Program)
 		componentGenerator := &generator{
 			program:     component.Program,
 			isComponent: true,
@@ -167,56 +214,36 @@ func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, 
 	return files, g.diagnostics, nil
 }
 
-func GenerateProject(
-	directory string, project workspace.Project,
-	program *pcl.Program, localDependencies map[string]string,
-	forceTsc bool,
-) error {
-	files, diagnostics, err := GenerateProgram(program)
-	if err != nil {
-		return err
-	}
-	if diagnostics.HasErrors() {
-		return diagnostics
-	}
-
-	// Check the project for "main" as that changes where we write out files and some relative paths.
-	rootDirectory := directory
-	if project.Main != "" {
-		directory = filepath.Join(rootDirectory, project.Main)
-		// mkdir -p the subdirectory
-		err = os.MkdirAll(directory, 0o700)
-		if err != nil {
-			return fmt.Errorf("create main directory: %w", err)
-		}
-	}
-
-	// Set the runtime to "nodejs" then marshal to Pulumi.yaml
-	runtime := workspace.NewProjectRuntimeInfo("nodejs", nil)
-	if forceTsc {
-		runtime.SetOption("typescript", false)
-	}
-	project.Runtime = runtime
-
-	projectBytes, err := encoding.YAML.Marshal(project)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(path.Join(rootDirectory, "Pulumi.yaml"), projectBytes, 0o600)
-	if err != nil {
-		return fmt.Errorf("write Pulumi.yaml: %w", err)
-	}
-
-	// Build the package.json
+func generatePackageJSON(
+	program *pcl.Program,
+	projectName string,
+	localDependencies map[string]string,
+	runtimeName string,
+) ([]byte, error) {
 	var packageJSON bytes.Buffer
-	fmt.Fprintf(&packageJSON, `{
+	if runtimeName == "bun" {
+		fmt.Fprintf(&packageJSON, `{
+	"name": "%s",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		`, projectName)
+	} else {
+		fmt.Fprintf(&packageJSON, `{
 	"name": "%s",
 	"devDependencies": {
 		"@types/node": "%s"
 	},
 	"dependencies": {
-		"typescript": "^4.0.0",
-		`, project.Name.String(), MinimumNodeTypesVersion)
+		"typescript": "%s",
+		`, projectName, MinimumNodeTypesVersion, MinimumTypescriptVersion)
+	}
 
 	// Check if pulumi is a local dependency, else add it as a normal range dependency
 	if pulumiArtifact, has := localDependencies[PulumiToken]; has {
@@ -228,7 +255,7 @@ func GenerateProject(
 	// For each package add a dependency line
 	packages, err := program.CollectNestedPackageSnapshots()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Sort the dependencies to ensure a deterministic package.json. Note that the typescript and
 	// @pulumi/pulumi dependencies are already added above and not sorted.
@@ -243,7 +270,7 @@ func GenerateProject(
 			continue
 		}
 		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
-			return err
+			return nil, err
 		}
 
 		namespace := "@pulumi"
@@ -253,7 +280,7 @@ func GenerateProject(
 		packageName := namespace + "/" + p.Name
 		err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if langInfo, found := p.Language["nodejs"]; found {
 			nodeInfo, ok := langInfo.(NodePackageInfo)
@@ -264,8 +291,22 @@ func GenerateProject(
 
 		dependencyTemplate := ",\n		\"%s\": \"%s\""
 		if path, has := localDependencies[p.Name]; has {
-			fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, path)
+			// npm packages that are packed end up in a .tgz|.tar.gz file
+			isZippedArtifact := strings.HasSuffix(path, ".tgz") || strings.HasSuffix(path, ".tar.gz")
+			if isZippedArtifact {
+				// local packaged dependency, use as-is:
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, path)
+			} else {
+				// path to local source dependency, prefix with "file:" if not already present:
+				if !strings.HasPrefix(path, "file:") {
+					path = "file:" + path
+				}
+
+				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, path)
+			}
 		} else {
+			// this is a package that is published to npm
+			// either use the version specified in the schema if available, or use "*"
 			if p.Version != nil {
 				fmt.Fprintf(&packageJSON, dependencyTemplate, packageName, p.Version.String())
 			} else {
@@ -275,32 +316,65 @@ func GenerateProject(
 	}
 	packageJSON.WriteString(`
 	}
-}`)
+}
+`)
 
-	files["package.json"] = packageJSON.Bytes()
+	return packageJSON.Bytes(), nil
+}
 
-	// Add the language specific .gitignore
-	files[".gitignore"] = []byte(`/bin/
-/node_modules/`)
-
-	// Add the basic tsconfig
+func generateTSConfig(runtimeName string, files map[string][]byte) []byte {
 	var tsConfig bytes.Buffer
-	tsConfig.WriteString(`{
+
+	if runtimeName == "bun" {
+		// https://bun.sh/docs/typescript#suggested-compileroptions
+		tsConfig.WriteString(`{
 	"compilerOptions": {
+		// Environment setup & latest features
+		"lib": ["ESNext"],
+		"target": "ESNext",
+		"module": "Preserve",
+		"moduleDetection": "force",
+		"jsx": "react-jsx",
+		"allowJs": true,
+		// Bundler mode
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"noEmit": true,
+		// Best practices
 		"strict": true,
-		"outDir": "bin",
-		"target": "es2016",
-		"module": "commonjs",
-		"moduleResolution": "node",
-		"sourceMap": true,
-		"experimentalDecorators": true,
-		"pretty": true,
+		"skipLibCheck": true,
 		"noFallthroughCasesInSwitch": true,
-		"noImplicitReturns": true,
-		"forceConsistentCasingInFileNames": true
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		// Some stricter flags (disabled by default)
+		"noUnusedLocals": false,
+		"noUnusedParameters": false,
+		"noPropertyAccessFromIndexSignature": false
 	},
 	"files": [
 `)
+	} else {
+		tsConfig.WriteString(`{
+	"compilerOptions": {
+		// Output
+		"outDir": "bin",
+		"sourceMap": true,
+		// Environment
+		"target": "ES2022",
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"moduleDetection": "force",
+		"types": ["node"],
+		// Type Checking
+		"strict": true,
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitReturns": true,
+		"skipLibCheck": true
+	},
+	"files": [
+`)
+	}
 
 	fileNames := make([]string, 0, len(files))
 	for file := range files {
@@ -321,8 +395,66 @@ func GenerateProject(
 	}
 
 	tsConfig.WriteString(`	]
-}`)
-	files["tsconfig.json"] = tsConfig.Bytes()
+}
+`)
+	return tsConfig.Bytes()
+}
+
+func GenerateProject(
+	directory string, project workspace.Project,
+	program *pcl.Program, localDependencies map[string]string,
+	forceTsc bool, runtimeName string,
+) error {
+	files, diagnostics, err := GenerateProgramWithOptions(program, ProgramOptions{Runtime: runtimeName})
+	if err != nil {
+		return err
+	}
+	if diagnostics.HasErrors() {
+		return diagnostics
+	}
+
+	// Check the project for "main" as that changes where we write out files and some relative paths.
+	rootDirectory := directory
+	if project.Main != "" {
+		directory = filepath.Join(rootDirectory, project.Main)
+		// mkdir -p the subdirectory
+		err = os.MkdirAll(directory, 0o700)
+		if err != nil {
+			return fmt.Errorf("create main directory: %w", err)
+		}
+	}
+
+	// Set the runtime then marshal to Pulumi.yaml
+	if runtimeName == "" {
+		runtimeName = "nodejs"
+	}
+	runtime := workspace.NewProjectRuntimeInfo(runtimeName, nil)
+	if runtimeName == "nodejs" && forceTsc {
+		runtime.SetOption("typescript", false)
+	}
+	project.Runtime = runtime
+
+	projectBytes, err := encoding.YAML.Marshal(project)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(path.Join(rootDirectory, "Pulumi.yaml"), projectBytes, 0o600)
+	if err != nil {
+		return fmt.Errorf("write Pulumi.yaml: %w", err)
+	}
+
+	packageJSON, err := generatePackageJSON(program, project.Name.String(), localDependencies, runtimeName)
+	if err != nil {
+		return err
+	}
+	files["package.json"] = packageJSON
+
+	// Add the language specific .gitignore
+	files[".gitignore"] = []byte(`/bin/
+/node_modules/
+`)
+
+	files["tsconfig.json"] = generateTSConfig(runtimeName, files)
 
 	for filename, data := range files {
 		outPath := path.Join(directory, filename)
@@ -371,36 +503,138 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 type programImports struct {
 	importStatements      []string
 	preambleHelperMethods codegen.StringSet
+	importAliases         codegen.StringSet
+}
+
+func makeUniqueName(base string, used codegen.StringSet) string {
+	name := makeValidIdentifier(base)
+	if !used.Has(name) {
+		used.Add(name)
+		return name
+	}
+
+	for i := 2; ; i++ {
+		candidate := fmt.Sprintf("%s%d", name, i)
+		if !used.Has(candidate) {
+			used.Add(candidate)
+			return candidate
+		}
+	}
+}
+
+func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved codegen.StringSet) {
+	g.nodeIdentifiers = map[string]string{}
+	used := codegen.NewStringSet()
+	for name := range reserved {
+		used.Add(name)
+	}
+
+	for _, node := range program.Nodes {
+		var name string
+		switch n := node.(type) {
+		case *pcl.Resource:
+			name = n.Name()
+		case *pcl.ReadResource:
+			name = n.Name()
+		case *pcl.ConfigVariable:
+			name = n.Name()
+		case *pcl.LocalVariable:
+			name = n.Name()
+		case *pcl.Component:
+			name = n.Name()
+		case *pcl.Hook:
+			name = n.Name()
+		default:
+			continue
+		}
+		g.nodeIdentifiers[name] = makeUniqueName(name, used)
+	}
+}
+
+func (g *generator) nodeName(name string) string {
+	if identifier, ok := g.nodeIdentifiers[name]; ok {
+		return identifier
+	}
+	return makeValidIdentifier(name)
 }
 
 func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	importSet := codegen.NewStringSet("@pulumi/pulumi")
 	preambleHelperMethods := codegen.NewStringSet()
-	var componentImports []string
+	usedAliases := codegen.NewStringSet("pulumi")
 
+	// This map tracks the package tokens by the associated import.
+	//
+	// It will have entries similar to the following:
+	//
+	// npmToPuPkgName["@pulumiverse/scaleway"] = "scaleway"
 	npmToPuPkgName := make(map[string]string)
+	packageAliases := make(map[string]string)
+
+	var componentImports []string
 	seenComponentImports := map[string]bool{}
+
+	// Index known PackageReference by corresponding package name token.
+	knownPackageRefsByPkg := make(map[string]schema.PackageReference)
+	for _, pkgRef := range program.PackageReferences() {
+		// Can more than one package be bound to the same name? It seems possible in case of components.
+		knownPackageRefsByPkg[pkgRef.Name()] = pkgRef
+	}
+
+	// Collect imports for a package; optionally supply packageRef if handily available, otherwise pass nil.
+	visitPkg := func(pkg string, packageRef schema.PackageReference) {
+		if packageRef == nil {
+			packageRef = knownPackageRefsByPkg[pkg]
+		}
+		if pkg == PulumiToken {
+			return
+		}
+		namespace := "@pulumi"
+		if packageRef != nil && packageRef.Namespace() != "" {
+			namespace = "@" + packageRef.Namespace()
+		}
+		pkgName := namespace + "/" + pkg
+		if packageRef != nil {
+			def, err := packageRef.Definition()
+			contract.AssertNoErrorf(err, "Should be able to retrieve definition for %q", pkg)
+
+			if info, ok := def.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
+				pkgName = info.PackageName
+			}
+		}
+		npmToPuPkgName[pkgName] = pkg
+		importSet.Add(pkgName)
+	}
+
+	// Like visitPkg but PakckageReference is not handily available.
+	visitPkgWithoutRef := func(pkg string) {
+		visitPkg(pkg, nil)
+	}
+
+	// Notes direct npm imports.
+	visitDirectImport := func(nodeImportString string) {
+		if nodeImportString == "" {
+			return
+		}
+		importSet.Add(nodeImportString)
+	}
+
 	for _, n := range program.Nodes {
 		switch n := n.(type) {
 		case *pcl.Resource:
-			pkg, _, _, _ := n.DecomposeToken()
-			if pkg == PulumiToken {
-				continue
-			}
-			namespace := "@pulumi"
-			if n.Schema != nil && n.Schema.PackageReference != nil && n.Schema.PackageReference.Namespace() != "" {
-				namespace = "@" + n.Schema.PackageReference.Namespace()
-			}
-			pkgName := namespace + "/" + pkg
+			pkg, _, _, _ := pcl.DecomposeToken(n.GetToken())
+			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
-				def, err := n.Schema.PackageReference.Definition()
-				contract.AssertNoErrorf(err, "Should be able to retrieve definition for %s", n.Schema.Token)
-				if info, ok := def.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
-					pkgName = info.PackageName
-				}
-				npmToPuPkgName[pkgName] = pkg
+				packageRef = n.Schema.PackageReference
 			}
-			importSet.Add(pkgName)
+			visitPkg(pkg, packageRef)
+		case *pcl.ReadResource:
+			pkg, _, _, _ := pcl.DecomposeToken(n.GetToken())
+			var packageRef schema.PackageReference
+			if n.Schema != nil && n.Schema.PackageReference != nil {
+				packageRef = n.Schema.PackageReference
+			}
+			visitPkg(pkg, packageRef)
 		case *pcl.Component:
 			componentDir := filepath.Base(n.DirPath())
 			componentName := n.DeclarationName()
@@ -413,11 +647,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
-				if i := g.getFunctionImports(call); len(i) > 0 && i[0] != "" {
-					for _, importPackage := range i {
-						importSet.Add(importPackage)
-					}
-				}
+				g.visitFunctionImports(call, visitDirectImport, visitPkgWithoutRef)
 				if helperMethodBody, ok := getHelperMethodIfNeeded(call, g.Indent); ok {
 					preambleHelperMethods.Add(helperMethodBody)
 				}
@@ -425,6 +655,14 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			return n, nil
 		})
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
+	}
+
+	// Add child_process import if the program contains hook blocks.
+	for _, n := range program.Nodes {
+		switch n.(type) {
+		case *pcl.Hook:
+			importSet.Add("child_process")
+		}
 	}
 
 	sortedValues := importSet.SortedValues()
@@ -439,8 +677,21 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		} else {
 			as = makeValidIdentifier(path.Base(pkg))
 		}
+		for i := 2; usedAliases.Has(as); i++ {
+			as = fmt.Sprintf("%s%d", makeValidIdentifier(path.Base(pkg)), i)
+		}
+		usedAliases.Add(as)
+		if puPkg, ok := npmToPuPkgName[pkg]; ok {
+			packageAliases[puPkg] = as
+		}
 		imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
 	}
+	g.packageImportAliases = packageAliases
+	importIdentifiers := codegen.NewStringSet()
+	for alias := range usedAliases {
+		importIdentifiers.Add(alias)
+	}
+	g.importIdentifiers = importIdentifiers
 
 	imports = append(imports, componentImports...)
 	sort.Strings(imports)
@@ -448,7 +699,15 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	return programImports{
 		importStatements:      imports,
 		preambleHelperMethods: preambleHelperMethods,
+		importAliases:         importIdentifiers,
 	}
+}
+
+func (g *generator) packageAlias(pkg string) string {
+	if alias, ok := g.packageImportAliases[pkg]; ok {
+		return alias
+	}
+	return makeValidIdentifier(pkg)
 }
 
 func (g *generator) genPreamble(w io.Writer, program *pcl.Program) error {
@@ -456,6 +715,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) error {
 	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
 
 	programImports := g.collectProgramImports(program)
+	g.importIdentifiers = programImports.importAliases
 
 	// Now sort the imports and emit them.
 	for _, i := range programImports.importStatements {
@@ -476,7 +736,7 @@ func componentElementType(pclType model.Type) string {
 		return "boolean"
 	case model.IntType, model.NumberType:
 		return "number"
-	case model.StringType:
+	case model.IDType, model.StringType:
 		return "string"
 	default:
 		switch pclType := pclType.(type) {
@@ -514,7 +774,7 @@ func componentOutputType(pclType model.Type) string {
 }
 
 func (g *generator) genObjectTypedConfig(w io.Writer, objectType *model.ObjectType) {
-	attributeKeys := []string{}
+	attributeKeys := slice.Prealloc[string](len(objectType.Properties))
 	for attributeKey := range objectType.Properties {
 		attributeKeys = append(attributeKeys, attributeKey)
 	}
@@ -540,6 +800,8 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
 
 	programImports := g.collectProgramImports(component.Program)
+	g.importIdentifiers = programImports.importAliases
+	g.assignRootNodeIdentifiers(component.Program, g.importIdentifiers)
 
 	// Now sort the imports and emit them.
 	for _, i := range programImports.importStatements {
@@ -564,7 +826,7 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				}
 				if configVar.Description != "" {
 					g.Fgenf(w, "%s/**\n", g.Indent)
-					for _, line := range strings.Split(configVar.Description, "\n") {
+					for line := range strings.SplitSeq(configVar.Description, "\n") {
 						g.Fgenf(w, "%s * %s\n", g.Indent, line)
 					}
 					g.Fgenf(w, "%s */\n", g.Indent)
@@ -617,18 +879,27 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 			var outputType string
 			switch expr := output.Value.(type) {
 			case *model.ScopeTraversalExpression:
-				resource, ok := expr.Parts[0].(*pcl.Resource)
-				if ok && len(expr.Parts) == 1 {
-					pkg, module, memberName, diagnostics := resourceTypeName(resource)
-					g.diagnostics = append(g.diagnostics, diagnostics...)
-
-					if module != "" {
-						module = "." + module
+				if len(expr.Parts) == 1 {
+					switch resource := expr.Parts[0].(type) {
+					case *pcl.Resource:
+						pkg, module, memberName, diagnostics := resourceTypeName(resource)
+						g.diagnostics = append(g.diagnostics, diagnostics...)
+						if module != "" {
+							module = "." + module
+						}
+						qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
+						outputType = fmt.Sprintf("pulumi.Output<%s>", qualifiedMemberName)
+					case *pcl.ReadResource:
+						pkg, module, memberName, diagnostics := readResourceTypeName(resource)
+						g.diagnostics = append(g.diagnostics, diagnostics...)
+						if module != "" {
+							module = "." + module
+						}
+						qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
+						outputType = fmt.Sprintf("pulumi.Output<%s>", qualifiedMemberName)
+					default:
+						outputType = componentOutputType(expr.Type())
 					}
-
-					qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
-					// special case: the output is a Resource type
-					outputType = fmt.Sprintf("pulumi.Output<%s>", qualifiedMemberName)
 				} else {
 					outputType = componentOutputType(expr.Type())
 				}
@@ -701,6 +972,19 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 					}
 					g.genResource(w, node)
 					g.Fgen(w, "\n")
+				case *pcl.ReadResource:
+					if node.Options == nil {
+						node.Options = &pcl.ResourceOptions{}
+					}
+					if node.Options.Parent == nil {
+						node.Options.Parent = model.ConstantReference(&model.Constant{
+							Name: "this",
+						})
+					}
+					g.genReadResource(w, node)
+					g.Fgen(w, "\n")
+				case *pcl.PulumiBlock:
+					g.genPulumi(w, node)
 				}
 			}
 
@@ -710,8 +994,14 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 				outputProperty := makeValidIdentifier(output.Name())
 				switch expr := output.Value.(type) {
 				case *model.ScopeTraversalExpression:
-					_, ok := expr.Parts[0].(*pcl.Resource)
-					if ok && len(expr.Parts) == 1 {
+					resourceOutput := false
+					if len(expr.Parts) == 1 {
+						switch expr.Parts[0].(type) {
+						case *pcl.Resource, *pcl.ReadResource:
+							resourceOutput = true
+						}
+					}
+					if resourceOutput {
 						// special case: the output is a Resource type
 						g.Fgenf(w, "%sthis.%s = pulumi.output(%v);\n",
 							g.Indent, outputProperty,
@@ -752,6 +1042,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 	switch n := n.(type) {
 	case *pcl.Resource:
 		g.genResource(w, n)
+	case *pcl.ReadResource:
+		g.genReadResource(w, n)
 	case *pcl.ConfigVariable:
 		g.genConfigVariable(w, n)
 	case *pcl.LocalVariable:
@@ -760,48 +1052,105 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genOutputVariable(w, n)
 	case *pcl.Component:
 		g.genComponent(w, n)
+	case *pcl.PulumiBlock:
+		g.genPulumi(w, n)
+	case *pcl.Hook:
+		g.genHookNode(w, n)
 	}
 }
 
 func resourceRequiresAsyncMain(r *pcl.Resource) bool {
-	if r.Options == nil || r.Options.Range == nil {
-		return false
+	if r.Options != nil && r.Options.Range != nil {
+		if model.ContainsPromises(r.Options.Range.Type()) {
+			return true
+		}
 	}
 
-	return model.ContainsPromises(r.Options.Range.Type())
+	// Resource inputs (and options like `provider`) may reference `call(...)` on plain-returning
+	// methods, which program-gen lowers to `await x.method(...)`. `await` is only valid inside an
+	// async function, so force async main whenever any such call is present.
+	for _, input := range r.Inputs {
+		if containsPlainCall(input.Value) {
+			return true
+		}
+	}
+	if r.Options != nil {
+		for _, e := range []model.Expression{
+			r.Options.Aliases, r.Options.Range, r.Options.Parent, r.Options.Provider,
+			r.Options.Providers, r.Options.DependsOn, r.Options.Protect, r.Options.RetainOnDelete,
+		} {
+			if e != nil && containsPlainCall(e) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func outputRequiresAsyncMain(ov *pcl.OutputVariable) bool {
 	outputName := ov.LogicalName()
-	return makeValidIdentifier(outputName) != outputName
+	if makeValidIdentifier(outputName) != outputName {
+		return true
+	}
+	return containsPlainCall(ov.Value)
+}
+
+// containsPlainCall reports whether the expression (or any subexpression) is a `call(...)`
+// invocation on a method whose return type is plain (not wrapped in Output). Such calls are
+// emitted as `(await x.method(...))` which must live inside an async function.
+func containsPlainCall(expr model.Expression) bool {
+	var found bool
+	_, _ = model.VisitExpression(expr, model.IdentityVisitor,
+		func(e model.Expression) (model.Expression, hcl.Diagnostics) {
+			if call, ok := e.(*model.FunctionCallExpression); ok && call.Name == pcl.Call {
+				if _, isOutput := call.Signature.ReturnType.(*model.OutputType); !isOutput {
+					found = true
+				}
+			}
+			return e, nil
+		})
+	return found
 }
 
 // resourceTypeName computes the NodeJS package, module, and type name for the given resource.
 func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
-	pcl.FixupPulumiPackageTokens(r)
-	pkg, module, member, diagnostics := r.DecomposeToken()
+	pkg, module, member, diagnostics := pcl.DecomposeToken(r.GetToken())
 
 	if r.Schema != nil {
 		module = moduleName(module, r.Schema.PackageReference)
 	}
 
-	return makeValidIdentifier(pkg), module, title(member), diagnostics
+	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
+}
+
+func readResourceTypeName(r *pcl.ReadResource) (string, string, string, hcl.Diagnostics) {
+	pkg, module, member, diagnostics := pcl.DecomposeToken(r.GetToken())
+
+	if r.Schema != nil {
+		module = moduleName(module, r.Schema.PackageReference)
+	}
+
+	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
 }
 
 func moduleName(module string, pkg schema.PackageReference) string {
 	// Normalize module.
 	if pkg != nil {
-		def, err := pkg.Definition()
-		contract.AssertNoErrorf(err, "error loading package definition for %q", pkg.Name())
-		err = def.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
-		contract.AssertNoErrorf(err, "error importing nodejs language for %q", pkg.Name())
-		if lang, ok := def.Language["nodejs"]; ok {
-			pkgInfo := lang.(NodePackageInfo)
+		if a, err := pkg.Language("nodejs"); err == nil {
+			pkgInfo, _ := a.(NodePackageInfo)
 			if m, ok := pkgInfo.ModuleToPackage[module]; ok {
 				module = m
 			}
 		}
+		// pulumi:pulumi:* resources (e.g. StackReference) belong to the root of the
+		// package, not a "pulumi" submodule.
+		if pkg.Name() == "pulumi" && module == "pulumi" {
+			return ""
+		}
+	}
+	if module == "index" {
+		return ""
 	}
 	return strings.ToLower(strings.ReplaceAll(module, "/", "."))
 }
@@ -822,31 +1171,38 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	return fmt.Sprintf("`%s-${%s}`", baseName, count)
 }
 
-func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
+func (g *generator) genResourceOptions(
+	opts *pcl.ResourceOptions, schema *schema.Resource,
+	hookVars map[string][]string,
+) string {
 	if opts == nil {
-		return ""
+		if len(hookVars) == 0 {
+			return ""
+		}
+		opts = &pcl.ResourceOptions{}
 	}
 
 	// Turn the resource options into an ObjectConsExpression and generate it.
-	var object *model.ObjectConsExpression
+	var object map[string]model.Expression
 	appendOption := func(name string, value model.Expression) {
 		if object == nil {
-			object = &model.ObjectConsExpression{}
+			object = make(map[string]model.Expression)
 		}
-		object.Items = append(object.Items, model.ObjectConsItem{
-			Key: &model.LiteralValueExpression{
-				Tokens: syntax.NewLiteralValueTokens(cty.StringVal(name)),
-				Value:  cty.StringVal(name),
-			},
-			Value: value,
-		})
+		object[name] = value
 	}
 
+	// Reference: https://www.pulumi.com/docs/iac/concepts/options/
+	if opts.Aliases != nil {
+		appendOption("aliases", opts.Aliases)
+	}
 	if opts.Parent != nil {
 		appendOption("parent", opts.Parent)
 	}
 	if opts.Provider != nil {
 		appendOption("provider", opts.Provider)
+	}
+	if opts.Providers != nil {
+		appendOption("providers", opts.Providers)
 	}
 	if opts.DependsOn != nil {
 		appendOption("dependsOn", opts.DependsOn)
@@ -860,17 +1216,241 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions) string {
 	if opts.IgnoreChanges != nil {
 		appendOption("ignoreChanges", opts.IgnoreChanges)
 	}
+	if opts.HideDiffs != nil {
+		appendOption("hideDiffs", opts.HideDiffs)
+	}
+	if opts.ReplaceOnChanges != nil {
+		appendOption("replaceOnChanges", opts.ReplaceOnChanges)
+	}
+	if opts.DeleteBeforeReplace != nil {
+		appendOption("deleteBeforeReplace", opts.DeleteBeforeReplace)
+	}
+	if opts.AdditionalSecretOutputs != nil {
+		appendOption("additionalSecretOutputs", opts.AdditionalSecretOutputs)
+	}
+	if opts.CustomTimeouts != nil {
+		appendOption("customTimeouts", opts.CustomTimeouts)
+	}
+	if opts.Version != nil && pcl.NeedsVersionResourceOption(opts.Version, schema) {
+		appendOption("version", opts.Version)
+	}
+	if opts.PluginDownloadURL != nil && pcl.NeedsPluginDownloadURLResourceOption(opts.PluginDownloadURL, schema) {
+		appendOption("pluginDownloadURL", opts.PluginDownloadURL)
+	}
 	if opts.DeletedWith != nil {
 		appendOption("deletedWith", opts.DeletedWith)
 	}
+	if opts.ReplaceWith != nil {
+		appendOption("replaceWith", opts.ReplaceWith)
+	}
+	if opts.ReplacementTrigger != nil {
+		appendOption("replacementTrigger", opts.ReplacementTrigger)
+	}
+	if opts.ImportID != nil {
+		appendOption("import", opts.ImportID)
+	}
+	if opts.EnvVarMappings != nil {
+		appendOption("envVarMappings", opts.EnvVarMappings)
+	}
 
-	if object == nil {
+	hasHooks := len(hookVars) > 0
+	if object == nil && !hasHooks {
 		return ""
 	}
 
 	var buffer bytes.Buffer
-	g.Fgenf(&buffer, ", %v", g.lowerExpression(object, nil))
+	g.Indented(func() {
+		g.Fprint(&buffer, ", {\n")
+		for _, key := range slices.Sorted(maps.Keys(object)) {
+			value := object[key]
+			g.Fprintf(&buffer, "%s", g.Indent)
+			if key == "aliases" {
+				// aliases might be a list of strings or Alias objects
+				g.Fprint(&buffer, "aliases:[")
+				for i, expr := range value.(*model.TupleConsExpression).Expressions {
+					if i > 0 {
+						g.Fprint(&buffer, ", ")
+					}
+					// If the expression is a string literal, we can inline it directly.
+					if expr.Type().Equals(model.StringType) {
+						g.Fgenf(&buffer, "%v", expr)
+					} else {
+						// Otherwise pull off the fields dynamically.
+						obj := expr.(*model.ObjectConsExpression)
+						g.Fprint(&buffer, "{")
+						for j, item := range obj.Items {
+							if j > 0 {
+								g.Fprint(&buffer, ", ")
+							}
+							// We need a literal key here.
+							key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+							contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+
+							switch key.AsString() {
+							case "name":
+								g.Fgenf(&buffer, "name: %v", item.Value)
+							case "type":
+								g.Fgenf(&buffer, "type: %v", item.Value)
+							case "noParent":
+								g.Fgenf(&buffer, "parent: (%v ? pulumi.rootStackResource : undefined)", item.Value)
+							case "parent":
+								g.Fgenf(&buffer, "parent: %v", item.Value)
+							}
+						}
+						g.Fprint(&buffer, "}")
+					}
+				}
+				g.Fprint(&buffer, "]")
+			} else {
+				g.Fgenf(&buffer, "%s: %v", key, g.lowerExpression(value, nil))
+			}
+			g.Fprint(&buffer, ",\n")
+		}
+		// Add hooks binding if present.
+		if hasHooks {
+			hookTypes := slices.Collect(maps.Keys(hookVars))
+			sort.Strings(hookTypes)
+			g.Fprintf(&buffer, "%shooks: {\n", g.Indent)
+			g.Indented(func() {
+				for _, hookType := range hookTypes {
+					vars := hookVars[hookType]
+					g.Fprintf(&buffer, "%s%s: [%s],\n", g.Indent, hookType, strings.Join(vars, ", "))
+				}
+			})
+			g.Fprintf(&buffer, "%s},\n", g.Indent)
+		}
+	})
+	g.Fprintf(&buffer, "%s}", g.Indent)
+
 	return buffer.String()
+}
+
+// genHookNode generates a new pulumi.ResourceHook declaration for a named hook block.
+func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
+	varName := g.nodeName(h.Name())
+	hookName := h.LogicalName()
+
+	var cmdExprs []model.Expression
+	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
+		cmdExprs = tuple.Expressions
+	}
+
+	if h.Kind == pcl.HookKindError {
+		// Error hooks return whether the failed operation should be retried: retry if and
+		// only if the command exits successfully.
+		g.Fgenf(w, "%sconst %s = new pulumi.ErrorHook(%q, (args) => {\n",
+			g.Indent, varName, hookName)
+		g.Indented(func() {
+			g.Fgenf(w, "%stry {\n", g.Indent)
+			g.Indented(func() {
+				if len(cmdExprs) > 0 {
+					g.Fgenf(w, "%schild_process.execFileSync(%v, [", g.Indent, cmdExprs[0])
+					for j, arg := range cmdExprs[1:] {
+						if j > 0 {
+							g.Fgenf(w, ", ")
+						}
+						g.Fgenf(w, "%v", arg)
+					}
+					g.Fgenf(w, "]);\n")
+				}
+				g.Fgenf(w, "%sreturn true;\n", g.Indent)
+			})
+			g.Fgenf(w, "%s} catch (error) {\n", g.Indent)
+			g.Indented(func() {
+				g.Fgenf(w, "%sreturn false;\n", g.Indent)
+			})
+			g.Fgenf(w, "%s}\n", g.Indent)
+		})
+		g.Fgenf(w, "%s});\n", g.Indent)
+		return
+	}
+
+	g.Fgenf(w, "%sconst %s = new pulumi.ResourceHook(%q, (args) => {\n",
+		g.Indent, varName, hookName)
+	g.Indented(func() {
+		if len(cmdExprs) > 0 {
+			g.Fgenf(w, "%schild_process.execFileSync(%v, [", g.Indent, cmdExprs[0])
+			for j, arg := range cmdExprs[1:] {
+				if j > 0 {
+					g.Fgenf(w, ", ")
+				}
+				g.Fgenf(w, "%v", arg)
+			}
+			g.Fgenf(w, "]);\n")
+		}
+	})
+	if h.OnDryRun != nil || h.IgnoreErrors != nil {
+		g.Fgenf(w, "%s}, {", g.Indent)
+		first := true
+		if h.OnDryRun != nil {
+			g.Fgenf(w, "onDryRun: %v", h.OnDryRun)
+			first = false
+		}
+		if h.IgnoreErrors != nil {
+			if !first {
+				g.Fgenf(w, ", ")
+			}
+			g.Fgenf(w, "ignoreErrors: %v", h.IgnoreErrors)
+		}
+		g.Fgenf(w, "});\n")
+	} else {
+		g.Fgenf(w, "%s});\n", g.Indent)
+	}
+}
+
+// genHookDeclarations collects per-resource hook bindings keyed by hook type.
+func (g *generator) genHookDeclarations(r *pcl.Resource) map[string][]string {
+	hookVars := make(map[string][]string)
+	obj, ok := r.Options.Hooks.(*model.ObjectConsExpression)
+	if !ok {
+		return hookVars
+	}
+	for _, item := range obj.Items {
+		key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+		contract.Assertf(len(diags) == 0, "Expected no diagnostics evaluating hook type key, got %d", len(diags))
+		hookType := key.AsString()
+		cmdLists, ok := item.Value.(*model.TupleConsExpression)
+		if !ok {
+			continue
+		}
+		for _, cmdListExpr := range cmdLists.Expressions {
+			// Hooks must be references to named hook blocks.
+			if trav, ok := cmdListExpr.(*model.ScopeTraversalExpression); ok {
+				hookVars[hookType] = append(hookVars[hookType], g.nodeName(trav.RootName))
+			}
+		}
+	}
+	return hookVars
+}
+
+// genMapRangedCollection emits an object-typed collection, keyed by the map key
+// and strongly typed by valueType, for a resource or component that ranges over a
+// map. Indexing such a collection by key (e.g. `r["k"]`) is then well-typed,
+// unlike the array used for numeric and list ranges. preInstantiate, when
+// non-nil, runs inside the loop before each resource is instantiated.
+func (g *generator) genMapRangedCollection(
+	w io.Writer, variableName, valueType, name string, rangeExpr model.Expression,
+	needsDefinition bool, preInstantiate func(), instantiate func(string),
+) {
+	if needsDefinition {
+		g.Fgenf(w, "%sconst %s: {[key: string]: %s} = {};\n", g.Indent, variableName, valueType)
+	}
+	entries := &model.FunctionCallExpression{Name: "entries", Args: []model.Expression{rangeExpr}}
+	g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, entries)
+	resName := g.makeResourceName(name, "range.key")
+	// `range` here is the {key, value} entry object, not a numeric index.
+	prevScalar := g.rangeValueIsScalar
+	defer func() { g.rangeValueIsScalar = prevScalar }()
+	g.rangeValueIsScalar = false
+	g.Indented(func() {
+		if preInstantiate != nil {
+			preInstantiate()
+		}
+		g.Fgenf(w, "%s%s[range.key] = ", g.Indent, variableName)
+		instantiate(resName)
+		g.Fgenf(w, ";\n")
+	})
+	g.Fgenf(w, "%s}\n", g.Indent)
 }
 
 // genResourceDeclaration handles the generation of instantiations of resources.
@@ -882,12 +1462,17 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 		module = "." + module
 	}
 
-	qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
+	qualifiedMemberName := fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, memberName)
 
-	optionsBag := g.genResourceOptions(r.Options)
+	var hookVars map[string][]string
+	if r.Options != nil && r.Options.Hooks != nil {
+		hookVars = g.genHookDeclarations(r)
+	}
+
+	optionsBag := g.genResourceOptions(r.Options, r.Schema, hookVars)
 
 	name := r.LogicalName()
-	variableName := makeValidIdentifier(r.Name())
+	variableName := g.nodeName(r.Name())
 
 	if needsDefinition {
 		g.genTrivia(w, r.Definition.Tokens.GetType(""))
@@ -945,6 +1530,8 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			rangeExpr = g.lowerExpression(rangeExpr, rangeType)
 			if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
 				g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
+			} else if _, isMap := pcl.UnwrapOption(model.ResolveOutputs(rangeType)).(*model.MapType); isMap {
+				g.Fgenf(w, "%sconst %s: {[key: string]: %s} = {};\n", g.Indent, variableName, qualifiedMemberName)
 			} else {
 				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
 			}
@@ -1050,14 +1637,17 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				g.Fgenf(w, ";\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, variableName, qualifiedMemberName, name, rangeExpr, needsDefinition, nil, instantiate)
 		} else {
 			if needsDefinition {
 				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
 			}
-			resKey := "key"
-			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
-				resKey = "value"
+			scalar := model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion
+			countRef := "range.key"
+			if scalar {
+				g.Fgenf(w, rangeLoopFmt, g.Indent, rangeExpr)
+				countRef = "range"
 			} else {
 				rangeExpr := &model.FunctionCallExpression{
 					Name: "entries",
@@ -1066,12 +1656,15 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, rangeExpr)
 			}
 
-			resName := g.makeResourceName(name, "range."+resKey)
+			resName := g.makeResourceName(name, countRef)
+			prevScalar := g.rangeValueIsScalar
+			g.rangeValueIsScalar = scalar
 			g.Indented(func() {
 				g.Fgenf(w, "%s%s.push(", g.Indent, variableName)
 				instantiate(resName)
 				g.Fgenf(w, ");\n")
 			})
+			g.rangeValueIsScalar = prevScalar
 			g.Fgenf(w, "%s}\n", g.Indent)
 		}
 	} else {
@@ -1087,14 +1680,138 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	g.genResourceDeclaration(w, r, true)
 }
 
+func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource, needsDefinition bool) {
+	pkg, module, memberName, diagnostics := readResourceTypeName(r)
+	g.diagnostics = append(g.diagnostics, diagnostics...)
+	if module != "" {
+		module = "." + module
+	}
+	qualifiedMemberName := fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, memberName)
+
+	optionsBag := g.genResourceOptions(r.Options, r.Schema, nil)
+	name := r.LogicalName()
+	variableName := g.nodeName(r.Name())
+
+	var idInput model.Expression
+	stateInputs := slice.Prealloc[*model.Attribute](len(r.Inputs))
+	for _, attr := range r.Inputs {
+		if attr.Name == "id" {
+			idInput = attr.Value
+			continue
+		}
+		stateInputs = append(stateInputs, attr)
+	}
+	if idInput == nil {
+		g.genNYI(w, "read resource missing id input")
+		return
+	}
+
+	if needsDefinition {
+		g.genTrivia(w, r.Definition.Tokens.GetType(""))
+		for _, l := range r.Definition.Tokens.GetLabels(nil) {
+			g.genTrivia(w, l)
+		}
+		g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
+	}
+
+	instantiate := func(resName string) {
+		g.Fgenf(w, "%s.get(%s, %.v, {", qualifiedMemberName, resName, idInput)
+		indenter := func(f func()) { f() }
+		if len(stateInputs) > 1 {
+			indenter = g.Indented
+		}
+		indenter(func() {
+			fmtString := "%s: %.v"
+			if len(stateInputs) > 1 {
+				fmtString = "\n" + g.Indent + "%s: %.v,"
+			}
+			for _, attr := range stateInputs {
+				propertyName := attr.Name
+				if !isLegalIdentifier(propertyName) {
+					propertyName = fmt.Sprintf("%q", propertyName)
+				}
+				x, diagnostics := g.RewriteVariableRenames(attr.Value, attr.Value.Type())
+				g.diagnostics = append(g.diagnostics, diagnostics...)
+				if r.Schema != nil {
+					destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+					g.diagnostics = append(g.diagnostics, diagnostics...)
+					g.Fgenf(w, fmtString, propertyName, g.lowerExpression(x, destType.(model.Type)))
+				} else {
+					g.Fgenf(w, fmtString, propertyName, x)
+				}
+			}
+		})
+		if len(stateInputs) > 1 {
+			g.Fgenf(w, "\n%s", g.Indent)
+		}
+		g.Fgenf(w, "}%s)", optionsBag)
+	}
+
+	if r.Options != nil && r.Options.Range != nil {
+		rangeType := r.Options.Range.Type()
+		rangeExpr := r.Options.Range
+		if model.ContainsOutputs(rangeExpr.Type()) {
+			rangeExpr = g.lowerExpression(rangeExpr, rangeType)
+		}
+
+		if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
+			if needsDefinition {
+				g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
+			}
+			g.Fgenf(w, "%sif (%.v) {\n", g.Indent, rangeExpr)
+			g.Indented(func() {
+				g.Fgenf(w, "%s%s = ", g.Indent, variableName)
+				instantiate(g.makeResourceName(name, ""))
+				g.Fgenf(w, ";\n")
+			})
+			g.Fgenf(w, "%s}\n", g.Indent)
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, variableName, qualifiedMemberName, name, rangeExpr, needsDefinition, nil, instantiate)
+		} else {
+			if needsDefinition {
+				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
+			}
+			scalar := model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion
+			countRef := "range.key"
+			if scalar {
+				g.Fgenf(w, rangeLoopFmt, g.Indent, rangeExpr)
+				countRef = "range"
+			} else {
+				entries := &model.FunctionCallExpression{Name: "entries", Args: []model.Expression{rangeExpr}}
+				g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, entries)
+			}
+			resName := g.makeResourceName(name, countRef)
+			prevScalar := g.rangeValueIsScalar
+			g.rangeValueIsScalar = scalar
+			g.Indented(func() {
+				g.Fgenf(w, "%s%s.push(", g.Indent, variableName)
+				instantiate(resName)
+				g.Fgenf(w, ");\n")
+			})
+			g.rangeValueIsScalar = prevScalar
+			g.Fgenf(w, "%s}\n", g.Indent)
+		}
+	} else {
+		g.Fgenf(w, "%sconst %s = ", g.Indent, variableName)
+		instantiate(g.makeResourceName(name, ""))
+		g.Fgenf(w, ";\n")
+	}
+
+	g.genTrivia(w, r.Definition.Tokens.GetCloseBrace())
+}
+
+func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
+	g.genReadResourceDeclaration(w, r, true)
+}
+
 // genResource handles the generation of instantiations of non-builtin resources.
 func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	componentName := component.DeclarationName()
 
-	optionsBag := g.genResourceOptions(component.Options)
+	optionsBag := g.genResourceOptions(component.Options, nil, nil)
 
 	name := component.LogicalName()
-	variableName := makeValidIdentifier(component.Name())
+	variableName := g.nodeName(component.Name())
 
 	g.genTrivia(w, component.Definition.Tokens.GetType(""))
 	for _, l := range component.Definition.Tokens.GetLabels(nil) {
@@ -1105,7 +1822,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	// collect here all the deferred output variables
 	// these must be declared before the component instantiation
 	componentInputs := slice.Prealloc[*model.Attribute](len(component.Inputs))
-	var componentDeferredOutputVariables []*pcl.DeferredOutputVariable
+	componentDeferredOutputVariables := slice.Prealloc[*pcl.DeferredOutputVariable](len(component.Inputs))
 	for _, attr := range component.Inputs {
 		expr, deferredOutputs := pcl.ExtractDeferredOutputVariables(g.program, component, attr.Value)
 		componentInputs = append(componentInputs, &model.Attribute{
@@ -1128,7 +1845,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 			g.Fgenf(w, "%s", g.Indent)
 			g.Fgenf(w, "const [%s, resolve%s] = pulumi.deferredOutput<%s>();\n",
 				output.Name,
-				title(output.Name),
+				cgstrings.UppercaseFirst(output.Name),
 				typeParameter)
 		}
 	}
@@ -1155,7 +1872,9 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
-				loweredExpression := g.lowerExpression(attr.Value, attr.Value.Type())
+				destType, diagnostics := component.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+				g.diagnostics = append(g.diagnostics, diagnostics...)
+				loweredExpression := g.lowerExpression(attr.Value, destType.(model.Type))
 				g.Fgenf(w, fmtString, propertyName, loweredExpression)
 			}
 		})
@@ -1179,13 +1898,17 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 				g.Fgenf(w, ";\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
+		} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+			g.genMapRangedCollection(w, variableName, componentName, name, rangeExpr, true,
+				declareDeferredOutputVariables, instantiate)
 		} else {
 			g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, componentName)
 
-			resKey := "key"
-			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
-				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
-				resKey = "value"
+			scalar := model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion
+			countRef := "range.key"
+			if scalar {
+				g.Fgenf(w, rangeLoopFmt, g.Indent, rangeExpr)
+				countRef = "range"
 			} else {
 				rangeExpr := &model.FunctionCallExpression{
 					Name: "entries",
@@ -1194,13 +1917,16 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 				g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, rangeExpr)
 			}
 
-			resName := g.makeResourceName(name, "range."+resKey)
+			resName := g.makeResourceName(name, countRef)
+			prevScalar := g.rangeValueIsScalar
+			g.rangeValueIsScalar = scalar
 			g.Indented(func() {
 				declareDeferredOutputVariables()
 				g.Fgenf(w, "%s%s.push(", g.Indent, variableName)
 				instantiate(resName)
 				g.Fgenf(w, ");\n")
 			})
+			g.rangeValueIsScalar = prevScalar
 			g.Fgenf(w, "%s}\n", g.Indent)
 		}
 	} else {
@@ -1216,9 +1942,9 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 			g.Fgenf(w, "%s", g.Indent)
 			expr := g.lowerExpression(output.Expr, output.Expr.Type())
 			if _, ok := output.Expr.(*model.ScopeTraversalExpression); ok {
-				g.Fgenf(w, "resolve%s(%v);\n", title(output.Name), expr)
+				g.Fgenf(w, "resolve%s(%v);\n", cgstrings.UppercaseFirst(output.Name), expr)
 			} else {
-				g.Fgenf(w, "resolve%s(pulumi.output(%v));\n", title(output.Name), expr)
+				g.Fgenf(w, "resolve%s(pulumi.output(%v));\n", cgstrings.UppercaseFirst(output.Name), expr)
 			}
 		}
 	}
@@ -1228,7 +1954,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 
 func computeConfigTypeParam(configType model.Type) string {
 	switch pcl.UnwrapOption(configType) {
-	case model.StringType:
+	case model.IDType, model.StringType:
 		return "string"
 	case model.NumberType, model.IntType:
 		return "number"
@@ -1276,8 +2002,10 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		g.configCreated = true
 	}
 
+	configType := pcl.UnwrapOption(model.ResolveOutputs(v.Type()))
+
 	getType := "Object"
-	switch pcl.UnwrapOption(v.Type()) {
+	switch configType {
 	case model.StringType:
 		getType = ""
 	case model.NumberType, model.IntType:
@@ -1297,25 +2025,32 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	if v.DefaultValue == nil && !model.IsOptionalType(v.Type()) {
 		getOrRequire = "require"
 	}
+	if v.Secret {
+		getOrRequire += "Secret"
+	}
 
 	if v.Description != "" {
-		for _, line := range strings.Split(v.Description, "\n") {
+		for line := range strings.SplitSeq(v.Description, "\n") {
 			g.Fgenf(w, "%s// %s\n", g.Indent, line)
 		}
 	}
 
-	name := makeValidIdentifier(v.Name())
+	name := g.nodeName(v.Name())
 	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s%[5]s(\"%[6]s\")",
 		g.Indent, name, getOrRequire, getType, typeParam, v.LogicalName())
 	if v.DefaultValue != nil && !model.IsOptionalType(v.Type()) {
-		g.Fgenf(w, " || %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
+		if v.Secret {
+			g.Fgenf(w, " || pulumi.secret(%.v)", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
+		} else {
+			g.Fgenf(w, " || %.v", g.lowerExpression(v.DefaultValue, v.DefaultValue.Type()))
+		}
 	}
 	g.Fgenf(w, ";\n")
 }
 
 func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	g.genTrivia(w, v.Definition.Tokens.Name)
-	vName := makeValidIdentifier(v.Name())
+	vName := g.nodeName(v.Name())
 	vValue := g.lowerExpression(v.Definition.Value, v.Type())
 	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, vName, vValue)
 }
@@ -1329,10 +2064,17 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 
 	// TODO(pdg): trivia
 	g.Fgenf(w, "%sexport const %s = %.3v;\n", g.Indent,
-		makeValidIdentifier(v.Name()), g.lowerExpression(v.Value, v.Type()))
+		g.nodeName(v.Name()), g.lowerExpression(v.Value, v.Type()))
 }
 
-func (g *generator) genNYI(w io.Writer, reason string, vs ...interface{}) {
+func (g *generator) genPulumi(w io.Writer, v *pcl.PulumiBlock) {
+	if v.RequiredVersion != nil {
+		value := g.lowerExpression(v.RequiredVersion, v.Type())
+		g.Fgenf(w, "%spulumi.requirePulumiVersion(%v);\n", g.Indent, value)
+	}
+}
+
+func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	message := "not yet implemented: " + fmt.Sprintf(reason, vs...)
 	g.diagnostics = append(g.diagnostics, &hcl.Diagnostic{
 		Severity: hcl.DiagError,

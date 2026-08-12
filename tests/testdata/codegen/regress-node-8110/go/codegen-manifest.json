@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "my8110/doc.go",
     "my8110/exampleFunc.go",
     "my8110/init.go",

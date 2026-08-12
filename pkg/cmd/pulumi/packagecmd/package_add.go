@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,92 +15,53 @@
 package packagecmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
-	"github.com/hashicorp/hcl/v2"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
-// InstallPackage installs a package to the project by generating an SDK and linking it.
-// It returns the path to the installed package.
-func InstallPackage(ws pkgWorkspace.Context, pctx *plugin.Context, language, root,
-	schemaSource string, parameters []string,
-) error {
-	pkg, err := SchemaFromSchemaSource(pctx, schemaSource, parameters)
-	if err != nil {
-		var diagErr hcl.Diagnostics
-		if errors.As(err, &diagErr) {
-			return fmt.Errorf("failed to get schema. Diagnostics: %w", errors.Join(diagErr.Errs()...))
-		}
-		return fmt.Errorf("failed to get schema: %w", err)
-	}
-
-	tempOut, err := os.MkdirTemp("", "pulumi-package-")
-	if err != nil {
-		return fmt.Errorf("failed to create temporary directory: %w", err)
-	}
-	defer os.RemoveAll(tempOut)
-
-	local := true
-
-	err = GenSDK(
-		language,
-		tempOut,
-		pkg,
-		"",    /*overlays*/
-		local, /*local*/
-	)
-	if err != nil {
-		return fmt.Errorf("failed to generate SDK: %w", err)
-	}
-
-	out := filepath.Join(root, "sdks")
-	err = os.MkdirAll(out, 0o755)
-	if err != nil {
-		return fmt.Errorf("failed to create directory for SDK: %w", err)
-	}
-
-	outName := pkg.Name
-	if pkg.Namespace != "" {
-		outName = pkg.Namespace + "-" + outName
-	}
-	out = filepath.Join(out, outName)
-
-	// If directory already exists, remove it completely before copying new files
-	if _, err := os.Stat(out); err == nil {
-		if err := os.RemoveAll(out); err != nil {
-			return fmt.Errorf("failed to clean existing SDK directory: %w", err)
-		}
-	}
-
-	err = CopyAll(out, filepath.Join(tempOut, language))
-	if err != nil {
-		return fmt.Errorf("failed to move SDK to project: %w", err)
-	}
-
-	// Link the package to the project
-	return LinkPackage(ws, language, root, pkg, out)
-}
-
 // Constructs the `pulumi package add` command.
 func newPackageAddCmd() *cobra.Command {
+	var language string
+	var parameterArgs []string
+	var asExtension bool
+	var serverURL string
 	cmd := &cobra.Command{
-		Use:   "add <provider|schema|path> [provider-parameter...]",
-		Args:  cobra.MinimumNArgs(1),
-		Short: "Add a package to your Pulumi project",
-		Long: `Add a package to your Pulumi project.
+		Use:   "add",
+		Short: "Add a package to your Pulumi project, plugin, or current directory.",
+		Long: `Add a package to your Pulumi project, plugin, or current directory.
 
-This command locally generates an SDK in the currently selected Pulumi language
-and prints instructions on how to link it into your project. The SDK is based on
-a Pulumi package schema extracted from a given resource plugin or provided
-directly.
+This command locally generates an SDK in the selected Pulumi language and
+prints instructions on how to use it. The SDK is based on a Pulumi package
+schema extracted from a given resource plugin or provided directly.
+
+When run inside a Pulumi project or plugin, the package is also recorded in
+Pulumi.yaml or PulumiPlugin.yaml. To run outside one (e.g. for a
+single-language component library or with the Automation API), pass
+'--language LANG' to select the SDK language explicitly.
 
 The <provider> argument can be specified in one of the following ways:
 
@@ -135,35 +96,257 @@ that begin with dashes, you may need to use '--' to separate the provider name
 from the parameters, as in:
 
   pulumi package add <provider> -- --provider-parameter-flag value
+
+Use '--extension' to add the package as an extension of its base provider
+instead of a replacement. The extension's parameters are the flag's value,
+quoted as a single shell-style string:
+
+  pulumi package add <provider> --extension "key=value ..."
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ws := pkgWorkspace.Instance
-			proj, root, err := ws.ReadProject()
-			if err != nil {
-				return err
-			}
-
-			language := proj.Runtime.Name()
+			agent := agentdetect.Detect(os.Getenv)
 
 			wd, err := os.Getwd()
 			if err != nil {
 				return err
 			}
+
+			target, err := loadEnclosingTarget(cmd.Context(), wd)
+			if err != nil && !errors.Is(err, workspace.ErrBaseProjectNotFound) {
+				return err
+			}
+			foundProject := err == nil
+
+			if foundProject && language != "" {
+				return fmt.Errorf("--language is for use outside a Pulumi project or "+
+					"plugin, but %s was found; remove the flag, or run from a "+
+					"directory outside the project", *target.projectFilePath)
+			}
+			if !foundProject {
+				if language == "" {
+					return fmt.Errorf("%w; pass --language LANG to run "+
+						"outside a Pulumi project or plugin", err)
+				}
+				target = addTarget{
+					installRoot: wd,
+					proj: &workspace.PluginProject{
+						Runtime: workspace.NewProjectRuntimeInfo(cmdCmd.NormalizeRuntimeName(language), nil),
+					},
+					reg: cmdCmd.NewDefaultRegistry(
+						cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
+				}
+			}
+
 			sink := cmdutil.Diag()
-			pctx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
+			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(target.reg))
 			if err != nil {
 				return err
 			}
-			defer func() {
-				contract.IgnoreError(pctx.Close())
-			}()
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
+			pctx, err := plugin.NewContext(cmd.Context(),
+				sink, sink, pluginHost, nil, target.installRoot, nil, false, nil)
+			if err != nil {
+				return err
+			}
+			defer contract.IgnoreClose(pctx)
 
-			plugin := args[0]
-			parameters := args[1:]
+			if target.proj.RuntimeInfo().Name() == "" {
+				return errors.New("cannot add a package to a project without a runtime")
+			}
 
-			return InstallPackage(ws, pctx, language, root, plugin, parameters)
+			pluginSource := args[0]
+
+			parameters := &plugin.ParameterizeArgs{Args: parameterArgs}
+
+			pkg, packageSpec, diags, err := packages.InstallPackage(
+				cmd.OutOrStdout(),
+				pkgWorkspace.Instance,
+				target.proj,
+				pctx,
+				target.proj.RuntimeInfo().Name(),
+				target.installRoot,
+				pluginSource,
+				parameters,
+				target.reg,
+				env.Global(),
+				0,           /* unbounded concurrency */
+				asExtension, /* asExtension */
+				serverURL,   /* pluginDownloadURL */
+			)
+			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
+			if err != nil {
+				if errors.Is(err, registry.ErrNotFound) && agent != "" {
+					return fmt.Errorf("%w\nSearch: pulumi api '/api/registry/packages?search=<term>'", err)
+				}
+				return err
+			}
+
+			if asExtension {
+				if target.projectFilePath != nil {
+					target.proj.AddPackage(pkg.Name, workspace.PackageSpec{
+						Source:     pkg.ExtensionParameterization.BaseProvider.Name,
+						Version:    pkg.ExtensionParameterization.BaseProvider.Version.String(),
+						Extensions: parameterArgs,
+					})
+					fileName := filepath.Base(*target.projectFilePath)
+					if err := target.proj.Save(*target.projectFilePath); err != nil {
+						return fmt.Errorf("failed to update %s: %w", fileName, err)
+					}
+				}
+
+				fmt.Fprintf(cmd.ErrOrStderr(), "Extended package %s\n", schemaDisplayName(pkg))
+				return nil
+			}
+
+			// Build and add the package spec to the project
+			pluginSplit := strings.Split(pluginSource, "@")
+			source := pluginSplit[0]
+
+			if ext := filepath.Ext(source); ext == ".yaml" || ext == ".yml" || ext == ".json" {
+				// We don't add file based schemas to the project's packages, since there is no actual underlying
+				// provider for them.
+				return nil
+			}
+
+			// TODO[#21349]:  We can't bake  a path into  Pulumi.yaml until we  use [packageresolution.Resolve]
+			// when loading a new context, so condense local paths to the name of the package.
+			//
+			// This is wrong, but its less wrong then producing a Pulumi.yaml that `pulumi` can't process
+			// (#21348).
+			if plugin.IsLocalPluginPath(cmd.Context(), packageSpec.Source) {
+				f, err := os.Stat(packageSpec.Source)
+				if err != nil && !errors.Is(err, os.ErrNotExist) {
+					return err
+				}
+				if !f.IsDir() {
+					if pkg.Parameterization == nil {
+						packageSpec.Source = pkg.Name
+						if pkg.Version != nil {
+							packageSpec.Version = pkg.Version.String()
+						}
+					} else {
+						packageSpec.Source = pkg.Parameterization.BasePlugin.Name
+						packageSpec.Version = pkg.Parameterization.BasePlugin.Version.String()
+					}
+				}
+			}
+
+			contract.Assertf(packageSpec != nil, "packageSpec should be nil if & only if source is file based")
+			packageSpec.Parameters = parameters.Args
+
+			if target.projectFilePath != nil {
+				target.proj.AddPackage(pkg.Name, *packageSpec)
+
+				fileName := filepath.Base(*target.projectFilePath)
+				// Save the updated project
+				if err := target.proj.Save(*target.projectFilePath); err != nil {
+					return fmt.Errorf("failed to update %s: %w", fileName, err)
+				}
+			}
+
+			fmt.Fprintf(cmd.ErrOrStderr(), "Added package %s\n", schemaDisplayName(pkg))
+			printRegistryDocsHint(cmd.ErrOrStderr(), agent, cmd.Context(), target.reg, pkg)
+			return nil
 		},
 	}
 
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "provider", Usage: "<provider|schema|path>"},
+			{Name: "provider-parameter"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
+
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "add <provider|schema|path> [flags] [--] [provider-parameter]..."
+
+	cmd.Flags().StringVar(&language, "language", "",
+		"Run outside a Pulumi project or plugin: [nodejs|python|go|dotnet|java]")
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
+	packages.AddExtensionFlag(cmd, &parameterArgs, &asExtension)
+
 	return cmd
+}
+
+type addTarget struct {
+	installRoot     string
+	projectFilePath *string
+	reg             registry.Registry
+	proj            workspace.BaseProject
+}
+
+func printRegistryDocsHint(
+	w io.Writer, agent string, ctx context.Context, reg registry.Registry, pkg *schema.Package,
+) {
+	if agent == "" || pkg == nil || pkg.Name == "" || pkg.Version == nil || reg == nil {
+		return
+	}
+	meta, err := registry.ResolvePackageFromName(ctx, reg, pkg.Name, pkg.Version)
+	if err != nil {
+		return
+	}
+	base := fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s",
+		meta.Source, meta.Publisher, meta.Name, pkg.Version.String())
+	hints := []struct{ suffix, comment string }{
+		{"/readme", "                    # package readme"},
+		{"/nav", "                       # doc tree (modules)"},
+		{"/nav?q=<term>&depth=full", "   # search for resources/functions"},
+		{"/docs/<type-token>", "         # one resource or function (type token from /nav)"},
+	}
+	fmt.Fprintln(w, "Documentation:")
+	for _, h := range hints {
+		fmt.Fprintf(w, "  pulumi api --output=markdown '%s%s'%s\n", base, h.suffix, h.comment)
+	}
+}
+
+func schemaDisplayName(schema *schema.Package) string {
+	name := schema.DisplayName
+	if name == "" {
+		name = schema.Name
+	}
+	if schema.Namespace != "" {
+		name = schema.Namespace + "/" + name
+	}
+	return name
+}
+
+// Detect the nearest enclosing Pulumi Project or Pulumi Plugin root directory.
+func loadEnclosingTarget(ctx context.Context, wd string) (addTarget, error) {
+	baseProject, filePath, err := workspace.LoadBaseProjectFrom(wd)
+	if err != nil {
+		return addTarget{}, err
+	}
+
+	switch baseProject := baseProject.(type) {
+	case *workspace.Project:
+		return addTarget{
+			installRoot:     filepath.Dir(filePath),
+			projectFilePath: &filePath,
+			reg: cmdCmd.NewDefaultRegistry(
+				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, baseProject, cmdutil.Diag(), env.Global()),
+			proj: baseProject,
+		}, nil
+	case *workspace.PluginProject:
+		return addTarget{
+			installRoot:     filepath.Dir(filePath),
+			projectFilePath: &filePath,
+			proj:            baseProject,
+			// Cloud registry is linked to a backend, but we don't have one
+			// available in a plugin. Use the default backend.
+			reg: cmdCmd.NewDefaultRegistry(
+				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global(),
+			),
+		}, nil
+	default:
+		panic(fmt.Sprintf("workspace.LoadBaseProjectFrom promises that it will return "+
+			"either *workspace.Project or *workspace.PluginProject, found %T", baseProject))
+	}
 }

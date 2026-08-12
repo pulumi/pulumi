@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ func Try(ctx *pulumi.Context, key string) (string, error) {
 	return try(ctx, key, "TrySecret", "Try")
 }
 
-func tryObject(ctx *pulumi.Context, key string, output interface{}, use, insteadOf string) error {
+func tryObject(ctx *pulumi.Context, key string, output any, use, insteadOf string) error {
 	v, err := try(ctx, key, use, insteadOf)
 	if err != nil {
 		return err
@@ -66,7 +66,7 @@ func tryObject(ctx *pulumi.Context, key string, output interface{}, use, instead
 
 // TryObject loads an optional configuration value by its key into the output variable,
 // or returns an error if unable to do so.
-func TryObject(ctx *pulumi.Context, key string, output interface{}) error {
+func TryObject(ctx *pulumi.Context, key string, output any) error {
 	return tryObject(ctx, key, output, "TrySecretObject", "TryObject")
 }
 
@@ -124,7 +124,7 @@ func TrySecret(ctx *pulumi.Context, key string) (pulumi.StringOutput, error) {
 
 // TrySecretObject loads a configuration value by its key into the output variable,
 // or returns an error if unable to do so.
-func TrySecretObject(ctx *pulumi.Context, key string, output interface{}) (pulumi.Output, error) {
+func TrySecretObject(ctx *pulumi.Context, key string, output any) (pulumi.Output, error) {
 	err := tryObject(ctx, key, output, "", "")
 	if err != nil {
 		return nil, err

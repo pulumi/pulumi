@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,6 +49,20 @@ func Target(urns []string) Option {
 func TargetDependents() Option {
 	return optionFunc(func(opts *Options) {
 		opts.TargetDependents = true
+	})
+}
+
+// Exclude specifies an exclusive list of resource URNs to ignore
+func Exclude(urns []string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Exclude = urns
+	})
+}
+
+// ExcludeDependents allows ignoring of dependent targets discovered but not specified in the Exclude list
+func ExcludeDependents() Option {
+	return optionFunc(func(opts *Options) {
+		opts.ExcludeDependents = true
 	})
 }
 
@@ -144,6 +158,20 @@ func ConfigFile(path string) Option {
 	})
 }
 
+// RunProgram runs the program in the workspace to perform the destroy.
+func RunProgram(f bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.RunProgram = &f
+	})
+}
+
+// Diff displays operation as a rich diff showing the overall change
+func Diff() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Diff = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -162,9 +190,13 @@ type Options struct {
 	Target []string
 	// Allows updating of dependent targets discovered but not specified in the Target list
 	TargetDependents bool
+	// Specify an exclusive list of resource URNs to ignore
+	Exclude []string
+	// Allows ignoring of dependent targets discovered but not specified in the Exclude list
+	ExcludeDependents bool
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stdout
 	ProgressStreams []io.Writer
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr
+	// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr
 	ErrorProgressStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent
@@ -189,6 +221,10 @@ type Options struct {
 	Remove bool
 	// Run using the configuration values in the specified file rather than detecting the file name
 	ConfigFile string
+	// When set to true, run the program in the workspace to perform the destroy.
+	RunProgram *bool
+	// Diff displays operation as a rich diff showing the overall change
+	Diff bool
 }
 
 type optionFunc func(*Options)

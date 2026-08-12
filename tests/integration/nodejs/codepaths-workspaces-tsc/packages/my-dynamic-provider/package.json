@@ -4,11 +4,11 @@
   "version": "1.0.0",
   "dependencies": {
     "@pulumi/pulumi": "latest",
-    "path-exists": "^4.0.0"
+    "path-exists": "4.0.0"
   },
   "devDependencies": {
-    "typescript": "^3.8.3",
-    "@types/node": "^14.14.20"
+    "typescript": "3.9.10",
+    "@types/node": "14.18.63"
   },
   "scripts": {
     "build": "tsc"

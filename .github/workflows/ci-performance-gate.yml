@@ -29,7 +29,7 @@ on:
         type: string
       performance-test-platforms:
         required: false
-        default: ubuntu-22.04
+        default: ubuntu-latest
         description: Platforms on which to run performance tests, as a space delimited list
         type: string
       fail-fast:
@@ -64,11 +64,11 @@ on:
 
 jobs:
   matrix:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: ${{ inputs.fail-fast }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
       - name: build matrix
@@ -81,9 +81,9 @@ jobs:
           readarray -td' ' VERSION_SETS_TO_TEST < <(echo -n "$TEST_VERSION_SETS"); declare -p VERSION_SETS_TO_TEST;
           readarray -td' ' PERFORMANCE_TEST_PLATFORMS < <(echo -n "$INPUT_PERFORMANCE_TEST_PLATFORMS"); declare -p PERFORMANCE_TEST_PLATFORMS;
           BUILD_TARGETS='[
-              { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-22.04" },
-              { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-22.04" },
-              { "os": "darwin",  "arch": "arm64", "build-platform": "ubuntu-22.04" }
+              { "os": "linux",   "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "windows", "arch": "amd64", "build-platform": "ubuntu-latest" },
+              { "os": "darwin",  "arch": "arm64", "build-platform": "ubuntu-latest" }
           ]'
 
           PERFORMANCE_TEST_MATRIX=$(
@@ -111,9 +111,11 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Set outputs"
-          ./.github/scripts/set-output performance-test-matrix "${PERFORMANCE_TEST_MATRIX}"
-          ./.github/scripts/set-output version-set "${VERSION_SET}"
-          ./.github/scripts/set-output build-targets "${BUILD_TARGETS}"
+          # Pipe matrix values via stdin: they can exceed the 128 KiB per-argument limit
+          # (MAX_ARG_STRLEN), which would otherwise fail the exec with "Argument list too long".
+          printf '%s' "${PERFORMANCE_TEST_MATRIX}" | ./.github/scripts/set-output performance-test-matrix
+          printf '%s' "${VERSION_SET}" | ./.github/scripts/set-output version-set
+          printf '%s' "${BUILD_TARGETS}" | ./.github/scripts/set-output build-targets
           echo "::endgroup::"
     outputs:
       performance-test-matrix: "${{ fromJson(steps.matrix.outputs.performance-test-matrix) }}"

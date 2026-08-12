@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,4 +23,14 @@ message SourcePosition {
     string uri = 1; // The URI of the file. Currently only the file scheme with an absolute path is supported.
     int32 line = 2; // The line in the file
     int32 column = 3; // The column in the line
+}
+
+// A StackFrame represents a single stack frame.
+message StackFrame {
+    SourcePosition pc = 1; // The position of the frame's program counter. Optional.
+}
+
+// A StackTrace represents the frames on the stack at the point of an RPC call.
+message StackTrace {
+    repeated StackFrame frames = 1; // The frames on the stack.
 }

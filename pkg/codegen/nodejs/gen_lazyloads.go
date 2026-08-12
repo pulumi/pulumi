@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -40,13 +40,14 @@ func newLazyLoadGen() *lazyLoadGen {
 // resources and functions this is optimized to use lazy loading.
 // Falls back to eager re-export for everything else.
 func (ll *lazyLoadGen) genReexport(w io.Writer, exp fileInfo, importPath string) {
-	if exp.fileType == functionFileType {
+	switch exp.fileType { //nolint:exhaustive // golangci-lint v2 upgrade
+	case functionFileType:
 		// optimize lazy-loading function modules
 		ll.genFunctionReexport(w, exp.functionFileInfo, importPath)
-	} else if exp.fileType == resourceFileType {
+	case resourceFileType:
 		// optimize lazy-loading resource modules
 		ll.genResourceReexport(w, exp.resourceFileInfo, importPath)
-	} else {
+	default:
 		// non-optimized but foolproof eager reexport
 		fmt.Fprintf(w, "export * from %q;\n", importPath)
 	}

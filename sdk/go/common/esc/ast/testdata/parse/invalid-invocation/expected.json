@@ -1,0 +1,78 @@
+{
+    "decl": {
+        "Description": null,
+        "Imports": null,
+        "Values": {
+            "Entries": [
+                {
+                    "Key": {
+                        "Value": "multiple-keys"
+                    },
+                    "Value": {
+                        "Entries": [
+                            {
+                                "Key": {
+                                    "Value": "fn::rotate::provider"
+                                },
+                                "Value": {
+                                    "Entries": [
+                                        {
+                                            "Key": {
+                                                "Value": "inputs"
+                                            },
+                                            "Value": {
+                                                "Entries": []
+                                            }
+                                        }
+                                    ]
+                                }
+                            },
+                            {
+                                "Key": {
+                                    "Value": "state"
+                                },
+                                "Value": {
+                                    "Entries": [
+                                        {
+                                            "Key": {
+                                                "Value": "ohno"
+                                            },
+                                            "Value": {
+                                                "Value": true
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    },
+    "diags": [
+        {
+            "Severity": 1,
+            "Summary": "illegal call to builtin function: \"fn::rotate::provider\" must be the only key within its containing object",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-invocation",
+                "Start": {
+                    "Line": 3,
+                    "Column": 5,
+                    "Byte": 29
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 17,
+                    "Byte": 95
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values[\"multiple-keys\"]"
+        }
+    ]
+}

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
+	"io"
 	"regexp"
 	"sort"
 	"strings"
@@ -39,10 +39,10 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // each root is sampled at a particular granularity. the nested traces are converted into a callstack at each
@@ -76,7 +76,7 @@ func (s *traceSample) key() string {
 func findGRPCPayloads(t *appdash.Trace) []string {
 	return fx.ToSlice(fx.FMap(fx.IterSlice(t.Annotations), func(a appdash.Annotation) (string, bool) {
 		if a.Key == "Msg" {
-			var msg map[string]interface{}
+			var msg map[string]any
 			if err := json.Unmarshal(a.Value, &msg); err == nil {
 				if req, ok := msg["gRPC request"]; ok {
 					s, _ := req.(string)
@@ -234,10 +234,7 @@ func convertTraceToSamples(root *appdash.Trace, start time.Time, quantum time.Du
 	})
 
 	// determine where to start sampling
-	delta := timespanEvent.Start().Sub(start)
-	if delta < 0 {
-		delta = 0
-	}
+	delta := max(timespanEvent.Start().Sub(start), 0)
 
 	// We are multiplying a duration by a duration here, which can be buggy (e.g. consider that time.Second * time.Second
 	// is *not* one second, and that in general multiplying durations is not well-defined). However, in this case it's
@@ -271,7 +268,7 @@ func convertTraceToSamples(root *appdash.Trace, start time.Time, quantum time.Du
 	return result, nil
 }
 
-func convertTraceToPprof(quantum time.Duration, querier appdash.Queryer) error {
+func convertTraceToPprof(w io.Writer, quantum time.Duration, querier appdash.Queryer) error {
 	roots, err := traceRoots(querier)
 	if err != nil {
 		return err
@@ -349,7 +346,7 @@ func convertTraceToPprof(quantum time.Duration, querier appdash.Queryer) error {
 		Function: functions,
 	}
 
-	return p.Write(os.Stdout)
+	return p.Write(w)
 }
 
 type otelSpan struct {
@@ -429,7 +426,7 @@ func (s *otelSpan) Status() sdktrace.Status {
 
 // InstrumentationLibrary returns information about the instrumentation
 // library that created the span.
-func (s *otelSpan) InstrumentationLibrary() instrumentation.Library {
+func (s *otelSpan) InstrumentationLibrary() instrumentation.Scope {
 	return s.InstrumentationScope()
 }
 
@@ -651,8 +648,8 @@ func (t *otelTrace) getNextSpanID() trace.SpanID {
 	return id
 }
 
-func exportTraceToOtel(querier appdash.Queryer, ignoreLogSpans bool) error {
-	fmt.Printf("converting trace...\n")
+func exportTraceToOtel(w io.Writer, querier appdash.Queryer, ignoreLogSpans bool) error {
+	fmt.Fprintf(w, "converting trace...\n")
 
 	roots, err := traceRoots(querier)
 	if err != nil {
@@ -669,7 +666,7 @@ func exportTraceToOtel(querier appdash.Queryer, ignoreLogSpans bool) error {
 		return err
 	}
 
-	// Conver the trace roots.
+	// Convert the trace roots.
 	for _, r := range roots {
 		if err = t.newSpan(r, nil); err != nil {
 			return err
@@ -677,26 +674,23 @@ func exportTraceToOtel(querier appdash.Queryer, ignoreLogSpans bool) error {
 	}
 
 	// Export the results to the collector.
-	fmt.Print("dialing collector...\n")
+	fmt.Fprint(w, "dialing collector...\n")
 	exporter, err := otlptracegrpc.New(context.Background())
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("exporting spans for trace %v...\n", t.id)
+	fmt.Fprintf(w, "exporting spans for trace %v...\n", t.id)
 	spans := t.spans
 	for len(spans) > 0 {
-		batchSize := 1
-		if len(spans) < batchSize {
-			batchSize = len(spans)
-		}
+		batchSize := min(len(spans), 1)
 		if err = exporter.ExportSpans(context.Background(), spans[:batchSize]); err != nil {
 			return err
 		}
 		spans = spans[batchSize:]
 	}
 
-	fmt.Printf("shutting down...\n")
+	fmt.Fprintf(w, "shutting down...\n")
 	return exporter.Shutdown(context.Background())
 }
 
@@ -705,7 +699,7 @@ func NewConvertTraceCmd() *cobra.Command {
 	var ignoreLogSpans bool
 	var quantum time.Duration
 	cmd := &cobra.Command{
-		Use:   "convert-trace <trace-file>",
+		Use:   "convert-trace",
 		Short: "Convert a trace from the Pulumi CLI to Google's pprof format",
 		Long: "Convert a trace from the Pulumi CLI to Google's pprof format.\n" +
 			"\n" +
@@ -713,7 +707,6 @@ func NewConvertTraceCmd() *cobra.Command {
 			"invocation of the Pulumi CLI from their native format to Google's\n" +
 			"pprof format. The converted trace is written to stdout, and can be\n" +
 			"inspected using `go tool pprof`.",
-		Args:   cmdutil.ExactArgs(1),
 		Hidden: !env.DebugCommands.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store := appdash.NewMemoryStore()
@@ -721,11 +714,16 @@ func NewConvertTraceCmd() *cobra.Command {
 				return err
 			}
 			if otel {
-				return exportTraceToOtel(store, ignoreLogSpans)
+				return exportTraceToOtel(cmd.OutOrStdout(), store, ignoreLogSpans)
 			}
-			return convertTraceToPprof(quantum, store)
+			return convertTraceToPprof(cmd.OutOrStdout(), quantum, store)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "trace-file"}},
+		Required:  1,
+	})
 
 	cmd.Flags().DurationVarP(&quantum, "granularity", "g", 500*time.Millisecond, "the sample granularity")
 	cmd.Flags().BoolVar(&otel, "otel", false, "true to export to OpenTelemetry")

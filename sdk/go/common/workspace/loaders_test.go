@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +15,14 @@
 package workspace
 
 import (
+	"bytes"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,10 +40,10 @@ config:
 	require.NoError(t, err)
 	var projectStack ProjectStack
 	err = marshaller.Unmarshal(modifiedProjectStack, &projectStack)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, err = projectStack.Config.Decrypt(config.Base64Crypter)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestUnmarshalTime(t *testing.T) {
@@ -52,8 +57,68 @@ config:
 	require.NoError(t, err)
 	var projectStack ProjectStack
 	err = marshaller.Unmarshal(modifiedProjectStack, &projectStack)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, err = projectStack.Config.Decrypt(config.Base64Crypter)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+}
+
+func TestNoEmptyValueWarning(t *testing.T) {
+	t.Parallel()
+	b := []byte(`
+config:
+  project:a: a
+`)
+	marshaller, err := marshallerForPath(".yaml")
+	require.NoError(t, err)
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	var p *Project
+	projectStack, err := LoadProjectStackBytes(sink, p, b, "Pulumi.stack.yaml", marshaller)
+	require.NoError(t, err)
+	require.NotContains(t, stderr.String(), "warning: No value for configuration keys")
+	require.Len(t, projectStack.Config, 1)
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewValue("a"))
+}
+
+func TestEmptyValueWarning(t *testing.T) {
+	t.Parallel()
+	b := []byte(`
+config:
+  project:a:
+  project:b: null
+  project:c: ~
+  project:d: ""
+`)
+	marshaller, err := marshallerForPath(".yaml")
+	require.NoError(t, err)
+	var stdout, stderr bytes.Buffer
+	sink := diagtest.MockSink(&stdout, &stderr)
+	var p *Project
+	projectStack, err := LoadProjectStackBytes(sink, p, b, "Pulumi.stack.yaml", marshaller)
+	require.NoError(t, err)
+	require.Contains(t, stderr.String(), "warning: No value for configuration keys")
+	require.Contains(t, stderr.String(), "project:a")
+	require.Contains(t, stderr.String(), "project:b")
+	require.Contains(t, stderr.String(), "project:c")
+	require.NotContains(t, stderr.String(), "project:d")
+	require.Len(t, projectStack.Config, 4)
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "a")], config.NewValue(""))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "b")], config.NewValue(""))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "c")], config.NewValue(""))
+	require.Equal(t, projectStack.Config[config.MustMakeKey("project", "d")], config.NewValue(""))
+}
+
+func TestEmptyRuntime(t *testing.T) {
+	t.Parallel()
+
+	tmp := t.TempDir()
+	path := filepath.Join(tmp, "Pulumi.yaml")
+	err := os.WriteFile(path, []byte("name: test"), 0o600)
+	require.NoError(t, err)
+
+	proj, err := LoadProject(path)
+	require.NoError(t, err)
+	assert.Equal(t, tokens.PackageName("test"), proj.Name)
+	assert.Empty(t, proj.Runtime.Name())
 }

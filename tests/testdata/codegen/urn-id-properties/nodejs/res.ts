@@ -36,7 +36,7 @@ export class Res extends pulumi.CustomResource {
         return obj['__pulumiType'] === Res.__pulumiType;
     }
 
-    public /*out*/ readonly output!: pulumi.Output<outputs.InnerType | undefined>;
+    declare public /*out*/ readonly output: pulumi.Output<outputs.InnerType | undefined>;
 
     /**
      * Create a Res resource with the given unique name, arguments, and options.
@@ -49,8 +49,8 @@ export class Res extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["id"] = args ? args.id : undefined;
-            resourceInputs["urn"] = args ? args.urn : undefined;
+            resourceInputs["id"] = args?.id;
+            resourceInputs["urn"] = args?.urn;
             resourceInputs["output"] = undefined /*out*/;
         } else {
             resourceInputs["output"] = undefined /*out*/;
@@ -64,6 +64,6 @@ export class Res extends pulumi.CustomResource {
  * The set of arguments for constructing a Res resource.
  */
 export interface ResArgs {
-    id?: pulumi.Input<string>;
-    urn?: pulumi.Input<string>;
+    id?: pulumi.Input<string | undefined>;
+    urn?: pulumi.Input<string | undefined>;
 }

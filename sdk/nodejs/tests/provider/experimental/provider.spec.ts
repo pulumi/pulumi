@@ -1,4 +1,4 @@
-// Copyright 2025-2025, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,13 @@
 
 import * as assert from "assert";
 import * as path from "node:path";
-import { ComponentProvider, getPulumiComponents } from "../../../provider/experimental/provider";
+import {
+    ComponentProvider,
+    getPulumiComponents,
+    isComponentResourceConstructor,
+    validateExplicitComponents,
+} from "../../../provider/experimental/provider";
+import { CustomResource } from "../../../resource";
 import { ComponentResource, ComponentResourceOptions } from "../../../resource";
 import { Output, Input } from "../../../output";
 
@@ -39,17 +45,11 @@ describe("validateResourceType", function () {
 
 describe("getSchema", function () {
     it("generates schema for provider-component", async function () {
-        // Define a stub for MyComponent because importing testdata directly will conflict on type versions.
-        class MyComponent extends ComponentResource {
-            constructor(name: string, args: any, opts?: ComponentResourceOptions) {
-                super("provider:index:MyComponent", name, args, opts);
-            }
-        }
-
         // Set up a test provider with the simple-types test data
         const testDir = path.join(__dirname, "testdata", "provider-component");
+        const { TestComponent } = require(testDir);
         const provider = new ComponentProvider({
-            components: [MyComponent],
+            components: [TestComponent],
             dirname: testDir,
             name: "provider-component",
         });
@@ -64,35 +64,22 @@ describe("getSchema", function () {
         assert.strictEqual(schema.name, "provider-component");
 
         // Verify the component definition is in the schema
-        const componentType = "provider-component:index:MyComponent";
+        const componentType = "provider-component:index:TestComponent";
         assert.ok(schema.resources?.[componentType], "Component should be in schema resources");
 
         // Verify the component properties
         const component = schema.resources[componentType];
         assert.strictEqual(component.inputProperties.message.type, "string");
-        assert.strictEqual(component.properties.formattedMessage.type, "string");
+        assert.strictEqual(component.properties.messageBack.type, "string");
+        assert.strictEqual(component.properties.notAnOutput.type, "string");
     });
 });
 
 describe("construct", function () {
     it("creates component instance with provided inputs", async function () {
-        // Define a simple component with properties we can verify
-        class TestComponent extends ComponentResource {
-            public readonly messageBack: Output<string>;
-
-            constructor(name: string, args: { message: Input<string> }, opts?: ComponentResourceOptions) {
-                super("provider-component:index:TestComponent", name, args, opts);
-
-                this.messageBack = Output.create(`Hello, ${args.message}!`);
-
-                this.registerOutputs({
-                    message: this.messageBack,
-                });
-            }
-        }
-
         // Set up a test provider
         const testDir = path.join(__dirname, "testdata", "provider-component");
+        const { TestComponent } = require(testDir);
         const provider = new ComponentProvider({
             components: [TestComponent],
             dirname: testDir,
@@ -113,6 +100,8 @@ describe("construct", function () {
 
         // Verify the output properties in the state
         assert.ok(result.state.messageBack, "messageBack output should exist");
+        assert.ok(result.state.notAnOutput, "notAnOutput should exist");
+        assert.strictEqual(result.state.notAnOutput, "Hello, world!");
 
         // Resolve the output values to verify them
         const messageValue = await new Promise((resolve) => result.state.messageBack.apply((m: string) => resolve(m)));
@@ -318,6 +307,16 @@ describe("getPulumiComponents", () => {
         assert.deepStrictEqual(getPulumiComponents(new Set()), []);
     });
 
+    it("isComponentResourceConstructor distinguishes ComponentResource subclasses", () => {
+        class NotAComponent {}
+        assert.strictEqual(isComponentResourceConstructor(TestComponent1), true);
+        assert.strictEqual(isComponentResourceConstructor(NotAComponent), false);
+        assert.strictEqual(isComponentResourceConstructor(null), false);
+        assert.strictEqual(isComponentResourceConstructor(undefined), false);
+        assert.strictEqual(isComponentResourceConstructor("string"), false);
+        assert.strictEqual(isComponentResourceConstructor({}), false);
+    });
+
     it("deduplicates repeated components", () => {
         const exports = {
             first: TestComponent1,
@@ -331,5 +330,79 @@ describe("getPulumiComponents", () => {
         const result = getPulumiComponents(exports);
         assert.strictEqual(result.length, 1);
         assert.strictEqual(result[0], TestComponent1);
+    });
+});
+
+describe("validateExplicitComponents", () => {
+    class CompA extends ComponentResource {
+        constructor(name: string, args: any, opts: any) {
+            super("test:index:CompA", name, args, opts);
+        }
+    }
+    class CompB extends ComponentResource {
+        constructor(name: string, args: any, opts: any) {
+            super("test:index:CompB", name, args, opts);
+        }
+    }
+    class CompASub extends CompA {}
+    class MyCustom extends CustomResource {
+        constructor(name: string) {
+            super("test:index:MyCustom", name);
+        }
+    }
+    class PlainClass {}
+
+    it("does not warn for an empty list", () => {
+        const warnings: string[] = [];
+        const result = validateExplicitComponents([], (m) => warnings.push(m));
+        assert.deepStrictEqual(result, []);
+        assert.deepStrictEqual(warnings, []);
+    });
+
+    it("does not warn for valid component classes", () => {
+        const warnings: string[] = [];
+        const result = validateExplicitComponents([CompA, CompB], (m) => warnings.push(m));
+        assert.deepStrictEqual(result, [CompA, CompB]);
+        assert.deepStrictEqual(warnings, []);
+    });
+
+    it("does not warn for subclasses of components", () => {
+        const warnings: string[] = [];
+        const result = validateExplicitComponents([CompASub], (m) => warnings.push(m));
+        assert.deepStrictEqual(result, [CompASub]);
+        assert.deepStrictEqual(warnings, []);
+    });
+
+    it("warns and drops a CustomResource subclass", () => {
+        const warnings: string[] = [];
+        const result = validateExplicitComponents([MyCustom], (m) => warnings.push(m));
+        assert.deepStrictEqual(result, []);
+        assert.strictEqual(warnings.length, 1);
+        assert.match(warnings[0], /MyCustom/);
+        assert.match(warnings[0], /ComponentResource/);
+    });
+
+    it("warns and drops a plain class", () => {
+        const warnings: string[] = [];
+        const result = validateExplicitComponents([PlainClass], (m) => warnings.push(m));
+        assert.deepStrictEqual(result, []);
+        assert.strictEqual(warnings.length, 1);
+        assert.match(warnings[0], /PlainClass/);
+    });
+
+    it("warns once per non-component, dropping each", () => {
+        const warnings: string[] = [];
+        const result = validateExplicitComponents([null, undefined, 42, "str", {}, () => 1], (m) => warnings.push(m));
+        assert.deepStrictEqual(result, []);
+        assert.strictEqual(warnings.length, 6);
+    });
+
+    it("keeps valid components while warning about invalid ones", () => {
+        const warnings: string[] = [];
+        const result = validateExplicitComponents([CompA, MyCustom, CompB, PlainClass], (m) => warnings.push(m));
+        assert.deepStrictEqual(result, [CompA, CompB]);
+        assert.strictEqual(warnings.length, 2);
+        assert.ok(warnings.some((w) => /MyCustom/.test(w)));
+        assert.ok(warnings.some((w) => /PlainClass/.test(w)));
     });
 });

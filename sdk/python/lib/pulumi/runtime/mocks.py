@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ Mocks for testing.
 import functools
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional
 
 from google.protobuf import empty_pb2
 
@@ -124,7 +124,7 @@ class Mocks(ABC):
     """
 
     @abstractmethod
-    def call(self, args: MockCallArgs) -> Tuple[dict, Optional[List[Tuple[str, str]]]]:
+    def call(self, args: MockCallArgs) -> tuple[dict, Optional[list[tuple[str, str]]]]:
         """
         call mocks provider-implemented function calls (e.g. aws.get_availability_zones).
 
@@ -133,7 +133,7 @@ class Mocks(ABC):
         return {}, None
 
     @abstractmethod
-    def new_resource(self, args: MockResourceArgs) -> Tuple[Optional[str], dict]:
+    def new_resource(self, args: MockResourceArgs) -> tuple[Optional[str], dict]:
         """
         new_resource mocks resource construction calls. This function should return the physical identifier and the output properties
         for the resource being constructed.
@@ -145,12 +145,16 @@ class Mocks(ABC):
 
 class MockMonitor:
     class ResourceRegistration(NamedTuple):
+        """
+        ResourceRegistration contains the URN, ID, and state of a registered resource.
+        """
+
         urn: str
         id: str
         state: dict
 
     mocks: Mocks
-    resources: Dict[str, ResourceRegistration]
+    resources: dict[str, ResourceRegistration]
 
     def __init__(self, mocks: Mocks):
         self.mocks = mocks
@@ -163,6 +167,13 @@ class MockMonitor:
             type_ = parentType + "$" + type_
 
         return "urn:pulumi:" + "::".join([get_stack(), get_project(), type_, name])
+
+    def get_registered_resources(self) -> dict[str, ResourceRegistration]:
+        """
+        get_registered_resources returns a copy of the resources dictionary that can be used for test assertions.
+        """
+
+        return dict(self.resources)
 
     def Invoke(self, request):
         # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
@@ -178,7 +189,7 @@ class MockMonitor:
                 rpc.serialize_properties(registered_resource._asdict(), {})
             )
             fields = {"failures": None, "return": ret_proto}
-            return provider_pb2.InvokeResponse(**fields)
+            return resource_pb2.ResourceInvokeResponse(**fields)
 
         call_args = MockCallArgs(
             token=request.tok, args=args, provider=request.provider
@@ -198,7 +209,7 @@ class MockMonitor:
         ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
 
         fields = {"failures": failures, "return": ret_proto}
-        return provider_pb2.InvokeResponse(**fields)
+        return resource_pb2.ResourceInvokeResponse(**fields)
 
     def ReadResource(self, request):
         # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
@@ -259,6 +270,34 @@ class MockMonitor:
         has_support = request.id != "outputValues"
         return type("SupportsFeatureResponse", (object,), {"hasSupport": has_support})
 
+    def GetDeploymentInfo(self, request):
+        # Support for "outputValues" is deliberately disabled for the mock monitor so
+        # instances of `Output` don't show up in `MockResourceArgs` inputs.
+        # INVOKE_DEPENDS_ON is left out because the mock monitor implements no invoke
+        # dependency gate; leaving it out keeps the client-side one.
+        return resource_pb2.DeploymentInfo(
+            supportedFeatures=[
+                resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+                resource_pb2.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+            ]
+        )
+
+    def RegisterPackage(self, request):
+        # Mocks don't _really_ support packages, so we just return a fake package ref.
+        return resource_pb2.RegisterPackageResponse(ref="mock-uuid")
+
+    def SignalAndWaitForShutdown(self, request):
+        return empty_pb2.Empty()
+
 
 class MockEngine:
     logger: logging.Logger
@@ -313,4 +352,5 @@ def set_mocks(
 
     # Ensure a new root stack resource has been initialized.
     if get_root_resource() is None:
-        Stack(lambda: None)
+        root_stack = Stack()
+        root_stack._finish()

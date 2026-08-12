@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -31,14 +30,17 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
 // GenPkgSignature corresponds to the shape of the codegen GeneratePackage functions.
-type GenPkgSignature func(string, *schema.Package, map[string][]byte) (map[string][]byte, error)
+type GenPkgSignature func(string, *schema.Package, map[string][]byte, schema.ReferenceLoader) (map[string][]byte, error)
 
-// GeneratePackageFilesFromSchema loads a schema and generates files using the provided GeneratePackage function.
-func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSignature) (map[string][]byte, error) {
+// generatePackageFilesFromSchema loads a schema and generates files using the provided GeneratePackage function.
+func generatePackageFilesFromSchema(
+	schemaPath, loaderDir string, genPackageFunc GenPkgSignature,
+) (map[string][]byte, error) {
 	// Read in, decode, and import the schema.
 	schemaBytes, err := os.ReadFile(schemaPath)
 	if err != nil {
@@ -57,15 +59,17 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 		return nil, err
 	}
 
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	loader := schema.NewPluginLoader(utils.NewContext(loaderDir))
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return nil, err
 	} else if diags.HasErrors() {
 		return nil, diags
 	}
 
-	return genPackageFunc("test", pkg, nil)
+	return genPackageFunc("test", pkg, nil, nil)
 }
 
 // LoadFiles loads the provided list of files from a directory.
@@ -97,11 +101,11 @@ func PathExists(path string) (bool, error) {
 	return false, err
 }
 
-// `LoadBaseline` loads the contents of the given baseline directory,
+// `loadBaseline` loads the contents of the given baseline directory,
 // by inspecting its `codegen-manifest.json`.
-func LoadBaseline(dir, lang string) (map[string][]byte, error) {
+func loadBaseline(dir string) (map[string][]byte, error) {
 	cm := &codegenManifest{}
-	err := cm.load(filepath.Join(dir, lang))
+	err := cm.load(dir)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load codegen-manifest.json: %w", err)
 	}
@@ -109,7 +113,7 @@ func LoadBaseline(dir, lang string) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 
 	for _, f := range cm.EmittedFiles {
-		bytes, err := os.ReadFile(filepath.Join(dir, lang, f))
+		bytes, err := os.ReadFile(filepath.Join(dir, f))
 		if err != nil {
 			return nil, fmt.Errorf("Failed to load file %s referenced in codegen-manifest.json: %w", f, err)
 		}
@@ -172,14 +176,14 @@ func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) bool
 // If PULUMI_ACCEPT is set, writes out actual output to the expected
 // file set, so we can continue enjoying golden tests without manually
 // modifying the expected output.
-func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[string][]byte) bool {
+func rewriteFilesWhenPulumiAccept(t *testing.T, path string, actual map[string][]byte) bool {
 	if os.Getenv("PULUMI_ACCEPT") == "" {
 		return false
 	}
 
 	cm := &codegenManifest{}
 
-	baseline := filepath.Join(dir, lang)
+	baseline := path
 
 	// Remove the baseline directory's current contents.
 	_, err := os.ReadDir(baseline)
@@ -195,13 +199,13 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 
 	for file, bytes := range actual {
 		relPath := filepath.FromSlash(file)
-		path := filepath.Join(dir, lang, relPath)
+		path := filepath.Join(path, relPath)
 		cm.EmittedFiles = append(cm.EmittedFiles, relPath)
 		err := writeFileEnsuringDir(path, bytes)
 		require.NoError(t, err)
 	}
 
-	err = cm.save(filepath.Join(dir, lang))
+	err = cm.save(path)
 	require.NoError(t, err)
 
 	return true
@@ -211,12 +215,11 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 // `codeDir=$dir/$lang` with extra manually written files such as the
 // unit test files. These files are copied from `$dir/$lang-extras`
 // folder if present.
-func CopyExtraFiles(t *testing.T, dir, lang string) {
-	codeDir := filepath.Join(dir, lang)
-	extrasDir := filepath.Join(dir, lang+"-extras")
-	gotExtras, err := PathExists(extrasDir)
+func copyExtraFiles(t *testing.T, codeDir string) {
+	extrasDir := codeDir + "-extras"
+	extraFiles, err := PathExists(extrasDir)
 
-	if !gotExtras {
+	if !extraFiles {
 		return
 	}
 
@@ -246,6 +249,7 @@ func CopyExtraFiles(t *testing.T, dir, lang string) {
 		if err != nil {
 			return err
 		}
+		t.Cleanup(func() { contract.IgnoreError(os.Remove(destPath)) })
 		t.Logf("Copied %s to %s", path, destPath)
 		return nil
 	})
@@ -261,69 +265,6 @@ func writeFileEnsuringDir(path string, bytes []byte) error {
 	return os.WriteFile(path, bytes, 0o600)
 }
 
-// CheckAllFilesGenerated ensures that the set of expected and actual files generated
-// are exactly equivalent.
-func CheckAllFilesGenerated(t *testing.T, actual, expected map[string][]byte) {
-	seen := map[string]bool{}
-	for x := range expected {
-		seen[x] = true
-	}
-	for a := range actual {
-		assert.Contains(t, seen, a, "Unexpected file generated: %s", a)
-		if seen[a] {
-			delete(seen, a)
-		}
-	}
-
-	for s := range seen {
-		assert.Fail(t, "No content generated for expected file %s", s)
-	}
-}
-
-// Validates a transformer on a single file.
-func ValidateFileTransformer(
-	t *testing.T,
-	inputFile string,
-	expectedOutputFile string,
-	transformer func(reader io.Reader, writer io.Writer) error,
-) {
-	reader, err := os.Open(inputFile)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	var buf bytes.Buffer
-
-	err = transformer(reader, &buf)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	actualBytes := buf.Bytes()
-
-	if os.Getenv("PULUMI_ACCEPT") != "" {
-		err := os.WriteFile(expectedOutputFile, actualBytes, 0o600)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-	}
-
-	actual := map[string][]byte{expectedOutputFile: actualBytes}
-
-	expectedBytes, err := os.ReadFile(expectedOutputFile)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	expected := map[string][]byte{expectedOutputFile: expectedBytes}
-
-	ValidateFileEquality(t, actual, expected)
-}
-
 func RunCommand(t *testing.T, name string, cwd string, exec string, args ...string) {
 	RunCommandWithOptions(t, &integration.ProgramTestOptions{}, name, cwd, exec, args...)
 }
@@ -333,13 +274,42 @@ func RunCommandWithOptions(
 	opts *integration.ProgramTestOptions,
 	name string, cwd string, exec string, args ...string,
 ) {
+	stdout, stderr, err := tryRunCommand(t, opts, name, cwd, exec, args...)
+	require.NoError(t, err, "stdout: %s\nstderr: %s", stdout, stderr)
+}
+
+// RunCommandWithRetries is like RunCommand but retries the command up to maxRetries times on failure.
+// This is useful for commands that may fail due to transient network errors (e.g. npm install).
+func RunCommandWithRetries(t *testing.T, name string, cwd string, maxRetries int, exec string, args ...string) {
+	opts := &integration.ProgramTestOptions{}
+	var stdout, stderr string
+	var err error
+	for attempt := range maxRetries {
+		stdout, stderr, err = tryRunCommand(t, opts, name, cwd, exec, args...)
+		if err == nil {
+			return
+		}
+		if attempt < maxRetries-1 {
+			t.Logf("Command %q failed (attempt %d/%d), retrying: %v", name, attempt+1, maxRetries, err)
+		}
+	}
+	require.NoError(t, err, "stdout: %s\nstderr: %s", stdout, stderr)
+}
+
+// tryRunCommand runs a command and returns stdout, stderr, and any error without failing the test.
+func tryRunCommand(
+	t *testing.T,
+	opts *integration.ProgramTestOptions,
+	name string, cwd string, exec string, args ...string,
+) (string, string, error) {
 	exec, err := executable.FindExecutable(exec)
 	if err != nil {
-		t.Error(err)
-		t.FailNow()
+		return "", "", err
 	}
 	wd, err := filepath.Abs(cwd)
-	require.NoError(t, err)
+	if err != nil {
+		return "", "", err
+	}
 	var stdout, stderr bytes.Buffer
 	opts.Stdout = &stdout
 	opts.Stderr = &stderr
@@ -349,17 +319,7 @@ func RunCommandWithOptions(
 		append([]string{exec}, args...),
 		wd,
 		opts)
-	if !assert.NoError(t, err) {
-		stdout := stdout.String()
-		stderr := stderr.String()
-		if len(stdout) > 0 {
-			t.Logf("stdout: %s", stdout)
-		}
-		if len(stderr) > 0 {
-			t.Logf("stderr: %s", stderr)
-		}
-		t.FailNow()
-	}
+	return stdout.String(), stderr.String(), err
 }
 
 type SchemaVersion = string
@@ -367,15 +327,5 @@ type SchemaVersion = string
 // Schemas are downloaded in the makefile, and the versions specified here
 // should be in sync with the makefile.
 const (
-	AwsSchema              SchemaVersion = "4.26.0"
-	AzureNativeSchema      SchemaVersion = "1.29.0"
-	AzureSchema            SchemaVersion = "4.18.0"
-	KubernetesSchema       SchemaVersion = "3.7.2"
-	RandomSchema           SchemaVersion = "4.11.2"
-	EksSchema              SchemaVersion = "0.37.1"
-	AwsStaticWebsiteSchema SchemaVersion = "0.4.0"
-	AwsNativeSchema        SchemaVersion = "0.99.0"
+	RandomSchema SchemaVersion = "4.11.2"
 )
-
-// PulumiDotnetSDKVersion is the version of the Pulumi .NET SDK to use in program-gen tests
-const PulumiDotnetSDKVersion = "3.77.0"

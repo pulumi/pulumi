@@ -1,0 +1,19 @@
+run: esc open default/test --format yaml
+environments:
+  test-user/default/test:
+    imports:
+      - test-2
+    values:
+      foo: bar
+  test-user/default/test-2:
+    values:
+      foo: baz
+      hello: world
+
+---
+> esc open default/test --format yaml
+foo: bar
+hello: world
+
+---
+> esc open default/test --format yaml

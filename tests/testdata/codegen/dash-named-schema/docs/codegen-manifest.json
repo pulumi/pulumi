@@ -1,9 +1,0 @@
-{
-  "emittedFiles": [
-    "_index.md",
-    "provider/_index.md",
-    "submodule1/_index.md",
-    "submodule1/fooencryptedbarclass/_index.md",
-    "submodule1/moduleresource/_index.md"
-  ]
-}

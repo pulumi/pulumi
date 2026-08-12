@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,8 +18,12 @@ import (
 	"sort"
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func createSnapshot() Snapshot {
@@ -28,9 +32,9 @@ func createSnapshot() Snapshot {
 		resource.NewURN("stack", "test", "typ", "aws:resource", "aname"),
 		resource.NewURN("stack", "test", "typ", "azure:resource", "bar"),
 	}
-	resources := []*resource.State{}
+	resources := slice.Prealloc[*pkgresource.State](len(resourceUrns))
 	for _, u := range resourceUrns {
-		resources = append(resources, &resource.State{URN: u})
+		resources = append(resources, &pkgresource.State{URN: u, Type: "pulumi:pulumi:Stack"})
 	}
 	return Snapshot{Resources: resources}
 }
@@ -44,7 +48,7 @@ func TestSnapshotNormalizeURNReferences(t *testing.T) {
 	t.Parallel()
 	s1 := createSnapshotPtr()
 	s1n, err := s1.NormalizeURNReferences()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Same(t, s1, s1n)
 
 	s2 := createSnapshotPtr()
@@ -53,7 +57,7 @@ func TestSnapshotNormalizeURNReferences(t *testing.T) {
 	s2.Resources[2].Parent = r0.URN
 	r0.URN += "!"
 	s2n, err := s2.NormalizeURNReferences()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.NotSame(t, s2, s2n)
 	// before normalize in s2, Parent link uses outdated URL
 	assert.Equal(t, s2.Resources[2].Parent+"!", s2.Resources[0].URN)
@@ -65,12 +69,12 @@ func TestSnapshotWithUpdatedResources(t *testing.T) {
 	t.Parallel()
 	s1 := createSnapshotPtr()
 
-	s := s1.withUpdatedResources(func(r *resource.State) *resource.State {
+	s := s1.withUpdatedResources(func(r *pkgresource.State) *pkgresource.State {
 		return r
 	})
 	assert.Same(t, s, s1)
 
-	s = s1.withUpdatedResources(func(r *resource.State) *resource.State {
+	s = s1.withUpdatedResources(func(r *pkgresource.State) *pkgresource.State {
 		out := r.Copy()
 		out.URN += "!"
 		return out
@@ -85,10 +89,11 @@ func TestSnapshotPrune_IgnoresDanglingProviderReferences(t *testing.T) {
 	// Arrange.
 	danglingProviderRef := "urn:pulumi:stack::project::pulumi:providers:p::a::id"
 	snap := &Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				URN:      "urn:pulumi:stack::project::t::b",
 				Provider: danglingProviderRef,
+				Type:     "pulumi:pulumi:Stack",
 			},
 		},
 	}
@@ -106,59 +111,70 @@ func TestSnapshotPrune_PreservesValidSnapshots(t *testing.T) {
 	// Arrange.
 	cases := []struct {
 		name  string
-		given []*resource.State
+		given []*pkgresource.State
 	}{
 		{
 			name:  "empty",
-			given: []*resource.State{},
+			given: []*pkgresource.State{},
 		},
 		{
 			name: "a single resource",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 			},
 		},
 		{
 			name: "two unrelated resources",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
-				{URN: "urn:pulumi:stack::project::t::b"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
+				{URN: "urn:pulumi:stack::project::t::b", Type: "pulumi:pulumi:Stack"},
 			},
 		},
 		{
 			name: "two resources with a valid provider dependency",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
-					Type: "pulumi:providers:p",
-					URN:  "urn:pulumi:stack::project::pulumi:providers:p::a",
-					ID:   "id",
+					Type:   "pulumi:providers:p",
+					URN:    "urn:pulumi:stack::project::pulumi:providers:p::a",
+					ID:     "id",
+					Custom: true,
 				},
 				{
-					URN:      "urn:pulumi:stack::project::t::b",
+					URN:      "urn:pulumi:stack::project::pulumi:providers:t::b",
 					Provider: "urn:pulumi:stack::project::pulumi:providers:p::a::id",
+					Type:     "pulumi:providers:p",
 				},
 			},
 		},
 		{
 			name: "two resources with a valid parent-child relationship",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
-				{URN: "urn:pulumi:stack::project::t$t::b", Parent: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::pulumi:providers:t::a", Type: "pulumi:pulumi:Stack"},
+				{
+					URN:    "urn:pulumi:stack::project::pulumi:providers:t$pulumi:providers:t::b",
+					Parent: "urn:pulumi:stack::project::pulumi:providers:t::a",
+					Type:   "pulumi:providers:p",
+				},
 			},
 		},
 		{
 			name: "two resources with a valid dependency",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
-				{URN: "urn:pulumi:stack::project::t::b", Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"}},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::pulumi:providers:t::a", Type: "pulumi:pulumi:Stack"},
+				{
+					URN:          "urn:pulumi:stack::project::pulumi:providers:t::b",
+					Type:         "pulumi:providers:p",
+					Dependencies: []resource.URN{"urn:pulumi:stack::project::pulumi:providers:t::a"},
+				},
 			},
 		},
 		{
 			name: "two resources with a valid property dependency",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 				{
-					URN: "urn:pulumi:stack::project::t::b",
+					URN:  "urn:pulumi:stack::project::pulumi:providers:t::b",
+					Type: "pulumi:providers:t",
 					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 						"p": {"urn:pulumi:stack::project::t::a"},
 					},
@@ -167,25 +183,32 @@ func TestSnapshotPrune_PreservesValidSnapshots(t *testing.T) {
 		},
 		{
 			name: "two resources with a valid deleted-with relationship",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
-				{URN: "urn:pulumi:stack::project::t::b", DeletedWith: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::pulumi:providers:t::a", Type: "pulumi:providers:t"},
+				{
+					URN:         "urn:pulumi:stack::project::pulumi:providers:t::b",
+					Type:        "pulumi:providers:t",
+					DeletedWith: "urn:pulumi:stack::project::pulumi:providers:t::a",
+				},
 			},
 		},
 		{
 			name: "duplicate URNs due to deleted/non-deleted",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
+					Type:         "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t::a",
+					Type:   "pulumi:pulumi:Stack",
 					Delete: true,
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
+					Type:         "pulumi:pulumi:Stack",
 					Delete:       true,
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 				},
@@ -193,14 +216,16 @@ func TestSnapshotPrune_PreservesValidSnapshots(t *testing.T) {
 		},
 		{
 			name: "duplicate URNs due to deleted/non-deleted (false cycle)",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
+					Type:         "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::a",
+					Type:         "pulumi:pulumi:Stack",
 					Delete:       true,
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::b"},
 				},
@@ -208,35 +233,41 @@ func TestSnapshotPrune_PreservesValidSnapshots(t *testing.T) {
 		},
 		{
 			name: "multiple sets of dependent resources",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
+					Type:         "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::c",
+					Type:         "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 				},
 				{
-					URN: "urn:pulumi:stack::project::t::d",
+					URN:  "urn:pulumi:stack::project::t::d",
+					Type: "pulumi:pulumi:Stack",
 					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 						"pa": {"urn:pulumi:stack::project::t::a"},
 						"pb": {"urn:pulumi:stack::project::t::b"},
 					},
 				},
 				{
-					URN: "urn:pulumi:stack::project::t::e",
+					URN:  "urn:pulumi:stack::project::t::e",
+					Type: "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{
 						"urn:pulumi:stack::project::t::c",
 						"urn:pulumi:stack::project::t::d",
 					},
 				},
 				{
-					URN: "urn:pulumi:stack::project::t::f",
+					URN:  "urn:pulumi:stack::project::t::f",
+					Type: "pulumi:pulumi:Stack",
 				},
 				{
 					URN:         "urn:pulumi:stack::project::t::g",
+					Type:        "pulumi:pulumi:Stack",
 					DeletedWith: "urn:pulumi:stack::project::t::f",
 				},
 			},
@@ -244,19 +275,17 @@ func TestSnapshotPrune_PreservesValidSnapshots(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
 			snap := &Snapshot{Resources: c.given}
-			assert.NoError(t, snap.VerifyIntegrity())
+			require.NoError(t, snap.VerifyIntegrity())
 
 			// Act.
 			snap.Prune()
 
 			// Assert.
-			assert.NoError(t, snap.VerifyIntegrity())
+			require.NoError(t, snap.VerifyIntegrity())
 		})
 	}
 }
@@ -267,44 +296,48 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 	// Arrange.
 	cases := []struct {
 		name    string
-		given   []*resource.State
-		want    []*resource.State
+		given   []*pkgresource.State
+		want    []*pkgresource.State
 		results []PruneResult
 	}{
 		{
 			name: "missing parent",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN:    "urn:pulumi:stack::project::t$t::b",
 					Parent: "urn:pulumi:stack::project::t::a",
+					Type:   "pulumi:pulumi:Stack",
 				},
 			},
-			want: []*resource.State{
+			want: []*pkgresource.State{
 				{
-					URN: "urn:pulumi:stack::project::t::b",
+					URN:  "urn:pulumi:stack::project::t::b",
+					Type: "pulumi:pulumi:Stack",
 				},
 			},
 			results: []PruneResult{
 				{
 					OldURN: "urn:pulumi:stack::project::t$t::b",
 					NewURN: "urn:pulumi:stack::project::t::b",
-					RemovedDependencies: []resource.StateDependency{
-						{Type: resource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
+					RemovedDependencies: []pkgresource.StateDependency{
+						{Type: pkgresource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
 					},
 				},
 			},
 		},
 		{
 			name: "missing dependency",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
+					Type:         "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 				},
 			},
-			want: []*resource.State{
+			want: []*pkgresource.State{
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
+					Type:         "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{},
 				},
 			},
@@ -312,28 +345,30 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 				{
 					OldURN: "urn:pulumi:stack::project::t::b",
 					NewURN: "urn:pulumi:stack::project::t::b",
-					RemovedDependencies: []resource.StateDependency{
-						{Type: resource.ResourceDependency, URN: "urn:pulumi:stack::project::t::a"},
+					RemovedDependencies: []pkgresource.StateDependency{
+						{Type: pkgresource.ResourceDependency, URN: "urn:pulumi:stack::project::t::a"},
 					},
 				},
 			},
 		},
 		{
 			name: "some missing dependencies",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::b"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::b", Type: "pulumi:pulumi:Stack"},
 				{
-					URN: "urn:pulumi:stack::project::t::c",
+					URN:  "urn:pulumi:stack::project::t::c",
+					Type: "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{
 						"urn:pulumi:stack::project::t::a",
 						"urn:pulumi:stack::project::t::b",
 					},
 				},
 			},
-			want: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::b"},
+			want: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::b", Type: "pulumi:pulumi:Stack"},
 				{
-					URN: "urn:pulumi:stack::project::t::c",
+					URN:  "urn:pulumi:stack::project::t::c",
+					Type: "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{
 						"urn:pulumi:stack::project::t::b",
 					},
@@ -343,25 +378,27 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 				{
 					OldURN: "urn:pulumi:stack::project::t::c",
 					NewURN: "urn:pulumi:stack::project::t::c",
-					RemovedDependencies: []resource.StateDependency{
-						{Type: resource.ResourceDependency, URN: "urn:pulumi:stack::project::t::a"},
+					RemovedDependencies: []pkgresource.StateDependency{
+						{Type: pkgresource.ResourceDependency, URN: "urn:pulumi:stack::project::t::a"},
 					},
 				},
 			},
 		},
 		{
 			name: "missing property dependency",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
-					URN: "urn:pulumi:stack::project::t::b",
+					URN:  "urn:pulumi:stack::project::t::b",
+					Type: "pulumi:pulumi:Stack",
 					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 						"p": {"urn:pulumi:stack::project::t::a"},
 					},
 				},
 			},
-			want: []*resource.State{
+			want: []*pkgresource.State{
 				{
 					URN:                  "urn:pulumi:stack::project::t::b",
+					Type:                 "pulumi:pulumi:Stack",
 					PropertyDependencies: map[resource.PropertyKey][]resource.URN{},
 				},
 			},
@@ -369,9 +406,9 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 				{
 					OldURN: "urn:pulumi:stack::project::t::b",
 					NewURN: "urn:pulumi:stack::project::t::b",
-					RemovedDependencies: []resource.StateDependency{
+					RemovedDependencies: []pkgresource.StateDependency{
 						{
-							Type: resource.ResourcePropertyDependency,
+							Type: pkgresource.ResourcePropertyDependency,
 							Key:  "p",
 							URN:  "urn:pulumi:stack::project::t::a",
 						},
@@ -381,20 +418,22 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 		},
 		{
 			name: "some missing property dependencies",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::b"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::b", Type: "pulumi:pulumi:Stack"},
 				{
-					URN: "urn:pulumi:stack::project::t::d",
+					URN:  "urn:pulumi:stack::project::t::d",
+					Type: "pulumi:pulumi:Stack",
 					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 						"pa":  {"urn:pulumi:stack::project::t::a"},
 						"pbc": {"urn:pulumi:stack::project::t::b", "urn:pulumi:stack::project::t::c"},
 					},
 				},
 			},
-			want: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::b"},
+			want: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::b", Type: "pulumi:pulumi:Stack"},
 				{
-					URN: "urn:pulumi:stack::project::t::d",
+					URN:  "urn:pulumi:stack::project::t::d",
+					Type: "pulumi:pulumi:Stack",
 					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 						"pbc": {"urn:pulumi:stack::project::t::b"},
 					},
@@ -404,14 +443,14 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 				{
 					OldURN: "urn:pulumi:stack::project::t::d",
 					NewURN: "urn:pulumi:stack::project::t::d",
-					RemovedDependencies: []resource.StateDependency{
+					RemovedDependencies: []pkgresource.StateDependency{
 						{
-							Type: resource.ResourcePropertyDependency,
+							Type: pkgresource.ResourcePropertyDependency,
 							Key:  "pa",
 							URN:  "urn:pulumi:stack::project::t::a",
 						},
 						{
-							Type: resource.ResourcePropertyDependency,
+							Type: pkgresource.ResourcePropertyDependency,
 							Key:  "pbc",
 							URN:  "urn:pulumi:stack::project::t::c",
 						},
@@ -421,62 +460,70 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 		},
 		{
 			name: "missing deleted-with",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN:         "urn:pulumi:stack::project::t::b",
 					DeletedWith: "urn:pulumi:stack::project::t::a",
+					Type:        "pulumi:pulumi:Stack",
 				},
 			},
-			want: []*resource.State{
+			want: []*pkgresource.State{
 				{
-					URN: "urn:pulumi:stack::project::t::b",
+					URN:  "urn:pulumi:stack::project::t::b",
+					Type: "pulumi:pulumi:Stack",
 				},
 			},
 			results: []PruneResult{
 				{
 					OldURN: "urn:pulumi:stack::project::t::b",
 					NewURN: "urn:pulumi:stack::project::t::b",
-					RemovedDependencies: []resource.StateDependency{
-						{Type: resource.ResourceDeletedWith, URN: "urn:pulumi:stack::project::t::a"},
+					RemovedDependencies: []pkgresource.StateDependency{
+						{Type: pkgresource.ResourceDeletedWith, URN: "urn:pulumi:stack::project::t::a"},
 					},
 				},
 			},
 		},
 		{
 			name: "transitive parent rewrites",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN:    "urn:pulumi:stack::project::t$t::b",
 					Parent: "urn:pulumi:stack::project::t::a",
+					Type:   "pulumi:pulumi:Stack",
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t$t$u::c",
 					Parent: "urn:pulumi:stack::project::t$t::b",
+					Type:   "pulumi:pulumi:Stack",
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t$t$u$v::d",
 					Parent: "urn:pulumi:stack::project::t$t$u::c",
+					Type:   "pulumi:pulumi:Stack",
 				},
 			},
-			want: []*resource.State{
+			want: []*pkgresource.State{
 				{
-					URN: "urn:pulumi:stack::project::t::b",
+					URN:  "urn:pulumi:stack::project::t::b",
+					Type: "pulumi:pulumi:Stack",
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t$u::c",
 					Parent: "urn:pulumi:stack::project::t::b",
+					Type:   "pulumi:pulumi:Stack",
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t$u$v::d",
 					Parent: "urn:pulumi:stack::project::t$u::c",
+					Type:   "pulumi:pulumi:Stack",
 				},
 			},
 			results: []PruneResult{
 				{
 					OldURN: "urn:pulumi:stack::project::t$t::b",
 					NewURN: "urn:pulumi:stack::project::t::b",
-					RemovedDependencies: []resource.StateDependency{
-						{Type: resource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
+					RemovedDependencies: []pkgresource.StateDependency{
+						{Type: pkgresource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
 					},
 				},
 				{
@@ -491,21 +538,25 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 		},
 		{
 			name: "multiple rewrites and removals",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN:    "urn:pulumi:stack::project::t$t::b",
 					Parent: "urn:pulumi:stack::project::t::a",
+					Type:   "pulumi:pulumi:Stack",
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t$t$u::c",
 					Parent: "urn:pulumi:stack::project::t$t::b",
+					Type:   "pulumi:pulumi:Stack",
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::d",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t$t::b"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 				{
-					URN: "urn:pulumi:stack::project::t::e",
+					URN:  "urn:pulumi:stack::project::t::e",
+					Type: "pulumi:pulumi:Stack",
 					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 						"p": {"urn:pulumi:stack::project::t$t$u::c"},
 						"q": {"urn:pulumi:stack::project::t::q"},
@@ -514,6 +565,7 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t$t$u$v::f",
+					Type:   "pulumi:pulumi:Stack",
 					Parent: "urn:pulumi:stack::project::t$t$u::c",
 					Dependencies: []resource.URN{
 						"urn:pulumi:stack::project::t$t::b",
@@ -521,17 +573,20 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 					},
 				},
 			},
-			want: []*resource.State{
+			want: []*pkgresource.State{
 				{
-					URN: "urn:pulumi:stack::project::t::b",
+					URN:  "urn:pulumi:stack::project::t::b",
+					Type: "pulumi:pulumi:Stack",
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t$u::c",
 					Parent: "urn:pulumi:stack::project::t::b",
+					Type:   "pulumi:pulumi:Stack",
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::d",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::b"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 				{
 					URN: "urn:pulumi:stack::project::t::e",
@@ -539,19 +594,21 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 						"p": {"urn:pulumi:stack::project::t$u::c"},
 					},
 					DeletedWith: "urn:pulumi:stack::project::t::d",
+					Type:        "pulumi:pulumi:Stack",
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t$u$v::f",
 					Parent:       "urn:pulumi:stack::project::t$u::c",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::b"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 			},
 			results: []PruneResult{
 				{
 					OldURN: "urn:pulumi:stack::project::t$t::b",
 					NewURN: "urn:pulumi:stack::project::t::b",
-					RemovedDependencies: []resource.StateDependency{
-						{Type: resource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
+					RemovedDependencies: []pkgresource.StateDependency{
+						{Type: pkgresource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
 					},
 				},
 				{
@@ -561,9 +618,9 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 				{
 					OldURN: "urn:pulumi:stack::project::t::e",
 					NewURN: "urn:pulumi:stack::project::t::e",
-					RemovedDependencies: []resource.StateDependency{
+					RemovedDependencies: []pkgresource.StateDependency{
 						{
-							Type: resource.ResourcePropertyDependency,
+							Type: pkgresource.ResourcePropertyDependency,
 							Key:  "q",
 							URN:  "urn:pulumi:stack::project::t::q",
 						},
@@ -572,66 +629,74 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 				{
 					OldURN: "urn:pulumi:stack::project::t$t$u$v::f",
 					NewURN: "urn:pulumi:stack::project::t$u$v::f",
-					RemovedDependencies: []resource.StateDependency{
-						{Type: resource.ResourceDependency, URN: "urn:pulumi:stack::project::t::q"},
+					RemovedDependencies: []pkgresource.StateDependency{
+						{Type: pkgresource.ResourceDependency, URN: "urn:pulumi:stack::project::t::q"},
 					},
 				},
 			},
 		},
 		{
 			name: "duplicate URNs",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN:    "urn:pulumi:stack::project::t$t::b",
 					Parent: "urn:pulumi:stack::project::t::a",
+					Type:   "pulumi:pulumi:Stack",
 				},
 				{
 					URN:         "urn:pulumi:stack::project::t::c",
 					DeletedWith: "urn:pulumi:stack::project::t$t::b",
+					Type:        "pulumi:pulumi:Stack",
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t$t::b",
 					Parent: "urn:pulumi:stack::project::t::a",
 					Delete: true,
+					Type:   "pulumi:pulumi:Stack",
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t$t$u::c",
 					Parent: "urn:pulumi:stack::project::t$t::b",
 					Delete: true,
+					Type:   "pulumi:pulumi:Stack",
 				},
 			},
-			want: []*resource.State{
+			want: []*pkgresource.State{
 				{
-					URN: "urn:pulumi:stack::project::t::b",
+					URN:  "urn:pulumi:stack::project::t::b",
+					Type: "pulumi:pulumi:Stack",
 				},
 				{
 					URN:         "urn:pulumi:stack::project::t::c",
 					DeletedWith: "urn:pulumi:stack::project::t::b",
+					Type:        "pulumi:pulumi:Stack",
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t::b",
 					Delete: true,
+					Type:   "pulumi:pulumi:Stack",
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t$u::c",
 					Parent: "urn:pulumi:stack::project::t::b",
 					Delete: true,
+					Type:   "pulumi:pulumi:Stack",
 				},
 			},
 			results: []PruneResult{
 				{
 					OldURN: "urn:pulumi:stack::project::t$t::b",
 					NewURN: "urn:pulumi:stack::project::t::b",
-					RemovedDependencies: []resource.StateDependency{
-						{Type: resource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
+					RemovedDependencies: []pkgresource.StateDependency{
+						{Type: pkgresource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
 					},
 				},
 				{
 					OldURN: "urn:pulumi:stack::project::t$t::b",
 					NewURN: "urn:pulumi:stack::project::t::b",
 					Delete: true,
-					RemovedDependencies: []resource.StateDependency{
-						{Type: resource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
+					RemovedDependencies: []pkgresource.StateDependency{
+						{Type: pkgresource.ResourceParent, URN: "urn:pulumi:stack::project::t::a"},
 					},
 				},
 				{
@@ -644,8 +709,6 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -669,7 +732,7 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 				assert.Equal(t, res.OldURN, actual[i].OldURN)
 				assert.ElementsMatch(t, res.RemovedDependencies, actual[i].RemovedDependencies)
 			}
-			assert.NoError(t, snap.VerifyIntegrity())
+			require.NoError(t, snap.VerifyIntegrity())
 		})
 	}
 }
@@ -680,142 +743,169 @@ func TestSnapshotToposort_PreservesValidSnapshots(t *testing.T) {
 	// Arrange.
 	cases := []struct {
 		name  string
-		given []*resource.State
+		given []*pkgresource.State
 	}{
 		{
 			name:  "empty",
-			given: []*resource.State{},
+			given: []*pkgresource.State{},
 		},
 		{
 			name: "a single resource",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 			},
 		},
 		{
 			name: "two unrelated resources",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
-				{URN: "urn:pulumi:stack::project::t::b"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
+				{URN: "urn:pulumi:stack::project::t::b", Type: "pulumi:pulumi:Stack"},
 			},
 		},
 		{
 			name: "two resources with a valid provider dependency",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
-					Type: "pulumi:providers:p",
-					URN:  "urn:pulumi:stack::project::pulumi:providers:p::a",
-					ID:   "id",
+					Type:   "pulumi:providers:p",
+					URN:    "urn:pulumi:stack::project::pulumi:providers:p::a",
+					ID:     "id",
+					Custom: true,
 				},
 				{
 					URN:      "urn:pulumi:stack::project::t::b",
 					Provider: "urn:pulumi:stack::project::pulumi:providers:p::a::id",
+					Type:     "pulumi:pulumi:Stack",
 				},
 			},
 		},
 		{
 			name: "two resources with a valid parent-child relationship",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
-				{URN: "urn:pulumi:stack::project::t$t::b", Parent: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
+				{URN: "urn:pulumi:stack::project::t$t::b", Parent: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 			},
 		},
 		{
 			name: "two resources with a valid dependency",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
-				{URN: "urn:pulumi:stack::project::t::b", Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"}},
+			given: []*pkgresource.State{
+				{
+					URN:    "urn:pulumi:stack::project::pulumi:providers:t::a",
+					Type:   "pulumi:providers:p",
+					Custom: true,
+				},
+				{
+					URN:          "urn:pulumi:stack::project::pulumi:providers:t::b",
+					Dependencies: []resource.URN{"urn:pulumi:stack::project::pulumi:providers:t::a"},
+					Type:         "pulumi:providers:t",
+					Custom:       true,
+				},
 			},
 		},
 		{
 			name: "two resources with a valid property dependency",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 				{
 					URN: "urn:pulumi:stack::project::t::b",
 					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 						"p": {"urn:pulumi:stack::project::t::a"},
 					},
+					Type: "pulumi:pulumi:Stack",
 				},
 			},
 		},
 		{
 			name: "two resources with a valid deleted-with relationship",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
-				{URN: "urn:pulumi:stack::project::t::b", DeletedWith: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
+				{
+					URN:         "urn:pulumi:stack::project::t::b",
+					DeletedWith: "urn:pulumi:stack::project::t::a",
+					Type:        "pulumi:pulumi:Stack",
+				},
 			},
 		},
 		{
 			name: "duplicate URNs due to deleted/non-deleted",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t::a",
 					Delete: true,
+					Type:   "pulumi:pulumi:Stack",
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
 					Delete:       true,
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 			},
 		},
 		{
 			name: "duplicate URNs due to deleted/non-deleted (false cycle)",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::a",
 					Delete:       true,
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::b"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 			},
 		},
 		{
 			name: "multiple duplicate URNs due to multiple deleted",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::a",
 					Delete:       true,
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::b"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::c",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 					Delete:       true,
+					Type:         "pulumi:pulumi:Stack",
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::a",
 					Delete:       true,
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::b"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 			},
 		},
 		{
 			name: "multiple sets of dependent resources",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::c",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 				{
 					URN: "urn:pulumi:stack::project::t::d",
@@ -823,6 +913,7 @@ func TestSnapshotToposort_PreservesValidSnapshots(t *testing.T) {
 						"pa": {"urn:pulumi:stack::project::t::a"},
 						"pb": {"urn:pulumi:stack::project::t::b"},
 					},
+					Type: "pulumi:pulumi:Stack",
 				},
 				{
 					URN: "urn:pulumi:stack::project::t::e",
@@ -830,33 +921,34 @@ func TestSnapshotToposort_PreservesValidSnapshots(t *testing.T) {
 						"urn:pulumi:stack::project::t::c",
 						"urn:pulumi:stack::project::t::d",
 					},
+					Type: "pulumi:pulumi:Stack",
 				},
 				{
-					URN: "urn:pulumi:stack::project::t::f",
+					URN:  "urn:pulumi:stack::project::t::f",
+					Type: "pulumi:pulumi:Stack",
 				},
 				{
 					URN:         "urn:pulumi:stack::project::t::g",
 					DeletedWith: "urn:pulumi:stack::project::t::f",
+					Type:        "pulumi:pulumi:Stack",
 				},
 			},
 		},
 	}
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
 			snap := &Snapshot{Resources: c.given}
-			assert.NoError(t, snap.VerifyIntegrity())
+			require.NoError(t, snap.VerifyIntegrity())
 
 			// Act.
 			err := snap.Toposort()
 
 			// Assert.
-			assert.NoError(t, err)
-			assert.NoError(t, snap.VerifyIntegrity())
+			require.NoError(t, err)
+			require.NoError(t, snap.VerifyIntegrity())
 		})
 	}
 }
@@ -867,84 +959,100 @@ func TestSnapshotToposort_FixesOrderInvalidSnapshots(t *testing.T) {
 	// Arrange.
 	cases := []struct {
 		name  string
-		given []*resource.State
+		given []*pkgresource.State
 	}{
 		{
 			name: "two resources with an out-of-order provider dependency",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN:      "urn:pulumi:stack::project::t::b",
+					Type:     "pulumi:pulumi:Stack",
 					Provider: "urn:pulumi:stack::project::pulumi:providers:p::a::id",
 				},
 				{
-					Type: "pulumi:providers:p",
-					URN:  "urn:pulumi:stack::project::pulumi:providers:p::a",
-					ID:   "id",
+					Type:   "pulumi:providers:p",
+					URN:    "urn:pulumi:stack::project::pulumi:providers:p::a",
+					ID:     "id",
+					Custom: true,
 				},
 			},
 		},
 		{
 			name: "two resources with an out-of-order parent-child relationship",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t$t::b", Parent: "urn:pulumi:stack::project::t::a"},
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{URN: "urn:pulumi:stack::project::t$t::b", Parent: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 			},
 		},
 		{
 			name: "two resources with an out-of-order dependency",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::b", Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"}},
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{
+					URN:          "urn:pulumi:stack::project::t::b",
+					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
+					Type:         "pulumi:pulumi:Stack",
+				},
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 			},
 		},
 		{
 			name: "two resources with an out-of-order property dependency",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
-					URN: "urn:pulumi:stack::project::t::b",
+					URN:  "urn:pulumi:stack::project::t::b",
+					Type: "pulumi:pulumi:Stack",
 					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 						"p": {"urn:pulumi:stack::project::t::a"},
 					},
 				},
-				{URN: "urn:pulumi:stack::project::t::a"},
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 			},
 		},
 		{
 			name: "two resources with an out-of-order deleted-with relationship",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t::b", DeletedWith: "urn:pulumi:stack::project::t::a"},
-				{URN: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{
+					URN:         "urn:pulumi:stack::project::t::b",
+					Type:        "pulumi:pulumi:Stack",
+					DeletedWith: "urn:pulumi:stack::project::t::a",
+				},
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 			},
 		},
 		{
 			name: "duplicate URNs due to deleted/non-deleted",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
+					Type:         "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 				},
-				{URN: "urn:pulumi:stack::project::t::a"},
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
+					Type:         "pulumi:pulumi:Stack",
 					Delete:       true,
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t::a",
+					Type:   "pulumi:pulumi:Stack",
 					Delete: true,
 				},
 			},
 		},
 		{
 			name: "duplicate URNs due to deleted/non-deleted (false cycle)",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
+					Type:         "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 				},
-				{URN: "urn:pulumi:stack::project::t::a"},
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 				{
 					URN:          "urn:pulumi:stack::project::t::a",
+					Type:         "pulumi:pulumi:Stack",
 					Delete:       true,
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::b"},
 				},
@@ -952,43 +1060,50 @@ func TestSnapshotToposort_FixesOrderInvalidSnapshots(t *testing.T) {
 		},
 		{
 			name: "multiple duplicate URNs due to multiple deleted",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
+					Type:         "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 				},
-				{URN: "urn:pulumi:stack::project::t::a"},
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 				{
 					URN:          "urn:pulumi:stack::project::t::c",
+					Type:         "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 					Delete:       true,
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::a",
+					Type:         "pulumi:pulumi:Stack",
 					Delete:       true,
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::d"},
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::a",
+					Type:         "pulumi:pulumi:Stack",
 					Delete:       true,
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::b"},
 				},
 				{
 					URN:    "urn:pulumi:stack::project::t::d",
+					Type:   "pulumi:pulumi:Stack",
 					Delete: true,
 				},
 			},
 		},
 		{
 			name: "multiple sets of out-of-order dependent resources",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN:          "urn:pulumi:stack::project::t::c",
+					Type:         "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 				},
-				{URN: "urn:pulumi:stack::project::t::a"},
+				{URN: "urn:pulumi:stack::project::t::a", Type: "pulumi:pulumi:Stack"},
 				{
-					URN: "urn:pulumi:stack::project::t::e",
+					URN:  "urn:pulumi:stack::project::t::e",
+					Type: "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{
 						"urn:pulumi:stack::project::t::c",
 						"urn:pulumi:stack::project::t::d",
@@ -996,10 +1111,12 @@ func TestSnapshotToposort_FixesOrderInvalidSnapshots(t *testing.T) {
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
+					Type:         "pulumi:pulumi:Stack",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
 				},
 				{
-					URN: "urn:pulumi:stack::project::t::d",
+					URN:  "urn:pulumi:stack::project::t::d",
+					Type: "pulumi:pulumi:Stack",
 					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 						"pa": {"urn:pulumi:stack::project::t::a"},
 						"pb": {"urn:pulumi:stack::project::t::b"},
@@ -1007,18 +1124,18 @@ func TestSnapshotToposort_FixesOrderInvalidSnapshots(t *testing.T) {
 				},
 				{
 					URN:         "urn:pulumi:stack::project::t::g",
+					Type:        "pulumi:pulumi:Stack",
 					DeletedWith: "urn:pulumi:stack::project::t::f",
 				},
 				{
-					URN: "urn:pulumi:stack::project::t::f",
+					URN:  "urn:pulumi:stack::project::t::f",
+					Type: "pulumi:pulumi:Stack",
 				},
 			},
 		},
 	}
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1029,8 +1146,8 @@ func TestSnapshotToposort_FixesOrderInvalidSnapshots(t *testing.T) {
 			err := snap.Toposort()
 
 			// Assert.
-			assert.NoError(t, err)
-			assert.NoError(t, snap.VerifyIntegrity())
+			require.NoError(t, err)
+			require.NoError(t, snap.VerifyIntegrity())
 		})
 	}
 }
@@ -1041,14 +1158,15 @@ func TestSnapshotToposort_DetectsCycles(t *testing.T) {
 	// Arrange.
 	cases := []struct {
 		name  string
-		given []*resource.State
+		given []*pkgresource.State
 	}{
 		{
 			name: "direct cycle",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN:      "urn:pulumi:stack::project::t::b",
 					Provider: "urn:pulumi:stack::project::pulumi:providers:p::a::id",
+					Type:     "pulumi:pulumi:Stack",
 				},
 				{
 					Type:         "pulumi:providers:p",
@@ -1060,57 +1178,66 @@ func TestSnapshotToposort_DetectsCycles(t *testing.T) {
 		},
 		{
 			name: "long-chain cycle",
-			given: []*resource.State{
-				{URN: "urn:pulumi:stack::project::t$t::b", Parent: "urn:pulumi:stack::project::t::a"},
+			given: []*pkgresource.State{
+				{
+					URN:    "urn:pulumi:stack::project::t$t::b",
+					Parent: "urn:pulumi:stack::project::t::a",
+					Type:   "pulumi:pulumi:Stack",
+				},
 				{
 					URN:          "urn:pulumi:stack::project::t::a",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::c"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 				{
 					URN:         "urn:pulumi:stack::project::t::c",
 					DeletedWith: "urn:pulumi:stack::project::t$t::b",
+					Type:        "pulumi:pulumi:Stack",
 				},
 			},
 		},
 		{
 			name: "two cycles",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN:          "urn:pulumi:stack::project::t::b",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::a"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 				{
 					URN:         "urn:pulumi:stack::project::t::a",
 					DeletedWith: "urn:pulumi:stack::project::t::b",
+					Type:        "pulumi:pulumi:Stack",
 				},
 				{
 					URN: "urn:pulumi:stack::project::t::d",
 					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 						"pc": {"urn:pulumi:stack::project::t::c"},
 					},
+					Type: "pulumi:pulumi:Stack",
 				},
 				{
 					URN:          "urn:pulumi:stack::project::t::c",
 					Dependencies: []resource.URN{"urn:pulumi:stack::project::t::d"},
+					Type:         "pulumi:pulumi:Stack",
 				},
 			},
 		},
 		{
 			name: "self reference",
-			given: []*resource.State{
+			given: []*pkgresource.State{
 				{
 					URN: "urn:pulumi:stack::project::t::a",
 					PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 						"p": {"urn:pulumi:stack::project::t::a"},
 					},
+					Type: "pulumi:pulumi:Stack",
 				},
 			},
 		},
 	}
 
 	for _, c := range cases {
-		c := c
-
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1123,4 +1250,72 @@ func TestSnapshotToposort_DetectsCycles(t *testing.T) {
 			assert.ErrorContains(t, err, "snapshot has cyclic dependencies")
 		})
 	}
+}
+
+// TestSnapshotVerifyIntegrity_SnippetReferencesNeedNotExist checks that snippet references are not
+// snapshot integrity constraints. A referenced resource may be absent after a targeted delete and
+// recreated by a later update.
+func TestSnapshotVerifyIntegrity_SnippetReferencesNeedNotExist(t *testing.T) {
+	t.Parallel()
+
+	missing := resource.NewURN("stack", "project", "", "pkgA:index:res", "missing")
+	snap := &Snapshot{
+		Snippets: []resource.Snippet{
+			{
+				UUID: "e970a91d-4f4c-5793-8d27-dd27a0d96cf7",
+				Name: "consumer",
+				Type: "pkgA:index:res",
+				Code: `propA = missing.id`,
+				References: map[string]string{
+					"missing": string(missing),
+				},
+			},
+		},
+	}
+
+	require.NoError(t, snap.VerifyIntegrity())
+}
+
+func TestSnapshotVerifyIntegrity_SnippetUUID(t *testing.T) {
+	t.Parallel()
+
+	t.Run("missing", func(t *testing.T) {
+		t.Parallel()
+
+		snap := &Snapshot{
+			Snippets: []resource.Snippet{
+				{
+					Name: "consumer",
+					Type: "pkgA:index:res",
+					Code: `propA = true`,
+				},
+			},
+		}
+
+		require.ErrorContains(t, snap.VerifyIntegrity(), "snippet at index 0 missing required 'uuid' field")
+	})
+
+	t.Run("duplicate", func(t *testing.T) {
+		t.Parallel()
+
+		snap := &Snapshot{
+			Snippets: []resource.Snippet{
+				{
+					UUID: "e970a91d-4f4c-5793-8d27-dd27a0d96cf7",
+					Name: "consumer-a",
+					Type: "pkgA:index:res",
+					Code: `propA = true`,
+				},
+				{
+					UUID: "e970a91d-4f4c-5793-8d27-dd27a0d96cf7",
+					Name: "consumer-b",
+					Type: "pkgA:index:res",
+					Code: `propA = false`,
+				},
+			},
+		}
+
+		require.ErrorContains(t, snap.VerifyIntegrity(),
+			`duplicate snippet uuid "e970a91d-4f4c-5793-8d27-dd27a0d96cf7" at indexes 0 and 1`)
+	})
 }

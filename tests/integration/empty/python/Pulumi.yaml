@@ -1,3 +1,6 @@
 name: emptypy
 description: An empty Python Pulumi program.
-runtime: python
+runtime:
+  name: python
+  options:
+    toolchain: uv

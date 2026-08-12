@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -84,8 +84,9 @@ func Normalize(ast TypeAst) TypeAst {
 func transform(t TypeAst, f func(x TypeAst) TypeAst) TypeAst {
 	switch v := t.(type) {
 	case *unionType:
-		var ts []TypeAst
-		for _, x := range v.all() {
+		all := v.all()
+		ts := make([]TypeAst, 0, len(all))
+		for _, x := range all {
 			ts = append(ts, transform(x, f))
 		}
 		return f(Union(ts...))

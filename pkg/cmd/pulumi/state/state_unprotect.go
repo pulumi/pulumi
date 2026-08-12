@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,16 +18,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"strings"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/spf13/cobra"
 )
@@ -38,42 +43,59 @@ func newStateUnprotectCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "unprotect [resource URN]",
+		Use:   "unprotect",
 		Short: "Unprotect resources in a stack's state",
-		Long: `Unprotect resource in a stack's state
+		Long: `Unprotect resources in a stack's state
 
 This command clears the 'protect' bit on one or more resources, allowing those resources to be deleted.
 
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			yes = yes || env.SkipConfirmations.Value()
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
 			if unprotectAll {
-				return unprotectAllResources(ctx, ws, stack, showPrompt)
+				return unprotectAllResources(ctx, cmd.OutOrStdout(), sink, ws, stack, showPrompt)
 			}
 
-			var urn resource.URN
-
-			if len(args) != 1 {
-				if !cmdutil.Interactive() {
-					return missingNonInteractiveArg("resource URN")
-				}
-				var err error
-				urn, err = getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, nil, "Select a resource to unprotect:")
-				if err != nil {
-					return fmt.Errorf("failed to select resource: %w", err)
-				}
-			} else {
-				urn = resource.URN(args[0])
+			// If URN arguments were provided, use those
+			if len(args) > 0 {
+				return unprotectMultipleResources(ctx, cmd.OutOrStdout(), sink, ws, stack, args, showPrompt)
 			}
-			return unprotectResource(ctx, ws, stack, urn, showPrompt)
+
+			// Otherwise, use interactive selection
+			if !cmdutil.Interactive() {
+				return missingNonInteractiveArg("resource URN")
+			}
+
+			urn, err := getURNFromState(
+				ctx,
+				sink,
+				ws,
+				backend.DefaultLoginManager,
+				stack,
+				nil,
+				"Select a resource to unprotect:",
+			)
+			if err != nil {
+				return fmt.Errorf("failed to select resource: %w", err)
+			}
+
+			return unprotectResource(ctx, cmd.OutOrStdout(), sink, ws, stack, urn, showPrompt)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "resource-urn"},
+		},
+		Required: 0,
+		Variadic: true,
+	})
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
@@ -84,17 +106,23 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 	return cmd
 }
 
-func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackName string, showPrompt bool) error {
+func unprotectAllResources(
+	ctx context.Context, stdout io.Writer,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool,
+) error {
 	err := runTotalStateEdit(
-		ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, func(_ display.Options, snap *deploy.Snapshot) error {
+		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
+		func(_ display.Options, snap *deploy.Snapshot) error {
 			// Protects against Panic when a user tries to unprotect non-existing resources
 			if snap == nil {
 				return errors.New("no resources found to unprotect")
 			}
 
 			for _, res := range snap.Resources {
-				err := edit.UnprotectResource(snap, res)
-				contract.AssertNoErrorf(err, "Unable to unprotect resource %q", res.URN)
+				// Skip resources that are pending deletion
+				if !res.Delete {
+					res.Protect = false
+				}
 			}
 
 			return nil
@@ -102,17 +130,73 @@ func unprotectAllResources(ctx context.Context, ws pkgWorkspace.Context, stackNa
 	if err != nil {
 		return err
 	}
-	fmt.Println("All resources unprotected")
+	fmt.Fprintln(stdout, "All resources unprotected")
 	return nil
 }
 
-func unprotectResource(
-	ctx context.Context, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
-) error {
-	err := runStateEdit(ctx, ws, backend.DefaultLoginManager, stackName, showPrompt, urn, edit.UnprotectResource)
-	if err != nil {
-		return err
+// unprotectResourcesInSnapshot handles the logic for unprotecting resources in a snapshot.
+func unprotectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []error) {
+	if snap == nil {
+		return 0, []error{errors.New("no resources found to unprotect")}
 	}
-	fmt.Println("Resource unprotected")
-	return nil
+
+	var errs []error
+	resourceCount := 0
+
+	// Build a map of URNs to resources, excluding those pending deletion.
+	urnToResource := make(map[resource.URN]*pkgresource.State)
+	eligibleURNs := slice.Prealloc[resource.URN](len(snap.Resources))
+	for _, res := range snap.Resources {
+		if !res.Delete {
+			urnToResource[res.URN] = res
+			eligibleURNs = append(eligibleURNs, res.URN)
+		}
+	}
+
+	for _, urnStr := range urns {
+		urn := resource.URN(urnStr)
+		res, found := urnToResource[urn]
+
+		if found {
+			res.Protect = false
+			resourceCount++
+		} else {
+			errs = append(errs, resourceNotFoundError(eligibleURNs, urn))
+		}
+	}
+
+	return resourceCount, errs
+}
+
+// unprotectMultipleResources unprotects multiple resources specified by their URNs.
+func unprotectMultipleResources(
+	ctx context.Context, stdout io.Writer,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+) error {
+	return runTotalStateEdit(
+		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
+		func(_ display.Options, snap *deploy.Snapshot) error {
+			resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
+
+			if resourceCount > 0 && len(errs) == 0 {
+				fmt.Fprintf(stdout, "%d resources unprotected\n", resourceCount)
+			}
+
+			if len(errs) > 0 {
+				errMsgs := slice.Prealloc[string](len(errs))
+				for _, err := range errs {
+					errMsgs = append(errMsgs, err.Error())
+				}
+				return errors.New(strings.Join(errMsgs, "\n"))
+			}
+
+			return nil
+		})
+}
+
+func unprotectResource(
+	ctx context.Context, stdout io.Writer,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
+) error {
+	return unprotectMultipleResources(ctx, stdout, sink, ws, stackName, []string{string(urn)}, showPrompt)
 }

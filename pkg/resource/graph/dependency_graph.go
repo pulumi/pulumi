@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,18 +15,34 @@
 package graph
 
 import (
+	"slices"
+
 	mapset "github.com/deckarep/golang-set/v2"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // DependencyGraph represents a dependency graph encoded within a resource snapshot.
 type DependencyGraph struct {
-	index      map[*resource.State]int // A mapping of resource pointers to indexes within the snapshot
-	resources  []*resource.State       // The list of resources, obtained from the snapshot
-	childrenOf map[resource.URN][]int  // Pre-computed map of transitive children for each resource
+	index      map[*pkgresource.State]int // A mapping of resource pointers to indexes within the snapshot
+	resources  []*pkgresource.State       // The list of resources, obtained from the snapshot
+	childrenOf map[resource.URN][]int     // Pre-computed map of transitive children for each resource
+}
+
+// Alias maps a new *pkgresource.State to an existing resource in the dependency graph.
+func (dg *DependencyGraph) Alias(newRes *pkgresource.State, existingRes *pkgresource.State) {
+	// Ensure that the new resource is not already in the dependency graph.
+	_, exists := dg.index[newRes]
+	contract.Assertf(!exists, "new resource %s already exists in the dependency graph", newRes.URN)
+	// Ensure that the existing resource is in the dependency graph.
+	index, exists := dg.index[existingRes]
+	contract.Assertf(exists, "existing resource %s does not exist in the dependency graph", existingRes.URN)
+	// Map the new resource to the index of the existing resource.
+	dg.index[newRes] = index
 }
 
 // DependingOn returns a slice containing all resources that directly or indirectly
@@ -36,19 +52,19 @@ type DependencyGraph struct {
 // The time complexity of DependingOn is linear with respect to the number of resources.
 //
 // includeChildren adds children as another type of (transitive) dependency.
-func (dg *DependencyGraph) DependingOn(res *resource.State,
+func (dg *DependencyGraph) DependingOn(res *pkgresource.State,
 	ignore map[resource.URN]bool, includeChildren bool,
-) []*resource.State {
+) []*pkgresource.State {
 	// This implementation relies on the detail that snapshots are stored in a valid
 	// topological order.
-	var dependents []*resource.State
+	var dependents []*pkgresource.State
 	dependentSet := make(map[resource.URN]bool)
 
 	cursorIndex, ok := dg.index[res]
 	contract.Assertf(ok, "could not determine index for resource %s", res.URN)
 	dependentSet[res.URN] = true
 
-	isDependent := func(candidate *resource.State) bool {
+	isDependent := func(candidate *pkgresource.State) bool {
 		if ignore[candidate.URN] {
 			return false
 		}
@@ -56,11 +72,12 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 		provider, allDeps := candidate.GetAllDependencies()
 		for _, dep := range allDeps {
 			switch dep.Type {
-			case resource.ResourceParent:
+			case pkgresource.ResourceParent:
 				if includeChildren && dependentSet[dep.URN] {
 					return true
 				}
-			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith:
+			case pkgresource.ResourceDependency, pkgresource.ResourcePropertyDependency,
+				pkgresource.ResourceDeletedWith, pkgresource.ResourceReplaceWith:
 				if dependentSet[dep.URN] {
 					return true
 				}
@@ -108,17 +125,17 @@ func (dg *DependencyGraph) DependingOn(res *resource.State,
 // to the snapshot dependency graph.
 //
 // The time complexity of OnlyDependsOn is linear with respect to the number of resources.
-func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State {
+func (dg *DependencyGraph) OnlyDependsOn(res *pkgresource.State) []*pkgresource.State {
 	// This implementation relies on the detail that snapshots are stored in a valid
 	// topological order.
-	var dependents []*resource.State
+	var dependents []*pkgresource.State
 	dependentSet := make(map[resource.URN][]resource.ID)
 	nonDependentSet := make(map[resource.URN][]resource.ID)
 
 	cursorIndex, ok := dg.index[res]
 	contract.Assertf(ok, "could not determine index for resource %s", res.URN)
 	dependentSet[res.URN] = []resource.ID{res.ID}
-	isDependent := func(candidate *resource.State) bool {
+	isDependent := func(candidate *pkgresource.State) bool {
 		if res.URN == candidate.URN && res.ID == candidate.ID {
 			return false
 		}
@@ -126,11 +143,12 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 		provider, allDeps := candidate.GetAllDependencies()
 		for _, dep := range allDeps {
 			switch dep.Type {
-			case resource.ResourceParent:
+			case pkgresource.ResourceParent:
 				if len(dependentSet[dep.URN]) > 0 && len(nonDependentSet[dep.URN]) == 0 {
 					return true
 				}
-			case resource.ResourceDependency, resource.ResourcePropertyDependency, resource.ResourceDeletedWith:
+			case pkgresource.ResourceDependency, pkgresource.ResourcePropertyDependency, pkgresource.ResourceDeletedWith,
+				pkgresource.ResourceReplaceWith:
 				if len(dependentSet[dep.URN]) == 1 && len(nonDependentSet[dep.URN]) == 0 {
 					return true
 				}
@@ -140,10 +158,8 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 		if provider != "" {
 			ref, err := providers.ParseReference(provider)
 			contract.AssertNoErrorf(err, "cannot parse provider reference %q", provider)
-			for _, id := range dependentSet[ref.URN()] {
-				if id == ref.ID() {
-					return true
-				}
+			if slices.Contains(dependentSet[ref.URN()], ref.ID()) {
+				return true
 			}
 		}
 
@@ -164,9 +180,9 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 	// the list. All resources that depend directly or indirectly on `res` are prepended
 	// onto `dependents`.
 	//
-	// We also walk through the the list of resources before the requested resource, as resources
+	// We also walk through the list of resources before the requested resource, as resources
 	// sorted later could still be dependent on the requested resource.
-	for i := 0; i < cursorIndex; i++ {
+	for i := range cursorIndex {
 		candidate := dg.resources[i]
 		nonDependentSet[candidate.URN] = append(nonDependentSet[candidate.URN], candidate.ID)
 	}
@@ -187,14 +203,14 @@ func (dg *DependencyGraph) OnlyDependsOn(res *resource.State) []*resource.State 
 // depends directly. This includes the resource's provider, parent, any
 // resources in the `Dependencies` list, any resources in the
 // `PropertyDependencies` map, and any resource referenced by the `DeletedWith`
-// field.
-func (dg *DependencyGraph) DependenciesOf(res *resource.State) mapset.Set[*resource.State] {
-	set := mapset.NewSet[*resource.State]()
+// or `ReplaceWith` fields.
+func (dg *DependencyGraph) DependenciesOf(res *pkgresource.State) mapset.Set[*pkgresource.State] {
+	set := mapset.NewSet[*pkgresource.State]()
 
 	dependentUrns := make(map[resource.URN]bool)
 	provider, allDeps := res.GetAllDependencies()
 	for _, dep := range allDeps {
-		if dep.Type == resource.ResourceParent {
+		if dep.Type == pkgresource.ResourceParent {
 			// We handle parents later on, so we won't include them here.
 			continue
 		}
@@ -239,51 +255,88 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) mapset.Set[*resou
 }
 
 // Contains returns whether the given resource is in the dependency graph.
-func (dg *DependencyGraph) Contains(res *resource.State) bool {
+func (dg *DependencyGraph) Contains(res *pkgresource.State) bool {
 	_, ok := dg.index[res]
 	return ok
 }
 
-// `TransitiveDependenciesOf` calculates the set of resources upon which the
-// given resource depends, directly or indirectly. This includes the resource's
-// provider, parent, any resources in the `Dependencies` list, any resources in
-// the `PropertyDependencies` map, and any resource referenced by the
-// `DeletedWith` field.
+// `TransitiveDependenciesOf` calculates the set of resources upon which the given resource depends, directly or
+// indirectly. This includes the resource's provider, parent, any resources in the `Dependencies` list, any resources in
+// the `PropertyDependencies` map, and any resource referenced by the `DeletedWith` field.
 //
 // This function is linear in the number of resources in the `DependencyGraph`.
-func (dg *DependencyGraph) TransitiveDependenciesOf(r *resource.State) mapset.Set[*resource.State] {
-	dependentProviders := make(map[resource.URN]struct{})
-
-	urns := make(map[resource.URN]*node, len(dg.resources))
-	for _, r := range dg.resources {
-		urns[r.URN] = &node{resource: r}
-	}
-
-	// Linearity is due to short circuiting in the traversal.
-	markAsDependency(r.URN, urns, dependentProviders)
-
-	// This will only trigger if (urn, node) is a provider. The check is implicit
-	// in the set lookup.
-	for urn := range urns {
-		if _, ok := dependentProviders[urn]; ok {
-			markAsDependency(urn, urns, dependentProviders)
+func (dg *DependencyGraph) TransitiveDependenciesOf(r *pkgresource.State) mapset.Set[*pkgresource.State] {
+	// When traversing dependencies, we'll need to look them up by URN. It is possible that the same URN exists multiple
+	// times in a dependency graph: in the case that the graph represents the state mid-way through one or more
+	// replacements, both the old and new resources could appear. Dependencies between old and new resources are
+	// permitted, so it's important that we know which is which and don't disambiguate by URN alone. To this end we keep
+	// track of two lookup tables -- old resources (identifiable by their Delete flag being set) and new resources.
+	//
+	// NOTE: In the event of multiple old resources with the same URN, we can only implement a best-effort approach to
+	// sorting, since there is technically no way to disambiguate.
+	oldsByURN := map[resource.URN]*node{}
+	newsByURN := map[resource.URN]*node{}
+	for _, gr := range dg.resources {
+		if gr.Delete {
+			oldsByURN[gr.URN] = &node{resource: gr}
+		} else {
+			newsByURN[gr.URN] = &node{resource: gr}
 		}
 	}
 
-	dependencies := mapset.NewSet[*resource.State]()
-	for _, r := range urns {
+	// A helper function for looking up a dependency of a resource by URN. As mentioned above, URN alone is not a unique
+	// key as a resource may exist in both old and new forms. We proceed as follows:
+	//
+	// * If there are both old and new resources with the same URN, and we are old, we take the old one. Since we are old,
+	//   there is no way we could refer to a new state (since that state didn't exist when we were last updated).
+	// * If there are both old and new resources with the same URN, and we are new, we take the new one; it would be
+	//   invalid for us to refer to the old state since it is going to be deleted.
+	// * If there is only one resource with the given URN, we take it.
+	lookup := func(from *pkgresource.State, urn resource.URN) *node {
+		old, hasOld := oldsByURN[urn]
+		new, hasNew := newsByURN[urn]
+		if hasOld && hasNew {
+			if from.Delete {
+				return old
+			}
+
+			return new
+		} else if hasOld {
+			return old
+		} else if hasNew {
+			return new
+		}
+
+		return nil
+	}
+
+	dependencies := mapset.NewSet[*pkgresource.State]()
+
+	rn := lookup(r, r.URN)
+	if rn == nil {
+		return dependencies
+	}
+
+	markAsDependency(rn, lookup)
+	for _, r := range oldsByURN {
 		if r.marked {
 			dependencies.Add(r.resource)
 		}
 	}
+	for _, r := range newsByURN {
+		if r.marked {
+			dependencies.Add(r.resource)
+		}
+	}
+
 	// We don't want to include `r` as its own dependency.
 	dependencies.Remove(r)
 	return dependencies
 }
 
 // ChildrenOf returns a slice containing all resources that are children of the given resource.
-func (dg *DependencyGraph) ChildrenOf(res *resource.State) []*resource.State {
-	children := make([]*resource.State, 0)
+func (dg *DependencyGraph) ChildrenOf(res *pkgresource.State) []*pkgresource.State {
+	children := slice.Prealloc[*pkgresource.State](len(dg.childrenOf[res.URN]))
 	for _, childIndex := range dg.childrenOf[res.URN] {
 		children = append(children, dg.resources[childIndex])
 	}
@@ -291,8 +344,8 @@ func (dg *DependencyGraph) ChildrenOf(res *resource.State) []*resource.State {
 }
 
 // ParentsOf returns a slice containing all resources that are parents of the given resource.
-func (dg *DependencyGraph) ParentsOf(res *resource.State) []*resource.State {
-	parents := make([]*resource.State, 0)
+func (dg *DependencyGraph) ParentsOf(res *pkgresource.State) []*pkgresource.State {
+	parents := make([]*pkgresource.State, 0)
 	// The resources in dg.resources are topologically sorted, so when we walk backwards and we match a parent,
 	// we know we have yet to see that parent's parent (if it exists).  We know it's safe to terminate when we've
 	// traversed the full set in reverse.
@@ -305,33 +358,33 @@ func (dg *DependencyGraph) ParentsOf(res *resource.State) []*resource.State {
 	return parents
 }
 
-// Mark a resource and its provider, parent, dependencies, property
-// dependencies, and deletion dependencies, as a dependency. This is a helper
-// function for `TransitiveDependenciesOf`.
-func markAsDependency(urn resource.URN, urns map[resource.URN]*node, dependedProviders map[resource.URN]struct{}) {
-	r := urns[urn]
+// Mark a resource and its provider, parent, dependencies, property dependencies, and deletion dependencies, as a
+// dependency. This is a helper function for `TransitiveDependenciesOf`.
+func markAsDependency(r *node, lookup func(*pkgresource.State, resource.URN) *node) {
 	for {
 		r.marked = true
 		provider, allDeps := r.resource.GetAllDependencies()
 		if provider != "" {
 			ref, err := providers.ParseReference(provider)
 			contract.AssertNoErrorf(err, "cannot parse provider reference %q", provider)
-			dependedProviders[ref.URN()] = struct{}{}
+
+			p := lookup(r.resource, ref.URN())
+			markAsDependency(p, lookup)
 		}
 
 		for _, dep := range allDeps {
-			if dep.Type == resource.ResourceParent {
+			if dep.Type == pkgresource.ResourceParent {
 				// We handle parents later on, so we won't include them here.
 				continue
 			}
 
-			markAsDependency(dep.URN, urns, dependedProviders)
+			d := lookup(r.resource, dep.URN)
+			markAsDependency(d, lookup)
 		}
 
-		// If the resource's parent is already marked, we don't need to continue to
-		// traverse. All nodes above its parent will have already been marked. This
-		// is a property of the set of resources being topologically sorted.
-		if p, ok := urns[r.resource.Parent]; ok && !p.marked {
+		// If the resource's parent is already marked, we don't need to continue to traverse. All nodes above its parent
+		// will have already been marked. This is a property of the set of resources being topologically sorted.
+		if p := lookup(r.resource, r.resource.Parent); p != nil && !p.marked {
 			r = p
 		} else {
 			break
@@ -342,8 +395,8 @@ func markAsDependency(urn resource.URN, urns map[resource.URN]*node, dependedPro
 // NewDependencyGraph creates a new DependencyGraph from a list of resources.
 // The resources should be in topological order with respect to their dependencies, including
 // parents appearing before children.
-func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
-	index := make(map[*resource.State]int)
+func NewDependencyGraph(resources []*pkgresource.State) *DependencyGraph {
+	index := make(map[*pkgresource.State]int)
 	childrenOf := make(map[resource.URN][]int)
 
 	urnIndex := make(map[resource.URN]int)
@@ -353,7 +406,9 @@ func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 		parent := res.Parent
 		for parent != "" {
 			childrenOf[parent] = append(childrenOf[parent], idx)
-			parent = resources[urnIndex[parent]].Parent
+			idx, has := urnIndex[parent]
+			contract.Assertf(has, "parent %q not found in urnIndex", parent)
+			parent = resources[idx].Parent
 		}
 	}
 
@@ -363,5 +418,5 @@ func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 // A node in a graph.
 type node struct {
 	marked   bool
-	resource *resource.State
+	resource *pkgresource.State
 }

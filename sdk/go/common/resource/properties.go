@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,8 +16,9 @@ package resource
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -36,14 +37,14 @@ type PropertyKey tokens.Name
 type PropertyMap map[PropertyKey]PropertyValue
 
 // NewPropertyMap turns a struct into a property map, using any JSON tags inside to determine naming.
-func NewPropertyMap(s interface{}) PropertyMap {
+func NewPropertyMap(s any) PropertyMap {
 	return NewPropertyMapRepl(s, nil, nil)
 }
 
 // NewPropertyMapRepl turns a struct into a property map, using any JSON tags inside to determine naming.  If non-nil
 // replk or replv function(s) are provided, key and/or value transformations are performed during the mapping.
-func NewPropertyMapRepl(s interface{},
-	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool),
+func NewPropertyMapRepl(s any,
+	replk func(string) (PropertyKey, bool), replv func(any) (PropertyValue, bool),
 ) PropertyMap {
 	m, err := mapper.Unmap(s)
 	contract.Assertf(err == nil, "Struct of properties failed to map correctly: %v", err)
@@ -51,13 +52,13 @@ func NewPropertyMapRepl(s interface{},
 }
 
 // NewPropertyMapFromMap creates a resource map from a regular weakly typed JSON-like map.
-func NewPropertyMapFromMap(m map[string]interface{}) PropertyMap {
+func NewPropertyMapFromMap(m map[string]any) PropertyMap {
 	return NewPropertyMapFromMapRepl(m, nil, nil)
 }
 
 // NewPropertyMapFromMapRepl optionally replaces keys/values in an existing map while creating a new resource map.
-func NewPropertyMapFromMapRepl(m map[string]interface{},
-	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool),
+func NewPropertyMapFromMapRepl(m map[string]any,
+	replk func(string) (PropertyKey, bool), replv func(any) (PropertyValue, bool),
 ) PropertyMap {
 	result := make(PropertyMap)
 	for k, v := range m {
@@ -74,7 +75,7 @@ func NewPropertyMapFromMapRepl(m map[string]interface{},
 
 // PropertyValue is the value of a property, limited to a select few types (see below).
 type PropertyValue struct {
-	V interface{}
+	V any
 }
 
 // Computed represents the absence of a property value, because it will be computed at some point in the future.  It
@@ -114,6 +115,8 @@ type Secret struct {
 //nolint:revive
 type ResourceReference struct {
 	URN            URN
+	Name           string
+	Type           string
 	ID             PropertyValue
 	PackageVersion string
 }
@@ -183,16 +186,16 @@ func (props PropertyMap) ContainsSecrets() bool {
 }
 
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
-func (props PropertyMap) Mappable() map[string]interface{} {
+func (props PropertyMap) Mappable() map[string]any {
 	return props.MapRepl(nil, nil)
 }
 
 // MapRepl returns a mapper-compatible object map, suitable for deserialization into structures.  A key and/or value
 // replace function, replk/replv, may be passed that will replace elements using custom logic if appropriate.
 func (props PropertyMap) MapRepl(replk func(string) (string, bool),
-	replv func(PropertyValue) (interface{}, bool),
-) map[string]interface{} {
-	obj := make(map[string]interface{})
+	replv func(PropertyValue) (any, bool),
+) map[string]any {
+	obj := make(map[string]any)
 	for _, k := range props.StableKeys() {
 		key := string(k)
 		if replk != nil {
@@ -208,9 +211,7 @@ func (props PropertyMap) MapRepl(replk func(string) (string, bool),
 // Copy makes a shallow copy of the map.
 func (props PropertyMap) Copy() PropertyMap {
 	new := make(PropertyMap)
-	for k, v := range props {
-		new[k] = v
-	}
+	maps.Copy(new, props)
 	return new
 }
 
@@ -220,7 +221,7 @@ func (props PropertyMap) StableKeys() []PropertyKey {
 	for k := range props {
 		sorted = append(sorted, k)
 	}
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	slices.Sort(sorted)
 	return sorted
 }
 
@@ -263,8 +264,16 @@ func MakeSecret(v PropertyValue) PropertyValue {
 
 // MakeComponentResourceReference creates a reference to a component resource.
 func MakeComponentResourceReference(urn URN, packageVersion string) PropertyValue {
+	name, typ := "", ""
+	if urn.IsValid() {
+		name = urn.Name()
+		typ = string(urn.Type())
+	}
+
 	return NewProperty(ResourceReference{
 		URN:            urn,
+		Name:           name,
+		Type:           typ,
 		PackageVersion: packageVersion,
 	})
 }
@@ -276,23 +285,30 @@ func MakeCustomResourceReference(urn URN, id ID, packageVersion string) Property
 	if id == "" {
 		idProp = MakeComputed(NewProperty(""))
 	}
+	name, typ := "", ""
+	if urn.IsValid() {
+		name = urn.Name()
+		typ = string(urn.Type())
+	}
 
 	return NewProperty(ResourceReference{
 		ID:             idProp,
 		URN:            urn,
+		Name:           name,
+		Type:           typ,
 		PackageVersion: packageVersion,
 	})
 }
 
 // NewPropertyValue turns a value into a property value, provided it is of a legal "JSON-like" kind.
-func NewPropertyValue(v interface{}) PropertyValue {
+func NewPropertyValue(v any) PropertyValue {
 	return NewPropertyValueRepl(v, nil, nil)
 }
 
 // NewPropertyValueRepl turns a value into a property value, provided it is of a legal "JSON-like" kind.  The
 // replacement functions, replk and replv, may be supplied to transform keys and/or values as the mapping takes place.
-func NewPropertyValueRepl(v interface{},
-	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool),
+func NewPropertyValueRepl(v any,
+	replk func(string) (PropertyKey, bool), replv func(any) (PropertyValue, bool),
 ) PropertyValue {
 	// If a replacement routine is supplied, use that.
 	if replv != nil {
@@ -356,7 +372,7 @@ func NewPropertyValueRepl(v interface{},
 			arr = append(arr, NewPropertyValueRepl(elem.Interface(), replk, replv))
 		}
 		return NewProperty(arr)
-	case reflect.Ptr:
+	case reflect.Pointer:
 		// If a pointer, recurse and return the underlying value.
 		if rv.IsNil() {
 			return NewNullProperty()
@@ -396,9 +412,6 @@ func NewPropertyValueRepl(v interface{},
 
 // HasValue returns true if a value is semantically meaningful.
 func (v PropertyValue) HasValue() bool {
-	if v.IsOutput() {
-		return v.OutputValue().Known
-	}
 	return !v.IsNull()
 }
 
@@ -582,15 +595,15 @@ func (v PropertyValue) TypeString() string {
 }
 
 // Mappable returns a mapper-compatible value, suitable for deserialization into structures.
-func (v PropertyValue) Mappable() interface{} {
+func (v PropertyValue) Mappable() any {
 	return v.MapRepl(nil, nil)
 }
 
 // MapRepl returns a mapper-compatible object map, suitable for deserialization into structures.  A key and/or value
 // replace function, replk/replv, may be passed that will replace elements using custom logic if appropriate.
 func (v PropertyValue) MapRepl(replk func(string) (string, bool),
-	replv func(PropertyValue) (interface{}, bool),
-) interface{} {
+	replv func(PropertyValue) (any, bool),
+) any {
 	if replv != nil {
 		if rv, repv := replv(v); repv {
 			return rv
@@ -605,7 +618,7 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 	} else if v.IsString() {
 		return v.StringValue()
 	} else if v.IsArray() {
-		arr := []interface{}{}
+		arr := []any{}
 		for _, e := range v.ArrayValue() {
 			arr = append(arr, e.MapRepl(replk, replv))
 		}
@@ -644,6 +657,43 @@ func (v PropertyValue) String() string {
 	return fmt.Sprintf("{%v}", v.V)
 }
 
+// RedactSecrets is similar to String(), but redacts any secrets it encounters in the property value,
+// including secrets nested inside objects and arrays.
+func (v PropertyValue) RedactSecrets() string {
+	return v.redactSecrets().String()
+}
+
+// redactSecrets returns a copy of the property value with all secrets replaced by "[secret]".
+func (v PropertyValue) redactSecrets() PropertyValue {
+	switch {
+	case v.IsSecret():
+		return NewProperty("[secret]")
+	case v.IsOutput():
+		o := v.OutputValue()
+		if o.Secret {
+			return NewProperty("[secret]")
+		}
+		return NewProperty(Output{
+			Element: o.Element.redactSecrets(),
+			Known:   o.Known,
+		})
+	case v.IsArray():
+		arr := make([]PropertyValue, len(v.ArrayValue()))
+		for i, e := range v.ArrayValue() {
+			arr[i] = e.redactSecrets()
+		}
+		return NewProperty(arr)
+	case v.IsObject():
+		obj := make(PropertyMap, len(v.ObjectValue()))
+		for k, e := range v.ObjectValue() {
+			obj[k] = e.redactSecrets()
+		}
+		return NewProperty(obj)
+	default:
+		return v
+	}
+}
+
 // Property is a pair of key and value.
 type Property struct {
 	Key   PropertyKey
@@ -670,6 +720,9 @@ const ResourceReferenceSig = sig.ResourceReference
 
 // OutputValueSig is the unique output value signature.
 const OutputValueSig = sig.OutputValue
+
+// ByteStringSig is the unique signature for strings containing bytes that are not valid UTF-8.
+const ByteStringSig = sig.ByteString
 
 // IsInternalPropertyKey returns true if the given property key is an internal key that should not be displayed to
 // users.

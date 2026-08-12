@@ -54,6 +54,11 @@ class LanguageRuntimeStub(object):
                 request_serializer=pulumi_dot_language__pb2.RuntimeOptionsRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.RuntimeOptionsResponse.FromString,
                 )
+        self.Template = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/Template',
+                request_serializer=pulumi_dot_language__pb2.TemplateRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.TemplateResponse.FromString,
+                )
         self.About = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/About',
                 request_serializer=pulumi_dot_language__pb2.AboutRequest.SerializeToString,
@@ -89,6 +94,16 @@ class LanguageRuntimeStub(object):
                 request_serializer=pulumi_dot_language__pb2.PackRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.PackResponse.FromString,
                 )
+        self.Link = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/Link',
+                request_serializer=pulumi_dot_language__pb2.LinkRequest.SerializeToString,
+                response_deserializer=pulumi_dot_language__pb2.LinkResponse.FromString,
+                )
+        self.Cancel = channel.unary_unary(
+                '/pulumirpc.LanguageRuntime/Cancel',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
 
 
 class LanguageRuntimeServicer(object):
@@ -123,12 +138,13 @@ class LanguageRuntimeServicer(object):
 
     def GetRequiredPackages(self, request, context):
         """`GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
-        by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
-        to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
-        back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
-        determine which plugins are required to service the import of a given resource, since given the presence of
-        [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
-        with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+        by a program or plugin. It is used to pre-install packages before running a program with
+        [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+        registrations](resource-registration) sent back from the running program to the engine. Moreover, when importing
+        resources into a stack, it is used to determine which plugins are required to service the import of a given
+        resource, since given the presence of [parameterized providers](parameterized-providers), it is not in general
+        true that a package name corresponds 1:1 with a plugin name. It replaces
+        [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
         providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
         provide multiple packages.
         """
@@ -169,6 +185,15 @@ class LanguageRuntimeServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Template(self, request, context):
+        """`Template` allows the language runtime to perform additional templating on a newly instantiated project template.
+        For example the Python runtime might want to convert a requirements.txt into a pyproject.toml suitable for use
+        with uv or poetry.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def About(self, request, context):
         """`About` returns information about the language runtime being used.
         """
@@ -186,7 +211,7 @@ class LanguageRuntimeServicer(object):
 
     def RunPlugin(self, request, context):
         """`RunPlugin` is used to execute a program written in this host's language that implements a Pulumi
-        [plugin](plugins). It it is plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
+        [plugin](plugins). It is to plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
         expected to terminate until instructed/for a long time, this method returns a stream of
         [](pulumirpc.RunPluginResponse) messages containing information about standard error and output, as well as the
         exit code of the plugin when it does terminate.
@@ -237,6 +262,24 @@ class LanguageRuntimeServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Link(self, request, context):
+        """`Link` links local dependencies into a project (program or plugin). The dependencies can be binary artifacts such
+        as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
+        `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
+        user on how to use the linked package in the project.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Cancel(self, request, context):
+        """`Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
+        Operations aborted in this way will return an error.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_LanguageRuntimeServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -275,6 +318,11 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_language__pb2.RuntimeOptionsRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.RuntimeOptionsResponse.SerializeToString,
             ),
+            'Template': grpc.unary_unary_rpc_method_handler(
+                    servicer.Template,
+                    request_deserializer=pulumi_dot_language__pb2.TemplateRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.TemplateResponse.SerializeToString,
+            ),
             'About': grpc.unary_unary_rpc_method_handler(
                     servicer.About,
                     request_deserializer=pulumi_dot_language__pb2.AboutRequest.FromString,
@@ -309,6 +357,16 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
                     servicer.Pack,
                     request_deserializer=pulumi_dot_language__pb2.PackRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.PackResponse.SerializeToString,
+            ),
+            'Link': grpc.unary_unary_rpc_method_handler(
+                    servicer.Link,
+                    request_deserializer=pulumi_dot_language__pb2.LinkRequest.FromString,
+                    response_serializer=pulumi_dot_language__pb2.LinkResponse.SerializeToString,
+            ),
+            'Cancel': grpc.unary_unary_rpc_method_handler(
+                    servicer.Cancel,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -443,6 +501,23 @@ class LanguageRuntime(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
+    def Template(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/Template',
+            pulumi_dot_language__pb2.TemplateRequest.SerializeToString,
+            pulumi_dot_language__pb2.TemplateResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
     def About(request,
             target,
             options=(),
@@ -558,5 +633,39 @@ class LanguageRuntime(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/Pack',
             pulumi_dot_language__pb2.PackRequest.SerializeToString,
             pulumi_dot_language__pb2.PackResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Link(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/Link',
+            pulumi_dot_language__pb2.LinkRequest.SerializeToString,
+            pulumi_dot_language__pb2.LinkResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Cancel(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/Cancel',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

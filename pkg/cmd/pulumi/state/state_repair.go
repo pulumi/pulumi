@@ -16,7 +16,6 @@ package state
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -27,12 +26,13 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -73,9 +73,11 @@ func newStateRepairCommand() *cobra.Command {
 		Args: &stateRepairArgs{
 			Colorizer: cmdutil.GetGlobalColorization(),
 		},
-		Stdin:        os.Stdin,
-		Stdout:       os.Stdout,
-		Stderr:       os.Stderr,
+		Stdin: os.Stdin,
+		// Survey terminal.FileWriter requires a *os.File so we can't thread
+		// the cobra writer here without changing the contract.
+		Stdout:       os.Stdout, //nolint:forbidigo
+		Stderr:       os.Stderr, //nolint:forbidigo
 		Workspace:    pkgWorkspace.Instance,
 		LoginManager: cmdBackend.DefaultLoginManager,
 	}
@@ -92,7 +94,6 @@ will not attempt to make or write any changes. If the state is not already
 valid, and remains invalid after repair has been attempted, this command will
 not write any changes.
 `,
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.Flags().Visit(func(f *pflag.Flag) {
 				stateRepair.FlagsString += fmt.Sprintf(" --%s=%q", f.Name, f.Value)
@@ -104,6 +105,8 @@ not write any changes.
 			return err
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.Flags().StringVarP(&stateRepair.Args.Stack,
 		"stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
@@ -126,17 +129,19 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 	}
 	s, err := cmdStack.RequireStack(
 		ctx,
+		cmdutil.Diag(),
 		cmd.Workspace,
 		cmd.LoginManager,
 		cmd.Args.Stack,
 		cmdStack.OfferNew,
 		displayOpts,
+		"",
 	)
 	if err != nil {
 		return err
 	}
 
-	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
 	if err != nil {
 		return err
 	} else if snap == nil {
@@ -159,7 +164,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 	// Sorting the snapshot could fail due to cycles or e.g. unparseable provider references. In those cases, manual
 	// repair is likely the only option, so we'll print a help banner to guide the user through that and invite them
 	// to file a report so that we can learn about how they ended up with such a state.
-	err = snap.Toposort()
+	pruneResults, err := snap.Repair()
 	if err != nil {
 		sink.Errorf(diag.RawMessage("" /*urn*/, cmd.manualRepairError(initialErr, err)))
 
@@ -170,8 +175,6 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 
 	afterSort := snap.Resources
 	reorderings := computeStateRepairReorderings(beforeSort, afterSort)
-
-	pruneResults := snap.Prune()
 
 	// In the case that we complete repairs (sorting, pruning and so on) but the snapshot is still invalid, we'll
 	// produce a banner that helps the user conduct a manual repair but also includes both errors, so that if they
@@ -212,20 +215,12 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 	}
 
 	// We've managed to repair the snapshot -- import it back into the backend.
-	sdep, err := stack.SerializeDeployment(ctx, snap, false /*showSecrets*/)
-	if err != nil {
-		return fmt.Errorf("serializing deployment: %w", err)
-	}
-
-	bytes, err := json.Marshal(sdep)
+	dep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	if err != nil {
 		return err
 	}
 
-	err = s.ImportDeployment(ctx, &apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: bytes,
-	})
+	err = backend.ImportStackDeployment(ctx, s, dep)
 	if err != nil {
 		return err
 	}

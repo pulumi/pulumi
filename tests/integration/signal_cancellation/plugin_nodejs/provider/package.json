@@ -1,0 +1,7 @@
+{
+    "name": "test-provider",
+    "main": "index.js",
+    "dependencies": {
+        "@pulumi/pulumi": "^3.230.0"
+    }
+}

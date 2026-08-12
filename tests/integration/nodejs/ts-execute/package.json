@@ -1,0 +1,12 @@
+{
+  "name": "ts-execute",
+  "type": "commonjs",
+  "dependencies": {
+    "typescript": "5.9.2",
+    "ts-node": "10.9.2"
+  },
+  "scripts": {
+    "build": "ts-node index.ts"
+  },
+  "//": "This package contains TS code which will fail when Pulumi code generation uses definitive assertion operator for fields. It does not require actual Pulumi runtime for that. The 'build' script actually runs the code in order to make this easily testable."
+}

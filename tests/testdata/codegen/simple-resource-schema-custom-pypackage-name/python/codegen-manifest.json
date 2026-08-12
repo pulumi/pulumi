@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "custom_py_package/README.md",
     "custom_py_package/__init__.py",
     "custom_py_package/_utilities.py",

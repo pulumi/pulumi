@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -50,7 +50,6 @@ func TestUnhyphenate(t *testing.T) {
 		{"WaldoThudFred", "WaldoThudFred"},
 	}
 	for _, tc := range testcases {
-		tc := tc
 		t.Run(fmt.Sprintf("Subtest:%q", tc.input), func(t *testing.T) {
 			t.Parallel()
 			assert := assert.New(t)

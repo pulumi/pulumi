@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 import * as pulumi from "@pulumi/pulumi";
 import * as provider from "@pulumi/pulumi/provider";
@@ -6,7 +6,7 @@ import * as provider from "@pulumi/pulumi/provider";
 const version = "0.0.1";
 
 class Provider extends pulumi.ProviderResource {
-    public readonly message!: pulumi.Output<string>;
+    declare public readonly message: pulumi.Output<string>;
 
     constructor(name: string, opts?: pulumi.ResourceOptions) {
         super("testcomponent", name, { "message": undefined }, opts);
@@ -21,6 +21,7 @@ class Component extends pulumi.ComponentResource {
     }
 
     protected async initialize(args: pulumi.Inputs) {
+        super.initialize(args);
         const provider = this.getProvider("testcomponent::");
         if (!(provider instanceof Provider)) {
             throw new Error("provider is not an instance of Provider");

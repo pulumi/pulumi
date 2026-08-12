@@ -1,0 +1,16 @@
+{
+	"name": "l2-invoke-secrets",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/simple": "ROOT/artifacts/pulumi-simple-2.0.0.tgz",
+		"@pulumi/simple-invoke": "ROOT/artifacts/pulumi-simple-invoke-10.0.0.tgz"
+	}
+}

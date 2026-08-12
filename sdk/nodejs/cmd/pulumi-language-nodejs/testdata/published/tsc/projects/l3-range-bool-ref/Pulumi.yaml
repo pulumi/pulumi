@@ -1,0 +1,5 @@
+name: l3-range-bool-ref
+runtime:
+  name: nodejs
+  options:
+    typescript: false

@@ -15,7 +15,6 @@
 package lifecycletest
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"testing"
@@ -39,12 +38,13 @@ import (
 // If you want to customize the fuzzing that occurs, you can modify (but not commit!) the FixtureOptions passed to
 // fuzzing.GeneratedFixture in this test to your needs.
 func TestFuzz(t *testing.T) {
-	t.Parallel()
-
 	shouldFuzz := os.Getenv("PULUMI_LIFECYCLE_TEST_FUZZ")
 	if shouldFuzz == "" {
 		t.Skip("PULUMI_LIFECYCLE_TEST_FUZZ not set")
 	}
+
+	t.Setenv("PULUMI_DEV", "true")
+	t.Setenv("PULUMI_GOROUTINE_PANIC_RECOVERY", "true")
 
 	rapid.Check(t, fuzzing.GeneratedFixture(fuzzing.FixtureOptions{}))
 }
@@ -61,12 +61,13 @@ func TestFuzz(t *testing.T) {
 // If you want to customize the fuzzing that occurs, you can modify (but not commit!) the FixtureOptions passed to
 // fuzzing.GeneratedFixture in this test to your needs.
 func TestFuzzFromStateFile(t *testing.T) {
-	t.Parallel()
-
 	stateFile := os.Getenv("PULUMI_LIFECYCLE_TEST_FUZZ_FROM_STATE_FILE")
 	if stateFile == "" {
 		t.Skip("PULUMI_LIFECYCLE_TEST_FUZZ_FROM_STATE_FILE not set")
 	}
+
+	t.Setenv("PULUMI_DEV", "true")
+	t.Setenv("PULUMI_GOROUTINE_PANIC_RECOVERY", "true")
 
 	reader, err := os.Open(stateFile)
 	require.NoError(t, err)
@@ -75,7 +76,8 @@ func TestFuzzFromStateFile(t *testing.T) {
 	err = json.NewDecoder(reader).Decode(&deployment)
 	require.NoError(t, err)
 
-	v3Deployment, err := stack.UnmarshalUntypedDeployment(context.Background(), &deployment)
+	//nolint:usetesting // outlives t.Context inside the engine
+	v3Deployment, err := stack.UnmarshalUntypedDeployment(t.Context(), &deployment)
 	require.NoError(t, err)
 
 	if len(v3Deployment.Resources) == 0 {

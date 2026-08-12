@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "pulumi_azure_native/README.md",
     "pulumi_azure_native/__init__.py",
     "pulumi_azure_native/_utilities.py",

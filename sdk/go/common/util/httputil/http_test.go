@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package httputil
 
 import (
+	"context"
 	"crypto/tls"
 	"io"
 	"net/http"
@@ -22,10 +23,12 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/net/http2"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func http2ServerAndClient(handler http.Handler) (*httptest.Server, *http.Client) {
@@ -67,7 +70,7 @@ func TestRetryPostHTTP2(t *testing.T) {
 		// Check that the body's content length matches the sent data.
 		defer r.Body.Close()
 		content, err := io.ReadAll(r.Body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, strconv.Itoa(len(content)), r.Header.Get("Content-Length"))
 
 		// Check the message matches.
@@ -85,13 +88,141 @@ func TestRetryPostHTTP2(t *testing.T) {
 	server, client := http2ServerAndClient(http.HandlerFunc(handler))
 
 	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	res, err := DoWithRetry(req, client)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer res.Body.Close()
 
 	// Check that the request succeeded on the second try.
 	assert.Equal(t, 2, tries)
 	assert.Equal(t, 200, res.StatusCode)
+}
+
+func TestRetry429NotRetriedUnderHandshakeTimeoutsOnly(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+		Delay:                 &delay,
+		HandshakeTimeoutsOnly: true,
+	})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, 1, tries)
+	assert.Equal(t, http.StatusTooManyRequests, res.StatusCode)
+}
+
+func TestRetry429Exhausted(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	maxRetryCount := 3
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+		Delay:         &delay,
+		MaxRetryCount: &maxRetryCount,
+	})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, 3, tries)
+	assert.Equal(t, http.StatusTooManyRequests, res.StatusCode)
+}
+
+func TestRetry429HonorsRetryAfter(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		if tries == 1 {
+			w.Header().Set("Retry-After", "1")
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	start := time.Now()
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, 2, tries)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	assert.GreaterOrEqual(t, time.Since(start), time.Second)
+}
+
+func TestRetry429ContextCanceledDuringWait(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "20")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "POST", server.URL, strings.NewReader("hello, server"))
+	require.NoError(t, err)
+
+	delay := time.Millisecond
+	start := time.Now()
+	_, err = DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay}) //nolint:bodyclose // no response on error
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Less(t, time.Since(start), 5*time.Second)
+}
+
+func TestRetryAfterDelay(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	mk := func(value string) *http.Response {
+		res := &http.Response{Header: http.Header{}}
+		if value != "" {
+			res.Header.Set("Retry-After", value)
+		}
+		return res
+	}
+
+	assert.Equal(t, time.Duration(0), retryAfterDelay(mk(""), now))
+	assert.Equal(t, 2*time.Second, retryAfterDelay(mk("2"), now))
+	assert.Equal(t, time.Duration(0), retryAfterDelay(mk("0"), now))
+	assert.Equal(t, time.Duration(0), retryAfterDelay(mk("-3"), now))
+	assert.Equal(t, time.Duration(0), retryAfterDelay(mk("garbage"), now))
+	assert.Equal(t, maxRetryAfterDelay, retryAfterDelay(mk("3000"), now))
+
+	// HTTP-date form. The date has second precision, so allow rounding slack.
+	future := mk(now.Add(5 * time.Second).UTC().Format(http.TimeFormat))
+	assert.InDelta(t, 5, retryAfterDelay(future, now).Seconds(), 1.1)
+	past := mk(now.Add(-5 * time.Second).UTC().Format(http.TimeFormat))
+	assert.Equal(t, time.Duration(0), retryAfterDelay(past, now))
 }

@@ -8,7 +8,9 @@ $(info    VERSION       = $(VERSION))
 $(info    PYPI_VERSION  = $(PYPI_VERSION))
 endif
 
-PROJECT_PKGS    := $(shell go list -C cmd/pulumi-language-python ./...)
+LANGHOST_PKGS = $(shell go list -C cmd/pulumi-language-python ./...)
+
+_ := $(shell go build -o build/helpmakego github.com/iwahbe/helpmakego)
 
 include ../../build/common.mk
 
@@ -17,27 +19,45 @@ include ../../build/common.mk
 TEST_ALL_DEPS ?= build
 
 ensure:: .make/ensure/uv
-	uv venv --allow-existing
-	uv sync --dev
+	../../scripts/retry uv venv --allow-existing
+	../../scripts/retry uv sync --dev
 
-build_package:: ensure
+ensure_lowest:: .make/ensure/uv
+	../../scripts/retry uv venv --allow-existing
+	../../scripts/retry uv sync --dev --resolution lowest-direct
+
+build_package: build/pulumi-${PYPI_VERSION}-py3-none-any.whl build/pulumi-${PYPI_VERSION}.tar.gz
+build/pulumi-${PYPI_VERSION}-py3-none-any.whl build/pulumi-${PYPI_VERSION}.tar.gz: $(shell uv run --with hatchling python -- scripts/build_inputs.py)
 	uv run -m build --outdir ./build --installer uv
+	@touch $@
 
-build_plugin::
-	go install -C cmd/pulumi-language-python \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+build_plugin: ../../bin/pulumi-language-python  \
+	../../bin/pulumi-language-python-exec   \
+	../../bin/pulumi-resource-pulumi-python
+
+../../bin/pulumi-language-python-exec:   ./cmd/pulumi-language-python-exec ; cp $< $@
+../../bin/pulumi-resource-pulumi-python: ./dist/pulumi-resource-pulumi-python ; cp $< $@
+
+../../bin/pulumi-language-python: $(shell build/helpmakego cmd/pulumi-language-python)
+	go build -C cmd/pulumi-language-python \
+		-o ../../$@ \
+		-tags="${GO_BUILD_TAGS}" \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
+		${LANGHOST_PKG}
 
 build:: build_package build_plugin
 
 lint:: ensure
 	uv run -m ruff format --check
-	MYPYPATH=./stubs uv run -m mypy ./lib/pulumi
+	uv run -m mypy ./lib/pulumi
 	uv run -m ruff check
 	uv run -m pyright
 
 lint_fix:: ensure
 	make format
-	make lint
+	uv run -m mypy ./lib/pulumi
+	uv run -m ruff check --fix
+	uv run -m pyright
 
 format:: ensure
 	uv run -m ruff format
@@ -45,43 +65,60 @@ format:: ensure
 install_package:: build_package
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
 	cp ./dist/pulumi-resource-pulumi-python "$(PULUMI_BIN)"
-	cp ./dist/pulumi-analyzer-policy-python "$(PULUMI_BIN)"
 
 install_plugin:: build_plugin
 	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-python \
+		  -tags="${GO_BUILD_TAGS}" \
 		  -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: install_package install_plugin
 
+test_go_fast::
+	@cd cmd/pulumi-language-python && \
+		$(GO_TEST_FAST) ${LANGHOST_PKGS}
+
 test_go:: $(TEST_ALL_DEPS)
 	@cd cmd/pulumi-language-python && \
-		$(GO_TEST) ${PROJECT_PKGS}
+		$(GO_TEST) ${LANGHOST_PKGS}
 
-test_fast:: $(TEST_ALL_DEPS)
-	. .venv/*/activate && ./scripts/test_fast.sh
+test_unit_fast:: ensure
+	. .venv/*/activate && ./scripts/test_unit.sh --fast
+
+test_unit:: $(TEST_ALL_DEPS)
+	. .venv/*/activate && ./scripts/test_unit.sh --coverage
+
+test_fast:: test_unit_fast test_go_fast
 
 test_auto:: $(TEST_ALL_DEPS)
 	. .venv/*/activate && ./scripts/test_auto.sh
 
-test_all:: test_fast test_auto test_go
+test_all:: test_unit test_auto test_go
+
+test_all_lowest_deps:: ensure_lowest
+	. .venv/*/activate && ./scripts/test_unit.sh --coverage
+	. .venv/*/activate && ./scripts/test_auto.sh
 
 PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
 
 dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 dist::
-	GOBIN=${GOBIN} go install -C cmd/pulumi-language-python \
+	go install -C cmd/pulumi-language-python \
+		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "${GOBIN}"
 	cp ./dist/pulumi-resource-pulumi-python "${GOBIN}"
-	cp ./dist/pulumi-analyzer-policy-python "${GOBIN}"
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	go install -C cmd/pulumi-language-python \
+		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
 	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/
 	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
-	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/
+
+clean::
+	rm -rf build
+	rm -rf .make
 
 publish:: ensure
 	for file in ../../artifacts/sdk-python-*.whl; do \

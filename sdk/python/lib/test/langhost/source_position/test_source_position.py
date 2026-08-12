@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,27 @@ class SourcePositionTest(LanghostTest):
             expected_resource_count=2,
         )
 
+    def read_resource(
+        self,
+        ctx,
+        ty,
+        name,
+        _id,
+        parent,
+        state,
+        dependencies,
+        provider,
+        version,
+        source_position,
+        stack_trace,
+    ):
+        self.assertIsNotNone(source_position)
+        self.assertTrue(
+            source_position.uri.endswith("__main__.py"), source_position.uri
+        )
+        self.assertEqual(source_position, stack_trace.frames[0].pc)
+        return {}
+
     def register_resource(
         self,
         _ctx,
@@ -42,11 +63,13 @@ class SourcePositionTest(LanghostTest):
         _replace_on_changes,
         _providers,
         source_position,
+        stack_trace,
     ):
         self.assertIsNotNone(source_position)
         self.assertTrue(
             source_position.uri.endswith("__main__.py"), source_position.uri
         )
+        self.assertEqual(source_position, stack_trace.frames[0].pc)
 
         if name == "custom":
             self.assertEqual(source_position.line, 34)

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,9 @@
 
 syntax = "proto3";
 
+import "google/protobuf/struct.proto";
 import "pulumi/codegen/hcl.proto";
+import "pulumi/codegen/loader.proto";
 
 package pulumirpc;
 
@@ -28,6 +30,10 @@ service Converter {
 
     // ConvertProgram converts a program from the target ecosystem into a form that can be used with Pulumi.
     rpc ConvertProgram(ConvertProgramRequest) returns (ConvertProgramResponse) {}
+
+    // ConvertSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
+    // callers need to convert a small source fragment, such as an input file, rather than a full Pulumi program.
+    rpc ConvertSnippet(ConvertSnippetRequest) returns (ConvertSnippetResponse) {}
 }
 
 message ConvertStateRequest {
@@ -36,6 +42,11 @@ message ConvertStateRequest {
     // the args passed to `pulumi import` for this conversion. Normally used to specifiy a state file to
     // import from.
     repeated string args = 2;
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string loader_target = 3;
+    // The target of a [](pulumirpc.PackageResolver) service the converter can use to resolve package
+    // specifications to concrete package dependencies. May be empty on older engines.
+    string resolver_target = 4;
 }
 
 // A ResourceImport specifies a resource to import.
@@ -59,6 +70,60 @@ message ResourceImport {
     bool is_component = 7;
     // true if this is a remote resource. Ignored if is_component is false.
     bool is_remote = 8;
+
+    // the replacement parameterization to use for the resource's provider, if any. Set when the resource
+    // should be imported under a parameterized (e.g. dynamically bridged) provider rather than a plain one.
+    ResourceParameterization parameterization = 9;
+
+    // the extension parameterization to apply to the resource's provider, if any. Unlike a replacement
+    // parameterization, the resource's own type is in the base provider's package; the extension is a blob
+    // applied on top of that provider. Mutually exclusive with parameterization.
+    ResourceExtension extension = 10;
+
+    // the name of the resource's parent, if any. Must reference the name of another resource in the same
+    // response; resources without a parent are parented to the stack root.
+    string parent = 11;
+
+    // the input properties to include when generating code for the resource. Defaults to the resource's
+    // required properties.
+    repeated string properties = 12;
+
+    // the name of the resource's explicit provider, if any. Must reference the name of a provider
+    // declared as another resource (of type "pulumi:providers:<package>") in the same response;
+    // resources without a provider are served by an appropriate default provider.
+    string provider = 13;
+
+    // input properties supplied for the resource, if any. Values the provider's Read cannot return
+    // (e.g. write-only attributes) are taken from here instead. For a provider declared in the
+    // response, inputs is its configuration. Secret values are marked with Pulumi's standard secret
+    // signature.
+    google.protobuf.Struct inputs = 14;
+
+    // the resource's full output state, if any. When set, the resource is imported from these values
+    // directly and the provider's Read is skipped entirely. Secret values are marked with Pulumi's
+    // standard secret signature.
+    google.protobuf.Struct outputs = 15;
+}
+
+// A ResourceParameterization describes the base plugin that a resource's parameterized provider is built
+// from. The parameterized package name and version are taken from the resource's own type and version.
+message ResourceParameterization {
+    // the name of the base plugin to parameterize (e.g. "terraform-provider").
+    string plugin_name = 1;
+    // the version of the base plugin to parameterize.
+    string plugin_version = 2;
+    // the parameter value to apply to the base plugin.
+    bytes value = 3;
+}
+
+// A ResourceExtension describes an extension parameterization to apply to a resource's (base) provider.
+message ResourceExtension {
+    // the name of the extension package.
+    string name = 1;
+    // the version of the extension package.
+    string version = 2;
+    // the parameter value for the extension.
+    bytes value = 3;
 }
 
 message ConvertStateResponse {
@@ -81,9 +146,64 @@ message ConvertProgramRequest {
     string loader_target = 4;
     // the args passed to `pulumi convert` for this conversion. Normally used to specifiy a root file, or conversion options.
     repeated string args = 5;
+    // the directory where the final generated project for the eventual destination language will be written.
+    // use to determine relative paths of any asset that will be copied over.
+    // Do not write files to this directory as these files might be overwritten in 
+    // the project generation process.
+    string generated_project_directory = 6;
 }
 
 message ConvertProgramResponse {
     // any diagnostics from code generation.
     repeated pulumirpc.codegen.Diagnostic diagnostics = 1;
+}
+
+message ConvertSnippetRequest {
+    // The name of the source file. This is used for diagnostics.
+    string filename = 1;
+
+    // The raw bytes of the source file.
+    bytes source = 2;
+
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string target_loader = 3;
+
+    // The package description to load which contains the token.
+    .codegen.GetSchemaRequest package = 4;
+
+    // The token to use when converting the snippet. This may be a provider token, such as `pulumi:providers:pkg`,
+    // a function token, or a resource token.
+    string token = 5;
+
+    // any extra attributes to convert.
+    map<string, string> attributes = 6;
+
+    message ResourceReference {
+        // The resource token for the referenced resource.
+        string token = 1;
+
+        // The package description to load for the referenced resource.
+        .codegen.GetSchemaRequest package = 2;
+    }
+
+    // any external resource references to convert.
+    map<string, ResourceReference> resources = 7;
+}
+
+message ConvertSnippetResponse {
+    // Any diagnostics raised by code generation.
+    repeated pulumirpc.codegen.Diagnostic diagnostics = 1;
+
+    // The generated PCL filename.
+    string filename = 2;
+
+    // The generated PCL source code.
+    bytes source = 3;
+
+    // any extra attributes to merge into the final pcl result.
+    map<string, string> attributes = 4;
+
+    // any external resource names that were rewritten during conversion. The keys are identifiers
+    // in the source language and the values are identifiers in the generated PCL.
+    map<string, string> resource_names = 5;
 }

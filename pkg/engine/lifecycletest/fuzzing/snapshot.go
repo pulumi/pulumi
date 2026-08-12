@@ -16,13 +16,17 @@ package fuzzing
 
 import (
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"golang.org/x/exp/maps"
 	"pgregory.net/rapid"
 )
 
@@ -89,7 +93,7 @@ func (s *SnapshotSpec) AddResource(r *ResourceSpec) {
 
 // Returns a deploy.Snapshot representation of this SnapshotSpec, suitable for use in setting up a lifecycle test.
 func (s *SnapshotSpec) AsSnapshot() *deploy.Snapshot {
-	resources := make([]*resource.State, len(s.Resources))
+	resources := make([]*pkgresource.State, len(s.Resources))
 	for i, r := range s.Resources {
 		resources[i] = r.AsResource()
 	}
@@ -102,17 +106,18 @@ func (s *SnapshotSpec) AsSnapshot() *deploy.Snapshot {
 // Implements PrettySpec.Pretty. Returns a human-readable string representation of this SnapshotSpec, suitable for use
 // in debugging output and error messages.
 func (s *SnapshotSpec) Pretty(indent string) string {
-	rendered := fmt.Sprintf("%sSnapshot %p", indent, s)
+	var rendered strings.Builder
+	fmt.Fprintf(&rendered, "%sSnapshot %p", indent, s)
 	if len(s.Resources) == 0 {
-		rendered += fmt.Sprintf("\n%s  No resources", indent)
+		fmt.Fprintf(&rendered, "\n%s  No resources", indent)
 	} else {
-		rendered += fmt.Sprintf("\n%s  Resources (%d):", indent, len(s.Resources))
+		fmt.Fprintf(&rendered, "\n%s  Resources (%d):", indent, len(s.Resources))
 		for _, r := range s.Resources {
-			rendered += fmt.Sprintf("\n%s    %s", indent, r.Pretty(indent+"    "))
+			fmt.Fprintf(&rendered, "\n%s    %s", indent, r.Pretty(indent+"    "))
 		}
 	}
 
-	return rendered
+	return rendered.String()
 }
 
 // A ResourceDependenciesSpec specifies the dependencies of a resource in a snapshot.
@@ -121,6 +126,7 @@ type ResourceDependenciesSpec struct {
 	Dependencies         []resource.URN
 	PropertyDependencies map[resource.PropertyKey][]resource.URN
 	DeletedWith          resource.URN
+	ReplaceWith          []resource.URN
 }
 
 // ApplyTo applies the dependencies specified in this ResourceDependenciesSpec to the given ResourceSpec.
@@ -129,6 +135,7 @@ func (rds *ResourceDependenciesSpec) ApplyTo(r *ResourceSpec) {
 	r.Dependencies = rds.Dependencies
 	r.PropertyDependencies = rds.PropertyDependencies
 	r.DeletedWith = rds.DeletedWith
+	r.ReplaceWith = rds.ReplaceWith
 }
 
 // Given a SnapshotSpec and ResourceSpec, returns a rapid.Generator that yields random (valid) sets of dependencies for
@@ -143,6 +150,7 @@ func GeneratedResourceDependencies(
 			Dependencies:         []resource.URN{},
 			PropertyDependencies: map[resource.PropertyKey][]resource.URN{},
 			DeletedWith:          "",
+			ReplaceWith:          []resource.URN{},
 		}
 
 		// As the number of resources in a snapshot grows, the probability of picking none of them will decrease rapidly if
@@ -165,18 +173,18 @@ func GeneratedResourceDependencies(
 
 			depType := rapid.SampledFrom(stateDependencyTypes).Draw(t, "SnapshotDependencies.DependencyType")
 			switch depType {
-			case resource.ResourceParent:
+			case pkgresource.ResourceParent:
 				rds.Parent = sr.URN()
-			case resource.ResourceDependency:
+			case pkgresource.ResourceDependency:
 				if seenDeps[sr.URN()] {
 					continue
 				}
 
 				seenDeps[sr.URN()] = true
 				rds.Dependencies = append(rds.Dependencies, sr.URN())
-			case resource.ResourcePropertyDependency:
+			case pkgresource.ResourcePropertyDependency:
 				k := rapid.SampledFrom(append(
-					maps.Keys(rds.PropertyDependencies),
+					slices.Collect(maps.Keys(rds.PropertyDependencies)),
 					resource.PropertyKey(
 						rapid.StringMatching("^prop-[a-z][A-Za-z0-9]{3}$").Draw(t, "SnapshotDependencies.NewPropertyKey"),
 					),
@@ -190,8 +198,10 @@ func GeneratedResourceDependencies(
 				}
 
 				rds.PropertyDependencies[k] = append(rds.PropertyDependencies[k], sr.URN())
-			case resource.ResourceDeletedWith:
+			case pkgresource.ResourceDeletedWith:
 				rds.DeletedWith = sr.URN()
+			case pkgresource.ResourceReplaceWith:
+				rds.ReplaceWith = append(rds.ReplaceWith, sr.URN())
 			default:
 				continue
 			}
@@ -208,12 +218,12 @@ func GeneratedResourceDependencies(
 	})
 }
 
-var stateDependencyTypes = []resource.StateDependencyType{
+var stateDependencyTypes = []pkgresource.StateDependencyType{
 	"",
-	resource.ResourceParent,
-	resource.ResourceDependency,
-	resource.ResourcePropertyDependency,
-	resource.ResourceDeletedWith,
+	pkgresource.ResourceParent,
+	pkgresource.ResourceDependency,
+	pkgresource.ResourcePropertyDependency,
+	pkgresource.ResourceDeletedWith,
 }
 
 // A set of options for configuring the generation of a SnapshotSpec.
@@ -230,6 +240,10 @@ type SnapshotSpecOptions struct {
 
 	// A set of options for configuring the generation of resources in the snapshot.
 	ResourceOpts ResourceSpecOptions
+
+	// Exclusion rules to apply to generated snapshots. If a snapshot matches any exclusion rule,
+	// it will be rejected and a new one will be generated.
+	ExclusionRules ExclusionRules
 }
 
 // Returns a copy of the given SnapshotSpecOptions with the given overrides applied.
@@ -242,6 +256,9 @@ func (sso SnapshotSpecOptions) With(overrides SnapshotSpecOptions) SnapshotSpecO
 	}
 	if overrides.Action != nil {
 		sso.Action = overrides.Action
+	}
+	if overrides.ExclusionRules != nil {
+		sso.ExclusionRules = overrides.ExclusionRules
 	}
 	sso.ResourceOpts = sso.ResourceOpts.With(overrides.ResourceOpts)
 
@@ -268,6 +285,7 @@ var defaultSnapshotSpecOptions = SnapshotSpecOptions{
 	ResourceCount:      rapid.IntRange(2, 5),
 	Action:             rapid.SampledFrom(snapshotSpecActions),
 	ResourceOpts:       defaultResourceSpecOptions,
+	ExclusionRules:     DefaultExclusionRules(),
 }
 
 var snapshotSpecActions = []SnapshotSpecAction{
@@ -303,7 +321,7 @@ func GeneratedSnapshotSpec(sso StackSpecOptions, snso SnapshotSpecOptions) *rapi
 
 		resourceCount := snso.ResourceCount.Draw(t, "SnapshotSpec.ResourceCount")
 
-		for i := 0; i < resourceCount; i++ {
+		for i := range resourceCount {
 			action := snso.Action.Draw(t, "SnapshotSpec.Action")
 
 			switch action {
@@ -360,6 +378,7 @@ func generatedOldResourceSpec(
 		// retained on deletion but its replacement isn't.
 		r.Protect = rapid.Bool().Draw(t, "OldResourceSpec.Protect")
 		r.RetainOnDelete = rapid.Bool().Draw(t, "OldResourceSpec.RetainOnDelete")
+		r.PendingReplacement = false
 
 		rds.ApplyTo(r)
 

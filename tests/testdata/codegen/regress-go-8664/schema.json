@@ -12,7 +12,7 @@
             },
             "inputProperties": {
                 "conditions": {
-                    "$ref": "#/types/azuread:index/ConditionalAccessPolicyConditions:ConditionalAccessPolicyConditions"
+                    "$ref": "#/types/azuread:index:ConditionalAccessPolicyConditions"
                 }
             },
             "stateInputs": {

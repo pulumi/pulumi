@@ -4,6 +4,6 @@
   "version": "1.0.0",
   "dependencies": {
     "@pulumi/pulumi": "latest",
-    "is-finite": "^2.0.0"
+    "is-number": "7.0.0"
   }
 }

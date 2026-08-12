@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build (go || all) && !xplatform_acceptance
-
 package ints
 
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -47,11 +43,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
 // This checks that the buildTarget option for Pulumi Go programs does build a binary.
@@ -67,7 +65,7 @@ func TestBuildTarget(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "select", "go-build-target-test-stack")
 	e.RunCommand("pulumi", "preview")
 	_, err := os.Stat(filepath.Join(e.RootPath, "a.out"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // This checks that the Exit Status artifact from Go Run is not being produced
@@ -116,7 +114,6 @@ func TestPanickingComponentConfigure(t *testing.T) {
 		testDir      = filepath.Join("go", "component-configure-panic")
 		componentDir = "testcomponent-go"
 	)
-	runComponentSetup(t, testDir)
 
 	var stderr bytes.Buffer
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -138,11 +135,9 @@ func TestPanickingComponentConfigure(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, _ integration.RuntimeValidationStackInfo) {
 			const needle = "panic: great sadness\n"
 			haystack := stderr.String()
-			// 2 instances of needle:
-			// - One instance is the returned error.
-			// - Another instance is in the stderr output.
-			assert.Equal(t, 2, strings.Count(haystack, needle),
-				"Expected only two instance of %q in:\n%s", needle, haystack)
+			// one instances of needle in the returned error:
+			assert.Equal(t, 1, strings.Count(haystack, needle),
+				"Expected only one instance of %q in:\n%s", needle, haystack)
 		},
 	})
 }
@@ -578,18 +573,6 @@ func TestConfigSecretsWarnGo(t *testing.T) {
 	})
 }
 
-// Tests a resource with a large (>4mb) string prop in Go
-//
-//nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestLargeResourceGo(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v3",
-		},
-		Dir: filepath.Join("large_resource", "go"),
-	})
-}
-
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowGo(t *testing.T) {
 	t.Parallel()
@@ -597,18 +580,18 @@ func TestConstructSlowGo(t *testing.T) {
 	localProvider := testComponentSlowLocalProvider(t)
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-	// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
+	// Until we've addressed this, set PULUMI_TEST_LINK_PULUMI, which tells the integration test
+	// module to install the locally-built @pulumi/pulumi into the Go program's directory, allowing
 	// the Node.js dynamic provider plugin to load.
 	// When the underlying issue has been fixed, the use of this environment variable inside the integration
 	// test module should be removed.
-	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
+	const testLinkPulumiEnv = "PULUMI_TEST_LINK_PULUMI=true"
 
 	testDir := "construct_component_slow"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	opts := &integration.ProgramTestOptions{
-		Env: []string{testYarnLinkPulumiEnv},
+		Env: []string{testLinkPulumiEnv},
 		Dir: filepath.Join(testDir, "go"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
@@ -617,13 +600,12 @@ func TestConstructSlowGo(t *testing.T) {
 		Quick:          true,
 		NoParallel:     true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
-				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
-				assert.Equal(t, resource.RootStackType, stackRes.Type)
-				assert.Equal(t, "", string(stackRes.Parent))
-			}
+			require.NotNil(t, stackInfo.Deployment)
+			require.Len(t, stackInfo.Deployment.Resources, 5)
+			stackRes := stackInfo.Deployment.Resources[0]
+			require.NotNil(t, stackRes)
+			assert.Equal(t, resource.RootStackType, stackRes.Type)
+			assert.Equal(t, "", string(stackRes.Parent))
 		},
 	}
 	integration.ProgramTest(t, opts)
@@ -634,7 +616,7 @@ func TestConstructPlainGo(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component_plain"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string
@@ -645,12 +627,12 @@ func TestConstructPlainGo(t *testing.T) {
 			componentDir:          "testcomponent",
 			expectedResourceCount: 9,
 			// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-			// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-			// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
+			// Until we've addressed this, set PULUMI_TEST_LINK_PULUMI, which tells the integration test
+			// module to install the locally-built @pulumi/pulumi into the Go program's directory, allowing
 			// the Node.js dynamic provider plugin to load.
 			// When the underlying issue has been fixed, the use of this environment variable inside the integration
 			// test module should be removed.
-			env: []string{"PULUMI_TEST_YARN_LINK_PULUMI=true"},
+			env: []string{"PULUMI_TEST_LINK_PULUMI=true"},
 		},
 		{
 			componentDir:          "testcomponent-python",
@@ -664,7 +646,6 @@ func TestConstructPlainGo(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -687,7 +668,7 @@ func optsForConstructPlainGo(
 		LocalProviders: localProviders,
 		Quick:          true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
 	}
@@ -703,7 +684,7 @@ func TestConstructMethodsGo(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component_methods"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -722,7 +703,6 @@ func TestConstructMethodsGo(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -780,7 +760,7 @@ func TestConstructProviderGo(t *testing.T) {
 	t.Parallel()
 
 	const testDir = "construct_component_provider"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -798,7 +778,6 @@ func TestConstructProviderGo(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
@@ -818,7 +797,6 @@ func TestConstructProviderGo(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // Sets env vars
 func TestGetResourceGo(t *testing.T) {
 	// This uses the random plugin so needs to be able to download it
 	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
@@ -834,10 +812,10 @@ func TestGetResourceGo(t *testing.T) {
 			"bar": "this super secret is encrypted",
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stack.Outputs)
+			require.NotNil(t, stack.Outputs)
 			assert.Equal(t, float64(2), stack.Outputs["getPetLength"])
 
-			out, ok := stack.Outputs["secret"].(map[string]interface{})
+			out, ok := stack.Outputs["secret"].(map[string]any)
 			assert.True(t, ok)
 
 			_, ok = out["ciphertext"]
@@ -884,14 +862,14 @@ func TestTracePropagationGo(t *testing.T) {
 	integration.ProgramTest(t, opts)
 
 	store, err := ReadMemoryStoreFromFile(filepath.Join(dir, "pulumi-update-initial.trace"))
-	assert.NoError(t, err)
-	assert.NotNil(t, store)
+	require.NoError(t, err)
+	require.NotNil(t, store)
 
 	t.Run("traced `go list -m -json`", func(t *testing.T) {
 		t.Parallel()
 
 		isGoListTrace := func(t *appdash.Trace) bool {
-			m := t.Span.Annotations.StringMap()
+			m := t.StringMap()
 
 			isGoCmd := strings.HasSuffix(m["command"], "go") ||
 				strings.HasSuffix(m["command"], "go.exe")
@@ -901,8 +879,8 @@ func TestTracePropagationGo(t *testing.T) {
 				strings.Contains(m["args"], "list -m -json")
 		}
 		tr, err := FindTrace(store, isGoListTrace)
-		assert.NoError(t, err)
-		assert.NotNil(t, tr)
+		require.NoError(t, err)
+		require.NotNil(t, tr)
 	})
 
 	t.Run("traced api/exportStack exactly once", func(t *testing.T) {
@@ -910,13 +888,13 @@ func TestTracePropagationGo(t *testing.T) {
 
 		exportStackCounter := 0
 		err := WalkTracesWithDescendants(store, func(tr *appdash.Trace) error {
-			name := tr.Span.Name()
+			name := tr.Name()
 			if name == "api/exportStack" {
 				exportStackCounter++
 			}
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, 1, exportStackCounter)
 	})
 }
@@ -958,7 +936,7 @@ func TestProjectMainGo(t *testing.T) {
 		Dependencies: []string{"github.com/pulumi/pulumi/sdk/v3"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Simple runtime validation that just ensures the checkpoint was written and read.
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 		},
 	}
 	integration.ProgramTest(t, &test)
@@ -1001,7 +979,7 @@ func TestDeletedWithGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
 	})
@@ -1032,16 +1010,12 @@ func TestConstructResourceOptionsGo(t *testing.T) {
 func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 	t.Parallel()
 
-	// Context scoped to the lifetime of the test.
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("go", "regress-13301"))
 
 	// Rename go.mod.bad to go.mod so that the Go toolchain uses it.
-	require.NoError(t, os.Rename(
+	require.NoError(t, os.Rename( //nolint:forbidigo // os.Rename is OK for tests
 		filepath.Join(e.CWD, "go.mod.bad"),
 		filepath.Join(e.CWD, "go.mod"),
 	))
@@ -1076,7 +1050,7 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 		"PULUMI_DEBUG_GRPC="+grpcLog)
 	e.RunCommand("pulumi", "plugin", "install")
 
-	ws, err := auto.NewLocalWorkspace(ctx,
+	ws, err := auto.NewLocalWorkspace(t.Context(),
 		auto.Project(workspace.Project{
 			Name:    "issue-13301",
 			Runtime: workspace.NewProjectRuntimeInfo("go", nil),
@@ -1102,10 +1076,10 @@ func TestAutomation_externalPluginDownload_issue13301(t *testing.T) {
 		return nil
 	})
 
-	stack, err := auto.UpsertStack(ctx, "foo", ws)
+	stack, err := auto.UpsertStack(t.Context(), "foo", ws)
 	require.NoError(t, err)
 
-	_, err = stack.Preview(ctx)
+	_, err = stack.Preview(t.Context())
 	require.NoError(t, err)
 }
 
@@ -1123,7 +1097,7 @@ func TestStackOutputsProgramErrorGo(t *testing.T) {
 	d := filepath.Join("stack_outputs_program_error", "go")
 
 	validateOutputs := func(
-		expected map[string]interface{},
+		expected map[string]any,
 	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
@@ -1136,7 +1110,7 @@ func TestStackOutputsProgramErrorGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Quick: true,
-		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+		ExtraRuntimeValidation: validateOutputs(map[string]any{
 			"xyz": "ABC",
 			"foo": float64(42),
 		}),
@@ -1145,7 +1119,7 @@ func TestStackOutputsProgramErrorGo(t *testing.T) {
 				Dir:           filepath.Join(d, "step2"),
 				Additive:      true,
 				ExpectFailure: true,
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "DEF",       // Expected to be updated
 					"foo": float64(42), // Expected to remain the same
 				}),
@@ -1162,7 +1136,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 	d := filepath.Join("stack_outputs_resource_error", "go")
 
 	validateOutputs := func(
-		expected map[string]interface{},
+		expected map[string]any,
 	) func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 		return func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, expected, stackInfo.RootResource.Outputs)
@@ -1175,10 +1149,10 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		Quick: true,
-		ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+		ExtraRuntimeValidation: validateOutputs(map[string]any{
 			"xyz": "ABC",
 			"foo": float64(42),
 		}),
@@ -1189,7 +1163,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 				ExpectFailure: true,
 				// Expect the values to remain the same because the deployment ends before RegisterResourceOutputs is
 				// called for the stack.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "ABC",
 					"foo": float64(42),
 				}),
@@ -1199,7 +1173,7 @@ func TestStackOutputsResourceErrorGo(t *testing.T) {
 				Additive:      true,
 				ExpectFailure: true,
 				// Expect the values to be updated.
-				ExtraRuntimeValidation: validateOutputs(map[string]interface{}{
+				ExtraRuntimeValidation: validateOutputs(map[string]any{
 					"xyz": "DEF",
 					"foo": float64(1),
 				}),
@@ -1218,20 +1192,67 @@ func TestParameterizedGo(t *testing.T) {
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		LocalProviders: []integration.LocalDependency{
-			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
+			{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 		},
 		PrePrepareProject: func(info *engine.Projinfo) error {
 			e := ptesting.NewEnvironment(t)
 			e.CWD = info.Root
-			path := info.Proj.Plugins.Providers[0].Path
-			_, _ = e.RunCommand("pulumi", "package", "gen-sdk", path, "pkg", "--language", "go")
+
+			// We have a bare-bones main.go program checked-in that does _not_ depend on the generated SDK.
+			// This allows the `make tidy` script and other tools like dependabot to run successfully in this
+			// directory. When running the test, overwrite the bare-bones main.go with the actual test
+			// program that makes use of the generated SDK.
+			actualProgram, err := os.ReadFile(filepath.Join(e.CWD, "actual_program.txt"))
+			require.NoError(t, err)
+			e.WriteTestFile("main.go", string(actualProgram))
+
+			actualProgram, err = os.ReadFile(filepath.Join(e.CWD, "actual_program_test.txt"))
+			require.NoError(t, err)
+			e.WriteTestFile("main_test.go", string(actualProgram))
+
+			// Generate the SDK for the provider. gen-sdk takes the plugin
+			// binary itself and infers the package name from its filename.
+			_, _ = e.RunCommand("pulumi", "package", "gen-sdk", testutil.TestProvider(t), "pkg", "--language", "go")
+
+			// Add a reference to the generated SDK in go.mod.
+			err = appendLines(filepath.Join(e.CWD, "go.mod"), []string{
+				"require example.com/pulumi-pkg/sdk/go v1.0.0",
+				"replace example.com/pulumi-pkg/sdk/go => ./sdk/go",
+			})
+			require.NoError(t, err)
+
+			return nil
+		},
+		PostPrepareProject: func(info *engine.Projinfo) error {
+			e := ptesting.NewEnvironment(t)
+			e.CWD = info.Root
+
+			e.RunCommand("go", "test", "-v", "./...")
+
 			return nil
 		},
 	})
 }
 
+func appendLines(name string, lines []string) error {
+	file, err := os.OpenFile(name, os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+	for _, line := range lines {
+		if _, err := writer.WriteString(line + "\n"); err != nil {
+			return err
+		}
+	}
+	return writer.Flush()
+}
+
 //nolint:paralleltest // mutates environment
 func TestPackageAddGo(t *testing.T) {
+	// xx move this
 	e := ptesting.NewEnvironment(t)
 
 	var err error
@@ -1240,17 +1261,55 @@ func TestPackageAddGo(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
-	_, _ = e.RunCommand("pulumi", "package", "add", "random")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.16.7")
+	randomVersion := getPluginVersion(e, "random")
+	assert.NotEmpty(t, randomVersion)
+	stdout, stderr := e.RunCommand("pulumi", "package", "add", "random")
+	// Regression check for https://github.com/pulumi/pulumi/issues/19764. Make sure the plugins close cleanly.
+	require.NotContains(t, stdout, "exited prematurely")
+	require.NotContains(t, stderr, "exited prematurely")
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = modfile.Parse("go.mod", modBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+
+	// Verify that the Pulumi.yaml file contains the random package with correct settings
+	yamlContent, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.yaml"))
+	require.NoError(t, err)
+	yamlString := string(yamlContent)
+	require.Contains(t, yamlString, "packages:")
+	require.Contains(t, yamlString, "random: random@"+randomVersion)
 
 	// Currently package add does not work correctly for non parameterized
 	// packages, once they add the go.mod as expected we can parse it and check
 	// if it contains a rename as the parameterized version of this test does.
+}
+
+// getPluginVersion finds the highest version of a plugin by name
+func getPluginVersion(e *ptesting.Environment, pluginName string) string {
+	stdout, _ := e.RunCommand("pulumi", "plugin", "ls", "--json")
+
+	type Plugin struct {
+		Name    string `json:"name"`
+		Kind    string `json:"kind"`
+		Version string `json:"version"`
+	}
+
+	var plugins []Plugin
+	err := json.Unmarshal([]byte(stdout), &plugins)
+	if err != nil {
+		return ""
+	}
+
+	for _, plugin := range plugins {
+		if plugin.Name == pluginName && plugin.Kind == "resource" {
+			// Even if multiple versions are installed, the entries are ordered descending.
+			return plugin.Version
+		}
+	}
+
+	return ""
 }
 
 //nolint:paralleltest // mutates environment
@@ -1263,26 +1322,41 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	// Install terraform-provider and note its version
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
+	terraformProviderVersion := getPluginVersion(e, "terraform-provider")
+	assert.NotEmpty(t, terraformProviderVersion)
 	_, _ = e.RunCommand("pulumi", "package", "add", "terraform-provider", "NetApp/netapp-cloudmanager", "25.1.0")
 
+	// Verify that the Pulumi.yaml file contains the netapp-cloudmanage package with correct settings
+	yamlContent, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.yaml"))
+	require.NoError(t, err)
+	yamlString := string(yamlContent)
+	require.Contains(t, yamlString, "packages:")
+	require.Contains(t, yamlString, "netapp-cloudmanager:")
+	require.Contains(t, yamlString, "source: terraform-provider")
+	require.Contains(t, yamlString, "version: "+terraformProviderVersion)
+	require.Contains(t, yamlString, "parameters:")
+	require.Contains(t, yamlString, "- NetApp/netapp-cloudmanager")
+	require.Contains(t, yamlString, "- 25.1.0")
+
 	assert.True(t, e.PathExists("sdks/netapp-cloudmanager/go.mod"))
-	packageModBytes, err := os.ReadFile(filepath.Join(e.CWD, "sdks/netapp-cloudmanager/go.mod"))
-	assert.NoError(t, err)
+	packageModBytes, err := os.ReadFile(filepath.Join(e.CWD, "sdks", "netapp-cloudmanager", "go.mod"))
+	require.NoError(t, err)
 	packageMod, err := modfile.Parse("package.mod", packageModBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/netapp-cloudmanager/v25",
 		packageMod.Module.Mod.Path)
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	gomod, err := modfile.Parse("go.mod", modBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	containsRename := false
-	containedRenames := make([]string, len(gomod.Replace))
+	containedRenames := slice.Prealloc[string](len(gomod.Replace))
 	for _, r := range gomod.Replace {
-		if r.New.Path == "./sdks/netapp-cloudmanager" &&
+		if filepath.ToSlash(r.New.Path) == "./sdks/netapp-cloudmanager" &&
 			r.Old.Path == "github.com/pulumi/pulumi-terraform-provider/sdks/go/netapp-cloudmanager/v25" {
 			containsRename = true
 		}
@@ -1291,6 +1365,29 @@ func TestPackageAddGoParameterized(t *testing.T) {
 
 	assert.True(t, containsRename,
 		fmt.Sprintf("expected go.mod to contain a replace for the package.  Contains: %v", containedRenames))
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/21950: when an inline program runs more than once in the
+// same Go process, each run must register the parameterized package against its own engine.
+//
+//nolint:paralleltest // mutates environment
+func TestStaleParameterizedPackageRefGo(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("go", "stale-parameterized-packageref"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "1.1.1")
+	e.RunCommand("pulumi", "package", "add", "terraform-provider", "hashicorp/random", "3.8.1")
+
+	localSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk"))
+	require.NoError(t, err)
+	e.RunCommand("go", "mod", "edit", "-replace", "github.com/pulumi/pulumi/sdk/v3="+localSDK)
+	e.RunCommand("go", "mod", "tidy")
+
+	stdout, _ := e.RunCommand("go", "run", ".")
+	assert.Contains(t, stdout, "First preview succeeded")
+	assert.Contains(t, stdout, "Second preview succeeded")
 }
 
 //nolint:paralleltest // mutates environment
@@ -1303,7 +1400,7 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "v1.2.4")
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "go", "--out", "godir")
 
@@ -1311,13 +1408,13 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 	assert.True(t, e.PathExists("godir/sdks/supabase/go.mod"))
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "godir", "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	gomod, err := modfile.Parse("go.mod", modBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	containsRename := false
 	for _, r := range gomod.Replace {
-		if r.New.Path == "./sdks/supabase" && r.Old.Path ==
+		if filepath.ToSlash(r.New.Path) == "./sdks/supabase" && r.Old.Path ==
 			"github.com/pulumi/pulumi-terraform-provider/sdks/go/supabase" {
 			containsRename = true
 		}
@@ -1336,8 +1433,8 @@ func TestConvertMultipleTerraformProviderGo(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "v1.2.4")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "go", "--out", "godir")
 
 	assert.True(t, e.PathExists("godir/go.mod"))
@@ -1345,18 +1442,18 @@ func TestConvertMultipleTerraformProviderGo(t *testing.T) {
 	assert.True(t, e.PathExists("godir/sdks/b2/go.mod"))
 
 	modBytes, err := os.ReadFile(filepath.Join(e.CWD, "godir", "go.mod"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	gomod, err := modfile.Parse("go.mod", modBytes, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	containsRenameSupabase := false
 	containsRenameBB := false
 	for _, r := range gomod.Replace {
-		if r.New.Path == "./sdks/supabase" && r.Old.Path ==
+		if filepath.ToSlash(r.New.Path) == "./sdks/supabase" && r.Old.Path ==
 			"github.com/pulumi/pulumi-terraform-provider/sdks/go/supabase" {
 			containsRenameSupabase = true
 		}
-		if r.New.Path == "./sdks/b2" && r.Old.Path ==
+		if filepath.ToSlash(r.New.Path) == "./sdks/b2" && r.Old.Path ==
 			"github.com/pulumi/pulumi-terraform-provider/sdks/go/b2" {
 			containsRenameBB = true
 		}
@@ -1405,6 +1502,11 @@ func newDAPRequest(seq int, command string) dap.Request {
 func TestDebuggerAttach(t *testing.T) {
 	t.Parallel()
 
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("go", "go-build-target"))
@@ -1412,21 +1514,19 @@ func TestDebuggerAttach(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		e.Env = append(e.Env, "PULUMI_DEBUG_COMMANDS=true")
 		e.RunCommand("pulumi", "stack", "init", "debugger-test")
 		e.RunCommand("pulumi", "stack", "select", "debugger-test")
 		e.RunCommand("pulumi", "preview", "--attach-debugger",
 			"--event-log", filepath.Join(e.RootPath, "debugger.log"))
-	}()
+	})
 
 	// Wait for the debugging event
 	wait := 20 * time.Millisecond
 	var debugEvent *apitype.StartDebuggingEvent
 outer:
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		events, err := readUpdateEventLog(filepath.Join(e.RootPath, "debugger.log"))
 		require.NoError(t, err)
 		for _, event := range events {
@@ -1442,9 +1542,7 @@ outer:
 
 	// We've attached a debugger, so we need to connect to it and let the program continue.
 	conn, err := net.Dial("tcp", "localhost:"+strconv.Itoa(int(debugEvent.Config["port"].(float64))))
-	if err != nil {
-		log.Fatalf("Failed to connect to debugger: %v", err)
-	}
+	require.NoError(t, err)
 	defer conn.Close()
 
 	seq := 0
@@ -1459,49 +1557,171 @@ outer:
 			ColumnsStartAt1: true,
 		},
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	seq++
 	reader := bufio.NewReader(conn)
 	// We need to read the response, but we don't actually care
 	// about it.  It just includes the capabilities of the
 	// debugger.
 	resp, err := dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.InitializeResponse{}, resp)
 	json, err := json.Marshal(debugEvent.Config)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = dap.WriteProtocolMessage(conn, &dap.AttachRequest{
 		Request:   newDAPRequest(seq, "attach"),
 		Arguments: json,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	seq++
 	// read the initialized event, and then the response to the attach request.
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.InitializedEvent{}, resp)
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.AttachResponse{}, resp)
 
 	err = dap.WriteProtocolMessage(conn, &dap.ContinueRequest{
 		Request: newDAPRequest(seq, "continue"),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	seq++
 	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.IsType(t, &dap.ContinueResponse{}, resp)
-	resp, err = dap.ReadProtocolMessage(reader)
-	assert.NoError(t, err)
-	assert.IsType(t, &dap.TerminatedEvent{}, resp)
+	// On program exit the debugger sends both an "exited" and a "terminated" event. DAP doesn't
+	// guarantee their order, and delve changed it in 1.27 (exited now precedes terminated), so read
+	// until we see the terminated event.
+	sawTerminated := false
+	for i := 0; i < 2 && !sawTerminated; i++ {
+		resp, err = dap.ReadProtocolMessage(reader)
+		require.NoError(t, err)
+		switch resp.(type) {
+		case *dap.TerminatedEvent:
+			sawTerminated = true
+		case *dap.ExitedEvent:
+			// Ignore; its order relative to the terminated event is not guaranteed.
+		default:
+			t.Fatalf("unexpected DAP message waiting for terminated event: %T", resp)
+		}
+	}
+	require.True(t, sawTerminated, "expected a terminated event")
 
 	err = dap.WriteProtocolMessage(conn, &dap.DisconnectRequest{
 		Request: newDAPRequest(seq, "disconnect"),
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Make sure the program finished successfully.
+	wg.Wait()
+}
+
+func TestPluginDebuggerAttach(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.ImportDirectory(filepath.Join("debug-plugin"))
+	e.CWD = filepath.Join(e.CWD, "program")
+
+	e.RunCommand("pulumi", "package", "add", "../go-plugin")
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	eventLogPath := filepath.Join(e.RootPath, "plugin_debugger.log")
+	go func() {
+		defer wg.Done()
+		e.RunCommand("pulumi", "stack", "init", "plugin-debugger-test")
+		e.RunCommand("pulumi", "stack", "select", "plugin-debugger-test")
+		// We're disconnecting the debugger from the plugin, and it exits immediately.
+		// Therefore we expect a EOF error.
+		stdout, _ := e.RunCommandExpectError("pulumi", "preview", "--attach-debugger=plugins",
+			"--event-log", eventLogPath)
+		require.Regexp(t, "could not read plugin \\[.*/go-plugin/pulumi-resource-debugplugin\\]: EOF", stdout)
+	}()
+
+	wait := 20 * time.Millisecond
+	var debugEvent *apitype.StartDebuggingEvent
+outer:
+	for range 50 {
+		events, err := readUpdateEventLog(eventLogPath)
+		if err != nil && !os.IsNotExist(err) {
+			require.NoError(t, err)
+		}
+		for _, event := range events {
+			if event.StartDebuggingEvent != nil {
+				debugEvent = event.StartDebuggingEvent
+				break outer
+			}
+		}
+		time.Sleep(wait)
+		wait *= 2
+	}
+	require.NotNil(t, debugEvent, "did not receive start debugging event for plugin")
+
+	conn, err := net.Dial("tcp", "localhost:"+strconv.Itoa(int(debugEvent.Config["port"].(float64))))
+	require.NoError(t, err)
+	defer conn.Close()
+
+	seq := 0
+	err = dap.WriteProtocolMessage(conn, &dap.InitializeRequest{
+		Request: newDAPRequest(seq, "initialize"),
+		Arguments: dap.InitializeRequestArguments{
+			ClientID:        "pulumi-test-plugin",
+			ClientName:      "Pulumi Test Plugin",
+			AdapterID:       "pulumi",
+			Locale:          "en-us",
+			LinesStartAt1:   true,
+			ColumnsStartAt1: true,
+		},
+	})
+	require.NoError(t, err)
+	seq++
+	reader := bufio.NewReader(conn)
+	// We need to read the response, but we don't actually care
+	// about it.  It just includes the capabilities of the
+	// debugger.
+	resp, err := dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.InitializeResponse{}, resp)
+	json, err := json.Marshal(debugEvent.Config)
+	require.NoError(t, err)
+	err = dap.WriteProtocolMessage(conn, &dap.AttachRequest{
+		Request:   newDAPRequest(seq, "attach"),
+		Arguments: json,
+	})
+	require.NoError(t, err)
+	seq++
+	// read the initialized event, and then the response to the attach request.
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.InitializedEvent{}, resp)
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.AttachResponse{}, resp)
+
+	err = dap.WriteProtocolMessage(conn, &dap.ContinueRequest{
+		Request: newDAPRequest(seq, "continue"),
+	})
+	require.NoError(t, err)
+	seq++
+	resp, err = dap.ReadProtocolMessage(reader)
+	require.NoError(t, err)
+	require.IsType(t, &dap.ContinueResponse{}, resp)
+	err = dap.WriteProtocolMessage(conn, &dap.DisconnectRequest{
+		Request: newDAPRequest(seq, "disconnect"),
+	})
+	require.NoError(t, err)
+
+	// Wait for the pulumi preview command to finish.
 	wg.Wait()
 }
 
@@ -1548,26 +1768,28 @@ func TestLogDebugGo(t *testing.T) {
 func TestRunPlugin(t *testing.T) {
 	t.Parallel()
 
+	// TODO[pulumi/pulumi#18436]: enable this test on windows
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Skipping test on Windows")
+	}
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("run_plugin"))
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
-	e.CWD = filepath.Join(e.RootPath, "provider-nodejs")
-	e.RunCommand("npm", "install")
-
-	e.CWD = filepath.Join(e.RootPath, "provider-python")
-	e.RunCommand("python", "-m", "venv", "venv", "--clear")
-	pythonSdkPath, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
-	require.NoError(t, err)
-	e.RunCommand(filepath.Join("venv", "bin", "python"), "-m", "pip", "install", "-e", pythonSdkPath)
+	ptesting.InstallDependencies(t, filepath.Join(e.RootPath, "provider-nodejs"))
+	ptesting.InstallDependencies(t, filepath.Join(e.RootPath, "provider-python"))
 
 	e.CWD = filepath.Join(e.RootPath, "go")
 	sdkPath, err := filepath.Abs("../../sdk/")
 	require.NoError(t, err)
+	pkgPath, err := filepath.Abs("../../pkg/")
+	require.NoError(t, err)
 
 	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/sdk/v3="+sdkPath)
+	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/pkg/v3="+pkgPath)
 	e.RunCommand("go", "mod", "tidy")
 	e.RunCommand("pulumi", "stack", "init", "runplugin-test")
 	e.RunCommand("pulumi", "stack", "select", "runplugin-test")
@@ -1580,6 +1802,10 @@ func TestRunPlugin(t *testing.T) {
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestErrorNoMainPackage(t *testing.T) {
 	stderr := &bytes.Buffer{}
+	// TODO[pulumi/pulumi#18437]: Run this test on windows
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on windows")
+	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("go", "go-no-main-package"),

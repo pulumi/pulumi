@@ -16,15 +16,17 @@ package fuzzing
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/mitchellh/copystructure"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"golang.org/x/exp/maps"
 	"pgregory.net/rapid"
 )
 
@@ -47,6 +49,7 @@ type ResourceSpec struct {
 	Dependencies         []resource.URN
 	PropertyDependencies map[resource.PropertyKey][]resource.URN
 	DeletedWith          resource.URN
+	ReplaceWith          []resource.URN
 	Aliases              []resource.URN
 
 	// A set of tags associated with the resource. These have no bearing on any tests but are included to aid in debugging
@@ -54,8 +57,8 @@ type ResourceSpec struct {
 	Tags map[string]bool
 }
 
-// Creates a ResourceSpec from the given resource.State.
-func FromResource(r *resource.State) *ResourceSpec {
+// Creates a ResourceSpec from the given pkgresource.State.
+func FromResource(r *pkgresource.State) *ResourceSpec {
 	deps := copystructure.Must(copystructure.Copy(r.Dependencies)).([]resource.URN)
 	propDeps := copystructure.Must(copystructure.Copy(r.PropertyDependencies)).(map[resource.PropertyKey][]resource.URN)
 	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
@@ -160,16 +163,14 @@ func (r *ResourceSpec) Copy() *ResourceSpec {
 	}
 }
 
-// Returns a resource.State representation of this ResourceSpec, suitable for inclusion in e.g. a snapshot.
-func (r *ResourceSpec) AsResource() *resource.State {
+// Returns a pkgresource.State representation of this ResourceSpec, suitable for inclusion in e.g. a snapshot.
+func (r *ResourceSpec) AsResource() *pkgresource.State {
 	deps := copystructure.Must(copystructure.Copy(r.Dependencies)).([]resource.URN)
 	propDeps := copystructure.Must(copystructure.Copy(r.PropertyDependencies)).(map[resource.PropertyKey][]resource.URN)
 	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
 
-	tags := maps.Keys(r.Tags)
-	slices.Sort(tags)
-
-	s := &resource.State{
+	tags := strings.Join(slices.Sorted(maps.Keys(r.Tags)), ", ")
+	s := &pkgresource.State{
 		Type:                 r.Type,
 		URN:                  r.URN(),
 		Custom:               r.Custom,
@@ -184,14 +185,15 @@ func (r *ResourceSpec) AsResource() *resource.State {
 		PropertyDependencies: propDeps,
 		DeletedWith:          r.DeletedWith,
 		Aliases:              aliases,
-		SourcePosition:       strings.Join(tags, ", "),
+		SourcePosition:       tags,
+		StackTrace:           []pkgresource.StackFrame{{SourcePosition: tags}},
 	}
 
 	// In order to allow us to control generated resource IDs (e.g. such as those returned by a provider Create call),
 	// we'll set the ResourceSpec's ID field as an input property.
 	if !providers.IsProviderType(r.Type) {
 		s.Inputs = resource.PropertyMap{
-			"__id": resource.NewStringProperty(r.ID.String()),
+			"__id": resource.NewProperty(r.ID.String()),
 		}
 	}
 
@@ -233,65 +235,64 @@ func (r *ResourceSpec) Pretty(indent string) string {
 	b.WriteRune(']')
 
 	if len(r.Tags) > 0 {
-		ks := maps.Keys(r.Tags)
-		slices.Sort(ks)
-		b.WriteString(fmt.Sprintf("\n%s  Tags:                %s", indent, strings.Join(ks, ", ")))
+		ks := slices.Sorted(maps.Keys(r.Tags))
+		fmt.Fprintf(&b, "\n%s  Tags:                %s", indent, strings.Join(ks, ", "))
 	}
 
 	if r.ID != "" {
-		b.WriteString(fmt.Sprintf("\n%s  ID:                  %s", indent, r.ID))
+		fmt.Fprintf(&b, "\n%s  ID:                  %s", indent, r.ID)
 	}
 
 	if r.Protect {
-		b.WriteString(fmt.Sprintf("\n%s  Protect:             true", indent))
+		fmt.Fprintf(&b, "\n%s  Protect:             true", indent)
 	}
 
 	if r.PendingReplacement {
-		b.WriteString(fmt.Sprintf("\n%s  Pending replacement: true", indent))
+		fmt.Fprintf(&b, "\n%s  Pending replacement: true", indent)
 	}
 
 	if r.RetainOnDelete {
-		b.WriteString(fmt.Sprintf("\n%s  Retain on delete:    true", indent))
+		fmt.Fprintf(&b, "\n%s  Retain on delete:    true", indent)
 	}
 
 	if r.Provider != "" {
 		provRef, err := providers.ParseReference(r.Provider)
 		if err != nil {
-			b.WriteString(fmt.Sprintf("\n%s  Provider:            %s", indent, r.Provider))
+			fmt.Fprintf(&b, "\n%s  Provider:            %s", indent, r.Provider)
 		} else {
-			b.WriteString(fmt.Sprintf("\n%s  Provider:            %s::%s", indent, Colored(provRef.URN()), provRef.ID()))
+			fmt.Fprintf(&b, "\n%s  Provider:            %s::%s", indent, Colored(provRef.URN()), provRef.ID())
 		}
 	}
 
 	if r.Parent != "" {
-		b.WriteString(fmt.Sprintf("\n%s  Parent:              %s", indent, Colored(r.Parent)))
+		fmt.Fprintf(&b, "\n%s  Parent:              %s", indent, Colored(r.Parent))
 	}
 
 	if len(r.Dependencies) > 0 {
-		b.WriteString(fmt.Sprintf("\n\n%s  Dependencies (%d):", indent, len(r.Dependencies)))
+		fmt.Fprintf(&b, "\n\n%s  Dependencies (%d):", indent, len(r.Dependencies))
 		for _, d := range r.Dependencies {
-			b.WriteString(fmt.Sprintf("\n%s    %s", indent, Colored(d)))
+			fmt.Fprintf(&b, "\n%s    %s", indent, Colored(d))
 		}
 	}
 
 	if len(r.PropertyDependencies) > 0 {
-		b.WriteString(fmt.Sprintf("\n\n%s  Property dependencies (%d key[s]):", indent, len(r.PropertyDependencies)))
+		fmt.Fprintf(&b, "\n\n%s  Property dependencies (%d key[s]):", indent, len(r.PropertyDependencies))
 		for k, deps := range r.PropertyDependencies {
-			b.WriteString(fmt.Sprintf("\n%s    %s", indent, k))
+			fmt.Fprintf(&b, "\n%s    %s", indent, k)
 			for _, d := range deps {
-				b.WriteString(fmt.Sprintf("\n%s      %s", indent, Colored(d)))
+				fmt.Fprintf(&b, "\n%s      %s", indent, Colored(d))
 			}
 		}
 	}
 
 	if r.DeletedWith != "" {
-		b.WriteString(fmt.Sprintf("\n\n%s  Deleted with:        %s", indent, Colored(r.DeletedWith)))
+		fmt.Fprintf(&b, "\n\n%s  Deleted with:        %s", indent, Colored(r.DeletedWith))
 	}
 
 	if len(r.Aliases) > 0 {
-		b.WriteString(fmt.Sprintf("\n\n%s  Aliases (%d):", indent, len(r.Aliases)))
+		fmt.Fprintf(&b, "\n\n%s  Aliases (%d):", indent, len(r.Aliases))
 		for _, a := range r.Aliases {
-			b.WriteString(fmt.Sprintf("\n%s    %s", indent, Colored(a)))
+			fmt.Fprintf(&b, "\n%s    %s", indent, Colored(a))
 		}
 	}
 
@@ -415,12 +416,16 @@ func GeneratedResourceSpec(
 	rso = defaultResourceSpecOptions.With(rso)
 
 	return rapid.Custom(func(t *rapid.T) *ResourceSpec {
-		pkg := rapid.SampledFrom(maps.Keys(provs)).Draw(t, "ResourceSpec.Package")
+		pkg := rapid.SampledFrom(slices.Sorted(maps.Keys(provs))).Draw(t, "ResourceSpec.Package")
 		provider := provs[pkg]
 
 		typ := GeneratedResourceType(pkg).Draw(t, "ResourceSpec.Type")
 		name := GeneratedResourceName.Draw(t, "ResourceSpec.Name")
-		id := GeneratedResourceID.Draw(t, "ResourceSpec.ID")
+		custom := rso.Custom.Draw(t, "ResourceSpec.Custom")
+		id := resource.ID("")
+		if custom {
+			id = GeneratedResourceID.Draw(t, "ResourceSpec.ID")
+		}
 
 		r := &ResourceSpec{
 			Project: tokens.PackageName(sso.Project),
@@ -429,7 +434,7 @@ func GeneratedResourceSpec(
 			Name:    name,
 			ID:      id,
 
-			Custom:             rso.Custom.Draw(t, "ResourceSpec.Custom"),
+			Custom:             custom,
 			Delete:             false,
 			Protect:            rso.Protect.Draw(t, "ResourceSpec.Protect"),
 			PendingReplacement: rso.PendingReplacement.Draw(t, "ResourceSpec.PendingReplacement"),

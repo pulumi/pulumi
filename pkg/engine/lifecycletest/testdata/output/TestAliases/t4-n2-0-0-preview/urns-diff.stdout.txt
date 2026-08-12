@@ -1,0 +1,5 @@
+<{%fg 3%}>~ urn:pulumi:test::test::pkgA:index:t4::n2: (update)
+<{%reset%}>    [id=3]
+<{%reset%}><{%fg 2%}>  + x: <{%reset%}><{%fg 2%}>42<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 1 to update<{%reset%}>

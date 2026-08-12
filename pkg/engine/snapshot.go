@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,11 +18,23 @@ import (
 	"io"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // SnapshotManager manages an in-memory resource graph.
 type SnapshotManager interface {
 	io.Closer
+
+	// Write updates the global snapshot with the provided base snapshot. This is used
+	// for example after migrating providers.
+	Write(base *deploy.Snapshot) error
+
+	// RebuiltBaseState is called to inform the SnapshotManager that the engine has rebuilt
+	// the base state after a refresh
+	RebuiltBaseState() error
+
+	// SetSnippets replaces the PCL snippets that should be persisted with the next snapshot.
+	SetSnippets(snippets []resource.Snippet) error
 
 	// BeginMutation signals to the SnapshotManager that the planner intends to mutate the global
 	// snapshot. It provides the step that it intends to execute. Based on that step, BeginMutation

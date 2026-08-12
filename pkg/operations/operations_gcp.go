@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,12 +22,13 @@ import (
 	"strings"
 	"time"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	gcplogging "cloud.google.com/go/logging/apiv2"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	loggingpb "google.golang.org/genproto/googleapis/logging/v2"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -39,10 +40,10 @@ import (
 // GCPOperationsProvider creates an OperationsProvider capable of answering operational queries based on the
 // underlying resources of the `@pulumi/gcp` implementation.
 func GCPOperationsProvider(
+	ctx context.Context,
 	config map[config.Key]string,
 	component *Resource,
 ) (Provider, error) {
-	ctx := context.TODO()
 	client, err := gcplogging.NewClient(ctx, option.WithScopes("https://www.googleapis.com/auth/logging.read"))
 	if err != nil {
 		return nil, err
@@ -69,7 +70,7 @@ const (
 	gcpFunctionType = tokens.Type("gcp:cloudfunctions/function:Function")
 )
 
-func (ops *gcpOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
+func (ops *gcpOpsProvider) GetLogs(ctx context.Context, query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
 	logging.V(6).Infof("GetLogs[%v]", state.URN)
 	//exhaustive:ignore
@@ -83,7 +84,7 @@ func (ops *gcpOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	}
 }
 
-func (ops *gcpOpsProvider) getFunctionLogs(state *resource.State, query LogQuery) (*[]LogEntry, error) {
+func (ops *gcpOpsProvider) getFunctionLogs(state *pkgresource.State, query LogQuery) (*[]LogEntry, error) {
 	name := state.Outputs["name"].StringValue()
 	project := state.Outputs["project"].StringValue()
 	region := state.Outputs["region"].StringValue()
@@ -151,6 +152,6 @@ func getLogEntryMessage(e *loggingpb.LogEntry) (string, error) {
 		}
 		return string(byts), nil
 	default:
-		return "", fmt.Errorf("can't decode entry of type %s", reflect.TypeOf(e))
+		return "", fmt.Errorf("can't decode entry of type %s", reflect.TypeFor[*loggingpb.LogEntry]())
 	}
 }

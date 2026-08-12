@@ -1,0 +1,5 @@
+name: l3-component-nested
+runtime:
+  name: nodejs
+  options:
+    typescript: false

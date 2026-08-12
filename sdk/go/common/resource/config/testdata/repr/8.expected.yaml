@@ -8,7 +8,7 @@ paths:
     - c
     string: '["a","b","c"]'
     redacted: '["a","b","c"]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAKf+EJgADBnN0cmluZwwDAAFhBnN0cmluZwwDAAFiBnN0cmluZwwDAAFj
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAKf+CJgADBnN0cmluZwwDAAFhBnN0cmluZwwDAAFiBnN0cmluZwwDAAFj
     secure: false
     isObject: true
   my:arrayKey[0]:

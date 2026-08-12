@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -euox pipefail
 
 ROOT=$(git rev-parse --show-toplevel)
 
@@ -8,11 +8,37 @@ ROOT=$(git rev-parse --show-toplevel)
 # This script is a helper to do that. It takes a single argument which is the name of the test to run and goes and runs
 # that test for each language.
 
-cd "$ROOT/sdk/go/pulumi-language-go" && go test ./... -v -count=1 -run TestLanguage/$1
+# We nearly always want the full output when developing tests.
+export PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true
 
-cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test ./... -v -count=1 -run TestLanguage/forceTsc=false/$1
-cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test ./... -v -count=1 -run TestLanguage/forceTsc=true/$1
+# Run *all* language tests
+if [ -z "${1+x}" ]; then
+    cd "$ROOT/sdk/pcl/cmd/pulumi-language-pcl" && go test . -v -count=1 -run "TestLanguage"
 
-cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test ./... -v -count=1 -run TestLanguage/default/$1
-cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test ./... -v -count=1 -run TestLanguage/toml/$1
-cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test ./... -v -count=1 -run TestLanguage/classes/$1
+    cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguage"
+
+    cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test . -v -count=1 -run "TestLanguageTSC"
+    cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test . -v -count=1 -run "TestLanguageTSNode"
+    cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test . -v -count=1 -run "TestLanguageBun"
+
+    cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test . -v -count=1 -run "TestLanguageDefault"
+    cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test . -v -count=1 -run "TestLanguageTOML"
+    cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test . -v -count=1 -run "TestLanguageClasses"
+
+    exit 0
+fi
+
+
+cd "$ROOT/sdk/pcl/cmd/pulumi-language-pcl" && go test . -v -count=1 -run "TestLanguage/$1"
+
+cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguagePublished/$1"
+cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguageLocal/$1"
+cd "$ROOT/sdk/go/pulumi-language-go" && go test . -v -count=1 -run "TestLanguageExtraTypes/$1"
+
+cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test . -v -count=1 -run "TestLanguageTSC/.*/$1"
+cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test . -v -count=1 -run "TestLanguageTSNode/.*/$1"
+cd "$ROOT/sdk/nodejs/cmd/pulumi-language-nodejs" && go test . -v -count=1 -run "TestLanguageBun/.*/$1"
+
+cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test . -v -count=1 -run "TestLanguageDefault/.*/$1"
+cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test . -v -count=1 -run "TestLanguageTOML/.*/$1"
+cd "$ROOT/sdk/python/cmd/pulumi-language-python" && go test . -v -count=1 -run "TestLanguageClasses/.*/$1"

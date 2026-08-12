@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,12 +23,11 @@ import (
 func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Import,
 	dryRun bool,
 ) (*deploy.Plan, display.ResourceChanges, error) {
-	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
-	info, err := newDeploymentContext(u, "import", ctx.ParentSpan)
+	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "import", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -49,5 +48,6 @@ func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Imp
 		isImport:      true,
 		imports:       imports,
 		DryRun:        dryRun,
+		pluginManager: ctx.PluginManager,
 	})
 }

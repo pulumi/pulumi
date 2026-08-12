@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -28,16 +30,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// BackendInstance is used to inject a backend mock from tests.
-var BackendInstance backend.Backend
-
 func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
-	if BackendInstance != nil {
-		return false, nil
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false, fmt.Errorf("getting current working directory: %w", err)
 	}
 
 	// Try to read the current project
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject(cwd)
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return false, err
 	}
@@ -53,14 +53,11 @@ func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
 func NonInteractiveCurrentBackend(
 	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
 ) (backend.Backend, error) {
-	if BackendInstance != nil {
-		return BackendInstance, nil
-	}
-
-	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
+	slog.InfoContext(ctx, "Current cloud URL", "url", url)
 
 	// Only set current if we don't currently have a cloud URL set.
 	return lm.Current(ctx, ws, cmdutil.Diag(), url, project, url == "")
@@ -70,15 +67,13 @@ func CurrentBackend(
 	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
 	opts display.Options,
 ) (backend.Backend, error) {
-	if BackendInstance != nil {
-		return BackendInstance, nil
-	}
-
-	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
 	}
+	slog.InfoContext(ctx, "Current cloud URL", "url", url)
+	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 
 	// Only set current if we don't currently have a cloud URL set.
-	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", opts.Color)
+	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", insecure, opts.Color)
 }

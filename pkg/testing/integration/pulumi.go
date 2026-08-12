@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // CreateBasicPulumiRepo will initialize the environment with a basic Pulumi repository and
@@ -33,7 +34,7 @@ func CreateBasicPulumiRepo(e *testing.Environment) {
 	filePath := workspace.ProjectFile + ".yaml"
 	filePath = path.Join(e.CWD, filePath)
 	err := os.WriteFile(filePath, []byte(contents), 0o600)
-	assert.NoError(e, err, "writing %s file", filePath)
+	require.NoError(e, err, "writing %s file", filePath)
 }
 
 // CreatePulumiRepo will initialize the environment with a basic Pulumi repository and
@@ -43,7 +44,7 @@ func CreatePulumiRepo(e *testing.Environment, projectFileContent string) {
 	e.RunCommand("git", "init")
 	filePath := path.Join(e.CWD, workspace.ProjectFile+".yaml")
 	err := os.WriteFile(filePath, []byte(projectFileContent), 0o600)
-	assert.NoError(e, err, "writing %s file", filePath)
+	require.NoError(e, err, "writing %s file", filePath)
 }
 
 // GetStacks returns the list of stacks and current stack by scraping `pulumi stack ls`.
@@ -68,9 +69,9 @@ func GetStacks(e *testing.Environment) ([]string, *string) {
 		if summary == "" {
 			break
 		}
-		firstSpace := strings.Index(summary, " ")
-		if firstSpace != -1 {
-			stackName := strings.TrimSpace(summary[:firstSpace])
+		before, _, ok := strings.Cut(summary, " ")
+		if ok {
+			stackName := strings.TrimSpace(before)
 			if strings.HasSuffix(stackName, "*") {
 				currentStack = &stackName
 				stackName = strings.TrimSuffix(stackName, "*")

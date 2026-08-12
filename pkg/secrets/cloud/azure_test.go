@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,12 @@ package cloud
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys"
+	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/stretchr/testify/assert"
@@ -28,10 +30,17 @@ import (
 )
 
 func getAzureCaller(ctx context.Context, t *testing.T) *azidentity.DefaultAzureCredential {
+	if testing.Short() {
+		t.Skip("skipping Azure integration test in short mode")
+	}
+
 	credentials, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		t.Logf("Skipping, could not load azure config: %s", err)
-		t.SkipNow()
+		t.Skipf("Skipping, could not load azure config: %s", err)
+	}
+	_, err = credentials.GetToken(ctx, policy.TokenRequestOptions{})
+	if err != nil && strings.Contains(err.Error(), "failed to acquire a token") {
+		t.Skipf("Skipping, could not acquire Azure token: %s", err)
 	}
 	return credentials
 }
@@ -42,7 +51,7 @@ func createAzureKey(ctx context.Context, t *testing.T, credentials *azidentity.D
 	require.NoError(t, err)
 	keyName := "test-key-" + randomName(t)
 	keySize := int32(2048)
-	kty := azkeys.JSONWebKeyTypeRSA
+	kty := azkeys.KeyTypeRSA
 	params := azkeys.CreateKeyParameters{
 		KeySize: &keySize,
 		Kty:     &kty,
@@ -51,14 +60,14 @@ func createAzureKey(ctx context.Context, t *testing.T, credentials *azidentity.D
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, err := keysClient.DeleteKey(ctx, keyName, nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 	return url + "/keys/" + key.Key.KID.Name()
 }
 
 //nolint:paralleltest // mutates environment variables
 func TestAzureCloudManager(t *testing.T) {
-	ctx := context.Background()
+	ctx := context.Background() //nolint:usetesting // ctx is used in t.Cleanup, which runs after t.Context is canceled
 	cfg := getAzureCaller(ctx, t)
 	keyName := createAzureKey(ctx, t, cfg)
 	url := "azurekeyvault://" + keyName
@@ -73,7 +82,11 @@ func TestAzureCloudManager(t *testing.T) {
 //
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultExistingKey(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
+
+	// Use this to skip the test if we can't get Azure credentials.
+	_ = getAzureCaller(ctx, t)
+
 	keyName := "pulumi-testing.vault.azure.net/keys/test-key"
 	url := "azurekeyvault://" + keyName
 
@@ -98,7 +111,10 @@ func TestAzureKeyVaultExistingKey(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultExistingState(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
+
+	// Use this to skip the test if we can't get Azure credentials.
+	_ = getAzureCaller(ctx, t)
 
 	//nolint:lll // this includes a base64 encoded key
 	cloudState := `{
@@ -124,6 +140,10 @@ func TestAzureKeyVaultExistingState(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyEditProjectStack(t *testing.T) {
+	ctx := t.Context()
+	// Use this to skip the test if we can't get Azure credentials.
+	_ = getAzureCaller(ctx, t)
+
 	keyName := "pulumi-testing.vault.azure.net/keys/test-key"
 	url := "azurekeyvault://" + keyName
 
@@ -146,7 +166,10 @@ func TestAzureKeyEditProjectStack(t *testing.T) {
 //
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultExistingKeyState(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
+	// Use this to skip the test if we can't get Azure credentials.
+	_ = getAzureCaller(ctx, t)
+
 	keyName := "pulumi-testing.vault.azure.net/keys/test-key"
 	url := "azurekeyvault://" + keyName
 
@@ -176,7 +199,11 @@ func TestAzureKeyVaultExistingKeyState(t *testing.T) {
 //
 //nolint:paralleltest // mutates environment variables
 func TestAzureKeyVaultAutoFix15329(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
+
+	// Use this to skip the test if we can't get Azure credentials.
+	_ = getAzureCaller(ctx, t)
+
 	// https://github.com/pulumi/pulumi/issues/15329 result in keys like the following being written to state. We can auto-detect these because they aren't valid base64.
 	//nolint:lll // this includes a base64 encoded key
 	encryptedKey := "nLdkXrvtOYvgaVHn8FrdALMtFjgV67KoGIb6kWwz5Weo/yxAVyK7Rl0rtNxoIDnOvkvRQdCDTSrq1q8w6XZU/cvZ5FQMTMN3l1I28r7YV4HIBzDxx0G964DrfUSlxh1GhpQogcLiYor9MCGEidd5BdAqxKMHZJXUGJLCoUuuA3kWBwkeAowstpkumfXzxgxocq2BIkrfPqkfSetmLQajhBNn9dAIgxhaIaM+ubjOAFHkvYlrujE8dY7b2wNVa2ua/3tYfyIBYyg8jFRdOjxXXpXs7cZcRD3oQxa3F1DxYPl/IxuQdyHWxvmYH9SXVKn/B1z7JcOraZDTAptDgc3B0Q=="

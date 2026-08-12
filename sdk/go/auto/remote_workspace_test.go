@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ const (
 func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, stackName string, repo GitRepo,
 	opts ...RemoteWorkspaceOption) (RemoteStack, error),
 ) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	const stack = "owner/project/stack"
 
@@ -153,7 +153,6 @@ func testRemoteStackGitSourceErrors(t *testing.T, fn func(ctx context.Context, s
 	}
 
 	for name, tc := range tests {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -196,7 +195,7 @@ func testRemoteStackGitSource(
 		t.Skipf("Skipping: PULUMI_TEST_DEPLOYMENTS_API is not set")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	pName := "go_remote_proj"
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
@@ -245,7 +244,7 @@ func testRemoteStackGitSource(
 		t.FailNow()
 	}
 
-	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	require.Len(t, res.Outputs, 3, "expected two plain outputs")
 	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
 	assert.False(t, res.Outputs["exp_static"].Secret)
 	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
@@ -336,7 +335,6 @@ func TestIsFullyQualifiedStackName(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

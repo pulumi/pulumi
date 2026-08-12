@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,10 +19,10 @@ import * as semver from "semver";
 import * as upath from "upath";
 
 import { CommandResult, PulumiCommand } from "./cmd";
+import * as CLI from "./interface";
 import { ConfigMap, ConfigValue } from "./config";
-import { minimumVersion } from "./minimumVersion";
 import { ProjectSettings } from "./projectSettings";
-import { RemoteGitProgramArgs } from "./remoteWorkspace";
+import { ExecutorImage, RemoteGitProgramArgs } from "./remoteWorkspace";
 import { OutputMap, Stack } from "./stack";
 import { StackSettings, stackSettingsSerDeKeys } from "./stackSettings";
 import { TagMap } from "./tag";
@@ -68,6 +68,7 @@ export class LocalWorkspace implements Workspace {
     readonly secretsProvider?: string;
 
     private _pulumiCommand?: PulumiCommand;
+    private _cliApi?: CLI.API;
 
     /**
      * The underlying Pulumi CLI.
@@ -78,6 +79,11 @@ export class LocalWorkspace implements Workspace {
         }
         return this._pulumiCommand;
     }
+
+    /**
+     * The image to use for the remote Pulumi operation.
+     */
+    remoteExecutorImage?: ExecutorImage;
 
     /**
      * The inline program {@link PulumiFn} to be used for preview/update
@@ -103,6 +109,18 @@ export class LocalWorkspace implements Workspace {
             throw new Error(`Failed to get Pulumi version`);
         }
         return this._pulumiVersion.toString();
+    }
+
+    /**
+     * The low-level Pulumi CLI API.
+     *
+     * @internal
+     */
+    get cliApi(): CLI.API {
+        if (this._cliApi === undefined) {
+            throw new Error("Failed to get Pulumi CLI API");
+        }
+        return this._cliApi;
     }
 
     private ready: Promise<any[]>;
@@ -333,6 +351,7 @@ export class LocalWorkspace implements Workspace {
                 workDir,
                 pulumiHome,
                 program,
+                remoteExecutorImage,
                 envVars,
                 secretsProvider,
                 remote,
@@ -350,6 +369,7 @@ export class LocalWorkspace implements Workspace {
                 dir = workDir;
             }
             this.pulumiHome = pulumiHome;
+            this.remoteExecutorImage = remoteExecutorImage;
             this.program = program;
             this.secretsProvider = secretsProvider;
             this.remote = remote;
@@ -375,6 +395,7 @@ export class LocalWorkspace implements Workspace {
         const readinessPromises: Promise<any>[] = [
             pulumiCommand.then((p) => {
                 this._pulumiCommand = p;
+                this._cliApi = new CLI.API(p);
                 if (p.version) {
                     this._pulumiVersion = p.version;
                 }
@@ -427,7 +448,7 @@ export class LocalWorkspace implements Workspace {
         if (foundExt === ".json") {
             contents = JSON.stringify(settings, null, 4);
         } else {
-            contents = yaml.safeDump(settings, { skipInvalid: true });
+            contents = yaml.dump(settings, { skipInvalid: true });
         }
         return fs.writeFileSync(path, contents);
     }
@@ -453,7 +474,7 @@ export class LocalWorkspace implements Workspace {
             if (isJSON) {
                 stackSettings = JSON.parse(contents);
             }
-            stackSettings = yaml.safeLoad(contents) as StackSettings;
+            stackSettings = yaml.load(contents) as StackSettings;
 
             // Transform the serialized representation back to what we expect.
             for (const key of stackSettingsSerDeKeys) {
@@ -502,7 +523,7 @@ export class LocalWorkspace implements Workspace {
         if (foundExt === ".json") {
             contents = JSON.stringify(serializeSettings, null, 4);
         } else {
-            contents = yaml.safeDump(serializeSettings, { skipInvalid: true });
+            contents = yaml.dump(serializeSettings, { skipInvalid: true });
         }
         return fs.writeFileSync(path, contents);
     }
@@ -714,6 +735,22 @@ export class LocalWorkspace implements Workspace {
             args.push(secretArg, `${key}=${value.value}`);
         }
 
+        await this.runPulumiCmd(args);
+    }
+
+    /**
+     * Sets all config values from a JSON string for the specified stack name.
+     * The JSON string should be in the format produced by "pulumi config --json".
+     * Will write the config to the matching `Pulumi.<stack>.yaml` file in
+     * `Workspace.workDir`.
+     *
+     * @param stackName
+     *  The stack to operate on
+     * @param configJson
+     *  A JSON string containing the configuration values to set
+     */
+    async setAllConfigJson(stackName: string, configJson: string): Promise<void> {
+        const args = ["config", "set-all", "--stack", stackName, "--json", configJson];
         await this.runPulumiCmd(args);
     }
 
@@ -1154,6 +1191,15 @@ export class LocalWorkspace implements Workspace {
             args.push("--remote-skip-install-dependencies");
         }
 
+        if (this.remoteExecutorImage) {
+            args.push("--remote-executor-image=" + this.remoteExecutorImage.image);
+
+            if (this.remoteExecutorImage.credentials) {
+                args.push("--remote-executor-image-username=" + this.remoteExecutorImage.credentials.username);
+                args.push("--remote-executor-image-password=" + this.remoteExecutorImage.credentials.password);
+            }
+        }
+
         if (this.remoteInheritSettings) {
             args.push("--remote-inherit-settings");
         }
@@ -1224,6 +1270,11 @@ export interface LocalWorkspaceOptions {
      * {@link ProjectSettings} for this information.
      */
     program?: PulumiFn;
+
+    /**
+     * The image to use for the remote Pulumi operation.
+     */
+    remoteExecutorImage?: ExecutorImage;
 
     /**
      * Environment values scoped to the current workspace. These will be supplied to every Pulumi command.
@@ -1337,7 +1388,7 @@ function loadProjectSettings(workDir: string) {
         if (isJSON) {
             return JSON.parse(contents);
         }
-        return yaml.safeLoad(contents) as ProjectSettings;
+        return yaml.load(contents) as ProjectSettings;
     }
     throw new Error(`failed to find project settings file in workdir: ${workDir}`);
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,13 @@
 package pcl
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	syntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -42,14 +44,12 @@ func componentVariableType(program *Program) model.Type {
 				properties[node.LogicalName()] = nodeType
 			default:
 				// otherwise, wrap it as an output
-				properties[node.LogicalName()] = &model.OutputType{
-					ElementType: nodeType,
-				}
+				properties[node.LogicalName()] = model.NewOutputType(nodeType)
 			}
 		}
 	}
 
-	return &model.ObjectType{Properties: properties}
+	return model.NewObjectType(properties)
 }
 
 type componentScopes struct {
@@ -102,16 +102,12 @@ type componentInput struct {
 
 func componentInputs(program *Program) map[string]componentInput {
 	inputs := map[string]componentInput{}
-	for _, node := range program.Nodes {
-		switch node := node.(type) {
-		case *ConfigVariable:
-			inputs[node.LogicalName()] = componentInput{
-				required: node.DefaultValue == nil && !node.Nullable,
-				key:      node.LogicalName(),
-			}
+	for _, node := range program.ConfigVariables() {
+		inputs[node.LogicalName()] = componentInput{
+			required: node.DefaultValue == nil && !node.Nullable,
+			key:      node.LogicalName(),
 		}
 	}
-
 	return inputs
 }
 
@@ -166,7 +162,7 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 				}
 
 				err = parser.ParseFile(file, fileName)
-				contract.IgnoreError(file.Close())
+				contract.IgnoreClose(file)
 				if err != nil {
 					diagnostics = diagnostics.Append(errorf(nodeRange, "%s", err.Error()))
 					return nil, diagnostics, err
@@ -180,7 +176,6 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 		}
 
 		opts := []BindOption{
-			Loader(loader),
 			DirPath(componentSourceDir),
 			ComponentBinder(ComponentProgramBinderFromFileSystem()),
 			Cache(args.PackageCache),
@@ -205,7 +200,7 @@ func ComponentProgramBinderFromFileSystem() ComponentProgramBinder {
 			opts = append(opts, SkipRangeTypechecking)
 		}
 
-		componentProgram, programDiags, err := BindProgram(parser.Files, opts...)
+		componentProgram, programDiags, err := BindProgram(parser.Files, loader, opts...)
 
 		includeSourceDirectoryInDiagnostics(programDiags, componentSourceDir)
 
@@ -268,11 +263,19 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 				default:
 					// for any other generic type iterations
 					// we compute the range key and range value types
-					// and the variable type T of the component becomes List<T>
 					strict := !b.options.skipRangeTypecheck
 					rangeKeyType, rangeValueType, _ = model.GetCollectionTypes(typ, rng.Range(), strict)
-					transformComponentType = func(variableType model.Type) model.Type {
-						return model.NewListType(variableType)
+					if rangeKeyType == model.StringType {
+						// When iterating over a map or object, the variable type
+						// becomes Map<T> indexed by string key.
+						transformComponentType = func(variableType model.Type) model.Type {
+							return model.NewMapType(variableType)
+						}
+					} else {
+						// Otherwise the variable type T of the component becomes List<T>
+						transformComponentType = func(variableType model.Type) model.Type {
+							return model.NewListType(variableType)
+						}
 					}
 				}
 			}
@@ -344,6 +347,13 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 	}
 
 	node.Program = componentProgram
+
+	inputProperties := map[string]model.Type{}
+	for _, cv := range componentProgram.ConfigVariables() {
+		inputProperties[cv.LogicalName()] = model.InputType(cv.Type())
+	}
+	node.InputType = model.NewObjectType(inputProperties)
+
 	programVariableType := componentVariableType(componentProgram)
 	node.VariableType = transformComponentType(programVariableType)
 	node.dirPath = componentDirPath
@@ -385,6 +395,36 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 				}
 			default:
 				diagnostics = append(diagnostics, unsupportedBlock(item.Type, item.Syntax.TypeRange))
+			}
+		}
+	}
+
+	if objectType, ok := node.InputType.(*model.ObjectType); ok {
+		diag := func(d *hcl.Diagnostic) {
+			if b.options.skipResourceTypecheck && d.Severity == hcl.DiagError {
+				d.Severity = hcl.DiagWarning
+			}
+			diagnostics = append(diagnostics, d)
+		}
+		attrNames := codegen.StringSet{}
+		for _, attr := range node.Inputs {
+			attrNames.Add(attr.Name)
+
+			if typ, ok := objectType.Properties[attr.Name]; ok {
+				conversion := typ.ConversionFrom(attr.Value.Type())
+				if !conversion.Exists() {
+					attributeRange := attr.Value.SyntaxNode().Range()
+					diag(&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Subject:  &attributeRange,
+						Detail: fmt.Sprintf("Cannot assign value %s to attribute of type %q for component %q",
+							attr.Value.Type().Pretty().String(),
+							typ.Pretty(),
+							node.name),
+					})
+				}
+			} else {
+				diag(unsupportedAttribute(attr.Name, attr.Syntax.NameRange))
 			}
 		}
 	}

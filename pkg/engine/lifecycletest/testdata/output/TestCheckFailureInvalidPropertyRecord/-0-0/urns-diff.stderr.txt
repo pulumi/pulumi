@@ -1,0 +1,1 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>pkgA:m:typA resource 'resA': property someprop value {<nil>} has a problem: field is not valid<{%reset%}>

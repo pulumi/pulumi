@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ type BoolEnumInput interface {
 type BoolEnumOutput struct{ *OutputState }
 
 func (BoolEnumOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*BoolEnum)(nil)).Elem()
+	return reflect.TypeFor[BoolEnum]()
 }
 
 func (o BoolEnumOutput) ToBoolEnumOutput() BoolEnumOutput {
@@ -55,7 +55,7 @@ func (o BoolEnumOutput) ToBoolEnumOutputWithContext(ctx context.Context) BoolEnu
 type BoolEnum bool
 
 func (BoolEnum) ElementType() reflect.Type {
-	return reflect.TypeOf((*BoolEnum)(nil)).Elem()
+	return reflect.TypeFor[BoolEnum]()
 }
 
 func (e BoolEnum) ToBoolEnumOutput() BoolEnumOutput {
@@ -80,7 +80,7 @@ type IntEnumInput interface {
 type IntEnumOutput struct{ *OutputState }
 
 func (IntEnumOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*IntEnum)(nil)).Elem()
+	return reflect.TypeFor[IntEnum]()
 }
 
 func (o IntEnumOutput) ToIntEnumOutput() IntEnumOutput {
@@ -94,7 +94,7 @@ func (o IntEnumOutput) ToIntEnumOutputWithContext(ctx context.Context) IntEnumOu
 type IntEnum int
 
 func (IntEnum) ElementType() reflect.Type {
-	return reflect.TypeOf((*IntEnum)(nil)).Elem()
+	return reflect.TypeFor[IntEnum]()
 }
 
 func (e IntEnum) ToIntEnumOutput() IntEnumOutput {
@@ -119,7 +119,7 @@ type FloatEnumInput interface {
 type FloatEnumOutput struct{ *OutputState }
 
 func (FloatEnumOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*FloatEnum)(nil)).Elem()
+	return reflect.TypeFor[FloatEnum]()
 }
 
 func (o FloatEnumOutput) ToFloatEnumOutput() FloatEnumOutput {
@@ -133,7 +133,7 @@ func (o FloatEnumOutput) ToFloatEnumOutputWithContext(ctx context.Context) Float
 type FloatEnum float64
 
 func (FloatEnum) ElementType() reflect.Type {
-	return reflect.TypeOf((*FloatEnum)(nil)).Elem()
+	return reflect.TypeFor[FloatEnum]()
 }
 
 func (e FloatEnum) ToFloatEnumOutput() FloatEnumOutput {
@@ -158,7 +158,7 @@ type StringEnumInput interface {
 type StringEnumOutput struct{ *OutputState }
 
 func (StringEnumOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*StringEnum)(nil)).Elem()
+	return reflect.TypeFor[StringEnum]()
 }
 
 func (o StringEnumOutput) ToStringEnumOutput() StringEnumOutput {
@@ -172,7 +172,7 @@ func (o StringEnumOutput) ToStringEnumOutputWithContext(ctx context.Context) Str
 type StringEnum string
 
 func (StringEnum) ElementType() reflect.Type {
-	return reflect.TypeOf((*StringEnum)(nil)).Elem()
+	return reflect.TypeFor[StringEnum]()
 }
 
 func (e StringEnum) ToStringEnumOutput() StringEnumOutput {
@@ -237,7 +237,7 @@ type NestedOutput struct {
 }
 
 func (NestedOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Nested)(nil)).Elem()
+	return reflect.TypeFor[Nested]()
 }
 
 type NestedPtrOutput struct {
@@ -245,7 +245,7 @@ type NestedPtrOutput struct {
 }
 
 func (NestedPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Nested)(nil)).Elem()
+	return reflect.TypeFor[*Nested]()
 }
 
 type NestedArrayOutput struct {
@@ -253,7 +253,7 @@ type NestedArrayOutput struct {
 }
 
 func (NestedArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Nested)(nil)).Elem()
+	return reflect.TypeFor[[]Nested]()
 }
 
 type NestedMapOutput struct {
@@ -261,7 +261,7 @@ type NestedMapOutput struct {
 }
 
 func (NestedMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Nested)(nil)).Elem()
+	return reflect.TypeFor[map[string]Nested]()
 }
 
 type StringArgs struct {
@@ -342,7 +342,7 @@ type NestedInputtyInputArgs struct {
 }
 
 func (NestedInputtyInputArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*NestedInputty)(nil)).Elem()
+	return reflect.TypeFor[NestedInputty]()
 }
 
 type PlainOptionalNestedInputtyInputArgs struct {
@@ -374,7 +374,7 @@ type LaunchTemplateOptionsArgs struct {
 }
 
 func (LaunchTemplateOptionsArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*LaunchTemplateOptions)(nil)).Elem()
+	return reflect.TypeFor[LaunchTemplateOptions]()
 }
 
 func (i LaunchTemplateOptionsArgs) ToLaunchTemplateOptionsOutput() LaunchTemplateOptionsOutput {
@@ -407,7 +407,7 @@ func LaunchTemplateOptionsPtr(v *LaunchTemplateOptionsArgs) LaunchTemplateOption
 }
 
 func (*launchTemplateOptionsPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**LaunchTemplateOptions)(nil)).Elem()
+	return reflect.TypeFor[*LaunchTemplateOptions]()
 }
 
 func (i *launchTemplateOptionsPtrType) ToLaunchTemplateOptionsPtrOutput() LaunchTemplateOptionsPtrOutput {
@@ -421,7 +421,7 @@ func (i *launchTemplateOptionsPtrType) ToLaunchTemplateOptionsPtrOutputWithConte
 type LaunchTemplateOptionsOutput struct{ *OutputState }
 
 func (LaunchTemplateOptionsOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*LaunchTemplateOptions)(nil)).Elem()
+	return reflect.TypeFor[LaunchTemplateOptions]()
 }
 
 func (o LaunchTemplateOptionsOutput) ToLaunchTemplateOptionsOutput() LaunchTemplateOptionsOutput {
@@ -445,7 +445,7 @@ func (o LaunchTemplateOptionsOutput) ToLaunchTemplateOptionsPtrOutputWithContext
 type LaunchTemplateOptionsPtrOutput struct{ *OutputState }
 
 func (LaunchTemplateOptionsPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**LaunchTemplateOptions)(nil)).Elem()
+	return reflect.TypeFor[*LaunchTemplateOptions]()
 }
 
 func (o LaunchTemplateOptionsPtrOutput) ToLaunchTemplateOptionsPtrOutput() LaunchTemplateOptionsPtrOutput {
@@ -482,7 +482,7 @@ type LaunchTemplateTagSpecificationArgs struct {
 }
 
 func (LaunchTemplateTagSpecificationArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*LaunchTemplateTagSpecification)(nil)).Elem()
+	return reflect.TypeFor[LaunchTemplateTagSpecification]()
 }
 
 func (i LaunchTemplateTagSpecificationArgs) ToLaunchTemplateTagSpecificationOutput() LaunchTemplateTagSpecificationOutput {
@@ -503,7 +503,7 @@ type LaunchTemplateTagSpecificationArrayInput interface {
 type LaunchTemplateTagSpecificationArray []LaunchTemplateTagSpecificationInput
 
 func (LaunchTemplateTagSpecificationArray) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]LaunchTemplateTagSpecification)(nil)).Elem()
+	return reflect.TypeFor[[]LaunchTemplateTagSpecification]()
 }
 
 func (i LaunchTemplateTagSpecificationArray) ToLaunchTemplateTagSpecificationArrayOutput() LaunchTemplateTagSpecificationArrayOutput {
@@ -517,7 +517,7 @@ func (i LaunchTemplateTagSpecificationArray) ToLaunchTemplateTagSpecificationArr
 type LaunchTemplateTagSpecificationOutput struct{ *OutputState }
 
 func (LaunchTemplateTagSpecificationOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*LaunchTemplateTagSpecification)(nil)).Elem()
+	return reflect.TypeFor[LaunchTemplateTagSpecification]()
 }
 
 func (o LaunchTemplateTagSpecificationOutput) ToLaunchTemplateTagSpecificationOutput() LaunchTemplateTagSpecificationOutput {
@@ -531,7 +531,7 @@ func (o LaunchTemplateTagSpecificationOutput) ToLaunchTemplateTagSpecificationOu
 type LaunchTemplateTagSpecificationArrayOutput struct{ *OutputState }
 
 func (LaunchTemplateTagSpecificationArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]LaunchTemplateTagSpecification)(nil)).Elem()
+	return reflect.TypeFor[[]LaunchTemplateTagSpecification]()
 }
 
 func (o LaunchTemplateTagSpecificationArrayOutput) ToLaunchTemplateTagSpecificationArrayOutput() LaunchTemplateTagSpecificationArrayOutput {
@@ -543,7 +543,7 @@ func (o LaunchTemplateTagSpecificationArrayOutput) ToLaunchTemplateTagSpecificat
 }
 
 func (o LaunchTemplateTagSpecificationArrayOutput) Index(i IntInput) LaunchTemplateTagSpecificationOutput {
-	return All(o, i).ApplyT(func(vs []interface{}) LaunchTemplateTagSpecification {
+	return All(o, i).ApplyT(func(vs []any) LaunchTemplateTagSpecification {
 		return vs[0].([]LaunchTemplateTagSpecification)[vs[1].(int)]
 	}).(LaunchTemplateTagSpecificationOutput)
 }
@@ -553,23 +553,23 @@ type LaunchTemplateArgs struct {
 }
 
 func init() {
-	RegisterInputType(reflect.TypeOf((*BoolEnumInput)(nil)).Elem(), BoolEnum(false))
-	RegisterInputType(reflect.TypeOf((*IntEnumInput)(nil)).Elem(), IntEnum(0))
-	RegisterInputType(reflect.TypeOf((*FloatEnumInput)(nil)).Elem(), FloatEnum(0))
-	RegisterInputType(reflect.TypeOf((*StringEnumInput)(nil)).Elem(), StringEnum(""))
+	RegisterInputType(reflect.TypeFor[BoolEnumInput](), BoolEnum(false))
+	RegisterInputType(reflect.TypeFor[IntEnumInput](), IntEnum(0))
+	RegisterInputType(reflect.TypeFor[FloatEnumInput](), FloatEnum(0))
+	RegisterInputType(reflect.TypeFor[StringEnumInput](), StringEnum(""))
 }
 
-func assertOutputEqual(t *testing.T, value interface{}, known bool, secret bool, deps map[URN]struct{}, output interface{}) {
+func assertOutputEqual(t *testing.T, value any, known bool, secret bool, deps map[URN]struct{}, output any) {
 	actualValue, actualKnown, actualSecret, actualDeps, err := await(output.(Output))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, value, actualValue)
 	assert.Equal(t, known, actualKnown)
 	assert.Equal(t, secret, actualSecret)
 
 	actualDepsSet := map[URN]struct{}{}
 	for _, res := range actualDeps {
-		urn, uknown, usecret, err := res.URN().awaitURN(context.Background())
-		assert.NoError(t, err)
+		urn, uknown, usecret, err := res.URN().awaitURN(t.Context())
+		require.NoError(t, err)
 		assert.True(t, uknown)
 		assert.False(t, usecret)
 		actualDepsSet[urn] = struct{}{}
@@ -588,16 +588,16 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		name          string
 		input         resource.PropertyValue
 		deps          map[URN]struct{}
-		args          interface{}
-		assert        func(t *testing.T, actual interface{})
+		args          any
+		assert        func(t *testing.T, actual any)
 		expectedError string
 	}{
 		// StringArgs
 		{
 			name:  "string no deps",
-			input: resource.NewStringProperty("hello"),
+			input: resource.NewProperty("hello"),
 			args:  &StringArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, "hello", actual)
 			},
 		},
@@ -605,37 +605,37 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			name:  "string null value no deps",
 			input: resource.NewNullProperty(),
 			args:  &StringArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, "", actual)
 			},
 		},
 		{
 			name:          "string secret no deps",
-			input:         resource.MakeSecret(resource.NewStringProperty("hello")),
+			input:         resource.MakeSecret(resource.NewProperty("hello")),
 			args:          &StringArgs{},
 			expectedError: "expected destination type to implement pulumi.Input or pulumi.Output, got string",
 		},
 		{
 			name:          "string computed no deps",
-			input:         resource.MakeComputed(resource.NewStringProperty("")),
+			input:         resource.MakeComputed(resource.NewProperty("")),
 			args:          &StringArgs{},
 			expectedError: "expected destination type to implement pulumi.Input or pulumi.Output, got string",
 		},
 		{
 			name: "string output value known no deps",
-			input: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewStringProperty("hello"),
+			input: resource.NewProperty(resource.Output{
+				Element: resource.NewProperty("hello"),
 				Known:   true,
 			}),
 			args: &StringArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, "hello", actual)
 			},
 		},
 		{
 			name: "string output value known secret no deps",
-			input: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewStringProperty("hello"),
+			input: resource.NewProperty(resource.Output{
+				Element: resource.NewProperty("hello"),
 				Known:   true,
 				Secret:  true,
 			}),
@@ -644,7 +644,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name:  "string deps",
-			input: resource.NewStringProperty("hello"),
+			input: resource.NewProperty("hello"),
 			deps:  map[URN]struct{}{"fakeURN": {}},
 			args:  &StringArgs{},
 			expectedError: "pulumi.StringArgs.Value is typed as string but must be a type that implements " +
@@ -654,15 +654,15 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// StringPtrArgs
 		{
 			name:  "string pointer no deps",
-			input: resource.NewStringProperty("hello"),
+			input: resource.NewProperty("hello"),
 			args:  &StringPtrArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, stringPtr("hello"), actual)
 			},
 		},
 		{
 			name:          "string pointer secret no deps",
-			input:         resource.MakeSecret(resource.NewStringProperty("hello")),
+			input:         resource.MakeSecret(resource.NewProperty("hello")),
 			args:          &StringPtrArgs{},
 			expectedError: "expected destination type to implement pulumi.Input or pulumi.Output, got string",
 		},
@@ -670,7 +670,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			name:  "string pointer null value no deps",
 			input: resource.NewNullProperty(),
 			args:  &StringPtrArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Nil(t, actual)
 			},
 		},
@@ -678,56 +678,56 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// StringInputArgs
 		{
 			name:  "StringInput no deps",
-			input: resource.NewStringProperty("hello"),
+			input: resource.NewProperty("hello"),
 			args:  &StringInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, String("hello"), actual)
 			},
 		},
 		{
 			name:  "StringInput known secret no deps",
-			input: resource.MakeSecret(resource.NewStringProperty("hello")),
+			input: resource.MakeSecret(resource.NewProperty("hello")),
 			args:  &StringInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, "hello", true, true, map[URN]struct{}{}, actual)
 			},
 		},
 		{
 			name: "StringInput output value known secret no deps",
-			input: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewStringProperty("hello"),
+			input: resource.NewProperty(resource.Output{
+				Element: resource.NewProperty("hello"),
 				Known:   true,
 				Secret:  true,
 			}),
 			args: &StringInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, "hello", true, true, map[URN]struct{}{}, actual)
 			},
 		},
 		{
 			name:  "StringInput output value unknown no deps",
-			input: resource.NewOutputProperty(resource.Output{}),
+			input: resource.NewProperty(resource.Output{}),
 			args:  &StringInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, nil, false, false, map[URN]struct{}{}, actual)
 			},
 		},
 		{
 			name: "StringInput output value unknown secret no deps",
-			input: resource.NewOutputProperty(resource.Output{
+			input: resource.NewProperty(resource.Output{
 				Secret: true,
 			}),
 			args: &StringInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, nil, false, true, map[URN]struct{}{}, actual)
 			},
 		},
 		{
 			name:  "StringInput with deps",
-			input: resource.NewStringProperty("hello"),
+			input: resource.NewProperty("hello"),
 			deps:  map[URN]struct{}{"fakeURN": {}},
 			args:  &StringInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, "hello", true, false, map[URN]struct{}{"fakeURN": {}}, actual)
 			},
 		},
@@ -735,9 +735,9 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// StringPtrInputArgs
 		{
 			name:  "StringPtrInput no deps",
-			input: resource.NewStringProperty("hello"),
+			input: resource.NewProperty("hello"),
 			args:  &StringPtrInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, String("hello"), actual)
 			},
 		},
@@ -745,7 +745,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			name:  "StringPtrInput null value no deps",
 			input: resource.NewNullProperty(),
 			args:  &StringPtrInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Nil(t, actual)
 			},
 		},
@@ -753,47 +753,47 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// BoolInputArgs
 		{
 			name:  "BoolInput no deps",
-			input: resource.NewBoolProperty(true),
+			input: resource.NewProperty(true),
 			args:  &BoolInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, Bool(true), actual)
 			},
 		},
 		{
 			name:  "BoolInput known secret no deps",
-			input: resource.MakeSecret(resource.NewBoolProperty(true)),
+			input: resource.MakeSecret(resource.NewProperty(true)),
 			args:  &BoolInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, true, true, true, map[URN]struct{}{}, actual)
 			},
 		},
 		{
 			name: "BoolInput output value known secret no deps",
-			input: resource.NewOutputProperty(resource.Output{
-				Element: resource.NewBoolProperty(true),
+			input: resource.NewProperty(resource.Output{
+				Element: resource.NewProperty(true),
 				Known:   true,
 				Secret:  true,
 			}),
 			args: &BoolInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, true, true, true, map[URN]struct{}{}, actual)
 			},
 		},
 		{
 			name:  "BoolInput output value unknown no deps",
-			input: resource.NewOutputProperty(resource.Output{}),
+			input: resource.NewProperty(resource.Output{}),
 			args:  &BoolInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, nil, false, false, map[URN]struct{}{}, actual)
 			},
 		},
 		{
 			name: "BoolInput output value unknown secret no deps",
-			input: resource.NewOutputProperty(resource.Output{
+			input: resource.NewProperty(resource.Output{
 				Secret: true,
 			}),
 			args: &BoolInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, nil, false, true, map[URN]struct{}{}, actual)
 			},
 		},
@@ -801,9 +801,9 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// BoolPtrInputArgs
 		{
 			name:  "BoolPtrInput no deps",
-			input: resource.NewBoolProperty(true),
+			input: resource.NewProperty(true),
 			args:  &BoolPtrInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, Bool(true), actual)
 			},
 		},
@@ -811,7 +811,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			name:  "BoolPtrInput null value no deps",
 			input: resource.NewNullProperty(),
 			args:  &BoolPtrInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Nil(t, actual)
 			},
 		},
@@ -819,15 +819,15 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// IntArgs
 		{
 			name:  "int no deps",
-			input: resource.NewNumberProperty(42),
+			input: resource.NewProperty(42.0),
 			args:  &IntArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, 42, actual)
 			},
 		},
 		{
 			name:          "set field typed as int with string value",
-			input:         resource.NewStringProperty("foo"),
+			input:         resource.NewProperty("foo"),
 			args:          &IntArgs{},
 			expectedError: "unmarshaling value: expected an int, got a string",
 		},
@@ -835,36 +835,36 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// BoolEnumInputArgs
 		{
 			name:  "BoolEnumInput no deps",
-			input: resource.NewBoolProperty(true),
+			input: resource.NewProperty(true),
 			args:  &BoolEnumInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, BoolEnum(true), actual)
 			},
 		},
 		// IntEnumInputArgs
 		{
 			name:  "IntEnumInput no deps",
-			input: resource.NewNumberProperty(42),
+			input: resource.NewProperty(42.0),
 			args:  &IntEnumInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, IntEnum(42), actual)
 			},
 		},
 		// FloatEnumInputArgs
 		{
 			name:  "FloatEnumInput no deps",
-			input: resource.NewNumberProperty(42),
+			input: resource.NewProperty(42.0),
 			args:  &FloatEnumInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, FloatEnum(42), actual)
 			},
 		},
 		// StringEnumInputArgs
 		{
 			name:  "StringEnumInput no deps",
-			input: resource.NewStringProperty("hello"),
+			input: resource.NewProperty("hello"),
 			args:  &StringEnumInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, StringEnum("hello"), actual)
 			},
 		},
@@ -872,12 +872,12 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// StringArrayArgs
 		{
 			name: "StringArrayArgs no deps",
-			input: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty("hello"),
-				resource.NewStringProperty("world"),
+			input: resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty("hello"),
+				resource.NewProperty("world"),
 			}),
 			args: &StringArrayArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, []string{"hello", "world"}, actual)
 			},
 		},
@@ -885,12 +885,12 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// StringArrayInputArgs
 		{
 			name: "StringArrayInputArgs no deps",
-			input: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty("hello"),
-				resource.NewStringProperty("world"),
+			input: resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty("hello"),
+				resource.NewProperty("world"),
 			}),
 			args: &StringArrayInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, StringArray{
 					String("hello"),
 					String("world"),
@@ -899,19 +899,19 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "StringArrayInputArgs no deps nested secret output",
-			input: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty("hello"),
-				resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("world"),
+			input: resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty("hello"),
+				resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("world"),
 					Known:   true,
 					Secret:  true,
 				}),
 			}),
 			args: &StringArrayInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(StringArray)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("hello"), v[0])
 				assertOutputEqual(t, "world", true, true, map[URN]struct{}{}, v[1])
 			},
@@ -920,12 +920,12 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// StringMapArgs
 		{
 			name: "StringMapArgs no deps",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+			input: resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 				"foo": "hello",
 				"bar": "world",
 			})),
 			args: &StringMapArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, map[string]string{
 					"foo": "hello",
 					"bar": "world",
@@ -936,12 +936,12 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// StringMapInputArgs
 		{
 			name: "StringMapInputArgs no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"foo": resource.NewStringProperty("hello"),
-				"bar": resource.NewStringProperty("world"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"foo": resource.NewProperty("hello"),
+				"bar": resource.NewProperty("world"),
 			}),
 			args: &StringMapInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, StringMap{
 					"foo": String("hello"),
 					"bar": String("world"),
@@ -950,29 +950,29 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "StringMapInputArgs no deps nested secret output",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"foo": resource.NewStringProperty("hello"),
-				"bar": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("world"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"foo": resource.NewProperty("hello"),
+				"bar": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("world"),
 					Known:   true,
 					Secret:  true,
 				}),
 			}),
 			args: &StringMapInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(StringMap)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("hello"), v["foo"])
 				assertOutputEqual(t, "world", true, true, map[URN]struct{}{}, v["bar"])
 			},
 		},
 		{
 			name: "StringMapInputArgs with deps nested secret output",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"foo": resource.NewStringProperty("hello"),
-				"bar": resource.NewOutputProperty(resource.Output{
-					Element:      resource.NewStringProperty("world"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"foo": resource.NewProperty("hello"),
+				"bar": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("world"),
 					Known:        true,
 					Secret:       true,
 					Dependencies: []resource.URN{"fakeURN"},
@@ -980,20 +980,20 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			deps: map[URN]struct{}{"fakeURN": {}},
 			args: &StringMapInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(StringMap)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("hello"), v["foo"])
 				assertOutputEqual(t, "world", true, true, map[URN]struct{}{"fakeURN": {}}, v["bar"])
 			},
 		},
 		{
 			name: "StringMapInputArgs with extra deps nested secret output",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"foo": resource.NewStringProperty("hello"),
-				"bar": resource.NewOutputProperty(resource.Output{
-					Element:      resource.NewStringProperty("world"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"foo": resource.NewProperty("hello"),
+				"bar": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("world"),
 					Known:        true,
 					Secret:       true,
 					Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
@@ -1001,10 +1001,10 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			deps: map[URN]struct{}{"fakeURN1": {}},
 			args: &StringMapInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(StringMap)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("hello"), v["foo"])
 				assertOutputEqual(t, "world", true, true, map[URN]struct{}{
 					"fakeURN1": {},
@@ -1016,18 +1016,18 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// NestedArgs
 		{
 			name: "NestedArgs no deps",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+			input: resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 				"foo": "hi",
 				"bar": 7,
 			})),
 			args: &NestedArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, Nested{Foo: "hi", Bar: 7}, actual)
 			},
 		},
 		{
 			name: "set field typed as string with number value",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+			input: resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 				"foo": 500,
 				"bar": 42,
 			})),
@@ -1036,7 +1036,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "destination must be typed as input or output for secret value",
-			input: resource.MakeSecret(resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+			input: resource.MakeSecret(resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 				"foo": "hello",
 				"bar": 42,
 			}))),
@@ -1045,7 +1045,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "destination must be typed as input or output for value with dependencies",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+			input: resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 				"foo": "hello",
 				"bar": 42,
 			})),
@@ -1058,12 +1058,12 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// NestedPtrArgs
 		{
 			name: "NestedPtrArgs no deps",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+			input: resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 				"foo": "pointer",
 				"bar": 2,
 			})),
 			args: &NestedPtrArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, &Nested{Foo: "pointer", Bar: 2}, actual)
 			},
 		},
@@ -1071,18 +1071,18 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// NestedArrayArgs
 		{
 			name: "NestedArrayArgs no deps",
-			input: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+			input: resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 					"foo": "1",
 					"bar": 1,
 				})),
-				resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+				resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 					"foo": "2",
 					"bar": 2,
 				})),
 			}),
 			args: &NestedArrayArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, []Nested{
 					{Foo: "1", Bar: 1},
 					{Foo: "2", Bar: 2},
@@ -1093,18 +1093,18 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// NestedMapArgs
 		{
 			name: "NestedMapArgs no deps",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"a": map[string]interface{}{
+			input: resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
+				"a": map[string]any{
 					"foo": "3",
 					"bar": 3,
 				},
-				"b": map[string]interface{}{
+				"b": map[string]any{
 					"foo": "4",
 					"bar": 4,
 				},
 			})),
 			args: &NestedMapArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, map[string]Nested{
 					"a": {Foo: "3", Bar: 3},
 					"b": {Foo: "4", Bar: 4},
@@ -1115,12 +1115,12 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// NestedOutputArgs
 		{
 			name: "NestedOutputArgs no deps",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+			input: resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 				"foo": "hello",
 				"bar": 42,
 			})),
 			args: &NestedOutputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, Nested{
 					Foo: "hello",
 					Bar: 42,
@@ -1131,12 +1131,12 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// NestedPtrOutputArgs
 		{
 			name: "NestedPtrOutputArgs no deps",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+			input: resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 				"foo": "world",
 				"bar": 100,
 			})),
 			args: &NestedPtrOutputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, &Nested{
 					Foo: "world",
 					Bar: 100,
@@ -1147,18 +1147,18 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// NestedArrayOutputArgs
 		{
 			name: "NestedArrayOutputArgs no deps",
-			input: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+			input: resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 					"foo": "a",
 					"bar": 1,
 				})),
-				resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+				resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 					"foo": "b",
 					"bar": 2,
 				})),
 			}),
 			args: &NestedArrayOutputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, []Nested{
 					{Foo: "a", Bar: 1},
 					{Foo: "b", Bar: 2},
@@ -1169,18 +1169,18 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// NestedMapOutputArgs
 		{
 			name: "NestedMapOutputArgs no deps",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"a": map[string]interface{}{
+			input: resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
+				"a": map[string]any{
 					"foo": "c",
 					"bar": 3,
 				},
-				"b": map[string]interface{}{
+				"b": map[string]any{
 					"foo": "d",
 					"bar": 4,
 				},
 			})),
 			args: &NestedMapOutputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, map[string]Nested{
 					"a": {Foo: "c", Bar: 3},
 					"b": {Foo: "d", Bar: 4},
@@ -1191,12 +1191,12 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// PlainArrayArgs
 		{
 			name: "PlainArrayArgs no deps",
-			input: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty("foo"),
-				resource.NewStringProperty("bar"),
+			input: resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty("foo"),
+				resource.NewProperty("bar"),
 			}),
 			args: &PlainArrayArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, []StringInput{
 					String("foo"),
 					String("bar"),
@@ -1205,45 +1205,45 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainArrayArgs secret no deps",
-			input: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty("foo"),
-				resource.MakeSecret(resource.NewStringProperty("bar")),
+			input: resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty("foo"),
+				resource.MakeSecret(resource.NewProperty("bar")),
 			}),
 			args: &PlainArrayArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.([]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("foo"), v[0])
 				assertOutputEqual(t, "bar", true, true, map[URN]struct{}{}, v[1])
 			},
 		},
 		{
 			name: "PlainArrayArgs computed no deps",
-			input: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty("foo"),
-				resource.MakeComputed(resource.NewStringProperty("")),
+			input: resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty("foo"),
+				resource.MakeComputed(resource.NewProperty("")),
 			}),
 			args: &PlainArrayArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.([]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("foo"), v[0])
 				assertOutputEqual(t, nil, false, false, map[URN]struct{}{}, v[1])
 			},
 		},
 		{
 			name: "PlainArrayArgs output value known no deps",
-			input: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty("foo"),
-				resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("bar"),
+			input: resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty("foo"),
+				resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("bar"),
 					Known:   true,
 				}),
 			}),
 			args: &PlainArrayArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, []StringInput{
 					String("foo"),
 					String("bar"),
@@ -1252,35 +1252,35 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainArrayArgs output value known secret no deps",
-			input: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty("foo"),
-				resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("bar"),
+			input: resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty("foo"),
+				resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("bar"),
 					Known:   true,
 					Secret:  true,
 				}),
 			}),
 			args: &PlainArrayArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.([]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("foo"), v[0])
 				assertOutputEqual(t, "bar", true, true, map[URN]struct{}{}, v[1])
 			},
 		},
 		{
 			name: "PlainArrayArgs with deps",
-			input: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty("foo"),
-				resource.NewStringProperty("bar"),
+			input: resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty("foo"),
+				resource.NewProperty("bar"),
 			}),
 			deps: map[URN]struct{}{"fakeURN": {}},
 			args: &PlainArrayArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.([]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assertOutputEqual(t, "foo", true, false, map[URN]struct{}{"fakeURN": {}}, v[0])
 				assertOutputEqual(t, "bar", true, false, map[URN]struct{}{"fakeURN": {}}, v[1])
 			},
@@ -1289,12 +1289,12 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// PlainMapArgs
 		{
 			name: "PlainMapArgs no deps",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+			input: resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 				"foo": "bar",
 				"baz": "qux",
 			})),
 			args: &PlainMapArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, map[string]StringInput{
 					"foo": String("bar"),
 					"baz": String("qux"),
@@ -1303,45 +1303,45 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainMapArgs secret no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
-				"baz": resource.MakeSecret(resource.NewStringProperty("qux")),
+			input: resource.NewProperty(resource.PropertyMap{
+				"foo": resource.NewProperty("bar"),
+				"baz": resource.MakeSecret(resource.NewProperty("qux")),
 			}),
 			args: &PlainMapArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(map[string]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("bar"), v["foo"])
 				assertOutputEqual(t, "qux", true, true, map[URN]struct{}{}, v["baz"])
 			},
 		},
 		{
 			name: "PlainMapArgs computed no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
-				"baz": resource.MakeComputed(resource.NewStringProperty("")),
+			input: resource.NewProperty(resource.PropertyMap{
+				"foo": resource.NewProperty("bar"),
+				"baz": resource.MakeComputed(resource.NewProperty("")),
 			}),
 			args: &PlainMapArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(map[string]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("bar"), v["foo"])
 				assertOutputEqual(t, nil, false, false, map[URN]struct{}{}, v["baz"])
 			},
 		},
 		{
 			name: "PlainMapArgs output value known no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
-				"baz": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("qux"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"foo": resource.NewProperty("bar"),
+				"baz": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("qux"),
 					Known:   true,
 				}),
 			}),
 			args: &PlainMapArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, map[string]StringInput{
 					"foo": String("bar"),
 					"baz": String("qux"),
@@ -1350,35 +1350,35 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainMapArgs output value known secret no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"foo": resource.NewStringProperty("bar"),
-				"baz": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("qux"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"foo": resource.NewProperty("bar"),
+				"baz": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("qux"),
 					Known:   true,
 					Secret:  true,
 				}),
 			}),
 			args: &PlainMapArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(map[string]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assert.Equal(t, String("bar"), v["foo"])
 				assertOutputEqual(t, "qux", true, true, map[URN]struct{}{}, v["baz"])
 			},
 		},
 		{
 			name: "PlainMapArgs with deps",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+			input: resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 				"foo": "bar",
 				"baz": "qux",
 			})),
 			deps: map[URN]struct{}{"fakeURN": {}},
 			args: &PlainMapArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(map[string]StringInput)
 				assert.True(t, ok)
-				assert.Len(t, v, 2)
+				require.Len(t, v, 2)
 				assertOutputEqual(t, "bar", true, false, map[URN]struct{}{"fakeURN": {}}, v["foo"])
 				assertOutputEqual(t, "qux", true, false, map[URN]struct{}{"fakeURN": {}}, v["baz"])
 			},
@@ -1387,19 +1387,19 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// PlainOptionalNestedInputtyInputArgs
 		{
 			name:  "PlainOptionalNestedInputtyInputArgs empty no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{}),
+			input: resource.NewProperty(resource.PropertyMap{}),
 			args:  &PlainOptionalNestedInputtyInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, &NestedInputtyInputArgs{}, actual)
 			},
 		},
 		{
 			name: "PlainOptionalNestedInputtyInputArgs value no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"something": resource.NewStringProperty("anything"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"something": resource.NewProperty("anything"),
 			}),
 			args: &PlainOptionalNestedInputtyInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, &NestedInputtyInputArgs{
 					Something: String("anything"),
 				}, actual)
@@ -1407,11 +1407,11 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainOptionalNestedInputtyInputArgs secret no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"something": resource.MakeSecret(resource.NewStringProperty("anything")),
+			input: resource.NewProperty(resource.PropertyMap{
+				"something": resource.MakeSecret(resource.NewProperty("anything")),
 			}),
 			args: &PlainOptionalNestedInputtyInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(*NestedInputtyInputArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, "anything", true, true, map[URN]struct{}{}, v.Something)
@@ -1419,11 +1419,11 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainOptionalNestedInputtyInputArgs computed no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"something": resource.MakeComputed(resource.NewStringProperty("")),
+			input: resource.NewProperty(resource.PropertyMap{
+				"something": resource.MakeComputed(resource.NewProperty("")),
 			}),
 			args: &PlainOptionalNestedInputtyInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(*NestedInputtyInputArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, nil, false, false, map[URN]struct{}{}, v.Something)
@@ -1431,14 +1431,14 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainOptionalNestedInputtyInputArgs output value known no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"something": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("anything"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"something": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("anything"),
 					Known:   true,
 				}),
 			}),
 			args: &PlainOptionalNestedInputtyInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, &NestedInputtyInputArgs{
 					Something: String("anything"),
 				}, actual)
@@ -1446,15 +1446,15 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainOptionalNestedInputtyInputArgs output value known secret no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"something": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("anything"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"something": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("anything"),
 					Known:   true,
 					Secret:  true,
 				}),
 			}),
 			args: &PlainOptionalNestedInputtyInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(*NestedInputtyInputArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, "anything", true, true, map[URN]struct{}{}, v.Something)
@@ -1462,9 +1462,9 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainOptionalNestedInputtyInputArgs output value known secret with deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"something": resource.NewOutputProperty(resource.Output{
-					Element:      resource.NewStringProperty("anything"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"something": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("anything"),
 					Known:        true,
 					Secret:       true,
 					Dependencies: []resource.URN{"fakeURN"},
@@ -1472,7 +1472,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			deps: map[URN]struct{}{"fakeURN": {}},
 			args: &PlainOptionalNestedInputtyInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(*NestedInputtyInputArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, "anything", true, true, map[URN]struct{}{"fakeURN": {}}, v.Something)
@@ -1482,19 +1482,19 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// PlainOptionalNestedInputtyArgs
 		{
 			name:  "PlainOptionalNestedInputtyArgs empty no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{}),
+			input: resource.NewProperty(resource.PropertyMap{}),
 			args:  &PlainOptionalNestedInputtyArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, &NestedInputtyArgs{}, actual)
 			},
 		},
 		{
 			name: "PlainOptionalNestedInputtyArgs value no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"something": resource.NewStringProperty("anything"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"something": resource.NewProperty("anything"),
 			}),
 			args: &PlainOptionalNestedInputtyArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, &NestedInputtyArgs{
 					Something: String("anything"),
 				}, actual)
@@ -1502,11 +1502,11 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainOptionalNestedInputtyArgs secret no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"something": resource.MakeSecret(resource.NewStringProperty("anything")),
+			input: resource.NewProperty(resource.PropertyMap{
+				"something": resource.MakeSecret(resource.NewProperty("anything")),
 			}),
 			args: &PlainOptionalNestedInputtyArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(*NestedInputtyArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, "anything", true, true, map[URN]struct{}{}, v.Something)
@@ -1514,11 +1514,11 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainOptionalNestedInputtyArgs computed no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"something": resource.MakeComputed(resource.NewStringProperty("")),
+			input: resource.NewProperty(resource.PropertyMap{
+				"something": resource.MakeComputed(resource.NewProperty("")),
 			}),
 			args: &PlainOptionalNestedInputtyArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(*NestedInputtyArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, nil, false, false, map[URN]struct{}{}, v.Something)
@@ -1526,14 +1526,14 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainOptionalNestedInputtyArgs output value known no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"something": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("anything"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"something": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("anything"),
 					Known:   true,
 				}),
 			}),
 			args: &PlainOptionalNestedInputtyArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, &NestedInputtyArgs{
 					Something: String("anything"),
 				}, actual)
@@ -1541,15 +1541,15 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainOptionalNestedInputtyArgs output value known secret no deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"something": resource.NewOutputProperty(resource.Output{
-					Element: resource.NewStringProperty("anything"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"something": resource.NewProperty(resource.Output{
+					Element: resource.NewProperty("anything"),
 					Known:   true,
 					Secret:  true,
 				}),
 			}),
 			args: &PlainOptionalNestedInputtyArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(*NestedInputtyArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, "anything", true, true, map[URN]struct{}{}, v.Something)
@@ -1557,9 +1557,9 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 		{
 			name: "PlainOptionalNestedInputtyArgs output value known secret with deps",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"something": resource.NewOutputProperty(resource.Output{
-					Element:      resource.NewStringProperty("anything"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"something": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("anything"),
 					Known:        true,
 					Secret:       true,
 					Dependencies: []resource.URN{"fakeURN"},
@@ -1567,7 +1567,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 			}),
 			deps: map[URN]struct{}{"fakeURN": {}},
 			args: &PlainOptionalNestedInputtyArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				v, ok := actual.(*NestedInputtyArgs)
 				assert.True(t, ok)
 				assertOutputEqual(t, "anything", true, true, map[URN]struct{}{"fakeURN": {}}, v.Something)
@@ -1577,9 +1577,9 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// AssetArgs
 		{
 			name:  "AssetArgs no deps",
-			input: resource.NewAssetProperty(&rasset.Asset{Text: "hello"}),
+			input: resource.NewProperty(&rasset.Asset{Text: "hello"}),
 			args:  &AssetArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, NewStringAsset("hello"), actual)
 			},
 		},
@@ -1587,9 +1587,9 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// AssetInputArgs
 		{
 			name:  "AssetInputArgs no deps",
-			input: resource.NewAssetProperty(&rasset.Asset{Text: "hello"}),
+			input: resource.NewProperty(&rasset.Asset{Text: "hello"}),
 			args:  &AssetInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, NewStringAsset("hello"), actual)
 			},
 		},
@@ -1597,9 +1597,9 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// ArchiveArgs
 		{
 			name:  "ArchiveArgs no deps",
-			input: resource.NewArchiveProperty(&rarchive.Archive{Path: "path"}),
+			input: resource.NewProperty(&rarchive.Archive{Path: "path"}),
 			args:  &ArchiveArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, NewFileArchive("path"), actual)
 			},
 		},
@@ -1607,9 +1607,9 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// ArchiveInputArgs
 		{
 			name:  "ArchiveInputArgs no deps",
-			input: resource.NewArchiveProperty(&rarchive.Archive{Path: "path"}),
+			input: resource.NewProperty(&rarchive.Archive{Path: "path"}),
 			args:  &ArchiveInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, NewFileArchive("path"), actual)
 			},
 		},
@@ -1617,9 +1617,9 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// AssetOrArchiveArgs
 		{
 			name:  "AssetOrArchiveArgs no deps",
-			input: resource.NewAssetProperty(&rasset.Asset{Text: "hello"}),
+			input: resource.NewProperty(&rasset.Asset{Text: "hello"}),
 			args:  &AssetOrArchiveArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, NewStringAsset("hello"), actual)
 			},
 		},
@@ -1627,9 +1627,9 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// AssetOrArchiveInputArgs
 		{
 			name:  "AssetOrArchiveInputArgs no deps",
-			input: resource.NewAssetProperty(&rasset.Asset{Text: "hello"}),
+			input: resource.NewProperty(&rasset.Asset{Text: "hello"}),
 			args:  &AssetOrArchiveInputArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assert.Equal(t, NewStringAsset("hello"), actual)
 			},
 		},
@@ -1637,21 +1637,21 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		// LaunchTemplateArgs
 		{
 			name: "LaunchTemplateArgs input types not registered nested known output value",
-			input: resource.NewObjectProperty(resource.PropertyMap{
-				"tagSpecifications": resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewObjectProperty(resource.PropertyMap{
-						"tags": resource.NewObjectProperty(resource.PropertyMap{
-							"Name": resource.NewOutputProperty(resource.Output{
-								Element: resource.NewStringProperty("Worker Node"),
+			input: resource.NewProperty(resource.PropertyMap{
+				"tagSpecifications": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(resource.PropertyMap{
+						"tags": resource.NewProperty(resource.PropertyMap{
+							"Name": resource.NewProperty(resource.Output{
+								Element: resource.NewProperty("Worker Node"),
 								Known:   true,
 							}),
-							"Test Name": resource.NewStringProperty("test name"),
+							"Test Name": resource.NewProperty("test name"),
 						}),
 					}),
 				}),
 			}),
 			args: &LaunchTemplateArgs{},
-			assert: func(t *testing.T, actual interface{}) {
+			assert: func(t *testing.T, actual any) {
 				assertOutputEqual(t, &LaunchTemplateOptions{
 					TagSpecifications: []LaunchTemplateTagSpecification{
 						{
@@ -1666,21 +1666,20 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx, err := NewContext(context.Background(), RunInfo{})
+			ctx, err := NewContext(t.Context(), RunInfo{})
 			require.NoError(t, err)
 
-			inputs := map[string]interface{}{
+			inputs := map[string]any{
 				"value": &constructInput{value: test.input, deps: test.deps},
 			}
 			err = constructInputsCopyTo(ctx, inputs, test.args)
 			if test.expectedError != "" {
 				assert.EqualError(t, err, "copying input \"value\": "+test.expectedError)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				actual := reflect.ValueOf(test.args).Elem().FieldByName("Value").Interface()
 				test.assert(t, actual)
 			}
@@ -1710,14 +1709,14 @@ func TestConstructResult(t *testing.T) {
 	}
 
 	_, state, err := newConstructResult(component)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resolvedProps, _, _, err := marshalInputs(state)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, resource.PropertyMap{
-		"foo":       resource.NewStringProperty("hi"),
-		"someValue": resource.NewStringProperty("something"),
+		"foo":       resource.NewProperty("hi"),
+		"someValue": resource.NewProperty("something"),
 	}, resolvedProps)
 }
 
@@ -1736,10 +1735,10 @@ func TestSerdeNilNestedResource(t *testing.T) {
 		Component: (*MyComponent)(nil),
 	}
 	_, state, err := newConstructResult(component)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, _, _, err = marshalInputs(state)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
@@ -1755,11 +1754,11 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		req.Project = "myproject"
 
 		var got *ResourceOptions
-		ctx := context.Background()
+		ctx := t.Context()
 		_, err := construct(ctx, req, nil, func(
 			ctx *Context,
 			typ, name string,
-			inputs map[string]interface{},
+			inputs map[string]any,
 			opts ResourceOption,
 		) (URNInput, Input, error) {
 			urn := resource.NewURN(
@@ -1785,9 +1784,11 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		t.Parallel()
 
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
-			Aliases: []string{"test"},
+			Aliases: []*pulumirpc.Alias{
+				{Alias: &pulumirpc.Alias_Urn{Urn: "test"}},
+			},
 		})
-		assert.Len(t, snap.Aliases, 1, "aliases were not set")
+		require.Len(t, snap.Aliases, 1, "aliases were not set")
 	})
 
 	t.Run("DependsOn", func(t *testing.T) {
@@ -1796,7 +1797,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
 			Dependencies: []string{"test"},
 		})
-		assert.Len(t, snap.DependsOn, 1, "dependencies were not set")
+		require.Len(t, snap.DependsOn, 1, "dependencies were not set")
 	})
 
 	t.Run("Protect", func(t *testing.T) {
@@ -1818,7 +1819,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 				"baz": string(urn) + "::qux",
 			},
 		})
-		assert.Len(t, snap.Providers, 1, "providers were not set")
+		require.Len(t, snap.Providers, 1, "providers were not set")
 	})
 
 	t.Run("Parent", func(t *testing.T) {
@@ -1828,7 +1829,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
 			Parent: string(urn),
 		})
-		assert.NotNil(t, snap.Parent, "parent was not set")
+		require.NotNil(t, snap.Parent, "parent was not set")
 	})
 
 	t.Run("AdditionalSecretOutputs", func(t *testing.T) {
@@ -1879,7 +1880,6 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		}
 
 		for _, tt := range tests {
-			tt := tt
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 
@@ -1899,7 +1899,7 @@ func TestConstruct_resourceOptionsSnapshot(t *testing.T) {
 		snap := snapshotFromRequest(t, &pulumirpc.ConstructRequest{
 			DeletedWith: string(urn),
 		})
-		assert.NotNil(t, snap.DeletedWith, "deletedWith was not set")
+		require.NotNil(t, snap.DeletedWith, "deletedWith was not set")
 	})
 
 	t.Run("DeleteBeforeReplace", func(t *testing.T) {
@@ -1952,11 +1952,11 @@ func TestConstruct_await(t *testing.T) {
 		req.Stack = "mystack"
 		req.Project = "myproject"
 
-		ctx := context.Background()
+		ctx := t.Context()
 		_, err := construct(ctx, req, nil, func(
 			ctx *Context,
 			typ, name string,
-			inputs map[string]interface{},
+			inputs map[string]any,
 			opts ResourceOption,
 		) (URNInput, Input, error) {
 			urn := resource.NewURN(
@@ -2016,7 +2016,7 @@ func TestConstruct_await(t *testing.T) {
 
 		err := constructWithState(t, &pulumirpc.ConstructRequest{}, func(ctx *Context, state Map) {
 			// return an output property, not derived from the context, that will complete after constructF returns.
-			state["b"] = String("b").ToStringOutput().ApplyT(func(v interface{}) (interface{}, error) {
+			state["b"] = String("b").ToStringOutput().ApplyT(func(v any) (any, error) {
 				time.Sleep(1 * time.Second)
 				// verify that the context is still open by making an RPC call.
 				err := ctx.beginRPC()
@@ -2042,8 +2042,8 @@ func TestCall_await(t *testing.T) {
 		req.Stack = "mystack"
 		req.Project = "myproject"
 
-		ctx := context.Background()
-		_, err := call(ctx, req, nil, func(ctx *Context, tok string, args map[string]interface{}) (Input, []interface{}, error) {
+		ctx := t.Context()
+		_, err := call(ctx, req, nil, func(ctx *Context, tok string, args map[string]any) (Input, []any, error) {
 			result := make(Map)
 			resultF(ctx, result)
 			return result, nil, nil
@@ -2094,7 +2094,7 @@ func TestCall_await(t *testing.T) {
 
 		err := callWithResult(t, &pulumirpc.CallRequest{}, func(ctx *Context, result Map) {
 			// return an output property, not derived from the context, that will complete after callF returns.
-			result["b"] = String("b").ToStringOutput().ApplyT(func(v interface{}) (interface{}, error) {
+			result["b"] = String("b").ToStringOutput().ApplyT(func(v any) (any, error) {
 				time.Sleep(1 * time.Second)
 				// verify that the context is still open by making an RPC call.
 				err := ctx.beginRPC()

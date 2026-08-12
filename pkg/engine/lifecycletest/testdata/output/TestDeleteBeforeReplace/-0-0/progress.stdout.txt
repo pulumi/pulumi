@@ -31,7 +31,6 @@
  <{%fg 13%}>+-<{%reset%}> pkgA:m:typA E <{%fg 13%}>replaced<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
  <{%bold%}><{%fg 10%}>++<{%reset%}> pkgA:m:typA E <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
  <{%fg 10%}>++<{%reset%}> pkgA:m:typA E <{%fg 10%}>created replacement<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
- <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 13%}>+-<{%reset%}> pkgA:m:typA F <{%bold%}><{%fg 13%}>replacing<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
  <{%fg 13%}>+-<{%reset%}> pkgA:m:typA F <{%fg 13%}>replaced<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]
  <{%bold%}><{%fg 10%}>++<{%reset%}> pkgA:m:typA F <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> [diff: <{%fg 1%}>-A<{%reset%}><{%reset%}>]

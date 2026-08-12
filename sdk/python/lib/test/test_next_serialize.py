@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -151,7 +151,7 @@ def pulumi_test(coro):
     return wrapper
 
 
-class NextSerializationTests(unittest.TestCase):
+class NextSerializationTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_list(self):
         test_list = [1, 2, 3]
@@ -1148,6 +1148,48 @@ class NextSerializationTests(unittest.TestCase):
 
 
 class DeserializationTests(unittest.TestCase):
+    def test_deserialize_resource_reference_uses_explicit_name_and_type(self):
+        urn = "urn:pulumi:stack::project::test:index:resource::legacy-name"
+        expected = object()
+        resource_module = unittest.mock.Mock()
+        resource_module.construct.return_value = expected
+
+        ref = struct_pb2.Struct()
+        ref[rpc._special_sig_key] = rpc._special_resource_sig
+        ref["urn"] = urn
+        ref["name"] = "name::from::field"
+        ref["type"] = "test:index:resource"
+
+        with unittest.mock.patch(
+            "pulumi.runtime.rpc.get_resource_module", return_value=resource_module
+        ):
+            actual = rpc.deserialize_property(ref)
+
+        self.assertIs(actual, expected)
+        resource_module.construct.assert_called_once_with(
+            "name::from::field", "test:index:resource", urn
+        )
+
+    def test_deserialize_resource_reference_falls_back_to_urn(self):
+        urn = "urn:pulumi:stack::project::test:index:resource::name-from-urn"
+        expected = object()
+        resource_module = unittest.mock.Mock()
+        resource_module.construct.return_value = expected
+
+        ref = struct_pb2.Struct()
+        ref[rpc._special_sig_key] = rpc._special_resource_sig
+        ref["urn"] = urn
+
+        with unittest.mock.patch(
+            "pulumi.runtime.rpc.get_resource_module", return_value=resource_module
+        ):
+            actual = rpc.deserialize_property(ref)
+
+        self.assertIs(actual, expected)
+        resource_module.construct.assert_called_once_with(
+            "name-from-urn", "test:index:resource", urn
+        )
+
     def test_unsupported_sig(self):
         struct = struct_pb2.Struct()
         struct[rpc._special_sig_key] = "foobar"
@@ -1304,7 +1346,7 @@ class DeserializationTests(unittest.TestCase):
         self.assertEqual(normalized["array"][0]["secret"], "a secret")
         self.assertEqual(normalized["array"][0]["mixed"][0]["secret"], "a secret")
 
-    def test_internal_property(self):
+    def test_internal_property_default_preserves(self):
         all_props = struct_pb2.Struct()
         all_props["a"] = "b"
         all_props["__defaults"] = []
@@ -1313,6 +1355,26 @@ class DeserializationTests(unittest.TestCase):
         all_props["__other"] = "baz"
 
         val = rpc.deserialize_properties(all_props)
+        self.assertEqual(
+            {
+                "a": "b",
+                "__defaults": [],
+                "c": {"foo": "bar", "__defaults": []},
+                "__provider": "serialized_dynamic_provider",
+                "__other": "baz",
+            },
+            val,
+        )
+
+    def test_internal_property_explicit_strip(self):
+        all_props = struct_pb2.Struct()
+        all_props["a"] = "b"
+        all_props["__defaults"] = []
+        all_props["c"] = {"foo": "bar", "__defaults": []}
+        all_props["__provider"] = "serialized_dynamic_provider"
+        all_props["__other"] = "baz"
+
+        val = rpc.deserialize_properties(all_props, keep_internal=False)
         self.assertEqual(
             {
                 "a": "b",
@@ -1363,7 +1425,7 @@ class BarArgs:
         pulumi.set(self, "tag_args", tag_args)
 
 
-class InputTypeSerializationTests(unittest.TestCase):
+class InputTypeSerializationTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_simple_input_type(self):
         it = FooArgs(first_arg="hello", second_arg=42)
@@ -1420,7 +1482,7 @@ class FloatEnum(float, Enum):
     ZERO_POINT_ONE = 0.1
 
 
-class EnumSerializationTests(unittest.TestCase):
+class EnumSerializationTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_string_enum(self):
         one = StrEnum.ONE
@@ -1524,7 +1586,7 @@ class DeserializationOutput(dict):
     def some_bar(self) -> Mapping[str, SomeFooOutput]: ...  # type: ignore
 
 
-class TypeMetaDataSerializationTests(unittest.TestCase):
+class TypeMetaDataSerializationTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_serialize(self):
         # The transformer should never be called.
@@ -1616,7 +1678,7 @@ class TypeMetaDataSerializationTests(unittest.TestCase):
         self.assertEqual({"the_second": "later"}, result.some_bar["a"]["the_second"])
 
 
-class OutputValueSerializationTests(unittest.TestCase):
+class OutputValueSerializationTests(unittest.IsolatedAsyncioTestCase):
     async def assertOutputEqual(self, first: Output[Any], second: Output[Any]):
         async def urns(res: Set[Resource]) -> Set[str]:
             return cast(Set[str], {await r.urn.future() for r in res})
@@ -1734,6 +1796,6 @@ async def test_serialize_resource_references_dependencies():
         await rpc.serialize_properties(
             inputs, property_deps, exclude_resource_refs_from_deps=exclude
         )
-        assert (
-            set(property_deps["resources"]) == expected
-        ), f"Failed with supports={supports}, exclude={exclude}"
+        assert set(property_deps["resources"]) == expected, (
+            f"Failed with supports={supports}, exclude={exclude}"
+        )

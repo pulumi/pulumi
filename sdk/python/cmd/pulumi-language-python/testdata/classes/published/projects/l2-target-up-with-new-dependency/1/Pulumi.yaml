@@ -1,0 +1,7 @@
+name: l2-target-up-with-new-dependency
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

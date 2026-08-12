@@ -1,0 +1,9 @@
+[project]
+name = "some-package"
+version = "0.1.0"
+description = "A Python package"
+dependencies = []
+
+[build-system]
+requires = ["uv_build==0.8.24"]
+build-backend = "uv_build"

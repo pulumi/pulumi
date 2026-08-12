@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 import * as pulumi from "@pulumi/pulumi";
 import { Component, Random, TestProvider} from "./random";
@@ -155,3 +155,14 @@ async () => {
 	throw new Error(`expected prefix to be test, got ${result.prefix}`);
     }
  };
+
+ const res9 = new Random("res9", { length: 7 }, {
+    transforms: [
+        async ({ props, opts }) => {
+            return {
+                props: props,
+                opts: pulumi.mergeOptions(opts, { import: "stackDefault:test-id" }),
+            };
+        },
+    ],
+});

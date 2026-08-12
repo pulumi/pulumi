@@ -1,0 +1,6 @@
+<{%fg 2%}>+ urn:pulumi:test::test::prog:index:myStandardType::resA: (create)
+<{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::prog:index:myStandardType$prog:index:myType::resB: (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

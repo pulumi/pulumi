@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import (
 	"sort"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 // Generates code to build and regsiter ResourceModule and
@@ -54,7 +53,7 @@ func genResourceMappings(root *modContext, w io.Writer) error {
 	return nil
 }
 
-func jsonPythonLiteral(thing interface{}) (string, error) {
+func jsonPythonLiteral(thing any) (string, error) {
 	bytes, err := json.MarshalIndent(thing, "", " ")
 	if err != nil {
 		return "", err
@@ -92,6 +91,7 @@ func makeResourceModuleInfo(pkg, mod, fqn string) resourceModuleInfo {
 }
 
 func allResourceModuleInfos(root *modContext) []resourceModuleInfo {
+	//nolint:prealloc // must be non-nil for JSON serialization to produce [] not null
 	result := []resourceModuleInfo{}
 	for _, mctx := range root.walkSelfWithDescendants() {
 		result = append(result, collectResourceModuleInfos(mctx)...)
@@ -126,7 +126,7 @@ func collectResourceModuleInfos(mctx *modContext) []resourceModuleInfo {
 		}
 	}
 
-	result := slice.Prealloc[resourceModuleInfo](len(byMod))
+	result := make([]resourceModuleInfo, 0, len(byMod))
 	for _, rmi := range byMod {
 		result = append(result, rmi)
 	}
@@ -153,6 +153,7 @@ type resourcePackageInfo struct {
 }
 
 func allResourcePackageInfos(root *modContext) []resourcePackageInfo {
+	//nolint:prealloc // must be non-nil for JSON serialization to produce [] not null
 	result := []resourcePackageInfo{}
 	for _, mctx := range root.walkSelfWithDescendants() {
 		result = append(result, collectResourcePackageInfos(mctx)...)

@@ -1,8 +1,10 @@
 PROJECT_NAME     := Pulumi Go SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3
 VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh go))
-TEST_FAST_PKGS   := $(shell go list ./pulumi/... ./common/... | grep -v /vendor/ | grep -v templates)
+SDK_PKGS         := $(shell go list ./... | grep -v /vendor/ | grep -v templates)
 TEST_AUTO_PKGS   := $(shell go list ./auto/... | grep -v /vendor/ | grep -v templates)
+TEST_FAST_PKGS   := $(filter-out $(TEST_AUTO_PKGS),$(SDK_PKGS))
+LANGHOST_PKGS    := $(shell cd pulumi-language-go && go list ./... | grep -v /vendor/ | grep -v templates)
 
 ifeq ($(DEBUG),"true")
 $(info    VERSION         = $(VERSION))
@@ -25,6 +27,7 @@ build:: gen ../../bin/pulumi-language-go
 .PHONY: ../../bin/pulumi-language-go
 ../../bin/pulumi-language-go:
 	go build -C pulumi-language-go -o ../../../bin/pulumi-language-go \
+		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
 		${LANGHOST_PKG}
 
@@ -34,20 +37,24 @@ install_plugin: ../../bin/pulumi-language-go
 
 install:: install_plugin
 
-test_all:: test_fast test_auto
+test_all:: $(TEST_ALL_DEPS)
+	@$(GO_TEST) $(SDK_PKGS)
 
-test_fast:: $(TEST_ALL_DEPS)
+	@cd pulumi-language-go && \
+		$(GO_TEST) $(LANGHOST_PKGS)
+
+test_fast::
 	@$(GO_TEST_FAST) $(TEST_FAST_PKGS)
 
 	@cd pulumi-language-go && \
-		$(GO_TEST_FAST) $(shell cd pulumi-language-go && go list ./... | grep -v /vendor/ | grep -v templates)
+		$(GO_TEST_FAST) $(LANGHOST_PKGS)
 
 test_auto:: $(TEST_ALL_DEPS)
 	@$(GO_TEST) $(TEST_AUTO_PKGS)
 
 dist:: ../../bin/pulumi-language-go
 ifneq (${GOBIN},)
-	@# We need to do this dance instead of just calling `cp` because `make build_local`
+	@# We need to do this dance instead of just calling `cp` because `make build`
 	@# (from root) sets ${GOBIN} such that the copy is a no op.
 	@bash -c ' \
 	if ! [[ "$<" -ef ${GOBIN}/pulumi-language-go ]]; then \
@@ -61,6 +68,7 @@ endif
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	go install -C pulumi-language-go \
+		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
 
 lint:: .make/ensure/golangci-lint
@@ -68,6 +76,9 @@ lint:: .make/ensure/golangci-lint
 
 	cd pulumi-language-go && \
 		golangci-lint run -c ../../../.golangci.yml --timeout 5m --path-prefix pulumi-language-go
+
+clean::
+	rm -rf .make
 
 publish:
 	git tag sdk/v${VERSION}

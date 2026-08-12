@@ -1,0 +1,7 @@
+name: l2-ref-ref
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

@@ -1,10 +1,10 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,11 +19,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -39,14 +42,6 @@ type searchAICmd struct {
 func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	interactive := cmdutil.Interactive()
 
-	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
-	}
-
-	if cmd.outputFormat == "" {
-		cmd.outputFormat = outputFormatTable
-	}
-
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = cmdBackend.CurrentBackend
 	}
@@ -58,20 +53,20 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	}
 	// Try to read the current project
 	ws := pkgWorkspace.Instance
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
 
-	backend, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
+	currentBe, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
 	if err != nil {
 		return err
 	}
-	cloudBackend, isCloud := backend.(httpstate.Backend)
+	cloudBackend, isCloud := currentBe.(httpstate.Backend)
 	if !isCloud {
 		return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
 	}
-	defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
+	defaultOrg, err := cloudBackend.GetDefaultOrg(ctx)
 	if err != nil {
 		return err
 	}
@@ -92,7 +87,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 			userName,
 		)
 	}
-	if !sliceContains(orgs, cmd.orgName) && cmd.orgName != "" {
+	if !slices.Contains(orgs, cmd.orgName) && cmd.orgName != "" {
 		return fmt.Errorf("user %s is not a member of org %s", userName, cmd.orgName)
 	}
 
@@ -100,9 +95,10 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = cmd.outputFormat.Render(&cmd.searchCmd, res)
+	err = cmd.outputFormat.Get()(&cmd.searchCmd, res)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "rendering error: %s\n", err)
+		// Stderr is not threaded through this helper; defer to process stderr.
+		fmt.Fprintf(os.Stderr, "rendering error: %s\n", err) //nolint:forbidigo
 	}
 	if cmd.openWeb {
 		err = browser.OpenURL(res.URL)
@@ -115,16 +111,22 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 
 func newSearchAICmd() *cobra.Command {
 	var scmd searchAICmd
+	scmd.outputFormat = defaultSearchOutputFormat()
 	cmd := &cobra.Command{
 		Use:   "ai",
 		Short: "Search for resources in Pulumi Cloud using Pulumi AI",
 		Long:  "Search for resources in Pulumi Cloud using Pulumi AI",
-		Args:  cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			if scmd.Stdout == nil {
+				scmd.Stdout = cmd.OutOrStdout()
+			}
 			return scmd.Run(ctx, args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.PersistentFlags().StringVar(
 		&scmd.orgName, "org", "",
 		"Organization name to search within",
@@ -133,10 +135,7 @@ func newSearchAICmd() *cobra.Command {
 		&scmd.queryString, "query", "q", "",
 		"Plaintext natural language query",
 	)
-	cmd.PersistentFlags().VarP(
-		&scmd.outputFormat, "output", "o",
-		"Output format. Supported formats are 'table', 'json', 'csv' and 'yaml'.",
-	)
+	outputflag.Var(cmd.PersistentFlags(), &scmd.outputFormat)
 	cmd.PersistentFlags().Var(
 		&scmd.csvDelimiter, "delimiter",
 		"Delimiter to use when rendering CSV output.",

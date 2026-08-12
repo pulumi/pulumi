@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pTest "github.com/pulumi/pulumi/sdk/v3/go/property/testing"
 )
 
@@ -34,11 +38,124 @@ import (
 func TestRoundTripConvert(t *testing.T) {
 	t.Parallel()
 
+	value := pTest.Value(10)
 	rapid.Check(t, func(t *rapid.T) {
-		source := pTest.Value(10).Draw(t, "round-trip value")
+		source := value.Draw(t, "round-trip value")
 		propertyValue := resource.ToResourcePropertyValue(source)
 		roundTripped := resource.FromResourcePropertyValue(propertyValue)
 
 		assert.True(t, source.Equals(roundTripped))
 	})
+}
+
+func testRoundTripThroughGRPC(t require.TestingT, v property.Value) {
+	rm := resource.ToResourcePropertyValue(v)
+
+	marshalOpts := plugin.MarshalOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepOutputValues: true,
+	}
+
+	mm, err := plugin.MarshalPropertyValue("", rm, marshalOpts)
+	require.NoError(t, err)
+
+	nrm, err := plugin.UnmarshalPropertyValue("", mm, marshalOpts)
+	require.NoError(t, err)
+
+	// Inexplicably, some [resource.PropertyValue]s do not survive round-tripping. We
+	// see the computed empty string in rm turn into a computed nil value in
+	// nrm. These are semantically equivalent (since they are behind a
+	// [resource.Computed]), but they should round trip correctly.
+	//
+	// You can check if this comment still applies by adding an:
+	//
+	//	assert.NotEqual(t, rm, nrm)
+	//
+	// If that check fails, this comment no longer applies and can be removed.
+
+	nm := resource.FromResourcePropertyValue(*nrm)
+
+	assert.Equal(t, v, nm, "Assert that m survived a full round trip through gRPC's representation")
+}
+
+func TestConversionThroughGRPCRapid(t *testing.T) {
+	t.Parallel()
+
+	value := pTest.Value(10)
+	rapid.Check(t, func(t *rapid.T) {
+		source := value.Draw(t, "round-trip value")
+		testRoundTripThroughGRPC(t, source)
+	})
+}
+
+func TestConversionThroughGRPC(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		value property.Value
+	}{
+		{"known", property.New("v1")},
+		{"unknown-output", property.New(property.Computed).WithSecret(true)},
+		{"known-output", property.New(1.2).WithDependencies([]urn.URN{"urn1", "urn2"})},
+		{"unknown", property.New(property.Computed)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			testRoundTripThroughGRPC(t, tt.value)
+		})
+	}
+}
+
+func TestDiffCompatibility(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(t *rapid.T) {
+		a := pTest.Map(10).Draw(t, "round-trip value a")
+		b := pTest.Map(10).Draw(t, "round-trip value b")
+
+		assert.Equal(t,
+			resource.ToResourceObjectDiff(a.Diff(b)),
+			resource.ToResourcePropertyMap(a).Diff(resource.ToResourcePropertyMap(b)))
+	})
+}
+
+func TestDiffCompatibilityWrappedValues(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		a, b property.Map
+	}{
+		{
+			"secret arrays",
+			property.NewMap(map[string]property.Value{
+				"k": property.New([]property.Value{property.New(1.0)}).WithSecret(true),
+			}),
+			property.NewMap(map[string]property.Value{
+				"k": property.New([]property.Value{property.New(2.0)}).WithSecret(true),
+			}),
+		},
+		{
+			"secret maps with null values",
+			property.NewMap(map[string]property.Value{
+				"k": property.New(map[string]property.Value{"n": property.New(property.Null)}).WithSecret(true),
+			}),
+			property.NewMap(map[string]property.Value{
+				"k": property.New(property.Map{}).WithSecret(true),
+			}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t,
+				resource.ToResourceObjectDiff(tt.a.Diff(tt.b)),
+				resource.ToResourcePropertyMap(tt.a).Diff(resource.ToResourcePropertyMap(tt.b)))
+		})
+	}
 }

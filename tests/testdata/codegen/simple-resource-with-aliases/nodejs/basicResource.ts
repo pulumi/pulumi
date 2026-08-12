@@ -31,7 +31,7 @@ export class BasicResource extends pulumi.CustomResource {
         return obj['__pulumiType'] === BasicResource.__pulumiType;
     }
 
-    public readonly bar!: pulumi.Output<string>;
+    declare public readonly bar: pulumi.Output<string>;
 
     /**
      * Create a BasicResource resource with the given unique name, arguments, and options.
@@ -44,10 +44,10 @@ export class BasicResource extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            if ((!args || args.bar === undefined) && !opts.urn) {
+            if (args?.bar === undefined && !opts.urn) {
                 throw new Error("Missing required property 'bar'");
             }
-            resourceInputs["bar"] = args ? args.bar : undefined;
+            resourceInputs["bar"] = args?.bar;
         } else {
             resourceInputs["bar"] = undefined /*out*/;
         }

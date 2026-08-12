@@ -1,0 +1,8 @@
+<{%reset%}>  urn:pulumi:test::test::prog:index:myStandardType::resA: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    <{%reset%}>  urn:pulumi:test::test::prog:index:myStandardType$prog:index:myType::resC: (same)
+<{%reset%}>        [id=1]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

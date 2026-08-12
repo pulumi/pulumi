@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,13 +27,12 @@ import (
 
 // Healthcheck will poll the address at duration intervals and then call cancel once it reports unhealthy
 func Healthcheck(context context.Context, addr string, duration time.Duration, cancel context.CancelFunc) error {
-	conn, err := grpc.NewClient(
-		addr,
+	dialOpts := append(
+		TracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(OpenTracingClientInterceptor()),
-		grpc.WithStreamInterceptor(OpenTracingStreamClientInterceptor()),
 		GrpcChannelOptions(),
 	)
+	conn, err := grpc.NewClient(addr, dialOpts...)
 	if err != nil {
 		return err
 	}

@@ -2,3 +2,84 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
+from . import plugin_pb2 as pulumi_dot_plugin__pb2
+
+
+class PackageResolverStub(object):
+    """`PackageResolver` resolves a [](pulumirpc.PackageSpec) -- a user-supplied package reference such as a name,
+    registry coordinate, git URL, or local path, optionally carrying a version and parameters -- into a concrete,
+    downloadable [](pulumirpc.PackageDependency). The engine exposes this service to resource providers as part of the
+    provider handshake so they can resolve packages the same way the CLI does.
+
+    This is currently unstable and experimental.
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.ResolvePackage = channel.unary_unary(
+                '/pulumirpc.PackageResolver/ResolvePackage',
+                request_serializer=pulumi_dot_plugin__pb2.PackageSpec.SerializeToString,
+                response_deserializer=pulumi_dot_plugin__pb2.PackageDependency.FromString,
+                )
+
+
+class PackageResolverServicer(object):
+    """`PackageResolver` resolves a [](pulumirpc.PackageSpec) -- a user-supplied package reference such as a name,
+    registry coordinate, git URL, or local path, optionally carrying a version and parameters -- into a concrete,
+    downloadable [](pulumirpc.PackageDependency). The engine exposes this service to resource providers as part of the
+    provider handshake so they can resolve packages the same way the CLI does.
+
+    This is currently unstable and experimental.
+    """
+
+    def ResolvePackage(self, request, context):
+        """`ResolvePackage` resolves the given package specification to a concrete package dependency.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_PackageResolverServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'ResolvePackage': grpc.unary_unary_rpc_method_handler(
+                    servicer.ResolvePackage,
+                    request_deserializer=pulumi_dot_plugin__pb2.PackageSpec.FromString,
+                    response_serializer=pulumi_dot_plugin__pb2.PackageDependency.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'pulumirpc.PackageResolver', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class PackageResolver(object):
+    """`PackageResolver` resolves a [](pulumirpc.PackageSpec) -- a user-supplied package reference such as a name,
+    registry coordinate, git URL, or local path, optionally carrying a version and parameters -- into a concrete,
+    downloadable [](pulumirpc.PackageDependency). The engine exposes this service to resource providers as part of the
+    provider handshake so they can resolve packages the same way the CLI does.
+
+    This is currently unstable and experimental.
+    """
+
+    @staticmethod
+    def ResolvePackage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.PackageResolver/ResolvePackage',
+            pulumi_dot_plugin__pb2.PackageSpec.SerializeToString,
+            pulumi_dot_plugin__pb2.PackageDependency.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

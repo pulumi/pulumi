@@ -22,9 +22,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -45,7 +48,10 @@ const (
 type toolchain int
 
 const (
-	Pip toolchain = iota
+	// Auto is the default toolchain value. When set, ResolveToolchain will detect the toolchain to use by looking for
+	// lockfiles in the project directory, falling back to pip if none are found.
+	Auto toolchain = iota
+	Pip
 	Poetry
 	Uv
 )
@@ -63,28 +69,30 @@ type PythonOptions struct {
 	Toolchain toolchain
 }
 
-type PythonPackage struct {
-	Name     string `json:"name"`
-	Version  string `json:"version"`
-	Location string `json:"location"`
-}
-
 type Info struct {
-	Executable string
-	Version    string
+	// The path to the python executable that's being used
+	PythonExecutable string
+	// The version of python
+	PythonVersion semver.Version
+	// The version of pip, poetry, uv ...
+	ToolchainVersion semver.Version
 }
 
 type Toolchain interface {
 	// InstallDependencies installs the dependencies of the project found in `cwd`.
 	InstallDependencies(ctx context.Context, cwd string, useLanguageVersionTools,
 		showOutput bool, infoWriter, errorWriter io.Writer) error
+	// PrepareProject prepares the python project for use with its toolchain. For example it will convert a
+	// requirements.txt into an pyproject.toml for uv or poetry.
+	PrepareProject(ctx context.Context, projectName, cwd string, showOutput bool, infoWriter,
+		errorWriter io.Writer) error
 	// EnsureVenv validates virtual environment of the toolchain and creates it if it doesn't exist.
 	EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools,
 		showOutput bool, infoWriter, errorWriter io.Writer) error
 	// ValidateVenv checks if the virtual environment of the toolchain is valid.
 	ValidateVenv(ctx context.Context) error
 	// ListPackages returns a list of Python packages installed in the toolchain.
-	ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error)
+	ListPackages(ctx context.Context, transitive bool) ([]plugin.DependencyInfo, error)
 	// Command returns an *exec.Cmd for running `python` using the configured toolchain.
 	Command(ctx context.Context, args ...string) (*exec.Cmd, error)
 	// ModuleCommand returns an *exec.Cmd for running an installed python module using the configured toolchain.
@@ -92,10 +100,19 @@ type Toolchain interface {
 	ModuleCommand(ctx context.Context, module string, args ...string) (*exec.Cmd, error)
 	// About returns information about the python executable of the toolchain.
 	About(ctx context.Context) (Info, error)
+	// VirtualEnvPath returns the path of the virtual env used by the toolchain.
+	VirtualEnvPath(ctx context.Context) (string, error)
+	// LinkPackages adds packages as dependencies to the Python program, updating the relevant dependency files.
+	// (pyproject.toml, requirements.txt). The virtual environment is not updated with the new dependencies. Run
+	// InstallDependencies to install the new dependencies if needed.
+	// `packages` is a map python package names to paths.
+	LinkPackages(ctx context.Context, packages map[string]string) error
 }
 
 func Name(tc toolchain) string {
 	switch tc {
+	case Auto:
+		return "Auto"
 	case Pip:
 		return "Pip"
 	case Poetry:
@@ -107,17 +124,49 @@ func Name(tc toolchain) string {
 	}
 }
 
-func ResolveToolchain(options PythonOptions) (Toolchain, error) {
-	if options.Toolchain == Poetry {
-		dir := options.ProgramDir
-		if dir == "" {
-			dir = options.Root
-		}
-		return newPoetry(dir)
-	} else if options.Toolchain == Uv {
-		return newUv(options.Root, options.Virtualenv)
+func TypeCheckerName(tc typeChecker) string {
+	switch tc {
+	case TypeCheckerMypy:
+		return "Mypy"
+	case TypeCheckerPyright:
+		return "Pyright"
+	case TypeCheckerNone:
+		fallthrough
+	default:
+		return "None"
 	}
-	return newPip(options.Root, options.Virtualenv)
+}
+
+func ResolveToolchain(options PythonOptions) (Toolchain, error) {
+	switch options.Toolchain {
+	case Auto:
+		if _, err := searchup(options.ProgramDir, "uv.lock"); err == nil {
+			logging.V(9).Infof("Python toolchain: detected uv (found uv.lock)")
+			virtualenv := options.Virtualenv
+			if virtualenv != "" && !filepath.IsAbs(virtualenv) {
+				virtualenv = filepath.Join(options.Root, virtualenv)
+			}
+			return newUv(options.ProgramDir, virtualenv)
+		}
+		if _, err := searchup(options.ProgramDir, "poetry.lock"); err == nil {
+			logging.V(9).Infof("Python toolchain: detected poetry (found poetry.lock)")
+			return newPoetry(options.ProgramDir)
+		}
+		logging.V(9).Infof("Python toolchain: defaulting to pip")
+		return newPip(options.Root, options.Virtualenv)
+	case Poetry:
+		return newPoetry(options.ProgramDir)
+	case Uv:
+		virtualenv := options.Virtualenv
+		if virtualenv != "" && !filepath.IsAbs(virtualenv) {
+			virtualenv = filepath.Join(options.Root, virtualenv)
+		}
+		return newUv(options.ProgramDir, virtualenv)
+	case Pip:
+		return newPip(options.Root, options.Virtualenv)
+	default:
+		return nil, fmt.Errorf("unknown toolchain: %d", options.Toolchain)
+	}
 }
 
 // ActivateVirtualEnv takes an array of environment variables (same format as os.Environ()) and path to
@@ -200,8 +249,8 @@ func installPython(ctx context.Context, cwd string, showOutput bool, infoWriter,
 	}
 
 	if showOutput {
-		_, err := infoWriter.Write([]byte(fmt.Sprintf("Installing python version from .python-version file at %s\n",
-			versionFile)))
+		_, err := fmt.Fprintf(infoWriter, "Installing python version from .python-version file at %s\n",
+			versionFile)
 		if err != nil {
 			return fmt.Errorf("error while writing to infoWriter %s", err)
 		}
@@ -231,4 +280,89 @@ func searchup(currentDir, fileToFind string) (string, error) {
 		return "", os.ErrNotExist
 	}
 	return searchup(parentDir, fileToFind)
+}
+
+func getPythonExecutablePath(ctx context.Context,
+	commandFunc func(context.Context, ...string) (*exec.Cmd, error),
+) (string, error) {
+	cmd, err := commandFunc(ctx, "-c", "import sys; print(sys.executable)")
+	if err != nil {
+		return "", err
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get python executable path: %w", err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+func ParsePythonVersion(versionString string) (semver.Version, error) {
+	versionString = strings.TrimSpace(versionString)
+	versionString = strings.TrimPrefix(versionString, "Python ")
+
+	re := regexp.MustCompile(`^(\d+)\.(\d+)(?:\.(\d+))?(?:(a|b|rc|dev)(\d+))?`)
+	matches := re.FindStringSubmatch(versionString)
+	if len(matches) < 3 {
+		return semver.Version{}, fmt.Errorf("invalid Python version format: %q", versionString)
+	}
+
+	major, minor := matches[1], matches[2]
+	patch := matches[3]
+	if patch == "" {
+		patch = "0"
+	}
+
+	normalizedVersion := fmt.Sprintf("%s.%s.%s", major, minor, patch)
+
+	// Convert Python pre-release naming to semver format
+	if matches[4] != "" {
+		preReleaseType := matches[4]
+		preReleaseNum := matches[5]
+		switch preReleaseType {
+		case "a":
+			normalizedVersion += "-alpha." + preReleaseNum
+		case "b":
+			normalizedVersion += "-beta." + preReleaseNum
+		case "rc":
+			normalizedVersion += "-rc." + preReleaseNum
+		case "dev":
+			normalizedVersion += "-dev." + preReleaseNum
+		}
+	}
+
+	sem, err := semver.Parse(normalizedVersion)
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("failed to parse Python version %q: %w", normalizedVersion, err)
+	}
+
+	return sem, nil
+}
+
+func getPythonVersion(ctx context.Context,
+	commandFunc func(context.Context, ...string) (*exec.Cmd, error),
+) (semver.Version, error) {
+	cmd, err := commandFunc(ctx, "--version")
+	if err != nil {
+		return semver.Version{}, err
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("failed to get version: %w", err)
+	}
+	versionStr := strings.TrimSpace(string(out))
+	pythonVersion, err := ParsePythonVersion(versionStr)
+	if err != nil {
+		return semver.Version{}, fmt.Errorf("failed to parse python version %q: %w", versionStr, err)
+	}
+	return pythonVersion, nil
+}
+
+// pythonNormRe matches runs of PEP 503 separator characters.
+var pythonNormRe = regexp.MustCompile(`[-_.]+`)
+
+// normalizePythonPackageName normalizes a Python package name to its canonical form per PEP 503:
+// lowercase, with runs of '-', '_', and '.' replaced by a single '-'.
+// https://peps.python.org/pep-0503/
+func normalizePythonPackageName(name string) string {
+	return pythonNormRe.ReplaceAllString(strings.ToLower(name), "-")
 }

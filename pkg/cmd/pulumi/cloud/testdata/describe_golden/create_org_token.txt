@@ -1,0 +1,32 @@
+POST /api/orgs/{orgName}/tokens
+Tag: AccessTokens
+Operation: CreateOrgToken
+
+CreateOrgToken
+
+Generates a new access token scoped to the organization for use in CI/CD pipelines and automated workflows. Organization tokens belong to the organization rather than individual users, ensuring that access is not disrupted when team members leave.
+
+The `name` field must be unique across the organization (including deleted tokens) and cannot exceed 40 characters. The `expires` field accepts a unix epoch timestamp up to two years from the present, or `0` for no expiry (default).
+
+**Important:** The token value in the response is only returned once at creation time and cannot be retrieved later. Audit logs for actions performed with organization tokens are attributed to the organization rather than an individual user.
+
+Parameters:
+  [path] orgName* (string) — The organization name
+  [query] reason (string) — Audit log reason for creating this token
+
+Request body (application/json):
+  Request Body:
+    {
+      description*: (string) The description
+      name*: (string) The name
+      admin*: (boolean) Whether the entity has admin privileges
+      expires*: (integer format:int64) The expiration time
+      roleID: (string) The role identifier
+    }
+
+Success response (application/json):
+  Response:
+    {
+      id*: (string) The unique identifier
+      tokenValue*: (string) The token value
+    }

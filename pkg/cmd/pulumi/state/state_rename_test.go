@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@ package state
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -30,34 +32,36 @@ func TestRenameProvider(t *testing.T) {
 
 	// Define a state with a single provider and a single resource dependent on that provider.
 	provURN := resource.URN("urn:pulumi:dev::prog-aws-typescript::pulumi:providers:random::my-provider")
-	prov := resource.State{
-		URN:  provURN,
-		ID:   "81cd12dd-2a90-4f21-a521-f4c71c1f11eb",
-		Type: "pulumi:providers:random",
+	prov := pkgresource.State{
+		URN:    provURN,
+		ID:     "81cd12dd-2a90-4f21-a521-f4c71c1f11eb",
+		Type:   "pulumi:providers:random",
+		Custom: true,
 	}
 
 	providerRefString := string(prov.URN) + "::" + string(prov.ID)
 
-	res1 := resource.State{
+	res1 := pkgresource.State{
 		URN:      resource.URN("urn:pulumi:dev::prog-aws-typescript::random:index/randomPet:RandomPet::pet-0"),
+		Type:     "random:index/randomPet:RandomPet",
 		Provider: providerRefString,
 	}
 	snap := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			&prov,
 			&res1,
 		},
 	}
 
 	// Ensure that the snapshot is valid before the rename.
-	assert.NoError(t, snap.VerifyIntegrity())
+	require.NoError(t, snap.VerifyIntegrity())
 
 	// Mutates the snapshot.
 	err := stateRenameOperation(provURN, "our-provider", display.Options{}, snap)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Ensure that the snapshot is valid after the rename.
-	assert.NoError(t, snap.VerifyIntegrity())
+	require.NoError(t, snap.VerifyIntegrity())
 
 	// Check that the snapshot contains the renamed provider as `our-provider`.
 	for _, res := range snap.Resources {
@@ -80,22 +84,25 @@ func TestStateRename_updatesChildren(t *testing.T) {
 	child := resource.URN("urn:pulumi:dev::pets::random:index/randomPet:RandomPet$random:index/randomPet:RandomPet::child")
 
 	snap := deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
-				URN:  provider,
-				ID:   "provider-id",
-				Type: "pulumi:provider:random",
+				URN:    provider,
+				ID:     "provider-id",
+				Type:   "pulumi:provider:random",
+				Custom: true,
 			},
 			{
-				URN:  parent,
-				ID:   "parent-id",
-				Type: "random:index/randomPet:RandomPet",
+				URN:    parent,
+				ID:     "parent-id",
+				Type:   "random:index/randomPet:RandomPet",
+				Custom: true,
 			},
 			{
 				URN:    child,
 				ID:     "child-id",
 				Type:   "random:index/randomPet:RandomPet",
 				Parent: parent,
+				Custom: true,
 			},
 		},
 	}

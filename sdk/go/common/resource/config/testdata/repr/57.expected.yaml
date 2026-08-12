@@ -10,7 +10,7 @@ paths:
         bar: value
     string: '["a","b","c",{"foo":{"bar":"value"}}]'
     redacted: '["a","b","c",{"foo":{"bar":"value"}}]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAA/4r/hEwABAZzdHJpbmcMAwABYQZzdHJpbmcMAwABYgZzdHJpbmcMAwABYxdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+BBAEC/4IAAQwBEAAAOv+CNwABA2ZvbxdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+CFgABA2JhcgZzdHJpbmcMBwAFdmFsdWU=
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAA/4n/gksABAZzdHJpbmcMAwABYQZzdHJpbmcMAwABYgZzdHJpbmcMAwABYxdtYXBbc3RyaW5nXWludGVyZmFjZSB7fX8EAQL/gAABDAEQAAA6/4A3AAEDZm9vF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4AWAAEDYmFyBnN0cmluZwwHAAV2YWx1ZQ==
     secure: false
     isObject: true
   my:name[0]:
@@ -40,7 +40,7 @@ paths:
         bar: value
     string: '{"foo":{"bar":"value"}}'
     redacted: '{"foo":{"bar":"value"}}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAA6/4I3AAEDZm9vF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4IWAAEDYmFyBnN0cmluZwwHAAV2YWx1ZQ==
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAADr/gDcAAQNmb28XbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/gBYAAQNiYXIGc3RyaW5nDAcABXZhbHVl
     secure: false
     isObject: true
   my:name[3].foo:
@@ -48,7 +48,7 @@ paths:
       bar: value
     string: '{"bar":"value"}'
     redacted: '{"bar":"value"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAZ/4IWAAEDYmFyBnN0cmluZwwHAAV2YWx1ZQ==
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAABn/gBYAAQNiYXIGc3RyaW5nDAcABXZhbHVl
     secure: false
     isObject: true
   my:name[3].foo.bar:

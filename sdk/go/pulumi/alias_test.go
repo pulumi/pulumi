@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,10 @@
 package pulumi
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var aliasTestCases = []struct {
@@ -68,21 +68,20 @@ func TestAliasResolution(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range aliasTestCases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			parent := newResource(t, URN("AnUrn::ASegment"), ID("hello"))
 			out, err := tt.alias(t).collapseToURN("defName", "defType", parent, "defProject", "defStack")
-			assert.NoError(t, err)
-			urn, _, _, err := out.awaitURN(context.Background())
-			assert.NoError(t, err)
+			require.NoError(t, err)
+			urn, _, _, err := out.awaitURN(t.Context())
+			require.NoError(t, err)
 			assert.Equal(t, URN(tt.expectedURN), urn)
 		})
 	}
 }
 
 func newResource(t *testing.T, urn URN, id ID) Resource {
-	ctx, err := NewContext(context.Background(), RunInfo{})
-	assert.NoError(t, err)
+	ctx, err := NewContext(t.Context(), RunInfo{})
+	require.NoError(t, err)
 	return newSimpleCustomResource(ctx, urn, id)
 }

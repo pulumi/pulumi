@@ -1,0 +1,3 @@
+name: program-error-nodejs
+description: A program that throws an error
+runtime: nodejs

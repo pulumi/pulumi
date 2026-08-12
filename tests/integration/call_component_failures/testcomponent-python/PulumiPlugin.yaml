@@ -1,4 +1,5 @@
 runtime:
   name: python
   options:
+    toolchain: uv
     virtualenv: venv

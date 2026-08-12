@@ -15,4 +15,4 @@ many = []
 for range in [{"value": i} for i in range(0, 10)]:
     many.append(Second(f"many-{range['value']}", {
         'petName': another.pet_name    }))
-resolve_looping_over_many(pulumi.Output.from_input([v["passwordLength"] for _, v in many]))
+resolve_looping_over_many(pulumi.Output.from_input([v["passwordLength"] for v in many]))

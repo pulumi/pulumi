@@ -33,8 +33,8 @@ export class Person extends pulumi.CustomResource {
         return obj['__pulumiType'] === Person.__pulumiType;
     }
 
-    public readonly name!: pulumi.Output<string | undefined>;
-    public readonly pets!: pulumi.Output<outputs.Pet[] | undefined>;
+    declare public readonly name: pulumi.Output<string | undefined>;
+    declare public readonly pets: pulumi.Output<outputs.Pet[] | undefined>;
 
     /**
      * Create a Person resource with the given unique name, arguments, and options.
@@ -47,8 +47,8 @@ export class Person extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["name"] = args ? args.name : undefined;
-            resourceInputs["pets"] = args ? args.pets : undefined;
+            resourceInputs["name"] = args?.name;
+            resourceInputs["pets"] = args?.pets;
         } else {
             resourceInputs["name"] = undefined /*out*/;
             resourceInputs["pets"] = undefined /*out*/;
@@ -62,6 +62,6 @@ export class Person extends pulumi.CustomResource {
  * The set of arguments for constructing a Person resource.
  */
 export interface PersonArgs {
-    name?: pulumi.Input<string>;
-    pets?: pulumi.Input<pulumi.Input<inputs.PetArgs>[]>;
+    name?: pulumi.Input<string | undefined>;
+    pets?: pulumi.Input<pulumi.Input<inputs.PetArgs>[] | undefined>;
 }

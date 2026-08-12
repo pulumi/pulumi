@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,19 +22,34 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // isReservedWord returns true if s is a Go reserved word as per
 // https://golang.org/ref/spec#Keywords
 func isReservedWord(s string) bool {
 	switch s {
-	case "break", "default", "func", " interface", "select",
+	// Go keywords
+	case "break", "default", "func", "interface", "select",
 		"case", "defer", "go", "map", "struct",
 		"chan", "else", "goto", "package", "switch",
 		"const", "fallthrough", "if", "range", "type",
 		"continue", "for", "import", "return", "var":
+		return true
+
+	// Go predeclared identifiers — shadowing these breaks generated code
+	// when the same name appears as both a variable and a type/builtin.
+	case "any", "bool", "byte", "comparable",
+		"complex64", "complex128",
+		"error",
+		"float32", "float64",
+		"int", "int8", "int16", "int32", "int64",
+		"rune", "string",
+		"uint", "uint8", "uint16", "uint32", "uint64", "uintptr",
+		"true", "false", "iota",
+		"nil",
+		"append", "cap", "clear", "close", "complex",
+		"copy", "delete", "imag", "len", "make",
+		"max", "min", "new", "panic", "print", "println", "real", "recover":
 		return true
 
 	default:
@@ -55,6 +70,17 @@ func isReservedResourceField(resourceName, s string) bool {
 		}
 		return false
 	}
+}
+
+// structFieldName returns the generated Go SDK struct field name for a schema property,
+// applying the same rename SDK codegen uses for properties that collide with generated
+// methods (e.g. `elementType` -> `ElementType_`).
+func structFieldName(propertyName string) string {
+	name := Title(propertyName)
+	if isReservedResourceField("", name) {
+		name += "_"
+	}
+	return name
 }
 
 // isLegalIdentifierStart returns true if it is legal for c to be the first character of a Go identifier as per
@@ -136,20 +162,4 @@ func enumTitle(s string) string {
 	return cgstrings.ModifyStringAroundDelimeter(s, "-", func(next string) string {
 		return "_" + cgstrings.UppercaseFirst(next)
 	})
-}
-
-// Calculate the name of a field in a resource
-func fieldName(pkg *pkgContext, r *schema.Resource, p *schema.Property) string {
-	s := Title(p.Name)
-	var name string
-	if r != nil {
-		name = disambiguatedResourceName(r, pkg)
-	}
-	if !isReservedResourceField(name, s) {
-		return s
-	}
-
-	res := s + "_"
-	contract.Assertf(!isReservedResourceField(name, res), "Name %q is reserved on resource %q", name, res)
-	return res
 }

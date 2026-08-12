@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,12 +17,12 @@ package cancel
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -31,12 +31,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-func NewCancelCmd() *cobra.Command {
+func NewCancelCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var yes bool
 	var stack string
 	cmd := &cobra.Command{
-		Use:   "cancel [<stack-name>]",
-		Args:  cmdutil.MaximumNArgs(1),
+		Use:   "cancel",
 		Short: "Cancel a stack's currently running update, if any",
 		Long: "Cancel a stack's currently running update, if any.\n" +
 			"\n" +
@@ -61,15 +60,15 @@ func NewCancelCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			ws := pkgWorkspace.Instance
-
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				backend.DefaultLoginManager,
 				stack,
 				cmdStack.LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -79,7 +78,7 @@ func NewCancelCmd() *cobra.Command {
 			stackName := s.Ref().Name().String()
 			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
 			if cmdutil.Interactive() && (!yes && !ui.ConfirmPrompt(prompt, stackName, opts)) {
-				return result.FprintBailf(os.Stdout, "confirmation declined")
+				return result.FprintBailf(cmd.OutOrStdout(), "confirmation declined")
 			}
 
 			// Cancel the update.
@@ -90,12 +89,15 @@ func NewCancelCmd() *cobra.Command {
 			msg := fmt.Sprintf(
 				"%sThe currently running update for '%s' has been canceled!%s",
 				colors.SpecAttention, stackName, colors.Reset)
-			fmt.Println(opts.Color.Colorize(msg))
+			fmt.Fprintln(cmd.OutOrStdout(), opts.Color.Colorize(msg))
 
 			return nil
 		},
 	}
-
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "stack-name"}},
+		Required:  0,
+	})
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with cancellation anyway")

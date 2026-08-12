@@ -1,4 +1,4 @@
-// Copyright 2020-2025, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,8 +19,12 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
+	"strings"
 	"testing"
+
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
@@ -28,15 +32,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func TestParallelRefresh(t *testing.T) {
@@ -52,26 +60,26 @@ func TestParallelRefresh(t *testing.T) {
 	// it.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{respA.URN},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		respC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{respB.URN},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
 			Dependencies: []resource.URN{respC.URN},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
@@ -86,7 +94,7 @@ func TestParallelRefresh(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.Len(t, snap.Resources, 5)
+	require.Len(t, snap.Resources, 5)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
@@ -96,7 +104,7 @@ func TestParallelRefresh(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
-	assert.Len(t, snap.Resources, 5)
+	require.Len(t, snap.Resources, 5)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
@@ -115,14 +123,24 @@ func TestExternalRefresh(t *testing.T) {
 
 	// Our program reads a resource and exits.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "", "", "")
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		_, _, err := monitor.ReadResource(
+			"pkgA:m:typA",
+			"resA",
+			"resA-some-id",
+			"",
+			resource.PropertyMap{},
+			"",
+			"",
+			"",
+			nil,
+			"",
+			"",
+		)
+		require.NoError(t, err)
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   []lt.TestStep{{Op: Update}},
@@ -130,7 +148,7 @@ func TestExternalRefresh(t *testing.T) {
 
 	// The read should place "resA" in the snapshot with the "External" bit set.
 	snap := p.RunWithName(t, nil, "0")
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
@@ -142,7 +160,7 @@ func TestExternalRefresh(t *testing.T) {
 
 	snap = p.RunWithName(t, snap, "1")
 	// A refresh should leave "resA" as it is in the snapshot. The External bit should still be set.
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.True(t, snap.Resources[1].External)
@@ -165,7 +183,7 @@ func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Outputs: resource.PropertyMap{
-								"o1": resource.NewNumberProperty(float64(readCall)),
+								"o1": resource.NewProperty(float64(readCall)),
 							},
 						},
 						Status: resource.StatusOK,
@@ -182,15 +200,25 @@ func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
 
 	// Our program reads a resource and exits.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "resA-some-id", "", resource.PropertyMap{}, "", "", "", "")
-		if !assert.NoError(t, err) {
-			t.FailNow()
-		}
+		_, _, err := monitor.ReadResource(
+			"pkgA:m:typA",
+			"resA",
+			"resA-some-id",
+			"",
+			resource.PropertyMap{},
+			"",
+			"",
+			"",
+			nil,
+			"",
+			"",
+		)
+		require.NoError(t, err)
 
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps:   []lt.TestStep{{Op: Update}},
@@ -217,7 +245,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 	res2URN := p.NewURN("pkgA:m:typA", "resB", "")
 
-	res2Outputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	res2Outputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
 
 	//
 	// Refresh will persist any initialization errors that are returned by `Read`. This provider
@@ -238,6 +266,7 @@ func TestRefreshInitFailure(t *testing.T) {
 						}
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Outputs: resource.PropertyMap{},
 							},
 							Status: resource.StatusPartialFailure,
@@ -245,6 +274,7 @@ func TestRefreshInitFailure(t *testing.T) {
 					} else if req.URN == res2URN {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Outputs: res2Outputs,
 							},
 							Status: resource.StatusOK,
@@ -252,6 +282,7 @@ func TestRefreshInitFailure(t *testing.T) {
 					}
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Outputs: resource.PropertyMap{},
 						},
 						Status: resource.StatusOK,
@@ -263,10 +294,10 @@ func TestRefreshInitFailure(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options.HostF = hostF
 	p.Options.T = t
@@ -274,7 +305,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	// Create an old snapshot with a single initialization failure.
 	//
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:       resURN.Type(),
 				URN:        resURN,
@@ -301,18 +332,23 @@ func TestRefreshInitFailure(t *testing.T) {
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap := p.Run(t, old)
 
-	for _, resource := range snap.Resources {
-		switch urn := resource.URN; urn {
+	seen := slice.Prealloc[resource.URN](len(snap.Resources))
+	for _, res := range snap.Resources {
+		seen = append(seen, res.URN)
+		switch urn := res.URN; urn {
 		case provURN:
 			// break
 		case resURN:
-			assert.Empty(t, resource.InitErrors)
+			assert.Empty(t, res.InitErrors)
+			assert.Equal(t, resource.ID("0"), res.ID)
 		case res2URN:
-			assert.Equal(t, res2Outputs, resource.Outputs)
+			assert.Equal(t, res2Outputs, res.Outputs)
+			assert.Equal(t, resource.ID("1"), res.ID)
 		default:
 			t.Fatalf("unexpected resource %v", urn)
 		}
 	}
+	assert.Equal(t, []resource.URN{provURN, resURN, res2URN}, seen)
 
 	//
 	// Refresh again, see the resource is in a partial state of failure, but the refresh operation
@@ -321,18 +357,24 @@ func TestRefreshInitFailure(t *testing.T) {
 	refreshShouldFail = true
 	p.Steps = []lt.TestStep{{Op: Refresh, SkipPreview: true}}
 	snap = p.Run(t, old)
-	for _, resource := range snap.Resources {
-		switch urn := resource.URN; urn {
+
+	seen = slice.Prealloc[resource.URN](len(snap.Resources))
+	for _, res := range snap.Resources {
+		seen = append(seen, res.URN)
+		switch urn := res.URN; urn {
 		case provURN:
 			// break
 		case resURN:
-			assert.Equal(t, []string{"Refresh reports continued to fail to initialize"}, resource.InitErrors)
+			assert.Equal(t, []string{"Refresh reports continued to fail to initialize"}, res.InitErrors)
+			assert.Equal(t, resource.ID("0"), res.ID)
 		case res2URN:
-			assert.Equal(t, res2Outputs, resource.Outputs)
+			assert.Equal(t, res2Outputs, res.Outputs)
+			assert.Equal(t, resource.ID("1"), res.ID)
 		default:
 			t.Fatalf("unexpected resource %v", urn)
 		}
 	}
+	assert.Equal(t, []resource.URN{provURN, resURN, res2URN}, seen)
 }
 
 // Test that tests that Refresh can detect that resources have been deleted and removes them
@@ -342,7 +384,6 @@ func TestRefreshWithDelete(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, parallelFactor := range []int32{1, 4} {
-		parallelFactor := parallelFactor
 		t.Run(fmt.Sprintf("parallel-%d", parallelFactor), func(t *testing.T) {
 			t.Parallel()
 
@@ -360,11 +401,11 @@ func TestRefreshWithDelete(t *testing.T) {
 
 			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				return err
 			})
 
-			hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 			p := &lt.TestPlan{
 				Options: lt.TestUpdateOptions{
 					T: t,
@@ -383,7 +424,7 @@ func TestRefreshWithDelete(t *testing.T) {
 
 			// Refresh succeeds and records that the resource in the snapshot doesn't exist anymore
 			provURN := p.NewProviderURN("pkgA", "default", "")
-			assert.Len(t, snap.Resources, 1)
+			require.Len(t, snap.Resources, 1)
 			assert.Equal(t, provURN, snap.Resources[0].URN)
 		})
 	}
@@ -420,7 +461,10 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 					}
 
 					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Outputs: resource.PropertyMap{},
+						},
 					}, nil
 				},
 			}, nil
@@ -429,7 +473,7 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			PropertyDeps: map[resource.PropertyKey][]resource.URN{
@@ -437,36 +481,36 @@ func TestRefreshDeletePropertyDependencies(t *testing.T) {
 			},
 		})
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 	assert.Equal(t, snap.Resources[2].PropertyDependencies["propB1"][0].Name(), "resA")
 
 	err := snap.VerifyIntegrity()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resB")
 	assert.Empty(t, snap.Resources[1].PropertyDependencies)
 
 	err = snap.VerifyIntegrity()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestRefreshDeleteDeletedWith(t *testing.T) {
@@ -481,8 +525,11 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 					}
 
 					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
-						Status:     resource.StatusOK,
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
 					}, nil
 				},
 			}, nil
@@ -491,50 +538,50 @@ func TestRefreshDeleteDeletedWith(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			DeletedWith: resA.URN,
 		})
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF}}
 
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	assert.Equal(t, snap.Resources[2].URN.Name(), "resB")
 	assert.Equal(t, snap.Resources[2].DeletedWith.Name(), "resA")
 
 	err := snap.VerifyIntegrity()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
 
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, snap.Resources[0].URN.Name(), "default") // provider
 	assert.Equal(t, snap.Resources[1].URN.Name(), "resB")
 	assert.Empty(t, snap.Resources[1].DeletedWith)
 
 	err = snap.VerifyIntegrity()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // Looks up the provider ID in newResources and sets "Provider" to reference that in every resource in oldResources.
-func setProviderRef(t *testing.T, oldResources, newResources []*resource.State, provURN resource.URN) {
+func setProviderRef(t *testing.T, oldResources, newResources []*pkgresource.State, provURN resource.URN) {
 	for _, r := range newResources {
 		if r.URN == provURN {
 			provRef, err := providers.NewReference(r.URN, r.ID)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			for i := range oldResources {
 				oldResources[i].Provider = provRef.String()
 			}
@@ -553,7 +600,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 	urnC := p.NewURN(resType, names[2], "")
 	urns := []resource.URN{urnA, urnB, urnC}
 
-	refreshTargets := []resource.URN{}
+	refreshTargets := slice.Prealloc[resource.URN](len(targets))
 
 	t.Logf("Refreshing targets: %v", targets)
 	for _, target := range targets {
@@ -562,8 +609,8 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns(refreshTargets)
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -575,7 +622,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		}
 	}
 
-	oldResources := []*resource.State{
+	oldResources := []*pkgresource.State{
 		newResource(urnA, "0", false),
 		newResource(urnB, "1", false, urnA),
 		newResource(urnC, "2", false, urnA, urnB),
@@ -599,6 +646,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 					default:
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Inputs:  req.Inputs,
 								Outputs: req.State,
 							},
@@ -610,7 +658,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		}),
 	}
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, nil, nil, loaders...)
 	p.Options.T = t
 
 	p.Steps = []lt.TestStep{
@@ -677,20 +725,14 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 		} else {
 			// A was not deleted. So nothing should be impacted.
 			id, err := strconv.Atoi(r.ID.String())
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, oldResources[id], r)
 		}
 	}
 }
 
 func containsURN(urns []resource.URN, urn resource.URN) bool {
-	for _, val := range urns {
-		if val == urn {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(urns, urn)
 }
 
 // Tests basic refresh functionality.
@@ -730,8 +772,8 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 	p.Options.Targets = deploy.NewUrnTargetsFromUrns(refreshTargets)
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -743,7 +785,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		}
 	}
 
-	oldResources := []*resource.State{
+	oldResources := []*pkgresource.State{
 		newResource(urnA, "0", false),
 		newResource(urnB, "1", false, urnA),
 		newResource(urnC, "2", false, urnA, urnB),
@@ -758,16 +800,16 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		"3": {Outputs: resource.PropertyMap{}, Inputs: resource.PropertyMap{}},
 
 		// B::1 has output-only changes which will not be reported as a refresh diff.
-		"1": {Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")}, Inputs: resource.PropertyMap{}},
+		"1": {Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")}, Inputs: resource.PropertyMap{}},
 
 		// A::4 will have input and output changes. The changes that impact the inputs will be reported
 		// as a refresh diff.
 		"4": {
 			Outputs: resource.PropertyMap{
-				"baz": resource.NewStringProperty("qux"),
-				"oof": resource.NewStringProperty("zab"),
+				"baz": resource.NewProperty("qux"),
+				"oof": resource.NewProperty("zab"),
 			},
-			Inputs: resource.PropertyMap{"oof": resource.NewStringProperty("zab")},
+			Inputs: resource.PropertyMap{"oof": resource.NewProperty("zab")},
 		},
 
 		// C::2 and C::5 will be deleted.
@@ -785,6 +827,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					new, hasNewState := newStates[req.ID]
 					assert.True(t, hasNewState)
+					new.ID = req.ID
 					return plugin.ReadResponse{
 						ReadResult: new,
 						Status:     resource.StatusOK,
@@ -794,7 +837,7 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		}),
 	}
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, nil, nil, nil, loaders...)
 	p.Options.T = t
 
 	p.Steps = []lt.TestStep{{
@@ -871,10 +914,10 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 
 		// The only resources left in the checkpoint should be those that were not deleted by the refresh.
 		expected := newStates[r.ID]
-		assert.NotNil(t, expected)
+		require.NotNil(t, expected)
 
 		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		targetedForRefresh := len(refreshTargets) == 0
 		for _, targetUrn := range refreshTargets {
@@ -908,8 +951,8 @@ func TestCanceledRefresh(t *testing.T) {
 	urnB := p.NewURN(resType, "resB", "")
 	urnC := p.NewURN(resType, "resC", "")
 
-	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *resource.State {
-		return &resource.State{
+	newResource := func(urn resource.URN, id resource.ID, del bool, dependencies ...resource.URN) *pkgresource.State {
+		return &pkgresource.State{
 			Type:         urn.Type(),
 			URN:          urn,
 			Custom:       true,
@@ -921,7 +964,7 @@ func TestCanceledRefresh(t *testing.T) {
 		}
 	}
 
-	oldResources := []*resource.State{
+	oldResources := []*pkgresource.State{
 		newResource(urnA, "0", false),
 		newResource(urnB, "1", false),
 		newResource(urnC, "2", false),
@@ -931,12 +974,12 @@ func TestCanceledRefresh(t *testing.T) {
 		// A::0 will have input and output changes. The changes that impact the inputs will be reported
 		// as a refresh diff.
 		"0": {
-			Outputs: resource.PropertyMap{"foo": resource.NewStringProperty("bar")},
-			Inputs:  resource.PropertyMap{"oof": resource.NewStringProperty("rab")},
+			Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")},
+			Inputs:  resource.PropertyMap{"oof": resource.NewProperty("rab")},
 		},
 		// B::1 will have output changes.
 		"1": {
-			Outputs: resource.PropertyMap{"baz": resource.NewStringProperty("qux")},
+			Outputs: resource.PropertyMap{"baz": resource.NewProperty("qux")},
 		},
 		// C::2 will be deleted.
 		"2": {},
@@ -947,6 +990,7 @@ func TestCanceledRefresh(t *testing.T) {
 	}
 
 	// Set up a cancelable context for the refresh operation.
+	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Serialize all refreshes s.t. we can cancel after the first is issued.
@@ -964,6 +1008,7 @@ func TestCanceledRefresh(t *testing.T) {
 					<-cancelled
 
 					new, hasNewState := newStates[req.ID]
+					new.ID = req.ID
 					assert.True(t, hasNewState)
 					return plugin.ReadResponse{
 						ReadResult: new,
@@ -982,7 +1027,7 @@ func TestCanceledRefresh(t *testing.T) {
 	op := lt.TestOp(Refresh)
 	options := lt.TestUpdateOptions{
 		T:     t,
-		HostF: deploytest.NewPluginHostF(nil, nil, nil, loaders...),
+		HostF: deploytest.NewPluginHostF(nil, nil, nil, nil, nil, loaders...),
 		UpdateOptions: UpdateOptions{
 			Parallel: 1,
 		},
@@ -1033,7 +1078,7 @@ func TestCanceledRefresh(t *testing.T) {
 
 	snap, err := op.RunWithContext(ctx, project, target, options, false, nil, validate)
 	assert.ErrorContains(t, err, "BAIL: canceled")
-	assert.Equal(t, 1, len(refreshed))
+	require.Len(t, refreshed, 1)
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 
@@ -1052,7 +1097,7 @@ func TestCanceledRefresh(t *testing.T) {
 		}
 
 		idx, err := strconv.ParseInt(string(r.ID), 0, 0)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if refreshed[r.ID] {
 			// The refreshed resource should have its new state.
@@ -1087,7 +1132,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 	idBefore := resource.ID("myid")
 	idAfter := resource.ID("mynewid")
-	outputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	outputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1108,16 +1153,16 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options.HostF = hostF
 	p.Options.T = t
 
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:       resURN.Type(),
 				URN:        resURN,
@@ -1169,14 +1214,14 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p.Options.HostF = hostF
 	p.Options.Refresh = true
 	p.Options.T = t
 
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:    resURN.Type(),
 				URN:     resURN,
@@ -1190,16 +1235,16 @@ func TestRefreshUpdateWithDeletedResource(t *testing.T) {
 
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, old)
-	assert.Equal(t, 0, len(snap.Resources))
+	assert.Empty(t, snap.Resources)
 }
 
 // Test that we can run a simple refresh by executing the program for it.
 func TestRefreshWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1261,7 +1306,7 @@ func TestRefreshWithProgram(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: programInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
@@ -1272,13 +1317,12 @@ func TestRefreshWithProgram(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -1291,7 +1335,7 @@ func TestRefreshWithProgram(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a refresh
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -1303,16 +1347,123 @@ func TestRefreshWithProgram(t *testing.T) {
 	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 }
 
+// Test that we can run a refresh with a provider that has a dependency on a resource
+// that does not exist yet at the time the refresh is run.
+func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
+	t.Parallel()
+
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  req.Inputs,
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(uuid.String()),
+						Properties: resource.PropertyMap{},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: programInputs,
+		})
+		require.NoError(t, err)
+
+		resp, err = monitor.RegisterResource("pulumi:providers:pkgA", "resX", true, deploytest.ResourceOptions{
+			Inputs:       programInputs,
+			Dependencies: []resource.URN{resp.URN},
+		})
+		require.NoError(t, err)
+
+		ref, err := providers.NewReference(resp.URN, resp.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
+			Inputs:   programInputs,
+			Provider: ref.String(),
+		})
+		require.NoError(t, err)
+
+		var dep map[resource.PropertyKey][]resource.URN
+		if programExecutions > 2 {
+			resp, err = monitor.RegisterResource("pkgA:m:typB", "resC", true, deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"foo": resource.NewProperty("baz")},
+			})
+			require.NoError(t, err)
+			dep = map[resource.PropertyKey][]resource.URN{
+				"foo": {resp.URN},
+			}
+		}
+
+		// First run this doesn't depend on anything, on the second refresh it will try to depend on "resB"
+		// which is skipped.
+		_, err = monitor.RegisterResource("pkgA:m:typC", "resD", true, deploytest.ResourceOptions{
+			Inputs:       resource.PropertyMap{"foo": resource.NewProperty("baz")},
+			PropertyDeps: dep,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	snap, err := lt.TestOp(RefreshV2).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 1)
+
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 5)
+
+	// Run the second refresh which can refresh the provider but shouldn't fail on the resource now depending
+	// on a skipped resource.
+	snap, err = lt.TestOp(RefreshV2).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 5)
+}
+
 // Test that we can run a refresh by executing the program for it and get updated provider configuration for
 // an explicit provider.
 func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
-	expectedAuth := resource.NewStringProperty("upauth")
+	expectedAuth := resource.NewProperty("upauth")
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1388,16 +1539,16 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{"auth": expectedAuth},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		provRef, err := providers.NewReference(prov.URN, prov.ID)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),
 			Inputs:   programInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
@@ -1408,13 +1559,12 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -1427,10 +1577,10 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// And update the expected auth required for the provider, if we loaded the provider just from state we
 	// wouldn't pick this up.
-	expectedAuth = resource.NewStringProperty("refreshauth")
+	expectedAuth = resource.NewProperty("refreshauth")
 	// Run a refresh
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -1447,11 +1597,11 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
-	expectedAuth := resource.NewStringProperty("upauth")
+	expectedAuth := resource.NewProperty("upauth")
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1527,7 +1677,7 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: programInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
@@ -1538,13 +1688,12 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 		Config: config.Map{
 			config.MustParseKey("pkgA:config:auth"): config.NewValue("upauth"),
@@ -1560,10 +1709,10 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// And update the expected auth required for the provider, if we loaded the provider just from state we
 	// wouldn't pick this up.
-	expectedAuth = resource.NewStringProperty("refreshauth")
+	expectedAuth = resource.NewProperty("refreshauth")
 	p.Config = config.Map{
 		config.MustParseKey("pkgA:config:auth"): config.NewValue("refreshauth"),
 	}
@@ -1583,11 +1732,11 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
-	expectedAuth := resource.NewStringProperty("upauth")
+	expectedAuth := resource.NewProperty("upauth")
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1666,20 +1815,19 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Inputs: programInputs,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 		Config: config.Map{
 			config.MustParseKey("pkgA:config:auth"): config.NewValue("upauth"),
@@ -1695,7 +1843,7 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// We can't change the 'expectedauth' in this case because we're re-loading the provider
 	// from state. We change config here to show that's the case.
 	p.Config = config.Map{
@@ -1716,9 +1864,9 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewStringProperty("baz")}
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1791,7 +1939,7 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: programInputs,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time we should see nothing because it will be deleted
 		if programExecutions == 1 {
@@ -1805,7 +1953,7 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 			Inputs:       programInputs,
 			Dependencies: []resource.URN{resp.URN},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
@@ -1816,13 +1964,12 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T:                t,
-			HostF:            hostF,
-			SkipDisplayTests: true,
+			T:     t,
+			HostF: hostF,
 		},
 	}
 
@@ -1831,10 +1978,10 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Len(t, snap.Resources, 3)
+	require.Len(t, snap.Resources, 3)
 
 	// Change the program inputs to check we don't changed inputs to the provider
-	programInputs["foo"] = resource.NewStringProperty("qux")
+	programInputs["foo"] = resource.NewProperty("qux")
 	// Run a refresh
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -1842,5 +1989,1771 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 	// Should have run the program again
 	assert.Equal(t, 2, programExecutions)
 	// Should only have 2 resources now, the deleted one should be gone.
-	assert.Len(t, snap.Resources, 2)
+	require.Len(t, snap.Resources, 2)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/19406. Check that if we have a program with
+// more resources than step executor workers we don't deadlock.
+func TestRefreshWithBigProgram(t *testing.T) {
+	t.Parallel()
+
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if strings.HasPrefix(req.Name, "resA") {
+						assert.Equal(t, createOutputs, req.Inputs)
+						assert.Equal(t, createOutputs, req.State)
+
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
+								Inputs:  req.Inputs,
+								Outputs: readOutputs,
+							},
+							Status: resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					if strings.HasPrefix(req.Name, "resA") {
+						assert.Equal(t, programInputs, req.Properties)
+
+						return plugin.CreateResponse{
+							ID:         resource.ID(uuid.String()),
+							Properties: createOutputs,
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(uuid.String()),
+						Properties: resource.PropertyMap{},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	parallel := int32(4)
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		for i := int32(0); i < parallel+1; i++ {
+			resp, err := monitor.RegisterResource(
+				"pkgA:m:typA", "resA"+strconv.FormatInt(int64(i), 10), true,
+				deploytest.ResourceOptions{
+					Inputs: programInputs,
+				})
+			require.NoError(t, err)
+
+			// First time we should see the create outputs, second time the read outputs
+			if programExecutions == 1 {
+				assert.Equal(t, createOutputs, resp.Outputs)
+			} else {
+				assert.Equal(t, readOutputs, resp.Outputs)
+			}
+		}
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+			UpdateOptions: engine.UpdateOptions{
+				Parallel: parallel,
+			},
+		},
+	}
+
+	// Run an update to create the initial state.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Equal(t, 1, programExecutions)
+	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
+	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+
+	// Change the program inputs to check we don't changed inputs to the provider
+	programInputs["foo"] = resource.NewProperty("qux")
+	// Run a refresh
+	snap, err = lt.TestOp(RefreshV2).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	// Should have run the program again
+	assert.Equal(t, 2, programExecutions)
+	// Inputs should match what the provider returned, not what was in the program.
+	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/19561. Run a refresh with a resource that
+// changes type but is aliased. The provider should see the new type.
+func TestRefreshWithAlias(t *testing.T) {
+	t.Parallel()
+
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.Name == "resA" {
+						// We should see the new type here.
+						assert.Equal(t, tokens.Type("pkgA:m:typB"), req.Type)
+						assert.Equal(t, createOutputs, req.Inputs)
+						assert.Equal(t, createOutputs, req.State)
+
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
+								Inputs:  req.Inputs,
+								Outputs: readOutputs,
+							},
+							Status: resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					if req.Name == "resA" {
+						assert.Equal(t, programInputs, req.Properties)
+
+						return plugin.CreateResponse{
+							ID:         resource.ID(uuid.String()),
+							Properties: createOutputs,
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(uuid.String()),
+						Properties: resource.PropertyMap{},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		// First time we should see the create outputs, second time the read outputs
+		if programExecutions == 1 {
+			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: programInputs,
+			})
+			require.NoError(t, err)
+			assert.Equal(t, createOutputs, resp.Outputs)
+		} else {
+			// Register the resource with a different type, but with an alias.
+			resp, err := monitor.RegisterResource("pkgA:m:typB", "resA", true, deploytest.ResourceOptions{
+				Inputs: programInputs,
+				Aliases: []*pulumirpc.Alias{{
+					Alias: &pulumirpc.Alias_Spec_{
+						Spec: &pulumirpc.Alias_Spec{
+							Type: "pkgA:m:typA",
+						},
+					},
+				}},
+			})
+			require.NoError(t, err)
+			assert.Equal(t, readOutputs, resp.Outputs)
+		}
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	// Run an update to create the initial state.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Equal(t, 1, programExecutions)
+	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
+	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+
+	// Change the program inputs to check we don't changed inputs to the provider
+	programInputs["foo"] = resource.NewProperty("qux")
+	// Run a refresh
+	snap, err = lt.TestOp(RefreshV2).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	// Should have run the program again
+	assert.Equal(t, 2, programExecutions)
+	// Inputs should match what the provider returned, not what was in the program.
+	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+}
+
+// When running a --refresh update with --run-program if a resource has been deleted we should re-create it.
+func TestRefreshRunProgramDeletedResource(t *testing.T) {
+	t.Parallel()
+
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.Name == "resA" {
+						assert.Equal(t, createOutputs, req.Inputs)
+						assert.Equal(t, createOutputs, req.State)
+
+						return plugin.ReadResponse{
+							// Return an empty read result to indicate the resource has been deleted.
+							ReadResult: plugin.ReadResult{},
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					if req.Name == "resA" {
+						assert.Equal(t, programInputs, req.Properties)
+
+						return plugin.CreateResponse{
+							ID:         resource.ID(uuid.String()),
+							Properties: createOutputs,
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(uuid.String()),
+						Properties: resource.PropertyMap{},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: programInputs,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, createOutputs, resp.Outputs)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	// Run an update to create the initial state.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Equal(t, 1, programExecutions)
+	require.Len(t, snap.Resources, 2)
+	firstID := snap.Resources[1].ID
+
+	// Change the program inputs to check we don't changed inputs to the provider
+	programInputs["foo"] = resource.NewProperty("qux")
+	p.Options.Refresh = true
+	p.Options.RefreshProgram = true
+	// Run a refresh update
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	// Should have run the program again
+	assert.Equal(t, 2, programExecutions)
+	// Should have a new ID from calling create again
+	require.Len(t, snap.Resources, 2)
+	assert.NotEqual(t, firstID, snap.Resources[1].ID)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/20121. If a resource needs to DBR replace
+// during a --refresh update we should not panic.
+func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
+	t.Parallel()
+
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.Name == "resA" || req.Name == "resB" {
+						assert.Equal(t, createOutputs, req.Inputs)
+						assert.Equal(t, createOutputs, req.State)
+
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
+								Inputs:  req.Inputs,
+								Outputs: req.State,
+							},
+							Status: resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					if req.Name == "resA" || req.Name == "resB" {
+						assert.Equal(t, programInputs, req.Properties)
+
+						return plugin.CreateResponse{
+							ID:         resource.ID(uuid.String()),
+							Properties: createOutputs,
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(uuid.String()),
+						Properties: resource.PropertyMap{},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+					if req.Name == "resA" {
+						// Simulate a diff that requires a replacement.
+						return plugin.DiffResponse{
+							ReplaceKeys:         []resource.PropertyKey{"foo"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+
+					return plugin.DiffResponse{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: programInputs,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, createOutputs, resp.Outputs)
+
+		resp, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs:       resp.Outputs,
+			Dependencies: []resource.URN{resp.URN},
+		})
+		require.NoError(t, err)
+		assert.Equal(t, createOutputs, resp.Outputs)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	// Run an update to create the initial state.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Equal(t, 1, programExecutions)
+	require.Len(t, snap.Resources, 3)
+	firstID := snap.Resources[1].ID
+
+	programInputs["foo"] = resource.NewProperty("qux")
+	p.Options.Refresh = true
+	p.Options.RefreshProgram = true
+	// Run a refresh update
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	// Should have run the program again
+	assert.Equal(t, 2, programExecutions)
+	// Should have a new ID from calling create again
+	require.Len(t, snap.Resources, 3)
+	assert.NotEqual(t, firstID, snap.Resources[1].ID)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/20217. If a resource needs to replace during a --refresh
+// update we should not panic.
+func TestRefreshRunProgramReplacedResource(t *testing.T) {
+	t.Parallel()
+
+	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	initialProperties := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.Name == "resA" {
+						assert.Equal(t, initialProperties, req.Inputs)
+						assert.Equal(t, initialProperties, req.State)
+
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
+								Inputs:  req.Inputs,
+								Outputs: req.State,
+							},
+							Status: resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					uuid, err := uuid.NewV4()
+					if err != nil {
+						return plugin.CreateResponse{}, err
+					}
+
+					if req.Name == "resA" {
+						assert.Equal(t, programInputs, req.Properties)
+
+						return plugin.CreateResponse{
+							ID:         resource.ID(uuid.String()),
+							Properties: req.Properties,
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.CreateResponse{
+						ID:         resource.ID(uuid.String()),
+						Properties: resource.PropertyMap{},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+					if req.Name == "resA" {
+						// Simulate a diff that requires a replacement.
+						return plugin.DiffResponse{
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+
+					return plugin.DiffResponse{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: programInputs,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, programInputs, resp.Outputs)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	// Run an update to create the initial state.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	assert.Equal(t, 1, programExecutions)
+	require.Len(t, snap.Resources, 2)
+	firstID := snap.Resources[1].ID
+
+	programInputs["foo"] = resource.NewProperty("qux")
+	p.Options.Refresh = true
+	p.Options.RefreshProgram = true
+	// Run a refresh update
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	// Should have run the program again
+	assert.Equal(t, 2, programExecutions)
+	// Should have a new ID from calling create again
+	require.Len(t, snap.Resources, 2)
+	assert.NotEqual(t, firstID, snap.Resources[1].ID)
+}
+
+func TestRefreshDeleteParent(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					if req.Name == "resA" {
+						return plugin.ReadResponse{
+							ReadResult: plugin.ReadResult{},
+							Status:     resource.StatusOK,
+						}, nil
+					}
+
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Inputs:  resource.PropertyMap{},
+							Outputs: resource.PropertyMap{},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programExecutions := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		programExecutions++
+
+		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Parent: resp.URN,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+		},
+	}
+
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
+
+	snap, err = lt.TestOp(Refresh).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+}
+
+func TestRefreshV2Targeted(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		provA := &pkgresource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
+			Custom: true,
+			ID:     "id-prov-a",
+		}
+		s.Resources = append(s.Resources, provA)
+
+		provARef, err := providers.NewReference(provA.URN, provA.ID)
+		require.NoError(t, err)
+
+		resA := &pkgresource.State{
+			Type:     "pkgA:index:Resource",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:index:Resource::resA",
+			Custom:   true,
+			Delete:   true,
+			ID:       "id-res-a",
+			Provider: provARef.String(),
+		}
+		s.Resources = append(s.Resources, resA)
+
+		provB := &pkgresource.State{
+			Type:   "pulumi:providers:pkgB",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::prov",
+			Custom: true,
+			ID:     "id-prov-b",
+		}
+		s.Resources = append(s.Resources, provB)
+
+		provBRef, err := providers.NewReference(provB.URN, provB.ID)
+		require.NoError(t, err)
+
+		compA := &pkgresource.State{
+			Type:     "pkgB:index:Component",
+			URN:      "urn:pulumi:test-stack::test-project::pkgB:index:Component::compA",
+			Custom:   false,
+			Provider: provBRef.String(),
+		}
+		s.Resources = append(s.Resources, compA)
+
+		provC := &pkgresource.State{
+			Type:   "pulumi:providers:pkgC",
+			URN:    "urn:pulumi:test-stack::test-project::pkgB:index:Component$pulumi:providers:pkgC::provC",
+			Custom: true,
+			ID:     "id-prov-c",
+			Parent: compA.URN,
+		}
+		s.Resources = append(s.Resources, provC)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgC", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		provA, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provARef, err := providers.NewReference(provA.URN, provA.ID)
+		require.NoError(t, err)
+
+		resA, err := monitor.RegisterResource("pkgA:index:Resource", "resA", true, deploytest.ResourceOptions{
+			Provider: provARef.String(),
+		})
+		require.NoError(t, err)
+
+		provB, err := monitor.RegisterResource("pulumi:providers:pkgB", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provBRef, err := providers.NewReference(provB.URN, provB.ID)
+		require.NoError(t, err)
+
+		compA, err := monitor.RegisterResource("pkgB:index:Component", "compA", false, deploytest.ResourceOptions{
+			Provider: provBRef.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pulumi:providers:pkgC", "provC", true, deploytest.ResourceOptions{
+			Parent: compA.URN,
+			Dependencies: []resource.URN{
+				resA.URN,
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test-stack::test-project::pkgB:index:Component::compA",
+			}),
+		},
+	}
+
+	_, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+func TestRefreshV2FailedRead(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov := &pkgresource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::default",
+			Custom: true,
+			ID:     "id-prov",
+		}
+		s.Resources = append(s.Resources, prov)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		resA := &pkgresource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
+			Custom:   true,
+			ID:       "id-resA",
+			Provider: provRef.String(),
+		}
+		s.Resources = append(s.Resources, resA)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					switch req.URN {
+					case "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA":
+						return plugin.ReadResponse{
+							Status: resource.StatusUnknown,
+						}, fmt.Errorf("read failure for %s", req.URN)
+					}
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "default", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+	}
+
+	snap, err := lt.TestOp(RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err,
+		"read failure for urn:pulumi:test-stack::test-project::pkgA:m:typA::resA")
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, resource.ID("id-resA"), snap.Resources[1].ID)
+}
+
+func TestRefreshDeletedResourceWithChild(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21386]: Remove this once the underlying issue is fixed.
+	t.Skip("Skipping test, repro for snapshot integrity issue")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		provA := &pkgresource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
+			Custom: true,
+			ID:     "id-provA",
+		}
+		s.Resources = append(s.Resources, provA)
+
+		provARef, err := providers.NewReference(provA.URN, provA.ID)
+		require.NoError(t, err)
+
+		resA := &pkgresource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
+			Custom:   true,
+			ID:       "id-resA",
+			Provider: provARef.String(),
+		}
+		s.Resources = append(s.Resources, resA)
+
+		provB := &pkgresource.State{
+			Type:   "pulumi:providers:pkgB",
+			URN:    "urn:pulumi:test-stack::test-project::pkgA:m:typA$pulumi:providers:pkgB::provB",
+			Custom: true,
+			ID:     "id-provB",
+			Parent: resA.URN,
+		}
+		s.Resources = append(s.Resources, provB)
+
+		resADeleted := &pkgresource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
+			Custom:   true,
+			Delete:   true,
+			ID:       "id-resA",
+			Provider: provARef.String(),
+		}
+		s.Resources = append(s.Resources, resADeleted)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	readF := func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+		return plugin.ReadResponse{
+			ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+			Status:     resource.StatusOK,
+		}, nil
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: readF,
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: readF,
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:             t,
+		HostF:         hostF,
+		UpdateOptions: UpdateOptions{},
+	}
+
+	_, err := lt.TestOp(Refresh).
+		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+// TestRefreshPreservesInputsWhenReadReturnsNoInputs tests the behavior when a custom resource is refreshed
+// and the Read method returns new outputs but not inputs. This is mostly for the display testing to
+// regression test https://github.com/pulumi/pulumi/issues/13839.
+func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+		},
+	}
+
+	const resType = "pkgA:m:typA"
+	urnA := p.NewURN(resType, "resA", "")
+
+	// Create initial resource state with both inputs and outputs
+	initialInputs := resource.PropertyMap{
+		"inputProp": resource.NewProperty("oldInputValue"),
+	}
+	initialOutputs := resource.PropertyMap{
+		"inputProp":  resource.NewProperty("oldInputValue"),
+		"outputProp": resource.NewProperty("oldOutputValue"),
+	}
+
+	oldResources := []*pkgresource.State{
+		{
+			Type:    urnA.Type(),
+			URN:     urnA,
+			Custom:  true,
+			ID:      "resA-id",
+			Inputs:  initialInputs,
+			Outputs: initialOutputs,
+		},
+	}
+
+	oldSnapshot := &deploy.Snapshot{
+		Resources: oldResources,
+	}
+
+	// The Read method will return new outputs but no inputs
+	newOutputsFromRead := resource.PropertyMap{
+		"inputProp":  resource.NewProperty("newInputValue"),
+		"outputProp": resource.NewProperty("newOutputValue"),
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(ctx context.Context, dr plugin.DiffRequest) (plugin.DiffResult, error) {
+					if dr.OldOutputs["inputProp"] != dr.NewInputs["inputProp"] {
+						return plugin.DiffResult{
+							Changes: plugin.DiffSome,
+						}, nil
+					}
+					return plugin.DiffResult{
+						Changes: plugin.DiffNone,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// Return new outputs but no inputs
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
+							Outputs: newOutputsFromRead,
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+				UpdateF: func(ctx context.Context, ur plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{
+						Properties: resource.PropertyMap{
+							"inputProp": ur.NewInputs["inputProp"],
+							"outputProp": resource.NewProperty(
+								strings.ReplaceAll(ur.NewInputs["inputProp"].StringValue(), "Input", "Output")),
+						},
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	updatedInputs := resource.PropertyMap{
+		"inputProp": resource.NewProperty("updatedInputValue"),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: updatedInputs,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p.Steps = []lt.TestStep{
+		{Op: Update},
+		{Op: Refresh},
+	}
+
+	snap := p.Run(t, oldSnapshot)
+
+	// Verify the final snapshot state
+	require.Len(t, snap.Resources, 2, "expected provider and resource in snapshot")
+
+	var finalResource *pkgresource.State
+	for _, r := range snap.Resources {
+		if r.URN == urnA {
+			finalResource = r
+			break
+		}
+	}
+
+	require.NotNil(t, finalResource, "resource should exist in final snapshot")
+
+	// Assert that inputs were not updated, but the outputs were in final snapshot
+	assert.Equal(t, updatedInputs, finalResource.Inputs,
+		"inputs are not updated in final snapshot when Read returns no inputs")
+}
+
+func TestRefreshV2TargetedWithPropertyDependencies(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#21431]: Remove this once the underlying issue is fixed.
+	t.Skip("Skipping test, repro for snapshot integrity issue")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov := &pkgresource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provider",
+			Custom: true,
+			ID:     "id1",
+		}
+		s.Resources = append(s.Resources, prov)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		res := &pkgresource.State{
+			Type:     "pkgA:index:Resource",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:index:Resource::resource",
+			Custom:   true,
+			ID:       "id2",
+			Provider: provRef.String(),
+		}
+		s.Resources = append(s.Resources, res)
+
+		comp := &pkgresource.State{
+			Type:     "pkgA:index:Component",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:index:Component::component",
+			Provider: provRef.String(),
+			PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+				"input": {
+					res.URN,
+				},
+			},
+		}
+		s.Resources = append(s.Resources, comp)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "provider", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		res, err := monitor.RegisterResource("pkgA:index:Resource", "resource", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:index:Component", "component", false, deploytest.ResourceOptions{
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"input": {
+					res.URN,
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh: true,
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provider",
+			}),
+		},
+	}
+
+	_, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+func TestRefreshV2TargetNotInProgram(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		provA := &pkgresource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
+			Custom: true,
+			ID:     "id",
+		}
+		s.Resources = append(s.Resources, provA)
+
+		provRefA, err := providers.NewReference(provA.URN, provA.ID)
+		require.NoError(t, err)
+
+		resA := &pkgresource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
+			Custom:   true,
+			ID:       "id",
+			Provider: provRefA.String(),
+		}
+		s.Resources = append(s.Resources, resA)
+
+		resB := &pkgresource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resB",
+			Provider: provRefA.String(),
+		}
+		s.Resources = append(s.Resources, resB)
+
+		resC := &pkgresource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resC",
+			Provider: provRefA.String(),
+			Dependencies: []resource.URN{
+				resA.URN,
+			},
+		}
+		s.Resources = append(s.Resources, resC)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", false, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{
+				"urn:pulumi:test-stack::test-project::pkgA:m:typA::resB",
+			}),
+		},
+	}
+
+	_, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+func TestRefreshV2ParentChildOrdering(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov0 := &pkgresource.State{
+			Type:   "pulumi:providers:pkgB",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::provB",
+			Custom: true,
+			ID:     "provider-id",
+		}
+		s.Resources = append(s.Resources, prov0)
+
+		provRef0, err := providers.NewReference(prov0.URN, prov0.ID)
+		require.NoError(t, err)
+
+		parent := &pkgresource.State{
+			Type:     "pkgB:m:parentType",
+			URN:      "urn:pulumi:test-stack::test-project::pkgB:m:parentType::parent",
+			Custom:   true,
+			ID:       "parent-id",
+			Provider: provRef0.String(),
+		}
+		s.Resources = append(s.Resources, parent)
+
+		parentDeleted := &pkgresource.State{
+			Type:     "pkgB:m:parentType",
+			URN:      "urn:pulumi:test-stack::test-project::pkgB:m:parentType::parent",
+			Custom:   true,
+			Delete:   true,
+			ID:       "parent-id",
+			Provider: provRef0.String(),
+		}
+		s.Resources = append(s.Resources, parentDeleted)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	readF := func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+		return plugin.ReadResponse{
+			ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+			Status:     resource.StatusOK,
+		}, nil
+	}
+
+	reproLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: readF,
+			}, nil
+		}),
+	}
+
+	reproProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		parent, err := monitor.RegisterResource("pkgB:m:parentType", "parent", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:childType", "child", false, deploytest.ResourceOptions{
+			Parent: parent.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)
+	reproOpts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: reproHostF,
+		UpdateOptions: engine.UpdateOptions{
+			RefreshProgram: true,
+		},
+	}
+
+	_, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+func TestRefreshV2DependencyNotInOriginalSnapshot(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov0 := &pkgresource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
+			Custom: true,
+			ID:     "id1",
+		}
+		s.Resources = append(s.Resources, prov0)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	reproLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	reproProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		provA, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRefB, err := providers.NewReference(provA.URN, provA.ID)
+		require.NoError(t, err)
+
+		resA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRefB.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", false, deploytest.ResourceOptions{
+			DeletedWith: resA.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)
+	reproOpts := lt.TestUpdateOptions{
+		T:             t,
+		HostF:         reproHostF,
+		UpdateOptions: engine.UpdateOptions{},
+	}
+
+	_, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+func TestRefreshV2ExcludesChildWithExcludedParent(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{Stack: "stack", Project: "project"}
+	snap := &deploy.Snapshot{}
+
+	prov := &pkgresource.State{
+		Type:   "pulumi:providers:pkgA",
+		URN:    "urn:pulumi:stack::project::pulumi:providers:pkgA::prov",
+		Custom: true,
+		ID:     "id",
+	}
+	snap.Resources = append(snap.Resources, prov)
+
+	provRef, err := providers.NewReference(prov.URN, prov.ID)
+	require.NoError(t, err)
+
+	parent := &pkgresource.State{
+		Type:     "pkgA:m:typA",
+		URN:      "urn:pulumi:stack::project::pkgA:m:typA::parent",
+		Custom:   true,
+		ID:       "id",
+		Provider: provRef.String(),
+	}
+	snap.Resources = append(snap.Resources, parent)
+
+	child := &pkgresource.State{
+		Type:     "pkgA:m:typA",
+		URN:      "urn:pulumi:stack::project::pkgA:m:typA$pkgA:m:typA::child",
+		Custom:   false,
+		Provider: provRef.String(),
+		Parent:   parent.URN,
+	}
+	snap.Resources = append(snap.Resources, child)
+
+	readF := func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+		return plugin.ReadResponse{
+			ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+			Status:     resource.StatusOK,
+		}, nil
+	}
+
+	diffF := func(ctx context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+		if req.URN == parent.URN {
+			return plugin.DiffResponse{}, errors.New("diff error")
+		}
+		return plugin.DiffResponse{}, nil
+	}
+
+	loader := deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+		return &deploytest.Provider{ReadF: readF, DiffF: diffF}, nil
+	})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+		_, err = monitor.RegisterResource("pkgA:m:typA", "parent", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loader)
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+
+	_, err = lt.TestOp(engine.RefreshV2).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+// Test that --exclude correctly skips resources during a RefreshV2 operation.
+// This is a regression test for https://github.com/pulumi/pulumi/issues/22403
+// where the exclude logic in GenerateRefreshes was inverted, causing excluded
+// resources to be refreshed and non-excluded resources to be skipped.
+func TestRefreshV2ExcludeTarget(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID: req.ID,
+							Outputs: resource.PropertyMap{
+								"refreshed": resource.NewProperty(true),
+							},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true)
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+
+	// First, create all resources with a normal update.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4) // default provider + 3 resources
+
+	// Now run RefreshV2 excluding resB.
+	var resBURN resource.URN
+	for _, r := range snap.Resources {
+		if r.URN.Name() == "resB" {
+			resBURN = r.URN
+			break
+		}
+	}
+	require.NotEmpty(t, resBURN, "resB should exist in snapshot")
+
+	opts = lt.TestUpdateOptions{T: t, HostF: hostF}
+	opts.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{resBURN})
+
+	snap, err = lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
+
+	// resA and resC should have been refreshed (have the "refreshed" output).
+	// resB should NOT have been refreshed (excluded).
+	// Look up by name since ordering may change due to parallelism.
+	refreshed := resource.NewProperty(true)
+	for _, r := range snap.Resources {
+		switch r.URN.Name() {
+		case "resA":
+			assert.Equal(t, refreshed, r.Outputs["refreshed"], "resA should have been refreshed")
+		case "resB":
+			assert.NotContains(t, r.Outputs, resource.PropertyKey("refreshed"), "resB should NOT have been refreshed (excluded)")
+		case "resC":
+			assert.Equal(t, refreshed, r.Outputs["refreshed"], "resC should have been refreshed")
+		}
+	}
+}
+
+// Test that --target correctly limits resources during a RefreshV2 operation.
+// Only targeted resources should be refreshed; others should remain unchanged.
+func TestRefreshV2IncludeTarget(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID: req.ID,
+							Outputs: resource.PropertyMap{
+								"refreshed": resource.NewProperty(true),
+							},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true)
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+
+	// First, create all resources with a normal update.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4) // default provider + 3 resources
+
+	// Now run RefreshV2 targeting only resB.
+	var resBURN resource.URN
+	for _, r := range snap.Resources {
+		if r.URN.Name() == "resB" {
+			resBURN = r.URN
+			break
+		}
+	}
+	require.NotEmpty(t, resBURN, "resB should exist in snapshot")
+
+	opts = lt.TestUpdateOptions{T: t, HostF: hostF}
+	opts.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{resBURN})
+
+	snap, err = lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
+
+	// resB should have been refreshed (targeted).
+	// resA and resC should NOT have been refreshed (not targeted).
+	// Look up by name since ordering may change due to parallelism.
+	refreshed := resource.NewProperty(true)
+	for _, r := range snap.Resources {
+		switch r.URN.Name() {
+		case "resA":
+			assert.NotContains(t, r.Outputs,
+				resource.PropertyKey("refreshed"), "resA should NOT have been refreshed (not targeted)")
+		case "resB":
+			assert.Equal(t, refreshed,
+				r.Outputs["refreshed"], "resB should have been refreshed")
+		case "resC":
+			assert.NotContains(t, r.Outputs,
+				resource.PropertyKey("refreshed"), "resC should NOT have been refreshed (not targeted)")
+		}
+	}
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/22481.
+//
+// During refreshV2, resources can end up in a different order than in the original
+// snapshot. When a resource has a DeletedWith field, its target can appear after
+// the referencing resource, violating a snapshot integrity constraint.
+func TestRefreshV2DeletedWithOrdering(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	// Set up the initial snapshot with resA (a component resource).
+	setupSnap := &deploy.Snapshot{
+		Resources: []*pkgresource.State{
+			{
+				Type:   "pkgA:m:t",
+				URN:    "urn:pulumi:test-stack::test-project::pkgA:m:t::resA",
+				Custom: false,
+			},
+		},
+	}
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	// Set up the reproduction providers and program.
+	reproLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	reproProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resB, err := monitor.RegisterResource("pkgA:m:t", "resB", true)
+		require.NoError(t, err)
+
+		resA, err := monitor.RegisterResource("pkgA:m:t", "resA", false, deploytest.ResourceOptions{
+			DeletedWith: resB.URN,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:t", "resC", false, deploytest.ResourceOptions{
+			DeletedWith: resA.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, nil, nil, reproLoaders...)
+	reproOpts := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            reproHostF,
+		SkipDisplayTests: true,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh: true,
+		},
+	}
+
+	_, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
+
+func TestRefreshV2PropertyDependencyOrdering(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	compURN := resource.URN("urn:pulumi:test::test::pkg:m:comp::comp")
+
+	snap := &deploy.Snapshot{
+		Resources: []*pkgresource.State{
+			{
+				Type:   "pkg:m:comp",
+				URN:    compURN,
+				Custom: false,
+			},
+			{
+				Type:   "pulumi:providers:pkg",
+				URN:    "urn:pulumi:test::test::pulumi:providers:pkg::prov",
+				Custom: true,
+				ID:     "id",
+				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+					"p": {compURN},
+				},
+			},
+		},
+	}
+
+	require.NoError(t, snap.VerifyIntegrity())
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		newRes, err := monitor.RegisterResource("pkg:m:t", "new", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+		comp, err := monitor.RegisterResource("pkg:m:comp", "comp", false, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{newRes.URN},
+		})
+		require.NoError(t, err)
+		_, err = monitor.RegisterResource("pulumi:providers:pkg", "prov", true, deploytest.ResourceOptions{
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{"p": {comp.URN}},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkg", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	_, err := lt.TestOp(engine.RefreshV2).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), lt.TestUpdateOptions{T: t, HostF: hostF}, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
 }

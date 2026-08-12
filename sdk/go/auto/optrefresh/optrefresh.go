@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,6 +45,23 @@ func ClearPendingCreates() Option {
 	})
 }
 
+// PendingCreate describes a pending create operation to import into the state, mapping the
+// resource's URN to the physical ID it was assigned by the provider.
+type PendingCreate struct {
+	// URN is the Pulumi resource URN of the pending create.
+	URN string
+	// ID is the provider-assigned physical ID of the created resource.
+	ID string
+}
+
+// ImportPendingCreates will cause the refresh to import the given pending creates into the
+// state, mapping each resource URN to the physical ID it was assigned by the provider.
+func ImportPendingCreates(creates []PendingCreate) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ImportPendingCreates = creates
+	})
+}
+
 // Message (optional) to associate with the refresh operation
 func Message(message string) Option {
 	return optionFunc(func(opts *Options) {
@@ -56,6 +73,27 @@ func Message(message string) Option {
 func Target(urns []string) Option {
 	return optionFunc(func(opts *Options) {
 		opts.Target = urns
+	})
+}
+
+// TargetDependents allows updating of dependent targets discovered but not specified in the Target list
+func TargetDependents() Option {
+	return optionFunc(func(opts *Options) {
+		opts.TargetDependents = true
+	})
+}
+
+// Exclude specifies an exclusive list of resource URNs to ignore
+func Exclude(urns []string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Exclude = urns
+	})
+}
+
+// ExcludeDependents allows ignoring of dependent targets discovered but not specified in the Exclude list
+func ExcludeDependents() Option {
+	return optionFunc(func(opts *Options) {
+		opts.ExcludeDependents = true
 	})
 }
 
@@ -136,6 +174,13 @@ func ConfigFile(path string) Option {
 	})
 }
 
+// RunProgram runs the program in the workspace to perform the refresh.
+func RunProgram(f bool) Option {
+	return optionFunc(func(opts *Options) {
+		opts.RunProgram = &f
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Refresh() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -154,8 +199,16 @@ type Options struct {
 	ExpectNoChanges bool
 	// Clear all pending creates, dropping them from the state
 	ClearPendingCreates bool
+	// Import the given pending creates into the state, mapping each resource URN to its provider ID
+	ImportPendingCreates []PendingCreate
 	// Specify an exclusive of resource URNs to refresh
 	Target []string
+	// Allows updating of dependent targets discovered but not specified in the Target list
+	TargetDependents bool
+	// Specify an exclusive of resource URNs to ignore
+	Exclude []string
+	// Allows ignoring of dependent targets discovered but not specified in the Exclude list
+	ExcludeDependents bool
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh stdout
 	ProgressStreams []io.Writer
 	// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental refresh stderr
@@ -178,6 +231,8 @@ type Options struct {
 	ConfigFile string
 	// When set, display operation as a rich diff showing the overall change
 	Diff bool
+	// When set to true, run the program in the workspace to perform the refresh.
+	RunProgram *bool
 }
 
 type optionFunc func(*Options)

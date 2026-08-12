@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package test
 
 import (
 	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,50 +25,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
-
-func GenerateNodeJSProgramTest(
-	t *testing.T,
-	genProgram GenProgram,
-	genProject GenProject,
-) {
-	expectedVersion := map[string]PkgVersionInfo{
-		"aws-resource-options-4.26": {
-			Pkg:          "\"@pulumi/aws\"",
-			OpAndVersion: "\"4.26.0\"",
-		},
-		"aws-resource-options-5.16.2": {
-			Pkg:          "\"@pulumi/aws\"",
-			OpAndVersion: "\"5.16.2\"",
-		},
-	}
-
-	TestProgramCodegen(t,
-		ProgramCodegenOptions{
-			Language:   "nodejs",
-			Extension:  "ts",
-			OutputFile: "index.ts",
-			Check: func(t *testing.T, path string, dependencies codegen.StringSet) {
-				checkNodeJS(t, path, dependencies, true)
-			},
-			GenProgram: genProgram,
-			TestCases: []ProgramTest{
-				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
-				},
-				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
-				},
-			},
-
-			IsGenProject:    true,
-			GenProject:      genProject,
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "package.json",
-		})
-}
 
 func GenerateNodeJSBatchTest(t *testing.T, rootDir string, genProgram GenProgram, testCases []ProgramTest) {
 	TestProgramCodegen(t,
@@ -84,8 +43,7 @@ func GenerateNodeJSBatchTest(t *testing.T, rootDir string, genProgram GenProgram
 }
 
 func GenerateNodeJSYAMLBatchTest(t *testing.T, rootDir string, genProgram GenProgram) {
-	err := os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "nodejs"))
-	require.NoError(t, err)
+	t.Chdir(filepath.Join(rootDir, "pkg", "codegen", "nodejs"))
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
@@ -111,7 +69,7 @@ func checkNodeJS(t *testing.T, path string, dependencies codegen.StringSet, link
 	}
 
 	// We delete and regenerate package files for each run.
-	removeFile("yarn.lock")
+	removeFile("package-lock.json")
 	removeFile("package.json")
 	removeFile("tsconfig.json")
 
@@ -126,9 +84,7 @@ func checkNodeJS(t *testing.T, path string, dependencies codegen.StringSet, link
 			"typescript":  "^4.5.5",
 		},
 	}
-	for pkg, v := range pkgs {
-		pkgInfo.Dependencies[pkg] = v
-	}
+	maps.Copy(pkgInfo.Dependencies, pkgs)
 	pkgJSON, err := json.MarshalIndent(pkgInfo, "", "    ")
 	require.NoError(t, err)
 	err = os.WriteFile(filepath.Join(dir, "package.json"), pkgJSON, 0o600)
@@ -150,10 +106,20 @@ func typeCheckNodeJS(t *testing.T, path string, _ codegen.StringSet, linkLocal b
 }
 
 func TypeCheckNodeJSPackage(t *testing.T, pwd string, linkLocal bool) {
-	RunCommand(t, "npm_install", pwd, "npm", "install")
 	if linkLocal {
-		RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
+		pkgPath := filepath.Join(pwd, "package.json")
+		original, err := os.ReadFile(pkgPath)
+		existed := err == nil
+		t.Cleanup(func() {
+			if existed {
+				require.NoError(t, os.WriteFile(pkgPath, original, 0o600))
+			} else {
+				require.NoError(t, os.RemoveAll(pkgPath))
+			}
+		})
+		ptesting.ConfigureNodejsCoreSDK(t, pwd)
 	}
+	RunCommandWithRetries(t, "npm_install", pwd, 3, "npm", "install")
 	tscOptions := &integration.ProgramTestOptions{
 		// Avoid Out of Memory error on CI:
 		Env: []string{"NODE_OPTIONS=--max_old_space_size=4096"},
@@ -171,22 +137,8 @@ func nodejsPackages(t *testing.T, deps codegen.StringSet) map[string]string {
 			result[pkgName] = "^" + pkgVersion
 		}
 		switch d {
-		case "aws":
-			set(AwsSchema)
-		case "azure-native":
-			set(AzureNativeSchema)
-		case "azure":
-			set(AzureSchema)
-		case "kubernetes":
-			set(KubernetesSchema)
 		case "random":
 			set(RandomSchema)
-		case "eks":
-			set(EksSchema)
-		case "aws-static-website":
-			set(AwsStaticWebsiteSchema)
-		case "aws-native":
-			set(AwsNativeSchema)
 		default:
 			t.Logf("Unknown package requested: %s", d)
 		}

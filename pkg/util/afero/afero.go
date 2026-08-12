@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,8 @@ import (
 	"github.com/spf13/afero"
 )
 
-// Copies all file and directories from src to dst
-func CopyDir(fs afero.Fs, src, dst string) error {
+// Copies all file and directories from src to dst that match the filter
+func CopyDir(fs afero.Fs, src, dst string, filter func(os.FileInfo) bool) error {
 	entries, err := afero.ReadDir(fs, src)
 	if err != nil {
 		return err
@@ -36,8 +36,12 @@ func CopyDir(fs afero.Fs, src, dst string) error {
 		sourcePath := filepath.Join(src, entry.Name())
 		destPath := filepath.Join(dst, entry.Name())
 
+		if filter != nil && !filter(entry) {
+			continue
+		}
+
 		if entry.IsDir() {
-			if err := CopyDir(fs, sourcePath, destPath); err != nil {
+			if err := CopyDir(fs, sourcePath, destPath, filter); err != nil {
 				return err
 			}
 		} else {

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,8 +46,9 @@ func TestSearch_cmd(t *testing.T) {
 	orgName := "org1"
 	cmd := orgSearchCmd{
 		searchCmd: searchCmd{
-			orgName: orgName,
-			Stdout:  &buff,
+			orgName:      orgName,
+			Stdout:       &buff,
+			outputFormat: defaultSearchOutputFormat(),
 			currentBackend: func(
 				context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 			) (backend.Backend, error) {
@@ -77,7 +78,7 @@ func TestSearch_cmd(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{})
+	err := cmd.Run(t.Context(), []string{})
 	require.NoError(t, err)
 
 	assert.Contains(t, buff.String(), name)
@@ -101,7 +102,8 @@ func TestSearchNoOrgName_cmd(t *testing.T) {
 	total := int64(132)
 	cmd := orgSearchCmd{
 		searchCmd: searchCmd{
-			Stdout: &buff,
+			Stdout:       &buff,
+			outputFormat: defaultSearchOutputFormat(),
 			currentBackend: func(
 				context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 			) (backend.Backend, error) {
@@ -131,7 +133,7 @@ func TestSearchNoOrgName_cmd(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{})
+	err := cmd.Run(t.Context(), []string{})
 	require.NoError(t, err)
 
 	assert.Contains(t, buff.String(), name)
@@ -149,6 +151,7 @@ type stubHTTPBackend struct {
 	) (*apitype.ResourceSearchResponse, error)
 	NaturalLanguageSearchF func(context.Context, string, string) (*apitype.ResourceSearchResponse, error)
 	CurrentUserF           func() (string, []string, *workspace.TokenInformation, error)
+	GetDefaultOrgF         func(ctx context.Context) (string, error)
 }
 
 var _ httpstate.Backend = (*stubHTTPBackend)(nil)
@@ -171,4 +174,11 @@ func (f *stubHTTPBackend) CurrentUser() (string, []string, *workspace.TokenInfor
 
 func (*stubHTTPBackend) Capabilities(context.Context) apitype.Capabilities {
 	return apitype.Capabilities{}
+}
+
+func (f *stubHTTPBackend) GetDefaultOrg(ctx context.Context) (string, error) {
+	if f.GetDefaultOrgF == nil {
+		return "", nil
+	}
+	return f.GetDefaultOrgF(ctx)
 }

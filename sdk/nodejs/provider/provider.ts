@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -317,4 +317,9 @@ export interface Provider {
      *   The embedded value from the sub-package.
      */
     parameterizeValue?: (name: string, version: string, value: string) => Promise<ParameterizeResult>;
+
+    /**
+     * Signals the provider to gracefully shut down and abort any ongoing operations.
+     */
+    cancel?: () => Promise<void>;
 }

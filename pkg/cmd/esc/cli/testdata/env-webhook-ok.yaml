@@ -1,0 +1,85 @@
+run: |
+  esc env webhook new test-user/default/src deploy --url https://example.invalid/hook --event created --event updated
+  esc env webhook list test-user/default/src
+  esc env webhook ls test-user/default/src
+  esc env webhook get test-user/default/src hook-1
+  esc env webhook edit test-user/default/src hook-1 --active=false
+  esc env webhook get test-user/default/src hook-1
+  esc env webhook ping test-user/default/src hook-1
+  esc env webhook delivery list test-user/default/src hook-1 --utc
+  esc env webhook delivery ls test-user/default/src hook-1 --utc
+  esc env webhook rm test-user/default/src hook-1
+  esc env webhook list test-user/default/src
+environments:
+  test-user/default/src:
+    yaml:
+      values: {}
+
+---
+> esc env webhook new test-user/default/src deploy --url https://example.invalid/hook --event created --event updated
+Created webhook "hook-1" for test-user/default/src; use this name to reference the webhook in other commands.
+> esc env webhook list test-user/default/src
+┌────────┬──────────────┬──────────────────────────────┬────────┬────────┐
+│ NAME   │ DISPLAY NAME │ URL                          │ ACTIVE │ FORMAT │
+├────────┼──────────────┼──────────────────────────────┼────────┼────────┤
+│ hook-1 │ deploy       │ https://example.invalid/hook │ true   │ raw    │
+└────────┴──────────────┴──────────────────────────────┴────────┴────────┘
+> esc env webhook ls test-user/default/src
+┌────────┬──────────────┬──────────────────────────────┬────────┬────────┐
+│ NAME   │ DISPLAY NAME │ URL                          │ ACTIVE │ FORMAT │
+├────────┼──────────────┼──────────────────────────────┼────────┼────────┤
+│ hook-1 │ deploy       │ https://example.invalid/hook │ true   │ raw    │
+└────────┴──────────────┴──────────────────────────────┴────────┴────────┘
+> esc env webhook get test-user/default/src hook-1
+Name: hook-1
+Display name: deploy
+URL: https://example.invalid/hook
+Active: true
+Format: raw
+Events: created, updated
+Event groups: -
+Has secret: false
+> esc env webhook edit test-user/default/src hook-1 --active=false
+Updated webhook hook-1 for test-user/default/src
+> esc env webhook get test-user/default/src hook-1
+Name: hook-1
+Display name: deploy
+URL: https://example.invalid/hook
+Active: false
+Format: raw
+Events: created, updated
+Event groups: -
+Has secret: false
+> esc env webhook ping test-user/default/src hook-1
+ID: dlv-hook-1-1
+Kind: ping
+Response code: 200
+Duration (ms): 42
+> esc env webhook delivery list test-user/default/src hook-1 --utc
+┌──────────────┬──────┬──────────────────────┬──────────┬───────────────┐
+│ ID           │ KIND │ TIMESTAMP            │ RESPONSE │ DURATION (MS) │
+├──────────────┼──────┼──────────────────────┼──────────┼───────────────┤
+│ dlv-hook-1-1 │ ping │ 2025-05-13T00:00:00Z │      200 │            42 │
+└──────────────┴──────┴──────────────────────┴──────────┴───────────────┘
+> esc env webhook delivery ls test-user/default/src hook-1 --utc
+┌──────────────┬──────┬──────────────────────┬──────────┬───────────────┐
+│ ID           │ KIND │ TIMESTAMP            │ RESPONSE │ DURATION (MS) │
+├──────────────┼──────┼──────────────────────┼──────────┼───────────────┤
+│ dlv-hook-1-1 │ ping │ 2025-05-13T00:00:00Z │      200 │            42 │
+└──────────────┴──────┴──────────────────────┴──────────┴───────────────┘
+> esc env webhook rm test-user/default/src hook-1
+Removed webhook hook-1 from test-user/default/src
+> esc env webhook list test-user/default/src
+
+---
+> esc env webhook new test-user/default/src deploy --url https://example.invalid/hook --event created --event updated
+> esc env webhook list test-user/default/src
+> esc env webhook ls test-user/default/src
+> esc env webhook get test-user/default/src hook-1
+> esc env webhook edit test-user/default/src hook-1 --active=false
+> esc env webhook get test-user/default/src hook-1
+> esc env webhook ping test-user/default/src hook-1
+> esc env webhook delivery list test-user/default/src hook-1 --utc
+> esc env webhook delivery ls test-user/default/src hook-1 --utc
+> esc env webhook rm test-user/default/src hook-1
+> esc env webhook list test-user/default/src

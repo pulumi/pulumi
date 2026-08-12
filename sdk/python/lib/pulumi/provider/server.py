@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,8 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 
 """
 
-from typing import Dict, List, Set, Optional, TypeVar, Any, cast
+from typing import Optional, Any, cast, Union
+import types
 import argparse
 import asyncio
 import sys
@@ -26,7 +27,7 @@ import traceback
 import grpc
 import grpc.aio
 
-from google.protobuf import struct_pb2
+from google.protobuf import empty_pb2, struct_pb2
 from pulumi.provider.provider import InvokeResult, Provider, CallResult, ConstructResult
 from pulumi.resource import (
     ProviderResource,
@@ -41,21 +42,22 @@ from pulumi.runtime.proto import (
     ResourceProviderServicer,
     status_pb2,
     errors_pb2,
+    alias_pb2,
 )
+from pulumi.runtime.resource_hooks import _binding_from_proto
 from pulumi.runtime.stack import wait_for_rpcs
 import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
+from pulumi.output import _OutputData
+from pulumi.runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from pulumi.errors import (
     InputPropertiesError,
     InputPropertyError,
     InputPropertyErrorDetails,
+    RunError,
 )
-
-# _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
-_MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
-_GRPC_CHANNEL_OPTIONS = [("grpc.max_receive_message_length", _MAX_RPC_MESSAGE_SIZE)]
 
 
 class ComponentInitError(Exception):
@@ -82,23 +84,21 @@ class ProviderServicer(ResourceProviderServicer):
 
     engine_address: str
     provider: Provider
-    args: List[str]
-    lock: asyncio.Lock
+    args: list[str]
 
     def create_grpc_invalid_properties_status(
-        self, message: str, errors: Optional[List[InputPropertyErrorDetails]]
+        self, message: str, errors: Optional[list[InputPropertyErrorDetails]]
     ):
-        status = grpc.Status()  # type: ignore[attr-defined]
+        status = grpc.Status()
         # We don't care about the exact status code here, since they are pretty web centric, and don't
         # necessarily make sense in this context.  Pick one that's close enough.
-        # type: ignore
-        status.code = grpc.StatusCode.INVALID_ARGUMENT.value[0]  # type: ignore[index]
+        status.code = grpc.StatusCode.INVALID_ARGUMENT
         status.details = message
 
         if errors is not None:
-            s = status_pb2.Status()  # type: ignore[attr-defined]
+            s = status_pb2.Status()
             # This code needs to match the code above.
-            s.code = grpc.StatusCode.INVALID_ARGUMENT.value[0]  # type: ignore[index]
+            s.code = grpc.StatusCode.INVALID_ARGUMENT.value[0]
             s.message = message
 
             error_details = errors_pb2.InputPropertiesError()
@@ -120,12 +120,11 @@ class ProviderServicer(ResourceProviderServicer):
     async def Construct(
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
-        # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
-        # avoid modifying globals, we can remove the locking.
-        await self.lock.acquire()
         try:
             return await self._construct(request, context)
         except Exception as e:  # noqa
+            if isinstance(e, RunError):
+                raise
             if isinstance(e, InputPropertiesError):
                 status = self.create_grpc_invalid_properties_status(e.message, e.errors)
                 await context.abort_with_status(status)
@@ -147,15 +146,13 @@ class ProviderServicer(ResourceProviderServicer):
                     stack = traceback.extract_tb(e.__traceback__)[:]
                 pretty_stack = "".join(traceback.format_list(stack))
                 raise Exception(f"{str(e)}:\n{pretty_stack}")
-        finally:
-            self.lock.release()
 
     async def _construct(
         self, request: proto.ConstructRequest, context
     ) -> proto.ConstructResponse:
-        assert isinstance(
-            request, proto.ConstructRequest
-        ), f"request is not ConstructRequest but is {type(request)} instead"
+        assert isinstance(request, proto.ConstructRequest), (
+            f"request is not ConstructRequest but is {type(request)} instead"
+        )
 
         organization = request.organization if request.organization else "organization"
         pulumi.runtime.settings.reset_options(
@@ -167,6 +164,7 @@ class ProviderServicer(ResourceProviderServicer):
             monitor_address=_empty_as_none(request.monitorEndpoint),
             preview=request.dryRun,
         )
+        await pulumi.runtime.settings._load_monitor_feature_support()
 
         pulumi.runtime.config.set_all_config(
             dict(request.config), list(request.configSecretKeys)
@@ -195,14 +193,14 @@ class ProviderServicer(ResourceProviderServicer):
     @staticmethod
     async def _construct_inputs(
         inputs: struct_pb2.Struct, input_dependencies: Any
-    ) -> Dict[str, pulumi.Input[Any]]:
-        def deps(key: str) -> Set[str]:
-            return set(
+    ) -> dict[str, pulumi.Input[Any]]:
+        def deps(key: str) -> set[str]:
+            return {
                 urn
                 for urn in input_dependencies.get(
                     key, proto.ConstructRequest.PropertyDependencies()
                 ).urns
-            )
+            }
 
         return {
             k: await ProviderServicer._select_value(the_input, deps=deps(k))
@@ -212,7 +210,7 @@ class ProviderServicer(ResourceProviderServicer):
         }
 
     @staticmethod
-    async def _select_value(the_input: Any, deps: Set[str]) -> Any:
+    async def _select_value(the_input: Any, deps: set[str]) -> Any:
         is_secret = rpc.is_rpc_secret(the_input)
 
         # If the input isn't a secret and either doesn't have any dependencies, already contains Outputs (from
@@ -229,20 +227,82 @@ class ProviderServicer(ResourceProviderServicer):
         # and/or track dependencies.
         # Note: If the value is or contains an unknown value, the Output will mark its value as
         # unknown automatically, so we just pass true for is_known here.
-        return pulumi.Output(
-            resources=set(DependencyResource(urn) for urn in deps),
-            future=_as_future(rpc.unwrap_rpc_secret(the_input)),
-            is_known=_as_future(True),
-            is_secret=_as_future(is_secret),
+        data_future: asyncio.Future[_OutputData[Any]] = asyncio.Future()
+        data_future.set_result(
+            _OutputData(
+                resources={DependencyResource(urn) for urn in deps},
+                value=rpc.unwrap_rpc_secret(the_input),
+                is_known=True,
+                is_secret=is_secret,
+            )
         )
+        return pulumi.Output._from_data(data_future)
+
+    @staticmethod
+    def _alias_from_proto(alias: alias_pb2.Alias) -> Union[str | pulumi.Alias]:
+        if alias.urn:
+            return alias.urn
+        else:
+            spec = alias.spec
+            name: Union[str, types.EllipsisType] = ...
+            resource_type: Union[str, types.EllipsisType] = ...
+            parent_urn: Union[str, types.EllipsisType] = ...
+            stack: Union[str, types.EllipsisType] = ...
+            project: Union[str, types.EllipsisType] = ...
+
+            if spec.name:
+                name = spec.name
+            if spec.type:
+                resource_type = spec.type
+            if spec.parentUrn:
+                parent_urn = spec.parentUrn
+            if spec.stack:
+                stack = spec.stack
+            if spec.project:
+                project = spec.project
+            no_parent = spec.noParent
+
+            return pulumi.Alias(
+                name=name,  # type: ignore
+                type_=resource_type,  # type: ignore
+                parent=None if no_parent else parent_urn,  # type: ignore
+                stack=stack,  # type: ignore
+                project=project,  # type: ignore
+            )
 
     @staticmethod
     def _construct_options(request: proto.ConstructRequest) -> pulumi.ResourceOptions:
         parent = None
-        if not _empty_as_none(request.parent):
+        if request.parent:
             parent = DependencyResource(request.parent)
+
+        deleted_with = None
+        if request.deletedWith != "":
+            deleted_with = DependencyResource(request.deletedWith)
+
+        replace_with: Optional[list[pulumi.Resource]] = None
+        if request.replace_with:
+            replace_with = [DependencyResource(urn) for urn in request.replace_with]
+
+        replacement_trigger: Optional[Any] = None
+        if request.HasField("replacement_trigger"):
+            from pulumi.runtime.resource import _struct_value_to_python
+
+            replacement_trigger = _struct_value_to_python(request.replacement_trigger)
+
+        custom_timeouts = None
+        if request.customTimeouts:
+            pulumi.resource.CustomTimeouts(
+                request.customTimeouts.create,
+                request.customTimeouts.update,
+                request.customTimeouts.delete,
+                request.customTimeouts.read,
+            )
+
+        resource_hooks = _binding_from_proto(request.resource_hooks)
+
         return pulumi.ResourceOptions(
-            aliases=list(request.aliases),
+            aliases=[ProviderServicer._alias_from_proto(a) for a in request.aliases],
             depends_on=[DependencyResource(urn) for urn in request.dependencies],
             protect=request.protect,
             providers={
@@ -250,6 +310,14 @@ class ProviderServicer(ResourceProviderServicer):
                 for pkg, ref in request.providers.items()
             },
             parent=parent,
+            custom_timeouts=custom_timeouts,
+            ignore_changes=list(request.ignoreChanges),
+            replace_on_changes=list(request.replaceOnChanges),
+            retain_on_delete=request.retainOnDelete,
+            deleted_with=deleted_with,
+            replace_with=replace_with,
+            replacement_trigger=replacement_trigger,
+            hooks=resource_hooks,
         )
 
     async def _construct_response(
@@ -259,13 +327,13 @@ class ProviderServicer(ResourceProviderServicer):
         assert urn is not None
 
         # Note: property_deps is populated by rpc.serialize_properties.
-        property_deps: Dict[str, List[pulumi.resource.Resource]] = {}
+        property_deps: dict[str, list[pulumi.resource.Resource]] = {}
         state = await rpc.serialize_properties(
             inputs={k: v for k, v in result.state.items() if k not in ["id", "urn"]},
             property_deps=property_deps,
         )
 
-        deps: Dict[str, proto.ConstructResponse.PropertyDependencies] = {}
+        deps: dict[str, proto.ConstructResponse.PropertyDependencies] = {}
         for k, resources in property_deps.items():
             urns = await asyncio.gather(*(r.urn.future() for r in resources))
             # filter out any unknowns
@@ -275,9 +343,6 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.ConstructResponse(urn=urn, state=state, stateDependencies=deps)
 
     async def Call(self, request: proto.CallRequest, context):
-        # Calls to `Construct` and `Call` are serialized because they currently modify globals. When we are able to
-        # avoid modifying globals, we can remove the locking.
-        await self.lock.acquire()
         try:
             return await self._call(request, context)
         except InputPropertiesError as e:
@@ -292,13 +357,11 @@ class ProviderServicer(ResourceProviderServicer):
             await context.abort_with_status(status)
             # We already aborted at this point
             raise
-        finally:
-            self.lock.release()
 
     async def _call(self, request: proto.CallRequest, context):
-        assert isinstance(
-            request, proto.CallRequest
-        ), f"request is not CallRequest but is {type(request)} instead"
+        assert isinstance(request, proto.CallRequest), (
+            f"request is not CallRequest but is {type(request)} instead"
+        )
 
         organization = request.organization if request.organization else "organization"
         pulumi.runtime.settings.reset_options(
@@ -333,14 +396,14 @@ class ProviderServicer(ResourceProviderServicer):
         return response
 
     @staticmethod
-    async def _call_args(request: proto.CallRequest) -> Dict[str, pulumi.Input[Any]]:
-        def deps(key: str) -> Set[str]:
-            return set(
+    async def _call_args(request: proto.CallRequest) -> dict[str, pulumi.Input[Any]]:
+        def deps(key: str) -> set[str]:
+            return {
                 urn
                 for urn in request.argDependencies.get(
                     key, proto.CallRequest.ArgumentDependencies()
                 ).urns
-            )
+            }
 
         return {
             k: await ProviderServicer._select_value(the_input, deps=deps(k))
@@ -354,12 +417,12 @@ class ProviderServicer(ResourceProviderServicer):
 
     async def _call_response(self, result: CallResult) -> proto.CallResponse:
         # Note: ret_deps is populated by rpc.serialize_properties.
-        ret_deps: Dict[str, List[pulumi.resource.Resource]] = {}
+        ret_deps: dict[str, list[pulumi.resource.Resource]] = {}
         ret = await rpc.serialize_properties(
             inputs=result.outputs, property_deps=ret_deps
         )
 
-        deps: Dict[str, proto.CallResponse.ReturnDependencies] = {}
+        deps: dict[str, proto.CallResponse.ReturnDependencies] = {}
         for k, resources in ret_deps.items():
             urns = await asyncio.gather(*(r.urn.future() for r in resources))
             # filter out any unknowns
@@ -379,12 +442,12 @@ class ProviderServicer(ResourceProviderServicer):
 
     async def _invoke_response(self, result: InvokeResult) -> proto.InvokeResponse:
         # Note: ret_deps is populated by rpc.serialize_properties but unused
-        ret_deps: Dict[str, List[pulumi.resource.Resource]] = {}
+        ret_deps: dict[str, list[pulumi.resource.Resource]] = {}
         ret = await rpc.serialize_properties(
             inputs=result.outputs, property_deps=ret_deps
         )
         # Since `return` is a keyword, we need to pass the args to `InvokeResponse` using a dictionary.
-        resp: Dict[str, Any] = {
+        resp: dict[str, Any] = {
             "return": ret,
         }
         if result.failures:
@@ -397,9 +460,7 @@ class ProviderServicer(ResourceProviderServicer):
     async def Invoke(
         self, request: proto.InvokeRequest, context
     ) -> proto.InvokeResponse:
-        args = rpc.deserialize_properties(
-            request.args, keep_unknowns=False, keep_internal=False
-        )
+        args = rpc.deserialize_properties(request.args, keep_unknowns=False)
         result = self.provider.invoke(token=request.tok, args=args)
         response = await self._invoke_response(result)
         return response
@@ -408,6 +469,15 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.ConfigureResponse(
             acceptSecrets=True, acceptResources=True, acceptOutputs=True
         )
+
+    async def List(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("List is not implemented by the provider")
+        raise NotImplementedError("List is not implemented by the provider")
+
+    async def Cancel(self, request, context):
+        self.provider.cancel()
+        return empty_pb2.Empty()
 
     async def GetPluginInfo(self, request, context) -> proto.PluginInfo:
         if self.provider.version is None:
@@ -423,16 +493,15 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.GetSchemaResponse(schema=schema)
 
     def __init__(
-        self, provider: Provider, args: List[str], engine_address: str
+        self, provider: Provider, args: list[str], engine_address: str
     ) -> None:
         super().__init__()
         self.provider = provider
         self.args = args
         self.engine_address = engine_address
-        self.lock = asyncio.Lock()
 
 
-def main(provider: Provider, args: List[str]) -> None:  # args not in use?
+def main(provider: Provider, args: list[str]) -> None:  # args not in use?
     """For use as the `main` in programs that wrap a custom Provider
     implementation into a Pulumi-compatible gRPC server.
 
@@ -461,22 +530,9 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
         await server.wait_for_termination()
 
     try:
-        loop = asyncio.get_event_loop()
-        try:
-            loop.run_until_complete(serve())
-        finally:
-            loop.close()
+        asyncio.run(serve())
     except KeyboardInterrupt:
         pass
-
-
-T = TypeVar("T")
-
-
-def _as_future(value: T) -> "asyncio.Future[T]":
-    fut: "asyncio.Future[T]" = asyncio.Future()
-    fut.set_result(value)
-    return fut
 
 
 def _empty_as_none(text: str) -> Optional[str]:
@@ -487,7 +543,7 @@ def _zero_as_none(value: int) -> Optional[int]:
     return None if value == 0 else value
 
 
-async def _is_resource_reference(the_input: Any, deps: Set[str]) -> bool:
+async def _is_resource_reference(the_input: Any, deps: set[str]) -> bool:
     """
     Returns True if `the_input` is a Resource and only depends on itself.
     """
@@ -526,9 +582,8 @@ def _create_provider_resource(ref: str) -> ProviderResource:
     urn_parts = pulumi.urn._parse_urn(urn)
     resource_package = rpc.get_resource_package(urn_parts.typ_name, version="")
     if resource_package is not None:
-        return cast(
-            ProviderResource,
-            resource_package.construct_provider(urn_parts.urn_name, urn_parts.typ, urn),
+        return resource_package.construct_provider(
+            urn_parts.urn_name, urn_parts.typ, urn
         )
 
     return DependencyProviderResource(ref)

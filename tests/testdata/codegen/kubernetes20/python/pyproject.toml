@@ -1,7 +1,7 @@
 [project]
   name = "pulumi_kubernetes"
   description = "A Pulumi package for creating and managing Kubernetes resources."
-  dependencies = ["parver>=0.2.1", "pulumi>=3.25.0,<4.0.0", "requests>=2.21,<3.0", "semver>=2.8.1", "typing-extensions>=4.11; python_version < \"3.11\""]
+  dependencies = ["parver>=0.2.1", "pulumi>=3.25.0,<4.0.0", "requests>=2.21,<3.0", "semver>=2.8.1", "typing-extensions>=4.11,<5; python_version < \"3.11\""]
   keywords = ["pulumi", "kubernetes", "category/cloud", "kind/native"]
   readme = "README.md"
   requires-python = ">=3.9"

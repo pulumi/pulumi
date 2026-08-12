@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -36,11 +37,15 @@ func NewOrgCmd() *cobra.Command {
 			"\n" +
 			"Use this command to manage organization configuration, " +
 			"e.g. setting the default organization for a backend",
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			displayOpts := display.Options{
+				Color: cmdutil.GetGlobalColorization(),
+			}
+
 			// Try to read the current project
 			ws := pkgWorkspace.Instance
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -50,25 +55,38 @@ func NewOrgCmd() *cobra.Command {
 				return err
 			}
 
-			defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
+			currentBe, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, displayOpts)
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("Current Backend: %s\n", cloudURL)
+			defaultOrg, err := currentBe.GetDefaultOrg(ctx)
+			if err != nil {
+				return err
+			}
+
+			out := cmd.OutOrStdout()
+			fmt.Fprintf(out, "Current Backend: %s\n", cloudURL)
 			if defaultOrg != "" {
-				fmt.Printf("Default Org: %s\n", defaultOrg)
+				fmt.Fprintf(out, "Default Org: %s\n", defaultOrg)
 			} else {
-				fmt.Println("No Default Org Specified")
+				fmt.Fprintln(out, "No Default Org Specified")
 			}
 
 			return nil
 		},
 	}
 
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.AddCommand(newOrgSetDefaultCmd())
 	cmd.AddCommand(newOrgGetDefaultCmd())
 	cmd.AddCommand(newSearchCmd())
+	cmd.AddCommand(newOrgWebhookCmd())
+	cmd.AddCommand(newOrgRoleCmd())
+	cmd.AddCommand(newOrgMemberCmd())
+	cmd.AddCommand(newOrgAuditLogCmd())
+	cmd.AddCommand(newOrgUsageCmd())
 
 	return cmd
 }
@@ -77,8 +95,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 	var orgName string
 
 	cmd := &cobra.Command{
-		Use:   "set-default [NAME]",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "set-default",
 		Short: "Set the local default organization for the current backend",
 		Long: "Set the local default organization for the current backend.\n" +
 			"\n" +
@@ -98,7 +115,7 @@ func newOrgSetDefaultCmd() *cobra.Command {
 
 			// Try to read the current project
 			ws := pkgWorkspace.Instance
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -121,6 +138,13 @@ func newOrgSetDefaultCmd() *cobra.Command {
 		},
 	}
 
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "name"},
+		},
+		Required: 1,
+	})
+
 	return cmd
 }
 
@@ -142,7 +166,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 
 			// Try to read the current project
 			ws := pkgWorkspace.Instance
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -156,20 +180,22 @@ func newOrgGetDefaultCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			defaultOrg, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
+			defaultOrg, err := currentBe.GetDefaultOrg(ctx)
 			if err != nil {
 				return err
 			}
 
 			if defaultOrg != "" {
-				fmt.Println(defaultOrg)
+				fmt.Fprintln(cmd.OutOrStdout(), defaultOrg)
 			} else {
-				fmt.Println("No Default Org Specified")
+				fmt.Fprintln(cmd.OutOrStdout(), "No Default Org Specified")
 			}
 
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	return cmd
 }

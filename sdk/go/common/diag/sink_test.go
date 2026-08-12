@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,11 +46,11 @@ func TestCounts(t *testing.T) {
 
 	const numEach = 10
 
-	for i := 0; i < numEach; i++ {
+	for i := range numEach {
 		sink.Warningf(&Diag{Message: "A test of the emergency warning system: %v."}, i)
 	}
 
-	for i := 0; i < numEach; i++ {
+	for i := range numEach {
 		sink.Errorf(&Diag{Message: "A test of the emergency error system: %v."}, i)
 	}
 }
@@ -59,7 +59,7 @@ func TestCounts(t *testing.T) {
 func TestEscape(t *testing.T) {
 	t.Parallel()
 
-	sink := discardSink()
+	sink := discardSink().(*defaultSink)
 
 	// Passing % chars in the argument should not yield %!(MISSING)s.
 	p, s := sink.Stringify(Error, Message("", "%s"), "lots of %v %s %d chars")
@@ -88,12 +88,12 @@ func TestDefaultSink_concurrency(t *testing.T) {
 	})
 
 	var wg sync.WaitGroup
-	for i := 0; i < NumWorkers; i++ {
+	for i := range NumWorkers {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
 
-			for j := 0; j < NumLogs; j++ {
+			for j := range NumLogs {
 				for _, level := range levels {
 					sink.Logf(level, Message("", "worker(%d) log(%d) level(%s)"), i, j, level)
 				}
@@ -107,8 +107,8 @@ func TestDefaultSink_concurrency(t *testing.T) {
 		len(levels)*NumWorkers*NumLogs,
 		strings.Count(got, "\n"))
 
-	for i := 0; i < NumWorkers; i++ {
-		for j := 0; j < NumLogs; j++ {
+	for i := range NumWorkers {
+		for j := range NumLogs {
 			for _, level := range levels {
 				want := fmt.Sprintf("worker(%d) log(%d) level(%s)\n", i, j, level)
 				require.Contains(t, got, want)

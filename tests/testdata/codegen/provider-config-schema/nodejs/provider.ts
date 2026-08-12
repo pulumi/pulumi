@@ -34,7 +34,7 @@ export class Provider extends pulumi.ProviderResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         {
-            resourceInputs["favoriteColor"] = (args ? args.favoriteColor : undefined) ?? <any>utilities.getEnv("FAVE_COLOR");
+            resourceInputs["favoriteColor"] = (args?.favoriteColor) ?? <any>utilities.getEnv("FAVE_COLOR");
             resourceInputs["secretSandwiches"] = pulumi.output(args?.secretSandwiches ? pulumi.secret(args.secretSandwiches) : undefined).apply(JSON.stringify);
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
@@ -49,9 +49,9 @@ export interface ProviderArgs {
     /**
      * this is a relaxed string enum which can also be set via env var
      */
-    favoriteColor?: pulumi.Input<string | enums.Color>;
+    favoriteColor?: pulumi.Input<string | enums.Color | undefined>;
     /**
      * Super duper secret sandwiches.
      */
-    secretSandwiches?: pulumi.Input<pulumi.Input<inputs.config.SandwichArgs>[]>;
+    secretSandwiches?: pulumi.Input<pulumi.Input<inputs.config.SandwichArgs>[] | undefined>;
 }

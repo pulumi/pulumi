@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -135,7 +135,7 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 					logging.V(10).Infof("Sync invoke: Received error invoking: %s\n", err)
 					logging.V(10).Infof("Sync invoke: Converting error to response.\n")
 					if res == nil {
-						res = &pulumirpc.InvokeResponse{}
+						res = &pulumirpc.ResourceInvokeResponse{}
 					}
 
 					res.Failures = append(res.Failures, &pulumirpc.CheckFailure{
@@ -191,31 +191,8 @@ type monitorProxy struct {
 
 func (p *monitorProxy) Invoke(
 	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
-) (*pulumirpc.InvokeResponse, error) {
+) (*pulumirpc.ResourceInvokeResponse, error) {
 	return p.target.Invoke(ctx, req)
-}
-
-func (p *monitorProxy) StreamInvoke(
-	req *pulumirpc.ResourceInvokeRequest, server pulumirpc.ResourceMonitor_StreamInvokeServer,
-) error {
-	client, err := p.target.StreamInvoke(context.Background(), req)
-	if err != nil {
-		return err
-	}
-
-	for {
-		in, err := client.Recv()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-
-		if err := server.Send(in); err != nil {
-			return err
-		}
-	}
 }
 
 func (p *monitorProxy) Call(
@@ -253,6 +230,12 @@ func (p *monitorProxy) SupportsFeature(
 	return p.target.SupportsFeature(ctx, req)
 }
 
+func (p *monitorProxy) GetDeploymentInfo(
+	ctx context.Context, req *emptypb.Empty,
+) (*pulumirpc.DeploymentInfo, error) {
+	return p.target.GetDeploymentInfo(ctx, req)
+}
+
 func (p *monitorProxy) RegisterStackTransform(
 	ctx context.Context, req *pulumirpc.Callback,
 ) (*emptypb.Empty, error) {
@@ -265,8 +248,26 @@ func (p *monitorProxy) RegisterStackInvokeTransform(
 	return p.target.RegisterStackInvokeTransform(ctx, req)
 }
 
+func (p *monitorProxy) RegisterResourceHook(
+	ctx context.Context, req *pulumirpc.RegisterResourceHookRequest,
+) (*emptypb.Empty, error) {
+	return p.target.RegisterResourceHook(ctx, req)
+}
+
+func (p *monitorProxy) RegisterErrorHook(
+	ctx context.Context, req *pulumirpc.RegisterErrorHookRequest,
+) (*emptypb.Empty, error) {
+	return p.target.RegisterErrorHook(ctx, req)
+}
+
 func (p *monitorProxy) RegisterPackage(
 	ctx context.Context, req *pulumirpc.RegisterPackageRequest,
 ) (*pulumirpc.RegisterPackageResponse, error) {
 	return p.target.RegisterPackage(ctx, req)
+}
+
+func (p *monitorProxy) SignalAndWaitForShutdown(
+	ctx context.Context, req *emptypb.Empty,
+) (*emptypb.Empty, error) {
+	return p.target.SignalAndWaitForShutdown(ctx, req)
 }

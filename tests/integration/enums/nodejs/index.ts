@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 import * as pulumi from "@pulumi/pulumi";
 
@@ -21,8 +21,8 @@ interface RubberTreeArgs {
 }
 
 class RubberTree extends pulumi.dynamic.Resource {
-    public readonly farm!: pulumi.Output<Farm | string | undefined>;
-    public readonly type!: pulumi.Output<RubberTreeVariety>;
+    declare public readonly farm: pulumi.Output<Farm | string | undefined>;
+    declare public readonly type: pulumi.Output<RubberTreeVariety>;
 
     constructor(name: string, args: RubberTreeArgs) {
         const inputs: pulumi.Inputs = {

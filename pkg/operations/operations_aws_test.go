@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,33 +18,34 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestSessionCache(t *testing.T) {
+func TestConfigCache(t *testing.T) {
 	t.Parallel()
+	ctx := t.Context()
 
-	// Create a default session in us-west-2.
-	sess1, err := getAWSSession("us-west-2", "", "", "", "", false)
-	assert.NoError(t, err)
-	assert.NotNil(t, sess1)
-	assert.Equal(t, "us-west-2", *sess1.Config.Region)
+	// Create a default config in us-west-2.
+	cfg1, err := getAWSConfig(ctx, "us-west-2", "", "", "", "", false)
+	require.NoError(t, err)
+	assert.Equal(t, "us-west-2", cfg1.Region)
 
-	// Create a session with explicit credentials and ensure they're set.
-	sess2, err := getAWSSession("us-west-2", "AKIA123", "456", "xyz", "", false)
-	assert.NoError(t, err)
+	// Create a config with explicit credentials and ensure they're set.
+	cfg2, err := getAWSConfig(ctx, "us-west-2", "AKIA123", "456", "xyz", "", false)
+	require.NoError(t, err)
 
-	creds, err := sess2.Config.Credentials.Get()
-	assert.NoError(t, err)
+	creds, err := cfg2.Credentials.Retrieve(ctx)
+	require.NoError(t, err)
 	assert.Equal(t, "AKIA123", creds.AccessKeyID)
 	assert.Equal(t, "456", creds.SecretAccessKey)
 	assert.Equal(t, "xyz", creds.SessionToken)
 
-	// Create a session with different creds and make sure they're different.
-	sess3, err := getAWSSession("us-west-2", "AKIA123", "456", "hij", "", false)
-	assert.NoError(t, err)
+	// Create a config with different creds and make sure they're different.
+	cfg3, err := getAWSConfig(ctx, "us-west-2", "AKIA123", "456", "hij", "", false)
+	require.NoError(t, err)
 
-	creds, err = sess3.Config.Credentials.Get()
-	assert.NoError(t, err)
+	creds, err = cfg3.Credentials.Retrieve(ctx)
+	require.NoError(t, err)
 	assert.Equal(t, "AKIA123", creds.AccessKeyID)
 	assert.Equal(t, "456", creds.SecretAccessKey)
 	assert.Equal(t, "hij", creds.SessionToken)

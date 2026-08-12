@@ -1,0 +1,12 @@
+run: |
+  esc env settings get default/test
+environments:
+  test-user/default/test:
+    values: {}
+
+---
+> esc env settings get default/test
+deletion-protected false
+
+---
+> esc env settings get default/test

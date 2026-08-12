@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,13 +21,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -44,8 +46,7 @@ func defaultOpts() Options {
 		ShowSameResources:    true,
 		ShowReads:            true,
 		DeterministicOutput:  true,
-		ShowLinkToCopilot:    false,
-		ShowCopilotSummary:   false,
+		ShowLinkToNeo:        false,
 		RenderOnDirty:        true,
 	}
 }
@@ -108,9 +109,8 @@ func testProgressEvents(
 	}
 }
 
-//nolint:paralleltest // sets the TERM environment variable
 func TestProgressEvents(t *testing.T) {
-	t.Setenv("TERM", "vt102")
+	t.Parallel()
 
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
@@ -139,20 +139,23 @@ func TestProgressEvents(t *testing.T) {
 					t.Parallel()
 
 					t.Run("raw", func(t *testing.T) {
+						t.Parallel()
 						suffix := fmt.Sprintf(".interactive-%vx%v", width, height)
 						opts := defaultOpts()
 						opts.IsInteractive = true
-						testProgressEvents(t, path, accept, suffix, opts, width, height, true)
+						testProgressEvents(t, path, accept, suffix, opts, width, height, true /* raw */)
 					})
 
 					t.Run("cooked", func(t *testing.T) {
+						t.Parallel()
 						suffix := fmt.Sprintf(".interactive-%vx%v-cooked", width, height)
 						opts := defaultOpts()
 						opts.IsInteractive = true
-						testProgressEvents(t, path, accept, suffix, opts, width, height, false)
+						testProgressEvents(t, path, accept, suffix, opts, width, height, false /* raw */)
 					})
 
 					t.Run("plain", func(t *testing.T) {
+						t.Parallel()
 						suffix := fmt.Sprintf(".interactive-%vx%v-plain", width, height)
 						opts := defaultOpts()
 						opts.ShowResourceChanges = true
@@ -162,6 +165,7 @@ func TestProgressEvents(t *testing.T) {
 			}
 
 			t.Run("no-show-sames", func(t *testing.T) {
+				t.Parallel()
 				opts := defaultOpts()
 				opts.IsInteractive = true
 				opts.ShowSameResources = false
@@ -178,28 +182,61 @@ func TestProgressEvents(t *testing.T) {
 	}
 }
 
+// TestProgressEventsWithURNs tests that ShowProgressEvents renders full URNs when ShowURNs is set.
+func TestProgressEventsWithURNs(t *testing.T) {
+	t.Parallel()
+
+	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+
+	entries, err := os.ReadDir("testdata/not-truncated")
+	require.NoError(t, err)
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join("testdata/not-truncated", entry.Name())
+		t.Run(entry.Name(), func(t *testing.T) {
+			t.Parallel()
+			opts := defaultOpts()
+			opts.ShowURNs = true
+			testProgressEvents(t, path, accept, ".urns-non-interactive", opts, 200, 80, false)
+		})
+	}
+}
+
+func sliceToBufferedChan[T any](slice []T) <-chan T {
+	ch := make(chan T, len(slice))
+	for _, v := range slice {
+		ch <- v
+	}
+	close(ch)
+	return ch
+}
+
 func TestCaptureProgressEventsCapturesOutput(t *testing.T) {
 	t.Parallel()
 
-	captureRenderer := NewCaptureProgressEvents(tokens.MustParseStackName("stack"), "project", Options{})
-	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
-	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
-
 	// Push some example events
-	eventChannel <- engine.NewEvent(engine.StdoutEventPayload{
-		Message: "Hello, world!",
-		// Note: System events need their own Color instance
-		Color: colors.Never,
-	})
+	events := []engine.Event{
+		engine.NewEvent(engine.StdoutEventPayload{
+			Message: "Hello, world!",
+			// Note: System events need their own Color instance
+			Color: colors.Never,
+		}),
+	}
+	eventsChannel := sliceToBufferedChan(events)
 
-	close(eventChannel)
-	<-doneChannel
+	captureRenderer := NewCaptureProgressEvents(
+		tokens.MustParseStackName("stack"), "project", Options{}, false, apitype.UpdateUpdate)
+	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
 
 	assert.False(t, captureRenderer.OutputIncludesFailure())
-	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Hello, world!")
+	assert.Contains(t, captureRenderer.Output(), "Hello, world!")
 }
 
-func TestCaptureProgressEventsDetectsAndCapturesFailure(t *testing.T) {
+func TestCaptureProgressEventsDetectsResourceOperationFailed(t *testing.T) {
 	t.Parallel()
 
 	// If we see a ResourceOperationFailed event, the update is marked as failed.
@@ -209,28 +246,33 @@ func TestCaptureProgressEventsDetectsAndCapturesFailure(t *testing.T) {
 			Op:  deploy.OpUpdate,
 		},
 	})
+	failureEvents := []engine.Event{resourceOperationFailedEvent}
+	eventsChannel := sliceToBufferedChan(failureEvents)
 
-	// Some diagnostics which is what we're usually interested in.
-	diagEvent := engine.NewEvent(engine.DiagEventPayload{
-		URN:     "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
-		Message: "Failed to update",
-	})
-
-	failureEvents := []engine.Event{resourceOperationFailedEvent, diagEvent}
-
-	captureRenderer := NewCaptureProgressEvents(tokens.MustParseStackName("stack"), "project", Options{})
-	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
-	go captureRenderer.ProcessEvents(eventChannel, doneChannel)
-
-	for _, event := range failureEvents {
-		eventChannel <- event
-	}
-
-	close(eventChannel)
-	<-doneChannel
+	captureRenderer := NewCaptureProgressEvents(
+		tokens.MustParseStackName("stack"), "project", Options{}, false, apitype.UpdateUpdate)
+	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
 
 	assert.True(t, captureRenderer.OutputIncludesFailure())
-	assert.Contains(t, strings.Join(captureRenderer.Output(), "\n"), "Failed to update")
+}
+
+func TestCaptureProgressEventsDetectsDiagnosticsWithErrors(t *testing.T) {
+	t.Parallel()
+
+	diagEventWithErrors := engine.NewEvent(engine.DiagEventPayload{
+		URN:      "urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev",
+		Message:  "Failed to update",
+		Severity: diag.Error,
+	})
+	failureEvents := []engine.Event{diagEventWithErrors}
+	eventsChannel := sliceToBufferedChan(failureEvents)
+
+	captureRenderer := NewCaptureProgressEvents(
+		tokens.MustParseStackName("stack"), "project", Options{}, true, apitype.PreviewUpdate)
+	captureRenderer.ProcessEvents(eventsChannel, make(chan<- bool))
+
+	assert.True(t, captureRenderer.OutputIncludesFailure())
+	assert.Contains(t, captureRenderer.Output(), "Failed to update")
 }
 
 func BenchmarkProgressEvents(t *testing.B) {
@@ -328,7 +370,6 @@ func TestStatusDisplayFlags(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -346,10 +387,12 @@ func TestStatusDisplayFlags(t *testing.T) {
 			doneStatus := d.getStepStatus(step,
 				true,  // done
 				false, // failed
+				false, // interrupted
 			)
 			inProgressStatus := d.getStepStatus(step,
 				false, // done
 				false, // failed
+				false, // interrupted
 			)
 			if tt.shouldRetain {
 				assert.Contains(t, doneStatus, "[retain]", "%s should contain [retain] (done)", step.Op)
@@ -390,6 +433,62 @@ func TestProgressPolicyPacks(t *testing.T) {
 	<-doneChannel
 
 	assert.Contains(t, stdout.String(), "Loading policy packs...")
+}
+
+func TestSuppressStackRow(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("stack", "project", "", "pkgA:index:typA", "resA")
+	metadata := engine.StepEventMetadata{
+		Op:   deploy.OpCreate,
+		URN:  urn,
+		Type: urn.Type(),
+	}
+
+	run := func(t *testing.T, interactive, suppress bool) string {
+		eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+
+		var stdout, stderr bytes.Buffer
+		opts := Options{
+			IsInteractive:       interactive,
+			Color:               colors.Never,
+			Stdout:              &stdout,
+			Stderr:              &stderr,
+			SuppressStackRow:    suppress,
+			DeterministicOutput: true,
+		}
+		if interactive {
+			opts.term = terminal.NewMockTerminal(&stdout, 80, 24, true)
+		}
+
+		go ShowProgressEvents(
+			"test", "update", tokens.MustParseStackName("stack"), "project", "", eventChannel, doneChannel,
+			opts, false)
+
+		eventChannel <- engine.NewEvent(engine.ResourcePreEventPayload{Metadata: metadata})
+		eventChannel <- engine.NewEvent(engine.ResourceOutputsEventPayload{Metadata: metadata})
+		close(eventChannel)
+		<-doneChannel
+
+		return stdout.String()
+	}
+
+	for _, interactive := range []bool{true, false} {
+		name := "non-interactive"
+		if interactive {
+			name = "interactive"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			suppressed := run(t, interactive, true)
+			assert.Contains(t, suppressed, "pkgA:index:typA")
+			assert.NotContains(t, suppressed, "pulumi:pulumi:Stack")
+
+			visible := run(t, interactive, false)
+			assert.Contains(t, visible, "pulumi:pulumi:Stack")
+		})
+	}
 }
 
 func testSimpleRenderer(
@@ -446,5 +545,45 @@ func testSimpleRenderer(
 	} else {
 		err = os.WriteFile(fileName, stdout.Bytes(), 0o600)
 		require.NoError(t, err)
+	}
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/21697
+func TestSystemEventDoesNotDeadlockMessageRenderer(t *testing.T) {
+	t.Parallel()
+
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+
+	var stdout bytes.Buffer
+
+	go ShowProgressEvents(
+		"test", "update", tokens.MustParseStackName("stack"), "project", "link", eventChannel, doneChannel,
+		Options{
+			IsInteractive: true,
+			Color:         colors.Raw,
+			Stdout:        &stdout,
+			Stderr:        &bytes.Buffer{},
+			// Use raw=false to get the messageRenderer
+			term:                terminal.NewMockTerminal(&stdout, 80, 24, false /* raw */),
+			DeterministicOutput: true,
+		}, false)
+
+	go func() {
+		// Send a system event: this is what Ctrl+C produces ("^C received; cancelling...").
+		eventChannel <- engine.NewEvent(engine.StdoutEventPayload{
+			Message: "^C received; cancelling.\n",
+			Color:   colors.Always,
+		})
+
+		// Send the cancel event to terminate the display.
+		eventChannel <- engine.NewCancelEvent()
+		close(eventChannel)
+	}()
+
+	select {
+	case <-doneChannel:
+		// Success: display completed without deadlocking.
+	case <-time.After(10 * time.Second):
+		t.Fatal("display deadlocked processing system event with messageRenderer")
 	}
 }

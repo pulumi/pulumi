@@ -1,4 +1,4 @@
-// Copyright 2025-2025, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,28 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { readFileSync } from "fs";
 import * as path from "path";
+import { Input, Inputs } from "../../output";
 import { ComponentResource, ComponentResourceOptions } from "../../resource";
+import { readPackageManifest } from "../../runtime/manifest";
 import { ConstructResult, Provider } from "../provider";
-import { Inputs, Input, Output } from "../../output";
 import { main } from "../server";
+import { Analyzer, ComponentDefinition } from "./analyzer";
 import { generateSchema } from "./schema";
-import { Analyzer } from "./analyzer";
 
-type OutputsToInputs<T> = {
-    [K in keyof T]: T[K] extends Output<infer U> ? Input<U> : never;
-};
-
-function getInputsFromOutputs<T extends ComponentResource>(resource: T): OutputsToInputs<T> {
+function getComponentOutputs<T extends ComponentResource>(
+    componentDefinition: ComponentDefinition,
+    resource: T,
+): Record<keyof T, Input<T[keyof T]>> {
     const result: any = {};
-    for (const key of Object.keys(resource)) {
-        const value = resource[key as keyof T];
-        if (Output.isInstance(value)) {
-            result[key] = value;
-        }
+    for (const key of Object.keys(componentDefinition.outputs)) {
+        result[key] = resource[key as keyof T];
     }
-    return result as OutputsToInputs<T>;
+    return result;
 }
 
 export type ComponentResourceConstructor = {
@@ -42,6 +38,63 @@ export type ComponentResourceConstructor = {
     // typestring.
     new (name: string, args: any, opts?: ComponentResourceOptions): ComponentResource;
 };
+
+/**
+ * Returns true if the given value is a constructor whose prototype chain
+ * includes ComponentResource.
+ *
+ * @internal exported for testing
+ */
+export function isComponentResourceConstructor(value: any): value is ComponentResourceConstructor {
+    if (typeof value !== "function" || !value.prototype) {
+        return false;
+    }
+    let proto = value.prototype;
+    while (proto?.__proto__) {
+        proto = proto.__proto__;
+        if (
+            proto.constructor &&
+            (proto.constructor.name === "ComponentResource" || proto.constructor.__pulumiComponentResource === true)
+        ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Filter the explicit `components` array passed to `componentProviderHost`,
+ * emitting a warning via the supplied `warn` callback for any entry that is
+ * not a `ComponentResource` subclass.
+ *
+ * Source-based component plugins only support classes that extend
+ * `ComponentResource`. Anything else (e.g. a `CustomResource` subclass, a
+ * plain class, or a non-class value) is silently dropped from the generated
+ * schema/SDK, which is a footgun. This helper surfaces a clear diagnostic
+ * naming the offending value while still allowing the host to run with the
+ * valid components.
+ *
+ * @internal exported for testing
+ */
+export function validateExplicitComponents(
+    components: any[],
+    warn: (msg: string) => void = console.warn,
+): ComponentResourceConstructor[] {
+    const valid: ComponentResourceConstructor[] = [];
+    for (const c of components) {
+        if (isComponentResourceConstructor(c)) {
+            valid.push(c);
+        } else {
+            const label = (typeof c === "function" && (c as any).name) || String(c);
+            warn(
+                `componentProviderHost: '${label}' is not a ComponentResource subclass and will be ` +
+                    `excluded from the generated schema/SDK. Source-based component plugins only ` +
+                    `support classes that extend ComponentResource.`,
+            );
+        }
+    }
+    return valid;
+}
 
 /**
  * Get all Pulumi Component constructors from a module's exports.
@@ -119,6 +172,8 @@ export class ComponentProvider implements Provider {
     private componentConstructors: Record<string, ComponentResourceConstructor>;
     private name: string;
     private namespace?: string;
+    private componentDefinitions?: Record<string, ComponentDefinition>;
+    private cachedSchema?: string;
     public version: string;
 
     public static validateResourceType(packageName: string, resourceType: string): void {
@@ -146,11 +201,10 @@ export class ComponentProvider implements Provider {
         }
 
         const absDir = path.resolve(options.dirname);
-        const packStr = readFileSync(`${absDir}/package.json`, { encoding: "utf-8" });
-        this.packageJSON = JSON.parse(packStr);
+        this.packageJSON = readPackageManifest(absDir).data;
         this.path = absDir;
         this.name = options.name;
-        this.version = options.version ?? "0.0.0";
+        this.version = options.version ?? this.packageJSON.version ?? "0.0.0";
         this.namespace = options.namespace;
         this.componentConstructors = options.components.reduce(
             (acc, component) => {
@@ -162,23 +216,28 @@ export class ComponentProvider implements Provider {
     }
 
     async getSchema(): Promise<string> {
+        if (this.cachedSchema) {
+            return this.cachedSchema;
+        }
         const analyzer = new Analyzer(
             this.path,
             this.name,
             this.packageJSON,
             new Set(Object.keys(this.componentConstructors)),
         );
-        const { components, typeDefinitions, packageReferences } = analyzer.analyze();
+        const { components, typeDefinitions, dependencies } = analyzer.analyze();
         const schema = generateSchema(
             this.name,
             this.version,
             this.packageJSON.description,
             components,
             typeDefinitions,
-            packageReferences,
+            dependencies,
             this.namespace,
         );
-        return JSON.stringify(schema);
+        this.cachedSchema = JSON.stringify(schema);
+        this.componentDefinitions = components;
+        return this.cachedSchema;
     }
 
     async construct(
@@ -187,16 +246,20 @@ export class ComponentProvider implements Provider {
         inputs: Inputs,
         options: ComponentResourceOptions,
     ): Promise<ConstructResult> {
-        ComponentProvider.validateResourceType(this.packageJSON.name, type);
+        ComponentProvider.validateResourceType(this.name, type);
         const componentName = type.split(":")[2];
         const constructor = this.componentConstructors[componentName];
         if (!constructor) {
             throw new Error(`Component class not found for '${componentName}'`);
         }
         const instance = new constructor(name, inputs, options);
+        if (!this.componentDefinitions) {
+            await this.getSchema();
+        }
+        const componentDefinition = this.componentDefinitions![componentName];
         return {
             urn: instance.urn,
-            state: getInputsFromOutputs(instance),
+            state: getComponentOutputs(componentDefinition, instance),
         };
     }
 }
@@ -210,6 +273,8 @@ export function componentProviderHost(options: ComponentProviderOptions): Promis
         return Promise.resolve();
     }
     isHosting = true;
+
+    options.components = validateExplicitComponents(options.components);
 
     const args = process.argv.slice(2);
     // If dirname is not provided, get it from the call stack
@@ -229,9 +294,6 @@ export function componentProviderHost(options: ComponentProviderOptions): Promis
             throw new Error("Could not determine caller directory");
         }
     }
-    // Default the version to "0.0.0" for now, otherwise SDK codegen gets
-    // confused without a version.
-    const version = "0.0.0";
     const prov = new ComponentProvider(options);
     return main(prov, args);
 }

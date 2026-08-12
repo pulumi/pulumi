@@ -1,0 +1,8 @@
+<{%reset%}>  pkgA:index:parent: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:index:parent::parent]
+<{%reset%}><{%reset%}>    <{%reset%}>  pkgA:index:child: (same)
+<{%reset%}>        [id=4]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:index:parent$pkgA:index:child::childnew]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,22 @@
 package plugin
 
 import (
+	"context"
+
 	"github.com/spf13/cobra"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -43,37 +54,50 @@ func NewPluginCmd() *cobra.Command {
 			"The plugin family of commands provides a way of explicitly managing plugins.\n" +
 			"\n" +
 			"For a list of available resource plugins, please see https://www.pulumi.com/registry/.",
-		Args: cmdutil.NoArgs,
 	}
 
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.AddCommand(newPluginInstallCmd())
-	cmd.AddCommand(newPluginLsCmd())
-	cmd.AddCommand(newPluginRmCmd())
+	cmd.AddCommand(newPluginListCmd(pluginstorage.Instance))
+	cmd.AddCommand(newPluginRemoveCmd(pluginstorage.Instance))
 	cmd.AddCommand(newPluginRunCmd())
 
 	return cmd
 }
 
 // getProjectPlugins fetches a list of plugins used by this project.
-func getProjectPlugins() ([]workspace.PluginSpec, error) {
-	proj, root, err := pkgWorkspace.Instance.ReadProject()
+func getProjectPlugins(ctx context.Context) ([]workspace.PluginDescriptor, error) {
+	proj, root, err := pkgWorkspace.Instance.ReadProject("")
 	if err != nil {
 		return nil, err
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
+	reg := cmdCmd.NewDefaultRegistry(
+		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+	pluginHost, err := pkghost.New(
+		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(reg))
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+	pwd, main, pctx, err := engine.ProjectInfoContext(
+		ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	defer ctx.Close()
+	defer pctx.Close()
 	runtimeOptions := proj.Runtime.Options()
 	programInfo := plugin.NewProgramInfo(root, pwd, main, runtimeOptions)
 	// Get the required plugins and then ensure they have metadata populated about them.  Because it's possible
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
 	plugins, err := engine.GetRequiredPlugins(
-		ctx.Host,
+		pctx.Request(),
+		pctx,
 		proj.Runtime.Name(),
 		programInfo)
 	if err != nil {
@@ -82,8 +106,8 @@ func getProjectPlugins() ([]workspace.PluginSpec, error) {
 	return plugins, nil
 }
 
-func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, error) {
-	proj, root, err := pkgWorkspace.Instance.ReadProject()
+func resolvePlugins(ctx context.Context, plugins []workspace.PluginDescriptor) ([]workspace.PluginInfo, error) {
+	proj, root, err := pkgWorkspace.Instance.ReadProject("")
 	if err != nil {
 		return nil, err
 	}
@@ -91,18 +115,26 @@ func resolvePlugins(plugins []workspace.PluginSpec) ([]workspace.PluginInfo, err
 	d := cmdutil.Diag()
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	_, _, ctx, err := engine.ProjectInfoContext(projinfo, nil, d, d, nil, false, nil, nil)
+	reg := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, d, env.Global())
+	pluginHost, err := pkghost.New(context.WithoutCancel(ctx), d, d, nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(reg))
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+	_, _, pctx, err := engine.ProjectInfoContext(ctx, projinfo, pluginHost, d, d, false, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	defer ctx.Close()
+	defer pctx.Close()
 
 	// Get the required plugins and then ensure they have metadata populated about them.  Because it's possible
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
 	var results []workspace.PluginInfo
 	for _, plugin := range plugins {
-		info, err := workspace.GetPluginInfo(d, plugin, ctx.Host.GetProjectPlugins())
+		info, err := workspace.GetPluginInfo(pctx.Base(), d, plugin, pctx.ProjectPlugins())
 		if err != nil {
 			contract.IgnoreError(err)
 		}

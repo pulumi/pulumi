@@ -13,7 +13,7 @@
 
 var jspb = require('google-protobuf');
 var goog = jspb;
-var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
+var proto = { codegen: { }, pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 goog.exportSymbol('proto.pulumirpc.Callback', null, global);
 goog.exportSymbol('proto.pulumirpc.CallbackInvokeRequest', null, global);
@@ -113,8 +113,9 @@ proto.pulumirpc.Callback.prototype.toObject = function(opt_includeInstance) {
  */
 proto.pulumirpc.Callback.toObject = function(includeInstance, msg) {
   var f, obj = {
-    target: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    token: jspb.Message.getFieldWithDefault(msg, 2, "")
+target: jspb.Message.getFieldWithDefault(msg, 1, ""),
+token: jspb.Message.getFieldWithDefault(msg, 2, ""),
+acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
   };
 
   if (includeInstance) {
@@ -159,6 +160,10 @@ proto.pulumirpc.Callback.deserializeBinaryFromReader = function(msg, reader) {
       var value = /** @type {string} */ (reader.readString());
       msg.setToken(value);
       break;
+    case 3:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsByteString(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -202,6 +207,13 @@ proto.pulumirpc.Callback.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
+  f = message.getAcceptsByteString();
+  if (f) {
+    writer.writeBool(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -241,6 +253,24 @@ proto.pulumirpc.Callback.prototype.setToken = function(value) {
 };
 
 
+/**
+ * optional bool accepts_byte_string = 3;
+ * @return {boolean}
+ */
+proto.pulumirpc.Callback.prototype.getAcceptsByteString = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 3, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.Callback} returns this
+ */
+proto.pulumirpc.Callback.prototype.setAcceptsByteString = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 3, value);
+};
+
+
 
 
 
@@ -273,8 +303,8 @@ proto.pulumirpc.CallbackInvokeRequest.prototype.toObject = function(opt_includeI
  */
 proto.pulumirpc.CallbackInvokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    token: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    request: msg.getRequest_asB64()
+token: jspb.Message.getFieldWithDefault(msg, 1, ""),
+request: msg.getRequest_asB64()
   };
 
   if (includeInstance) {
@@ -457,7 +487,7 @@ proto.pulumirpc.CallbackInvokeResponse.prototype.toObject = function(opt_include
  */
 proto.pulumirpc.CallbackInvokeResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    response: msg.getResponse_asB64()
+response: msg.getResponse_asB64()
   };
 
   if (includeInstance) {

@@ -1,0 +1,11 @@
+<{%reset%}>Configuration:<{%reset%}>
+<{%reset%}>  urn:pulumi:dev::test::pulumi:pulumi:Stack::test-dev: (same)
+<{%reset%}>    <{%fg 3%}>~ urn:pulumi:dev::test::pulumi-python:dynamic:Resource::test-x: (update)
+<{%reset%}>        [id=quux2]
+<{%reset%}><{%reset%}>    <{%fg 9%}>--urn:pulumi:dev::test::pulumi-python:dynamic:Resource::test-r: (delete-replaced)
+<{%fg 9%}>        [id=foo]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+    <{%fg 1%}>1 errored<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 8s

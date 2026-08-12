@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -107,7 +107,6 @@ func TestLogWriter(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -116,7 +115,7 @@ func TestLogWriter(t *testing.T) {
 
 			for _, input := range tt.writes {
 				n, err := w.Write([]byte(input))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, len(input), n)
 			}
 
@@ -140,7 +139,7 @@ func TestLogWriterRace(t *testing.T) {
 
 	var wg sync.WaitGroup
 	wg.Add(N)
-	for i := 0; i < N; i++ {
+	for range N {
 		go func() {
 			defer wg.Done()
 
@@ -163,7 +162,7 @@ type fakeT struct {
 	cleanups []func()
 }
 
-func (t *fakeT) Logf(msg string, args ...interface{}) {
+func (t *fakeT) Logf(msg string, args ...any) {
 	t.msgs = append(t.msgs, fmt.Sprintf(msg, args...))
 }
 

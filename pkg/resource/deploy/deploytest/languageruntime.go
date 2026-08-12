@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,9 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -45,10 +47,21 @@ func NewLanguageRuntime(program ProgramFunc, requiredPackages ...workspace.Packa
 	}
 }
 
+func NewLanguageRuntimeWithShutdown(
+	program ProgramFunc, shutdown func(), requiredPackages ...workspace.PackageDescriptor,
+) plugin.LanguageRuntime {
+	return &languageRuntime{
+		requiredPackages: requiredPackages,
+		program:          program,
+		shutdown:         shutdown,
+	}
+}
+
 type languageRuntime struct {
 	requiredPackages []workspace.PackageDescriptor
 	program          ProgramFunc
 	closed           bool
+	shutdown         func()
 }
 
 func (p *languageRuntime) Close() error {
@@ -56,18 +69,24 @@ func (p *languageRuntime) Close() error {
 	return nil
 }
 
-func (p *languageRuntime) GetRequiredPackages(info plugin.ProgramInfo) ([]workspace.PackageDescriptor, error) {
+func (p *languageRuntime) GetRequiredPackages(
+	ctx context.Context, info plugin.ProgramInfo,
+) ([]workspace.PackageDescriptor, []workspace.PackageSpec, error) {
 	if p.closed {
-		return nil, ErrLanguageRuntimeIsClosed
+		return nil, nil, ErrLanguageRuntimeIsClosed
 	}
-	return p.requiredPackages, nil
+	return p.requiredPackages, nil, nil
 }
 
-func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
+func (p *languageRuntime) Run(
+	ctx context.Context, info plugin.RunInfo,
+) (string, bool, error) {
 	if p.closed {
 		return "", false, ErrLanguageRuntimeIsClosed
 	}
-	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	monitor, err := dialMonitor(ctx, info.MonitorAddress)
 	if err != nil {
 		return "", false, err
 	}
@@ -76,7 +95,25 @@ func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
 	// Run the program.
 	done := make(chan error)
 	go func() {
-		done <- p.program(info, monitor)
+		err := errors.New("program did not exit successfully, either due to panic, or t.FailNow() being called")
+		// This is a rather strange pattern. We defer a function here that sends the error
+		// to the done channel and then call the program function, instead of just sending
+		// the error directly to the done channel. This is because the program function is
+		// a test function that may use testify's `require` package. That package calls
+		// t.FailNow() when an error occurs, which in turn causes runtime.Goexit() to be
+		// called. runtime.Goexit() causes the goroutine to exit immediately, so if t.FailNow()
+		// is called we never actually send the error to the done channel.
+		//
+		// Helpfully runtime.Goexit() does allow deferred functions in the goroutine to still
+		// run before the goroutine exits, so we can use this deferred function to make sure
+		// we can always send something to the done channel, which will prevent the test from
+		// just hanging. Note that in this case it doesn't really matter that we don't return
+		// the error message, as the `require` library will already have recorded and printed
+		// the error.
+		defer func() {
+			done <- err
+		}()
+		err = p.program(info, monitor)
 	}()
 	if progerr := <-done; progerr != nil {
 		return progerr.Error(), false, nil
@@ -84,14 +121,15 @@ func (p *languageRuntime) Run(info plugin.RunInfo) (string, bool, error) {
 	return "", false, nil
 }
 
-func (p *languageRuntime) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *languageRuntime) GetPluginInfo(ctx context.Context) (plugin.PluginInfo, error) {
 	if p.closed {
-		return workspace.PluginInfo{}, ErrLanguageRuntimeIsClosed
+		return plugin.PluginInfo{}, ErrLanguageRuntimeIsClosed
 	}
-	return workspace.PluginInfo{Name: "TestLanguage"}, nil
+	return plugin.PluginInfo{}, nil
 }
 
 func (p *languageRuntime) InstallDependencies(
+	context.Context,
 	plugin.InstallDependenciesRequest,
 ) (io.Reader, io.Reader, <-chan error, error) {
 	if p.closed {
@@ -109,14 +147,25 @@ func (p *languageRuntime) InstallDependencies(
 	return stdout, stderr, done, nil
 }
 
-func (p *languageRuntime) RuntimeOptionsPrompts(info plugin.ProgramInfo) ([]plugin.RuntimeOptionPrompt, error) {
+func (p *languageRuntime) RuntimeOptionsPrompts(
+	ctx context.Context, info plugin.ProgramInfo,
+) ([]plugin.RuntimeOptionPrompt, error) {
 	if p.closed {
 		return []plugin.RuntimeOptionPrompt{}, ErrLanguageRuntimeIsClosed
 	}
 	return []plugin.RuntimeOptionPrompt{}, nil
 }
 
-func (p *languageRuntime) About(info plugin.ProgramInfo) (plugin.AboutInfo, error) {
+func (p *languageRuntime) Template(
+	ctx context.Context, info plugin.ProgramInfo, projectName tokens.PackageName,
+) error {
+	if p.closed {
+		return ErrLanguageRuntimeIsClosed
+	}
+	return nil
+}
+
+func (p *languageRuntime) About(ctx context.Context, info plugin.ProgramInfo) (plugin.AboutInfo, error) {
 	if p.closed {
 		return plugin.AboutInfo{}, ErrLanguageRuntimeIsClosed
 	}
@@ -124,6 +173,7 @@ func (p *languageRuntime) About(info plugin.ProgramInfo) (plugin.AboutInfo, erro
 }
 
 func (p *languageRuntime) GetProgramDependencies(
+	ctx context.Context,
 	info plugin.ProgramInfo, transitiveDependencies bool,
 ) ([]plugin.DependencyInfo, error) {
 	if p.closed {
@@ -132,26 +182,46 @@ func (p *languageRuntime) GetProgramDependencies(
 	return nil, nil
 }
 
-func (p *languageRuntime) RunPlugin(info plugin.RunPluginInfo) (io.Reader, io.Reader, context.CancelFunc, error) {
+func (p *languageRuntime) RunPlugin(ctx context.Context, info plugin.RunPluginInfo) (
+	io.Reader, io.Reader, *promise.Promise[int32], error,
+) {
 	return nil, nil, nil, errors.New("inline plugins are not currently supported")
 }
 
-func (p *languageRuntime) GenerateProject(string, string, string,
+func (p *languageRuntime) GenerateProject(context.Context, string, string, string,
 	bool, string, map[string]string,
 ) (hcl.Diagnostics, error) {
 	return nil, errors.New("GenerateProject is not supported")
 }
 
-func (p *languageRuntime) GeneratePackage(
+func (p *languageRuntime) GeneratePackage(context.Context,
 	string, string, map[string][]byte, string, map[string]string, bool,
 ) (hcl.Diagnostics, error) {
 	return nil, errors.New("GeneratePackage is not supported")
 }
 
-func (p *languageRuntime) GenerateProgram(map[string]string, string, bool) (map[string][]byte, hcl.Diagnostics, error) {
+func (p *languageRuntime) GenerateProgram(
+	context.Context, map[string]string, string, bool,
+) (map[string][]byte, hcl.Diagnostics, error) {
 	return nil, nil, errors.New("GenerateProgram is not supported")
 }
 
-func (p *languageRuntime) Pack(string, string) (string, error) {
+func (p *languageRuntime) Pack(context.Context, string, string) (string, error) {
 	return "", errors.New("Pack is not supported")
+}
+
+func (p *languageRuntime) Link(
+	context.Context, plugin.ProgramInfo, []workspace.LinkablePackageDescriptor, string,
+) (string, error) {
+	return "", errors.New("Link is not supported")
+}
+
+func (p *languageRuntime) Cancel(context.Context) error {
+	p.closed = true
+
+	if p.shutdown != nil {
+		p.shutdown()
+	}
+
+	return nil
 }

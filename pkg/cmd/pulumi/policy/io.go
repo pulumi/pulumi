@@ -17,13 +17,23 @@ package policy
 import (
 	"context"
 	"fmt"
+	"io"
 	"path/filepath"
 
 	"github.com/opentracing/opentracing-go"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -47,21 +57,33 @@ func ReadPolicyProject(pwd string) (*workspace.PolicyPackProject, string, string
 	return proj, path, filepath.Dir(path), nil
 }
 
-func InstallPolicyPackDependencies(ctx context.Context, root string, proj *workspace.PolicyPackProject) error {
+func InstallPluginDependencies(
+	ctx context.Context, stdout, stderr io.Writer, root string, projRuntime workspace.ProjectRuntimeInfo,
+) error {
 	span := opentracing.SpanFromContext(ctx)
 	// Bit of a hack here. Creating a plugin context requires a "program project", but we've only got a
 	// policy project. Ideally we should be able to make a plugin context without any related project. But
 	// fow now this works.
 	projinfo := &engine.Projinfo{Proj: &workspace.Project{
-		Main:    proj.Main,
-		Runtime: proj.Runtime,
+		Main:    ".",
+		Runtime: projRuntime,
 	}, Root: root}
+	reg := cmdCmd.NewDefaultRegistry(
+		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+	pluginHost, err := pkghost.New(
+		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(reg))
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 	_, main, pluginCtx, err := engine.ProjectInfoContext(
+		ctx,
 		projinfo,
-		nil,
+		pluginHost,
 		cmdutil.Diag(),
 		cmdutil.Diag(),
-		nil,
 		false,
 		span,
 		nil,
@@ -71,13 +93,17 @@ func InstallPolicyPackDependencies(ctx context.Context, root string, proj *works
 	}
 	defer pluginCtx.Close()
 
-	programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, main, proj.Runtime.Options())
-	lang, err := pluginCtx.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
+	lang, err := pluginCtx.Host.LanguageRuntime(pluginCtx, projRuntime.Name())
 	if err != nil {
-		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
+		return fmt.Errorf("failed to load language plugin %s: %w", projRuntime.Name(), err)
 	}
 
-	err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{Info: programInfo})
+	programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, main, projRuntime.Options())
+	err = pkgCmdUtil.InstallDependencies(pluginCtx.Request(),
+		lang, plugin.InstallDependenciesRequest{
+			Info:     programInfo,
+			IsPlugin: true,
+		}, stdout, stderr)
 	if err != nil {
 		return fmt.Errorf("installing dependencies failed: %w", err)
 	}

@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,8 +22,18 @@ import pulumi
 from pulumi_mypkg import *
 
 
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        yield loop
+    finally:
+        loop.close()
+
+
 @pytest.fixture
-def my_mocks():
+def my_mocks(event_loop):
     old_settings = pulumi.runtime.settings.SETTINGS
     try:
         mocks = MyMocks()
@@ -34,7 +44,7 @@ def my_mocks():
 
 
 @pytest.fixture
-def my_preview_mocks():
+def my_preview_mocks(event_loop):
     old_settings = pulumi.runtime.settings.SETTINGS
     try:
         mocks = MyMocks()

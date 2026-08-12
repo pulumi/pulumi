@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,13 +35,13 @@ func Test_WalkUpDirs(t *testing.T) {
 			}
 			return checkDir(dir)
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return found, result
 	}
 
 	setup := func(t *testing.T) (string, string, string, string) {
 		d1, err := filepath.Abs(t.TempDir())
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		d2 := filepath.Join(d1, "a")
 		d3 := filepath.Join(d2, "b")
 		d4 := filepath.Join(d3, "c")

@@ -1,0 +1,5 @@
+name: l1-builtin-file
+runtime:
+  name: nodejs
+  options:
+    typescript: false

@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build (python || all) && !xplatform_acceptance
-
 package ints
 
 import (
@@ -21,44 +19,30 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/tests/testutil"
 )
 
+// TestPythonAliases tests cases where a resource's name, type, or parent changes but it provides
+// an `alias` pointing to the old URN to ensure the resource is preserved across the update. Each
+// scenario lives in its own scenario_*.py file within a single program so one update exercises
+// them all.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPythonAliases(t *testing.T) {
-	t.Parallel()
-
-	dirs := []string{
-		"rename",
-		"adopt_into_component",
-		"rename_component_and_child",
-		"retype_component",
-		"rename_component",
-		"retype_parents",
-		"adopt_component_child",
-		"extract_component_child",
-		"rename_component_child",
-		"retype_component_child",
-	}
-
-	//nolint:paralleltest // ProgramTest calls t.Parallel()
-	for _, dir := range dirs {
-		d := filepath.Join("python", dir)
-		t.Run(d, func(t *testing.T) {
-			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Dir: filepath.Join(d, "step1"),
-				Dependencies: []string{
-					filepath.Join("..", "..", "..", "sdk", "python"),
-				},
-				Quick: true,
-				EditDirs: []integration.EditDir{
-					{
-						Dir:             filepath.Join(d, "step2"),
-						Additive:        true,
-						ExpectNoChanges: true,
-					},
-				},
-			})
-		})
-	}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "step1"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "..", "sdk", "python"),
+		},
+		Quick: true,
+		EditDirs: []integration.EditDir{
+			{
+				Dir:             filepath.Join("python", "step2"),
+				Additive:        true,
+				ExpectNoChanges: true,
+			},
+		},
+	})
 }
 
 // TestPythonAliasAfterFailedUpdate is a test for https://github.com/pulumi/pulumi/issues/13848.
@@ -73,7 +57,7 @@ func TestPythonAliasAfterFailedUpdate(t *testing.T) {
 				filepath.Join("..", "..", "..", "sdk", "python"),
 			},
 			LocalProviders: []integration.LocalDependency{
-				{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+				{Package: "testprovider", Path: testutil.TestProviderDir(t)},
 			},
 			Quick: true,
 			EditDirs: []integration.EditDir{

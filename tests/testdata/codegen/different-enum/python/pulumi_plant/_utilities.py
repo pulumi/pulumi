@@ -13,12 +13,10 @@ import os
 import sys
 import typing
 import warnings
-import base64
 
 import pulumi
 import pulumi.runtime
 from pulumi.runtime.sync_await import _sync_await
-from pulumi.runtime.proto import resource_pb2
 
 from semver import VersionInfo as SemverVersion
 from parver import Version as PEP440Version
@@ -71,9 +69,6 @@ def _get_semver_version():
     # <some module>._utilities. <some module> is the module we want to query the version for.
     root_package, *rest = __name__.split('.')
 
-    # pkg_resources uses setuptools to inspect the set of installed packages. We use it here to ask
-    # for the currently installed version of the root package (i.e. us) and get its version.
-
     # Unfortunately, PEP440 and semver differ slightly in incompatible ways. The Pulumi engine expects
     # to receive a valid semver string when receiving requests from the language host, so it's our
     # responsibility as the library to convert our own PEP440 version into a valid semver string.
@@ -89,7 +84,7 @@ def _get_semver_version():
     elif pep440_version.pre_tag == 'rc':
         prerelease = f"rc.{pep440_version.pre}"
     elif pep440_version.dev is not None:
-        # PEP440 has explicit support for dev builds, while semver encodes them as "prerelease" versions. To bridge 
+        # PEP440 has explicit support for dev builds, while semver encodes them as "prerelease" versions. To bridge
         # between the two, we convert our dev build version into a prerelease tag. This matches what all of our other
         # packages do when constructing their own semver string.
         prerelease = f"dev.{pep440_version.dev}"

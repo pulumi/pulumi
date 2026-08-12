@@ -55,8 +55,8 @@ func main() {
 	names := []string{}
 	for _, repo := range allRepos {
 		n := repo.GetName()
-		if strings.HasPrefix(n, "pulumi-") {
-			names = append(names, strings.TrimPrefix(n, "pulumi-"))
+		if after, ok := strings.CutPrefix(n, "pulumi-"); ok {
+			names = append(names, after)
 		}
 	}
 	slices.Sort(names)
@@ -78,7 +78,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create %v: %v", fullname, err)
 	}
-	data := map[string]interface{}{
+	data := map[string]any{
 		"Names": names,
 	}
 	if err := template.Execute(f, data); err != nil {

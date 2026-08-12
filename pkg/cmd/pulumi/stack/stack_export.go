@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,15 +19,19 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func newStackExportCmd() *cobra.Command {
@@ -38,7 +42,6 @@ func newStackExportCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "export",
-		Args:  cmdutil.MaximumNArgs(0),
 		Short: "Export a stack's deployment to standard out",
 		Long: "Export a stack's deployment to standard out.\n" +
 			"\n" +
@@ -56,11 +59,13 @@ func newStackExportCmd() *cobra.Command {
 			// Fetch the current stack and export its deployment
 			s, err := RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
 				LoadOnly,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
@@ -70,7 +75,7 @@ func newStackExportCmd() *cobra.Command {
 			// Export the latest version of the checkpoint by default. Otherwise, we require that
 			// the backend/stack implements the ability the export previous checkpoints.
 			if version == "" {
-				deployment, err = s.ExportDeployment(ctx)
+				deployment, err = backend.ExportStackDeployment(ctx, s)
 				if err != nil {
 					return err
 				}
@@ -90,34 +95,33 @@ func newStackExportCmd() *cobra.Command {
 			}
 
 			// Read from stdin or a specified file.
-			writer := os.Stdout
+			writer := cmd.OutOrStdout()
 			if file != "" {
-				writer, err = os.Create(file)
+				f, err := os.Create(file)
 				if err != nil {
 					return fmt.Errorf("could not open file: %w", err)
 				}
+				defer contract.IgnoreClose(f)
+				writer = f
 			}
 
 			if showSecrets {
 				// log show secrets event
-				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, stack.DefaultSecretsProvider)
+				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
 				if err != nil {
-					return checkDeploymentVersionError(err, stackName)
+					return stack.FormatDeploymentDeserializationError(err, stackName)
 				}
 
-				serializedDeployment, err := stack.SerializeDeployment(ctx, snap, true)
+				// Serialize with pretty formatting so that HTML characters are not escaped when serializing
+				// the deployment back to JSON. Note that if the HTML characters were already escaped as part
+				// of exporting from the backend, those escaped characters will remain escaped, this just
+				// avoids introducing additional escaping.
+				deployment, err = stack.SerializeUntypedDeployment(ctx, snap, &stack.SerializeOptions{
+					ShowSecrets: true,
+					Pretty:      true,
+				})
 				if err != nil {
 					return err
-				}
-
-				data, err := json.Marshal(serializedDeployment)
-				if err != nil {
-					return err
-				}
-
-				deployment = &apitype.UntypedDeployment{
-					Version:    3,
-					Deployment: data,
 				}
 
 				Log3rdPartySecretsProviderDecryptionEvent(ctx, s, "", "pulumi stack export")
@@ -135,6 +139,9 @@ func newStackExportCmd() *cobra.Command {
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
 	cmd.PersistentFlags().StringVarP(

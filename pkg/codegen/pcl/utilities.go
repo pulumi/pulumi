@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,10 @@
 package pcl
 
 import (
+	"cmp"
 	"io"
+	"iter"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -31,6 +34,48 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
+
+func newOrderedSet[E comparable]() *orderedSet[E] {
+	return &orderedSet[E]{m: make(map[E]int)}
+}
+
+type orderedSet[E comparable] struct {
+	m   map[E]int
+	idx int
+}
+
+func (o *orderedSet[E]) Add(v E) {
+	if _, ok := o.m[v]; ok {
+		return
+	}
+	o.m[v] = o.idx
+	o.idx++
+}
+
+func (o *orderedSet[E]) Delete(v E) { delete(o.m, v) }
+
+func (o *orderedSet[E]) Iter() iter.Seq[E] {
+	type value struct {
+		i int
+		v E
+	}
+	values := make([]value, 0, len(o.m))
+	for v, i := range o.m {
+		values = append(values, value{i, v})
+	}
+	slices.SortFunc(values, func(a, b value) int {
+		return cmp.Compare(a.i, b.i)
+	})
+	return func(yield func(v E) bool) {
+		for _, v := range values {
+			if !yield(v.v) {
+				return
+			}
+		}
+	}
+}
+
+func (o *orderedSet[E]) Len() int { return len(o.m) }
 
 // titleCase replaces the first character in the given string with its upper-case equivalent.
 func titleCase(s string) string {
@@ -48,17 +93,32 @@ func SourceOrderNodes(nodes []Node) []Node {
 	return nodes
 }
 
+// DecomposeToken splits a token into its package, module, and name components. If the module is empty or missing then
+// "index" is returned. It returns an error diagnostic if the token is not in a valid format.
 func DecomposeToken(tok string, sourceRange hcl.Range) (string, string, string, hcl.Diagnostics) {
 	components := strings.Split(tok, ":")
+	if len(components) == 2 {
+		components = []string{components[0], "index", components[1]}
+	}
 	if len(components) != 3 {
 		// If we don't have a valid type token, return the invalid token as the type name.
 		return "", "", tok, hcl.Diagnostics{malformedToken(tok, sourceRange)}
 	}
+	// Lots of old schemas would use pkg::typ instead of pkg:typ, fix those to set the module to index as well
+	if components[1] == "" {
+		components[1] = "index"
+	}
+
+	// If any component is empty this is also an invalid token
+	if slices.Contains(components, "") {
+		return "", "", tok, hcl.Diagnostics{malformedToken(tok, sourceRange)}
+	}
+
 	return components[0], components[1], components[2], nil
 }
 
 func hasDependencyOn(a, b Node) bool {
-	for _, d := range a.getDependencies() {
+	for _, d := range a.GetDependencies() {
 		if d.Name() == b.Name() {
 			return true
 		}
@@ -72,7 +132,7 @@ func mutuallyDependant(a, b Node) bool {
 
 func linearizeNode(n Node, done codegen.Set, list *[]Node) {
 	if !done.Has(n) {
-		for _, d := range n.getDependencies() {
+		for _, d := range n.GetDependencies() {
 			if !mutuallyDependant(n, d) {
 				linearizeNode(d, done, list)
 			}
@@ -122,7 +182,7 @@ func Linearize(p *Program) []Node {
 		for i, f := range worklist {
 			weight, processed := 0, codegen.Set{}
 			for _, n := range f.nodes {
-				for _, d := range n.getDependencies() {
+				for _, d := range n.GetDependencies() {
 					// We don't count nodes that we've already counted or nodes that have already been ordered.
 					if processed.Has(d) || doneNodes.Has(d) {
 						continue
@@ -165,20 +225,17 @@ func Linearize(p *Program) []Node {
 // The resultant program should be a shallow copy of the source with only the modified resource nodes copied.
 func MapProvidersAsResources(p *Program) {
 	for _, n := range p.Nodes {
-		if r, ok := n.(*Resource); ok && r.Schema != nil {
-			pkg, mod, name, _ := r.DecomposeToken()
+		switch r := n.(type) {
+		case *Resource:
+			if r.Schema == nil {
+				continue
+			}
+			pkg, mod, name, _ := DecomposeToken(r.GetToken())
 			if r.Schema.IsProvider && pkg == "pulumi" && mod == "providers" {
 				// the binder emits tokens like this when the module is "index"
-				r.Token = name + "::Provider"
+				r.token = name + "::Provider"
 			}
 		}
-	}
-}
-
-func FixupPulumiPackageTokens(r *Resource) {
-	pkg, mod, name, _ := r.DecomposeToken()
-	if pkg == "pulumi" && mod == "pulumi" {
-		r.Token = "pulumi::" + name
 	}
 }
 
@@ -212,12 +269,16 @@ func SortedFunctionParameters(expr *model.FunctionCallExpression) []*schema.Prop
 // However, when optional parameters are omitted, then <undefinedLiteral> is used where they should be.
 // Take for example { a: 1, c: 3 } with multiInputArguments: ["a", "b", "c"], it becomes 1, <undefinedLiteral>, 3
 // because b was omitted and c was provided so b had to be the provided <undefinedLiteral>
+// trailingArgs reports whether the caller will emit a further positional argument after the spread
+// ones, such as an options bag. When it does, parameters the program left out can no longer be
+// omitted -- they must be filled with undefinedLiteral to keep the trailing argument in its slot.
 func GenerateMultiArguments(
 	f *format.Formatter,
 	w io.Writer,
 	undefinedLiteral string,
 	expr *model.ObjectConsExpression,
 	multiArguments []*schema.Property,
+	trailingArgs bool,
 ) {
 	items := make(map[string]model.Expression)
 	for _, item := range expr.Items {
@@ -240,26 +301,16 @@ func GenerateMultiArguments(
 		value, ok := items[arg.Name]
 		if ok {
 			f.Fgenf(w, "%.v", value)
-		} else if hasMoreArgs(index) {
+		} else if trailingArgs || hasMoreArgs(index) {
 			// a positional argument was not provided in the input bag
 			// assume it is optional
 			f.Fgen(w, undefinedLiteral)
 		}
 
-		if hasMoreArgs(index + 1) {
+		if hasMoreArgs(index+1) || (trailingArgs && index+1 < len(multiArguments)) {
 			f.Fgen(w, ", ")
 		}
 	}
-}
-
-func SortedStringKeys[V any](m map[string]V) []string {
-	keys := make([]string, 0)
-	for propertyName := range m {
-		keys = append(keys, propertyName)
-	}
-
-	sort.Strings(keys)
-	return keys
 }
 
 // UnwrapOption returns type T if the input is an Option(T)

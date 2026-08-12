@@ -19,7 +19,7 @@ class Provider(provider.Provider):
 
 if __name__ == "__main__":
     provider_dir = Path(__file__).absolute().parent
-    expected_venv = provider_dir / "venv"
+    expected_venv = provider_dir / ".venv"
     venv = os.getenv("VIRTUAL_ENV", "")
     assert (
         Path(venv) == expected_venv

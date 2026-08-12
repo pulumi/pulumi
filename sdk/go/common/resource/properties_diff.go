@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 package resource
 
 import (
-	"sort"
+	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
@@ -78,7 +78,7 @@ func (diff *ObjectDiff) Keys() []PropertyKey {
 	for k := range diff.Updates {
 		ks = append(ks, k)
 	}
-	sort.Slice(ks, func(i, j int) bool { return ks[i] < ks[j] })
+	slices.Sort(ks)
 	return ks
 }
 
@@ -137,19 +137,67 @@ func (diff *ArrayDiff) Len() int {
 	return length
 }
 
+type DiffOption interface {
+	apply(*diffOptions)
+}
+
+type diffOptions struct {
+	ignoreKeyFuncs []func(key PropertyKey) bool
+	ignorePathFunc []func(key PropertyPath) bool
+	initialPath    PropertyPath
+}
+
 // IgnoreKeyFunc is the callback type for Diff's ignore option.
 type IgnoreKeyFunc func(key PropertyKey) bool
 
+// IgnorePathFunc is the callback type for Diff's ignore path option.
+//
+// If provided functions want path to outlive the callback, they should make their own
+// copy.
+type IgnorePathFunc func(path PropertyPath) bool
+
+// Set the initial property path for DiffWithOptions.
+//
+// The passed in property path will be mutated via append.
+type InitialPropertyPath PropertyPath
+
+func (opt IgnoreKeyFunc) apply(o *diffOptions)       { o.ignoreKeyFuncs = append(o.ignoreKeyFuncs, opt) }
+func (opt IgnorePathFunc) apply(o *diffOptions)      { o.ignorePathFunc = append(o.ignorePathFunc, opt) }
+func (opt InitialPropertyPath) apply(o *diffOptions) { o.initialPath = PropertyPath(opt) }
+
+// Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
+func (props PropertyMap) DiffWithOptions(other PropertyMap, options ...DiffOption) *ObjectDiff {
+	var opts diffOptions
+	for _, v := range options {
+		v.apply(&opts)
+	}
+	return props.diff(other, opts, opts.initialPath)
+}
+
 // Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
 func (props PropertyMap) Diff(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *ObjectDiff {
+	opts := make([]DiffOption, len(ignoreKeys))
+	for i, v := range ignoreKeys {
+		opts[i] = v
+	}
+	return props.DiffWithOptions(other, opts...)
+}
+
+// Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
+func (props PropertyMap) diff(other PropertyMap, opts diffOptions, path PropertyPath) *ObjectDiff {
 	adds := make(PropertyMap)
 	deletes := make(PropertyMap)
 	sames := make(PropertyMap)
 	updates := make(map[PropertyKey]ValueDiff)
 
 	ignore := func(key PropertyKey) bool {
-		for _, ikf := range ignoreKeys {
+		for _, ikf := range opts.ignoreKeyFuncs {
 			if ikf(key) {
+				return true
+			}
+		}
+		for _, ikp := range opts.ignorePathFunc {
+			if ikp(append(path, string(key))) {
 				return true
 			}
 		}
@@ -163,10 +211,8 @@ func (props PropertyMap) Diff(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *O
 		}
 
 		if new, has := other[k]; has {
-			// If a new exists, use it; for output properties, however, ignore differences.
-			if new.IsOutput() {
-				sames[k] = old
-			} else if diff := old.Diff(new, ignoreKeys...); diff != nil {
+			// If a new exists, use it;
+			if diff := old.diff(new, opts, append(path, string(k))); diff != nil {
 				if !old.HasValue() {
 					adds[k] = new
 				} else if !new.HasValue() {
@@ -206,8 +252,25 @@ func (props PropertyMap) Diff(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *O
 	}
 }
 
+func (props PropertyValue) DiffWithOptions(other PropertyValue, options ...DiffOption) *ValueDiff {
+	var opts diffOptions
+	for _, v := range options {
+		v.apply(&opts)
+	}
+	return props.diff(other, opts, opts.initialPath)
+}
+
 // Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
 func (v PropertyValue) Diff(other PropertyValue, ignoreKeys ...IgnoreKeyFunc) *ValueDiff {
+	opts := make([]DiffOption, len(ignoreKeys))
+	for i, v := range ignoreKeys {
+		opts[i] = v
+	}
+	return v.DiffWithOptions(other, opts...)
+}
+
+// Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
+func (v PropertyValue) diff(other PropertyValue, opts diffOptions, path PropertyPath) *ValueDiff {
 	if v.IsArray() && other.IsArray() {
 		old := v.ArrayValue()
 		new := other.ArrayValue()
@@ -225,7 +288,7 @@ func (v PropertyValue) Diff(other PropertyValue, ignoreKeys ...IgnoreKeyFunc) *V
 		sames := make(map[int]PropertyValue)
 		updates := make(map[int]ValueDiff)
 		for i := 0; i < len(old) && i < len(new); i++ {
-			if diff := old[i].Diff(new[i]); diff != nil {
+			if diff := old[i].diff(new[i], opts, append(path, i)); diff != nil {
 				updates[i] = *diff
 			} else {
 				sames[i] = old[i]
@@ -249,7 +312,7 @@ func (v PropertyValue) Diff(other PropertyValue, ignoreKeys ...IgnoreKeyFunc) *V
 	if v.IsObject() && other.IsObject() {
 		old := v.ObjectValue()
 		new := other.ObjectValue()
-		if diff := old.Diff(new, ignoreKeys...); diff != nil {
+		if diff := old.diff(new, opts, path); diff != nil {
 			return &ValueDiff{
 				Old:    v,
 				New:    other,
@@ -427,10 +490,8 @@ func (props PropertyMap) DiffIncludeUnknowns(other PropertyMap, ignoreKeys ...Ig
 		}
 
 		if new, has := other[k]; has {
-			// If a new exists, use it; for output properties, however, ignore differences.
-			if new.IsOutput() {
-				sames[k] = new
-			} else if diff := old.DiffIncludeUnknowns(new, ignoreKeys...); diff != nil {
+			// If a new exists, use it;
+			if diff := old.DiffIncludeUnknowns(new, ignoreKeys...); diff != nil {
 				if !old.HasValue() {
 					adds[k] = new
 				} else if !new.HasValue() {

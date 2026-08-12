@@ -31,7 +31,7 @@ export class Pet extends pulumi.CustomResource {
         return obj['__pulumiType'] === Pet.__pulumiType;
     }
 
-    public readonly name!: pulumi.Output<string | undefined>;
+    declare public readonly name: pulumi.Output<string | undefined>;
 
     /**
      * Create a Pet resource with the given unique name, arguments, and options.
@@ -44,7 +44,7 @@ export class Pet extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["name"] = args ? args.name : undefined;
+            resourceInputs["name"] = args?.name;
         } else {
             resourceInputs["name"] = undefined /*out*/;
         }
@@ -57,5 +57,5 @@ export class Pet extends pulumi.CustomResource {
  * The set of arguments for constructing a Pet resource.
  */
 export interface PetArgs {
-    name?: pulumi.Input<string>;
+    name?: pulumi.Input<string | undefined>;
 }

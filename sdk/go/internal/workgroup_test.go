@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ func TestWorkGroupActsAsWaitGroup(t *testing.T) {
 			wg := &WorkGroup{}
 			wg.Add(j)
 
-			for k := 0; k < j; k++ {
+			for range j {
 				go func() {
 					time.Sleep(10 * time.Millisecond)
 					atomic.AddInt64(&n, 1)

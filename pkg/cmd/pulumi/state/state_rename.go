@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,14 +18,17 @@ import (
 	"errors"
 	"fmt"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -42,8 +45,11 @@ func stateReurnOperation(
 
 	// Check whether the input URN corresponds to an existing resource
 	existingResources := edit.LocateResource(snap, oldURN)
-	if len(existingResources) != 1 {
-		return errors.New("The input URN does not correspond to an existing resource")
+	if len(existingResources) == 0 {
+		return resourceNotFoundError(snapshotURNs(snap), oldURN)
+	}
+	if len(existingResources) > 1 {
+		return errors.New("The input URN ambiguously refers to multiple resources")
 	}
 
 	// If the URN hasn't changed then there's nothing to do.
@@ -72,7 +78,7 @@ func stateReurnOperation(
 			_, allDeps := existingResource.GetAllDependencies()
 			for _, dep := range allDeps {
 				switch dep.Type {
-				case resource.ResourceParent:
+				case pkgresource.ResourceParent:
 					if dep.URN == oldURN {
 						existingResource.Parent = newURN
 
@@ -87,21 +93,26 @@ func stateReurnOperation(
 							return fmt.Errorf("failed to update %s with new parent %s: %w", oldChildURN, newURN, err)
 						}
 					}
-				case resource.ResourceDependency:
+				case pkgresource.ResourceDependency:
 					if dep.URN == oldURN {
 						dep.URN = newURN
 					}
 					updatedDeps = append(updatedDeps, dep.URN)
-				case resource.ResourcePropertyDependency:
+				case pkgresource.ResourcePropertyDependency:
 					if dep.URN == oldURN {
 						dep.URN = newURN
 					}
 					updatedPropDeps[dep.Key] = append(updatedPropDeps[dep.Key], dep.URN)
-				case resource.ResourceDeletedWith:
+				case pkgresource.ResourceDeletedWith:
 					if dep.URN == oldURN {
 						dep.URN = newURN
 					}
 					existingResource.DeletedWith = dep.URN
+				case pkgresource.ResourceReplaceWith:
+					if dep.URN == oldURN {
+						dep.URN = newURN
+					}
+					existingResource.ReplaceWith = append(existingResource.ReplaceWith, dep.URN)
 				}
 			}
 
@@ -161,7 +172,7 @@ func newStateRenameCommand() *cobra.Command {
 	var yes bool
 
 	cmd := &cobra.Command{
-		Use:   "rename [resource URN] [new name]",
+		Use:   "rename",
 		Short: "Renames a resource from a stack's state",
 		Long: `Renames a resource from a stack's state
 
@@ -173,9 +184,9 @@ Make sure that URNs are single-quoted to avoid having characters unexpectedly in
 To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 `,
 		Example: "pulumi state rename 'urn:pulumi:stage::demo::eks:index:Cluster$pulumi:providers:kubernetes::eks-provider' new-name-here",
-		Args:    cmdutil.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			yes = yes || env.SkipConfirmations.Value()
 
@@ -190,15 +201,15 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				var snap *deploy.Snapshot
 				err := ui.SurveyStack(
 					func() (err error) {
-						urn, err = getURNFromState(ctx, ws, backend.DefaultLoginManager, stack, &snap, "Select a resource to rename:")
+						urn, err = getURNFromState(ctx, sink, ws, backend.DefaultLoginManager, stack, &snap, "Select a resource to rename:")
 						if err != nil {
 							err = fmt.Errorf("failed to select resource: %w", err)
 						}
-						return
+						return err
 					},
 					func() (err error) {
 						newResourceName, err = getNewResourceName()
-						return
+						return err
 					},
 				)
 				if err != nil {
@@ -225,7 +236,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 			// Show the confirmation prompt if the user didn't pass the --yes parameter to skip it.
 			showPrompt := !yes
 
-			err := runTotalStateEdit(ctx, ws, backend.DefaultLoginManager, stack, showPrompt,
+			err := runTotalStateEdit(ctx, sink, ws, backend.DefaultLoginManager, stack, showPrompt,
 				func(opts display.Options, snap *deploy.Snapshot) error {
 					return stateRenameOperation(urn, newResourceName, opts, snap)
 				})
@@ -235,10 +246,18 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				return err
 			}
 
-			fmt.Println("Resource renamed")
+			fmt.Fprintln(cmd.OutOrStdout(), "Resource renamed")
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "resource-urn"},
+			{Name: "new-name"},
+		},
+		Required: 0,
+	})
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",

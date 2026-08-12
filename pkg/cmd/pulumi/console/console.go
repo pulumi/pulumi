@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@ package console
 import (
 	"errors"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
@@ -26,26 +28,30 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewConsoleCmd() *cobra.Command {
+func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stackName string
 	cmd := &cobra.Command{
 		Use:   "console",
 		Short: "Opens the current stack in the Pulumi Console",
-		Args:  cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current working directory: %w", err)
+			}
+
 			// Try to read the current project
-			ws := pkgWorkspace.Instance
-			project, _, err := ws.ReadProject()
+			project, _, err := ws.ReadProject(cwd)
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -70,13 +76,18 @@ func NewConsoleCmd() *cobra.Command {
 					if err != nil {
 						return err
 					}
+					if stack == nil {
+						fmt.Fprintf(cmd.OutOrStdout(), "Stack '%s' does not exist. "+
+							"Run `pulumi stack init` to create a new stack.\n", ref.Name())
+						return nil
+					}
 				} else {
-					stack, err = state.CurrentStack(ctx, currentBackend)
+					stack, err = state.CurrentStack(ctx, ws, currentBackend)
 					if err != nil {
 						return err
 					}
 					if stack == nil {
-						fmt.Println("No stack is currently selected. " +
+						fmt.Fprintln(cmd.OutOrStdout(), "No stack is currently selected. "+
 							"Run `pulumi stack select` to select a stack.")
 						return nil
 					}
@@ -91,24 +102,27 @@ func NewConsoleCmd() *cobra.Command {
 					// console URL fails.
 					url = cloudBackend.URL()
 				}
-				launchConsole(url)
+				launchConsole(cmd.OutOrStdout(), url)
 				return nil
 			}
-			fmt.Println("This command is not available for your backend. " +
-				"To migrate to the Pulumi Cloud backend, " +
+			fmt.Fprintln(cmd.OutOrStdout(), "This command is not available for your backend. "+
+				"To migrate to the Pulumi Cloud backend, "+
 				"please see https://www.pulumi.com/docs/intro/concepts/state/#pulumi-cloud-backend")
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 	cmd.PersistentFlags().StringVarP(
-		&stackName, "stack", "s", "", "The name of the stack to view")
+		&stackName, "stack", "s", "", "The name of the stack to view",
+	)
 	return cmd
 }
 
 // launchConsole attempts to open the console in the browser using the specified URL.
-func launchConsole(url string) {
+func launchConsole(out io.Writer, url string) {
 	if openErr := browser.OpenURL(url); openErr != nil {
-		fmt.Printf("We couldn't launch your web browser for some reason. \n"+
+		fmt.Fprintf(out, "We couldn't launch your web browser for some reason. \n"+
 			"Please visit: %s", url)
 	}
 }

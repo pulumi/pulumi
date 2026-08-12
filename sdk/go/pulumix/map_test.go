@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package pulumix_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
@@ -28,7 +27,7 @@ import (
 func TestMap(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	arr := pulumix.Map[string]{
 		"1": pulumix.Val("foo"),
 		"2": pulumi.String("bar"),
@@ -51,7 +50,7 @@ func TestMap(t *testing.T) {
 func TestGMapOutput(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	o := pulumix.Cast[pulumix.GMapOutput[int, pulumi.IntOutput], map[string]int](
 		pulumix.Map[int]{
 			"foo": pulumi.Int(1),

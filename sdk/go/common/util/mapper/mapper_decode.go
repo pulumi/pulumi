@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,16 +23,16 @@ import (
 )
 
 // Decoder is a func that knows how to decode into particular type.
-type Decoder func(m Mapper, obj map[string]interface{}) (interface{}, error)
+type Decoder func(m Mapper, obj map[string]any) (any, error)
 
 // Decoders is a map from type to a decoder func that understands how to decode that type.
 type Decoders map[reflect.Type]Decoder
 
 // Decode decodes an entire map into a target object, using tag-directed mappings.
-func (md *mapper) Decode(obj map[string]interface{}, target interface{}) MappingError {
+func (md *mapper) Decode(obj map[string]any, target any) MappingError {
 	// Fetch the destination types and validate that we can store into the target (i.e., a valid lval).
 	vdst := reflect.ValueOf(target)
-	contract.Assertf(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
+	contract.Assertf(vdst.Kind() == reflect.Pointer && !vdst.IsNil() && vdst.Elem().CanSet(),
 		"Target %v must be a non-nil, settable pointer", vdst.Type())
 	vdstType := vdst.Type().Elem()
 	contract.Assertf(vdstType.Kind() == reflect.Struct && !vdst.IsNil(),
@@ -78,11 +78,11 @@ func (md *mapper) Decode(obj map[string]interface{}, target interface{}) Mapping
 }
 
 // DecodeValue decodes primitive type fields.  For fields of complex types, we use custom deserialization.
-func (md *mapper) DecodeValue(obj map[string]interface{}, ty reflect.Type, key string,
-	target interface{}, optional bool,
+func (md *mapper) DecodeValue(obj map[string]any, ty reflect.Type, key string,
+	target any, optional bool,
 ) FieldError {
 	vdst := reflect.ValueOf(target)
-	contract.Assertf(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
+	contract.Assertf(vdst.Kind() == reflect.Pointer && !vdst.IsNil() && vdst.Elem().CanSet(),
 		"Target %v must be a non-nil, settable pointer", vdst.Type())
 	if v, has := obj[key]; has {
 		// The field exists; okay, try to map it to the right type.
@@ -90,7 +90,7 @@ func (md *mapper) DecodeValue(obj map[string]interface{}, ty reflect.Type, key s
 
 		// If the source is a ptr, dereference it as necessary to get the underlying
 		// value.
-		for vsrc.IsValid() && vsrc.Type().Kind() == reflect.Ptr && !vsrc.IsNil() {
+		for vsrc.IsValid() && vsrc.Type().Kind() == reflect.Pointer && !vsrc.IsNil() {
 			vsrc = vsrc.Elem()
 		}
 
@@ -100,8 +100,8 @@ func (md *mapper) DecodeValue(obj map[string]interface{}, ty reflect.Type, key s
 
 			// So long as the target element is a pointer, we have a pointer to pointer; dig through until we bottom out
 			// on the non-pointer type that matches the source.  This assumes the source isn't itself a pointer!
-			contract.Assertf(vsrc.Type().Kind() != reflect.Ptr, "source is a null pointer")
-			for vdstType.Kind() == reflect.Ptr {
+			contract.Assertf(vsrc.Type().Kind() != reflect.Pointer, "source is a null pointer")
+			for vdstType.Kind() == reflect.Pointer {
 				vdst = vdst.Elem()
 				vdstType = vdstType.Elem()
 				if !vdst.Elem().CanSet() {
@@ -135,10 +135,7 @@ func (md *mapper) DecodeValue(obj map[string]interface{}, ty reflect.Type, key s
 	return nil
 }
 
-var (
-	emptyObject         = map[string]interface{}{}
-	textUnmarshalerType = reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()
-)
+var textUnmarshalerType = reflect.TypeFor[encoding.TextUnmarshaler]()
 
 // adjustValueForAssignment converts if possible to produce the target type.
 func (md *mapper) adjustValueForAssignment(val reflect.Value,
@@ -150,7 +147,7 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 		if val.Type().ConvertibleTo(to) {
 			// A simple conversion exists to make this right.
 			val = val.Convert(to)
-		} else if to.Kind() == reflect.Ptr && val.Type().AssignableTo(to.Elem()) {
+		} else if to.Kind() == reflect.Pointer && val.Type().AssignableTo(to.Elem()) {
 			// Here the destination type (to) is a pointer to a type that accepts val.
 			var adjusted reflect.Value // var adjusted *toElem
 			if val.CanAddr() && val.Addr().Type().AssignableTo(to) {
@@ -165,7 +162,7 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 			contract.Assertf(adjusted.Type().AssignableTo(to), "type %v is not assignable to %v", adjusted.Type(), to)
 			return adjusted, nil
 		} else if val.Kind() == reflect.Interface {
-			// It could be that the source is an interface{} with the right element type (or the right element type
+			// It could be that the source is an any with the right element type (or the right element type
 			// through a series of successive conversions); go ahead and give it a try.
 			val = val.Elem()
 		} else if val.Type().Kind() == reflect.Slice && to.Kind() == reflect.Slice {
@@ -214,9 +211,9 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 				m.SetMapIndex(k, entry)
 			}
 			val = m
-		} else if val.Type() == reflect.TypeOf(emptyObject) {
+		} else if val.Type() == reflect.TypeFor[map[string]any]() {
 			// The value is an object and needs to be decoded into a value.
-			obj := val.Interface().(map[string]interface{})
+			obj := val.Interface().(map[string]any)
 			if decode, has := md.opts.CustomDecoders[to]; has {
 				// A custom decoder exists; use it to unmarshal the type.
 				target, err := decode(md, obj)
@@ -224,10 +221,10 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 					return val, NewTypeFieldError(ty, key, err)
 				}
 				val = reflect.ValueOf(target)
-			} else if to.Kind() == reflect.Struct || (to.Kind() == reflect.Ptr && to.Elem().Kind() == reflect.Struct) {
+			} else if to.Kind() == reflect.Struct || (to.Kind() == reflect.Pointer && to.Elem().Kind() == reflect.Struct) {
 				// If the target is a struct, we can use the built-in decoding logic.
-				var target interface{}
-				if to.Kind() == reflect.Ptr {
+				var target any
+				if to.Kind() == reflect.Pointer {
 					target = reflect.New(to.Elem()).Interface()
 				} else {
 					target = reflect.New(to).Interface()

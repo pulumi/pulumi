@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -80,6 +80,9 @@ func renderQueryEvent(event engine.Event, opts Options) string {
 	case engine.CancelEvent:
 		return ""
 
+	case engine.ErrorEvent:
+		return ""
+
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
@@ -96,7 +99,8 @@ func renderQueryEvent(event engine.Event, opts Options) string {
 		contract.Failf("query mode does not support resource operations")
 		return ""
 
-	case engine.PolicyLoadEvent, engine.PolicyViolationEvent, engine.PolicyRemediationEvent:
+	case engine.PolicyLoadEvent, engine.PolicyViolationEvent, engine.PolicyRemediationEvent,
+		engine.PolicyAnalyzeSummaryEvent, engine.PolicyRemediateSummaryEvent, engine.PolicyAnalyzeStackSummaryEvent:
 		return ""
 
 	case engine.ProgressEvent:

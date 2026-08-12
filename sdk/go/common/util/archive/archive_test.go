@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/text/unicode/norm"
 )
 
 func TestIgnoreSimple(t *testing.T) {
@@ -117,14 +119,40 @@ func TestIgnoreNestedGitignore(t *testing.T) {
 		fileContents{name: "pkg/node_modules/pulumi/excluded/excluded.txt", shouldRetain: false})
 }
 
+// TestIgnorePrecomposesUnicode verifies that a .gitignore pattern authored in
+// composed (NFC) form matches a directory whose name is stored decomposed (NFD)
+// on disk — mirroring git's core.precomposeunicode. This is macOS-only behavior:
+// precomposeUnicode normalizes readdir output to NFC there and is a no-op
+// elsewhere, so the test only runs on darwin.
+func TestIgnorePrecomposesUnicode(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS != "darwin" {
+		t.Skip("precomposeUnicode only normalizes on macOS")
+	}
+
+	// The directory is created on disk in NFD (decomposed) form while the
+	// .gitignore pattern uses NFC (precomposed). APFS preserves the exact bytes
+	// we write, so readdir hands the name back in NFD; the match then succeeds
+	// only because precomposeUnicode brings it back to NFC before matching.
+	nfc := norm.NFC.String("café")
+	nfd := norm.NFD.String("café")
+	require.NotEqual(t, nfc, nfd, "expected NFC and NFD forms to differ")
+
+	doArchiveTest(t, ".",
+		fileContents{name: ".gitignore", contents: []byte(nfc + "/"), shouldRetain: true},
+		fileContents{name: "included.txt", shouldRetain: true},
+		fileContents{name: nfd + "/excluded.txt", shouldRetain: false})
+}
+
 func doArchiveTest(t *testing.T, path string, files ...fileContents) {
 	doTest := func(prefixPathInsideTar, path string) {
 		tarball, err := archiveContents(t, prefixPathInsideTar, path, files...)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		tarReader := bytes.NewReader(tarball)
 		gzr, err := gzip.NewReader(tarReader)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		r := tar.NewReader(gzr)
 
 		checkFiles(t, prefixPathInsideTar, path, files, r)
@@ -181,7 +209,7 @@ func checkFiles(t *testing.T, prefixPathInsideTar, path string, expected []fileC
 		if err == io.EOF {
 			break
 		}
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Ignore anything other than regular files (e.g. directories) since we only care
 		// that the files themselves are correct.
@@ -202,4 +230,220 @@ type fileContents struct {
 	name         string
 	contents     []byte
 	shouldRetain bool
+}
+
+// buildTGZ produces an in-memory .tar.gz containing the given regular-file entries.
+func buildTGZ(t *testing.T, entries map[string][]byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gw)
+	for name, content := range entries {
+		typ := tar.TypeReg
+		if len(content) == 0 {
+			typ = tar.TypeDir
+		}
+
+		require.NoError(t, tw.WriteHeader(&tar.Header{
+			Name:     name,
+			Mode:     0o600,
+			Size:     int64(len(content)),
+			Typeflag: byte(typ),
+		}))
+		_, err := tw.Write(content)
+		require.NoError(t, err)
+	}
+	require.NoError(t, tw.Close())
+	require.NoError(t, gw.Close())
+	return buf.Bytes()
+}
+
+func TestExtractTGZ(t *testing.T) {
+	t.Parallel()
+
+	tarball := buildTGZ(t, map[string][]byte{
+		"file.txt":        []byte("hello"),
+		"sub":             {},
+		"sub/nested.txt":  []byte("world"),
+		"sub/dir/leaf.go": []byte("package main"),
+	})
+
+	dest := t.TempDir()
+	require.NoError(t, ExtractTGZ(bytes.NewReader(tarball), dest))
+
+	for name, want := range map[string]string{
+		"file.txt":        "hello",
+		"sub/nested.txt":  "world",
+		"sub/dir/leaf.go": "package main",
+	} {
+		got, err := os.ReadFile(filepath.Join(dest, filepath.FromSlash(name)))
+		require.NoError(t, err)
+		assert.Equal(t, want, string(got))
+	}
+}
+
+func TestExtractTGZRejectsPathTraversal(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name  string
+		entry string
+	}{
+		{"parent", "../escape.txt"},
+		{"nested-parent", "a/../../escape.txt"},
+		{"deep-parent", "../../../../etc/passwd"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			tarball := buildTGZ(t, map[string][]byte{tc.entry: []byte("malicious")})
+
+			// Extract into a nested directory so the parent of dest is itself a temp dir
+			// — that way if the guard fails, the escape lands somewhere observable but
+			// still inside the test's tempdir tree.
+			parent := t.TempDir()
+			dest := filepath.Join(parent, "dest")
+			require.NoError(t, os.Mkdir(dest, 0o700))
+
+			err := ExtractTGZ(bytes.NewReader(tarball), dest)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "escapes destination directory")
+
+			// Make sure nothing was written outside dest.
+			escaped, err := filepath.Glob(filepath.Join(parent, "escape.txt"))
+			require.NoError(t, err)
+			assert.Empty(t, escaped, "file escaped destination directory")
+		})
+	}
+}
+
+//nolint:paralleltest // t.Chdir() requires sequential test execution
+func TestExtractTGZRelativePathWithEscape(t *testing.T) {
+	// Test that path traversal is caught even when passing a relative destination path.
+	// This ensures the absolute path conversion in ExtractTGZ is working.
+	tarball := buildTGZ(t, map[string][]byte{
+		"../../../../escape.txt": []byte("malicious"),
+	})
+
+	// Create a temp directory and use a relative path.
+	parent := t.TempDir()
+	dest := filepath.Join(parent, "dest")
+	require.NoError(t, os.Mkdir(dest, 0o700))
+
+	t.Chdir(parent)
+
+	// Extract using relative path "dest".
+	err := ExtractTGZ(bytes.NewReader(tarball), "dest")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "escapes destination directory")
+
+	// Verify no file was written outside dest.
+	escaped, err := filepath.Glob("escape.txt")
+	require.NoError(t, err)
+	assert.Empty(t, escaped, "file escaped destination directory using relative path")
+}
+
+func TestExtractTGZSymlink(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipped on Windows: symlink creation requires elevated privileges")
+	}
+
+	buffer := &bytes.Buffer{}
+	gw := gzip.NewWriter(buffer)
+	tw := tar.NewWriter(gw)
+
+	contents := []byte("hello")
+	require.NoError(t, tw.WriteHeader(&tar.Header{
+		Name:     "target.txt",
+		Typeflag: tar.TypeReg,
+		Mode:     0o600,
+		Size:     int64(len(contents)),
+	}))
+	_, err := tw.Write(contents)
+	require.NoError(t, err)
+
+	require.NoError(t, tw.WriteHeader(&tar.Header{
+		Name:     "link.txt",
+		Typeflag: tar.TypeSymlink,
+		Linkname: "target.txt",
+		Mode:     0o777,
+	}))
+
+	require.NoError(t, tw.Close())
+	require.NoError(t, gw.Close())
+
+	dir := t.TempDir()
+	require.NoError(t, ExtractTGZ(buffer, dir))
+
+	linkPath := filepath.Join(dir, "link.txt")
+	target, err := os.Readlink(linkPath)
+	require.NoError(t, err)
+	assert.Equal(t, "target.txt", target)
+
+	got, err := os.ReadFile(linkPath)
+	require.NoError(t, err)
+	assert.Equal(t, contents, got)
+}
+
+func TestExtractTGZSymlinkEscape(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipped on Windows: symlink creation requires elevated privileges")
+	}
+
+	tgzWithSymlink := func(t *testing.T, name, linkname string) io.Reader {
+		buffer := &bytes.Buffer{}
+		gw := gzip.NewWriter(buffer)
+		tw := tar.NewWriter(gw)
+		require.NoError(t, tw.WriteHeader(&tar.Header{
+			Name:     name,
+			Typeflag: tar.TypeSymlink,
+			Linkname: linkname,
+			Mode:     0o777,
+		}))
+		require.NoError(t, tw.Close())
+		require.NoError(t, gw.Close())
+		return buffer
+	}
+
+	cases := []struct {
+		name     string
+		linkname string
+		linkpath string
+	}{
+		{name: "relative parent escape", linkname: "../escape.txt", linkpath: "link.txt"},
+		{name: "nested relative escape", linkname: "../../escape.txt", linkpath: "sub/link.txt"},
+		{name: "absolute escape", linkname: "/etc/passwd", linkpath: "link.txt"},
+		{name: "relative within escape", linkname: "sub/../../../escape.txt", linkpath: "link.txt"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+			err := ExtractTGZ(tgzWithSymlink(t, tc.linkpath, tc.linkname), dir)
+			require.ErrorContains(t, err, "points outside the extraction directory")
+
+			// Nothing should have been created.
+			_, statErr := os.Lstat(filepath.Join(dir, tc.linkpath))
+			assert.ErrorIs(t, statErr, os.ErrNotExist)
+		})
+	}
+
+	t.Run("relative within is allowed", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
+		err := ExtractTGZ(tgzWithSymlink(t, "link.txt", "sub/../target.txt"), dir)
+		require.NoError(t, err)
+		target, err := os.Readlink(filepath.Join(dir, "link.txt"))
+		require.NoError(t, err)
+		assert.Equal(t, "sub/../target.txt", target)
+	})
 }

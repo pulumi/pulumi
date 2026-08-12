@@ -8,7 +8,7 @@ paths:
           secure: securevalue
     string: '{"inner":{"nested":{"secure":"securevalue"}}}'
     redacted: '{"inner":{"nested":"[secret]"}}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAABp/4JmAAEFaW5uZXIXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/gkMAAQZuZXN0ZWQXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/gh8AAQZzZWN1cmUGc3RyaW5nDA0AC3NlY3VyZXZhbHVl
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAGn/gGYAAQVpbm5lchdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+AQwABBm5lc3RlZBdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+AHwABBnNlY3VyZQZzdHJpbmcMDQALc2VjdXJldmFsdWU=
     secure: true
     isObject: true
     secureValues:
@@ -19,7 +19,7 @@ paths:
         secure: securevalue
     string: '{"nested":{"secure":"securevalue"}}'
     redacted: '{"nested":"[secret]"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAABG/4JDAAEGbmVzdGVkF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4IfAAEGc2VjdXJlBnN0cmluZwwNAAtzZWN1cmV2YWx1ZQ==
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAEb/gEMAAQZuZXN0ZWQXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/gB8AAQZzZWN1cmUGc3RyaW5nDA0AC3NlY3VyZXZhbHVl
     secure: true
     isObject: true
     secureValues:

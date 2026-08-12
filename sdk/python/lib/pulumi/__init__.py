@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,10 @@ The Pulumi Core SDK for Python. This package defines the core primitives that
 providers and libraries in the Pulumi ecosystem use to create and manage
 resources.
 """
+
+# IMPORTANT: Import _instrumentation BEFORE any other modules to enable OTel tracing.
+# The instrumentation works by monkey-patching grpc, which must happen before it's loaded.
+from .runtime import _instrumentation  # noqa: F401 - imported for side effects
 
 # Make all module members inside of this package available as package members.
 from .asset import (
@@ -59,6 +63,8 @@ from .metadata import (
     get_organization,
     get_project,
     get_stack,
+    get_root_directory,
+    require_pulumi_version,
 )
 
 from .resource import (
@@ -90,6 +96,19 @@ from .output import (
     deferred_output,
 )
 
+from .resource_hooks import (
+    ErrorHook,
+    ErrorHookArgs,
+    ErrorHookFunction,
+    ResourceHookArgs,
+    ResourceHookFunction,
+    ResourceHook,
+    ResourceHookBinding,
+    ResourceHookOptions,
+    resource_hook,
+    error_hook,
+)
+
 from .log import (
     debug,
     info,
@@ -101,6 +120,14 @@ from .stack_reference import (
     StackReference,
     StackReferenceOutputDetails,
 )
+
+from .runtime.stack import run
+
+from .stash import (
+    Stash,
+)
+
+from .type_token import get_type_token, type_token
 
 from ._types import (
     MISSING,
@@ -145,6 +172,8 @@ __all__ = [
     "get_organization",
     "get_project",
     "get_stack",
+    "get_root_directory",
+    "require_pulumi_version",
     # resource
     "Alias",
     "Resource",
@@ -170,6 +199,17 @@ __all__ = [
     "UNKNOWN",
     "contains_unknowns",
     "deferred_output",
+    # resource_hooks
+    "ErrorHook",
+    "ErrorHookArgs",
+    "ErrorHookFunction",
+    "ResourceHookArgs",
+    "ResourceHookFunction",
+    "ResourceHook",
+    "ResourceHookBinding",
+    "ResourceHookOptions",
+    "resource_hook",
+    "error_hook",
     # log
     "debug",
     "info",
@@ -178,6 +218,13 @@ __all__ = [
     # stack_reference
     "StackReference",
     "StackReferenceOutputDetails",
+    # async program entrypoint
+    "run",
+    # stash
+    "Stash",
+    # type_token
+    "get_type_token",
+    "type_token",
     # _types
     "MISSING",
     "input_type",

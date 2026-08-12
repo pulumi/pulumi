@@ -1,0 +1,23 @@
+name: packages-install-recursive
+description: Test recursive plugin installation with multi-language components
+runtime: yaml
+packages:
+  python-provider: ../python-provider
+  typescript-b: ../ts-provider-b
+resources:
+  pythonComp:
+    type: python-provider:Component
+    properties:
+      echo: "hello from python"
+
+  typescriptBComp:
+    type: typescript-b:Component
+    properties:
+      echo: "hello from typescript-b"
+
+outputs:
+  pythonChildId: ${pythonComp.childId}
+  pythonEcho: ${pythonComp.echo}
+  pythonTsAChildId: ${pythonComp.tsAChildId}
+  typescriptBChildId: ${typescriptBComp.childId}
+  typescriptBEcho: ${typescriptBComp.echo}

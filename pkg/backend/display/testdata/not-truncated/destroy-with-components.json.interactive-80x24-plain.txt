@@ -1,0 +1,27 @@
+View in Browser (Ctrl+O): link
+
+     Type                       Name           Status      Info
+     pulumi:pulumi:Stack        myproject-dev              1 message
+ -   └─ my:component:Component  mycomponent    deleted     
+ -      └─ my:component:Child   mychild        deleted     
+
+Changes:
+  my:component:Child (mychild):
+    - my:component:Child: (delete)
+        [id=mychild-id]
+        [urn=urn:pulumi:dev::myproject::my:component:Child::mychild]
+
+  my:component:Component (mycomponent):
+    - my:component:Component: (delete)
+        [urn=urn:pulumi:dev::myproject::my:component:Component::mycomponent]
+
+Diagnostics:
+  pulumi:pulumi:Stack (myproject-dev):
+    Configuration:
+
+Resources:
+    - 2 deleted
+    1 unchanged
+
+Duration: 7s
+

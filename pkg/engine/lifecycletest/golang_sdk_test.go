@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,9 +28,9 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -56,7 +56,7 @@ type testResourceInputs struct {
 }
 
 func (*testResourceInputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*testResourceArgs)(nil))
+	return reflect.TypeFor[*testResourceArgs]()
 }
 
 func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
@@ -75,6 +75,7 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  req.Inputs,
 							Outputs: req.State,
 						},
@@ -86,6 +87,7 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		//nolint:usetesting // the SDK context outlives t.Context
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
@@ -93,14 +95,14 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 			DryRun:      info.DryRun,
 			MonitorAddr: info.MonitorAddress,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 			var resA testResource
 			err := ctx.RegisterResource("pkgA:m:typA", "resA", &testResourceInputs{
 				Foo: pulumi.String("bar"),
 			}, &resA)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			var resB testResource
 			err = ctx.RegisterResource("pkgA:m:typA", "resB", &testResourceInputs{
@@ -108,12 +110,12 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 					return v + "bar"
 				}).(pulumi.StringOutput),
 			}, &resB)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			return nil
 		})
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -163,6 +165,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 
 	setupAndRunProgram := func(ignoreChanges []string) *deploy.Snapshot {
 		programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			//nolint:usetesting // the SDK context outlives t.Context
 			ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 				Project:     info.Project,
 				Stack:       info.Stack,
@@ -170,18 +173,18 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 				DryRun:      info.DryRun,
 				MonitorAddr: info.MonitorAddress,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 				var res pulumi.CustomResourceState
 				err := ctx.RegisterResource("pkgA:m:typA", "resA", nil, &res, pulumi.IgnoreChanges(ignoreChanges))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				return nil
 			})
 		})
 
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 			Steps: []lt.TestStep{
@@ -259,6 +262,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 	var stackURN, provURN, urnA resource.URN = "urn:pulumi:test::test::pulumi:pulumi:Stack::test-test",
 		"urn:pulumi:test::test::pulumi:providers:pkgA::provA", "urn:pulumi:test::test::pkgA:m:typA::resA"
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		//nolint:usetesting // the SDK context outlives t.Context
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
@@ -266,25 +270,24 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 			DryRun:      info.DryRun,
 			MonitorAddr: info.MonitorAddress,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 			provider := &pulumi.ProviderResourceState{}
 			err := ctx.RegisterResource(string(providers.MakeProviderType("pkgA")), "provA", nil, provider)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			var res pulumi.CustomResourceState
 			err = ctx.RegisterResource("pkgA:m:typA", "resA", inputsA, &res,
 				pulumi.Provider(provider), pulumi.DeleteBeforeReplace(getDbr()))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			return nil
 		})
 	})
 
-	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p.Options.HostF = deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p.Options.T = t
-	p.Options.SkipDisplayTests = true
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap := p.Run(t, nil)
 
@@ -296,7 +299,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: stackURN},
@@ -320,7 +323,7 @@ func TestExplicitDeleteBeforeReplaceGoSDK(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			AssertSameSteps(t, []StepSummary{
 				{Op: deploy.OpSame, URN: stackURN},
 				{Op: deploy.OpSame, URN: provURN},
@@ -360,6 +363,7 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 
 	setupAndRunProgram := func() *deploy.Snapshot {
 		programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			//nolint:usetesting // the SDK context outlives t.Context
 			ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 				Project:     info.Project,
 				Stack:       info.Stack,
@@ -367,18 +371,18 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 				DryRun:      info.DryRun,
 				MonitorAddr: info.MonitorAddress,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 				var res pulumi.CustomResourceState
 				err := ctx.ReadResource("pkgA:m:typA", "resA", pulumi.ID("someId"), nil, &res)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				return nil
 			})
 		})
 
-		hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+		hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 		p := &lt.TestPlan{
 			Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 			Steps: []lt.TestStep{
@@ -387,7 +391,7 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 						evts []Event, err error,
 					) error {
-						assert.NoError(t, err)
+						require.NoError(t, err)
 
 						AssertSameSteps(t, []StepSummary{
 							{Op: deploy.OpCreate, URN: stackURN},
@@ -471,6 +475,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		//nolint:usetesting // the SDK context outlives t.Context
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
@@ -478,7 +483,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			DryRun:      info.DryRun,
 			MonitorAddr: info.MonitorAddress,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 			// register a couple of providers, pass in some props that we can use to indentify it during invoke
@@ -487,28 +492,28 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				&testResourceInputs{
 					Foo: pulumi.String("1"),
 				}, &providerA)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			var providerB pulumi.ProviderResourceState
 			err = ctx.RegisterResource(string(providers.MakeProviderType("pkgB")), "prov2",
 				&testResourceInputs{
 					Bar:  pulumi.String("2"),
 					Bang: pulumi.String(""),
 				}, &providerB)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			var providerBOverride pulumi.ProviderResourceState
 			err = ctx.RegisterResource(string(providers.MakeProviderType("pkgB")), "prov3",
 				&testResourceInputs{
 					Bar:  pulumi.String(""),
 					Bang: pulumi.String("3"),
 				}, &providerBOverride)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			parentProviders := make(map[string]pulumi.ProviderResource)
 			parentProviders["pkgA"] = &providerA
 			parentProviders["pkgB"] = &providerB
 			// create a parent resource that uses provider map
 			var parentResource pulumi.CustomResourceState
 			err = ctx.RegisterResource("pkgA:m:typA", "resA", nil, &parentResource, pulumi.ProviderMap(parentProviders))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			// parent uses specified provider from map
 			parentResultProvider := parentResource.GetProvider("pkgA:m:typA")
 			assert.Equal(t, &providerA, parentResultProvider)
@@ -516,7 +521,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			// create a child resource
 			var childResource pulumi.CustomResourceState
 			err = ctx.RegisterResource("pkgB:m:typB", "resBChild", nil, &childResource, pulumi.Parent(&parentResource))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// child uses provider value from parent
 			childResultProvider := childResource.GetProvider("pkgB:m:typB")
@@ -526,7 +531,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			var childWithOverride pulumi.CustomResourceState
 			err = ctx.RegisterResource("pkgB:m:typB", "resBChildOverride", nil, &childWithOverride,
 				pulumi.Parent(&parentResource), pulumi.Provider(&providerBOverride))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// child uses the specified provider, and not the provider from the parent
 			childWithOverrideProvider := childWithOverride.GetProvider("pkgB:m:typB")
@@ -538,7 +543,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			// read a resource that uses provider map
 			var rereadParent pulumi.CustomResourceState
 			err = ctx.ReadResource("pkgA:m:typA", "readResA", testID, nil, &rereadParent, pulumi.ProviderMap(parentProviders))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			// parent uses specified provider from map
 			parentResultProvider = rereadParent.GetProvider("pkgA:m:typA")
 			assert.Equal(t, &providerA, parentResultProvider)
@@ -546,7 +551,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			// read a child resource
 			var rereadChild pulumi.CustomResourceState
 			err = ctx.ReadResource("pkgB:m:typB", "readResBChild", testID, nil, &rereadChild, pulumi.Parent(&parentResource))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// child uses provider value from parent
 			childResultProvider = rereadChild.GetProvider("pkgB:m:typB")
@@ -556,7 +561,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			var rereadChildWithOverride pulumi.CustomResourceState
 			err = ctx.ReadResource("pkgB:m:typB", "readResBChildOverride", testID, nil, &rereadChildWithOverride,
 				pulumi.Parent(&parentResource), pulumi.Provider(&providerBOverride))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// child uses the specified provider, and not the provider from the parent
 			childWithOverrideProvider = rereadChildWithOverride.GetProvider("pkgB:m:typB")
@@ -567,24 +572,24 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 			err = ctx.Invoke("pkgB:do:something", invokeArgs{
 				Bang: "3",
 			}, &invokeResult, pulumi.Provider(&providerBOverride))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// invoke with parent
 			err = ctx.Invoke("pkgB:do:something", invokeArgs{
 				Bar: "2",
 			}, &invokeResult, pulumi.Parent(&parentResource))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// invoke with parent and provider
 			err = ctx.Invoke("pkgB:do:something", invokeArgs{
 				Bang: "3",
 			}, &invokeResult, pulumi.Parent(&parentResource), pulumi.Provider(&providerBOverride))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			return nil
 		})
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
@@ -616,6 +621,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		//nolint:usetesting // the SDK context outlives t.Context
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
@@ -623,13 +629,13 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 			DryRun:      info.DryRun,
 			MonitorAddr: info.MonitorAddress,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return pulumi.RunWithContext(ctx, func(ctx *pulumi.Context) error {
 			var res pulumi.CustomResourceState
 			err := ctx.RegisterResource("pkgA:m:typA", "resA", resourceProperties, &res,
 				pulumi.ReplaceOnChanges([]string{"foo"}))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			return nil
 		})
@@ -637,7 +643,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 
 	expectedOps := []display.StepOp{deploy.OpCreate}
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 		Steps: []lt.TestStep{
@@ -665,7 +671,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 	}
 
 	snap := p.Run(t, nil)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 
 	// Change the property Foo, should now replace
 	resourceProperties = &testResourceInputs{
@@ -674,7 +680,7 @@ func TestReplaceOnChangesGolangLifecycle(t *testing.T) {
 	expectedOps = []display.StepOp{deploy.OpCreateReplacement, deploy.OpReplace, deploy.OpDeleteReplaced}
 
 	snap = p.Run(t, snap)
-	assert.NotNil(t, snap)
+	require.NotNil(t, snap)
 }
 
 type remoteComponentArgs struct {
@@ -688,7 +694,7 @@ type remoteComponentInputs struct {
 }
 
 func (*remoteComponentInputs) ElementType() reflect.Type {
-	return reflect.TypeOf((*remoteComponentArgs)(nil)).Elem()
+	return reflect.TypeFor[remoteComponentArgs]()
 }
 
 type remoteComponent struct {
@@ -741,6 +747,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		//nolint:usetesting // the SDK context outlives t.Context
 		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
@@ -767,7 +774,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 		})
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},

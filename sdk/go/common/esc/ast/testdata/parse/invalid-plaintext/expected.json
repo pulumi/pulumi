@@ -1,0 +1,71 @@
+{
+    "decl": {
+        "Description": null,
+        "Imports": null,
+        "Values": {
+            "Entries": [
+                {
+                    "Key": {
+                        "Value": "foo"
+                    },
+                    "Value": {
+                        "Plaintext": {
+                            "Value": ""
+                        },
+                        "Ciphertext": null
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "bar"
+                    },
+                    "Value": {
+                        "Entries": [
+                            {
+                                "Key": {
+                                    "Value": "a"
+                                },
+                                "Value": {
+                                    "Value": "valid"
+                                }
+                            },
+                            {
+                                "Key": {
+                                    "Value": "object"
+                                },
+                                "Value": {
+                                    "Value": "here"
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    },
+    "diags": [
+        {
+            "Severity": 1,
+            "Summary": "secret values must be string literals",
+            "Detail": "",
+            "Subject": {
+                "Filename": "invalid-plaintext",
+                "Start": {
+                    "Line": 3,
+                    "Column": 17,
+                    "Byte": 31
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 29,
+                    "Byte": 43
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.foo[\"fn::secret\"]"
+        }
+    ]
+}

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,25 +21,25 @@ import (
 
 	"github.com/spf13/cobra"
 
-	mobytime "github.com/moby/moby/api/types/time"
-
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewLogsCmd() *cobra.Command {
+func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stackName string
+	var configFile string
 	var follow bool
 	var since string
 	var resource string
@@ -53,34 +53,34 @@ func NewLogsCmd() *cobra.Command {
 			"This command aggregates log entries associated with the resources in a stack from the corresponding\n" +
 			"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +
 			"CloudWatch Logs for log data relevant to resources in a stack.\n",
-		Args: cmdutil.NoArgs,
 		RunE: func(cobraCmd *cobra.Command, args []string) error {
 			ctx := cobraCmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Fetch the project.
-			proj, _, err := ws.ReadProject()
+			proj, _, err := ws.ReadProject("")
 			if err != nil {
 				return err
 			}
 
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
-				backend.DefaultLoginManager,
+				cmdBackend.DefaultLoginManager,
 				stackName,
 				cmdStack.LoadOnly,
 				opts,
+				configFile,
 			)
 			if err != nil {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, nil)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}
@@ -89,7 +89,7 @@ func NewLogsCmd() *cobra.Command {
 			encrypter := sm.Encrypter()
 
 			stackName := s.Ref().Name().String()
-			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
+			configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
 				ctx,
 				stackName,
 				proj,
@@ -111,8 +111,10 @@ func NewLogsCmd() *cobra.Command {
 				resourceFilter = &rf
 			}
 
+			out := cobraCmd.OutOrStdout()
 			if !jsonOut {
-				fmt.Printf(
+				fmt.Fprintf(
+					out,
 					opts.Color.Colorize(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
 					s.Ref().String(),
 					cmd.FormatTime(*startTime),
@@ -127,7 +129,7 @@ func NewLogsCmd() *cobra.Command {
 			// rendered now even though they are technically out of order.
 			shown := map[operations.LogEntry]bool{}
 			for {
-				logs, err := s.GetLogs(ctx, stack.DefaultSecretsProvider, cfg, operations.LogQuery{
+				logs, err := backend.GetStackLogs(ctx, secrets.DefaultProvider, s, cfg, operations.LogQuery{
 					StartTime:      startTime,
 					ResourceFilter: resourceFilter,
 				})
@@ -135,7 +137,7 @@ func NewLogsCmd() *cobra.Command {
 					return fmt.Errorf("failed to get logs: %w", err)
 				}
 
-				// When we are emitting a fixed number of log entries, and outputing JSON, wrap them in an array.
+				// When we are emitting a fixed number of log entries, and outputting JSON, wrap them in an array.
 				if !follow && jsonOut {
 					entries := slice.Prealloc[logEntryJSON](len(logs))
 
@@ -153,7 +155,7 @@ func NewLogsCmd() *cobra.Command {
 						}
 					}
 
-					return ui.PrintJSON(entries)
+					return ui.FprintJSON(out, entries)
 				}
 
 				for _, logEntry := range logs {
@@ -161,14 +163,15 @@ func NewLogsCmd() *cobra.Command {
 						eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 
 						if !jsonOut {
-							fmt.Printf(
+							fmt.Fprintf(
+								out,
 								"%30.30s[%30.30s] %v\n",
 								cmd.FormatTime(eventTime),
 								logEntry.ID,
 								strings.TrimRight(logEntry.Message, "\n"),
 							)
 						} else {
-							err = ui.PrintJSON(logEntryJSON{
+							err = ui.FprintJSON(out, logEntryJSON{
 								ID:        logEntry.ID,
 								Timestamp: cmd.FormatTime(eventTime.UTC()),
 								Message:   logEntry.Message,
@@ -191,11 +194,18 @@ func NewLogsCmd() *cobra.Command {
 		},
 	}
 
+	constrictor.AttachArguments(logsCmd, constrictor.NoArgs)
+
+	logsCmd.AddCommand(newDecryptCmd(ws))
+	logsCmd.AddCommand(newListCmd())
+	logsCmd.AddCommand(newRemoveCmd())
+	logsCmd.AddCommand(newShareCmd(ws, &stackName, createEncryptionSessionFromAPI))
+
 	logsCmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	logsCmd.PersistentFlags().StringVar(
-		&cmdStack.ConfigFile, "config-file", "",
+		&configFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")
 	logsCmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
@@ -214,11 +224,11 @@ func NewLogsCmd() *cobra.Command {
 }
 
 func parseSince(since string, reference time.Time) (*time.Time, error) {
-	startTimestamp, err := mobytime.GetTimestamp(since, reference)
+	startTimestamp, err := getTimestamp(since, reference)
 	if err != nil {
 		return nil, err
 	}
-	startTimeSec, startTimeNs, err := mobytime.ParseTimestamps(startTimestamp, 0)
+	startTimeSec, startTimeNs, err := parseTimestamps(startTimestamp, 0)
 	if err != nil {
 		return nil, err
 	}

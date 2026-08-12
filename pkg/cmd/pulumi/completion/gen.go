@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,33 +18,44 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/spf13/cobra"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // NewGenCompletionCmd returns a new command that, when run, generates a bash or zsh completion script for the CLI.
 func NewGenCompletionCmd(root *cobra.Command) *cobra.Command {
-	return &cobra.Command{
-		Use:     "gen-completion <SHELL>",
+	cmd := &cobra.Command{
+		Use:     "gen-completion",
 		Aliases: []string{"completion"},
-		Args:    cmdutil.ExactArgs(1),
 		Short:   "Generate completion scripts for the Pulumi CLI",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			switch {
-			case args[0] == "bash":
-				return root.GenBashCompletion(os.Stdout)
-			case args[0] == "zsh":
-				return genZshCompletion(os.Stdout, root)
-			case args[0] == "fish":
-				return root.GenFishCompletion(os.Stdout, true)
+			out := cmd.OutOrStdout()
+			switch args[0] {
+			case "bash":
+				return root.GenBashCompletion(out)
+			case "zsh":
+				return genZshCompletion(out, root)
+			case "fish":
+				return root.GenFishCompletion(out, true)
 			default:
 				return fmt.Errorf("%q is not a supported shell", args[0])
 			}
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{
+				Name:  "shell",
+				Usage: "<shell>",
+				Type:  "string",
+			},
+		},
+		Required: 1,
+	})
+
+	return cmd
 }
 
 const (

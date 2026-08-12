@@ -1,0 +1,5 @@
+name: policy-remediate
+runtime:
+  name: nodejs
+  options:
+    typescript: false

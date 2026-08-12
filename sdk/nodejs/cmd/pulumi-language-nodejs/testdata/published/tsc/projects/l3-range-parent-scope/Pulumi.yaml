@@ -1,0 +1,5 @@
+name: l3-range-parent-scope
+runtime:
+  name: nodejs
+  options:
+    typescript: false

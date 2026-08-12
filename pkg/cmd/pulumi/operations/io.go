@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,19 +15,37 @@
 package operations
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
 	"strconv"
 
+	"github.com/spf13/cobra"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // parseAndSaveConfigArray parses the config array and saves it as a config for
 // the provided stack.
-func parseAndSaveConfigArray(ws pkgWorkspace.Context, s backend.Stack, configArray []string, path bool) error {
+func parseAndSaveConfigArray(
+	ctx context.Context,
+	sink diag.Sink,
+	ws pkgWorkspace.Context,
+	s backend.Stack,
+	configArray []string,
+	path bool,
+	configFile string,
+) error {
 	if len(configArray) == 0 {
 		return nil
 	}
@@ -36,7 +54,7 @@ func parseAndSaveConfigArray(ws pkgWorkspace.Context, s backend.Stack, configArr
 		return err
 	}
 
-	if err = newcmd.SaveConfig(ws, s, commandLineConfig); err != nil {
+	if err = newcmd.SaveConfig(ctx, sink, ws, s, commandLineConfig, configFile); err != nil {
 		return fmt.Errorf("saving config: %w", err)
 	}
 	return nil
@@ -48,12 +66,29 @@ func parseAndSaveConfigArray(ws pkgWorkspace.Context, s backend.Stack, configArr
 // client address is present, the returned project will always have the runtime set to "client"
 // with the address option set to the client address.
 func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*workspace.Project, string, error) {
-	proj, root, err := ws.ReadProject()
+	proj, root, err := ws.ReadProject("")
 	if err != nil {
-		return nil, "", err
+		oerr := err
+		if errors.Is(err, workspace.ErrProjectNotFound) {
+			// If we couldn't find a project file, first check if there's a ".tf" file in the directory.
+			// If so, suggest using `pulumi convert`.
+			dir, err := os.ReadDir(".")
+			// if we encounter _any_ error reading the directory, just return the original error
+			if err != nil {
+				return nil, "", oerr
+			}
+			for _, fi := range dir {
+				if !fi.IsDir() && filepath.Ext(fi.Name()) == ".tf" {
+					return nil, "", fmt.Errorf("%w however, a Terraform configuration file was detected. "+
+						"To convert this configuration to a Pulumi project, please see the documentation "+
+						"at https://www.pulumi.com/docs/iac/guides/migration/migrating-to-pulumi/from-terraform/", oerr)
+				}
+			}
+		}
+		return nil, "", oerr
 	}
 	if clientAddress != "" {
-		proj.Runtime = workspace.NewProjectRuntimeInfo("client", map[string]interface{}{
+		proj.Runtime = workspace.NewProjectRuntimeInfo("client", map[string]any{
 			"address": clientAddress,
 		})
 	}
@@ -65,8 +100,7 @@ func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*works
 func updateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (backend.UpdateOptions, error) {
 	switch {
 	case !interactive && !yes && !skipPreview && !previewOnly:
-		return backend.UpdateOptions{},
-			errors.New("one of --yes, --skip-preview, or --preview-only must be specified in non-interactive mode")
+		return backend.UpdateOptions{}, backenderr.NoConfirmationInNonInteractiveError{}
 	case skipPreview && previewOnly:
 		return backend.UpdateOptions{},
 			errors.New("--skip-preview and --preview-only cannot be used together")
@@ -103,4 +137,45 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 
 	// the default functionality right now is to always skip a refresh
 	return false, nil
+}
+
+// configureNeoOptions configures display options related to Neo features based on the command line
+// flags and environment variables. Both --neo and --copilot flags are supported for backwards compatibility.
+func configureNeoOptions(neoEnabledFlag bool, cmd *cobra.Command, displayOpts *display.Options,
+	isDIYBackend bool,
+) {
+	// Handle neo/copilot flag and environment variable. If either flag is explicitly set (via command line),
+	// use that value. Otherwise fall back to environment variable, then default to false.
+	var showNeoFeatures bool
+	if cmd.Flags().Changed("neo") {
+		showNeoFeatures = neoEnabledFlag
+	} else if cmd.Flags().Changed("copilot") {
+		showNeoFeatures = neoEnabledFlag
+	} else {
+		showNeoFeatures = env.NeoEnabled.Value()
+	}
+	slog.Info("neo flag configuration",
+		"neo-flag", neoEnabledFlag, "PULUMI_NEO", env.NeoEnabled.Value(), "show-neo-features", showNeoFeatures)
+
+	// Do not enable any Neo features if we are using a DIY backend
+	if showNeoFeatures && isDIYBackend {
+		slog.Warn("Neo features are not available with DIY backends.")
+		return
+	}
+
+	displayOpts.ShowNeoFeatures = showNeoFeatures
+	displayOpts.NeoSummaryModel = env.NeoSummaryModel.Value()
+	displayOpts.NeoSummaryMaxLen = env.NeoSummaryMaxLen.Value()
+}
+
+// configureNeoTaskOption configures the display option for starting a Neo task on error.
+func configureNeoTaskOption(neoTaskOnFailureFlag bool, cmd *cobra.Command, displayOpts *display.Options,
+	isDIYBackend bool,
+) {
+	if neoTaskOnFailureFlag && isDIYBackend {
+		slog.Warn("Neo task creation is not available with DIY backends.")
+		return
+	}
+
+	displayOpts.StartNeoTaskOnError = neoTaskOnFailureFlag
 }

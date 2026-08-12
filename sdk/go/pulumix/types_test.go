@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ type legacyIntOutput struct{ *internal.OutputState }
 
 var _ internal.Output = legacyIntOutput{}
 
-func (legacyIntOutput) ElementType() reflect.Type { return reflect.TypeOf(int(0)) }
+func (legacyIntOutput) ElementType() reflect.Type { return reflect.TypeFor[int]() }
 
 // Varying bad implementations of Input[T].
 type (
@@ -37,8 +37,8 @@ type (
 	outputNoOutputT struct{ *internal.OutputState } // doesn't produce Output[T]
 )
 
-func (outputNoContext) ElementType() reflect.Type { return reflect.TypeOf(int(0)) }
-func (outputNoOutputT) ElementType() reflect.Type { return reflect.TypeOf(int(0)) }
+func (outputNoContext) ElementType() reflect.Type { return reflect.TypeFor[int]() }
+func (outputNoOutputT) ElementType() reflect.Type { return reflect.TypeFor[int]() }
 
 func (outputNoContext) ToOutput() Output[int] {
 	panic("not implemented")
@@ -63,43 +63,42 @@ func TestInputElementType(t *testing.T) {
 		},
 		{
 			desc: "Output",
-			give: reflect.TypeOf(Output[int]{}),
-			want: reflect.TypeOf(int(0)),
+			give: reflect.TypeFor[Output[int]](),
+			want: reflect.TypeFor[int](),
 		},
 		{
 			desc: "Output complex",
-			give: reflect.TypeOf(Output[[]string]{}),
-			want: reflect.TypeOf([]string{}),
+			give: reflect.TypeFor[Output[[]string]](),
+			want: reflect.TypeFor[[]string](),
 		},
 		{
 			desc: "ArrayOutput",
-			give: reflect.TypeOf(ArrayOutput[int]{}),
-			want: reflect.TypeOf([]int{}),
+			give: reflect.TypeFor[ArrayOutput[int]](),
+			want: reflect.TypeFor[[]int](),
 		},
 		{
 			desc: "not an input",
-			give: reflect.TypeOf(42),
+			give: reflect.TypeFor[int](),
 			want: nil,
 		},
 		{
 			desc: "not a pux.Input",
-			give: reflect.TypeOf(legacyIntOutput{}),
+			give: reflect.TypeFor[legacyIntOutput](),
 			want: nil,
 		},
 		{
 			desc: "no context argument",
-			give: reflect.TypeOf(outputNoContext{}),
+			give: reflect.TypeFor[outputNoContext](),
 			want: nil,
 		},
 		{
 			desc: "no Output[T] return",
-			give: reflect.TypeOf(outputNoOutputT{}),
+			give: reflect.TypeFor[outputNoOutputT](),
 			want: nil,
 		},
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 

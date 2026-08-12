@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"sort"
@@ -30,28 +31,47 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	cmdEnv "github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewAboutCmd() *cobra.Command {
-	var jsonOut bool
+func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var transitiveDependencies bool
 	var stack string
 	short := "Print information about the Pulumi environment."
+
+	output := outputflag.OutputFlag[aboutRenderFunc]{
+		RenderForTerminal: func(w io.Writer, summary summaryAbout) error {
+			summary.Print(w)
+			return nil
+		},
+		RenderJSON: func(w io.Writer, summary summaryAbout) error {
+			return ui.FprintJSON(w, summary)
+		},
+	}
+
 	cmd := &cobra.Command{
 		Use:   "about",
 		Short: short,
@@ -65,30 +85,30 @@ func NewAboutCmd() *cobra.Command {
 			" - the current project\n" +
 			" - the current stack\n" +
 			" - the current backend\n",
-		Args: cmdutil.MaximumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			summary := getSummaryAbout(ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
-			if jsonOut {
-				return ui.PrintJSON(summary)
-			}
-			summary.Print()
-			return nil
+			summary := getSummaryAbout(ctx, ws, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
+			return output.Get()(cmd.OutOrStdout(), summary)
 		},
 	}
 
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.AddCommand(newAboutEnvCmd())
 
-	cmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
+	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"The name of the stack to get info on. Defaults to the current stack")
+		"The name of the stack to get info on. Defaults to the current stack",
+	)
 	cmd.PersistentFlags().BoolVarP(
-		&transitiveDependencies, "transitive", "t", false, "Include transitive dependencies")
+		&transitiveDependencies, "transitive", "t", false, "Include transitive dependencies",
+	)
 
 	return cmd
 }
+
+type aboutRenderFunc func(w io.Writer, summary summaryAbout) error
 
 type summaryAbout struct {
 	// We use pointers here to allow the field to be nullable. When
@@ -131,17 +151,34 @@ func getSummaryAbout(
 		result.Host = &host
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		addError(err, "Failed to get current working directory")
+		return result
+	}
+
 	var proj *workspace.Project
 	var pwd string
-	if proj, pwd, err = ws.ReadProject(); err != nil {
+	if proj, pwd, err = ws.ReadProject(cwd); err != nil {
 		addError(err, "Failed to read project")
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
-		pwd, program, pluginContext, err := engine.ProjectInfoContext(
-			projinfo, nil, cmdutil.Diag(), cmdutil.Diag(), nil, false, nil, nil)
-		if err != nil {
+		reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), cmdEnv.Global())
+		pluginHost, hostErr := pkghost.New(
+			context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+			schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+			packageworkspace.NewResolverServer(reg),
+		)
+		if hostErr != nil {
+			addError(hostErr, "Failed to create plugin host")
+		} else if pwd, program, pluginContext, err := engine.ProjectInfoContext(
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+		); err != nil {
 			addError(err, "Failed to create plugin context")
+			contract.IgnoreClose(pluginHost)
 		} else {
+			// host is owned here; deferred closes run context-first, host-last.
+			defer contract.IgnoreClose(pluginHost)
 			defer pluginContext.Close()
 
 			// Only try to get project plugins if we managed to read a project
@@ -151,32 +188,34 @@ func getSummaryAbout(
 				result.Plugins = plugins
 			}
 
-			programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
-			lang, err := pluginContext.Host.LanguageRuntime(proj.Runtime.Name(), programInfo)
-			if err != nil {
-				addError(err, "Failed to load language plugin "+proj.Runtime.Name())
-			} else {
-				aboutResponse, err := lang.About(programInfo)
+			if proj.Runtime.Name() != "" {
+				lang, err := pluginContext.Host.LanguageRuntime(pluginContext, proj.Runtime.Name())
 				if err != nil {
-					addError(err, "Failed to get information about the project runtime")
+					addError(err, "Failed to load language plugin "+proj.Runtime.Name())
 				} else {
-					result.Runtime = &projectRuntimeAbout{
-						other:      aboutResponse.Metadata,
-						Language:   proj.Runtime.Name(),
-						Executable: aboutResponse.Executable,
-						Version:    aboutResponse.Version,
+					programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
+					aboutResponse, err := lang.About(ctx, programInfo)
+					if err != nil {
+						addError(err, "Failed to get information about the project runtime")
+					} else {
+						result.Runtime = &projectRuntimeAbout{
+							other:      aboutResponse.Metadata,
+							Language:   proj.Runtime.Name(),
+							Executable: aboutResponse.Executable,
+							Version:    aboutResponse.Version,
+						}
 					}
-				}
 
-				deps, err := lang.GetProgramDependencies(programInfo, transitiveDependencies)
-				if err != nil {
-					addError(err, "Failed to get information about the Pulumi program's dependencies")
-				} else {
-					result.Dependencies = make([]programDependencyAbout, len(deps))
-					for i, dep := range deps {
-						result.Dependencies[i] = programDependencyAbout{
-							Name:    dep.Name,
-							Version: dep.Version,
+					deps, err := lang.GetProgramDependencies(ctx, programInfo, transitiveDependencies)
+					if err != nil {
+						addError(err, "Failed to get information about the Pulumi program's dependencies")
+					} else {
+						result.Dependencies = make([]programDependencyAbout, len(deps))
+						for i, dep := range deps {
+							result.Dependencies[i] = programDependencyAbout{
+								Name:    dep.Name,
+								Version: dep.Version,
+							}
 						}
 					}
 				}
@@ -190,7 +229,7 @@ func getSummaryAbout(
 		addError(err, "Could not access the backend")
 	} else if backend != nil {
 		var stack currentStackAbout
-		if stack, err = getCurrentStackAbout(ctx, backend, selectedStack); err != nil {
+		if stack, err = getCurrentStackAbout(ctx, ws, backend, selectedStack); err != nil {
 			addError(err, "Failed to get information about the current stack")
 		} else {
 			result.CurrentStack = &stack
@@ -202,27 +241,28 @@ func getSummaryAbout(
 	return result
 }
 
-func (summary *summaryAbout) Print() {
-	fmt.Println(summary.CLI)
+func (summary *summaryAbout) Print(w io.Writer) {
+	fmt.Fprintln(w, summary.CLI)
 	if summary.Plugins != nil {
-		fmt.Println(formatPlugins(summary.Plugins))
+		fmt.Fprintln(w, formatPlugins(summary.Plugins))
 	}
 	if summary.Host != nil {
-		fmt.Println(summary.Host)
+		fmt.Fprintln(w, summary.Host)
 	}
 	if summary.Runtime != nil {
-		fmt.Println(summary.Runtime)
+		fmt.Fprintln(w, summary.Runtime)
 	}
 	if summary.CurrentStack != nil {
-		fmt.Println(summary.CurrentStack)
+		fmt.Fprintln(w, summary.CurrentStack)
 	}
 	if summary.Backend != nil {
-		fmt.Println(summary.Backend)
+		fmt.Fprintln(w, summary.Backend)
 	}
+	formatEnvironmentVariables(w, env.ConfiguredVariables())
 	if summary.Dependencies != nil {
-		fmt.Println(formatProgramDependenciesAbout(summary.Dependencies))
+		fmt.Fprintln(w, formatProgramDependenciesAbout(summary.Dependencies))
 	}
-	fmt.Println(summary.LogMessage)
+	fmt.Fprintln(w, summary.LogMessage)
 	for _, err := range summary.Errors {
 		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
 	}
@@ -262,7 +302,7 @@ func getPluginsAbout(ctx *plugin.Context, proj *workspace.Project, pwd, main str
 }
 
 func formatPlugins(p []pluginAbout) string {
-	rows := []cmdutil.TableRow{}
+	rows := slice.Prealloc[cmdutil.TableRow](len(p))
 	for _, plugin := range p {
 		var version string
 		if plugin.Version != nil {
@@ -373,11 +413,13 @@ type aboutState struct {
 	URN  string `json:"urn"`
 }
 
-func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack string) (currentStackAbout, error) {
+func getCurrentStackAbout(
+	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, selectedStack string,
+) (currentStackAbout, error) {
 	var s backend.Stack
 	var err error
 	if selectedStack == "" {
-		s, err = state.CurrentStack(ctx, b)
+		s, err = state.CurrentStack(ctx, ws, b)
 	} else {
 		var ref backend.StackReference
 		ref, err = b.ParseStackReference(selectedStack)
@@ -395,14 +437,17 @@ func getCurrentStackAbout(ctx context.Context, b backend.Backend, selectedStack 
 
 	name := s.Ref().String()
 	var snapshot *deploy.Snapshot
-	snapshot, err = s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	// `about` only reports resource types and URNs, never secret values, so deserialize with the blinding
+	// provider. This avoids prompting for a passphrase (or other secrets-provider credentials) just to list the
+	// resources in the current stack.
+	snapshot, err = s.Snapshot(ctx, secrets.BlindingProvider)
 	if err != nil {
 		return currentStackAbout{}, err
 	} else if snapshot == nil {
 		return currentStackAbout{}, errors.New("No current snapshot")
 	}
-	var resources []*resource.State = snapshot.Resources
-	var pendingOps []resource.Operation = snapshot.PendingOperations
+	resources := snapshot.Resources
+	pendingOps := snapshot.PendingOperations
 
 	aboutResources := make([]aboutState, len(resources))
 	for i, r := range resources {
@@ -477,6 +522,24 @@ func simpleTableRows(arr [][]string) []cmdutil.TableRow {
 type programDependencyAbout struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+}
+
+func formatEnvironmentVariables(w io.Writer, vars map[string]string) {
+	table := cmdutil.Table{
+		Headers: []string{"Name", "Value"},
+		Rows:    []cmdutil.TableRow{},
+	}
+
+	for k, v := range vars {
+		table.Rows = append(table.Rows, cmdutil.TableRow{
+			Columns: []string{k, v},
+		})
+	}
+
+	if len(table.Rows) > 0 {
+		fmt.Fprintln(w, "Environment Variables:")
+		fmt.Fprintln(w, table.String())
+	}
 }
 
 func formatProgramDependenciesAbout(deps []programDependencyAbout) string {
@@ -585,9 +648,19 @@ func (runtime projectRuntimeAbout) String() string {
 
 // This is necessary because dotnet invokes build during the call to
 // getProjectPlugins.
+//
+// We swap out the process-wide os.Stdout because the dotnet build prints
+// to its file descriptor directly; capturing via cmd.OutOrStdout() would
+// not redirect those writes.
+//
+//nolint:forbidigo
 func getProjectPluginsSilently(
 	ctx *plugin.Context, proj *workspace.Project, pwd, main string,
-) ([]workspace.PluginSpec, error) {
+) ([]workspace.PluginDescriptor, error) {
+	if proj.Runtime.Name() == "" {
+		return nil, nil
+	}
+
 	_, w, err := os.Pipe()
 	if err != nil {
 		return nil, err
@@ -598,5 +671,5 @@ func getProjectPluginsSilently(
 
 	programInfo := plugin.NewProgramInfo(ctx.Root, pwd, main, proj.Runtime.Options())
 	runtimeName := proj.Runtime.Name()
-	return engine.GetRequiredPlugins(ctx.Host, runtimeName, programInfo)
+	return engine.GetRequiredPlugins(ctx.Request(), ctx, runtimeName, programInfo)
 }

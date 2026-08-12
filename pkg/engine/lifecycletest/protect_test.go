@@ -16,19 +16,22 @@ package lifecycletest
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/blang/semver"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -49,25 +52,25 @@ func TestMultipleProtectedDeletes(t *testing.T) {
 	creating := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource(resource.RootStackType, "test", false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		if creating {
 			protect := true
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 				Protect: &protect,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Protect: &protect,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
@@ -75,8 +78,8 @@ func TestMultipleProtectedDeletes(t *testing.T) {
 	// Run the initial update which sets some stack outputs.
 	snap, err := lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
-	assert.Len(t, snap.Resources, 4)
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
 
 	// Run a preview that will try and delete both resA and resB.
@@ -133,13 +136,13 @@ func TestProtectInheritance(t *testing.T) {
 		resp, err := monitor.RegisterResource("my_component", "parent", false, deploytest.ResourceOptions{
 			Protect: &protect,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Inherit protect true from parent
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Parent: resp.URN,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Override protect true from parent
 		protectB := false
@@ -147,12 +150,12 @@ func TestProtectInheritance(t *testing.T) {
 			Parent:  resp.URN,
 			Protect: &protectB,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		return err
 	})
 
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
@@ -160,8 +163,8 @@ func TestProtectInheritance(t *testing.T) {
 	// Run the update
 	snap, err := lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
-	assert.Len(t, snap.Resources, 4)
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
 	// Assert that parent and resA are protected and resB is not
 	assert.Equal(t, "parent", snap.Resources[0].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
@@ -172,4 +175,462 @@ func TestProtectInheritance(t *testing.T) {
 	// Assert that resA and resB have the correct parent
 	assert.Equal(t, snap.Resources[0].URN, snap.Resources[2].Parent)
 	assert.Equal(t, snap.Resources[0].URN, snap.Resources[3].Parent)
+}
+
+// TestProtectedDeleteChainsWithDuplicateDeletedResources tests that delete chains that error out due to protected
+// resources correctly abandon resources left in the chain, even in the presence of other resources with the same URN
+// (such as can occur when a replace is interrupted leaving both old and new copies of a resource in the snapshot).
+func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
+	t.Parallel()
+
+	// Arrange.
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	// Set up the initial snapshot. We want to end up with the following starting state:
+	//
+	// * A
+	// * B, which depends on A through a dependency, and has Protect: true
+	// * A copy of A, which has Delete: true (that is, it's an old copy of A that should be deleted as part of the next
+	//   operation).
+	//
+	// To do this, we first run an update that sets up A and B, with B depending on A and protected as described. We then
+	// run a second operation where a Diff indicates that A should be replaced. However, we set the deletion of A up to
+	// fail. Since by default the replace is create-then-delete (delete-after-replace), we'll end up with the requisite
+	// two copies of A.
+	//
+	// Why do we want this starting state? Well, once we've got this set up, we're going to run a destroy, which will
+	// attempt to delete all three resources (A, B, and the old copy of A). Pulumi will determine that it needs to delete
+	// B first, since that is at the top of the dependency chain. However, since B is protected, the delete will fail.
+	// We'd expect Pulumi then to abandon the deletes of B's dependencies (A), but this will only work if Pulumi correctly
+	// sees that it's the new copy of A whose deletion should be skipped, and not the old copy of A.
+
+	// Step 1 of the setup -- create A and B.
+	setupLoaders1 := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	setupProgramF1 := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:modA:typA", "resA", true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:modA:typA", "resB", true, deploytest.ResourceOptions{
+			Protect:      ptr(true),
+			Dependencies: []resource.URN{resA.URN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	setupHostF1 := deploytest.NewPluginHostF(nil, nil, setupProgramF1, nil, nil, setupLoaders1...)
+	setupOpts1 := lt.TestUpdateOptions{
+		T:     t,
+		HostF: setupHostF1,
+	}
+	setupSnap1, err := lt.TestOp(engine.Update).
+		RunStep(project, p.GetTarget(t, nil), setupOpts1, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	// Step 2 of the setup -- create a second copy of A with Delete: true by triggering a replace which we'll interrupt
+	// with a failed Delete.
+	setupLoaders2 := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+					if req.URN.Name() == "resA" {
+						return plugin.DiffResponse{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"__replace"},
+						}, nil
+					}
+
+					return plugin.DiffResponse{}, nil
+				},
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					if req.URN.Name() == "resA" {
+						return plugin.DeleteResponse{}, errors.New("delete error")
+					}
+
+					return plugin.DeleteResponse{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	setupProgramF2 := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resA, err := monitor.RegisterResource("pkgA:modA:typA", "resA", true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:modA:typA", "resB", true, deploytest.ResourceOptions{
+			Protect:      ptr(true),
+			Dependencies: []resource.URN{resA.URN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	setupHostF2 := deploytest.NewPluginHostF(nil, nil, setupProgramF2, nil, nil, setupLoaders2...)
+	setupOpts2 := lt.TestUpdateOptions{
+		T:     t,
+		HostF: setupHostF2,
+	}
+	setupSnap2, err := lt.TestOp(engine.Update).
+		RunStep(project, p.GetTarget(t, setupSnap1), setupOpts2, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err, "delete error")
+
+	// Act.
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkg-gWXu", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			ContinueOnError: false,
+		},
+	}
+
+	snap, err := lt.TestOp(engine.Destroy).
+		RunStep(project, p.GetTarget(t, setupSnap2), opts, false, p.BackendClient, nil, "2")
+	require.ErrorContains(
+		t, err,
+		`resource "urn:pulumi:test-stack::test-project::pkgA:modA:typA::resB" cannot be deleted`,
+	)
+
+	// Assert.
+
+	// The default provider for A and B, and A and B (since B's being protected will halt the destroy).
+	require.Len(t, snap.Resources, 3)
+
+	require.Equal(t, "resA", snap.Resources[1].URN.Name())
+	require.Equal(t, "resB", snap.Resources[2].URN.Name())
+}
+
+// TestIgnoreProtect tests that a preview and up can delete protected resources when
+// IgnoreProtect is set (i.e. the --ignore-protect flag), and that the flag does not
+// modify the protect option of resources that remain in the state.
+// See https://github.com/pulumi/pulumi/issues/9987.
+func TestIgnoreProtect(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{ID: "id", Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
+	}
+
+	creating := true
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource(resource.RootStackType, "test", false)
+		require.NoError(t, err)
+
+		if creating {
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Protect: ptr(true),
+			})
+			require.NoError(t, err)
+
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+				Protect: ptr(true),
+			})
+			require.NoError(t, err)
+		}
+
+		return err
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	// Run the initial update to create the two protected resources.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
+
+	// Now remove both resources from the program and run with IgnoreProtect set.
+	creating = false
+	ignoreProtectOptions := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: engine.UpdateOptions{
+			IgnoreProtect: true,
+		},
+	}
+
+	// Check that no protect errors are raised for either a preview or an update.
+	validate := func(
+		project workspace.Project, target deploy.Target, entries engine.JournalEntries,
+		events []engine.Event, err error,
+	) error {
+		for _, e := range events {
+			if e.Type == DiagEvent {
+				payload := e.Payload().(engine.DiagEventPayload)
+				assert.NotContains(t, payload.Message, "cannot be deleted")
+			}
+		}
+
+		return err
+	}
+
+	// Run a preview that will delete both resA and resB.
+	_, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), ignoreProtectOptions, true, p.BackendClient, validate, "1")
+	require.NoError(t, err)
+
+	// Run an update that will delete both resA and resB.
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), ignoreProtectOptions, false, p.BackendClient, validate, "2")
+	require.NoError(t, err)
+	for _, res := range snap.Resources {
+		assert.NotEqual(t, tokens.Type("pkgA:m:typA"), res.Type)
+	}
+}
+
+// TestIgnoreProtectReplace tests that a protected resource can be replaced when
+// IgnoreProtect is set (i.e. the --ignore-protect flag), and that the resource
+// remains protected in the state afterwards.
+// See https://github.com/pulumi/pulumi/issues/9987.
+func TestIgnoreProtectReplace(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+						return plugin.DiffResult{
+							ReplaceKeys: []resource.PropertyKey{"A"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	inputsA := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:  inputsA,
+			Protect: ptr(true),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	// Run the initial update to create the protected resource.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+
+	// Change the input to trigger a replace, this should error because of the protect flag.
+	inputsA["A"] = resource.NewProperty("bar")
+	_, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "as it is currently marked for protection")
+
+	// Try again with IgnoreProtect set, the replace should now succeed.
+	ignoreProtectOptions := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: engine.UpdateOptions{
+			IgnoreProtect: true,
+		},
+	}
+	snap, err = lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), ignoreProtectOptions, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+	assert.Equal(t, "resA", snap.Resources[1].URN.Name())
+	// The resource should still be protected in the state, the flag must not unprotect it.
+	assert.True(t, snap.Resources[1].Protect)
+}
+
+// TestIgnoreProtectDBRChain tests that a protected resource that is part of a
+// delete-before-replace chain can be replaced when IgnoreProtect is set
+// (i.e. the --ignore-protect flag).
+// See https://github.com/pulumi/pulumi/issues/9987.
+func TestIgnoreProtectDBRChain(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+						return plugin.DiffResult{
+							ReplaceKeys:         []resource.PropertyKey{"A"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	const resType = "pkgA:index:typ"
+
+	inputsA := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+	inputsB := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		respA, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
+			Inputs: inputsA,
+		})
+		require.NoError(t, err)
+
+		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {respA.URN}}
+		_, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{
+			Inputs:       inputsB,
+			Dependencies: []resource.URN{respA.URN},
+			PropertyDeps: inputDepsB,
+			Protect:      ptr(true),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+
+	// First update just creates the two resources.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
+
+	// Update A to trigger a delete-before-replace chain that includes the protected resource B.
+	// This should error because of the protect flag on B.
+	inputsA["A"] = resource.NewProperty("bar")
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "as it is currently marked for protection")
+
+	// Try again with IgnoreProtect set, the replacement chain should now succeed.
+	ignoreProtectOptions := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: engine.UpdateOptions{
+			IgnoreProtect: true,
+		},
+	}
+	snap, err = lt.TestOp(Update).
+		RunStep(project, p.GetTarget(t, snap), ignoreProtectOptions, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 3)
+}
+
+// TestIgnoreProtectDestroy tests that a destroy can delete protected resources when
+// IgnoreProtect is set (i.e. the --ignore-protect flag).
+// See https://github.com/pulumi/pulumi/issues/9987.
+func TestIgnoreProtectDestroy(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{ID: "id", Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Protect: ptr(true),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	// Run the initial update to create the protected resource.
+	snap, err := lt.TestOp(Update).
+		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+
+	// A destroy without IgnoreProtect should error.
+	_, err = lt.TestOp(Destroy).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	assert.ErrorContains(t, err, "cannot be deleted")
+
+	// A destroy with IgnoreProtect should delete the protected resource.
+	ignoreProtectOptions := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: engine.UpdateOptions{
+			IgnoreProtect: true,
+		},
+	}
+	snap, err = lt.TestOp(Destroy).
+		RunStep(p.GetProject(), p.GetTarget(t, snap), ignoreProtectOptions, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 0)
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }

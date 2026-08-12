@@ -1,0 +1,16 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>link<{%reset%}>
+
+<{%reset%}>Configuration:<{%reset%}>
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack myproject-dev running 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> aws:s3:BucketObject myobject <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> aws:s3:BucketObject myobject <{%fg 1%}>deleted<{%reset%}> 
+ <{%bold%}><{%fg 1%}>- <{%reset%}> aws:s3:Bucket mybucket <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> aws:s3:Bucket mybucket <{%fg 1%}>deleted<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack myproject-dev <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 2 deleted<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 7s
+

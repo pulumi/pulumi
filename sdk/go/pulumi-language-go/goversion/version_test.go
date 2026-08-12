@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_checkMinimumGoVersion(t *testing.T) {
@@ -41,6 +42,10 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 			goVersionOutput: "go version go1.18beta2 darwin/amd64",
 		},
 		{
+			name:            "Non-standard toolchain",
+			goVersionOutput: "go version go1.26.1-X:nodwarf5 linux/amd64",
+		},
+		{
 			name:            "OlderGoVersion",
 			goVersionOutput: "go version go1.13.8 linux/amd64",
 			err:             "go version must be 1.14.0 or higher (1.13.8 detected)",
@@ -48,7 +53,7 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 		{
 			name:            "MalformedVersion",
 			goVersionOutput: "go version xyz",
-			err:             "parsing go version: Malformed version: xyz",
+			err:             "parsing go version: malformed version: xyz",
 		},
 		{
 			name:            "GarbageVersionOutput",
@@ -57,7 +62,6 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -65,7 +69,7 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 			if tt.err != "" {
 				assert.EqualError(t, err, tt.err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

@@ -15,7 +15,6 @@
 package channel
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -30,19 +29,19 @@ func TestFilterRead(t *testing.T) {
 	filter := func(i int) bool { return i < 10 }
 	filtered := FilterRead(ch, filter)
 	seenP := promise.Run(func() ([]int, error) {
-		var out []int
+		var out []int //nolint:prealloc // capacity unknown ahead of time
 		for i := range filtered {
 			out = append(out, i)
 		}
 		return out, nil
 	})
 
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		ch <- i
 	}
 	close(ch)
 
-	seen, err := seenP.Result(context.Background())
+	seen, err := seenP.Result(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, seen)
 }

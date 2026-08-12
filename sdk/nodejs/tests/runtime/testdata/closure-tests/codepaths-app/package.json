@@ -1,0 +1,12 @@
+{
+    "name": "codepaths-app",
+    "version": "1.0.0",
+    "private": true,
+    "license": "Apache-2.0",
+    "dependencies": {
+        "execa": "5.1.1",
+        "mockpackage": "file:../mockpackage-src",
+        "semver": "7.5.4",
+        "which": "1.3.1"
+    }
+}

@@ -18,11 +18,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/util"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -33,14 +33,9 @@ func LoadConverterPlugin(
 	name string,
 	log func(sev diag.Severity, msg string),
 ) (plugin.Converter, error) {
-	pluginSpec, err := workspace.NewPluginSpec(name, apitype.ConverterPlugin, nil, "", nil)
+	pluginSpec, err := workspace.NewPluginDescriptor(ctx.Request(), name, apitype.ConverterPlugin, nil, "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not load converter plugin: %w", err)
-	}
-
-	if versionSet := util.SetKnownPluginVersion(&pluginSpec); versionSet {
-		ctx.Diag.Infof(
-			diag.Message("", "Using version %s for pulumi-converter-%s"), pluginSpec.Version, pluginSpec.Name)
 	}
 
 	// Try and load the converter plugin for this
@@ -54,7 +49,7 @@ func LoadConverterPlugin(
 			return nil, fmt.Errorf("load %q: %w", name, err)
 		}
 
-		_, err = pkgWorkspace.InstallPlugin(ctx.Base(), pluginSpec, log)
+		_, err = pkgWorkspace.InstallPlugin(ctx.Base(), pluginSpec, log, schema.NewLoaderServerFromContext)
 		if err != nil {
 			return nil, fmt.Errorf("install %q: %w", name, err)
 		}

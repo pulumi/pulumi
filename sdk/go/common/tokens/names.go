@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ func IsQName(s string) bool {
 // necessary. The conversion is deterministic, but also lossy.
 func IntoQName(s string) QName {
 	output := []string{}
-	for _, s := range strings.Split(s, QNameDelimiter) {
+	for s := range strings.SplitSeq(s, QNameDelimiter) {
 		if s == "" {
 			continue
 		}

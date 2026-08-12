@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 import * as pulumi from "@pulumi/pulumi";
 
@@ -7,8 +7,8 @@ interface RandomArgs {
 }
 
 export class Random extends pulumi.CustomResource {
-    public readonly length!: pulumi.Output<number>;
-    public readonly result!: pulumi.Output<string>;
+    declare public readonly length: pulumi.Output<number>;
+    declare public readonly result: pulumi.Output<string>;
     constructor(name: string, args: RandomArgs, opts?: pulumi.CustomResourceOptions) {
         const props = {
             length: args.length,

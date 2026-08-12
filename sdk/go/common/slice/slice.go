@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,7 +38,6 @@ func Map[T, U any](s []T, f func(T) U) []U {
 func MapError[T, U any](s []T, f func(T) (U, error)) ([]U, error) {
 	r := Prealloc[U](len(s))
 	for _, v := range s {
-		var err error
 		u, err := f(v)
 		if err != nil {
 			return r, err

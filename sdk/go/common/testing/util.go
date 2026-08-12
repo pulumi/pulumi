@@ -15,10 +15,13 @@
 package testing
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -30,14 +33,37 @@ func RandomStackName() string {
 	return "test" + hex.EncodeToString(b)
 }
 
-// LogTruncated logs a message, truncating it if it is too long.  PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT can be set to
-// "true" to see the full log message.
-func LogTruncated(t *testing.T, name, message string) {
+// LogIfVerbose logs a message only if PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT is set to "true".
+func LogIfVerbose(t *testing.T, name, message string) {
 	if os.Getenv("PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT") != "true" {
-		// Cut down logs so they don't overwhelm the test output
-		if len(message) > 2048 {
-			message = message[:2048] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
-		}
+		return
 	}
 	t.Logf("%s: %s", name, message)
+}
+
+var errTestHasFailed = errors.New("test has failed")
+
+func cancelOnFail(t interface {
+	Failed() bool
+}, cancel context.CancelCauseFunc,
+) context.CancelFunc {
+	done := make(chan struct{})
+
+	go func() {
+		ticker := time.Tick(time.Second / 10)
+
+		for {
+			select {
+			case <-ticker:
+				if t.Failed() {
+					cancel(errTestHasFailed)
+					return
+				}
+			case <-done:
+				cancel(nil)
+			}
+		}
+	}()
+
+	return func() { close(done) }
 }

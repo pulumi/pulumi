@@ -1,6 +1,9 @@
 {
     "name": "cloudinit",
     "version": "0.0.1",
+    "meta": {
+        "moduleFormat": "(.*)(?:/[^/]*)"
+    },
     "language": {
         "python": {
             "requires": {

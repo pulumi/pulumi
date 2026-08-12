@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // EnumType represents values of a single type, and a closed set of possible values.
@@ -51,12 +52,14 @@ type EnumType struct {
 	// See https://github.com/pulumi/pulumi/pull/9290#discussion_r851356288
 
 	// Annotations records any annotations associated with the object type.
-	Annotations []interface{}
+	Annotations []any
 
 	s atomic.Value // Value<string>
+
+	cache *gsync.Map[Type, cacheEntry]
 }
 
-func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...interface{}) *EnumType {
+func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...any) *EnumType {
 	contract.Assertf(len(elements) > 0, "Enums must be represent-able")
 
 	t := elements[0].Type()
@@ -70,6 +73,7 @@ func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...in
 		Annotations: annotations,
 		Elements:    elements,
 		Token:       token,
+		cache:       &gsync.Map[Type, cacheEntry]{},
 	}
 }
 
@@ -148,8 +152,8 @@ func (t *EnumType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *EnumType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
+func (t *EnumType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		// We have a constant, of the correct type, so we might have a safe
 		// conversion.
 		if src, ok := src.(*ConstType); ok && !t.Type.Equals(src.Type) {

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,22 +24,17 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
 func newAboutEnvCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "env",
 		Short: "An overview of the environmental variables used by pulumi",
-		Args:  cmdutil.NoArgs,
-		// Since most variables won't be included here, we hide the command. We will
-		// unhide once most existing variables are using the new env var framework and
-		// show up here.
-		Hidden: !env.Experimental.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			table := cmdutil.Table{
 				Headers: []string{"Variable", "Description", "Value"},
@@ -51,13 +46,17 @@ func newAboutEnvCmd() *cobra.Command {
 					Columns: []string{v.Name(), v.Description, v.Value.String()},
 				})
 			}
-			ui.PrintTable(table, nil)
+			ui.FprintTable(cmd.OutOrStdout(), table, nil)
 			if foundError {
 				return errors.New("invalid environmental variables found")
 			}
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
+	return cmd
 }
 
 func emitEnvVarDiag(val declared.Var) bool {

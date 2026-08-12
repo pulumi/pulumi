@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,31 +20,38 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"reflect"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -65,11 +72,16 @@ type contextState struct {
 
 	keepResources            bool         // true if resources should be marshaled as strongly-typed references.
 	keepOutputValues         bool         // true if outputs should be marshaled as strongly-type output values.
+	keepByteString           bool         // true if strings containing non-UTF8 bytes may be sent to the monitor.
 	supportsDeletedWith      bool         // true if deletedWith supported by pulumi
+	supportsReplaceWith      bool         // true if replaceWith supported by pulumi
 	supportsAliasSpecs       bool         // true if full alias specification is supported by pulumi
 	supportsTransforms       bool         // true if remote transforms are supported by pulumi
 	supportsInvokeTransforms bool         // true if remote invoke transforms are supported by pulumi
 	supportsParameterization bool         // true if package references and parameterized providers are supported by pulumi
+	supportsResourceHooks    bool         // true if resource hooks are supported by pulumi
+	supportsErrorHooks       bool         // true if error hooks are supported by pulumi
+	supportsInvokeDependsOn  bool         // true if the monitor gates invokes on their declared dependencies.
 	rpcs                     int          // the number of outstanding RPC requests.
 	rpcsDone                 *sync.Cond   // an event signaling completion of RPCs.
 	rpcsLock                 sync.Mutex   // a lock protecting the RPC count and event.
@@ -78,6 +90,8 @@ type contextState struct {
 	registeredOutputs        map[URN]bool // tracks which resources have had outputs registered
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
+
+	packageRefs gsync.Map[string, *packageRefEntry] // per-context cache of parameterized provider package refs
 }
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
@@ -93,11 +107,12 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	var monitorConn *grpc.ClientConn
 	var monitor pulumirpc.ResourceMonitorClient
 	if addr := info.MonitorAddr; addr != "" {
-		conn, err := grpc.NewClient(
-			info.MonitorAddr,
+		dialOpts := append(
+			rpcutil.TracingInterceptorDialOptions(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
+		conn, err := grpc.NewClient(info.MonitorAddr, dialOpts...)
 		if err != nil {
 			return nil, fmt.Errorf("connecting to resource monitor over RPC: %w", err)
 		}
@@ -111,11 +126,12 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		engineConn = info.engineConn
 		engine = pulumirpc.NewEngineClient(engineConn)
 	} else if addr := info.EngineAddr; addr != "" {
-		conn, err := grpc.NewClient(
-			info.EngineAddr,
+		dialOpts := append(
+			rpcutil.TracingInterceptorDialOptions(),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			rpcutil.GrpcChannelOptions(),
 		)
+		conn, err := grpc.NewClient(info.EngineAddr, dialOpts...)
 		if err != nil {
 			return nil, fmt.Errorf("connecting to engine over RPC: %w", err)
 		}
@@ -132,51 +148,27 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		monitor = wrap(monitor)
 	}
 
-	supportsFeature := func(id string) (bool, error) {
-		if monitor != nil {
-			resp, err := monitor.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{Id: id})
-			if err != nil {
-				return false, fmt.Errorf("checking monitor features: %w", err)
+	var monitorFeatures []pulumirpc.ResourceMonitorFeature
+	if monitor != nil {
+		deploymentInfo, err := monitor.GetDeploymentInfo(ctx, &emptypb.Empty{})
+		if err == nil {
+			monitorFeatures = deploymentInfo.GetSupportedFeatures()
+		} else if status.Code(err) == codes.Unimplemented {
+			for _, k := range slices.Sorted(maps.Keys(legacyFeatureMapping)) {
+				r, err := monitor.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{Id: k})
+				if err != nil {
+					return nil, fmt.Errorf("checking monitor feature %q: %w", k, err)
+				}
+				if r.GetHasSupport() {
+					monitorFeatures = append(monitorFeatures, legacyFeatureMapping[k])
+				}
 			}
-			return resp.GetHasSupport(), nil
+		} else {
+			return nil, fmt.Errorf("checking monitor features: %w", err)
 		}
-		return false, nil
 	}
 
-	keepResources, err := supportsFeature("resourceReferences")
-	if err != nil {
-		return nil, err
-	}
-
-	keepOutputValues, err := supportsFeature("outputValues")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsDeletedWith, err := supportsFeature("deletedWith")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsAliasSpecs, err := supportsFeature("aliasSpecs")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsTransforms, err := supportsFeature("transforms")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsInvokeTransforms, err := supportsFeature("invokeTransforms")
-	if err != nil {
-		return nil, err
-	}
-
-	supportsParameterization, err := supportsFeature("parameterization")
-	if err != nil {
-		return nil, err
-	}
+	has := func(feature pulumirpc.ResourceMonitorFeature) bool { return slices.Contains(monitorFeatures, feature) }
 
 	contextState := &contextState{
 		info:                     info,
@@ -185,13 +177,18 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		monitor:                  monitor,
 		engineConn:               engineConn,
 		engine:                   engine,
-		keepResources:            keepResources,
-		keepOutputValues:         keepOutputValues,
-		supportsDeletedWith:      supportsDeletedWith,
-		supportsAliasSpecs:       supportsAliasSpecs,
-		supportsTransforms:       supportsTransforms,
-		supportsInvokeTransforms: supportsInvokeTransforms,
-		supportsParameterization: supportsParameterization,
+		keepResources:            has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES),
+		keepOutputValues:         has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES),
+		keepByteString:           has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_BYTE_STRING),
+		supportsDeletedWith:      has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_DELETED_WITH),
+		supportsReplaceWith:      has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REPLACE_WITH),
+		supportsAliasSpecs:       has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ALIAS_SPECS),
+		supportsTransforms:       has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_TRANSFORMS),
+		supportsInvokeTransforms: has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS),
+		supportsParameterization: has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_PARAMETERIZATION),
+		supportsResourceHooks:    has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS),
+		supportsErrorHooks:       has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS),
+		supportsInvokeDependsOn:  has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON),
 		registeredOutputs:        make(map[URN]bool),
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
@@ -206,6 +203,22 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 	}
 
 	return context, nil
+}
+
+// A frozen map of old feature IDs to the new resource monitor features.
+//
+// This map should never be updated.
+var legacyFeatureMapping = map[string]pulumirpc.ResourceMonitorFeature{
+	"resourceReferences": pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+	"outputValues":       pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES,
+	"deletedWith":        pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+	"replaceWith":        pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+	"aliasSpecs":         pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
+	"transforms":         pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_TRANSFORMS,
+	"invokeTransforms":   pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+	"parameterization":   pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+	"resourceHooks":      pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+	"errorHooks":         pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
 }
 
 // Context returns the base context used to instantiate the current context.
@@ -307,12 +320,7 @@ func (ctx *Context) GetConfig(key string) (string, bool) {
 
 // IsConfigSecret returns true if the config value is a secret.
 func (ctx *Context) IsConfigSecret(key string) bool {
-	for _, secretKey := range ctx.state.info.ConfigSecretKeys {
-		if key == secretKey {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ctx.state.info.ConfigSecretKeys, key)
 }
 
 // registerTransform starts up a callback server if not already running and registers the given transform.
@@ -380,6 +388,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 					Create: rpcReq.Options.CustomTimeouts.Create,
 					Update: rpcReq.Options.CustomTimeouts.Update,
 					Delete: rpcReq.Options.CustomTimeouts.Delete,
+					Read:   rpcReq.Options.CustomTimeouts.Read,
 				}
 			}
 			if rpcReq.Options.DeleteBeforeReplace != nil {
@@ -389,8 +398,12 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				return ctx.newDependencyResource(URN(d))
 			})
 			opts.IgnoreChanges = rpcReq.Options.IgnoreChanges
+			opts.HideDiffs = rpcReq.Options.HideDiff
 			opts.Parent = parent
 			opts.PluginDownloadURL = rpcReq.Options.PluginDownloadUrl
+			if rpcReq.Options.Import != "" {
+				opts.Import = ID(rpcReq.Options.Import)
+			}
 
 			// TODO(https://github.com/pulumi/pulumi/issues/18935): The Go public API can't express the
 			// optionality that the wire protocol can
@@ -414,6 +427,17 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			opts.ReplaceOnChanges = rpcReq.Options.ReplaceOnChanges
 			opts.RetainOnDelete = flatten(rpcReq.Options.RetainOnDelete)
 			opts.Version = rpcReq.Options.Version
+
+			if rpcReq.Options.Hooks != nil {
+				opts.Hooks = &ResourceHookBinding{}
+				opts.Hooks.BeforeCreate = makeStubHooks(rpcReq.Options.Hooks.GetBeforeCreate())
+				opts.Hooks.AfterCreate = makeStubHooks(rpcReq.Options.Hooks.GetAfterCreate())
+				opts.Hooks.BeforeUpdate = makeStubHooks(rpcReq.Options.Hooks.GetBeforeUpdate())
+				opts.Hooks.AfterUpdate = makeStubHooks(rpcReq.Options.Hooks.GetAfterUpdate())
+				opts.Hooks.BeforeDelete = makeStubHooks(rpcReq.Options.Hooks.GetBeforeDelete())
+				opts.Hooks.AfterDelete = makeStubHooks(rpcReq.Options.Hooks.GetAfterDelete())
+				opts.Hooks.OnError = makeStubErrorHooks(rpcReq.Options.Hooks.GetOnError())
+			}
 		}
 
 		args := &ResourceTransformArgs{
@@ -450,9 +474,10 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			rpcRes.Properties, err = plugin.MarshalProperties(
 				properties,
 				plugin.MarshalOptions{
-					KeepUnknowns:  true,
-					KeepSecrets:   true,
-					KeepResources: ctx.state.keepResources,
+					KeepUnknowns:   true,
+					KeepSecrets:    true,
+					KeepResources:  ctx.state.keepResources,
+					KeepByteString: ctx.state.keepByteString,
 				},
 			)
 			if err != nil {
@@ -481,6 +506,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 					Create: opts.CustomTimeouts.Create,
 					Update: opts.CustomTimeouts.Update,
 					Delete: opts.CustomTimeouts.Delete,
+					Read:   opts.CustomTimeouts.Read,
 				}
 			}
 
@@ -502,6 +528,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 				return nil, fmt.Errorf("marshaling dependsOn: %w", err)
 			}
 			rpcRes.Options.IgnoreChanges = opts.IgnoreChanges
+			rpcReq.Options.HideDiff = opts.HideDiffs
 			rpcRes.Options.PluginDownloadUrl = opts.PluginDownloadURL
 			rpcRes.Options.Protect = &opts.Protect
 
@@ -526,6 +553,22 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 			rpcRes.Options.ReplaceOnChanges = opts.ReplaceOnChanges
 			rpcRes.Options.RetainOnDelete = &opts.RetainOnDelete
 			rpcRes.Options.Version = opts.Version
+
+			if opts.Import != nil {
+				id, _, _, err := opts.Import.ToIDOutput().awaitID(ctx.ctx)
+				if err != nil {
+					return nil, fmt.Errorf("marshaling import ID: %w", err)
+				}
+				rpcRes.Options.Import = string(id)
+			}
+
+			if opts.Hooks != nil {
+				mHooks, err := marshalResourceHooks(ctx.ctx, opts.Hooks)
+				if err != nil {
+					return nil, fmt.Errorf("marshaling hooks: %w", err)
+				}
+				rpcRes.Options.Hooks = mHooks
+			}
 		}
 
 		return rpcRes, nil
@@ -625,9 +668,10 @@ func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callb
 			rpcRes.Args, err = plugin.MarshalProperties(
 				args,
 				plugin.MarshalOptions{
-					KeepUnknowns:  true,
-					KeepSecrets:   true,
-					KeepResources: ctx.state.keepResources,
+					KeepUnknowns:   true,
+					KeepSecrets:    true,
+					KeepResources:  ctx.state.keepResources,
+					KeepByteString: ctx.state.keepByteString,
 				},
 			)
 			if err != nil {
@@ -676,48 +720,111 @@ func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callb
 // Invoke will invoke a provider's function, identified by its token tok. This function call is synchronous.
 //
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
-func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opts ...InvokeOption) (err error) {
+func (ctx *Context) Invoke(tok string, args any, result any, opts ...InvokeOption) (err error) {
 	return ctx.InvokePackage(tok, args, result, "" /* packageRef */, opts...)
 }
 
-// InvokePackage will invoke a provider's function, identified by its token tok. This function call is synchronous.
+// invokePackageRaw synchronously invokes the provider function tok with args marshaled per
+// marshalOpts, returning the response properties, the invoke's direct dependencies (the
+// resources its arguments depend on plus the DependsOn options), whether the result is known,
+// and whether an argument was secret. Secret arguments are sent to the provider as raw values.
 //
-// args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
+// If checkDependencies is set, the invoke is skipped with known=false while any argument
+// is unknown or any dependency is pending creation. Plain invokes pass false: their
+// arguments cannot contain outputs, and their resource-reference arguments are not
+// existence-gated.
 func (ctx *Context) invokePackageRaw(
-	tok string, args interface{}, packageRef string, options invokeOptions,
-) (resource.PropertyMap, error) {
+	tok string, args any, marshalOpts *marshalOptions, checkDependencies bool, packageRef string,
+	options invokeOptions,
+) (outProps resource.PropertyMap, deps []Resource, known, secret bool, err error) {
 	if tok == "" {
-		return nil, errors.New("invoke token must not be empty")
-	}
-	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
-	var err error
-	if err = ctx.beginRPC(); err != nil {
-		return nil, err
-	}
-	defer ctx.endRPC(err)
-
-	var providerRef string
-	providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
-	if err != nil {
-		return nil, err
-	}
-	if provider := providers[getPackage(tok)]; provider != nil {
-		pr, err := ctx.resolveProviderReference(provider)
-		if err != nil {
-			return nil, err
-		}
-		providerRef = pr
+		return nil, nil, false, false, errors.New("invoke token must not be empty")
 	}
 
-	// Serialize arguments. Outputs will not be awaited: instead, an error will be returned if any Outputs are present.
 	if args == nil {
 		args = struct{}{}
 	}
-	resolvedArgs, _, err := marshalInputOptions(args, anyType, &marshalOptions{
-		ErrorOnOutput: true,
-	})
+	resolvedArgs, deps, err := marshalInputOptions(args, anyType, marshalOpts)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling arguments: %w", err)
+		return nil, nil, false, false, fmt.Errorf("marshaling arguments: %w", err)
+	}
+	secret = resolvedArgs.ContainsSecrets()
+
+	var invokeDependsOn []string
+	if checkDependencies {
+		// The expanded set of dependencies, including children of components.
+		depSet := map[URN]Resource{}
+		if err := resourceDependencySet(deps).addDeps(ctx.ctx, depSet, nil); err != nil {
+			return nil, nil, false, false, err
+		}
+		for _, d := range options.DependsOn {
+			if err := d.addDeps(ctx.ctx, depSet, nil); err != nil {
+				return nil, nil, false, false, err
+			}
+			switch d := d.(type) {
+			case resourceDependencySet:
+				deps = append(deps, d...)
+			case *resourceArrayInputDependencySet:
+				out := d.input.ToResourceArrayOutput()
+				value, k, _, _, err := internal.AwaitOutput(ctx.Context(), out)
+				if err != nil {
+					return nil, nil, false, false, err
+				}
+				if !k {
+					// We don't know what the dependencies are, so the result is unknown.
+					return nil, deps, false, secret, nil
+				}
+				resources, ok := value.([]Resource)
+				if !ok {
+					return nil, nil, false, false, fmt.Errorf(
+						"expected DependsOnInputs to resolve to []Resource, got %T", value)
+				}
+				deps = append(deps, resources...)
+			default:
+				// Unreachable.
+				// We control all implementations of dependencySet.
+				contract.Failf("Unknown dependencySet %T", d)
+			}
+		}
+
+		if resolvedArgs.ContainsUnknowns() {
+			return nil, deps, false, secret, nil
+		}
+
+		if ctx.state.supportsInvokeDependsOn {
+			invokeDependsOn = make([]string, 0, len(depSet))
+			for urn := range depSet {
+				invokeDependsOn = append(invokeDependsOn, string(urn))
+			}
+		} else {
+			// Older engines need the language to manage the await.
+			//
+			// DependsOn for resources is an ordering constraint for register
+			// resource calls. If a resource R1 depends on a resource R2, the
+			// register resource call for R2 will happen after R1. This is ensured
+			// by awaiting the URN for each resource dependency before calling
+			// register resource.
+			//
+			// For invokes, this causes a problem when running under preview. During
+			// preview, register resource immediately returns with the URN, however
+			// this does not tell us if the resource "exists".
+			//
+			// Instead of waiting for the dependency's URN, we wait for the ID. This
+			// tells us that wether a physical resource exists (if the state does
+			// not require a refresh), and we can avoid calling the invoke when it
+			// is unknown.
+			for _, d := range depSet {
+				if r, ok := d.(CustomResource); ok {
+					_, k, _, _, err := internal.AwaitOutput(ctx.Context(), r.ID())
+					if err != nil {
+						contract.Failf("Awaiting ID: %s", err)
+					}
+					if !k {
+						return nil, deps, false, secret, nil
+					}
+				}
+			}
+		}
 	}
 
 	resolvedArgsMap := resource.PropertyMap{}
@@ -725,16 +832,36 @@ func (ctx *Context) invokePackageRaw(
 		resolvedArgsMap = resolvedArgs.ObjectValue()
 	}
 
+	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
+	if err = ctx.beginRPC(); err != nil {
+		return nil, nil, false, false, err
+	}
+	defer ctx.endRPC(err)
+
+	var providerRef string
+	providers, err := ctx.mergeProviders(tok, options.Parent, options.Provider, nil)
+	if err != nil {
+		return nil, nil, false, false, err
+	}
+	if provider := providers[getPackage(tok)]; provider != nil {
+		pr, err := ctx.resolveProviderReference(provider)
+		if err != nil {
+			return nil, nil, false, false, err
+		}
+		providerRef = pr
+	}
+
 	rpcArgs, err := plugin.MarshalProperties(
 		resolvedArgsMap,
 		plugin.MarshalOptions{
-			KeepUnknowns:  true,
-			KeepSecrets:   true,
-			KeepResources: ctx.state.keepResources,
+			KeepUnknowns:   true,
+			KeepSecrets:    false,
+			KeepResources:  ctx.state.keepResources,
+			KeepByteString: ctx.state.keepByteString,
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling arguments: %w", err)
+		return nil, nil, false, false, fmt.Errorf("marshaling arguments: %w", err)
 	}
 
 	// Now, invoke the RPC to the provider synchronously.
@@ -746,11 +873,13 @@ func (ctx *Context) invokePackageRaw(
 		Version:           options.Version,
 		PluginDownloadURL: options.PluginDownloadURL,
 		AcceptResources:   !disableResourceReferences,
+		AcceptsByteString: true,
 		PackageRef:        packageRef,
+		DependsOn:         invokeDependsOn,
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
-		return nil, err
+		return nil, nil, false, false, err
 	}
 
 	// If there were any failures from the provider, return them.
@@ -761,11 +890,16 @@ func (ctx *Context) invokePackageRaw(
 			ferr = multierror.Append(ferr,
 				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
 		}
-		return nil, ferr
+		return nil, nil, false, false, ferr
+	}
+
+	// The engine declined to service the invoke because dependencies are pending creation.
+	if resp.Unknown {
+		return nil, deps, false, secret, nil
 	}
 
 	// Otherwise, simply unmarshal the output properties and return the result.
-	r, err := plugin.UnmarshalProperties(
+	outProps, err = plugin.UnmarshalProperties(
 		resp.Return,
 		plugin.MarshalOptions{
 			KeepUnknowns:  true,
@@ -773,13 +907,13 @@ func (ctx *Context) invokePackageRaw(
 			KeepResources: true,
 		})
 	if err != nil {
-		return nil, err
+		return nil, nil, false, false, err
 	}
-	return r, nil
+	return outProps, deps, true, secret, nil
 }
 
 func validInvokeResult(resultV reflect.Value) bool {
-	isPointer := resultV.Kind() == reflect.Ptr
+	isPointer := resultV.Kind() == reflect.Pointer
 	isMap := resultV.Elem().Kind() == reflect.Map && resultV.Elem().Type().Key().Kind() == reflect.String
 	structOrMap := resultV.Elem().Kind() == reflect.Struct || isMap
 	return isPointer && structOrMap
@@ -789,7 +923,7 @@ func validInvokeResult(resultV reflect.Value) bool {
 //
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
 func (ctx *Context) InvokePackage(
-	tok string, args interface{}, result interface{}, packageRef string, opts ...InvokeOption,
+	tok string, args any, result any, packageRef string, opts ...InvokeOption,
 ) error {
 	resultV := reflect.ValueOf(result)
 	if !validInvokeResult(resultV) {
@@ -797,16 +931,14 @@ func (ctx *Context) InvokePackage(
 	}
 
 	invokeOpts := mergeInvokeOptions(opts...)
-	if len(invokeOpts.DependsOn) > 0 {
-		// Ignore the DependsOn option for direct invokes.
-		invokeOpts.DependsOn = nil
-	}
+	invokeOpts.DependsOn = nil // Ignore the DependsOn option for direct invokes.
 
-	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, *invokeOpts)
+	outProps, _, _, _, err := ctx.invokePackageRaw(tok, args, &marshalOptions{ErrorOnOutput: true},
+		false /* checkDependencies */, packageRef, *invokeOpts)
 	if err != nil {
 		return err
 	}
-	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
+	hasSecret, err := unmarshalOutput(ctx, resource.NewProperty(outProps), resultV.Elem())
 
 	if hasSecret {
 		return errors.New("unexpected secret result returned to invoke call, " +
@@ -817,9 +949,9 @@ func (ctx *Context) InvokePackage(
 }
 
 // InvokePackageRaw is similar to InvokePackage except that it doesn't error out if the result has secrets.
-// Insread, it returns a boolean indicating if the result has secrets.
+// Instead, it returns a boolean indicating if the result has secrets.
 func (ctx *Context) InvokePackageRaw(
-	tok string, args interface{}, result interface{}, packageRef string, opts ...InvokeOption,
+	tok string, args any, result any, packageRef string, opts ...InvokeOption,
 ) (isSecret bool, err error) {
 	resultV := reflect.ValueOf(result)
 	if !validInvokeResult(resultV) {
@@ -827,11 +959,12 @@ func (ctx *Context) InvokePackageRaw(
 	}
 
 	options := mergeInvokeOptions(opts...)
-	outProps, err := ctx.invokePackageRaw(tok, args, packageRef, *options)
+	outProps, _, _, _, err := ctx.invokePackageRaw(tok, args, &marshalOptions{ErrorOnOutput: true},
+		false /* checkDependencies */, packageRef, *options)
 	if err != nil {
 		return false, err
 	}
-	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
+	hasSecret, err := unmarshalOutput(ctx, resource.NewProperty(outProps), resultV.Elem())
 	if err != nil {
 		return false, err
 	}
@@ -842,7 +975,13 @@ func (ctx *Context) InvokePackageRaw(
 // InvokeOutputOptions are the options that control the behavior of an InvokeOutput call.
 type InvokeOutputOptions struct {
 	// The package reference for parameterized providers.
+	//
+	// Deprecated: use PackageRefF instead.
 	PackageRef string
+	// PackageRefF lazily resolves the package reference for parameterized providers.
+	//
+	// When set, it takes precedence over PackageRef.
+	PackageRefF func(*Context) (string, error)
 	// The options provided by the user for the invoke call, such as `Provider`,
 	// `Version, `DependsOn`, etc.
 	InvokeOptions []InvokeOption
@@ -851,83 +990,47 @@ type InvokeOutputOptions struct {
 // InvokeOutput will invoke a provider's function, identified by its token tok. This function is
 // used by generated SDK code for Output form invokes.
 // `output` is used to determine the output type to return.
+//
+// Unlike Invoke, args may contain Inputs/Outputs. The invoke's resource dependencies are inferred
+// from the arguments (in addition to any explicit DependsOn options), and if any argument is
+// unknown the invoke is not performed and the result is unknown.
 func (ctx *Context) InvokeOutput(
-	tok string, args interface{}, output Output, options InvokeOutputOptions,
+	tok string, args any, output Output, options InvokeOutputOptions,
 ) Output {
 	output = ctx.newOutput(reflect.TypeOf(output))
 
 	go func() {
-		// Collect dependencies from the DependsOn/DependsOnInput options.
-		invokeOpts := mergeInvokeOptions(options.InvokeOptions...)
-		deps := []Resource{}         // The direct dependencies of the invoke.
-		depSet := map[URN]Resource{} // The expanded set of dependencies, including children.
-		for _, d := range invokeOpts.DependsOn {
-			if err := d.addDeps(ctx.ctx, depSet, nil); err != nil {
+		packageRef := options.PackageRef
+		if options.PackageRefF != nil {
+			ref, err := options.PackageRefF(ctx)
+			if err != nil {
+				internal.RejectOutput(output, err)
 				return
 			}
-			switch d := d.(type) {
-			case resourceDependencySet:
-				deps = append(deps, d...)
-			case *resourceArrayInputDependencySet:
-				out := d.input.ToResourceArrayOutput()
-				value, known, _, _, err := internal.AwaitOutput(ctx.Context(), out)
-				if err != nil || !known {
-					return
-				}
-				resources, ok := value.([]Resource)
-				if !ok {
-					return
-				}
-				deps = append(deps, resources...)
-			default:
-				// Unreachable.
-				// We control all implementations of dependencySet.
-				contract.Failf("Unknown dependencySet %T", d)
-			}
+			packageRef = ref
+		}
+
+		invokeOpts := mergeInvokeOptions(options.InvokeOptions...)
+		outProps, deps, known, secret, err := ctx.invokePackageRaw(tok, args, nil, /* marshalOpts */
+			true /* checkDependencies */, packageRef, *invokeOpts)
+		if err != nil {
+			internal.RejectOutput(output, err)
+			return
 		}
 
 		dest := reflect.New(output.ElementType()).Elem()
-
-		// DependsOn for resources is an ordering constraint for register
-		// resource calls. If a resource R1 depends on a resource R2, the
-		// register resource call for R2 will happen after R1. This is ensured
-		// by awaiting the URN for each resource dependency before calling
-		// register resource.
-		//
-		// For invokes, this causes a problem when running under preview. During
-		// preview, register resource immediately returns with the URN, however
-		// this does not tell us if the resource "exists".
-		//
-		// Instead of waiting for the dependency's URN, we wait for the ID. This
-		// tells us that wether a physical resource exists (if the state does
-		// not require a refresh), and we can avoid calling the invoke when it
-		// is unknown.
-		for _, d := range depSet {
-			if r, ok := d.(CustomResource); ok {
-				_, known, _, _, err := internal.AwaitOutput(ctx.Context(), r.ID())
-				if err != nil {
-					contract.Failf("Awaiting ID: %s", err)
-				}
-				if !known {
-					internal.ResolveOutput(output, dest.Interface(), known, false, resourcesToInternal(deps))
-					return
-				}
-			}
+		if !known {
+			internal.ResolveOutput(output, dest.Interface(), false, secret, resourcesToInternal(deps))
+			return
 		}
 
-		outProps, err := ctx.invokePackageRaw(tok, args, options.PackageRef, *invokeOpts)
+		known = !outProps.ContainsUnknowns()
+		respSecret, err := unmarshalOutput(ctx, resource.NewProperty(outProps), dest)
 		if err != nil {
 			internal.RejectOutput(output, err)
 			return
 		}
-
-		known := !outProps.ContainsUnknowns()
-		secret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), dest)
-		if err != nil {
-			internal.RejectOutput(output, err)
-			return
-		}
-		internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps))
+		internal.ResolveOutput(output, dest.Interface(), known, secret || respSecret, resourcesToInternal(deps))
 	}()
 
 	return output
@@ -1030,6 +1133,7 @@ func (ctx *Context) CallPackage(
 				KeepUnknowns:     true,
 				KeepSecrets:      true,
 				KeepResources:    ctx.state.keepResources,
+				KeepByteString:   ctx.state.keepByteString,
 				KeepOutputValues: ctx.state.keepOutputValues,
 			})
 		if err != nil {
@@ -1039,7 +1143,7 @@ func (ctx *Context) CallPackage(
 		// Convert the arg dependencies map for RPC and remove duplicates.
 		rpcArgDeps := make(map[string]*pulumirpc.ResourceCallRequest_ArgumentDependencies)
 		for k, deps := range argDeps {
-			sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
+			slices.Sort(deps)
 
 			urns := slice.Prealloc[string](len(deps))
 			for i, d := range deps {
@@ -1062,6 +1166,7 @@ func (ctx *Context) CallPackage(
 			Version:           version,
 			PluginDownloadURL: pluginURL,
 			PackageRef:        packageRef,
+			AcceptsByteString: true,
 		}, nil
 	}
 
@@ -1091,7 +1196,7 @@ func (ctx *Context) CallPackage(
 			var secret bool
 			dest := reflect.New(output.ElementType()).Elem()
 			known := !outprops.ContainsUnknowns()
-			secret, err = unmarshalOutput(ctx, resource.NewObjectProperty(outprops), dest)
+			secret, err = unmarshalOutput(ctx, resource.NewProperty(outprops), dest)
 			if err != nil {
 				internal.RejectOutput(output, err)
 			} else {
@@ -1139,6 +1244,60 @@ func (ctx *Context) CallPackage(
 	}()
 
 	return output, nil
+}
+
+// CallPackageSingle is like CallPackage, but extracts a single entry from a map for scalar return
+// values from providers.
+func (ctx *Context) CallPackageSingle(
+	tok string, args Input, output Output, self Resource, packageRef string, opts ...InvokeOption,
+) (Output, error) {
+	intermediary, err := ctx.CallPackage(tok, args, AnyOutput{}, self, packageRef, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	intermediary = intermediary.ApplyT(func(r any) (any, error) {
+		zeroType := reflect.Zero(reflect.TypeOf(output.ElementType())).Interface()
+
+		// if the result is an object return the first element
+		v := reflect.ValueOf(r)
+
+		if v.Kind() == reflect.Pointer {
+			// Check if the pointer is nil
+			if v.IsNil() {
+				return zeroType, errors.New("input cannot be a nil pointer")
+			}
+			// Get the element the pointer points to
+			v = v.Elem()
+		}
+
+		if v.Kind() != reflect.Map {
+			return zeroType, errors.New("result must be a map, but was a " + v.Kind().String())
+		}
+
+		asMap := v.Interface().(map[string]any)
+		if len(asMap) != 1 {
+			return zeroType, errors.New("result must have exactly one element")
+		}
+
+		result := slices.Collect(maps.Values(asMap))[0]
+		if resultType := reflect.TypeOf(result); resultType != output.ElementType() {
+			return zeroType, fmt.Errorf("result field type %s does not match expected type %s", resultType, output.ElementType())
+		}
+
+		return result, nil
+	})
+
+	outputState := internal.GetOutputState(intermediary.(AnyOutput))
+	if outputState == nil {
+		return nil, errors.New("intermediary output state is nil")
+	}
+
+	resValue := reflect.New(reflect.TypeOf(output)).Elem()
+	internal.SetOutputState(resValue, outputState)
+	res := resValue.Interface().(Output)
+
+	return res, nil
 }
 
 // ReadResource reads an existing custom resource's state from the resource monitor. t is the fully qualified type
@@ -1212,9 +1371,10 @@ func (ctx *Context) readPackageResource(
 
 	if props != nil {
 		propsType := reflect.TypeOf(props)
-		if propsType.Kind() == reflect.Ptr {
+		if propsType.Kind() == reflect.Pointer {
 			propsType = propsType.Elem()
 		}
+		//nolint:staticcheck // Not applying de-morgens law right now
 		if !(propsType.Kind() == reflect.Struct ||
 			(propsType.Kind() == reflect.Map && propsType.Key().Kind() == reflect.String)) {
 			return errors.New("props must be a struct or map or a pointer to a struct or map")
@@ -1254,6 +1414,10 @@ func (ctx *Context) readPackageResource(
 		return errors.New("the Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI")
 	}
 
+	if options.ReplaceWith != nil && !ctx.state.supportsReplaceWith {
+		return errors.New("the Pulumi CLI does not support the ReplaceWith option. Please update the Pulumi CLI")
+	}
+
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
@@ -1276,8 +1440,9 @@ func (ctx *Context) readPackageResource(
 	res := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
-	// Get the source position for the resource registration. Note that this assumes that there is an intermediate
-	// between the this function and user code.
+	// Get the stack trace and source position for the resource registration. Note that this assumes that there is an
+	// intermediate frame between the this function and user code.
+	stackTrace := ctx.getStackTrace(3)
 	sourcePosition := ctx.getSourcePosition(3)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
@@ -1313,8 +1478,10 @@ func (ctx *Context) readPackageResource(
 			Id:                      string(idToRead),
 			AcceptSecrets:           true,
 			AcceptResources:         !disableResourceReferences,
+			AcceptsByteString:       true,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 			SourcePosition:          sourcePosition,
+			StackTrace:              stackTrace,
 			PackageRef:              packageRef,
 		})
 		if err != nil {
@@ -1333,16 +1500,17 @@ func (ctx *Context) readPackageResource(
 
 func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse, error) {
 	// This is a resource that already exists. Read its state from the engine.
-	resolvedArgsMap := resource.NewPropertyMapFromMap(map[string]interface{}{
+	resolvedArgsMap := resource.NewPropertyMapFromMap(map[string]any{
 		"urn": urn,
 	})
 
 	rpcArgs, err := plugin.MarshalProperties(
 		resolvedArgsMap,
 		plugin.MarshalOptions{
-			KeepUnknowns:  true,
-			KeepSecrets:   true,
-			KeepResources: ctx.state.keepResources,
+			KeepUnknowns:   true,
+			KeepSecrets:    true,
+			KeepResources:  ctx.state.keepResources,
+			KeepByteString: ctx.state.keepByteString,
 		},
 	)
 	if err != nil {
@@ -1352,9 +1520,10 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 	tok := "pulumi:pulumi:getResource"
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
 	resp, err := ctx.state.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
-		Tok:             "pulumi:pulumi:getResource",
-		Args:            rpcArgs,
-		AcceptResources: !disableResourceReferences,
+		Tok:               "pulumi:pulumi:getResource",
+		Args:              rpcArgs,
+		AcceptResources:   !disableResourceReferences,
+		AcceptsByteString: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("invoke(%s, ...): error: %w", tok, err)
@@ -1378,6 +1547,176 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 	}, nil
 }
 
+// registerResourceHook starts up a callback server if not already running and registers the given hook function.
+func (ctx *Context) registerResourceHook(f ResourceHookFunction) (*pulumirpc.Callback, error) {
+	if !ctx.state.supportsResourceHooks {
+		return nil, errors.New("the Pulumi CLI does not support resource hooks. Please update the Pulumi CLI")
+	}
+
+	// Wrap the transform in a callback function.
+	callback := func(innerCtx context.Context, request []byte) (proto.Message, error) {
+		var req pulumirpc.ResourceHookRequest
+		err := proto.Unmarshal(request, &req)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+		var newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap
+		mOpts := plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
+		if req.NewInputs != nil {
+			newInputs, err = plugin.UnmarshalProperties(req.NewInputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling new inputs: %w", err)
+			}
+		}
+		if req.OldInputs != nil {
+			oldInputs, err = plugin.UnmarshalProperties(req.OldInputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling old inputs: %w", err)
+			}
+		}
+		if req.NewOutputs != nil {
+			newOutputs, err = plugin.UnmarshalProperties(req.NewOutputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling new outputs: %w", err)
+			}
+		}
+		if req.OldOutputs != nil {
+			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
+			}
+		}
+		args := &ResourceHookArgs{
+			URN:        URN(req.Urn),
+			ID:         ID(req.Id),
+			Name:       req.Name,
+			Type:       tokens.Type(req.Type),
+			NewInputs:  newInputs,
+			OldInputs:  oldInputs,
+			NewOutputs: newOutputs,
+			OldOutputs: oldOutputs,
+		}
+		if err := f(args); err != nil {
+			return &pulumirpc.ResourceHookResponse{
+				Error: err.Error(),
+			}, nil
+		}
+		return &pulumirpc.ResourceHookResponse{}, nil
+	}
+
+	err := func() error {
+		ctx.state.callbacksLock.Lock()
+		defer ctx.state.callbacksLock.Unlock()
+		if ctx.state.callbacks == nil {
+			c, err := newCallbackServer()
+			if err != nil {
+				return fmt.Errorf("creating callback server: %w", err)
+			}
+			ctx.state.callbacks = c
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	cb, err := ctx.state.callbacks.RegisterCallback(callback)
+	if err != nil {
+		return nil, fmt.Errorf("registering callback: %w", err)
+	}
+
+	return cb, nil
+}
+
+// registerErrorHook starts up a callback server if not already running and registers the given hook function.
+func (ctx *Context) registerErrorHook(f ErrorHookFunction) (*pulumirpc.Callback, error) {
+	if !ctx.state.supportsErrorHooks {
+		return nil, errors.New("the Pulumi CLI does not support error hooks. Please update the Pulumi CLI")
+	}
+
+	// Wrap the transform in a callback function.
+	callback := func(innerCtx context.Context, request []byte) (proto.Message, error) {
+		var req pulumirpc.ErrorHookRequest
+		err := proto.Unmarshal(request, &req)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling request: %w", err)
+		}
+		var newInputs, oldInputs, oldOutputs resource.PropertyMap
+		mOpts := plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		}
+		if req.NewInputs != nil {
+			newInputs, err = plugin.UnmarshalProperties(req.NewInputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling new inputs: %w", err)
+			}
+		}
+		if req.OldInputs != nil {
+			oldInputs, err = plugin.UnmarshalProperties(req.OldInputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling old inputs: %w", err)
+			}
+		}
+		if req.OldOutputs != nil {
+			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, mOpts)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
+			}
+		}
+		args := &ErrorHookArgs{
+			URN:             URN(req.Urn),
+			ID:              ID(req.Id),
+			Name:            req.Name,
+			Type:            tokens.Type(req.Type),
+			NewInputs:       newInputs,
+			OldInputs:       oldInputs,
+			OldOutputs:      oldOutputs,
+			FailedOperation: req.FailedOperation,
+			Errors:          req.Errors,
+		}
+		retry, err := f(args)
+		if err != nil {
+			return &pulumirpc.ErrorHookResponse{
+				Error: err.Error(),
+			}, nil
+		}
+		return &pulumirpc.ErrorHookResponse{
+			Retry: retry,
+		}, nil
+	}
+
+	err := func() error {
+		ctx.state.callbacksLock.Lock()
+		defer ctx.state.callbacksLock.Unlock()
+		if ctx.state.callbacks == nil {
+			c, err := newCallbackServer()
+			if err != nil {
+				return fmt.Errorf("creating callback server: %w", err)
+			}
+			ctx.state.callbacks = c
+		}
+		return nil
+	}()
+	if err != nil {
+		return nil, err
+	}
+
+	cb, err := ctx.state.callbacks.RegisterCallback(callback)
+	if err != nil {
+		return nil, fmt.Errorf("registering callback: %w", err)
+	}
+
+	return cb, nil
+}
+
 func (ctx *Context) registerResource(
 	t, name string, props Input, resource Resource, remote bool, packageRef string, opts ...ResourceOption,
 ) error {
@@ -1393,9 +1732,10 @@ func (ctx *Context) registerResource(
 
 	if props != nil {
 		propsType := reflect.TypeOf(props)
-		if propsType.Kind() == reflect.Ptr {
+		if propsType.Kind() == reflect.Pointer {
 			propsType = propsType.Elem()
 		}
+		//nolint:staticcheck // Not applying de-morgens law right now
 		if !(propsType.Kind() == reflect.Struct ||
 			(propsType.Kind() == reflect.Map && propsType.Key().Kind() == reflect.String)) {
 			return errors.New("props must be a struct or map or a pointer to a struct or map")
@@ -1477,8 +1817,9 @@ func (ctx *Context) registerResource(
 	resState := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
-	// Get the source position for the resource registration. Note that this assumes that there are two intermediate
-	// frames between this function and user code.
+	// Get the stack trace and source position for the resource registration. Note that this assumes that there are two
+	// intermediate frames between this function and user code.
+	stackTrace := ctx.getStackTrace(4)
 	sourcePosition := ctx.getSourcePosition(4)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
@@ -1505,6 +1846,17 @@ func (ctx *Context) registerResource(
 				return
 			}
 			transforms = append(transforms, cb)
+		}
+
+		// Collect all the hooks, waiting for their registrations.
+		var hooks *pulumirpc.RegisterResourceRequest_ResourceHooksBinding
+		if options.Hooks != nil {
+			mHooks, hooksErr := marshalResourceHooks(ctx.ctx, options.Hooks)
+			if hooksErr != nil {
+				logging.V(9).Infof("marshalResourceHooks(%s, %s): error: %v", t, name, err)
+				return
+			}
+			hooks = mHooks
 		}
 
 		// Prepare the inputs for an impending operation.
@@ -1566,17 +1918,24 @@ func (ctx *Context) registerResource(
 				Aliases:                    aliases,
 				AcceptSecrets:              true,
 				AcceptResources:            !disableResourceReferences,
+				AcceptsByteString:          true,
 				AdditionalSecretOutputs:    inputs.additionalSecretOutputs,
 				Version:                    inputs.version,
 				PluginDownloadURL:          inputs.pluginDownloadURL,
 				Remote:                     remote,
 				ReplaceOnChanges:           inputs.replaceOnChanges,
+				ReplacementTrigger:         inputs.replacementTrigger,
 				RetainOnDelete:             inputs.retainOnDelete,
 				DeletedWith:                inputs.deletedWith,
+				ReplaceWith:                inputs.replaceWith,
+				HideDiffs:                  inputs.hideDiffs,
 				SourcePosition:             sourcePosition,
+				StackTrace:                 stackTrace,
 				Transforms:                 transforms,
 				SupportsResultReporting:    true,
 				PackageRef:                 packageRef,
+				Hooks:                      hooks,
+				EnvVarMappings:             inputs.envVarMappings,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -1596,6 +1955,15 @@ func (ctx *Context) registerResource(
 					})
 				}
 				deps[key] = resources
+			}
+			// If the engine reported that the resource failed or was skipped, synthesize an
+			// error so downstream outputs fault. This allows Output.Recover to intercept the
+			// failure.
+			if err == nil && resp.Result != pulumirpc.Result_SUCCESS {
+				err = fmt.Errorf("resource %s [%s] failed to register", name, t)
+			}
+			if custom && resp.Result == pulumirpc.Result_SUCCESS && resp.Unknown {
+				keepUnknowns = true
 			}
 		}
 	}()
@@ -1632,10 +2000,17 @@ func (ctx *Context) RegisterResource(
 	return ctx.registerResource(t, name, props, resource, false /*remote*/, "" /* packageRef */, opts...)
 }
 
+// It is recommended to use RegisterComponentResourceV2 instead which records component inputs to state.
 func (ctx *Context) RegisterComponentResource(
 	t, name string, resource ComponentResource, opts ...ResourceOption,
 ) error {
 	return ctx.registerResource(t, name, nil /*props*/, resource, false /*remote*/, "" /* packageRef */, opts...)
+}
+
+func (ctx *Context) RegisterComponentResourceV2(
+	t, name string, props Input, resource ComponentResource, opts ...ResourceOption,
+) error {
+	return ctx.registerResource(t, name, props, resource, false /*remote*/, "" /* packageRef */, opts...)
 }
 
 func (ctx *Context) RegisterRemoteComponentResource(
@@ -1665,6 +2040,41 @@ func (ctx *Context) RegisterPackage(
 	return ctx.state.monitor.RegisterPackage(ctx.ctx, in)
 }
 
+// packageRefEntry holds a cached package reference for a parameterized provider.
+// The sync.Once ensures exactly one RegisterPackage RPC per key per context.
+type packageRefEntry struct {
+	once sync.Once
+	ref  string
+	err  error
+}
+
+// GetOrRegisterPackageRef returns a cached package reference for the given key,
+// or registers the package and caches the result. The key should uniquely
+// identify the parameterized package (e.g., "name:version"). This method is
+// safe for concurrent use and ensures each Context registers its own package
+// reference, which is required because package references are scoped to the
+// engine/monitor connection and cannot be shared across contexts.
+func (ctx *Context) GetOrRegisterPackageRef(
+	key string,
+	req func() (*pulumirpc.RegisterPackageRequest, error),
+) (string, error) {
+	entry, _ := ctx.state.packageRefs.LoadOrStore(key, &packageRefEntry{})
+	entry.once.Do(func() {
+		r, err := req()
+		if err != nil {
+			entry.err = err
+			return
+		}
+		resp, err := ctx.RegisterPackage(r)
+		if err != nil {
+			entry.err = err
+			return
+		}
+		entry.ref = resp.Ref
+	})
+	return entry.ref, entry.err
+}
+
 // resourceState contains the results of a resource registration operation.
 type resourceState struct {
 	rawOutputs        Output
@@ -1677,6 +2087,9 @@ type resourceState struct {
 	name              string
 	transformations   []ResourceTransformation
 }
+
+var errTransformationsCannotChangeParent = errors.New(
+	"transformations cannot currently be used to change the `parent` of a resource")
 
 // Apply transformations and return the transformations themselves, as well as the transformed props and opts.
 func applyTransformations(t, name string, props Input, resource Resource, opts []ResourceOption,
@@ -1701,8 +2114,9 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 			resOptions := merge(res.Opts...)
 
 			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
-				return nil, nil, nil, errors.New("transformations cannot currently be used to change the `parent` of a resource")
+				return nil, nil, nil, errTransformationsCannotChangeParent
 			}
+			resOptions.Parent = options.Parent // Callers *must* re-apply the parent option, so we do it for them
 			props = res.Props
 			options = resOptions
 		}
@@ -1718,15 +2132,11 @@ func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderR
 	// copy parent providers
 	result := make(map[string]ProviderResource)
 	if parent != nil {
-		for k, v := range parent.getProviders() {
-			result[k] = v
-		}
+		maps.Copy(result, parent.getProviders())
 	}
 
 	// copy provider map
-	for k, v := range providerMap {
-		result[k] = v
-	}
+	maps.Copy(result, providerMap)
 
 	// copy specific provider, if any
 	if provider != nil {
@@ -1804,7 +2214,7 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 					aliasedChildType := string(resource.URN(urn).Type())
 					return inheritedChildAlias(
 						aliasedChildName, parent.PulumiResourceName(), aliasedChildType, project, stack, parentAlias)
-				}).ApplyT(func(urn interface{}) URN {
+				}).ApplyT(func(urn any) URN {
 					return urn.(URN)
 				}).(URNOutput)
 				aliasURNs = append(aliasURNs, inheritedAlias)
@@ -1815,7 +2225,7 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 	return aliasURNs, nil
 }
 
-var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
+var mapOutputType = reflect.TypeFor[MapOutput]()
 
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
@@ -1827,7 +2237,7 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 	// ought to.
 	res := reflect.ValueOf(resourceV)
 	typ := res.Type()
-	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+	if typ.Kind() != reflect.Pointer || typ.Elem().Kind() != reflect.Struct {
 		return &resourceState{}
 	}
 	res, typ = res.Elem(), typ.Elem()
@@ -1964,9 +2374,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		return
 	}
 
-	outprops["urn"] = resource.NewStringProperty(urn)
+	outprops["urn"] = resource.NewProperty(urn)
 	if id != "" || !keepUnknowns {
-		outprops["id"] = resource.NewStringProperty(id)
+		outprops["id"] = resource.NewProperty(id)
 	} else {
 		outprops["id"] = resource.MakeComputed(resource.PropertyValue{})
 	}
@@ -1982,9 +2392,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 			}
 		}
 		if !known {
-			outprops[""] = resource.MakeComputed(resource.NewStringProperty(""))
+			outprops[""] = resource.MakeComputed(resource.NewProperty(""))
 		} else {
-			outprops[""] = resource.NewObjectProperty(remaining)
+			outprops[""] = resource.NewProperty(remaining)
 		}
 	}
 
@@ -1993,7 +2403,8 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 	internal.ResolveOutput(state.rawOutputs, outprops, true, false, resourcesToInternal(nil))
 
 	for k, output := range state.outputs {
-		// If this is an unknown or missing value during a dry run, do nothing.
+		// If this is an unknown or missing value during a dry run or for a skipped
+		// create, do nothing.
 		v, ok := outprops[resource.PropertyKey(k)]
 		if !ok && !keepUnknowns {
 			v = inprops[resource.PropertyKey(k)]
@@ -2036,6 +2447,10 @@ type resourceInputs struct {
 	replaceOnChanges        []string
 	retainOnDelete          *bool
 	deletedWith             string
+	hideDiffs               []string
+	replaceWith             []string
+	replacementTrigger      *structpb.Value
+	envVarMappings          map[string]string
 }
 
 func (ctx *Context) resolveAliasParent(alias Alias, spec *pulumirpc.Alias_Spec) error {
@@ -2239,9 +2654,10 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
 		plugin.MarshalOptions{
-			KeepUnknowns:  true,
-			KeepSecrets:   true,
-			KeepResources: ctx.state.keepResources,
+			KeepUnknowns:   true,
+			KeepSecrets:    true,
+			KeepResources:  ctx.state.keepResources,
+			KeepByteString: ctx.state.keepByteString,
 			// To initially scope the use of this new feature, we only keep output values when
 			// remote is true (for multi-lang components).
 			KeepOutputValues: remote && ctx.state.keepOutputValues,
@@ -2264,20 +2680,69 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		}
 	}
 
-	// Merge all dependencies with what we got earlier from property marshaling, and remove duplicates.
-	var deps []string
-	depSet := map[URN]struct{}{}
-	for _, dep := range append(resOpts.depURNs, rpcDeps...) {
-		if _, ok := depSet[dep]; !ok {
-			deps = append(deps, string(dep))
-			depSet[dep] = struct{}{}
+	var replacementTriggerDeps []URN
+	var replacementTriggerValue *structpb.Value
+	if opts.ReplacementTrigger != nil {
+		rtValue, rtDepResources, err := marshalInput(opts.ReplacementTrigger, anyType)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling replacementTrigger option: %w", err)
+		}
+
+		if len(rtDepResources) > 0 {
+			depMap, err := expandDependencies(ctx.Context(), rtDepResources)
+			if err != nil {
+				return nil, fmt.Errorf("expanding replacementTrigger dependencies: %w", err)
+			}
+			replacementTriggerDeps = slices.Collect(maps.Keys(depMap))
+		}
+
+		if !rtValue.IsNull() {
+			marshaled, err := plugin.MarshalPropertyValue(
+				resource.PropertyKey("replacementTrigger"),
+				rtValue,
+				plugin.MarshalOptions{
+					KeepUnknowns:     true,
+					KeepSecrets:      true,
+					KeepResources:    ctx.state.keepResources,
+					KeepByteString:   ctx.state.keepByteString,
+					KeepOutputValues: remote && ctx.state.keepOutputValues,
+				},
+			)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling replacementTrigger option: %w", err)
+			}
+			replacementTriggerValue = marshaled
 		}
 	}
-	sort.Strings(deps)
+
+	// Merge all dependencies with what we got earlier from property marshaling, and remove duplicates.
+	deps := make([]string, 0, len(resOpts.depURNs)+len(rpcDeps)+len(replacementTriggerDeps))
+	for _, dep := range resOpts.depURNs {
+		deps = append(deps, string(dep))
+	}
+	for _, dep := range rpcDeps {
+		deps = append(deps, string(dep))
+	}
+	for _, dep := range replacementTriggerDeps {
+		deps = append(deps, string(dep))
+	}
+	slices.Sort(deps)
+	deps = slices.Compact(deps)
 
 	aliases, err := ctx.mapAliases(opts.Aliases, t, state.name, opts.Parent)
 	if err != nil {
 		return nil, fmt.Errorf("mapping aliases: %w", err)
+	}
+
+	var replaceWithURNs []string
+	if opts.ReplaceWith != nil {
+		for _, r := range opts.ReplaceWith {
+			urn, _, _, err := r.URN().awaitURN(context.Background())
+			if err != nil {
+				return nil, fmt.Errorf("error waiting for ReplaceWith URN to resolve: %w", err)
+			}
+			replaceWithURNs = append(replaceWithURNs, string(urn))
+		}
 	}
 
 	var deletedWithURN URN
@@ -2302,6 +2767,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		importID:                string(resOpts.importID),
 		customTimeouts:          getTimeouts(opts.CustomTimeouts),
 		ignoreChanges:           resOpts.ignoreChanges,
+		hideDiffs:               resOpts.hideDiffs,
 		aliases:                 aliases,
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
 		version:                 state.version,
@@ -2309,6 +2775,9 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 		replaceOnChanges:        resOpts.replaceOnChanges,
 		retainOnDelete:          opts.RetainOnDelete,
 		deletedWith:             string(deletedWithURN),
+		replaceWith:             replaceWithURNs,
+		replacementTrigger:      replacementTriggerValue,
+		envVarMappings:          opts.EnvVarMappings,
 	}, nil
 }
 
@@ -2318,6 +2787,7 @@ func getTimeouts(custom *CustomTimeouts) *pulumirpc.RegisterResourceRequest_Cust
 		timeouts.Update = custom.Update
 		timeouts.Create = custom.Create
 		timeouts.Delete = custom.Delete
+		timeouts.Read = custom.Read
 	}
 	return &timeouts
 }
@@ -2331,6 +2801,7 @@ type resourceOpts struct {
 	deleteBeforeReplace     *bool
 	importID                ID
 	ignoreChanges           []string
+	hideDiffs               []string
 	additionalSecretOutputs []string
 	replaceOnChanges        []string
 }
@@ -2368,7 +2839,7 @@ func (ctx *Context) getOpts(
 				return resourceOpts{}, err
 			}
 		}
-		depURNs = maps.Keys(depSet)
+		depURNs = slices.Collect(maps.Keys(depSet))
 	}
 
 	var providerRef string
@@ -2402,6 +2873,7 @@ func (ctx *Context) getOpts(
 		deleteBeforeReplace:     opts.DeleteBeforeReplace,
 		importID:                importID,
 		ignoreChanges:           opts.IgnoreChanges,
+		hideDiffs:               opts.HideDiffs,
 		additionalSecretOutputs: opts.AdditionalSecretOutputs,
 		replaceOnChanges:        opts.ReplaceOnChanges,
 	}, nil
@@ -2497,9 +2969,10 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 		outsMarshalled, err := plugin.MarshalProperties(
 			outsResolved.ObjectValue(),
 			plugin.MarshalOptions{
-				KeepUnknowns:  true,
-				KeepSecrets:   true,
-				KeepResources: ctx.state.keepResources,
+				KeepUnknowns:   true,
+				KeepSecrets:    true,
+				KeepResources:  ctx.state.keepResources,
+				KeepByteString: ctx.state.keepByteString,
 			})
 		if err != nil {
 			return
@@ -2521,6 +2994,11 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 // Export registers a key and value pair with the current context's stack.
 func (ctx *Context) Export(name string, value Input) {
 	ctx.state.exports[name] = value
+}
+
+// Get a copy of the current export map. Primarily useful for testing.
+func (ctx *Context) GetCurrentExportMap() map[string]Input {
+	return maps.Clone(ctx.state.exports)
 }
 
 // RegisterStackTransformation adds a transformation to all future resources constructed in this Pulumi stack.
@@ -2558,6 +3036,72 @@ func (ctx *Context) RegisterInvokeTransform(t InvokeTransform) error {
 	return err
 }
 
+func (ctx *Context) RegisterResourceHook(
+	name string, callback ResourceHookFunction, opts *ResourceHookOptions,
+) (*ResourceHook, error) {
+	registered := &promise.CompletionSource[struct{}]{}
+	go func() {
+		cb, err := ctx.registerResourceHook(callback)
+		if err != nil {
+			registered.Reject(err)
+			return
+		}
+		onDryRun := false
+		ignoreErrors := false
+		if opts != nil {
+			onDryRun = opts.OnDryRun
+			ignoreErrors = opts.IgnoreErrors
+		}
+		req := &pulumirpc.RegisterResourceHookRequest{
+			Name:         name,
+			Callback:     cb,
+			OnDryRun:     onDryRun,
+			IgnoreErrors: ignoreErrors,
+		}
+		_, err = ctx.state.monitor.RegisterResourceHook(ctx.ctx, req)
+		if err != nil {
+			registered.Reject(err)
+		} else {
+			registered.Fulfill(struct{}{})
+		}
+	}()
+	hook := &ResourceHook{
+		Name:       name,
+		Callback:   callback,
+		registered: registered.Promise(),
+	}
+	return hook, nil
+}
+
+func (ctx *Context) RegisterErrorHook(
+	name string, callback ErrorHookFunction,
+) (*ErrorHook, error) {
+	registered := &promise.CompletionSource[struct{}]{}
+	go func() {
+		cb, err := ctx.registerErrorHook(callback)
+		if err != nil {
+			registered.Reject(err)
+			return
+		}
+		req := &pulumirpc.RegisterErrorHookRequest{
+			Name:     name,
+			Callback: cb,
+		}
+		_, err = ctx.state.monitor.RegisterErrorHook(ctx.ctx, req)
+		if err != nil {
+			registered.Reject(err)
+		} else {
+			registered.Fulfill(struct{}{})
+		}
+	}()
+	hook := &ErrorHook{
+		Name:       name,
+		Callback:   callback,
+		registered: registered.Promise(),
+	}
+	return hook, nil
+}
+
 func (ctx *Context) newOutputState(elementType reflect.Type, deps ...Resource) *OutputState {
 	return internal.NewOutputState(&ctx.state.join, elementType, resourcesToInternal(deps)...)
 }
@@ -2567,8 +3111,53 @@ func (ctx *Context) newOutput(typ reflect.Type, deps ...Resource) Output {
 }
 
 // NewOutput creates a new output associated with this context.
-func (ctx *Context) NewOutput() (Output, func(interface{}), func(error)) {
+func (ctx *Context) NewOutput() (Output, func(any), func(error)) {
 	return newAnyOutput(&ctx.state.join)
+}
+
+// getSourcePositionForFrame converts a runtime.Frame to an RPC source position. Returns nil if the frame is not valid.
+func (ctx *Context) getSourcePositionForFrame(frame runtime.Frame) *pulumirpc.SourcePosition {
+	if frame.File == "" || frame.Line == 0 {
+		return nil
+	}
+
+	line := int32(-1)
+	if frame.Line <= math.MaxInt32 {
+		//nolint:gosec
+		line = int32(frame.Line)
+	}
+	return &pulumirpc.SourcePosition{
+		Uri:  "file:///" + path.Join(slice.Map(strings.Split(frame.File, "/"), url.PathEscape)...),
+		Line: line,
+	}
+}
+
+// getStackTrace returns an RPC stack trace that corresponds to the set of Go frames on the stack at the time of the
+// call. The number of frames to skip is parameterized in order to account for differing call stacks for different
+// operations.
+func (ctx *Context) getStackTrace(skip int) *pulumirpc.StackTrace {
+	// Skip this frame as well.
+	skip = max(skip+1, 2)
+
+	trace := &pulumirpc.StackTrace{}
+
+	var pcs [256]uintptr
+	for {
+		callers := runtime.Callers(skip, pcs[:])
+		if callers == 0 {
+			return trace
+		}
+		skip += callers
+
+		frames := runtime.CallersFrames(pcs[:])
+		for {
+			frame, more := frames.Next()
+			trace.Frames = append(trace.Frames, &pulumirpc.StackFrame{Pc: ctx.getSourcePositionForFrame(frame)})
+			if !more {
+				break
+			}
+		}
+	}
 }
 
 // Returns the source position of the Nth stack frame, where N is skip+1.
@@ -2582,23 +3171,29 @@ func (ctx *Context) getSourcePosition(skip int) *pulumirpc.SourcePosition {
 	}
 	frames := runtime.CallersFrames(pcs[:])
 	frame, _ := frames.Next()
-	if frame.File == "" || frame.Line == 0 {
-		return nil
+	return ctx.getSourcePositionForFrame(frame)
+}
+
+// RequirePulumiVersion validates that the engine we are connected to is compatible with the passed in version range. If
+// the version is not compatible with the specified range, an error is returned.
+//
+// The supported syntax for the range is that of https://pkg.go.dev/github.com/blang/semver#ParseRange. For example
+// ">=3.0.0", or "!3.1.2". Ranges can be AND-ed together by concatenating with spaces ">=3.5.0 !3.7.7", meaning
+// greater-or-equal to 3.5.0 and not exactly 3.7.7. Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0",
+// meaning less-than 3.4.0 or greater-than 3.8.0.
+func (ctx *Context) RequirePulumiVersion(rg string) error {
+	_, err := ctx.state.engine.RequirePulumiVersion(ctx.Context(), &pulumirpc.RequirePulumiVersionRequest{
+		PulumiVersionRange: rg,
+	})
+	if err != nil {
+		if rpcError, ok := rpcerror.FromError(err); ok {
+			if rpcError.Code() == codes.Unimplemented {
+				return errors.New("The installed version of the CLI does not support the `RequirePulumiVersion` RPC. " +
+					"Please upgrade the Pulumi CLI.")
+			}
+			return rpcError
+		}
+		return err
 	}
-	elems := filepath.SplitList(frame.File)
-	for i := range elems {
-		elems[i] = url.PathEscape(elems[i])
-	}
-	var line int32
-	if frame.Line <= math.MaxInt32 {
-		//nolint:gosec
-		line = int32(frame.Line)
-	} else {
-		// line is out of range for int32, that's a long sourcefile!
-		line = -1
-	}
-	return &pulumirpc.SourcePosition{
-		Uri:  "project://" + path.Join(elems...),
-		Line: line,
-	}
+	return nil
 }

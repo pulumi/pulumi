@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ package pcl
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -49,7 +48,13 @@ func getEntriesSignature(
 		"key":   keyType,
 		"value": valueType,
 	})
-	signature.ReturnType = model.NewListType(elementType)
+
+	var returnType model.Type = model.NewListType(elementType)
+	if p, o := model.ContainsEventuals(args[0].Type()); p || o {
+		returnType = model.NewOutputType(returnType)
+	}
+
+	signature.ReturnType = returnType
 	return signature, diagnostics
 }
 
@@ -79,6 +84,11 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 						}
 					}
 				}
+
+				if p, o := model.ContainsEventuals(listType); p || o {
+					returnType = model.NewOutputType(returnType)
+				}
+
 				return model.StaticFunctionSignature{
 					Parameters: []model.Parameter{
 						{
@@ -87,7 +97,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 						},
 						{
 							Name: "index",
-							Type: model.NumberType,
+							Type: model.IntType,
 						},
 					},
 					ReturnType: returnType,
@@ -175,12 +185,18 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 						}
 					}
 				}
+
+				var returnType model.Type = model.IntType
+				if p, o := model.ContainsEventuals(valueType); p || o {
+					returnType = model.NewOutputType(returnType)
+				}
+
 				return model.StaticFunctionSignature{
 					Parameters: []model.Parameter{{
 						Name: "value",
 						Type: valueType,
 					}},
-					ReturnType: model.IntType,
+					ReturnType: returnType,
 				}, diagnostics
 			})),
 		"lookup": model.NewFunction(model.GenericFunctionSignature(
@@ -188,16 +204,17 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				var diagnostics hcl.Diagnostics
 
 				mapType, elementType := model.Type(model.DynamicType), model.Type(model.DynamicType)
+				var argIsEventual bool
 				if len(args) > 0 {
 					switch t := model.ResolveOutputs(args[0].Type()).(type) {
 					case *model.MapType:
-						mapType, elementType = args[0].Type(), t.ElementType
+						mapType, elementType = model.ResolveOutputs(args[0].Type()), t.ElementType
 					case *model.ObjectType:
 						var unifiedType model.Type
 						for _, t := range t.Properties {
 							_, unifiedType = model.UnifyTypes(unifiedType, t)
 						}
-						mapType, elementType = args[0].Type(), unifiedType
+						mapType, elementType = model.ResolveOutputs(args[0].Type()), unifiedType
 					default:
 						rng := args[0].SyntaxNode().Range()
 						diagnostics = hcl.Diagnostics{&hcl.Diagnostic{
@@ -206,7 +223,15 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 							Subject:  &rng,
 						}}
 					}
+					p, o := model.ContainsEventuals(args[0].Type())
+					argIsEventual = p || o
 				}
+
+				returnType := elementType
+				if argIsEventual {
+					returnType = model.NewOutputType(returnType)
+				}
+
 				return model.StaticFunctionSignature{
 					Parameters: []model.Parameter{
 						{
@@ -222,35 +247,21 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 							Type: model.NewOptionalType(elementType),
 						},
 					},
-					ReturnType: elementType,
+					ReturnType: returnType,
 				}, diagnostics
 			})),
-		"mimeType": model.NewFunction(model.StaticFunctionSignature{
-			Parameters: []model.Parameter{{
-				Name: "path",
-				Type: model.StringType,
-			}},
-			ReturnType: model.StringType,
-		}),
 		"range": model.NewFunction(model.StaticFunctionSignature{
 			Parameters: []model.Parameter{
 				{
 					Name: "fromOrTo",
-					Type: model.NumberType,
+					Type: model.IntType,
 				},
 				{
 					Name: "to",
-					Type: model.NewOptionalType(model.NumberType),
+					Type: model.NewOptionalType(model.IntType),
 				},
 			},
 			ReturnType: model.NewListType(model.IntType),
-		}),
-		"readDir": model.NewFunction(model.StaticFunctionSignature{
-			Parameters: []model.Parameter{{
-				Name: "path",
-				Type: model.StringType,
-			}},
-			ReturnType: model.NewListType(model.StringType),
 		}),
 		"readFile": model.NewFunction(model.StaticFunctionSignature{
 			Parameters: []model.Parameter{{
@@ -337,13 +348,33 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 			}},
 			ReturnType: model.StringType,
 		}),
-		"toJSON": model.NewFunction(model.StaticFunctionSignature{
-			Parameters: []model.Parameter{{
-				Name: "value",
-				Type: model.DynamicType,
-			}},
-			ReturnType: model.StringType,
-		}),
+		"toJSON": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				// toJSON takes a dynamic input, but if that contains eventuals then we need to lift the operation to be
+				// an output.
+
+				signature := model.StaticFunctionSignature{
+					Parameters: []model.Parameter{{
+						Name: "value",
+						Type: model.DynamicType,
+					}},
+					ReturnType: model.StringType,
+				}
+
+				if len(args) != 1 {
+					return signature, hcl.Diagnostics{
+						errorf(hcl.Range{}, "'toJSON' expects exactly one argument"),
+					}
+				}
+
+				// If the input is an output, we need to return an output string.
+				if p, o := model.ContainsEventuals(args[0].Type()); p || o {
+					signature.ReturnType = model.NewOutputType(signature.ReturnType)
+				}
+
+				return signature, nil
+			},
+		)),
 		// Returns the name of the current stack
 		"stack": model.NewFunction(model.StaticFunctionSignature{
 			ReturnType: model.StringType,
@@ -402,12 +433,17 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					}
 				}
 
+				returnType := model.NewOptionalType(elementType)
+				if p, o := model.ContainsEventuals(valueType); p || o {
+					returnType = model.NewOutputType(returnType)
+				}
+
 				return model.StaticFunctionSignature{
 					Parameters: []model.Parameter{{
 						Name: "value",
 						Type: valueType,
 					}},
-					ReturnType: model.NewOptionalType(elementType),
+					ReturnType: returnType,
 				}, diagnostics
 			})),
 		"getOutput": model.NewFunction(model.StaticFunctionSignature{
@@ -437,10 +473,28 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				}
 
 				// Return a type that is a union of all argument types.
-				returnType := returnTypeFromArgs(args)
-				// If this results in a union of a dynamic type and another type, we should just return output dynamic.
-				if typeContainsDynamic(returnType) {
-					returnType = model.NewOutputType(model.DynamicType)
+				argTypes := make([]model.Type, len(args))
+				for i, arg := range args {
+					argTypes[i] = arg.Type()
+				}
+				returnType, _ := model.UnifyTypes(argTypes...)
+
+				lift := false
+				for i, arg := range args {
+					argTypes[i] = arg.Type()
+					// If any of the arguments are eventuals or dynamic, we need to lift the return type to be an output.
+					if p, o := model.ContainsEventuals(arg.Type()); p || o {
+						lift = true
+					}
+					// Also if its dynamic just make the return type dynamic, feels like maybe UnifyTypes should do this
+					// for us but it doesn't, so for now do it locally here.
+					if arg.Type() == model.DynamicType {
+						lift = true
+						returnType = model.DynamicType
+					}
+				}
+				if lift {
+					returnType = model.NewOutputType(returnType)
 				}
 
 				parameters := make([]model.Parameter, len(args))
@@ -498,15 +552,94 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				return sig, diagnostics
 			},
 		)),
+		"recover": model.NewFunction(model.GenericFunctionSignature(
+			func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+				var diagnostics hcl.Diagnostics
+
+				if len(args) != 2 {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  "'recover' expects exactly two arguments",
+					})
+				}
+
+				valueType, recoveryType := model.Type(model.DynamicType), model.Type(model.DynamicType)
+				if len(args) > 0 {
+					valueType = args[0].Type()
+					if _, ok := valueType.(*model.OutputType); !ok {
+						rng := args[0].SyntaxNode().Range()
+						diagnostics = append(diagnostics, &hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  "the first argument to 'recover' must be an output",
+							Subject:  &rng,
+						})
+					}
+				}
+				if len(args) > 1 {
+					recoveryType = args[1].Type()
+				}
+
+				returnType, _ := model.UnifyTypes(model.ResolveOutputs(valueType), model.ResolveOutputs(recoveryType))
+				if returnType == nil {
+					returnType = model.DynamicType
+				}
+
+				return model.StaticFunctionSignature{
+					Parameters: []model.Parameter{
+						{
+							Name: "value",
+							Type: valueType,
+						},
+						{
+							Name: "recovery",
+							Type: recoveryType,
+						},
+					},
+					ReturnType: model.NewOutputType(returnType),
+				}, diagnostics
+			},
+		)),
 		"rootDirectory": model.NewFunction(model.StaticFunctionSignature{
 			ReturnType: model.StringType,
 		}),
+		"max": newMinMaxFunction(),
+		"min": newMinMaxFunction(),
 		// pulumiResourceType/Name takes a single argument, the resource, and returns a string. There isn't a good way
 		// to do this with a StaticFunctionSignature so we use a GenericFunctionSignature with a similar check for
 		// "resource type" as we do for `call` expressions.
 		"pulumiResourceType": newResourceFunction("pulumiResourceType"),
 		"pulumiResourceName": newResourceFunction("pulumiResourceName"),
 	}
+}
+
+// newMinMaxFunction produces the type signature for the "min" & "max" PCL functions.
+//
+// It is a function from `(int, ...int) -> int` when no argument is a [model.NumberType], and `(number, ...number) ->
+// number` otherwise.
+func newMinMaxFunction() *model.Function {
+	return model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			var diags hcl.Diagnostics
+			var typ model.Type = model.IntType
+			for _, v := range args {
+				if model.ResolveOutputs(v.Type()) == model.NumberType {
+					typ = model.NumberType
+				}
+			}
+
+			return model.StaticFunctionSignature{
+				Parameters: []model.Parameter{{
+					Name: "first",
+					Type: typ,
+				}},
+				VarargsParameter: &model.Parameter{
+					Name: "rest",
+					Type: typ,
+				},
+				ReturnType: typ,
+			}, diags
+		},
+	))
 }
 
 func newResourceFunction(functionName string) *model.Function {
@@ -521,12 +654,12 @@ func newResourceFunction(functionName string) *model.Function {
 				}
 
 				return model.StaticFunctionSignature{}, hcl.Diagnostics{
-					errorf(r, functionName+" expects exactly one argument"),
+					errorf(r, "%s", functionName+" expects exactly one argument"),
 				}
 			}
 
 			arg := args[0]
-			var res *Resource
+			var res BaseResource
 			if objectType, ok := arg.Type().(*model.ObjectType); ok {
 				if annotation, ok := model.GetObjectTypeAnnotation[*ResourceAnnotation](objectType); ok {
 					res = annotation.Node
@@ -535,7 +668,7 @@ func newResourceFunction(functionName string) *model.Function {
 
 			if res == nil {
 				return model.StaticFunctionSignature{}, hcl.Diagnostics{
-					errorf(args[0].SyntaxNode().Range(), functionName+" argument must be a single resource"),
+					errorf(args[0].SyntaxNode().Range(), "%s", functionName+" argument must be a single resource"),
 				}
 			}
 
@@ -550,25 +683,4 @@ func newResourceFunction(functionName string) *model.Function {
 			}, nil
 		},
 	))
-}
-
-func returnTypeFromArgs(args []model.Expression) model.Type {
-	argTypes := make([]model.Type, len(args))
-	for i, arg := range args {
-		argTypes[i] = arg.Type()
-	}
-	returnType, _ := model.UnifyTypes(argTypes...)
-	return returnType
-}
-
-func typeContainsDynamic(t model.Type) bool {
-	if u, ok := t.(*model.UnionType); ok {
-		if slices.ContainsFunc(u.ElementTypes, typeContainsDynamic) {
-			return true
-		}
-	}
-	if o, ok := t.(*model.OutputType); ok {
-		return typeContainsDynamic(o.ElementType)
-	}
-	return t == model.DynamicType
 }

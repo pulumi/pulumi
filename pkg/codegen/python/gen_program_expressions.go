@@ -1,4 +1,4 @@
-// Copyright 2020-2025, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -47,6 +48,10 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	expr, diags := pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), false, skipToJSONWhenRewritingApplies)
 	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
+	// Guard dereferences of conditionally-created resources after applies and
+	// conversions are rewritten, so the guard wraps the (converted) apply rather
+	// than being hoisted inside it, and the `null` fallback is left untouched.
+	expr = pcl.RewriteOptionalResourceGuards(expr)
 	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
 
 	diags = diags.Extend(lowerProxyDiags)
@@ -54,6 +59,16 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	diags = diags.Extend(quoteDiags)
 
 	g.diagnostics = g.diagnostics.Extend(diags)
+
+	return expr, quotes
+}
+
+func (g *generator) lowerHookCommandExpression(expr model.Expression) (model.Expression, []*quoteTemp) {
+	expr, convertDiags := pcl.RewriteConversions(expr, model.StringType)
+	expr, quotes, quoteDiags := g.rewriteQuotes(expr)
+
+	g.diagnostics = g.diagnostics.Extend(convertDiags)
+	g.diagnostics = g.diagnostics.Extend(quoteDiags)
 
 	return expr, quotes
 }
@@ -108,6 +123,23 @@ func (g *generator) GenAnonymousFunctionExpression(w io.Writer, expr *model.Anon
 	g.Fgenf(w, ": %.v", expr.Body)
 }
 
+// isNoneLiteral reports whether expr is the `null`/`None` literal, so equality
+// comparisons against it can be rendered with Python's identity operators
+// (`is`/`is not`), which read idiomatically and let type checkers narrow.
+func isNoneLiteral(expr model.Expression) bool {
+	switch expr := expr.(type) {
+	case *model.LiteralValueExpression:
+		return expr.Value.IsNull()
+	case *model.ScopeTraversalExpression:
+		if len(expr.Parts) == 1 {
+			if c, ok := expr.Parts[0].(*model.Constant); ok {
+				return c.ConstantValue.IsNull()
+			}
+		}
+	}
+	return false
+}
+
 func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpression) {
 	var opstr string
 	precedence := g.GetPrecedence(expr)
@@ -118,6 +150,9 @@ func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpre
 		opstr = "/"
 	case hclsyntax.OpEqual:
 		opstr = "=="
+		if isNoneLiteral(expr.RightOperand) || isNoneLiteral(expr.LeftOperand) {
+			opstr = "is"
+		}
 	case hclsyntax.OpGreaterThan:
 		opstr = ">"
 	case hclsyntax.OpGreaterThanOrEqual:
@@ -136,6 +171,9 @@ func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpre
 		opstr = "*"
 	case hclsyntax.OpNotEqual:
 		opstr = "!="
+		if isNoneLiteral(expr.RightOperand) || isNoneLiteral(expr.LeftOperand) {
+			opstr = "is not"
+		}
 	case hclsyntax.OpSubtract:
 		opstr = "-"
 	default:
@@ -162,10 +200,17 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 		g.Fgenf(w, "[%.v", expr.Value)
 	}
 
-	if expr.KeyVariable == nil {
+	keyUsed := expr.KeyVariable != nil && expr.KeyVariable.Name != "_"
+
+	switch {
+	case !keyUsed && isMapType(expr.Collection.Type()):
+		g.Fgenf(w, " for %v in %.v.values()", expr.ValueVariable.Name, expr.Collection)
+	case !keyUsed:
 		g.Fgenf(w, " for %v in %.v", expr.ValueVariable.Name, expr.Collection)
-	} else {
-		g.Fgenf(w, " for %v, %v in %.v", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
+	case isMapType(expr.Collection.Type()):
+		g.Fgenf(w, " for %v, %v in sorted(%.v.items())", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
+	default:
+		g.Fgenf(w, " for %v, %v in enumerate(%.v)", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
 	}
 
 	if expr.Condition != nil {
@@ -175,9 +220,34 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 	g.Fprint(w, closedelim)
 }
 
+// listElementType extracts the element type from a list type,
+// unwrapping output, promise, and union wrappers.
+// Returns nil if the type is not a list type.
+func listElementType(t model.Type) model.Type {
+	if l, ok := pcl.UnwrapOption(model.ResolveOutputs(t)).(*model.ListType); ok {
+		return l.ElementType
+	}
+	return nil
+}
+
+// isMapType returns true if the given type is a map or object type,
+// unwrapping output, promise, and optional wrappers.
+func isMapType(t model.Type) bool {
+	switch pcl.UnwrapOption(model.ResolveOutputs(t)).(type) {
+	case *model.MapType, *model.ObjectType:
+		return true
+	default:
+		return false
+	}
+}
+
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
 	applyArgs, then := pcl.ParseApplyCall(expr)
+
+	prev := g.insideApplyLambda
+	g.insideApplyLambda = true
+	defer func() { g.insideApplyLambda = prev }()
 
 	if len(applyArgs) == 1 {
 		// If we only have a single output, just generate a normal `.apply`.
@@ -208,7 +278,12 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
-	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), title(member), diagnostics
+	// the index module is not put into a submodule
+	if module == "index" {
+		module = ""
+	}
+	module = moduleToPythonModule(module, nil)
+	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), cgstrings.UppercaseFirst(member), diagnostics
 }
 
 var functionImports = map[string][]string{
@@ -221,7 +296,6 @@ var functionImports = map[string][]string{
 	"rootDirectory":    {"pulumi"},
 	"filebase64":       {"base64"},
 	"filebase64sha256": {"base64", "hashlib"},
-	"readDir":          {"os"},
 	"toBase64":         {"base64"},
 	"fromBase64":       {"base64"},
 	"toJSON":           {"json"},
@@ -230,17 +304,13 @@ var functionImports = map[string][]string{
 	"project":          {"pulumi"},
 	"organization":     {"pulumi"},
 	"cwd":              {"os"},
-	"mimeType":         {"mimetypes"},
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
 	if x.Name != pcl.Invoke {
 		return functionImports[x.Name]
 	}
-
-	pkg, _, _, diags := functionName(x.Args[0])
-	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
-	return []string{"pulumi_" + pkg}
+	return nil
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
@@ -248,9 +318,44 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case pcl.IntrinsicConvert:
 		from := expr.Args[0]
 		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
-		output, isOutput := to.(*model.OutputType)
-		if isOutput {
-			to = output.ElementType
+		to = model.ResolveOutputs(to)
+		if cns, ok := to.(*model.ConstType); ok {
+			to = cns.Type
+		}
+
+		fromType := from.Type()
+		isFromOutput, isFromPromise := model.ContainsEventuals(fromType)
+		fromType = model.ResolveOutputs(fromType)
+		if cns, ok := fromType.(*model.ConstType); ok {
+			fromType = cns.Type
+		}
+		// If fromType is optional (union(T, None)), unwrap to T. LowerConversion already selects a specific element
+		// type from the target union (stripping optionality from to), so we symmetrically unwrap fromType to avoid
+		// false type mismatches (e.g., treating Optional[bool] as needing string-to-bool conversion).
+		if union, ok := fromType.(*model.UnionType); ok && len(union.ElementTypes) == 2 {
+			if union.ElementTypes[0] == model.NoneType {
+				fromType = union.ElementTypes[1]
+			} else if union.ElementTypes[1] == model.NoneType {
+				fromType = union.ElementTypes[0]
+			}
+		}
+
+		genMaybeOutputConversion := func(conversionExpr func(string)) {
+			if isFromPromise {
+				g.Fgenf(w, "output(%.v).apply(lambda x: ", from)
+				conversionExpr("x")
+				g.Fgenf(w, ")")
+				return
+			}
+			if isFromOutput {
+				g.Fgenf(w, "%.v.apply(lambda x: ", from)
+				conversionExpr("x")
+				g.Fgenf(w, ")")
+				return
+			}
+			var t bytes.Buffer
+			g.Fgenf(&t, "%.v", from)
+			conversionExpr(t.String())
 		}
 		switch to := to.(type) {
 		case *model.EnumType:
@@ -278,7 +383,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				pkg += "." + strings.ReplaceAll(m, "/", ".")
 			}
 
-			if isOutput {
+			if isFromOutput {
 				g.Fgenf(w, "%.v.apply(lambda x: %s.%s(x))", from, pkg, enumName)
 			} else {
 				diag := pcl.GenEnum(to, from, func(member *schema.Enum) {
@@ -297,19 +402,51 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				}
 			}
 		default:
-			switch arg := from.(type) {
-			case *model.ObjectConsExpression:
-				g.genObjectConsExpression(w, arg, expr.Type())
+			switch {
+			case model.BoolType.AssignableFrom(to) && !model.BoolType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, `%s == "true"`, v)
+				})
+			// ids and strings are treated interchangeably in Python, so if we are casting to id but
+			// already have string _or_ id that's fine. Same for casting to string.
+			case model.StringType.AssignableFrom(to) &&
+				!model.StringType.AssignableFrom(fromType) &&
+				!model.IDType.AssignableFrom(fromType),
+				model.IDType.AssignableFrom(to) &&
+					!model.StringType.AssignableFrom(fromType) &&
+					!model.IDType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					if model.BoolType.AssignableFrom(fromType) {
+						g.Fgenf(w, `"true" if %s else "false"`, v)
+						return
+					}
+					g.Fgenf(w, "str(%s)", v)
+				})
+			case model.NumberType.AssignableFrom(to) && !model.NumberType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, "float(%s)", v)
+				})
+			case model.IntType.AssignableFrom(to) && !model.IntType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, "int(%s)", v)
+				})
 			default:
-				g.Fgenf(w, "%.v", expr.Args[0])
+				switch arg := from.(type) {
+				case *model.ObjectConsExpression:
+					g.genObjectConsExpression(w, arg, expr.Type())
+				default:
+					g.Fgenf(w, "%.v", expr.Args[0])
+				}
 			}
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)
+	case "recover":
+		g.Fgenf(w, "%.16v.recover(lambda __error: (lambda error: %.v)(str(__error)))", expr.Args[0], expr.Args[1])
 	case "element":
 		g.Fgenf(w, "%.16v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
-		g.Fgenf(w, `[{"key": k, "value": v} for k, v in %.v]`, expr.Args[0])
+		g.Fgenf(w, `[{"key": k, "value": v} for k, v in sorted(%.v.items())]`, expr.Args[0])
 	case "fileArchive":
 		g.Fgenf(w, "pulumi.FileArchive(%.v)", expr.Args[0])
 	case "remoteArchive":
@@ -331,8 +468,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "not_implemented(%v)", expr.Args[0])
 	case "singleOrNone":
 		g.Fgenf(w, "single_or_none(%v)", expr.Args[0])
-	case "mimeType":
-		g.Fgenf(w, "mimetypes.guess_type(%v)[0]", expr.Args[0])
 	case pcl.Call:
 		self := expr.Args[0]
 		method := expr.Args[1].(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
@@ -375,18 +510,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		g.Fprint(w, ")")
 	case pcl.Invoke:
-		if expr.Signature.MultiArgumentInputs {
-			err := fmt.Errorf("python program-gen does not implement MultiArgumentInputs for function '%v'",
-				expr.Args[0])
-			panic(err)
-		}
-
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 		if module != "" {
 			module = "." + module
 		}
-		name := fmt.Sprintf("%s%s.%s", pkg, module, PyName(fn))
+		name := fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, PyName(fn))
 
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
 		if isOut {
@@ -399,24 +528,29 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 
 		optionsBag := ""
-		if len(expr.Args) == 3 {
+		invokeOptions, hasOptions := pcl.InvokeOptions(expr)
+		parentSelf := g.isComponent && !pcl.InvokeOptionSet(expr, "parent")
+		if hasOptions || parentSelf {
 			var buf bytes.Buffer
-			if invokeOptions, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
-				if isOut {
-					g.Fgen(&buf, ", opts=pulumi.InvokeOutputOptions(")
-				} else {
-					g.Fgen(&buf, ", opts=pulumi.InvokeOptions(")
-				}
-				for i, item := range invokeOptions.Items {
-					last := i == len(invokeOptions.Items)-1
-					key := PyName(pcl.LiteralValueString(item.Key))
-					g.Fgenf(&buf, "%s=%v", key, item.Value)
-					if !last {
-						g.Fgen(&buf, ", ")
-					}
-				}
-				g.Fgen(&buf, ")")
+			if isOut {
+				g.Fgen(&buf, ", opts=pulumi.InvokeOutputOptions(")
+			} else {
+				g.Fgen(&buf, ", opts=pulumi.InvokeOptions(")
 			}
+			args := []string{}
+			if parentSelf {
+				args = append(args, "parent=self")
+			}
+			if hasOptions {
+				for _, item := range invokeOptions.Items {
+					var argBuf bytes.Buffer
+					key := PyName(pcl.LiteralValueString(item.Key))
+					g.Fgenf(&argBuf, "%s=%v", key, item.Value)
+					args = append(args, argBuf.String())
+				}
+			}
+			g.Fgen(&buf, strings.Join(args, ", "))
+			g.Fgen(&buf, ")")
 
 			optionsBag = buf.String()
 		}
@@ -445,28 +579,59 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			})
 		}
 
-		switch arg := expr.Args[1].(type) {
-		case *model.FunctionCallExpression:
-			if argsObject, ok := arg.Args[0].(*model.ObjectConsExpression); ok {
-				genFuncArgs(argsObject)
+		if expr.Signature.MultiArgumentInputs {
+			// A multi-argument invoke spreads its inputs into positional arguments, ordered by the
+			// schema's multiArgumentInputs list, with None standing in for omitted optional inputs.
+			var invokeArgs *model.ObjectConsExpression
+			if converted, objectArgs, _ := pcl.RecognizeTypedObjectCons(expr.Args[1]); converted {
+				invokeArgs = objectArgs
+			} else {
+				invokeArgs = expr.Args[1].(*model.ObjectConsExpression)
 			}
+			pcl.GenerateMultiArguments(g.Formatter, w, "None", invokeArgs, pcl.SortedFunctionParameters(expr), false)
+		} else {
+			switch arg := expr.Args[1].(type) {
+			case *model.FunctionCallExpression:
+				if argsObject, ok := arg.Args[0].(*model.ObjectConsExpression); ok {
+					genFuncArgs(argsObject)
+				}
 
-		case *model.ObjectConsExpression:
-			genFuncArgs(arg)
+			case *model.ObjectConsExpression:
+				genFuncArgs(arg)
+			}
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)
 	case "join":
 		g.Fgenf(w, "%.16v.join(%v)", expr.Args[0], expr.Args[1])
-	case "length":
-		g.Fgenf(w, "len(%.v)", expr.Args[0])
-	case "lookup":
-		if len(expr.Args) == 3 {
-			g.Fgenf(w, "(lambda v, def: v if v is not None else def)(%.16v[%.v], %.v)",
-				expr.Args[0], expr.Args[1], expr.Args[2])
-		} else {
-			g.Fgenf(w, "%.16v[%.v]", expr.Args[0], expr.Args[1])
+	case "max":
+		g.Fgen(w, "max(")
+		for i, arg := range expr.Args {
+			if i > 0 {
+				g.Fgen(w, ", ")
+			}
+			g.Fgenf(w, "%v", arg)
 		}
+		g.Fgen(w, ")")
+	case "min":
+		g.Fgen(w, "min(")
+		for i, arg := range expr.Args {
+			if i > 0 {
+				g.Fgen(w, ", ")
+			}
+			g.Fgenf(w, "%v", arg)
+		}
+		g.Fgen(w, ")")
+	case "length":
+		argType := pcl.UnwrapOption(model.ResolveOutputs(expr.Args[0].Type()))
+		if model.StringType.AssignableFrom(argType) {
+			g.Fgenf(w, "grapheme_length(%.v)", expr.Args[0])
+		} else {
+			g.Fgenf(w, "len(%.v)", expr.Args[0])
+		}
+	case "lookup":
+		g.Fgenf(w, "%.16v.get(%.v, %.v)",
+			expr.Args[0], expr.Args[1], expr.Args[2])
 	case "range":
 		g.Fprint(w, "range(")
 		for i, arg := range expr.Args {
@@ -478,8 +643,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fprint(w, ")")
 	case "readFile":
 		g.Fgenf(w, "(lambda path: open(path).read())(%.v)", expr.Args[0])
-	case "readDir":
-		g.Fgenf(w, "os.listdir(%.v)", expr.Args[0])
 	case "secret":
 		g.Fgenf(w, "pulumi.Output.secret(%v)", expr.Args[0])
 	case "unsecret":
@@ -562,7 +725,7 @@ func (g *generator) genCan(w io.Writer, args []model.Expression) {
 }
 
 func (g *generator) genRootDirectory(w io.Writer) {
-	g.Fgen(w, "pulumi.runtime.get_root_directory()")
+	g.Fgen(w, "pulumi.get_root_directory()")
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
@@ -647,7 +810,7 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 		}
 	case model.NoneType:
 		g.Fgen(w, "None")
-	case model.NumberType:
+	case model.NumberType, model.IntType:
 		bf := expr.Value.AsBigFloat()
 		if i, acc := bf.Int64(); acc == big.Exact {
 			g.Fgenf(w, "%d", i)
@@ -688,8 +851,31 @@ func (g *generator) genObjectConsExpression(w io.Writer, expr *model.ObjectConsE
 	targetType := pcl.LowerConversion(expr, destType)
 	typeName := g.argumentTypeName(expr, targetType) // Example: aws.s3.BucketLoggingArgs
 	td := g.typedDictEnabled(expr, targetType)
-	if typeName != "" && !td {
-		// If a typeName exists, and it's not for a typedDict, treat this as an Input Class
+
+	// Inside apply lambda bodies, pyright infers dict literals as dict[str, str]
+	// rather than the expected TypedDict. The union in `Input[T] = T | Output[T]`
+	// at the call site prevents pyright from propagating downward type context
+	// through `apply` into the lambda body.
+	// See https://github.com/microsoft/pyright/issues/11324.
+	// When the resource input's destination type has typed dicts enabled, resolve
+	// the type name from that destination type so we generate Args class form
+	// instead.
+	useArgsInApply := false
+	if g.insideApplyLambda && g.applyLambdaType != nil {
+		if elemType := listElementType(g.applyLambdaType); elemType != nil {
+			elemTargetType := pcl.LowerConversion(expr, elemType)
+			if g.typedDictEnabled(expr, elemTargetType) {
+				if name := g.argumentTypeName(expr, elemTargetType); name != "" {
+					typeName = name
+					useArgsInApply = true
+				}
+			}
+		}
+	}
+
+	if typeName != "" && (!td || useArgsInApply) {
+		// If a typeName exists and we're not using TypedDicts (or we're inside
+		// an apply lambda where dicts don't type-check), generate an Input Class.
 		// e.g. aws.s3.BucketLoggingArgs(key="value", foo="bar", ...)
 		if len(expr.Items) == 0 {
 			g.Fgenf(w, "%s()", typeName)
@@ -764,7 +950,33 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 }
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
-	rootName := PyName(expr.RootName)
+	// Hook command expressions may reference `args.X` to access resource data at call time.
+	if isHookArgsTraversal(expr) && len(expr.Traversal) >= 2 {
+		if attr, ok := expr.Traversal[1].(hcl.TraverseAttr); ok {
+			switch attr.Name {
+			case "urn", "id", "name", "type":
+				g.Fgenf(w, "args.%s", attr.Name)
+				return
+			}
+			mapFields := map[string]string{
+				"newInputs":  "new_inputs",
+				"oldInputs":  "old_inputs",
+				"newOutputs": "new_outputs",
+				"oldOutputs": "old_outputs",
+			}
+			if pyField, ok := mapFields[attr.Name]; ok && len(expr.Traversal) >= 3 {
+				if subAttr, ok := expr.Traversal[2].(hcl.TraverseAttr); ok {
+					g.Fgenf(w, `str(args.%s["%s"])`, pyField, subAttr.Name)
+					return
+				}
+			}
+		}
+	}
+
+	rootName := g.nodeName(expr.RootName)
+	if expr.RootName == "range" && g.rangeVariable != "" {
+		rootName = g.rangeVariable
+	}
 	if g.isComponent {
 		configVars := map[string]*pcl.ConfigVariable{}
 		for _, configVar := range g.program.ConfigVariables() {
@@ -784,6 +996,29 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 	g.Fgen(w, rootName)
 	g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts)
+}
+
+func isHookArgsTraversal(expr *model.ScopeTraversalExpression) bool {
+	if expr.RootName != "args" || len(expr.Parts) == 0 {
+		return false
+	}
+	rootVar, ok := expr.Parts[0].(*model.Variable)
+	if !ok {
+		return false
+	}
+	objType, ok := model.ResolveOutputs(rootVar.VariableType).(*model.ObjectType)
+	if !ok {
+		return false
+	}
+	for _, prop := range []string{
+		"urn", "id", "name", "type",
+		"newInputs", "oldInputs", "newOutputs", "oldOutputs",
+	} {
+		if _, ok := objType.Properties[prop]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression) {

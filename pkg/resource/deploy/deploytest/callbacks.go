@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ func NewCallbacksServer() (*CallbackServer, error) {
 			pulumirpc.RegisterCallbacksServer(srv, callbackServer)
 			return nil
 		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not start resource provider service: %w", err)
@@ -61,14 +61,14 @@ func (s *CallbackServer) Close() error {
 }
 
 func (s *CallbackServer) Allocate(
-	callback func(args []byte,
-	) (proto.Message, error),
+	callback func(args []byte) (proto.Message, error),
 ) (*pulumirpc.Callback, error) {
 	token := uuid.NewString()
 	s.callbacks[token] = callback
 	return &pulumirpc.Callback{
-		Target: fmt.Sprintf("127.0.0.1:%d", s.handle.Port),
-		Token:  token,
+		Target:            fmt.Sprintf("127.0.0.1:%d", s.handle.Port),
+		Token:             token,
+		AcceptsByteString: true,
 	}, nil
 }
 

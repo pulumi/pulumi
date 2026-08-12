@@ -1,7 +1,6 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
 
- <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 10%}>++<{%reset%}> pkgA:m:typB resB <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> [diff: <{%fg 3%}>~frob<{%reset%}><{%reset%}>]
  <{%fg 10%}>++<{%reset%}> pkgA:m:typB resB <{%fg 10%}>created replacement<{%reset%}> [diff: <{%fg 3%}>~frob<{%reset%}><{%reset%}>]
@@ -22,6 +21,7 @@
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 13%}>+-1 replaced<{%reset%}>
     1 unchanged
+    <{%fg 1%}>2 errored<{%reset%}>
 
 <{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
 

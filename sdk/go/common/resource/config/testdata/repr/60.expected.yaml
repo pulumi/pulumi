@@ -8,7 +8,7 @@ paths:
     - c
     string: '[{"secure":"securevalue"},"b","c"]'
     redacted: '["[secret]","b","c"]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAZv+EKAADF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAA6/4IfAAEGc2VjdXJlBnN0cmluZwwNAAtzZWN1cmV2YWx1ZQZzdHJpbmcMAwABYgZzdHJpbmcMAwABYw==
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAZf+CJwADF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAADr/gB8AAQZzZWN1cmUGc3RyaW5nDA0AC3NlY3VyZXZhbHVlBnN0cmluZwwDAAFiBnN0cmluZwwDAAFj
     secure: true
     isObject: true
     secureValues:

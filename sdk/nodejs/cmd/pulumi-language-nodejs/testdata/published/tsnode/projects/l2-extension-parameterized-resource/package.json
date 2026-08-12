@@ -1,0 +1,11 @@
+{
+	"name": "l2-extension-parameterized-resource",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/myext": "ROOT/artifacts/pulumi-myext-2.0.0.tgz"
+	}
+}

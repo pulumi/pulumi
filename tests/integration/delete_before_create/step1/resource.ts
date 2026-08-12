@@ -1,8 +1,8 @@
-// Copyright 2016-2022, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 import * as pulumi from "@pulumi/pulumi";
 import * as dynamic from "@pulumi/pulumi/dynamic";
-import {v4 as uuidv4} from "uuid";
+import { randomUUID } from "crypto";
 
 export class Provider implements dynamic.ResourceProvider {
     public static readonly instance = new Provider();
@@ -35,7 +35,7 @@ export class Provider implements dynamic.ResourceProvider {
 
     public async create(inputs: any): Promise<dynamic.CreateResult> {
         return {
-            id: uuidv4(),
+            id: randomUUID(),
             outs: inputs,
         };
     }

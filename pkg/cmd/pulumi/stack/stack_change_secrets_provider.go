@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,18 +16,18 @@ package stack
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -46,8 +46,7 @@ type stackChangeSecretsProviderCmd struct {
 func newStackChangeSecretsProviderCmd() *cobra.Command {
 	var scspcmd stackChangeSecretsProviderCmd
 	cmd := &cobra.Command{
-		Use:   "change-secrets-provider <new-secrets-provider>",
-		Args:  cmdutil.ExactArgs(1),
+		Use:   "change-secrets-provider",
 		Short: "Change the secrets provider for a stack",
 		Long: "Change the secrets provider for a stack. " +
 			"Valid secret providers types are `default`, `passphrase`, `awskms`, `azurekeyvault`, `gcpkms`, `hashivault`.\n\n" +
@@ -69,9 +68,19 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			"* `pulumi stack change-secrets-provider \"hashivault://mykey\"`",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			if scspcmd.stdout == nil {
+				scspcmd.stdout = cmd.OutOrStdout()
+			}
 			return scspcmd.Run(ctx, args)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "new-secrets-provider"},
+		},
+		Required: 1,
+	})
 
 	cmd.PersistentFlags().StringVarP(
 		&scspcmd.stack, "stack", "s", "",
@@ -82,11 +91,8 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 
 func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string) error {
 	stdout := cmd.stdout
-	if stdout == nil {
-		stdout = os.Stdout
-	}
 	if cmd.secretsProvider == nil {
-		cmd.secretsProvider = stack.DefaultSecretsProvider
+		cmd.secretsProvider = backend_secrets.DefaultProvider
 	}
 
 	// For change-secrets-provider, we explicitly don't want any fallback behaviour when loading secrets providers.
@@ -102,7 +108,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		return err
 	}
 
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil {
 		return err
 	}
@@ -110,17 +116,19 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	// Get the current stack and its project
 	currentStack, err := RequireStack(
 		ctx,
+		cmdutil.Diag(),
 		ws,
 		cmdBackend.DefaultLoginManager,
 		cmd.stack,
 		LoadOnly,
 		opts,
+		"",
 	)
 	if err != nil {
 		return err
 	}
 
-	currentProjectStack, err := LoadProjectStack(project, currentStack)
+	currentProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), project, currentStack, "")
 	if err != nil {
 		return err
 	}
@@ -148,7 +156,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		// the current secrets provider is empty
 		((secretsProvider == "passphrase") && (currentProjectStack.SecretsProvider == ""))
 	// Create the new secrets provider and set to the currentStack
-	if err := CreateSecretsManagerForExistingStack(ctx, ws, currentStack, secretsProvider, rotateProvider,
+	if err := CreateSecretsManagerForExistingStack(ctx, cmdutil.Diag(), ws, currentStack, secretsProvider, rotateProvider,
 		false /*creatingStack*/); err != nil {
 		return err
 	}
@@ -157,6 +165,7 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	fmt.Fprintf(stdout, "Migrating old configuration and state to new secrets provider\n")
 	return migrateOldConfigAndCheckpointToNewSecretsProvider(
 		ctx,
+		cmdutil.Diag(),
 		ssml,
 		cmd.secretsProvider,
 		project,
@@ -168,14 +177,16 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 
 func migrateOldConfigAndCheckpointToNewSecretsProvider(
 	ctx context.Context,
+	sink diag.Sink,
 	ssml SecretsManagerLoader,
 	secretsProvider secrets.Provider,
 	project *workspace.Project,
 	currentStack backend.Stack,
-	currentConfig *workspace.ProjectStack, decrypter config.Decrypter,
+	currentConfig *workspace.ProjectStack,
+	decrypter config.Decrypter,
 ) error {
 	// Reload the project stack after the new secrets provider is in place
-	reloadedProjectStack, err := LoadProjectStack(project, currentStack)
+	reloadedProjectStack, err := LoadProjectStack(ctx, sink, project, currentStack, "")
 	if err != nil {
 		return err
 	}
@@ -205,37 +216,27 @@ func migrateOldConfigAndCheckpointToNewSecretsProvider(
 		}
 	}
 
-	if err := SaveProjectStack(currentStack, reloadedProjectStack); err != nil {
+	if err := SaveProjectStack(ctx, currentStack, reloadedProjectStack, ""); err != nil {
 		return err
 	}
 
 	// Load the current checkpoint so those secrets can also be decrypted
-	checkpoint, err := currentStack.ExportDeployment(ctx)
+	checkpoint, err := backend.ExportStackDeployment(ctx, currentStack)
 	if err != nil {
 		return err
 	}
 	snap, err := stack.DeserializeUntypedDeployment(ctx, checkpoint, secretsProvider)
 	if err != nil {
-		return checkDeploymentVersionError(err, currentStack.Ref().Name().String())
+		return stack.FormatDeploymentDeserializationError(err, currentStack.Ref().Name().String())
 	}
 
 	// Reserialize the Snapshopshot with the NewSecrets Manager
 	snap.SecretsManager = newSecretsManager
-	reserializedDeployment, err := stack.SerializeDeployment(ctx, snap, false /*showSecrets*/)
+	dep, err := stack.SerializeUntypedDeployment(ctx, snap, nil /*opts*/)
 	if err != nil {
 		return err
-	}
-
-	bytes, err := json.Marshal(reserializedDeployment)
-	if err != nil {
-		return err
-	}
-
-	dep := apitype.UntypedDeployment{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Deployment: bytes,
 	}
 
 	// Import the newly changes Deployment
-	return currentStack.ImportDeployment(ctx, &dep)
+	return backend.ImportStackDeployment(ctx, currentStack, dep)
 }

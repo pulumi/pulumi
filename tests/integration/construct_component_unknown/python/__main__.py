@@ -1,6 +1,6 @@
-# Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+# Copyright 2016, Pulumi Corporation.  All rights reserved.
 
-from resource import Resource
+from my_resource import Resource
 from component import Component
 
 resource = Resource("resource")

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,14 +20,15 @@ import (
 	"os"
 
 	survey "github.com/AlecAivazis/survey/v2"
-	surveycore "github.com/AlecAivazis/survey/v2/core"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
@@ -43,6 +44,16 @@ type ApplierOptions struct {
 // Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
 	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
+
+// Explainer provides a contract for explaining changes that will be made to the stack.
+// For Pulumi Cloud, this is a Neo explainer.
+type Explainer interface {
+	// Explain returns a human-readable explanation of the changes that will be made to the stack.
+	Explain(ctx context.Context, stackRef StackReference, kind apitype.UpdateKind, op UpdateOperation,
+		events []engine.Event) (string, error)
+	// IsExplainPreviewEnabled returns whether the explainer is enabled for the given project.
+	IsExplainPreviewEnabled(ctx context.Context, opts display.Options) bool
+}
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -77,7 +88,7 @@ const (
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier,
+	op UpdateOperation, apply Applier, explainer Explainer,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
@@ -92,14 +103,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	go func() {
 		// Pull out relevant events we will want to display in the confirmation below.
 		for e := range eventsChannel {
-			// Don't include internal events in the confirmation stats.
-			if e.Internal() {
-				continue
-			}
-			if e.Type == engine.ResourcePreEvent ||
-				e.Type == engine.ResourceOutputsEvent ||
-				e.Type == engine.PolicyRemediationEvent ||
-				e.Type == engine.SummaryEvent {
+			if diffEvent(e) {
 				events = append(events, e)
 			}
 		}
@@ -120,12 +124,18 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		return plan, changes, err
 	}
 
+	if op.Opts.Display.ShowDiff {
+		diffOpts := op.Opts.Display
+		diffOpts.Type = display.DisplayDiff
+		contract.IgnoreError(printDiff(events, diffOpts))
+	}
+
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
 	if op.Opts.AutoApprove || kind == apitype.PreviewUpdate {
 		close(eventsChannel)
-		// If we're running in experimental mode then return the plan generated, else discard it. The user may
+		// If we're running in strict plan mode then return the plan generated, else discard it. The user may
 		// be explicitly setting a plan but that's handled higher up the call stack.
-		if !op.Opts.Engine.Experimental {
+		if !op.Opts.Engine.Strict {
 			plan = nil
 		}
 		return plan, changes, nil
@@ -155,29 +165,49 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	}
 
 	// Otherwise, ensure the user wants to proceed.
-	plan, err = confirmBeforeUpdating(kind, stack, events, plan, op.Opts)
+	plan, err = confirmBeforeUpdating(ctx, kind, stack.Ref(), op, events, plan, explainer)
 	close(eventsChannel)
 	return plan, changes, err
 }
 
+func printDiff(events []engine.Event, displayOpts display.Options) error {
+	displayOpts.TruncateOutput = false // We want to always show the full details
+	diff, err := display.CreateDiff(events, displayOpts)
+	if err != nil {
+		return err
+	}
+	stdout := displayOpts.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	_, err = fmt.Fprintln(stdout, diff)
+	return err
+}
+
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
-func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
-	events []engine.Event, plan *deploy.Plan, opts UpdateOptions,
+func confirmBeforeUpdating(ctx context.Context, kind apitype.UpdateKind, stackRef StackReference, op UpdateOperation,
+	events []engine.Event, plan *deploy.Plan, explainer Explainer,
+	// askOpts is used for testing to control stdin/stdout
+	askOpts ...survey.AskOpt,
 ) (*deploy.Plan, error) {
 	for {
-		var response string
-
-		surveycore.DisableColor = true
-		surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
-			icons.Question = survey.Icon{}
-			icons.SelectFocus = survey.Icon{Text: opts.Display.Color.Colorize(colors.BrightGreen + ">" + colors.Reset)}
-		})
+		opts := op.Opts
 
 		choices := []string{string(yes), string(no)}
 
+		// explain is down here instead of with the other choices so we can optionally emit an emoji
+		explainChoice := "explain " + cmdutil.EmojiOr("✨", "")
+
 		// For non-previews, we can also offer a detailed summary.
 		if !opts.SkipPreview {
-			choices = append(choices, string(details))
+			if !opts.Display.ShowDiff {
+				choices = append(choices, string(details))
+			}
+
+			// If we have an explainer (pulumi-cloud) we can offer to explain the changes.
+			if explainer != nil && explainer.IsExplainPreviewEnabled(ctx, opts.Display) {
+				choices = append(choices, explainChoice)
+			}
 		}
 
 		var previewWarning string
@@ -186,22 +216,15 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		}
 
 		// Create a prompt. If this is a refresh, we'll add some extra text so it's clear we aren't updating resources.
-		prompt := "\b" + opts.Display.Color.Colorize(
-			colors.SpecPrompt+fmt.Sprintf("Do you want to perform this %s%s?",
-				updateTextMap[kind].previewText, previewWarning)+colors.Reset)
+		prompt := fmt.Sprintf("Do you want to perform this %s%s?", updateTextMap[kind].previewText, previewWarning)
 		if kind == apitype.RefreshUpdate {
-			prompt += "\n" +
-				opts.Display.Color.Colorize(colors.SpecImportant+
-					"No resources will be modified as part of this refresh; just your stack's state will be.\n"+
-					colors.Reset)
+			prompt += colors.Reset + "\n" + colors.SpecImportant +
+				"No resources will be modified as part of this refresh; just your stack's state will be.\n"
 		}
 
 		// Now prompt the user for a yes, no, or details, and then proceed accordingly.
-		if err := survey.AskOne(&survey.Select{
-			Message: prompt,
-			Options: choices,
-			Default: string(no),
-		}, &response, surveyIcons); err != nil {
+		response, err := ui.PromptUserErr(prompt, choices, string(no), opts.Display.Color, askOpts...)
+		if err != nil {
 			return nil, fmt.Errorf("confirmation cancelled, not proceeding with the %s: %w", kind, err)
 		}
 
@@ -210,30 +233,61 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		}
 
 		if response == string(yes) {
-			// If we're in experimental mode always use the plan
-			if opts.Engine.Experimental {
+			// If we're in strict plan mode always use the plan
+			if opts.Engine.Strict {
 				return plan, nil
 			}
 			return nil, nil
 		}
 
 		if response == string(details) {
-			diff, err := display.CreateDiff(events, opts.Display)
-			if err != nil {
+			if err := printDiff(events, opts.Display); err != nil {
 				return nil, err
 			}
-			_, err = os.Stdout.WriteString(diff + "\n")
+			continue
+		}
+
+		if response == explainChoice {
+			contract.Assertf(explainer != nil, "explainer must be present if explain option was selected")
+
+			explanation, err := explainer.Explain(ctx, stackRef, kind, op, events)
+
+			stdout := op.Opts.Display.Stdout
+			if stdout == nil {
+				stdout = os.Stdout
+			}
+			if err != nil {
+				_, err = stdout.Write([]byte(
+					opts.Display.Color.Colorize(
+						"An error occurred while explaining the changes:\n" +
+							colors.BrightRed + err.Error() + colors.Reset + "\n\n")))
+				contract.IgnoreError(err)
+				continue
+			}
+			_, err = stdout.Write([]byte(explanation + "\n"))
 			contract.IgnoreError(err)
 			continue
 		}
 	}
 }
 
+// Preview runs a preview of the given operation by invoking apply with DryRun set. It exists so that
+// backends can share a single implementation of Backend.Preview rather than each duplicating the same
+// ApplierOptions setup and apply call.
+func Preview(ctx context.Context, stack Stack, op UpdateOperation, apply Applier,
+	events chan<- engine.Event,
+) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+	opts := ApplierOptions{
+		DryRun:   true,
+		ShowLink: true,
+	}
+	return apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
+}
+
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier, events chan<- engine.Event,
+	op UpdateOperation, apply Applier, explainer Explainer, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
 	// Preview the operation to the user and ask them if they want to proceed.
-
 	if !op.Opts.SkipPreview {
 		// We want to run the preview with the given plan and then run the full update with the initial plan as well,
 		// but because plans are mutated as they're checked we need to clone it here.
@@ -244,7 +298,7 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 			originalPlan = op.Opts.Engine.Plan.Clone()
 		}
 
-		plan, changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply)
+		plan, changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply, explainer)
 		if err != nil || kind == apitype.PreviewUpdate {
 			return changes, err
 		}
@@ -269,8 +323,57 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	// No need to generate a plan at this stage, there's no way for the system or user to extract the plan
 	// after here.
 	op.Opts.Engine.GeneratePlan = false
-	_, changes, res := apply(ctx, kind, stack, op, opts, events)
-	return changes, res
+
+	var changes sdkDisplay.ResourceChanges
+	err := RunCollectingDiff(op.Opts.Display, events, func(ev chan<- engine.Event) error {
+		var res error
+		_, changes, res = apply(ctx, kind, stack, op, opts, ev)
+		return res
+	})
+	return changes, err
+}
+
+// diffEvent reports whether e is one of the resource step events CreateDiff renders — the set both
+// the pre-confirmation preview diff and the post-operation diff collect.
+func diffEvent(e engine.Event) bool {
+	return !e.Internal() && (e.Type == engine.ResourcePreEvent ||
+		e.Type == engine.ResourceOutputsEvent ||
+		e.Type == engine.PolicyRemediationEvent ||
+		e.Type == engine.SummaryEvent)
+}
+
+// RunCollectingDiff runs an apply or preview operation and, when ShowDiff is set, prints the diff
+// afterwards from the events it emitted. Events are forwarded to callerEvents when it is non-nil.
+func RunCollectingDiff(displayOpts display.Options, callerEvents chan<- engine.Event,
+	run func(events chan<- engine.Event) error,
+) error {
+	if !displayOpts.ShowDiff {
+		return run(callerEvents)
+	}
+
+	collected := make(chan engine.Event)
+	var events []engine.Event
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for e := range collected {
+			if diffEvent(e) {
+				events = append(events, e)
+			}
+			if callerEvents != nil {
+				callerEvents <- e
+			}
+		}
+	}()
+	err := run(collected)
+	close(collected)
+	<-done
+	if err == nil {
+		diffOpts := displayOpts
+		diffOpts.Type = display.DisplayDiff
+		contract.IgnoreError(printDiff(events, diffOpts))
+	}
+	return err
 }
 
 type updateStats struct {

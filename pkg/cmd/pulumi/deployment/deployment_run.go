@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@ package deployment
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -28,7 +30,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newDeploymentRunCmd() *cobra.Command {
+func newDeploymentRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 	// Flags for remote operations.
 	remoteArgs := RemoteArgs{}
 
@@ -36,16 +38,14 @@ func newDeploymentRunCmd() *cobra.Command {
 	var suppressPermalink bool
 
 	cmd := &cobra.Command{
-		Use:   "run <operation> [url]",
+		Use:   "run",
 		Short: "Launch a deployment job on Pulumi Cloud",
 		Long: "Launch a deployment job on Pulumi Cloud\n" +
 			"\n" +
 			"This command queues a new deployment job for any supported operation of type \n" +
 			"update, preview, destroy, refresh, detect-drift or remediate-drift.",
-		Args: cmdutil.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
 
 			operation, err := apitype.ParsePulumiOperation(args[0])
 			if err != nil {
@@ -64,7 +64,11 @@ func newDeploymentRunCmd() *cobra.Command {
 				SuppressPermalink: suppressPermalink,
 			}
 
-			project, _, err := ws.ReadProject()
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting current working directory: %w", err)
+			}
+			project, _, err := ws.ReadProject(cwd)
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -81,11 +85,13 @@ func newDeploymentRunCmd() *cobra.Command {
 
 			s, err := cmdStack.RequireStack(
 				ctx,
+				cmdutil.Diag(),
 				ws,
 				backend.DefaultLoginManager,
 				stack,
 				cmdStack.OfferNew|cmdStack.SetCurrent,
 				display,
+				"",
 			)
 			if err != nil {
 				return err
@@ -99,16 +105,26 @@ func newDeploymentRunCmd() *cobra.Command {
 		},
 	}
 
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "operation"},
+			{Name: "url"},
+		},
+		Required: 1,
+	})
+
 	// Remote flags
 	remoteArgs.ApplyFlagsForDeploymentCommand(cmd)
 
 	cmd.PersistentFlags().BoolVar(
 		&suppressPermalink, "suppress-permalink", false,
-		"Suppress display of the state permalink")
+		"Suppress display of the state permalink",
+	)
 
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
+		"The name of the stack to operate on. Defaults to the current stack",
+	)
 
 	return cmd
 }

@@ -1,0 +1,34 @@
+{
+    "compilerOptions": {
+        // Output
+        "outDir": "bin",
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        "stripInternal": true,
+        // Environment
+        "target": "ES2022",
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "moduleDetection": "force",
+        "types": ["node"],
+        // Type Checking
+        "strict": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitReturns": true,
+        "skipLibCheck": true
+    },
+    "files": [
+        "index.ts",
+        "mod/index.ts",
+        "mod/nested/index.ts",
+        "mod/nested/res.ts",
+        "mod/res.ts",
+        "provider.ts",
+        "resArray.ts",
+        "resList.ts",
+        "resMap.ts",
+        "resResource.ts",
+        "utilities.ts"
+    ]
+}

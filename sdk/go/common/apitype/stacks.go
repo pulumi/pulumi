@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,11 @@ package apitype
 
 // StackSummary describes the state of a stack, without including its specific resources, etc.
 type StackSummary struct {
+	// ID is the logical ID of the stack.
+	//
+	// For maintainers of the Pulumi service:
+	// ID corresponds to the Program ID, not the Stack ID inside the Pulumi service.
+	ID string `json:"id"`
 	// OrgName is the organization name the stack is found in.
 	OrgName string `json:"orgName"`
 	// ProjectName is the name of the project the stack is associated with.
@@ -61,10 +66,15 @@ type CreateStackRequest struct {
 
 	// An optional state to initialize the stack with.
 	State *UntypedDeployment `json:"state,omitempty"`
+
+	Config *StackConfig `json:"config,omitempty"`
 }
 
 // CreateStackResponse is the response from a create Stack request.
-type CreateStackResponse struct{}
+type CreateStackResponse struct {
+	// Messages is a list of messages that should be displayed to the user.
+	Messages []Message `json:"messages,omitempty"`
+}
 
 // EncryptValueRequest defines the request body for encrypting a value.
 type EncryptValueRequest struct {

@@ -15,10 +15,10 @@
 package toolchain
 
 import (
-	"context"
+	"bytes"
 	"os"
 	"path/filepath"
-	"syscall"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
@@ -83,52 +83,297 @@ func TestUvVirtualenvPath(t *testing.T) {
 	})
 }
 
+func TestUvVirtualenvPathUvProjectEnvironment(t *testing.T) {
+	t.Run("absolute path", func(t *testing.T) {
+		root := t.TempDir()
+		venv := filepath.Join(t.TempDir(), "custom-env")
+		t.Setenv("UV_PROJECT_ENVIRONMENT", venv)
+
+		uv, err := newUv(root, "")
+		require.NoError(t, err)
+		require.Equal(t, venv, uv.virtualenvPath, "virtualenv is taken from UV_PROJECT_ENVIRONMENT")
+	})
+
+	t.Run("relative path resolves against the project directory", func(t *testing.T) {
+		root := t.TempDir()
+		pulumiRoot := filepath.Join(root, "subfolder")
+		require.NoError(t, os.Mkdir(pulumiRoot, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "uv.lock"), []byte{}, 0o600))
+		t.Setenv("UV_PROJECT_ENVIRONMENT", "custom-env")
+
+		uv, err := newUv(pulumiRoot, "")
+		require.NoError(t, err)
+		require.Equal(t, filepath.Join(root, "custom-env"), uv.virtualenvPath,
+			"relative UV_PROJECT_ENVIRONMENT is resolved next to uv.lock")
+	})
+
+	t.Run("virtualenv option takes precedence", func(t *testing.T) {
+		root := t.TempDir()
+		t.Setenv("UV_PROJECT_ENVIRONMENT", filepath.Join(t.TempDir(), "custom-env"))
+
+		uv, err := newUv(root, "banana")
+		require.NoError(t, err)
+		require.Equal(t, filepath.Join(root, "banana"), uv.virtualenvPath,
+			"the virtualenv runtime option wins over UV_PROJECT_ENVIRONMENT")
+	})
+
+	t.Run("empty value is ignored", func(t *testing.T) {
+		root := t.TempDir()
+		t.Setenv("UV_PROJECT_ENVIRONMENT", "")
+
+		uv, err := newUv(root, "")
+		require.NoError(t, err)
+		require.Equal(t, filepath.Join(root, ".venv"), uv.virtualenvPath, "virtualenv is in the project root")
+	})
+}
+
 func TestUvVersion(t *testing.T) {
 	t.Parallel()
-
-	uv, err := newUv(".", "")
-	require.NoError(t, err)
 
 	for _, versionString := range []string{
 		"uv 0.4.26",
 		"uv 0.4.26 (Homebrew 2024-10-23)",
 		"uv 0.4.26 (d2cd09bbd 2024-10-25)",
 	} {
-		v, err := uv.uvVersion(versionString)
+		v, err := ParseUvVersion(versionString)
 		require.NoError(t, err)
 		require.Equal(t, semver.MustParse("0.4.26"), v)
 	}
 
-	_, err = uv.uvVersion("uv 0.4.25")
+	_, err := ParseUvVersion("uv 0.4.25")
 	require.ErrorContains(t, err, "less than the minimum required version")
 }
 
-func TestEnsureVenv(t *testing.T) {
+func TestUvCommandSyncsEnvironment(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
+	pyproject, err := os.ReadFile(filepath.Join("testdata", "project", "pyproject.toml"))
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(root, "pyproject.toml"), pyproject, 0o600)
+	require.NoError(t, err)
+
 	uv, err := newUv(root, "")
 	require.NoError(t, err)
 
-	// Create a virtualenv and record the directory's inode.
-	err = uv.EnsureVenv(context.Background(), root, false /* useLanguageVersionTools */, false, /* showOutput */
-		nil /* infoWriter */, nil /* infoWriter */)
+	// Run a python command, this should run `uv sync` as side effect
+	cmd, err := uv.Command(t.Context(), "-c", "print('hello')")
 	require.NoError(t, err)
-	info, err := os.Stat(filepath.Join(root, ".venv"))
+	out, err := cmd.CombinedOutput()
 	require.NoError(t, err)
-	stat, ok := info.Sys().(*syscall.Stat_t)
-	require.True(t, ok)
-	inode1 := stat.Ino
+	require.Equal(t, "hello", strings.TrimSpace(string(out)))
 
-	// Run EnsureVenv again and ensure the directory's inode is the same.
-	err = uv.EnsureVenv(context.Background(), root, false /* useLanguageVersionTools */, false, /* showOutput */
-		nil /* infoWriter */, nil /* infoWriter */)
-	require.NoError(t, err)
-	info, err = os.Stat(filepath.Join(root, ".venv"))
-	require.NoError(t, err)
-	stat, ok = info.Sys().(*syscall.Stat_t)
-	require.True(t, ok)
-	inode2 := stat.Ino
+	// check that .venv exists
+	require.DirExists(t, filepath.Join(root, ".venv"))
 
-	require.Equal(t, inode1, inode2)
+	// `wheel`, the project's dependency, should be installed
+	cmd, err = uv.ModuleCommand(t.Context(), "wheel", "version")
+	require.NoError(t, err)
+	out, err = cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.True(t, strings.Contains(string(out), "wheel"), "unexpected output: %s", out)
+}
+
+func TestUvCommandSyncsEnvironmentCustomVenv(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	pyproject, err := os.ReadFile(filepath.Join("testdata", "project", "pyproject.toml"))
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(root, "pyproject.toml"), pyproject, 0o600)
+	require.NoError(t, err)
+
+	uv, err := newUv(root, "my_venv")
+	require.NoError(t, err)
+
+	// Run a python command, this should run `uv sync` as side effect
+	cmd, err := uv.Command(t.Context(), "-c", "print('hello')")
+	require.NoError(t, err)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.Equal(t, "hello", strings.TrimSpace(string(out)))
+
+	// check that my_venv exists
+	require.DirExists(t, filepath.Join(root, "my_venv"))
+
+	// `wheel`, the project's dependency, should be installed
+	cmd, err = uv.ModuleCommand(t.Context(), "wheel", "version")
+	require.NoError(t, err)
+	out, err = cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.True(t, strings.Contains(string(out), "wheel"), "unexpected output: %s", out)
+}
+
+func TestUvCommandSyncsEnvironmentUvProjectEnvironment(t *testing.T) {
+	root := t.TempDir()
+	pyproject, err := os.ReadFile(filepath.Join("testdata", "project", "pyproject.toml"))
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(root, "pyproject.toml"), pyproject, 0o600)
+	require.NoError(t, err)
+
+	venv := filepath.Join(t.TempDir(), "custom-env")
+	t.Setenv("UV_PROJECT_ENVIRONMENT", venv)
+
+	uv, err := newUv(root, "")
+	require.NoError(t, err)
+
+	cmd, err := uv.Command(t.Context(), "-c", "print('hello')")
+	require.NoError(t, err)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.Equal(t, "hello", strings.TrimSpace(string(out)))
+
+	require.DirExists(t, venv)
+	require.NoDirExists(t, filepath.Join(root, ".venv"))
+
+	cmd, err = uv.ModuleCommand(t.Context(), "wheel", "version")
+	require.NoError(t, err)
+	out, err = cmd.CombinedOutput()
+	require.NoError(t, err)
+	require.True(t, strings.Contains(string(out), "wheel"), "unexpected output: %s", out)
+}
+
+// Test that we show the underlying error from `uv` when linking fails
+func TestUvLinkPackagesError(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	pyproject := `[project]
+name = "my-project"
+version = "1.2.3"
+dependencies = []
+`
+	err := os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600)
+	require.NoError(t, err)
+	uv, err := newUv(root, "")
+	require.NoError(t, err)
+
+	err = uv.LinkPackages(t.Context(), map[string]string{"nope": "." + string(filepath.Separator) + "nope"})
+
+	require.Regexp(t, "Distribution not found at:.*nope", err.Error())
+}
+
+// Test that we show the underlying error from `uv` when dependency installation fails
+func TestUvInstallDependenciesError(t *testing.T) {
+	t.Parallel()
+
+	pyproject := `[project]
+name = "my-project"
+version = "1.2.3"
+dependencies = ["fail-to-install"]
+[tool.uv.sources]
+fail-to-install = { path = "./fail-to-install" }
+`
+
+	t.Run("show output false", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		err := os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600)
+		require.NoError(t, err)
+		uv, err := newUv(root, "")
+		require.NoError(t, err)
+
+		err = uv.InstallDependencies(t.Context(), root, false, false /* showOutput */, nil, nil)
+		require.Regexp(t, "Distribution not found at:.*fail-to-install", err.Error())
+	})
+
+	t.Run("show output true", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		err := os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600)
+		require.NoError(t, err)
+		uv, err := newUv(root, "")
+		require.NoError(t, err)
+		stdout := &bytes.Buffer{}
+		stderr := &bytes.Buffer{}
+
+		err = uv.InstallDependencies(t.Context(), root, false, true /* showOutput */, stdout, stderr)
+
+		require.ErrorContains(t, err, "exit status")
+		require.Regexp(t, "Distribution not found at:.*fail-to-install", stderr)
+	})
+}
+
+func TestUvFailsWhenPyprojectMissingProjectSection(t *testing.T) {
+	t.Parallel()
+
+	t.Run("InstallDependencies", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		err := os.WriteFile(filepath.Join(root, "pyproject.toml"),
+			[]byte("[tool.something]\nvalue = 1\n"), 0o600)
+		require.NoError(t, err)
+		uv, err := newUv(root, "")
+		require.NoError(t, err)
+
+		err = uv.InstallDependencies(t.Context(), root, false, false, nil, nil)
+		require.ErrorContains(t, err, "missing a [project] section")
+	})
+
+	t.Run("Command", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		err := os.WriteFile(filepath.Join(root, "pyproject.toml"),
+			[]byte("[tool.something]\nvalue = 1\n"), 0o600)
+		require.NoError(t, err)
+		uv, err := newUv(root, "")
+		require.NoError(t, err)
+
+		_, err = uv.Command(t.Context(), "-c", "print('hello')")
+		require.ErrorContains(t, err, "missing a [project] section")
+	})
+}
+
+func TestUvMergeRequirements(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	// pyproject.toml without [project] section
+	pyproject := `[tool.pylint."MESSAGES CONTROL"]
+max-line-length = 120
+`
+	require.NoError(t, os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "requirements.txt"), []byte("wheel\n"), 0o600))
+
+	uv, err := newUv(root, "")
+	require.NoError(t, err)
+
+	err = uv.InstallDependencies(t.Context(), root, false, false, nil, nil)
+	require.NoError(t, err)
+
+	require.NoFileExists(t, filepath.Join(root, "requirements.txt"), "requirements.txt should be deleted")
+	py, err := LoadPyproject(root)
+	require.NoError(t, err)
+	require.NotNil(t, py.Project)
+	hasWheel := false
+	for _, dep := range py.Project.Dependencies {
+		if strings.HasPrefix(dep, "wheel") {
+			hasWheel = true
+			break
+		}
+	}
+	require.True(t, hasWheel, "expected wheel in dependencies, got %v", py.Project.Dependencies)
+
+	contents, err := os.ReadFile(filepath.Join(root, "pyproject.toml"))
+	require.NoError(t, err)
+	require.Contains(t, string(contents), "[tool.pylint", "expected [tool.pylint] section to still be present")
+}
+
+// Test that link actually runs in the root directory.
+func TestUvLinkCorrectDirectory(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	pyproject := `[project]
+name = "my-project"
+version = "invalid"
+dependencies = []
+`
+	err := os.WriteFile(filepath.Join(root, "pyproject.toml"), []byte(pyproject), 0o600)
+	require.NoError(t, err)
+	uv, err := newUv(root, "")
+	require.NoError(t, err)
+
+	err = uv.LinkPackages(t.Context(), map[string]string{"nope": "." + string(filepath.Separator) + "nope"})
+
+	require.ErrorContains(t, err, "expected version to start with a number, but no leading ASCII digits were found")
 }

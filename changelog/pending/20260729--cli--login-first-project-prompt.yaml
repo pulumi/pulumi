@@ -1,0 +1,5 @@
+component: cli
+kind: feat
+body: Offer to create a first project after logging in to an account with no stacks
+custom:
+    PR: "24133"

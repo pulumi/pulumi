@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build python || all
-
 package ints
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -33,8 +32,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
-func boolPointer(b bool) *bool {
-	return &b
+func ptr[T any](v T) *T {
+	return &v
 }
 
 // TestEmptyPython simply tests that we can run an empty Python project.
@@ -71,11 +70,11 @@ func TestDynamicPython(t *testing.T) {
 
 				// Regression testing the workaround for https://github.com/pulumi/pulumi/issues/8265
 				// Ensure the __provider input and output was marked secret
-				assertIsSecret := func(v interface{}) {
+				assertIsSecret := func(v any) {
 					switch v := v.(type) {
 					case string:
 						assert.Fail(t, "__provider was not a secret")
-					case map[string]interface{}:
+					case map[string]any:
 						assert.Equal(t, resource.SecretSig, v[resource.SigKey])
 					}
 				}
@@ -93,7 +92,36 @@ func TestDynamicPython(t *testing.T) {
 				}
 			},
 		}},
-		UseSharedVirtualEnv: boolPointer(false),
+		UseSharedVirtualEnv: ptr(false),
+	})
+}
+
+// Tests that dynamic providers can return inputs from read() for accurate diffs after refresh.
+// Regression test for https://github.com/pulumi/pulumi/issues/13839
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestDynamicPythonReadInputs(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python-read-inputs"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			// Verify the resource was created
+			require.NotNil(t, stack.Outputs["resource_id"])
+
+			// Find the dynamic resource and verify it has inputs
+			for _, res := range stack.Deployment.Resources {
+				if res.Type == "pulumi-python:dynamic:Resource" {
+					// After refresh, the inputs should include "value" from read()
+					require.NotNil(t, res.Inputs, "resource should have inputs")
+					// The __provider key should always be present
+					assert.Contains(t, res.Inputs, "__provider")
+				}
+			}
+		},
+		UseSharedVirtualEnv: ptr(false),
 	})
 }
 
@@ -102,7 +130,7 @@ func TestConstructPython(t *testing.T) {
 	t.Parallel()
 
 	testDir := "construct_component"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir          string
@@ -113,12 +141,12 @@ func TestConstructPython(t *testing.T) {
 			componentDir:          "testcomponent",
 			expectedResourceCount: 9,
 			// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-			// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-			// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
+			// Until we've addressed this, set PULUMI_TEST_LINK_PULUMI, which tells the integration test
+			// module to install the locally-built @pulumi/pulumi into the Go program's directory, allowing
 			// the Node.js dynamic provider plugin to load.
 			// When the underlying issue has been fixed, the use of this environment variable inside the integration
 			// test module should be removed.
-			env: []string{"PULUMI_TEST_YARN_LINK_PULUMI=true"},
+			env: []string{"PULUMI_TEST_LINK_PULUMI=true"},
 		},
 		{
 			componentDir:          "testcomponent-python",
@@ -132,7 +160,6 @@ func TestConstructPython(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -157,12 +184,12 @@ func optsForConstructPython(
 			"secret": "this super secret is encrypted",
 		},
 		Quick:               true,
-		UseSharedVirtualEnv: boolPointer(false),
+		UseSharedVirtualEnv: ptr(false),
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.NotNil(t, stackInfo.Deployment)
+			require.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
-				assert.NotNil(t, stackRes)
+				require.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
 				assert.Equal(t, "", string(stackRes.Parent))
 
@@ -170,7 +197,7 @@ func optsForConstructPython(
 				// plugin.
 				urns := make(map[string]resource.URN)
 				for _, res := range stackInfo.Deployment.Resources[1:] {
-					assert.NotNil(t, res)
+					require.NotNil(t, res)
 
 					urns[res.URN.Name()] = res.URN
 					switch res.URN.Name() {
@@ -187,7 +214,7 @@ func optsForConstructPython(
 						assert.ElementsMatch(t, expected, res.Dependencies)
 						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "a", "b", "c":
-						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						secretPropValue, ok := res.Outputs["secret"].(map[string]any)
 						assert.Truef(t, ok, "secret output was not serialized as a secret")
 						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
@@ -195,26 +222,6 @@ func optsForConstructPython(
 			}
 		},
 	}
-}
-
-//nolint:paralleltest // Sets env vars
-func TestConstructComponentConfigureProviderPython(t *testing.T) {
-	// This uses the tls plugin so needs to be able to download it
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
-
-	const testDir = "construct_component_configure_provider"
-	runComponentSetup(t, testDir)
-	pulumiRoot, err := filepath.Abs("../..")
-	require.NoError(t, err)
-	pulumiPySDK := filepath.Join("..", "..", "sdk", "python")
-	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/python")
-	opts := testConstructComponentConfigureProviderCommonOptions()
-	opts = opts.With(integration.ProgramTestOptions{
-		Dir:          filepath.Join(testDir, "python"),
-		Dependencies: []string{pulumiPySDK, componentSDK},
-		NoParallel:   true,
-	})
-	integration.ProgramTest(t, &opts)
 }
 
 // Regresses https://github.com/pulumi/pulumi/issues/6471
@@ -330,6 +337,8 @@ func TestAutomaticVenvCreationPoetry(t *testing.T) {
 
 	e.ImportDirectory(filepath.Join("python", "poetry"))
 
+	updateCoreSDKinPyproject(t, e.RootPath)
+
 	// Make a subdir and change to it to ensure paths aren't just relative to the working directory.
 	subdir := filepath.Join(e.RootPath, "subdir")
 	err := os.Mkdir(subdir, 0o755)
@@ -356,6 +365,8 @@ func TestPoetryInstallParentDirectory(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory(filepath.Join("python", "poetry-parent"))
+	updateCoreSDKinPyproject(t, e.RootPath)
+
 	// Run from the subdir with the Pulumi.yaml file
 	e.CWD = filepath.Join(e.RootPath, "subfolder")
 
@@ -377,6 +388,7 @@ func TestPoetryInstallWithMain(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory(filepath.Join("python", "poetry-main"))
+	updateCoreSDKinPyproject(t, e.RootPath)
 
 	e.RunCommand("pulumi", "install")
 
@@ -396,6 +408,7 @@ func TestPoetryInstallWithMainAndParent(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 
 	e.ImportDirectory(filepath.Join("python", "poetry-main-and-parent"))
+	updateCoreSDKinPyproject(t, filepath.Join(e.RootPath, "src"))
 
 	e.RunCommand("pulumi", "install")
 
@@ -409,9 +422,10 @@ func TestUv(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range []struct {
-		template     string
-		cwd          string
-		expectedVenv string
+		template       string
+		cwd            string
+		expectedVenv   string
+		prepareProject func(*ptesting.Environment) error
 	}{
 		{
 			template:     "uv",
@@ -435,8 +449,19 @@ func TestUv(t *testing.T) {
 			cwd:          "subfolder",
 			expectedVenv: ".venv", // The virtualenv is relative to pyproject.toml
 		},
+		{
+			template:     "uv-workspace",
+			cwd:          "infra/projects/some-project",
+			expectedVenv: "infra/.venv", // The virtualenv is relative to workspace root's pyproject.toml
+			prepareProject: func(e *ptesting.Environment) error {
+				oldCWD := e.CWD
+				e.CWD = filepath.Join(e.RootPath, "infra")
+				e.RunCommand("uv", "sync", "--all-packages")
+				e.CWD = oldCWD
+				return nil
+			},
+		},
 	} {
-		test := test
 		// On windows, when running in parallel, we can run into issues when Uv tries
 		// to write the same cache file concurrently. This is the same issue we see
 		// for Poetry https://github.com/pulumi/pulumi/pull/17337
@@ -454,7 +479,13 @@ func TestUv(t *testing.T) {
 				e.CWD = filepath.Join(e.RootPath, test.cwd)
 			}
 
-			e.RunCommand("pulumi", "install")
+			if test.prepareProject != nil {
+				err := test.prepareProject(e)
+				require.NoError(t, err, "failed to prepare the project")
+			} else {
+				e.RunCommand("pulumi", "install")
+			}
+
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "stack", "init", ptesting.RandomStackName())
 			e.RunCommand("pulumi", "preview")
@@ -517,7 +548,7 @@ func TestMypySupport(t *testing.T) {
 		for _, event := range stack.Events {
 			if event.DiagnosticEvent != nil {
 				messages = append(messages,
-					strings.Replace(event.DiagnosticEvent.Message, "\r\n", "\n", -1))
+					strings.ReplaceAll(event.DiagnosticEvent.Message, "\r\n", "\n"))
 			}
 		}
 		expected := "__main__.py:8: error: " +
@@ -545,7 +576,7 @@ func TestPyrightSupport(t *testing.T) {
 			" of type \"str\" in function \"export\"\n\n"
 		for _, event := range stack.Events {
 			if event.DiagnosticEvent != nil {
-				message := strings.Replace(event.DiagnosticEvent.Message, "\r\n", "\n", -1)
+				message := strings.ReplaceAll(event.DiagnosticEvent.Message, "\r\n", "\n")
 				if strings.HasSuffix(message, expected) {
 					found = true
 				}
@@ -599,14 +630,13 @@ func TestNewPythonUsesPip(t *testing.T) {
 
 	require.Contains(t, stdout, "pulumi install")
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain":  "pip",
 		"virtualenv": "venv",
 	}
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
-//nolint:paralleltest // Modifies env
 func TestNewPythonUsesPipNonInteractive(t *testing.T) {
 	// Force interactive mode to properly test `--yes`.
 	t.Setenv("PULUMI_TEST_INTERACTIVE", "1")
@@ -619,14 +649,13 @@ func TestNewPythonUsesPipNonInteractive(t *testing.T) {
 
 	require.Contains(t, stdout, "pulumi install")
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain":  "pip",
 		"virtualenv": "venv",
 	}
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
-//nolint:paralleltest // Modifies env
 func TestNewPythonChoosePoetry(t *testing.T) {
 	// The windows acceptance tests are run using git bash, but the survey library does not support this
 	// https://github.com/AlecAivazis/survey/issues/148
@@ -648,13 +677,12 @@ func TestNewPythonChoosePoetry(t *testing.T) {
 		"--stack", "test",
 	)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain": "poetry",
 	}
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
-//nolint:paralleltest // Modifies env
 func TestNewPythonChooseUv(t *testing.T) {
 	// The windows acceptance tests are run using git bash, but the survey library does not support this
 	// https://github.com/AlecAivazis/survey/issues/148
@@ -673,7 +701,7 @@ func TestNewPythonChooseUv(t *testing.T) {
 		"--description", "A python test using uv as toolchain",
 	)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain": "uv",
 	}
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
@@ -684,6 +712,9 @@ func TestNewPythonChooseUv(t *testing.T) {
 	require.True(t, e.PathExists("uv.lock"))
 	require.True(t, e.PathExists("pyproject.toml"))
 	require.False(t, e.PathExists("requirements.txt"))
+	// By default uv creates a `main.py` file, or a `hello.py` when running uv < 0.6.0.
+	require.False(t, e.PathExists("hello.py"))
+	require.False(t, e.PathExists("main.py"))
 }
 
 //nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
@@ -703,65 +734,20 @@ func TestNewPythonRuntimeOptions(t *testing.T) {
 		"--runtime-options", "toolchain=pip,virtualenv=mytestenv",
 	)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"toolchain":  "pip",
 		"virtualenv": "mytestenv",
 	}
 	integration.CheckRuntimeOptions(t, e.RootPath, expected)
 }
 
-//nolint:paralleltest // Poetry causes issues when run in parallel on windows. See pulumi/pulumi#17183
-func TestNewPythonConvertRequirementsTxt(t *testing.T) {
-	if runtime.GOOS != "windows" {
-		t.Parallel()
-	}
-
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-
-	// Add a poetry.toml to make poetry create the virtualenv inside the temp
-	// directory. That way it gets cleaned up with the test.
-	poetryToml := `[virtualenvs]
-in-project = true`
-	err := os.WriteFile(filepath.Join(e.RootPath, "poetry.toml"), []byte(poetryToml), 0o600)
-	require.NoError(t, err)
-
-	template := "python"
-
-	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	out, _ := e.RunCommand("pulumi", "new", template, "--force", "--non-interactive", "--yes",
-		"--name", "test_project",
-		"--description", "A python test using poetry as toolchain",
-		"--stack", "test",
-		"--runtime-options", "toolchain=poetry",
-	)
-
-	require.Contains(t, out, "Deleted requirements.txt")
-	require.True(t, e.PathExists("pyproject.toml"), "pyproject.toml was created")
-	require.False(t, e.PathExists("requirements.txt"), "requirements.txt was removed")
-
-	b, err := os.ReadFile(filepath.Join(e.RootPath, "pyproject.toml"))
-	require.NoError(t, err)
-	require.Equal(t, `[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool]
-[tool.poetry]
-package-mode = false
-[tool.poetry.dependencies]
-pulumi = ">=3.0.0,<4.0.0"
-python = "^3.9"
-`, string(b))
-}
-
 // Regression test for https://github.com/pulumi/pulumi/issues/17877
-//
-//nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestUvWindowsError(t *testing.T) {
 	if runtime.GOOS != "windows" {
-		t.Parallel()
+		t.Skip()
 	}
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -771,7 +757,7 @@ func TestUvWindowsError(t *testing.T) {
 	go func() {
 		e.ImportDirectory(filepath.Join("python", "uv-with-error"))
 		e.RunCommand("pulumi", "install")
-		e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+		e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.16.7")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", ptesting.RandomStackName())
 		stdout, _ = e.RunCommandExpectError("pulumi", "preview")
@@ -784,4 +770,34 @@ func TestUvWindowsError(t *testing.T) {
 	case <-time.After(3 * time.Minute):
 		t.Fatal("Timed out waiting for TestUvWindowsError")
 	}
+}
+
+// updateCoreSDKinPyproject builds a wheel of the core SDK and replaces the
+// placeholder in `pyproject.toml` with it.
+// This helps with running tests on Windows, where the core SDK might be on a
+// different drive from the test project. Poetry requires relative paths for
+// path dependencies, but relative paths between different drives don't exist.
+func updateCoreSDKinPyproject(t *testing.T, root string) {
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+	require.NoError(t, err)
+	buildCmd := exec.Command("uv", "build", coreSDK, "--wheel", "-o", root)
+	startTime := time.Now()
+	out, err := buildCmd.CombinedOutput()
+	duration := time.Since(startTime)
+	t.Logf("%s took %s", buildCmd.String(), duration)
+	require.NoError(t, err, "%s failed with err: %s, output: %s", err, out)
+	pattern := filepath.Join(root, "pulumi*.whl")
+	matches, err := filepath.Glob(pattern)
+	require.NoError(t, err)
+	require.Len(t, matches, 1, "Expected exactly one pulumi wheel file, found: %v", matches)
+	wheelPath := matches[0]
+	wheelPath, err = filepath.Rel(root, wheelPath)
+	require.NoError(t, err)
+	pyprojectPath := filepath.Join(root, "pyproject.toml")
+	content, err := os.ReadFile(pyprojectPath)
+	require.NoError(t, err)
+	updatedContent := strings.ReplaceAll(string(content), "PULUMI_CORE_SDK_PATH_PLACEHOLDER", wheelPath)
+	t.Logf("Updated %s:\n%s", pyprojectPath, updatedContent)
+	err = os.WriteFile(pyprojectPath, []byte(updatedContent), 0o600)
+	require.NoError(t, err)
 }

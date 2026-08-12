@@ -1,5 +1,7 @@
 {
   "emittedFiles": [
+    ".gitattributes",
+    ".gitignore",
     "pulumi_mongodbatlas/README.md",
     "pulumi_mongodbatlas/__init__.py",
     "pulumi_mongodbatlas/_utilities.py",

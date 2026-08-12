@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 /* eslint-disable */
 
 import * as assert from "assert";
-import { ComponentResourceOptions, ProviderResource, merge, mergeOptions } from "../resource";
+import { ComponentResourceOptions, ErrorHookFunction, ProviderResource, merge, mergeOptions } from "../resource";
 
 describe("options", () => {
     describe("merge", () => {
@@ -235,6 +235,50 @@ describe("options", () => {
             it("merges promise-array and promise-array into array", async () => {
                 const result = mergeDependsOn(Promise.resolve(["a"]), Promise.resolve(["b"]));
                 assert.deepStrictEqual(await result.promise(), ["a", "b"]);
+            });
+        });
+
+        describe("hooks.onError", () => {
+            const makeHook = (name: string) => ({
+                name,
+                callback: (() => false) as ErrorHookFunction,
+                __registered: Promise.resolve(),
+                __pulumiErrorHook: true as const,
+            });
+
+            it("keeps onError hooks from opts1 if not provided in opts2", async () => {
+                const hook = makeHook("h1");
+                const result = mergeOptions({ hooks: { onError: [hook] } }, {});
+                assert.deepStrictEqual(result.hooks?.onError, [hook]);
+            });
+            it("keeps onError hooks from opts2 if not provided in opts1", async () => {
+                const hook = makeHook("h1");
+                const result = mergeOptions({}, { hooks: { onError: [hook] } });
+                assert.deepStrictEqual(result.hooks?.onError, [hook]);
+            });
+            it("merges onError hooks from opts1 and opts2", async () => {
+                const hook1 = makeHook("h1");
+                const hook2 = makeHook("h2");
+                const result = mergeOptions({ hooks: { onError: [hook1] } }, { hooks: { onError: [hook2] } });
+                assert.deepStrictEqual(result.hooks?.onError, [hook1, hook2]);
+            });
+        });
+
+        describe("envVarMappings", () => {
+            it("keeps value from opts1 if not provided in opts2", async () => {
+                const result = mergeOptions({ envVarMappings: { MY_VAR: "PROVIDER_VAR" } }, {});
+                assert.deepStrictEqual(result.envVarMappings, { MY_VAR: "PROVIDER_VAR" });
+            });
+            it("keeps value from opts2 if not provided in opts1", async () => {
+                const result = mergeOptions({}, { envVarMappings: { MY_VAR: "PROVIDER_VAR" } });
+                assert.deepStrictEqual(result.envVarMappings, { MY_VAR: "PROVIDER_VAR" });
+            });
+            it("overwrites value from opts1 if given value in opts2", async () => {
+                const result = mergeOptions(
+                    { envVarMappings: { VAR_A: "TARGET_A" } },
+                    { envVarMappings: { VAR_B: "TARGET_B" } },
+                );
+                assert.deepStrictEqual(result.envVarMappings, { VAR_B: "TARGET_B" });
             });
         });
     });

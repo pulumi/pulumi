@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,22 +19,16 @@ out of RPC calls.
 import asyncio
 import functools
 import inspect
+import os
+import typing
 from abc import ABC, abstractmethod
 from collections import abc
+from collections.abc import Callable, Iterable, Mapping
 from enum import Enum
-import os
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Mapping,
     Optional,
-    Sequence,
-    Set,
-    Tuple,
     Union,
     cast,
     get_args,
@@ -42,7 +36,7 @@ from typing import (
 )
 
 from google.protobuf import struct_pb2
-from semver import VersionInfo as Version
+from semver import Version
 
 from .. import _types, log
 from .. import urn as urn_util
@@ -151,13 +145,13 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
 
     # Annotations not specifying the element type are assumed by mypy
     # to signify Any element type. Follow suit here.
-    if typ in [list, List, Sequence, abc.Sequence]:
+    if typ in [list, typing.List, typing.Sequence, abc.Sequence]:  # noqa - want typing types here
         return cast(type, Any)
 
     # If typ is a list, get the type for its values, to pass
     # along for each item.
     origin = get_origin(typ)
-    if typ is list or origin in [list, List, Sequence, abc.Sequence]:
+    if typ is list or origin in [list, typing.List, typing.Sequence, abc.Sequence]:  # noqa - want typing types here
         args = get_args(typ)
         if len(args) == 1:
             return args[0]
@@ -167,7 +161,7 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
 
 async def serialize_properties(
     inputs: "Inputs",
-    property_deps: Dict[str, List["Resource"]],
+    property_deps: dict[str, list["Resource"]],
     resource_obj: Optional["Resource"] = None,
     input_transformer: Optional[Callable[[str], str]] = None,
     typ: Optional[type] = None,
@@ -223,7 +217,7 @@ async def serialize_properties(
     # We're deliberately not using `inputs.items()` here in case inputs is a subclass of `dict` that redefines items.
     for k in inputs:
         v = inputs[k]
-        deps: List["Resource"] = []
+        deps: list[Resource] = []
         try:
             result = await serialize_property(
                 v,
@@ -298,7 +292,11 @@ async def _add_dependency(
 
     # Note that a recursive algorithm here would be cleaner, but that results in a
     # RecursionError with deeply nested hierarchies of ComponentResources.
+    # The traversal below must not await: awaiting a URN part way through can
+    # deadlock against a cycle that has not been walked yet. Collect the
+    # resources to await and await them once the whole graph has been checked.
     res_list = [(res, from_resource)]
+    awaitable: list[Resource] = []
     while len(res_list) > 0:
         res, from_resource = res_list.pop(0)
         if not isinstance(res, Resource):
@@ -327,17 +325,16 @@ async def _add_dependency(
         # Rather than adding the component resource itself, each child resource
         # is added as a dependency.
         if isinstance(res, ComponentResource) and not res._remote:
-            # Copy the set before iterating so that any concurrent child additions during
-            # the dependency computation (which is async, so can be interleaved with other
-            # operations including child resource construction which adds children to this
-            # resource) do not trigger modification during iteration errors.
             child_resources = res._childResources.copy()
             for child in child_resources:
                 res_list.append((child, from_resource))
         else:
-            urn = await res.urn.future()
-            if urn:
-                deps[urn] = res
+            awaitable.append(res)
+
+    for res in awaitable:
+        urn = await res.urn.future()
+        if urn:
+            deps[urn] = res
 
 
 async def _expand_dependencies(
@@ -347,7 +344,7 @@ async def _expand_dependencies(
     _expand_dependencies expands the given iterable of Resources into a map of URN -> Resource
     """
 
-    expanded_deps: dict[str, "Resource"] = {}
+    expanded_deps: dict[str, Resource] = {}
     for d in deps:
         await _add_dependency(expanded_deps, d, from_resource)
 
@@ -356,13 +353,14 @@ async def _expand_dependencies(
 
 async def serialize_property(
     value: "Input[Any]",
-    deps: Optional[List["Resource"]],
+    deps: Optional[list["Resource"]],
     property_key: Optional[str],
     resource_obj: Optional["Resource"] = None,
     input_transformer: Optional[Callable[[str], str]] = None,
     typ: Optional[type] = None,
     keep_output_values: bool = False,
     exclude_resource_refs_from_deps: bool = False,
+    return_protobuf_value: bool = False,
 ) -> Any:
     """
     Serializes a single Input into a form suitable for remoting to the engine, awaiting
@@ -391,10 +389,53 @@ async def serialize_property(
     `deps` during serialization (only if the monitor supports resource references). This is
     useful for remote components (i.e. MLCs) and resource method calls where we want property
     dependencies to be empty for a property that only contains resource references.
+
+    :param bool return_protobuf_value: If true, the serialized value will be returned as a protobuf Value, rather
+    than just a value that is google.protobuf compatible.
     """
 
     # Set typ to T if it's Optional[T], Input[T], or InputType[T].
     typ = _types.unwrap_type(typ) if typ else typ
+
+    if return_protobuf_value:
+
+        async def _to_protobuf_value(value: Any) -> struct_pb2.Value:
+            if value is None:
+                return struct_pb2.Value(null_value=struct_pb2.NULL_VALUE)
+            if value == UNKNOWN:
+                # Preserve UNKNOWN as a string value so the engine can detect it as unknown
+                return struct_pb2.Value(string_value=UNKNOWN)
+            if isinstance(value, struct_pb2.Value):
+                return value
+            if isinstance(value, bool):
+                return struct_pb2.Value(bool_value=value)
+            if isinstance(value, (int, float)):
+                return struct_pb2.Value(number_value=float(value))
+            if isinstance(value, str):
+                return struct_pb2.Value(string_value=value)
+            if isinstance(value, dict):
+                fields = {}
+                for k, v in value.items():
+                    fields[k] = await _to_protobuf_value(v)
+                return struct_pb2.Value(struct_value=struct_pb2.Struct(fields=fields))
+            if isinstance(value, (list, tuple)):
+                values = [await _to_protobuf_value(v) for v in value]
+                return struct_pb2.Value(list_value=struct_pb2.ListValue(values=values))
+
+            return struct_pb2.Value(string_value=str(value))
+
+        serialized = await serialize_property(
+            value,
+            deps,
+            property_key,
+            resource_obj,
+            input_transformer,
+            typ,
+            keep_output_values,
+            exclude_resource_refs_from_deps,
+            return_protobuf_value=False,
+        )
+        return await _to_protobuf_value(serialized)
 
     # If the typ is Any, set it to None to treat it as if we don't have any type information,
     # to avoid raising errors about unexpected types, since it could be any type.
@@ -586,7 +627,10 @@ async def serialize_property(
 
     if known_types.is_output(value):
         output = cast("Output", value)
-        value_resources: Set["Resource"] = await output.resources()
+        # Await _data once to read all output state, avoiding extra coroutine indirection through resources()/future()
+        # methods.
+        data = await output._data
+        value_resources: set[Resource] = data.resources
         if deps is not None:
             deps.extend(value_resources)
 
@@ -594,11 +638,11 @@ async def serialize_property(
         # "unknown value" sentinel. We will do the former for all outputs created directly by user
         # code (such outputs always resolve isKnown to true) and for any resource outputs that were
         # resolved with known values.
-        is_known = await output._is_known
-        is_secret = await output._is_secret
-        promise_deps: List["Resource"] = []
+        is_known = data.is_known
+        is_secret = data.is_secret
+        promise_deps: list[Resource] = []
         value = await serialize_property(
-            output.future(),
+            None if contains_unknowns(data.value) else data.value,
             promise_deps,
             property_key,
             resource_obj,
@@ -611,7 +655,7 @@ async def serialize_property(
         value_resources.update(promise_deps)
 
         if keep_output_values and await settings.monitor_supports_output_values():
-            urn_deps: List["Resource"] = []
+            urn_deps: list[Resource] = []
             for resource in value_resources:
                 await serialize_property(
                     resource.urn,
@@ -626,7 +670,7 @@ async def serialize_property(
 
             dependencies = await _expand_dependencies(value_resources, None)
 
-            output_value: Dict[str, Any] = {_special_sig_key: _special_output_value_sig}
+            output_value: dict[str, Any] = {_special_sig_key: _special_output_value_sig}
 
             if is_known:
                 output_value["value"] = value
@@ -684,7 +728,12 @@ async def serialize_property(
             else:
                 # Otherwise, don't do any translation of user-defined dict keys.
                 origin = get_origin(typ)
-                if typ is dict or origin in [dict, Dict, Mapping, abc.Mapping]:
+                if typ is dict or origin in [
+                    dict,
+                    typing.Dict,  # noqa - we want to check for the deprecated `typing.Dict` type here
+                    abc.Mapping,
+                    typing.Mapping,
+                ]:
                     args = get_args(typ)
                     if len(args) == 2 and args[0] is str:
                         get_type = lambda k: args[1]
@@ -721,6 +770,20 @@ async def serialize_property(
 
         return obj
 
+    if isinstance(value, struct_pb2.Value):
+        from .resource import _struct_value_to_python
+
+        return await serialize_property(
+            _struct_value_to_python(value),
+            deps,
+            property_key,
+            resource_obj,
+            input_transformer,
+            typ,
+            keep_output_values,
+            exclude_resource_refs_from_deps,
+        )
+
     # Ensure that we have a value that Protobuf understands.
     if not isLegalProtobufValue(value):
         if property_key is not None and resource_obj is not None:
@@ -743,7 +806,7 @@ async def serialize_property(
 def deserialize_properties(
     props_struct: struct_pb2.Struct,
     keep_unknowns: Optional[bool] = None,
-    keep_internal: Optional[bool] = None,
+    keep_internal: Optional[bool] = True,
 ) -> Any:
     """
     Deserializes a protobuf `struct_pb2.Struct` into a Python dictionary containing normal
@@ -801,15 +864,13 @@ def deserialize_properties(
     # since we can only set secret outputs on top level properties.
     output = {}
     for k, v in list(props_struct.items()):
-        # Unilaterally skip properties considered internal by the Pulumi engine.
-        # These don't actually contribute to the exposed shape of the object, do
-        # not need to be passed back to the engine, and often will not match the
-        # expected type we are deserializing into.
-        # Keep "__provider" as it's the property name used by Python dynamic providers.
-        if not keep_internal and k.startswith("__") and k != "__provider":
+        # Skip properties considered internal by the Pulumi engine when the caller has
+        # explicitly opted out. `__provider` is always preserved because it's the
+        # property name reserved for Python dynamic providers.
+        if keep_internal is False and k.startswith("__") and k != "__provider":
             continue
 
-        value = deserialize_property(v, keep_unknowns)
+        value = deserialize_property(v, keep_unknowns, keep_internal)
         # We treat values that deserialize to "None" as if they don't exist.
         if value is not None:
             output[k] = value
@@ -835,7 +896,7 @@ def struct_contains_unknowns(props_struct: struct_pb2.Struct) -> bool:
     return False
 
 
-def _unwrap_rpc_secret_struct_properties(value: Any) -> Tuple[Any, bool]:
+def _unwrap_rpc_secret_struct_properties(value: Any) -> tuple[Any, bool]:
     if _is_rpc_struct_secret(value):
         unwrapped = _unwrap_rpc_struct_secret(value)
         return (unwrapped, True)
@@ -898,8 +959,8 @@ def _unwrap_rpc_secret_struct_properties(value: Any) -> Tuple[Any, bool]:
 def deserialize_properties_unwrap_secrets(
     props_struct: struct_pb2.Struct,
     keep_unknowns: Optional[bool] = None,
-    keep_internal: Optional[bool] = None,
-) -> Tuple[Any, bool]:
+    keep_internal: Optional[bool] = True,
+) -> tuple[Any, bool]:
     """
     Similar to deserialize_properties except that it unwraps secrets and returns a boolean
     indicating whether the resulting object contained a secret.
@@ -925,12 +986,20 @@ def deserialize_resource(
         str(ref_struct["packageVersion"]) if "packageVersion" in ref_struct else ""
     )
 
-    urn_parts = urn_util._parse_urn(urn)
-    urn_name = urn_parts.urn_name
-    typ = urn_parts.typ
-    pkg_name = urn_parts.pkg_name
-    mod_name = urn_parts.mod_name
-    typ_name = urn_parts.typ_name
+    # New engines send type and name as distinct fields.
+    urn_name = str(ref_struct["name"]) if "name" in ref_struct else None
+    typ = str(ref_struct["type"]) if "type" in ref_struct else None
+
+    # Old engines don't and we have to parse the URN.
+    if urn_name is None or typ is None:
+        urn_parts = urn_util._parse_urn(urn)
+        urn_name = urn_parts.urn_name
+        typ = urn_parts.typ
+
+    typ_parts = typ.split(":")
+    pkg_name = typ_parts[0]
+    mod_name = typ_parts[1] if len(typ_parts) > 1 else ""
+    typ_name = typ_parts[2] if len(typ_parts) > 2 else ""
 
     is_provider = pkg_name == "pulumi" and mod_name == "providers"
     if is_provider:
@@ -942,7 +1011,7 @@ def deserialize_resource(
     else:
         resource_module = get_resource_module(pkg_name, mod_name, version)
         if resource_module is not None:
-            return cast("Resource", resource_module.construct(urn_name, typ, urn))
+            return resource_module.construct(urn_name, typ, urn)
 
     # If we've made it here, deserialize the reference as either a URN or an ID (if present).
     if "id" in ref_struct:
@@ -954,34 +1023,34 @@ def deserialize_resource(
 
 def deserialize_output_value(ref_struct: struct_pb2.Struct) -> "Output[Any]":
     is_known = "value" in ref_struct
-    is_known_future: "asyncio.Future" = asyncio.Future()
-    is_known_future.set_result(is_known)
 
     value = None
     if is_known:
         value = deserialize_property(ref_struct["value"])
-    value_future: "asyncio.Future" = asyncio.Future()
-    value_future.set_result(value)
 
     is_secret = False
     if "secret" in ref_struct:
         is_secret = deserialize_property(ref_struct["secret"]) is True
-    is_secret_future: "asyncio.Future" = asyncio.Future()
-    is_secret_future.set_result(is_secret)
 
-    resources: Set["Resource"] = set()
+    resources: set[Resource] = set()
     if "dependencies" in ref_struct:
         from ..resource import (
             DependencyResource,
         )
 
-        dependencies = cast(List[str], deserialize_property(ref_struct["dependencies"]))
+        dependencies = cast(list[str], deserialize_property(ref_struct["dependencies"]))
         for urn in dependencies:
             resources.add(DependencyResource(urn))
 
-    from .. import Output
+    from ..output import Output, _OutputData
 
-    return Output(resources, value_future, is_known_future, is_secret_future)
+    data_future: asyncio.Future[_OutputData[Any]] = asyncio.Future()
+    data_future.set_result(
+        _OutputData(
+            resources=resources, value=value, is_known=is_known, is_secret=is_secret
+        )
+    )
+    return Output._from_data(data_future)
 
 
 def is_rpc_secret(value: Any) -> bool:
@@ -1039,7 +1108,11 @@ def unwrap_rpc_secret(value: Any) -> Any:
     return value
 
 
-def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> Any:
+def deserialize_property(
+    value: Any,
+    keep_unknowns: Optional[bool] = None,
+    keep_internal: Optional[bool] = True,
+) -> Any:
     """
     Deserializes a single protobuf value (either `Struct` or `ListValue`) into idiomatic
     Python values.
@@ -1052,7 +1125,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
     # ListValues are projected to lists
     if isinstance(value, struct_pb2.ListValue):
         # values has no __iter__ defined but this works.
-        values = [deserialize_property(v, keep_unknowns) for v in value]  # type: ignore
+        values = [deserialize_property(v, keep_unknowns, keep_internal) for v in value]  # type: ignore
         # If there are any secret values in the list, push the secretness "up" a level by returning
         # an array that is marked as a secret with raw values inside.
         if any(is_rpc_secret(v) for v in values):
@@ -1062,7 +1135,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
 
     # Structs are projected to dictionaries
     if isinstance(value, struct_pb2.Struct):
-        props = deserialize_properties(value, keep_unknowns)
+        props = deserialize_properties(value, keep_unknowns, keep_internal)
         # If there are any secret values in the dictionary, push the secretness "up" a level by returning
         # a dictionary that is marked as a secret with raw values inside. Note: the isinstance check here is
         # important, since deserialize_properties will return either a dictionary or a concret type (in the case of
@@ -1077,7 +1150,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
 
 
 Resolver = Callable[
-    [Any, bool, bool, Optional[Set["Resource"]], Optional[Exception]], None
+    [Any, bool, bool, Optional[set["Resource"]], Optional[Exception]], None
 ]
 """
 A Resolver is a function that takes four arguments:
@@ -1085,7 +1158,7 @@ A Resolver is a function that takes four arguments:
     2. A boolean "is_known", which represents whether or not this value is known to have a particular value at this
        point in time (not always true for previews), and
     3. A boolean "is_secret", which represents whether or not this value is contains secret data, and
-    4. An exception, which (if provided) is an exception that occured when attempting to create the resource to whom
+    4. An exception, which (if provided) is an exception that occurred when attempting to create the resource to whom
        this resolver belongs.
 
 If argument 4 is not none, this output is considered to be abnormally resolved and attempts to await its future will
@@ -1095,31 +1168,31 @@ result in the exception being re-thrown.
 
 def transfer_properties(
     res: "Resource", props: "Inputs", custom: bool
-) -> Dict[str, Resolver]:
+) -> dict[str, Resolver]:
     from .. import Output
 
-    resolvers: Dict[str, Resolver] = {}
+    resolvers: dict[str, Resolver] = {}
 
     for name in props:
         if name == "urn" or (name == "id" and custom):
             # these properties are handled specially elsewhere.
             continue
 
-        resolve_value: "asyncio.Future" = asyncio.Future()
-        resolve_is_known: "asyncio.Future" = asyncio.Future()
-        resolve_is_secret: "asyncio.Future" = asyncio.Future()
-        resolve_deps: "asyncio.Future" = asyncio.Future()
+        resolve_value: asyncio.Future = asyncio.Future()
+        resolve_is_known: asyncio.Future = asyncio.Future()
+        resolve_is_secret: asyncio.Future = asyncio.Future()
+        resolve_deps: asyncio.Future = asyncio.Future()
 
         def do_resolve(
             r: "Resource",
             value_fut: "asyncio.Future",
             known_fut: "asyncio.Future[bool]",
             secret_fut: "asyncio.Future[bool]",
-            deps_fut: "asyncio.Future[Set[Resource]]",
+            deps_fut: "asyncio.Future[set[Resource]]",
             value: Any,
             is_known: bool,
             is_secret: bool,
-            deps: Set["Resource"],
+            deps: set["Resource"],
             failed: Optional[Exception],
         ):
             # Create a union of deps and the resource.
@@ -1248,7 +1321,12 @@ def translate_output_properties(
 
             # If typ is a dict, get the type for its values, to pass along for each key.
             origin = get_origin(typ)
-            if typ is dict or origin in [dict, Dict, Mapping, abc.Mapping]:
+            if typ is dict or origin in [
+                dict,
+                typing.Dict,  # noqa - we want to check for the deprecated `typing.Dict` type here
+                abc.Mapping,
+                typing.Mapping,
+            ]:
                 args = get_args(typ)
                 if len(args) == 2 and args[0] is str:
                     get_type = lambda k: args[1]
@@ -1262,11 +1340,9 @@ def translate_output_properties(
                 return None
             else:
                 raise AssertionError(
-                    (
-                        f"Unexpected type; expected a value of type `{typ}`"
-                        f" but got a value of type `{dict}`{_Path.format(path)}:"
-                        f" {output}"
-                    )
+                    f"Unexpected type; expected a value of type `{typ}`"
+                    f" but got a value of type `{dict}`{_Path.format(path)}:"
+                    f" {output}"
                 )
 
         return {
@@ -1332,7 +1408,7 @@ class _Path:
 
     @staticmethod
     def format(path: Optional["_Path"]) -> str:
-        chain: List[str] = []
+        chain: list[str] = []
         p: Optional[_Path] = path
         resource: Optional[str] = None
 
@@ -1349,39 +1425,44 @@ class _Path:
             coordinates.append(f"resource `{resource}`")
 
         if chain:
-            coordinates.append(f'property `{".".join(chain)}`')
+            coordinates.append(f"property `{'.'.join(chain)}`")
 
         if coordinates:
-            return f' at {", ".join(coordinates)}'
+            return f" at {', '.join(coordinates)}"
 
         return ""
 
 
 def contains_unknowns(val: Any) -> bool:
-    def impl(val: Any, stack: List[Any]) -> bool:
+    def impl(val: Any, seen_ids: set[int]) -> bool:
         if known_types.is_unknown(val):
             return True
 
-        if not any((x is val for x in stack)):
-            stack.append(val)
-            if isinstance(val, dict):
-                return any((impl(val[k], stack) for k in val))
-            if isinstance(val, list):
-                return any((impl(x, stack) for x in val))
+        val_id = id(val)
+        if val_id in seen_ids:
+            return False
+
+        seen_ids.add(val_id)
+        if isinstance(val, dict):
+            return any(impl(val[k], seen_ids) for k in val)
+        if isinstance(val, list):
+            return any(impl(x, seen_ids) for x in val)
+
         return False
 
-    return impl(val, [])
+    return impl(val, set())
 
 
 def resolve_outputs(
     res: "Resource",
     serialized_props: struct_pb2.Struct,
     outputs: struct_pb2.Struct,
-    deps: Mapping[str, Set["Resource"]],
-    resolvers: Dict[str, Resolver],
+    deps: Mapping[str, set["Resource"]],
+    resolvers: dict[str, Resolver],
     custom: bool,
     transform_using_type_metadata: bool = False,
     keep_unknowns: bool = False,
+    resolve_missing_as_unknown: bool = False,
 ):
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
@@ -1445,14 +1526,17 @@ def resolve_outputs(
                     return_none_on_dict_type_mismatch=True,
                 )
 
-    resolve_properties(resolvers, all_properties, translated_deps, custom)
+    resolve_properties(
+        resolvers, all_properties, translated_deps, custom, resolve_missing_as_unknown
+    )
 
 
 def resolve_properties(
-    resolvers: Dict[str, Resolver],
-    all_properties: Dict[str, Any],
-    deps: Mapping[str, Set["Resource"]],
+    resolvers: dict[str, Resolver],
+    all_properties: dict[str, Any],
+    deps: Mapping[str, set["Resource"]],
     custom: bool,
+    resolve_missing_as_unknown: bool = False,
 ):
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
@@ -1506,13 +1590,14 @@ def resolve_properties(
 
     # `allProps` may not have contained a value for every resolver: for example, optional outputs may not be present.
     # We will resolve all of these values as `None`, and will mark the value as known if we are not running a
-    # preview.
+    # preview and the resource wasn't a skipped create.
     for key, resolve in resolvers.items():
         if key not in all_properties:
-            resolve(None, not settings.is_dry_run(), False, deps.get(key), None)
+            known = not settings.is_dry_run() and not resolve_missing_as_unknown
+            resolve(None, known, False, deps.get(key), None)
 
 
-def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Exception):
+def resolve_outputs_due_to_exception(resolvers: dict[str, Resolver], exn: Exception):
     """
     Resolves all outputs with resolvers exceptionally, using the given exception as the reason why the resolver has
     failed to resolve.
@@ -1551,7 +1636,7 @@ class ResourcePackage(ABC):
         pass
 
 
-_RESOURCE_PACKAGES: Dict[str, List[ResourcePackage]] = {}
+_RESOURCE_PACKAGES: dict[str, list[ResourcePackage]] = {}
 
 
 def register_resource_package(pkg: str, package: ResourcePackage):
@@ -1578,7 +1663,13 @@ def get_resource_package(pkg: str, version: str) -> Optional[ResourcePackage]:
     for package in _RESOURCE_PACKAGES.get(pkg, []):
         if not check_version(ver, package.version()):
             continue
-        if best_package is None or package.version() > best_package.version():
+        best_package_version = best_package.version() if best_package else None
+        package_version = package.version()
+        if best_package is None or (
+            package_version
+            and best_package_version
+            and package_version > best_package_version
+        ):
             best_package = package
 
     return best_package
@@ -1594,7 +1685,7 @@ class ResourceModule(ABC):
         pass
 
 
-_RESOURCE_MODULES: Dict[str, List[ResourceModule]] = {}
+_RESOURCE_MODULES: dict[str, list[ResourceModule]] = {}
 
 
 def _module_key(pkg: str, mod: str) -> str:
@@ -1628,7 +1719,14 @@ def get_resource_module(pkg: str, mod: str, version: str) -> Optional[ResourceMo
     for module in _RESOURCE_MODULES.get(key, []):
         if not check_version(ver, module.version()):
             continue
-        if best_module is None or module.version() > best_module.version():
+
+        module_version = module.version()
+        best_module_version = best_module.version() if best_module else None
+        if best_module is None or (
+            module_version
+            and best_module_version
+            and module_version > best_module_version
+        ):
             best_module = module
 
     return best_module

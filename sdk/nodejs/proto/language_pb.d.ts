@@ -255,6 +255,10 @@ export class GetRequiredPackagesResponse extends jspb.Message {
     getPackagesList(): Array<pulumi_plugin_pb.PackageDependency>;
     setPackagesList(value: Array<pulumi_plugin_pb.PackageDependency>): GetRequiredPackagesResponse;
     addPackages(value?: pulumi_plugin_pb.PackageDependency, index?: number): pulumi_plugin_pb.PackageDependency;
+    clearSpecsList(): void;
+    getSpecsList(): Array<pulumi_plugin_pb.PackageSpec>;
+    setSpecsList(value: Array<pulumi_plugin_pb.PackageSpec>): GetRequiredPackagesResponse;
+    addSpecs(value?: pulumi_plugin_pb.PackageSpec, index?: number): pulumi_plugin_pb.PackageSpec;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): GetRequiredPackagesResponse.AsObject;
@@ -269,6 +273,7 @@ export class GetRequiredPackagesResponse extends jspb.Message {
 export namespace GetRequiredPackagesResponse {
     export type AsObject = {
         packagesList: Array<pulumi_plugin_pb.PackageDependency.AsObject>,
+        specsList: Array<pulumi_plugin_pb.PackageSpec.AsObject>,
     }
 }
 
@@ -316,6 +321,8 @@ export class RunRequest extends jspb.Message {
     setLoaderTarget(value: string): RunRequest;
     getAttachDebugger(): boolean;
     setAttachDebugger(value: boolean): RunRequest;
+    getMapperTarget(): string;
+    setMapperTarget(value: string): RunRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunRequest.AsObject;
@@ -346,6 +353,7 @@ export namespace RunRequest {
         info?: ProgramInfo.AsObject,
         loaderTarget: string,
         attachDebugger: boolean,
+        mapperTarget: string,
     }
 }
 
@@ -384,6 +392,8 @@ export class InstallDependenciesRequest extends jspb.Message {
     setInfo(value?: ProgramInfo): InstallDependenciesRequest;
     getUseLanguageVersionTools(): boolean;
     setUseLanguageVersionTools(value: boolean): InstallDependenciesRequest;
+    getIsPlugin(): boolean;
+    setIsPlugin(value: boolean): InstallDependenciesRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): InstallDependenciesRequest.AsObject;
@@ -401,6 +411,7 @@ export namespace InstallDependenciesRequest {
         isTerminal: boolean,
         info?: ProgramInfo.AsObject,
         useLanguageVersionTools: boolean,
+        isPlugin: boolean,
     }
 }
 
@@ -550,6 +561,49 @@ export namespace RuntimeOptionsResponse {
     }
 }
 
+export class TemplateRequest extends jspb.Message { 
+
+    hasInfo(): boolean;
+    clearInfo(): void;
+    getInfo(): ProgramInfo | undefined;
+    setInfo(value?: ProgramInfo): TemplateRequest;
+    getProjectName(): string;
+    setProjectName(value: string): TemplateRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TemplateRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: TemplateRequest): TemplateRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TemplateRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TemplateRequest;
+    static deserializeBinaryFromReader(message: TemplateRequest, reader: jspb.BinaryReader): TemplateRequest;
+}
+
+export namespace TemplateRequest {
+    export type AsObject = {
+        info?: ProgramInfo.AsObject,
+        projectName: string,
+    }
+}
+
+export class TemplateResponse extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): TemplateResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: TemplateResponse): TemplateResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: TemplateResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TemplateResponse;
+    static deserializeBinaryFromReader(message: TemplateResponse, reader: jspb.BinaryReader): TemplateResponse;
+}
+
+export namespace TemplateResponse {
+    export type AsObject = {
+    }
+}
+
 export class RunPluginRequest extends jspb.Message { 
     getPwd(): string;
     setPwd(value: string): RunPluginRequest;
@@ -568,6 +622,14 @@ export class RunPluginRequest extends jspb.Message {
     clearInfo(): void;
     getInfo(): ProgramInfo | undefined;
     setInfo(value?: ProgramInfo): RunPluginRequest;
+    getKind(): string;
+    setKind(value: string): RunPluginRequest;
+    getName(): string;
+    setName(value: string): RunPluginRequest;
+    getAttachDebugger(): boolean;
+    setAttachDebugger(value: boolean): RunPluginRequest;
+    getLoaderTarget(): string;
+    setLoaderTarget(value: string): RunPluginRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunPluginRequest.AsObject;
@@ -586,6 +648,10 @@ export namespace RunPluginRequest {
         argsList: Array<string>,
         envList: Array<string>,
         info?: ProgramInfo.AsObject,
+        kind: string,
+        name: string,
+        attachDebugger: boolean,
+        loaderTarget: string,
     }
 }
 
@@ -902,5 +968,84 @@ export class LanguageHandshakeResponse extends jspb.Message {
 
 export namespace LanguageHandshakeResponse {
     export type AsObject = {
+    }
+}
+
+export class LinkRequest extends jspb.Message { 
+
+    hasInfo(): boolean;
+    clearInfo(): void;
+    getInfo(): ProgramInfo | undefined;
+    setInfo(value?: ProgramInfo): LinkRequest;
+    getLoaderTarget(): string;
+    setLoaderTarget(value: string): LinkRequest;
+    clearPackagesList(): void;
+    getPackagesList(): Array<LinkRequest.LinkDependency>;
+    setPackagesList(value: Array<LinkRequest.LinkDependency>): LinkRequest;
+    addPackages(value?: LinkRequest.LinkDependency, index?: number): LinkRequest.LinkDependency;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): LinkRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: LinkRequest): LinkRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: LinkRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): LinkRequest;
+    static deserializeBinaryFromReader(message: LinkRequest, reader: jspb.BinaryReader): LinkRequest;
+}
+
+export namespace LinkRequest {
+    export type AsObject = {
+        info?: ProgramInfo.AsObject,
+        loaderTarget: string,
+        packagesList: Array<LinkRequest.LinkDependency.AsObject>,
+    }
+
+
+    export class LinkDependency extends jspb.Message { 
+
+        hasPackage(): boolean;
+        clearPackage(): void;
+        getPackage(): pulumi_plugin_pb.PackageDependency | undefined;
+        setPackage(value?: pulumi_plugin_pb.PackageDependency): LinkDependency;
+        getPath(): string;
+        setPath(value: string): LinkDependency;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): LinkDependency.AsObject;
+        static toObject(includeInstance: boolean, msg: LinkDependency): LinkDependency.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: LinkDependency, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): LinkDependency;
+        static deserializeBinaryFromReader(message: LinkDependency, reader: jspb.BinaryReader): LinkDependency;
+    }
+
+    export namespace LinkDependency {
+        export type AsObject = {
+            pb_package?: pulumi_plugin_pb.PackageDependency.AsObject,
+            path: string,
+        }
+    }
+
+}
+
+export class LinkResponse extends jspb.Message { 
+    getImportInstructions(): string;
+    setImportInstructions(value: string): LinkResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): LinkResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: LinkResponse): LinkResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: LinkResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): LinkResponse;
+    static deserializeBinaryFromReader(message: LinkResponse, reader: jspb.BinaryReader): LinkResponse;
+}
+
+export namespace LinkResponse {
+    export type AsObject = {
+        importInstructions: string,
     }
 }

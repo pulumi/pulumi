@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,8 @@ The config module contains all configuration management functionality.
 """
 
 import json
-from typing import Any, Callable, Optional, overload
+from typing import Any, Optional, overload
+from collections.abc import Callable
 
 from . import errors
 from .metadata import get_project

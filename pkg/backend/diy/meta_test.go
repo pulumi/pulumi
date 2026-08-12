@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package diy
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 
@@ -105,12 +104,11 @@ func TestEnsurePulumiMeta(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
 			b := memblob.OpenBucket(nil)
-			ctx := context.Background()
+			ctx := t.Context()
 			for name, body := range tt.give {
 				require.NoError(t, b.WriteAll(ctx, name, []byte(body), nil))
 			}
@@ -148,15 +146,14 @@ func TestEnsurePulumiMeta_corruption(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
 			b := memblob.OpenBucket(nil)
-			ctx := context.Background()
+			ctx := t.Context()
 			require.NoError(t, b.WriteAll(ctx, ".pulumi/meta.yaml", []byte(tt.give), nil))
 
-			_, err := ensurePulumiMeta(context.Background(), b, env.NewEnv(nil))
+			_, err := ensurePulumiMeta(t.Context(), b, env.NewEnv(nil))
 			assert.ErrorContains(t, err, tt.wantErr)
 		})
 	}
@@ -176,7 +173,6 @@ func TestMeta_roundTrip(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -184,9 +180,9 @@ func TestMeta_roundTrip(t *testing.T) {
 			// The bucket is always non-empty,
 			// so we won't automatically try to use version 1.
 			require.NoError(t,
-				b.WriteAll(context.Background(), ".pulumi/stacks/dev.json", []byte("bar"), nil))
+				b.WriteAll(t.Context(), ".pulumi/stacks/dev.json", []byte("bar"), nil))
 
-			ctx := context.Background()
+			ctx := t.Context()
 			require.NoError(t, tt.give.WriteTo(ctx, b))
 
 			got, err := ensurePulumiMeta(ctx, b, env.NewEnv(nil))
@@ -204,7 +200,7 @@ func TestMeta_WriteTo_zero(t *testing.T) {
 	bucket, err := fileblob.OpenBucket(tmpDir, nil)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	require.NoError(t, (&pulumiMeta{
 		Version: 0,
 	}).WriteTo(ctx, bucket))
@@ -215,15 +211,15 @@ func TestMeta_WriteTo_zero(t *testing.T) {
 // Verify that we don't create a metadata file with version 0 in buckets
 // that have other files.
 func TestNew_noMetaOnInit(t *testing.T) {
-	t.Parallel()
+	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
 
 	tmpDir := t.TempDir()
 	bucket, err := fileblob.OpenBucket(tmpDir, nil)
 	require.NoError(t, err)
 	require.NoError(t,
-		bucket.WriteAll(context.Background(), ".pulumi/stacks/dev.json", []byte("bar"), nil))
+		bucket.WriteAll(t.Context(), ".pulumi/stacks/dev.json", []byte("bar"), nil))
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err = New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
 

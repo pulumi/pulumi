@@ -1,10 +1,10 @@
-// Copyright 2023-2024, Pulumi Corporation.
+// Copyright 2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUntil_exhaustAttempts(t *testing.T) {
@@ -32,7 +33,7 @@ func TestUntil_exhaustAttempts(t *testing.T) {
 	backoff := 2.0
 	maxDelay := 100 * time.Second
 
-	ctx := context.Background()
+	ctx := t.Context()
 	errTooManyTries := errors.New("too many tries")
 	afterRec := newAfterRecorder(time.Now())
 
@@ -43,7 +44,7 @@ func TestUntil_exhaustAttempts(t *testing.T) {
 		Delay:    &delay,
 		Backoff:  &backoff,
 		MaxDelay: &maxDelay,
-		Accept: func(try int, delay time.Duration) (bool, interface{}, error) {
+		Accept: func(try int, delay time.Duration) (bool, any, error) {
 			if try > 3 {
 				return false, nil, errTooManyTries
 			}
@@ -64,11 +65,11 @@ func TestUntil_exhaustAttempts(t *testing.T) {
 func TestUntil_contextExpired(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	ok, _, _ := (&Retryer{
 		After: newAfterRecorder(time.Now()).After,
 	}).Until(ctx, Acceptor{
-		Accept: func(try int, delay time.Duration) (bool, interface{}, error) {
+		Accept: func(try int, delay time.Duration) (bool, any, error) {
 			if try > 2 {
 				cancel()
 			}
@@ -90,7 +91,7 @@ func TestUntil_maxDelay(t *testing.T) {
 	backoff := 2.0
 	maxDelay := 10 * time.Second
 
-	ctx := context.Background()
+	ctx := t.Context()
 	afterRec := newAfterRecorder(time.Now())
 	ok, _, err := (&Retryer{
 		After: afterRec.After,
@@ -98,7 +99,7 @@ func TestUntil_maxDelay(t *testing.T) {
 		Delay:    &delay,
 		Backoff:  &backoff,
 		MaxDelay: &maxDelay,
-		Accept: func(try int, delay time.Duration) (bool, interface{}, error) {
+		Accept: func(try int, delay time.Duration) (bool, any, error) {
 			// 100 tries should be enough to reach maxDelay.
 			if try < 100 {
 				return false, nil, nil
@@ -107,9 +108,9 @@ func TestUntil_maxDelay(t *testing.T) {
 		},
 	})
 	assert.True(t, ok)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	assert.Len(t, afterRec.Sleeps, 100)
+	require.Len(t, afterRec.Sleeps, 100)
 	for _, d := range afterRec.Sleeps {
 		assert.LessOrEqual(t, d, maxDelay)
 	}

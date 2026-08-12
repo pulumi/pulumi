@@ -1,0 +1,3 @@
+values:
+  some_value: 42
+  unreferenced_value: "this shouldn't be merged into env"

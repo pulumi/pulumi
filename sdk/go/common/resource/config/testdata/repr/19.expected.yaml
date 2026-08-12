@@ -8,7 +8,7 @@ paths:
     - secure: securevalue2
     string: '[{"inner":{"secure":"securevalue"}},{"secure":"securevalue2"}]'
     redacted: '[{"inner":"[secret]"},"[secret]"]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAA/63/hCgAAhdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+BBAEC/4IAAQwBEAAA/4D/gkIAAQVpbm5lchdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+CHwABBnNlY3VyZQZzdHJpbmcMDQALc2VjdXJldmFsdWUXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/giAAAQZzZWN1cmUGc3RyaW5nDA4ADHNlY3VyZXZhbHVlMg==
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAA/6z/gicAAhdtYXBbc3RyaW5nXWludGVyZmFjZSB7fX8EAQL/gAABDAEQAAD/gP+AQgABBWlubmVyF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4AfAAEGc2VjdXJlBnN0cmluZwwNAAtzZWN1cmV2YWx1ZRdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+AIAABBnNlY3VyZQZzdHJpbmcMDgAMc2VjdXJldmFsdWUy
     secure: true
     isObject: true
     secureValues:
@@ -20,7 +20,7 @@ paths:
         secure: securevalue
     string: '{"inner":{"secure":"securevalue"}}'
     redacted: '{"inner":"[secret]"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAABF/4JCAAEFaW5uZXIXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/gh8AAQZzZWN1cmUGc3RyaW5nDA0AC3NlY3VyZXZhbHVl
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAEX/gEIAAQVpbm5lchdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+AHwABBnNlY3VyZQZzdHJpbmcMDQALc2VjdXJldmFsdWU=
     secure: true
     isObject: true
     secureValues:

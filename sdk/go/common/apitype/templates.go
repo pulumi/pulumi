@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,6 +13,75 @@
 // limitations under the License.
 
 package apitype
+
+import (
+	"io"
+	"time"
+
+	"github.com/blang/semver"
+)
+
+// TemplateMetadata represents a template query, as returned by the service's registry
+// APIs.
+type TemplateMetadata struct {
+	Name        string  `json:"name"`
+	Publisher   string  `json:"publisher"`
+	Source      string  `json:"source"`
+	DisplayName string  `json:"displayName"`
+	Description *string `json:"description,omitempty"`
+	// The language that the template is in.
+	Language string `json:"language"`
+	// ReadmeURL is just a pre-signed URL, derived from the artifact key.
+	ReadmeURL string `json:"readmeURL"`
+	// An URL, valid for at least 5 minutes that you can retrieve the full download
+	// bundle for your template.
+	//
+	// The bundle will be a .tar.gz.
+	DownloadURL string `json:"downloadURL"`
+	// A link to the hosting repository.
+	//
+	// Non-VCS backed templates do not have a repo slug as of now.
+	RepoSlug   *string           `json:"repoSlug,omitempty"`
+	Visibility Visibility        `json:"visibility"`
+	UpdatedAt  time.Time         `json:"updatedAt"`
+	Metadata   map[string]string `json:"metadata,omitempty"`
+}
+
+// TemplateBacking is where a template's contents come from. The service fetches VCS-backed
+// templates from the provider on every request, so a listing that includes them is considerably
+// slower than one that does not.
+type TemplateBacking string
+
+const (
+	// TemplateBackingPulumi is Pulumi's own getting-started templates.
+	TemplateBackingPulumi TemplateBacking = "pulumi"
+	// TemplateBackingRegistry is templates published to the Pulumi Registry.
+	TemplateBackingRegistry TemplateBacking = "registry"
+	// TemplateBackingVcs is templates in a collection an organization configured against a
+	// version control provider.
+	TemplateBackingVcs TemplateBacking = "vcs"
+)
+
+type ListTemplatesResponse struct {
+	Templates         []TemplateMetadata `json:"templates"`
+	ContinuationToken *string            `json:"continuationToken,omitempty"`
+	// Diagnostics reports collections that could not be read. Such a collection is skipped
+	// rather than failing the request.
+	Diagnostics []string `json:"diagnostics,omitempty"`
+	// VcsTemplateSourceTotals counts the VCS-backed template collections each of the caller's
+	// organizations has configured. It is unaffected by the request's filters and pagination,
+	// so it describes organizations whose templates the response itself does not carry.
+	VcsTemplateSourceTotals []OrgVcsTemplateSourceTotal `json:"vcsTemplateSourceTotals,omitempty"`
+}
+
+// OrgVcsTemplateSourceTotal reports how many VCS-backed template collections an organization has
+// configured. Organizations with none are omitted from a listing, as is Pulumi's own collection,
+// so an entry means the organization has at least one collection of its own. A collection may
+// hold any number of templates, including none.
+type OrgVcsTemplateSourceTotal struct {
+	OrgLogin string `json:"orgLogin"`
+	Total    int    `json:"total"`
+}
 
 // A pulumi template remote where the source URL contains
 // a valid Pulumi.yaml file.
@@ -62,4 +131,18 @@ type ProjectTemplateConfigValue struct {
 	Default string `json:"default,omitempty" yaml:"default,omitempty"`
 	// Secret may be set to true to indicate that the config value should be encrypted.
 	Secret bool `json:"secret,omitempty" yaml:"secret,omitempty"`
+}
+
+// TemplatePublishOp contains the information needed to publish a template to the registry.
+type TemplatePublishOp struct {
+	// Source is the source of the template. Typically this is 'private' for templates published to the Pulumi Registry.
+	Source string
+	// Publisher is the organization that is publishing the template.
+	Publisher string
+	// Name is the URL-safe name of the template.
+	Name string
+	// Version is the semantic version of the template that should get published.
+	Version semver.Version
+	// Archive is a reader containing the template archive (.tar.gz).
+	Archive io.Reader
 }

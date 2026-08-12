@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +15,7 @@
 package test
 
 import (
-	"context"
 	filesystem "io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -27,48 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
-
-func GeneratePythonProgramTest(
-	t *testing.T,
-	genProgram GenProgram,
-	genProject GenProject,
-) {
-	expectedVersion := map[string]PkgVersionInfo{
-		"aws-resource-options-4.3.8": {
-			Pkg:          "pulumi-aws",
-			OpAndVersion: "==4.26.0",
-		},
-		"aws-resource-options-5.16.2": {
-			Pkg:          "pulumi-aws",
-			OpAndVersion: "==5.16.2",
-		},
-	}
-
-	TestProgramCodegen(t,
-		ProgramCodegenOptions{
-			Language:   "python",
-			Extension:  "py",
-			OutputFile: "__main__.py",
-			Check:      checkPython,
-			GenProgram: genProgram,
-			TestCases: []ProgramTest{
-				{
-					Directory:   "aws-resource-options-4.26",
-					Description: "Resource Options",
-				},
-				{
-					Directory:   "aws-resource-options-5.16.2",
-					Description: "Resource Options",
-				},
-			},
-
-			IsGenProject:    true,
-			GenProject:      genProject,
-			ExpectedVersion: expectedVersion,
-			DependencyFile:  "requirements.txt",
-		},
-	)
-}
 
 func GeneratePythonBatchTest(t *testing.T, rootDir string, genProgram GenProgram, testCases []ProgramTest) {
 	TestProgramCodegen(t,
@@ -83,8 +39,7 @@ func GeneratePythonBatchTest(t *testing.T, rootDir string, genProgram GenProgram
 }
 
 func GeneratePythonYAMLBatchTest(t *testing.T, rootDir string, genProgram GenProgram) {
-	err := os.Chdir(filepath.Join(rootDir, "pkg", "codegen", "python"))
-	require.NoError(t, err)
+	t.Chdir(filepath.Join(rootDir, "pkg", "codegen", "python"))
 
 	TestProgramCodegen(t,
 		ProgramCodegenOptions{
@@ -126,9 +81,9 @@ func CompilePython(t *testing.T, codeDir string) {
 		Toolchain: toolchain.Pip,
 	})
 	require.NoError(t, err)
-	info, err := tc.About(context.Background())
+	info, err := tc.About(t.Context())
 	require.NoError(t, err)
-	pythonCmdPath := info.Executable
+	pythonCmdPath := info.PythonExecutable
 	// Run `python -m py_compile` on all python files
 	args := append([]string{"-m", "py_compile"}, pythonFiles...)
 	RunCommand(t, "python syntax check", codeDir, pythonCmdPath, args...)

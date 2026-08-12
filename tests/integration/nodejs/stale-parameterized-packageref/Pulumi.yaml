@@ -1,0 +1,3 @@
+name: stale-parameterized-packageref
+description: Regression for issue #21950
+runtime: nodejs

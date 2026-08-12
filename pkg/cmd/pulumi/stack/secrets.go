@@ -17,15 +17,20 @@ package stack
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	pkgLogging "github.com/pulumi/pulumi/pkg/v3/logging"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -36,7 +41,7 @@ import (
 // Creates a secrets manager for an existing stack, using the stack to pick defaults if necessary and writing any
 // changes back to the stack's configuration where applicable.
 func CreateSecretsManagerForExistingStack(
-	_ context.Context, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stack backend.Stack, secretsProvider string,
 	rotateSecretsProvider, creatingStack bool,
 ) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
@@ -55,18 +60,18 @@ func CreateSecretsManagerForExistingStack(
 		}
 	}
 
-	project, _, err := ws.ReadProject()
+	project, _, err := ws.ReadProject("")
 	if err != nil {
 		return err
 	}
-	ps, err := LoadProjectStack(project, stack)
+	ps, err := LoadProjectStack(ctx, sink, project, stack, "")
 	if err != nil {
 		return err
 	}
 
 	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
 	if isDefaultSecretsProvider {
-		_, err = stack.DefaultSecretManager(ps)
+		_, err = stack.DefaultSecretManager(ctx, ps)
 	} else if secretsProvider == passphrase.Type {
 		_, err = passphrase.NewPromptingPassphraseSecretsManager(ps, rotateSecretsProvider)
 	} else {
@@ -80,7 +85,7 @@ func CreateSecretsManagerForExistingStack(
 
 	// Handle if the configuration changed any of EncryptedKey, etc
 	if needsSaveProjectStackAfterSecretManger(oldConfig, ps) {
-		if err = workspace.SaveProjectStack(stack.Ref().Name().Q(), ps); err != nil {
+		if err = SaveProjectStack(ctx, stack, ps, ""); err != nil {
 			return fmt.Errorf("saving stack config: %w", err)
 		}
 	}
@@ -92,32 +97,26 @@ func CreateSecretsManagerForExistingStack(
 // Pulumi.<stack>.yaml file themselves, prior to stack initialisation), try to respect the settings therein. Otherwise,
 // fall back to a default defined by the backend that will manage the stack.
 func createSecretsManagerForNewStack(
+	ctx context.Context,
+	sink diag.Sink,
 	ws pkgWorkspace.Context,
 	b backend.Backend,
 	stackRef backend.StackReference,
 	secretsProvider string,
+	configFile string,
 ) (*workspace.ProjectStack, bool, secrets.Manager, error) {
 	var sm secrets.Manager
 
-	// Attempt to read a stack configuration, since it's possible that the user may have supplied one even though the
-	// stack has not actually been created yet. If we fail to read one, that's OK -- we'll just create a new one and
-	// populate it as we go.
-	var ps *workspace.ProjectStack
-	project, _, err := ws.ReadProject()
+	ps, err := readStackConfiguration(ctx, sink, ws, b, stackRef, configFile)
 	if err != nil {
-		ps = &workspace.ProjectStack{}
-	} else {
-		ps, err = loadProjectStackByReference(project, stackRef)
-		if err != nil {
-			ps = &workspace.ProjectStack{}
-		}
+		return nil, false, nil, err
 	}
 
 	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
 
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
 	if isDefaultSecretsProvider {
-		sm, err = b.DefaultSecretManager(ps)
+		sm, err = b.DefaultSecretManager(ctx, ps)
 	} else if secretsProvider == passphrase.Type {
 		sm, err = passphrase.NewPromptingPassphraseSecretsManager(ps, false /*rotateSecretsProvider*/)
 	} else {
@@ -129,6 +128,32 @@ func createSecretsManagerForNewStack(
 
 	needsSave := needsSaveProjectStackAfterSecretManger(oldConfig, ps)
 	return ps, needsSave, sm, err
+}
+
+func readStackConfiguration(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, b backend.Backend,
+	stackRef backend.StackReference, configFile string,
+) (*workspace.ProjectStack, error) {
+	// Attempt to read a stack configuration, since it's possible that the user may have supplied one even though the
+	// stack has not actually been created yet. If we fail to read one, that's OK -- we'll just create a new one and
+	// populate it as we go.
+	project, _, err := ws.ReadProject("")
+	if err != nil {
+		return &workspace.ProjectStack{}, nil
+	}
+	s, err := b.GetStack(ctx, stackRef)
+	if err != nil || s == nil {
+		// Attempt to load file directly as it might already exist even though not in the backend
+		if configFile != "" {
+			return workspace.LoadProjectStack(sink, project, configFile)
+		}
+		return workspace.DetectProjectStack(sink, stackRef.Name().Q())
+	}
+	ps, err := LoadProjectStack(ctx, sink, project, s, configFile)
+	if configFile == "" && (err != nil || ps == nil) {
+		return workspace.DetectProjectStack(sink, stackRef.Name().Q())
+	}
+
+	return ps, err
 }
 
 // A SecretsManagerLoader provides methods for loading secrets managers and
@@ -231,7 +256,7 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 		// default secrets manager which differs from what the user has previously
 		// specified.
 		if l.FallbackToState {
-			snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+			snap, err := s.Snapshot(ctx, backend_secrets.DefaultProvider)
 			if err != nil {
 				return nil, SecretsManagerUnchanged, err
 			}
@@ -259,7 +284,7 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 				ps.EncryptedKey = ""
 			}
 		} else {
-			sm, err = s.DefaultSecretManager(ps)
+			sm, err = s.DefaultSecretManager(ctx, ps)
 		}
 	}
 	if err != nil {
@@ -283,7 +308,14 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 		state = SecretsManagerUnchanged
 	}
 
-	return stack.NewBatchingCachingSecretsManager(sm), state, nil
+	bsm := stack.NewBatchingCachingSecretsManager(sm)
+
+	fqn := string(s.Ref().FullyQualifiedName())
+	if err := pkgLogging.UpgradeCurrentLogger(ctx, fqn, "", bsm); err != nil {
+		slog.InfoContext(ctx, "encrypted log upgrade failed", "err", err)
+	}
+
+	return bsm, state, nil
 }
 
 func needsSaveProjectStackAfterSecretManger(
@@ -303,12 +335,10 @@ func needsSaveProjectStackAfterSecretManger(
 }
 
 func ValidateSecretsProvider(typ string) error {
-	kind := strings.SplitN(typ, ":", 2)[0]
+	kind, _, _ := strings.Cut(typ, ":")
 	supportedKinds := []string{"default", "passphrase", "awskms", "azurekeyvault", "gcpkms", "hashivault"}
-	for _, supportedKind := range supportedKinds {
-		if kind == supportedKind {
-			return nil
-		}
+	if slices.Contains(supportedKinds, kind) {
+		return nil
 	}
 	return fmt.Errorf("unknown secrets provider type '%s' (supported values: %s)",
 		kind,

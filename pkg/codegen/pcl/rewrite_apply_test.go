@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type nameInfo int
@@ -140,6 +141,20 @@ func TestApplyRewriter(t *testing.T) {
 			input:  `resource.boolOutput ? "yes" : "no"`,
 			output: `__apply(resource.boolOutput, eval(boolOutput, boolOutput ? "yes" : "no"))`,
 		},
+		// Test deduplication of identical apply arguments (pulumi/pulumi#4635).
+		{
+			input:  `"v: ${resource.stringOutput} ${resource.stringOutput}"`,
+			output: `__apply(resource.stringOutput,eval(stringOutput, "v: ${stringOutput} ${stringOutput}"))`,
+		},
+		{
+			input:  `"v: ${resource.objectOutput.stringPlain} ${resource.objectOutput.stringPlain}"`,
+			output: `__apply(resource.objectOutput,eval(objectOutput, "v: ${objectOutput.stringPlain} ${objectOutput.stringPlain}"))`,
+		},
+		// Different outputs from the same resource should NOT be deduplicated.
+		{
+			input:  `"v: ${resource.stringOutput} ${resource.boolOutput}"`,
+			output: `__apply(resource.stringOutput, resource.boolOutput,eval(stringOutput, boolOutput, "v: ${stringOutput} ${boolOutput}"))`,
+		},
 	}
 
 	resourceType := model.NewObjectType(map[string]model.Type{
@@ -189,15 +204,14 @@ func TestApplyRewriter(t *testing.T) {
 	}))
 
 	for _, c := range cases {
-		c := c
 		t.Run(c.input, func(t *testing.T) {
 			t.Parallel()
 
 			expr, diags := model.BindExpressionText(c.input, scope, hcl.Pos{})
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 
 			expr, diags = RewriteApplies(expr, nameInfo(0), !c.skipPromises)
-			assert.Len(t, diags, 0)
+			require.Len(t, diags, 0)
 
 			assert.Equal(t, c.output, fmt.Sprintf("%v", expr))
 		})
@@ -225,12 +239,75 @@ func TestApplyRewriter(t *testing.T) {
 })`
 
 		expr, diags := model.BindExpressionText(input, scope, hcl.Pos{})
-		assert.Len(t, diags, 0)
+		require.Len(t, diags, 0)
 
 		expr, diags = RewriteAppliesWithSkipToJSON(expr, nameInfo(0), false, true /* skiToJson */)
-		assert.Len(t, diags, 0)
+		require.Len(t, diags, 0)
 
 		output := fmt.Sprintf("%v", expr)
 		assert.Equal(t, expectedOutput, output)
 	})
+}
+
+func TestRewriteApplies_TraversalParts(t *testing.T) {
+	t.Parallel()
+
+	resourceType := model.NewObjectType(map[string]model.Type{
+		"stringOutput": model.NewOutputType(model.StringType),
+	})
+	scope := model.NewRootScope(syntax.None)
+	scope.Define("key", &model.Variable{
+		Name:         "key",
+		VariableType: model.StringType,
+	})
+	scope.Define("resources", &model.Variable{
+		Name:         "resources",
+		VariableType: model.NewListType(resourceType),
+	})
+	expr, diags := model.BindExpressionText(
+		`"${resources[key].stringOutput}.example.com"`, scope, hcl.Pos{})
+	require.Empty(t, diags)
+
+	expr, diags = RewriteApplies(expr, nameInfo(0), true)
+	require.Empty(t, diags)
+
+	expr, diags = model.VisitExpression(expr, nil, func(e model.Expression) (model.Expression, hcl.Diagnostics) {
+		if rel, ok := e.(*model.RelativeTraversalExpression); ok {
+			require.Equal(t, len(rel.Traversal)+1, len(rel.Parts),
+				"relative traversals must have len(parts) == len(traversals)+1")
+			require.Equal(t, model.NewOutputType(model.StringType), rel.Type(), "expected output<string>")
+		}
+		return e, nil
+	})
+	require.Empty(t, diags)
+	output := fmt.Sprintf("%v", expr)
+	assert.Equal(t, `__apply(resources[key].stringOutput,eval(stringOutput, "${stringOutput}.example.com"))`, output)
+}
+
+func TestRewriteInvalidTraversal(t *testing.T) {
+	t.Parallel()
+
+	resourceType := model.NewObjectType(map[string]model.Type{
+		"objectOutput": model.NewOutputType(model.NewObjectType(map[string]model.Type{
+			"someProperty": model.StringType,
+		})),
+	})
+
+	scope := model.NewRootScope(syntax.None)
+	scope.Define("resource", &model.Variable{
+		Name:         "resource",
+		VariableType: resourceType,
+	})
+	functions := pulumiBuiltins(bindOptions{})
+	scope.DefineFunction("toJSON", functions["toJSON"])
+
+	expr, diags := model.BindExpressionText(`resource.objectOutput.doesNotExist`, scope, hcl.InitialPos)
+	require.True(t, diags.HasErrors())
+
+	expr, diags = RewriteApplies(expr, nameInfo(0), true)
+	require.Empty(t, diags)
+	assert.Equal(t,
+		"__apply(resource.objectOutput, eval(objectOutput, objectOutput.doesNotExist))",
+		fmt.Sprintf("%v", expr),
+	)
 }

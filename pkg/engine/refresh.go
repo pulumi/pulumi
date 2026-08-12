@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,9 +20,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -34,12 +34,11 @@ func Refresh(
 	opts UpdateOptions,
 	dryRun bool,
 ) (*deploy.Plan, display.ResourceChanges, error) {
-	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
-	info, err := newDeploymentContext(u, "refresh", ctx.ParentSpan)
+	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "refresh", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -57,7 +56,7 @@ func Refresh(
 	logging.V(7).Infof("*** Starting Refresh(preview=%v) ***", dryRun)
 	defer logging.V(7).Infof("*** Refresh(preview=%v) complete ***", dryRun)
 
-	if err := checkTargets(opts.Targets, opts.Excludes, u.GetTarget().Snapshot); err != nil {
+	if err := checkTargets(opts.Targets, opts.Excludes, u.Target.Snapshot); err != nil {
 		return nil, nil, err
 	}
 
@@ -69,12 +68,14 @@ func Refresh(
 		StatusDiag:    newEventSink(emitter, true),
 		isRefresh:     true,
 		DryRun:        dryRun,
+		pluginManager: ctx.PluginManager,
 	})
 }
 
 func newRefreshSource(
 	ctx context.Context, client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main,
-	projectRoot string, target *deploy.Target, plugctx *plugin.Context,
+	projectRoot string, target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks,
+	panicErrs chan<- error,
 ) (deploy.Source, error) {
 	// Like update, we need to gather the set of plugins necessary to refresh everything in the snapshot. While we don't
 	// run the program like update does, we still grab the plugins from the program in order to inform the user if their
@@ -118,7 +119,7 @@ func newRefreshSource(
 
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
 	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, snapshotPackages.ToPluginSet().Deduplicate(),
-		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
+		plugctx.ProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
 		logging.V(7).Infof("newRefreshSource(): failed to install missing plugins: %v", err)
 	}
 
@@ -135,12 +136,11 @@ func RefreshV2(
 	opts UpdateOptions,
 	dryRun bool,
 ) (*deploy.Plan, display.ResourceChanges, error) {
-	contract.Requiref(u != nil, "u", "cannot be nil")
 	contract.Requiref(ctx != nil, "ctx", "cannot be nil")
 
 	defer func() { ctx.Events <- NewCancelEvent() }()
 
-	info, err := newDeploymentContext(u, "refresh", ctx.ParentSpan)
+	info, err := newDeploymentContext(ctx.Cancel.Base(), u, "refresh", ctx.ParentSpan)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -159,7 +159,7 @@ func RefreshV2(
 	logging.V(7).Infof("*** Starting Refresh(preview=%v) ***", dryRun)
 	defer logging.V(7).Infof("*** Refresh(preview=%v) complete ***", dryRun)
 
-	if err := checkTargets(opts.Targets, opts.Excludes, u.GetTarget().Snapshot); err != nil {
+	if err := checkTargets(opts.Targets, opts.Excludes, u.Target.Snapshot); err != nil {
 		return nil, nil, err
 	}
 
@@ -171,5 +171,6 @@ func RefreshV2(
 		StatusDiag:    newEventSink(emitter, true),
 		isRefresh:     true,
 		DryRun:        dryRun,
+		pluginManager: ctx.PluginManager,
 	})
 }

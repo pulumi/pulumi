@@ -1,0 +1,11 @@
+run: esc env init test-org/ambiguous
+environments:
+  test-org/test-org/env: arbitrary
+
+---
+> esc env init test-org/ambiguous
+Environment created: test-user/test-org/ambiguous
+
+---
+> esc env init test-org/ambiguous
+warning: environment reference "test-org/ambiguous" is ambiguous (resolved to test-user/test-org/ambiguous). Use <org>/<project>/<environment> instead.

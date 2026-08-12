@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package diy
 
 import (
-	"context"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -47,7 +46,7 @@ func TestWrappedBucket(t *testing.T) {
 
 	// Initialize a diy backend, using the default Pulumi directory.
 	cloudURL := FilePathPrefix + "~"
-	ctx := context.Background()
+	ctx := t.Context()
 	b, err := New(ctx, nil, cloudURL, nil)
 	if err != nil {
 		t.Fatalf("Initializing new diy backend: %v", err)
@@ -104,7 +103,7 @@ func TestWrappedBucket(t *testing.T) {
 		objects, err := listBucket(ctx, wrappedBucket, `.pulumi\bucket-test`)
 		mustNotHaveError(t, "listBucket", err)
 		if len(objects) != len(filenames) {
-			assert.Equal(t, 3, len(objects), "listBucket returned unexpected number of objects.")
+			require.Len(t, objects, 3, "listBucket returned unexpected number of objects.")
 			for _, object := range objects {
 				t.Logf("Got object: %+v", object)
 			}

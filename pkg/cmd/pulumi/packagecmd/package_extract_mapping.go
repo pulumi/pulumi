@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,21 @@
 package packagecmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
@@ -26,10 +37,10 @@ import (
 
 func newExtractMappingCommand() *cobra.Command {
 	var out string
+	var serverURL string
 
 	cmd := &cobra.Command{
-		Use:   "get-mapping <key> <schema_source> [provider key] [provider parameters]",
-		Args:  cobra.MinimumNArgs(2),
+		Use:   "get-mapping",
 		Short: "Get the mapping information for a given key from a package",
 		Long: `Get the mapping information for a given key from a package.
 
@@ -51,19 +62,30 @@ empty string.`,
 				return err
 			}
 			sink := cmdutil.Diag()
-			pctx, err := plugin.NewContext(sink, sink, nil, nil, wd, nil, false, nil)
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			pluginHost, err := pkghost.New(context.WithoutCancel(cmd.Context()), sink, sink, nil,
+				pkgWorkspace.EnsureLanguageInstalled, schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+				packageworkspace.NewResolverServer(registry))
 			if err != nil {
 				return err
 			}
-			defer func() {
-				contract.IgnoreError(pctx.Close())
-			}()
+			// host is owned here, closed after the context
+			defer contract.IgnoreClose(pluginHost)
+			pctx, err := plugin.NewContext(
+				cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false,
+				nil)
+			if err != nil {
+				return err
+			}
+			defer contract.IgnoreClose(pctx)
 
-			p, err := ProviderFromSource(pctx, source)
+			p, _, err := packages.ProviderFromSource(
+				pkgWorkspace.Instance, pctx, source, registry, env.Global(),
+				0 /* unbounded concurrency */, serverURL)
 			if err != nil {
 				return fmt.Errorf("load provider: %w", err)
 			}
-			defer p.Close()
 
 			// If provider parameters have been provided, parameterize the provider with them before requesting a mapping.
 			if len(args) > 3 {
@@ -88,7 +110,7 @@ empty string.`,
 				return fmt.Errorf("no mapping found for key %q", key)
 			}
 
-			fmt.Fprintf(os.Stderr, "%s maps to provider %s\n", source, mapping.Provider)
+			fmt.Fprintf(cmd.ErrOrStderr(), "%s maps to provider %s\n", source, mapping.Provider)
 
 			// If the user has specified out, then write out the mapping data
 			// to a file.
@@ -99,7 +121,7 @@ empty string.`,
 				}
 			} else {
 				// Otherwise, just write it to stdout
-				_, err := os.Stdout.Write(mapping.Data)
+				_, err := cmd.OutOrStdout().Write(mapping.Data)
 				if err != nil {
 					return fmt.Errorf("failed to write mapping data to stdout: %w", err)
 				}
@@ -109,7 +131,25 @@ empty string.`,
 		},
 	}
 
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "key"},
+			{Name: "schema-source"},
+			{Name: "provider-key"},
+			{Name: "provider-parameter"},
+		},
+		Required: 2,
+		Variadic: true,
+	})
+
+	// It's worth mentioning the `--`, as it means that Cobra will stop parsing flags.
+	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
+	cmd.Use = "get-mapping <key> <schema-source> [provider-key] [flags] [--] [provider-parameter]..."
+
 	cmd.Flags().StringVarP(&out, "out", "o", "", "The file to write the mapping data to")
+	cmd.Flags().StringVar(&serverURL, "server", "",
+		"A URL to download the plugin from. When set, the provider argument is used as the plugin name "+
+			"directly and no package resolution is performed.")
 
 	return cmd
 }

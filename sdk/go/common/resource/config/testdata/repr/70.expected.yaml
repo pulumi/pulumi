@@ -6,7 +6,7 @@ paths:
     - "00"
     string: '["00"]'
     redacted: '["00"]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAEv+EDwABBnN0cmluZwwEAAIwMA==
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAEv+CDwABBnN0cmluZwwEAAIwMA==
     secure: false
     isObject: true
   my:testKey[0]:

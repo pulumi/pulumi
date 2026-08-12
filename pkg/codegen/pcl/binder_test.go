@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@ package pcl_test
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -55,7 +57,6 @@ func TestBindProgram(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, v := range testdata {
-		v := v
 		if !v.IsDir() {
 			continue
 		}
@@ -90,20 +91,19 @@ func TestBindProgram(t *testing.T) {
 
 				var bindError error
 				var diags hcl.Diagnostics
-				loader := pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath)))
+				loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 				absoluteFolderPath, err := filepath.Abs(folderPath)
 				if err != nil {
 					t.Fatalf("failed to bind program: unable to find the absolute path of %v", folderPath)
 				}
 				options := append(
 					bindOptions[v.Name()],
-					loader,
 					pcl.DirPath(absoluteFolderPath),
 					pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 				// PCL binder options are taken from program_driver.go
-				program, diags, bindError := pcl.BindProgram(parser.Files, options...)
+				program, diags, bindError := pcl.BindProgram(parser.Files, loader, options...)
 
-				assert.NoError(t, bindError)
+				require.NoError(t, bindError)
 				if diags.HasErrors() || program == nil {
 					t.Fatalf("failed to bind program %s: %v", v.Name(), diags)
 				}
@@ -145,11 +145,11 @@ func TestWritingProgramSource(t *testing.T) {
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
-	assert.NoError(t, bindError)
+	require.NoError(t, bindError)
 	if diags.HasErrors() || program == nil {
 		t.Fatalf("failed to bind program: %v", diags)
 	}
@@ -157,29 +157,29 @@ func TestWritingProgramSource(t *testing.T) {
 	// STEP 2: assert the resulting files
 	fs := afero.NewMemMapFs()
 	writingFilesError := program.WriteSource(fs)
-	assert.NoError(t, writingFilesError, "failed to write source files")
+	require.NoError(t, writingFilesError, "failed to write source files")
 
 	// Assert main file exists
 	mainFileExists, err := afero.Exists(fs, "/components.pp")
-	assert.NoError(t, err, "failed to get the main file")
+	require.NoError(t, err, "failed to get the main file")
 	assert.True(t, mainFileExists, "main program file should exist at the root")
 
 	// Assert directories "simpleComponent" and "exampleComponent" are present
 	simpleComponentDirExists, err := afero.DirExists(fs, "/simpleComponent")
-	assert.NoError(t, err, "failed to get the simple component dir")
+	require.NoError(t, err, "failed to get the simple component dir")
 	assert.True(t, simpleComponentDirExists, "simple component dir exists")
 
 	exampleComponentDirExists, err := afero.DirExists(fs, "/exampleComponent")
-	assert.NoError(t, err, "failed to get the example component dir")
+	require.NoError(t, err, "failed to get the example component dir")
 	assert.True(t, exampleComponentDirExists, "example component dir exists")
 
 	// Assert simpleComponent/main.pp and exampleComponent/main.pp exist
 	simpleMainExists, err := afero.Exists(fs, "/simpleComponent/main.pp")
-	assert.NoError(t, err, "failed to get the main file of simple component")
+	require.NoError(t, err, "failed to get the main file of simple component")
 	assert.True(t, simpleMainExists, "main program file of simple component should exist")
 
 	exampleMainExists, err := afero.Exists(fs, "/exampleComponent/main.pp")
-	assert.NoError(t, err, "failed to get the main file of example component")
+	require.NoError(t, err, "failed to get the main file of example component")
 	assert.True(t, exampleMainExists, "main program file of example component should exist")
 }
 
@@ -191,7 +191,7 @@ func TestConfigNodeTypedString(t *testing.T) {
 		t.Fatalf("could not bind program: %v", err)
 	}
 	contract.Ignore(diags)
-	assert.NotNil(t, program, "failed to parse and bind program")
+	require.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
 	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
 	assert.True(t, ok, "first node is a config variable")
@@ -205,7 +205,7 @@ func TestConfigNodeTypedOptionalString(t *testing.T) {
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
 	contract.Ignore(diags)
-	assert.NotNil(t, program, "failed to parse and bind program")
+	require.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
 	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
 	assert.True(t, ok, "first node is a config variable")
@@ -222,7 +222,7 @@ func TestConfigNodeTypedInt(t *testing.T) {
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
 	contract.Ignore(diags)
-	assert.NotNil(t, program, "failed to parse and bind program")
+	require.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
 	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
 	assert.True(t, ok, "first node is a config variable")
@@ -236,7 +236,7 @@ func TestConfigNodeTypedStringList(t *testing.T) {
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
 	contract.Ignore(diags)
-	assert.NotNil(t, program, "failed to parse and bind program")
+	require.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
 	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
 	assert.True(t, ok, "first node is a config variable")
@@ -246,13 +246,29 @@ func TestConfigNodeTypedStringList(t *testing.T) {
 	assert.Equal(t, listType.ElementType, model.StringType, "the element type is a string")
 }
 
+func TestConfigNodeTypedOptionalStringList(t *testing.T) {
+	t.Parallel()
+	source := `config names "list(optional(string))" { default = [null] }`
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program, "failed to parse and bind program")
+	assert.Equal(t, 1, len(program.Nodes), "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	assert.True(t, ok, "first node is a config variable")
+	assert.Equal(t, "names", config.Name())
+	listType, ok := config.Type().(*model.ListType)
+	assert.True(t, ok, "the type of config is a list type")
+	assert.True(t, model.IsOptionalType(listType.ElementType), "the element type is optional")
+}
+
 func TestConfigNodeTypedIntList(t *testing.T) {
 	t.Parallel()
 	source := "config names \"list(int)\" { }"
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
 	contract.Ignore(diags)
-	assert.NotNil(t, program, "failed to parse and bind program")
+	require.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
 	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
 	assert.True(t, ok, "first node is a config variable")
@@ -268,7 +284,7 @@ func TestConfigNodeTypedStringMap(t *testing.T) {
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
 	contract.Ignore(diags)
-	assert.NotNil(t, program, "failed to parse and bind program")
+	require.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
 	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
 	assert.True(t, ok, "first node is a config variable")
@@ -284,7 +300,7 @@ func TestConfigNodeTypedIntMap(t *testing.T) {
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
 	contract.Ignore(diags)
-	assert.NotNil(t, program, "failed to parse and bind program")
+	require.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
 	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
 	assert.True(t, ok, "first node is a config variable")
@@ -300,7 +316,7 @@ func TestConfigNodeTypedAnyMap(t *testing.T) {
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
 	contract.Ignore(diags)
-	assert.NotNil(t, program, "failed to parse and bind program")
+	require.NotNil(t, program, "failed to parse and bind program")
 	assert.Equal(t, len(program.Nodes), 1, "there is one node")
 	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
 	assert.True(t, ok, "first node is a config variable")
@@ -308,6 +324,20 @@ func TestConfigNodeTypedAnyMap(t *testing.T) {
 	mapType, ok := config.Type().(*model.MapType)
 	assert.True(t, ok, "the type of config is a map type")
 	assert.Equal(t, mapType.ElementType, model.DynamicType, "the element type is a dynamic")
+}
+
+func TestConfigNodeSecret(t *testing.T) {
+	t.Parallel()
+	source := "config count int { secret = true }"
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
+	contract.Ignore(diags)
+	require.NotNil(t, program, "failed to parse and bind program")
+	require.Len(t, program.Nodes, 1, "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	require.True(t, ok, "first node is a config variable")
+	assert.True(t, config.Secret, "the config variable is marked as secret")
+	assert.Equal(t, model.NewOutputType(model.IntType), config.Type(), "the type is a secret output int")
 }
 
 func TestOutputsCanHaveSameNameAsOtherNodes(t *testing.T) {
@@ -322,8 +352,8 @@ output cidrBlock {
 `
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(diags), "There are no diagnostics")
-	assert.NotNil(t, program)
+	assert.Empty(t, diags, "There are no diagnostics")
+	require.NotNil(t, program)
 }
 
 func TestUsingDynamicConfigAsRange(t *testing.T) {
@@ -337,7 +367,7 @@ func TestUsingDynamicConfigAsRange(t *testing.T) {
 		description = "The ID of the VPC"
 	}
 
-	resource "endpoint" "aws:ec2/vpcEndpoint:VpcEndpoint" {
+	resource "endpoint" "infra:index:Endpoint" {
 	  options {
 		range = endpointsServiceNames
 	  }
@@ -350,8 +380,8 @@ func TestUsingDynamicConfigAsRange(t *testing.T) {
 
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(diags), "There are no diagnostics")
-	assert.NotNil(t, program)
+	assert.Empty(t, diags, "There are no diagnostics")
+	require.NotNil(t, program)
 }
 
 func TestLengthFunctionCanBeUsedWithDynamic(t *testing.T) {
@@ -365,8 +395,8 @@ func TestLengthFunctionCanBeUsedWithDynamic(t *testing.T) {
 `
 	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(diags), "There are no diagnostics")
-	assert.NotNil(t, program)
+	assert.Empty(t, diags, "There are no diagnostics")
+	require.NotNil(t, program)
 }
 
 func TestBindingUnknownResourceWhenSkippingResourceTypeChecking(t *testing.T) {
@@ -398,11 +428,27 @@ output "values" {
 	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
 	require.NoError(t, lenientError)
 	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
-	assert.NotNil(t, lenientProgram)
+	require.NotNil(t, lenientProgram)
 
 	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
-	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	require.NotNil(t, strictError, "Binding fails in strict mode")
 	assert.Nil(t, strictProgram)
+}
+
+func TestBindingReadProviderResourceFails(t *testing.T) {
+	t.Parallel()
+
+	source := `
+read provider "pulumi:providers:random" {
+	id = "provider-id"
+}
+`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.Nil(t, program)
+	require.Error(t, err)
+	require.True(t, diags.HasErrors())
+	assert.Equal(t, "provider resources cannot be read: 'pulumi:providers:random'", diags[0].Summary)
 }
 
 func TestBindingUnknownResourceFromKnownSchemaWhenSkippingResourceTypeChecking(t *testing.T) {
@@ -423,10 +469,10 @@ output "mainId" {
 	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
 	require.NoError(t, lenientError)
 	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
-	assert.NotNil(t, lenientProgram)
+	require.NotNil(t, lenientProgram)
 
 	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
-	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	require.NotNil(t, strictError, "Binding fails in strict mode")
 	assert.Nil(t, strictProgram)
 }
 
@@ -451,7 +497,7 @@ output "knownId" {
 	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
 	require.NoError(t, lenientError)
 	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
-	assert.NotNil(t, lenientProgram)
+	require.NotNil(t, lenientProgram)
 
 	for _, output := range lenientProgram.OutputVariables() {
 		outputType := model.ResolveOutputs(output.Value.Type())
@@ -460,12 +506,12 @@ output "knownId" {
 		}
 
 		if output.Name() == "knownId" {
-			assert.Equal(t, model.StringType, outputType)
+			assert.Equal(t, model.IDType, outputType)
 		}
 	}
 
 	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
-	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	require.NotNil(t, strictError, "Binding fails in strict mode")
 	assert.Nil(t, strictProgram)
 }
 
@@ -483,10 +529,10 @@ resource randomPet "random:index/randomPet:RandomPet" {
 	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
 	require.NoError(t, lenientError)
 	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
-	assert.NotNil(t, lenientProgram)
+	require.NotNil(t, lenientProgram)
 
 	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
-	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	require.NotNil(t, strictError, "Binding fails in strict mode")
 	assert.Nil(t, strictProgram)
 }
 
@@ -506,10 +552,10 @@ output "mainId" {
 	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipResourceTypechecking)
 	require.NoError(t, lenientError)
 	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
-	assert.NotNil(t, lenientProgram)
+	require.NotNil(t, lenientProgram)
 
 	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
-	assert.NotNil(t, strictError, "Binding fails in strict mode")
+	require.NotNil(t, strictError, "Binding fails in strict mode")
 	assert.Nil(t, strictProgram)
 }
 
@@ -531,12 +577,12 @@ func TestTraversalOfOptionalObject(t *testing.T) {
 	// first assert that binding the program works
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	require.NoError(t, err)
-	assert.Equal(t, 0, len(diags), "There are no diagnostics")
-	assert.NotNil(t, program)
+	assert.Empty(t, diags, "There are no diagnostics")
+	require.NotNil(t, program)
 
 	// get the output variable
 	outputVars := program.OutputVariables()
-	assert.Equal(t, 1, len(outputVars), "There is only one output variable")
+	require.Len(t, outputVars, 1, "There is only one output variable")
 	fooBar := outputVars[0]
 	fooBarType := fooBar.Value.Type()
 	assert.True(t, model.IsOptionalType(fooBarType))
@@ -561,11 +607,11 @@ resource randomPet "random:index/randomPet:RandomPet" {
 	lenientProgram, lenientDiags, lenientError := ParseAndBindProgram(t, source, "prog.pp", pcl.SkipRangeTypechecking)
 	require.NoError(t, lenientError)
 	assert.False(t, lenientDiags.HasErrors(), "There are no errors")
-	assert.NotNil(t, lenientProgram)
+	require.NotNil(t, lenientProgram)
 
 	strictProgram, diags, strictError := ParseAndBindProgram(t, source, "program.pp")
-	assert.NotNil(t, strictError, "Binding fails in strict mode")
-	assert.Equal(t, 2, len(diags), "There are two diagnostics")
+	require.NotNil(t, strictError, "Binding fails in strict mode")
+	require.Len(t, diags, 2, "There are two diagnostics")
 	assert.Nil(t, strictProgram)
 }
 
@@ -573,15 +619,15 @@ func TestTransitivePackageReferencesAreLoadedFromTopLevelResourceDefinition(t *t
 	t.Parallel()
 	// when binding a resource from a package that has a transitive dependency
 	// then that transitive dependency is part of the program package references.
-	// for example when binding a resource from AWSX package and that resources uses types from the AWS package
-	// then both AWSX and AWS packages are part of the program package references
-	source := `resource "example" "awsx:ecs:EC2Service" { }`
+	// for example when binding a resource from the remoteref package and that resource uses types
+	// from the goalias package then both packages are part of the program package references
+	source := `resource "example" "remoteref:index:Root" { }`
 
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
 	require.NoError(t, err)
 	assert.False(t, diags.HasErrors(), "There are no error diagnostics")
-	assert.NotNil(t, program)
-	assert.Equal(t, 2, len(program.PackageReferences()), "There are two package references")
+	require.NotNil(t, program)
+	require.Len(t, program.PackageReferences(), 2, "There are two package references")
 
 	packageRefExists := func(pkg string) bool {
 		for _, ref := range program.PackageReferences() {
@@ -593,8 +639,8 @@ func TestTransitivePackageReferencesAreLoadedFromTopLevelResourceDefinition(t *t
 		return false
 	}
 
-	assert.True(t, packageRefExists("awsx"), "The program has a reference to the awsx package")
-	assert.True(t, packageRefExists("aws"), "The program has a reference to the aws package")
+	assert.True(t, packageRefExists("remoteref"), "The program has a reference to the remoteref package")
+	assert.True(t, packageRefExists("goalias"), "The program has a reference to the goalias package")
 }
 
 func TestAllowMissingVariablesShouldNotErrorOnUnboundVariableReferences(t *testing.T) {
@@ -607,7 +653,7 @@ resource randomPet "random:index/randomPet:RandomPet" {
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.AllowMissingVariables)
 	require.NoError(t, err)
 	assert.False(t, diags.HasErrors(), "There are no error diagnostics")
-	assert.NotNil(t, program)
+	require.NotNil(t, program)
 }
 
 func TestBindingComponentFailsWhenReferencingParentAsSource(t *testing.T) {
@@ -644,13 +690,25 @@ package "random" {
         value = "SGVsbG8=" // base64 encoded "Hello"
     }
 }
+
+// Unlabeled package with all fields specified
+package {
+	baseProviderName = "gcp"
+	baseProviderVersion = "2.3.4"
+}
 `
 	parser := syntax.NewParser()
 	err := parser.ParseFile(bytes.NewReader([]byte(source)), "program.pp")
 	require.NoError(t, err)
 	packageDescriptors, diags := pcl.ReadPackageDescriptors(parser.Files[0])
 	require.False(t, diags.HasErrors(), "There are no error diagnostics")
-	require.Equal(t, 3, len(packageDescriptors), "There are two package descriptors")
+	require.Len(t, diags, 3, "There are three warning diagnostics")
+	for _, diag := range diags {
+		require.Equal(t, hcl.DiagWarning, diag.Severity)
+		require.Equal(t, "package block label is deprecated", diag.Summary)
+	}
+
+	require.Len(t, packageDescriptors, 4, "There are four package descriptors")
 
 	require.Equal(t, "aws", packageDescriptors["aws"].Name)
 	require.Nil(t, packageDescriptors["aws"].Version)
@@ -668,6 +726,78 @@ package "random" {
 	assert.Equal(t, "4.5.6", packageDescriptors["random"].Parameterization.Version.String())
 	base64Value := base64.StdEncoding.EncodeToString(packageDescriptors["random"].Parameterization.Value)
 	assert.Equal(t, "SGVsbG8=", base64Value)
+
+	require.Equal(t, "gcp", packageDescriptors["gcp"].Name)
+	require.Equal(t, "2.3.4", packageDescriptors["gcp"].Version.String())
+}
+
+func TestReadAllPackageDescriptorsAllowsIdenticalDuplicates(t *testing.T) {
+	t.Parallel()
+
+	// The same package block in two files (e.g. main.pp and a per-package .pp file) should be
+	// silently deduplicated rather than causing an error.
+	sharedPackage := `
+package {
+	baseProviderName = "parameterized"
+	baseProviderVersion = "1.2.3"
+	parameterization {
+		name = "subpackage"
+		version = "2.0.0"
+		value = "SGVsbG8=" // base64 encoded "Hello"
+	}
+}
+`
+	parser := syntax.NewParser()
+	require.NoError(t, parser.ParseFile(bytes.NewReader(
+		[]byte(sharedPackage+`resource r "subpackage:index:Foo" {}`)), "main.pp"))
+	require.NoError(t, parser.ParseFile(bytes.NewReader(
+		[]byte(sharedPackage)), "subpackage.pp"))
+
+	descriptors, diags := pcl.ReadAllPackageDescriptors(parser.Files)
+	assert.False(t, diags.HasErrors(), "identical duplicate package blocks should not produce errors: %v", diags)
+	require.Len(t, descriptors, 1)
+	require.NotNil(t, descriptors["subpackage"])
+}
+
+func TestReadAllPackageDescriptorsErrorsOnConflictingDuplicates(t *testing.T) {
+	t.Parallel()
+
+	pkg1 := `
+package {
+	baseProviderName = "parameterized"
+	baseProviderVersion = "1.2.3"
+	parameterization {
+		name = "subpackage"
+		version = "2.0.0"
+		value = "SGVsbG8=" // base64 encoded "Hello"
+	}
+}
+`
+	pkg2 := `
+package {
+	baseProviderName = "parameterized"
+	baseProviderVersion = "1.2.3"
+	parameterization {
+		name = "subpackage"
+		version = "3.0.0"
+		value = "SGVsbG8="
+	}
+}
+`
+	parser := syntax.NewParser()
+	require.NoError(t, parser.ParseFile(bytes.NewReader([]byte(pkg1)), "main.pp"))
+	require.NoError(t, parser.ParseFile(bytes.NewReader([]byte(pkg2)), "subpackage.pp"))
+
+	_, diags := pcl.ReadAllPackageDescriptors(parser.Files)
+	assert.True(t, diags.HasErrors(), "conflicting package blocks should produce an error")
+	hasConflictError := false
+	for _, d := range diags {
+		if d.Severity == hcl.DiagError && d.Summary == `package "subpackage" was already defined with different parameters` {
+			hasConflictError = true
+			break
+		}
+	}
+	assert.True(t, hasConflictError, "expected a conflict error diagnostic")
 }
 
 func TestBindingConditionalResourcesDoesNotProduceDiagnostics(t *testing.T) {
@@ -684,7 +814,7 @@ lenPublicSubnets = invoke("std:index:max", {
   ]
 })
 
-resource "defaultVpc" "aws:ec2/vpc:Vpc" {
+resource "defaultVpc" "infra:index:Vpc" {
   options { range = createVpc ? lenPublicSubnets.result : 0 }
   cidrBlock = "10.0.0.1/16"
 }
@@ -692,7 +822,7 @@ resource "defaultVpc" "aws:ec2/vpc:Vpc" {
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
 	require.NoError(t, err)
 	assert.Empty(t, diags, "There are no error or warning diagnostics")
-	assert.NotNil(t, program)
+	require.NotNil(t, program)
 }
 
 func TestBindingElementFunctionWithSplatExpression(t *testing.T) {
@@ -711,19 +841,19 @@ resource "randomPet" "random:index/randomPet:RandomPet" {
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	require.NoError(t, err)
 	assert.Empty(t, diags, "There are no error or warning diagnostics")
-	assert.NotNil(t, program)
+	require.NotNil(t, program)
 
 	// binding in non-strict mode
 	program, diags, err = ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
 	require.NoError(t, err)
 	assert.Empty(t, diags, "There are no error or warning diagnostics")
-	assert.NotNil(t, program)
+	require.NotNil(t, program)
 }
 
 func TestBindingElementFunctionWithOutputSplatExpression(t *testing.T) {
 	t.Parallel()
 	source := `
-azs = invoke("aws:index:getAvailabilityZones", {})
+azs = invoke("infra:index:getZones", {})
 
 resource "randomPet" "random:index/randomPet:RandomPet" {
 	options { range = length(azs.filters) }
@@ -733,7 +863,7 @@ resource "randomPet" "random:index/randomPet:RandomPet" {
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.PreferOutputVersionedInvokes)
 	require.NoError(t, err)
 	assert.Empty(t, diags, "There are no error or warning diagnostics")
-	assert.NotNil(t, program)
+	require.NotNil(t, program)
 }
 
 // Tests that valid applications of the `call` intrinsic with simple receivers bind with no errors or diagnostics.
@@ -937,7 +1067,7 @@ value = element(data, 0)
 	program, diags, err = ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
 	require.NoError(t, err)
 	assert.Empty(t, diags, "There are no error or warning diagnostics")
-	assert.NotNil(t, program)
+	require.NotNil(t, program)
 }
 
 func TestBindingSelfReferencingResourceFailWithCircularReferenceError(t *testing.T) {
@@ -1003,12 +1133,12 @@ func TestBindingSelfReferencingComponentFailsWithCircularReferenceError(t *testi
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
 	assert.Nil(t, program)
-	assert.NotNil(t, bindError)
+	require.NotNil(t, bindError)
 	assert.True(t, diags.HasErrors(), "There are error diagnostics")
 	assert.Contains(t, diags.Error(), "circular reference")
 }
@@ -1044,11 +1174,11 @@ func TestBindingMutuallyDependantComponentsSucceeds(t *testing.T) {
 	}
 
 	program, diags, bindError := pcl.BindProgram(parser.Files,
-		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
 		pcl.DirPath(absoluteProgramPath),
 		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
 
-	assert.NotNil(t, program)
+	require.NotNil(t, program)
 	assert.Nil(t, bindError)
 	assert.False(t, diags.HasErrors(), "There are no error diagnostics")
 }
@@ -1059,7 +1189,7 @@ func TestInferVariableNameForDeferredOutputVariables(t *testing.T) {
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
 	require.NoError(t, err)
 	assert.False(t, diags.HasErrors(), "There are no error or warning diagnostics")
-	assert.NotNil(t, program)
+	require.NotNil(t, program)
 	var localVariable *pcl.LocalVariable
 	for _, v := range program.Nodes {
 		switch v := v.(type) {
@@ -1068,10 +1198,366 @@ func TestInferVariableNameForDeferredOutputVariables(t *testing.T) {
 		}
 	}
 
-	assert.NotNil(t, localVariable, "There is a local variable")
+	require.NotNil(t, localVariable, "There is a local variable")
 	assert.Equal(t, "localVariable", localVariable.Name())
 	traversal, ok := localVariable.Definition.Value.(*model.ScopeTraversalExpression)
 	assert.True(t, ok, "The value is a scope traversal expression")
 	variableName := pcl.InferVariableName(traversal)
 	assert.Equal(t, "componentFirstValue", variableName)
+}
+
+func TestTraversingNoneTypeEmitsWarning(t *testing.T) {
+	t.Parallel()
+	source := `data = {}
+
+resource "name" "random:index/randomString:RandomString" {
+  options {
+    range = data
+  }
+  length = range.value.something
+}`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
+	require.NoError(t, err, "no error")
+	require.NotNil(t, program)
+	require.Len(t, diags, 1, "There is one node")
+	require.Equal(t, hcl.DiagWarning, diags[0].Severity, "The diagnostic is a warning")
+}
+
+type nameInfo int
+
+func (nameInfo) Format(name string) string {
+	return name
+}
+
+func TestRewriteAppliesDoesNotPanicInNonStrictMode(t *testing.T) {
+	t.Parallel()
+
+	source := `
+config "vpcId" "string" {
+  description = "The ID of the VPC"
+}
+
+resource "ptfeService" "infra:index:Endpoint" {
+  __logicalName     = "ptfe_service"
+  vpcId             = vpcId
+  vpcEndpointType   = "Interface"
+  privateDnsEnabled = false
+}
+
+resource "ptfeServiceRecord" "infra:index:Record" {
+  __logicalName = "ptfe_service"
+  zoneId        = "example_zone_id"
+  name          = "example"
+  type          = "CNAME"
+  ttl           = "300"
+  records       = [ptfeService.dnsEntries[0]["dns_name"]]
+}
+	`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp", pcl.NonStrictBindOptions()...)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
+	require.NotNil(t, program)
+
+	var resource *pcl.Resource
+	for _, n := range program.Nodes {
+		if r, ok := n.(*pcl.Resource); ok && r.Name() == "ptfeServiceRecord" {
+			resource = r
+			break
+		}
+	}
+	require.NotNil(t, resource, "there is a resource named ptfeServiceRecord")
+
+	for _, attr := range resource.Inputs {
+		value := attr.Value
+		expr, diags := pcl.RewriteApplies(value, nameInfo(0), false)
+		require.False(t, diags.HasErrors(), "there are no diagnostics")
+		require.NotNil(t, expr, "the expression is not nil")
+	}
+}
+
+func TestComponentInputTypeMismatchGivesError(t *testing.T) {
+	t.Parallel()
+
+	// Create a temp dir with a component that declares a number input, and a main
+	// program that passes a list (NoConversion from list to number).
+	dir := t.TempDir()
+	componentDir := filepath.Join(dir, "myComponent")
+	require.NoError(t, os.MkdirAll(componentDir, 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(componentDir, "main.pp"),
+		[]byte("config myInput number { }"),
+		0o600))
+
+	mainSource := `
+component myComp "./myComponent" {
+    myInput = [1, 2, 3]
+}
+`
+	parser := syntax.NewParser()
+	err := parser.ParseFile(strings.NewReader(mainSource), "main.pp")
+	require.NoError(t, err)
+	require.False(t, parser.Diagnostics.HasErrors())
+
+	absDir, err := filepath.Abs(dir)
+	require.NoError(t, err)
+
+	_, diags, _ := pcl.BindProgram(parser.Files,
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
+		pcl.DirPath(absDir),
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
+
+	require.True(t, diags.HasErrors(), "expected a type error for mismatched component input type")
+}
+
+func TestRewriteConversionsOnComponentInputs(t *testing.T) {
+	t.Parallel()
+
+	// Create a component that declares a number input, and a main program that passes a string for it — an
+	// valid conversion. RewriteConversions should rewrite the literal when given the correct target type,
+	// which is obtained via Component.InputType.
+	dir := t.TempDir()
+	componentDir := filepath.Join(dir, "myComponent")
+	require.NoError(t, os.MkdirAll(componentDir, 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(componentDir, "main.pp"),
+		[]byte(`config myInput number { }`),
+		0o600))
+
+	mainSource := `
+component myComp "./myComponent" {
+    myInput = "42.5"
+}
+`
+	parser := syntax.NewParser()
+	err := parser.ParseFile(strings.NewReader(mainSource), "main.pp")
+	require.NoError(t, err)
+	require.False(t, parser.Diagnostics.HasErrors())
+
+	absDir, err := filepath.Abs(dir)
+	require.NoError(t, err)
+
+	program, diags, bindErr := pcl.BindProgram(parser.Files,
+		schema.NewPluginLoader(utils.NewContext(testdataPath)),
+		pcl.DirPath(absDir),
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
+	require.NoError(t, bindErr)
+	require.False(t, diags.HasErrors())
+	require.NotNil(t, program)
+
+	var component *pcl.Component
+	for _, node := range program.Nodes {
+		if c, ok := node.(*pcl.Component); ok && c.Name() == "myComp" {
+			component = c
+			break
+		}
+	}
+	require.NotNil(t, component, "expected a component named myComp")
+
+	for _, attr := range component.Inputs {
+		targetType := component.InputType.(*model.ObjectType).Properties[attr.Name]
+		require.NotNil(t, targetType, "expected a target type for input %q", attr.Name)
+
+		expr, convertDiags := pcl.RewriteConversions(attr.Value, model.InputType(targetType))
+		require.False(t, convertDiags.HasErrors())
+		require.Equal(t, " 42.5\n", fmt.Sprintf("%v", expr))
+	}
+}
+
+func TestMaxAcceptsMixedIntAndNumber(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "int" {}
+config "b" "number" {}
+
+output "result" {
+  value = max(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMaxAcceptsStringArgument(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "int" {}
+config "b" "string" {}
+
+output "result" {
+  value = max(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMinAcceptsMixedIntAndNumber(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "number" {}
+config "b" "int" {}
+
+output "result" {
+  value = min(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMaxAcceptsOutputInt(t *testing.T) {
+	t.Parallel()
+	source := `
+config "b" "int" {}
+
+resource "ri" "random:index/randomInteger:RandomInteger" {
+  min = 0
+  max = 10
+}
+
+output "result" {
+  value = max(ri.result, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMaxRejectsListArgument(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "int" {}
+config "b" "list(string)" {}
+
+output "result" {
+  value = max(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.Error(t, err)
+	require.Equal(t, hcl.Diagnostics{{
+		Severity: hcl.DiagError,
+		Summary:  "cannot assign expression of type list(string) to location of type int | output(int): ",
+		Subject: &hcl.Range{
+			Filename: "program.pp",
+			Start:    hcl.Pos{Line: 5, Column: 18, Byte: 86},
+			End:      hcl.Pos{Line: 5, Column: 19, Byte: 87},
+		},
+	}}, diags)
+	require.Nil(t, program)
+}
+
+func TestBindInvokePicksOutputForm(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name   string
+		source string
+	}{
+		{
+			name: "resource output at property",
+			source: `
+resource "rng" "random:index/randomInteger:RandomInteger" {
+	min = 0
+	max = 100
+}
+result = invoke("std:index:Abs", {a = rng.result, b = 1})
+`,
+		},
+		{
+			name: "resource output mixed with dynamic",
+			source: `
+config "y" "any" {}
+resource "rng" "random:index/randomInteger:RandomInteger" {
+	min = 0
+	max = 100
+}
+result = invoke("std:index:Abs", {a = rng.result, b = y})
+`,
+		},
+		{
+			name: "whole-output args",
+			source: `
+args = secret({a = 1, b = 2})
+result = invoke("std:index:Abs", args)
+`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			program, diags, err := ParseAndBindProgram(t, tc.source, "program.pp")
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), "binding should not error: %v", diags)
+			require.NotNil(t, program)
+
+			var call *model.FunctionCallExpression
+			for _, n := range program.Nodes {
+				lv, ok := n.(*pcl.LocalVariable)
+				if !ok || lv.Name() != "result" {
+					continue
+				}
+				call, _ = lv.Definition.Value.(*model.FunctionCallExpression)
+			}
+			require.NotNil(t, call, "expected 'result' bound to an invoke call")
+			require.GreaterOrEqual(t, len(call.Signature.Parameters), 2)
+			assert.True(t, model.ContainsOutputs(call.Signature.Parameters[1].Type),
+				"args param type should be the Input<T>-shaped output form; got %v",
+				call.Signature.Parameters[1].Type)
+		})
+	}
+}
+
+// Test binding a conditional whose branches mix a promise-typed value (from an
+// invoke().result) with a try() expression.
+func TestBindConditionalMixingPromiseWithTry(t *testing.T) {
+	t.Parallel()
+	source := `
+config "x" "any" {}
+isOne = invoke("std:index:Abs", {a = 1, b = 1}).result == 1
+a = isOne ? x : null
+b = true ? a : try(x, null)
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.False(t, diags.HasErrors(), "binding should not panic or error: %v", diags)
+	require.NotNil(t, program)
+}
+
+func TestStackReferenceGetToken(t *testing.T) {
+	t.Parallel()
+	source := `
+resource stackRef "pulumi:pulumi:StackReference" {
+    name = "org/project/stack"
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+
+	var resource *pcl.Resource
+	for _, node := range program.Nodes {
+		if r, ok := node.(*pcl.Resource); ok && r.Name() == "stackRef" {
+			resource = r
+			break
+		}
+	}
+	require.NotNil(t, resource, "expected a resource named stackRef")
+
+	token, _ := resource.GetToken()
+	assert.Equal(t, "pulumi:pulumi:StackReference", token)
 }

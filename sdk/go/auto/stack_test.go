@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,10 @@
 package auto
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"testing"
 	"time"
 
@@ -53,7 +53,6 @@ func TestGetPermalink(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for name, test := range tests {
-		name, test := name, test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -79,7 +78,7 @@ func TestUpdatePlans(t *testing.T) {
 		t.Skip("Skipping test on Windows due to flakiness")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
@@ -107,7 +106,7 @@ func TestUpdatePlans(t *testing.T) {
 	stackConfig, err := s.Workspace().StackSettings(ctx, stackName)
 	require.NoError(t, err)
 	stackConfig.SecretsProvider = "passphrase"
-	assert.NoError(t, s.Workspace().SaveStackSettings(ctx, stackName, stackConfig))
+	require.NoError(t, s.Workspace().SaveStackSettings(ctx, stackName, stackConfig))
 
 	// -- pulumi preview --
 	tempFile, err := os.CreateTemp(t.TempDir(), "update_plan.json")
@@ -194,7 +193,7 @@ func TestUpOptsConfigFileNestedSecretLocalBackend(t *testing.T) {
 	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName("organization", pName, sName)
 
@@ -220,7 +219,7 @@ func TestUpOptsConfigFileNestedSecretLocalBackend(t *testing.T) {
 
 	defer func() {
 		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
-		assert.NoError(t, err, "failed to remove stack.")
+		require.NoError(t, err, "failed to remove stack.")
 	}()
 
 	configFile := filepath.Join(stack.Workspace().WorkDir(), "test.yaml")
@@ -254,20 +253,29 @@ func TestUpOptsConfigFileNestedSecretLocalBackend(t *testing.T) {
 func TestDestroyOptsConfigFile(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
-	args := destroyOptsToCmd(
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
+
+	args, _, err := destroyOptsToCmd(
 		&optdestroy.Options{
 			ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml"),
 		},
 		&stack,
 	)
+	require.NoError(t, err)
 
 	assert.Contains(t, args, "destroy")
 
@@ -278,21 +286,30 @@ func TestDestroyOptsConfigFile(t *testing.T) {
 func TestRefreshOptsConfigFile(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
-	args := refreshOptsToCmd(
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
+
+	args, _, err := refreshOptsToCmd(
 		&optrefresh.Options{
 			ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml"),
 		},
 		&stack,
 		true,
 	)
+	require.NoError(t, err)
 
 	assert.Contains(t, args, "refresh")
 
@@ -303,51 +320,128 @@ func TestRefreshOptsConfigFile(t *testing.T) {
 func TestRefreshOptsDiff(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
-	pDir := filepath.Join(".", "test", "testproj")
-
-	stack, err := NewStackLocalSource(ctx, ptesting.RandomStackName(), pDir)
+	ctx := t.Context()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
 	require.NoError(t, err)
 
-	argsUp := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, true)
+	stack, err := NewStackLocalSource(ctx, stackName, pDir)
+	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
+
+	argsUp, _, err := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, true)
+	require.NoError(t, err)
 	assert.Contains(t, argsUp, "--diff", argsUp)
 
-	argsPreview := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, false)
+	argsPreview, _, err := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, false)
+	require.NoError(t, err)
 	assert.Contains(t, argsPreview, "--diff", argsUp)
 }
 
 func TestRefreshOptsClearPendingCreates(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
-	args := refreshOptsToCmd(
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
+
+	args, _, err := refreshOptsToCmd(
 		&optrefresh.Options{
 			ClearPendingCreates: true,
 		},
 		&stack,
 		true,
 	)
+	require.NoError(t, err)
 
 	assert.Contains(t, args, "--clear-pending-creates")
+}
+
+func TestRefreshOptsImportPendingCreates(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
+
+	stack, err := NewStackLocalSource(ctx, stackName, pDir)
+	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
+
+	args, _, err := refreshOptsToCmd(
+		&optrefresh.Options{
+			ImportPendingCreates: []optrefresh.PendingCreate{
+				{URN: "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::bucket1", ID: "bucket1-id"},
+				{URN: "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::bucket2", ID: "bucket2-id"},
+			},
+		},
+		&stack,
+		true,
+	)
+	require.NoError(t, err)
+
+	// The URN must be immediately followed by its ID, so assert the exact contiguous sequence.
+	want := []string{
+		"--import-pending-creates=urn:pulumi:dev::proj::aws:s3/bucket:Bucket::bucket1",
+		"--import-pending-creates=bucket1-id",
+		"--import-pending-creates=urn:pulumi:dev::proj::aws:s3/bucket:Bucket::bucket2",
+		"--import-pending-creates=bucket2-id",
+	}
+	found := false
+	for i := 0; i+len(want) <= len(args); i++ {
+		if slices.Equal(args[i:i+len(want)], want) {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "expected contiguous import-pending-creates args, got %v", args)
 }
 
 func TestRename(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
-	pDir := filepath.Join(".", "test", "testproj")
+	// Copy the test project to a temp directory.
+	pDir := t.TempDir()
+	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
+	require.NoError(t, err)
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
 
 	args := renameOptsToCmd(
 		&optrename.Options{
@@ -363,7 +457,7 @@ func TestPreviewImportResources(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
@@ -375,14 +469,14 @@ func TestPreviewImportResources(t *testing.T) {
 
 	defer func() {
 		err = s.Workspace().RemoveStack(ctx, s.Name())
-		assert.NoError(t, err, "failed to remove stack. Resources have leaked.")
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
 	tempDir := t.TempDir()
 	importFilePath := filepath.Join(tempDir, "import.json")
 	resources := []byte(`{"resoures": [{"type":"my:module:MyResource","name":"imported-resource","id":"preview-bar"}]}`)
 	err = os.WriteFile(importFilePath, resources, 0o600)
-	assert.NoError(t, err, "error writing file")
+	require.NoError(t, err, "error writing file")
 
 	// Act
 	result, err := s.ImportResources(ctx,
@@ -396,4 +490,23 @@ func TestPreviewImportResources(t *testing.T) {
 	require.NoError(t, err, "import failed")
 	assert.Contains(t, result.StdOut, "Previewing")
 	assert.NotContains(t, result.StdOut, "Importing")
+}
+
+func TestRunPulumiCmdSyncStackFlagBeforeSeparator(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	m := mockPulumiCommand{}
+	ws, err := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "test", "testproj")), Pulumi(&m))
+	require.NoError(t, err)
+	s, err := NewStack(ctx, "organization/testproj/teststack", ws)
+	require.NoError(t, err)
+
+	_, _, _, err = s.runPulumiCmdSync(ctx, nil, nil, "import", "--from", "converter", "--", "state.json")
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"import", "--from", "converter",
+		"--stack", "organization/testproj/teststack",
+		"--", "state.json",
+	}, m.capturedArgs)
 }

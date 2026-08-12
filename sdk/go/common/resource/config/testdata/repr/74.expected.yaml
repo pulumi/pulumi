@@ -10,7 +10,7 @@ paths:
       thing2: 2
     string: '{"object":{"fizz":"buzz","foo":"bar"},"thing1":1,"thing2":2}'
     redacted: '{"object":{"fizz":"buzz","foo":"bar"},"thing1":1,"thing2":2}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAABx/4JuAAMGdGhpbmcxBWludDY0BAIAAgZ0aGluZzIFaW50NjQEAgAEBm9iamVjdBdtYXBbc3RyaW5nXWludGVyZmFjZSB7ff+CKAACBGZpenoGc3RyaW5nDAYABGJ1enoDZm9vBnN0cmluZwwFAANiYXI=
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAHH/gG4AAwZvYmplY3QXbWFwW3N0cmluZ11pbnRlcmZhY2Uge33/gCgAAgRmaXp6BnN0cmluZwwGAARidXp6A2ZvbwZzdHJpbmcMBQADYmFyBnRoaW5nMQVpbnQ2NAQCAAIGdGhpbmcyBWludDY0BAIABA==
     secure: false
     isObject: true
   my:special.object:
@@ -19,7 +19,7 @@ paths:
       foo: bar
     string: '{"fizz":"buzz","foo":"bar"}'
     redacted: '{"fizz":"buzz","foo":"bar"}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAAAr/4IoAAIEZml6egZzdHJpbmcMBgAEYnV6egNmb28Gc3RyaW5nDAUAA2Jhcg==
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAACv/gCgAAgNmb28Gc3RyaW5nDAUAA2JhcgRmaXp6BnN0cmluZwwGAARidXp6
     secure: false
     isObject: true
   my:special.object.fizz:

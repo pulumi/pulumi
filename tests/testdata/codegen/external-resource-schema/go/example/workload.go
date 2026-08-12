@@ -8,14 +8,14 @@ import (
 	"reflect"
 
 	"external-resource-schema/example/internal"
-	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/core/v1"
+	"git.example.org/thirdparty/sdk/go/pkg/module"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type Workload struct {
 	pulumi.CustomResourceState
 
-	Pod *corev1.PodTypeOutput `pulumi:"pod"`
+	Pod *module.ConfigOutput `pulumi:"pod"`
 }
 
 // NewWorkload registers a new resource with the given unique name, arguments, and options.
@@ -151,8 +151,8 @@ func (o WorkloadOutput) ToWorkloadOutputWithContext(ctx context.Context) Workloa
 	return o
 }
 
-func (o WorkloadOutput) Pod() *corev1.PodTypeOutput {
-	return o.ApplyT(func(v *Workload) *corev1.PodTypeOutput { return v.Pod }).(*corev1.PodTypeOutput)
+func (o WorkloadOutput) Pod() *module.ConfigOutput {
+	return o.ApplyT(func(v *Workload) *module.ConfigOutput { return v.Pod }).(*module.ConfigOutput)
 }
 
 type WorkloadArrayOutput struct{ *pulumi.OutputState }

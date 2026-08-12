@@ -1,0 +1,5 @@
+[project]
+name = "test-uv"
+version = "0.1.0"
+description = "Ensure we setup the venv when running a command"
+dependencies = ['wheel']

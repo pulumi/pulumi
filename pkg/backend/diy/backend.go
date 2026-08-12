@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,12 +19,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"os/user"
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -41,10 +43,14 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	_ "github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres" // driver for postgres://
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -56,12 +62,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // UpgradeOptions customizes the behavior of the upgrade operation.
@@ -109,7 +118,7 @@ type diyBackend struct {
 
 	lockID string
 
-	gzip bool
+	compression encoding.Compression
 
 	Env env.Env
 
@@ -171,6 +180,11 @@ func (r *diyBackendReference) Name() tokens.StackName {
 
 func (r *diyBackendReference) Project() (tokens.Name, bool) {
 	return r.project, r.project != ""
+}
+
+func (r *diyBackendReference) Organization() (string, bool) {
+	// DIY backend always uses "organization" as the fixed organization name
+	return "organization", r.project != ""
 }
 
 func (r *diyBackendReference) FullyQualifiedName() tokens.QName {
@@ -273,7 +287,10 @@ func newDIYBackend(
 		return nil, err
 	}
 
-	gzipCompression := opts.Env.GetBool(env.DIYBackendGzip)
+	compression, err := resolveCompression(opts.Env)
+	if err != nil {
+		return nil, err
+	}
 
 	wbucket := &wrappedBucket{bucket: bucket}
 
@@ -288,7 +305,7 @@ func newDIYBackend(
 		url:         u,
 		bucket:      wbucket,
 		lockID:      lockID.String(),
-		gzip:        gzipCompression,
+		compression: compression,
 		Env:         opts.Env,
 	}
 	backend.currentProject.Store(project)
@@ -324,6 +341,21 @@ func newDIYBackend(
 		return nil, fmt.Errorf(
 			"state store unsupported: 'meta.yaml' version (%d) is not supported "+
 				"by this version of the Pulumi CLI", meta.Version)
+	}
+
+	// If we're not in project mode and the user hasn't disabled the warning, warn that legacy mode is deprecated and
+	// due to be removed.
+	if !projectMode && !opts.Env.GetBool(env.DIYBackendIgnoreDeprecationError) {
+		return nil, errors.New(`
+================================================================================
+Legacy DIY state is deprecated, please upgrade your state to project mode using:
+'pulumi state upgrade'
+
+It is due to be removed in a future release before the end of this year (2026).
+If you have any feedback or concerns, please let us know by commenting on the
+issue at https://github.com/pulumi/pulumi/issues/19566.
+Set PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR=1 to disable this error.
+================================================================================`)
 	}
 
 	// If we're not in project mode, or we've disabled the warning, we're done.
@@ -367,6 +399,9 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 	if err != nil {
 		return fmt.Errorf("read old references: %w", err)
 	}
+	logging.V(7).Infof("State upgrade scan for %q found %d legacy stack file(s)",
+		b.originalURL, len(olds))
+
 	sort.Slice(olds, func(i, j int) bool {
 		return olds[i].Name().String() < olds[j].Name().String()
 	})
@@ -388,6 +423,7 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 			if err != nil {
 				return fmt.Errorf("guess stack %s project: %w", old.Name(), err)
 			}
+			logging.V(7).Infof("Guessed project %q for stack %s", project, old.Name())
 
 			// No lock necessary;
 			// projects is pre-allocated.
@@ -457,7 +493,6 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 
 	var upgraded atomic.Int64 // number of stacks successfully upgraded
 	for idx, old := range olds {
-		idx, old := idx, old
 		pool.Enqueue(func() error {
 			project := projects[idx]
 			if project == "" {
@@ -489,7 +524,7 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 func (b *diyBackend) guessProject(ctx context.Context, old *diyBackendReference) (tokens.Name, error) {
 	contract.Requiref(old.project == "", "old.project", "must be empty")
 
-	chk, err := b.getCheckpoint(ctx, old)
+	chk, _, _, err := b.getCheckpoint(ctx, old)
 	if err != nil {
 		return "", fmt.Errorf("read checkpoint: %w", err)
 	}
@@ -522,10 +557,14 @@ func (b *diyBackend) upgradeStack(
 }
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
-// can support.  Importantly, s3/azblob/gs paths should not be be touched. This will only affect
-// file:// paths which have a few oddities around them that we want to ensure work properly.
+// can support.  For s3:// paths this translates AWS SDK v1-era query parameters to their v2
+// equivalents; azblob/gs paths are not touched. file:// paths have a few oddities around them that
+// we want to ensure work properly.
 func massageBlobPath(path string) (string, error) {
 	if !strings.HasPrefix(path, FilePathPrefix) {
+		if strings.HasPrefix(path, "s3://") {
+			return translateLegacyS3Params(path)
+		}
 		// Not a file:// path.  Keep this untouched and pass directly to gocloud.
 		return path, nil
 	}
@@ -561,7 +600,7 @@ func massageBlobPath(path string) (string, error) {
 	if strings.HasPrefix(path, "~") {
 		usr, err := user.Current()
 		if err != nil {
-			return "", fmt.Errorf("Could not determine current user to resolve `file://~` path.: %w", err)
+			return "", fmt.Errorf("could not determine current user to resolve `file://~` path.: %w", err)
 		}
 
 		if path == "~" {
@@ -574,7 +613,7 @@ func massageBlobPath(path string) (string, error) {
 	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
 	path, err = filepath.Abs(path)
 	if err != nil {
-		return "", fmt.Errorf("An IO error occurred while building the absolute path: %w", err)
+		return "", fmt.Errorf("an IO error occurred while building the absolute path: %w", err)
 	}
 
 	// Using example from https://godoc.org/gocloud.dev/blob/fileblob#example-package--OpenBucket
@@ -585,6 +624,65 @@ func massageBlobPath(path string) (string, error) {
 	}
 
 	return FilePathPrefix + path + queryString, nil
+}
+
+// translateLegacyS3Params rewrites query parameters on s3:// URLs that were supported by the
+// AWS SDK v1-based s3blob driver in gocloud.dev before v0.46, so that backend URLs configured
+// before the upgrade keep working:
+//
+//   - disableSSL becomes disable_https; gocloud.dev v0.46 rejects the v1 name as an unknown
+//     query parameter.
+//   - a scheme-less endpoint (e.g. endpoint=minio:9000) gets an explicit http:// or https://
+//     scheme depending on disableSSL; the v1 SDK implied the scheme, while the v2 SDK
+//     requires one.
+//   - when an endpoint is set (i.e. a third-party S3-compatible store rather than AWS),
+//     request_checksum_calculation defaults to when_required, unless it is configured
+//     explicitly via the URL or the AWS_REQUEST_CHECKSUM_CALCULATION environment variable.
+//     The v2 SDK's default of computing CRC32 checksums with aws-chunked streaming uploads
+//     is rejected by some third-party stores; the v1 SDK never sent them.
+//
+// The other v1-era parameters (s3ForcePathStyle, awssdk) are still understood by gocloud.dev
+// and need no translation.
+func translateLegacyS3Params(urlstr string) (string, error) {
+	u, err := url.Parse(urlstr)
+	if err != nil {
+		return "", fmt.Errorf("parsing the provided URL: %w", err)
+	}
+	query := u.Query()
+	changed := false
+
+	disableSSL := false
+	if values, ok := query["disableSSL"]; ok {
+		disableSSL, err = strconv.ParseBool(values[len(values)-1])
+		if err != nil {
+			return "", fmt.Errorf("invalid value for query parameter %q: %w", "disableSSL", err)
+		}
+		query.Del("disableSSL")
+		query.Set("disable_https", strconv.FormatBool(disableSSL))
+		changed = true
+	}
+
+	if endpoint := query.Get("endpoint"); endpoint != "" {
+		if !strings.Contains(endpoint, "://") {
+			scheme := "https"
+			if disableSSL {
+				scheme = "http"
+			}
+			query.Set("endpoint", scheme+"://"+endpoint)
+			changed = true
+		}
+		if query.Get("request_checksum_calculation") == "" &&
+			os.Getenv("AWS_REQUEST_CHECKSUM_CALCULATION") == "" {
+			query.Set("request_checksum_calculation", "when_required")
+			changed = true
+		}
+	}
+
+	if !changed {
+		return urlstr, nil
+	}
+	u.RawQuery = query.Encode()
+	return u.String(), nil
 }
 
 func Login(ctx context.Context, d diag.Sink, url string, project *workspace.Project) (Backend, error) {
@@ -640,8 +738,10 @@ func (b *diyBackend) ListPolicyPacks(ctx context.Context, orgName string, _ back
 	return apitype.ListPolicyPacksResponse{}, nil, errors.New("DIY backend does not support resource policy")
 }
 
-func (b *diyBackend) SupportsTags() bool {
-	return false
+func (b *diyBackend) GetStackPolicyPacks(
+	ctx context.Context, stackRef backend.StackReference,
+) ([]engine.RequiredPolicy, error) {
+	return nil, errors.New("DIY backend does not support resource policy")
 }
 
 func (b *diyBackend) SupportsTemplates() bool {
@@ -658,6 +758,10 @@ func (b *diyBackend) SupportsProgress() bool {
 
 func (b *diyBackend) SupportsDeployments() bool {
 	return false
+}
+
+func (b *diyBackend) GetDefaultOrg(ctx context.Context) (string, error) {
+	return "", nil
 }
 
 func (b *diyBackend) ParseStackReference(stackRef string) (backend.StackReference, error) {
@@ -685,33 +789,6 @@ func (b *diyBackend) DoesProjectExist(ctx context.Context, _ string, projectName
 	return projStore.ProjectExists(ctx, projectName)
 }
 
-// Confirm the specified stack's project doesn't contradict the meta.yaml of the current project.
-// If the CWD is not in a Pulumi project, does not contradict.
-// If the project name in Pulumi.yaml is "foo", a stack with a name of bar/foo should not work.
-func currentProjectContradictsWorkspace(stack *diyBackendReference) bool {
-	contract.Requiref(stack != nil, "stack", "is nil")
-
-	if stack.project == "" {
-		return false
-	}
-
-	projPath, err := workspace.DetectProjectPath()
-	if err != nil {
-		return false
-	}
-
-	if projPath == "" {
-		return false
-	}
-
-	proj, err := workspace.LoadProject(projPath)
-	if err != nil {
-		return false
-	}
-
-	return proj.Name.String() != stack.project.String()
-}
-
 func (b *diyBackend) CreateStack(
 	ctx context.Context,
 	stackRef backend.StackReference,
@@ -721,6 +798,13 @@ func (b *diyBackend) CreateStack(
 ) (backend.Stack, error) {
 	if opts != nil && len(opts.Teams) > 0 {
 		return nil, backend.ErrTeamsNotSupported
+	}
+	if opts != nil && opts.Config != nil {
+		return nil, backend.ErrConfigNotSupported
+	}
+
+	if err := backend.CurrentProjectContradictsWorkspace(b.currentProject.Load(), stackRef); err != nil {
+		return nil, err
 	}
 
 	diyStackRef, err := b.getReference(stackRef)
@@ -734,26 +818,26 @@ func (b *diyBackend) CreateStack(
 	}
 	defer b.Unlock(ctx, stackRef)
 
-	if currentProjectContradictsWorkspace(diyStackRef) {
-		return nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", diyStackRef.project)
-	}
-
 	stackName := diyStackRef.FullyQualifiedName()
 	if stackName == "" {
 		return nil, errors.New("invalid empty stack name")
 	}
 
 	if _, err := b.stackExists(ctx, diyStackRef); err == nil {
-		return nil, &backend.StackAlreadyExistsError{StackName: string(stackName)}
+		return nil, &backenderr.StackAlreadyExistsError{StackName: string(stackName)}
 	}
 
-	_, err = b.saveStack(ctx, diyStackRef, nil)
+	_, err = b.saveStack(ctx, diyStackRef, apitype.TypedDeployment{})
 	if err != nil {
 		return nil, err
 	}
 
 	if initialState != nil {
-		chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpoint(stackName, initialState)
+		chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+			diyJSONMarshaler,
+			stackName,
+			initialState,
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -799,8 +883,8 @@ func (b *diyBackend) ListStacks(
 	// Get the parallel value from environment variable or use a default value
 	parallel := b.getParallel()
 
-	// Note that the provided stack filter is only partially honored, since fields like organizations and tags
-	// aren't persisted in the diy backend.
+	// First pass: filter by project and organizations
+	// Note that organization filtering is not supported for DIY backends
 	filteredStacks := slice.Prealloc[*diyBackendReference](len(stacks))
 	for _, stackRef := range stacks {
 		// We can check for project name filter here, but be careful about legacy stores where project is always blank.
@@ -809,6 +893,47 @@ func (b *diyBackend) ListStacks(
 			continue
 		}
 		filteredStacks = append(filteredStacks, stackRef)
+	}
+
+	// Second pass: filter by tags if requested
+	// This requires loading tags for each stack, so we do it separately
+	if filter.TagName != nil || filter.TagValue != nil {
+		tagFilteredStacks := slice.Prealloc[*diyBackendReference](len(filteredStacks))
+		for _, stackRef := range filteredStacks {
+			tags, err := b.loadStackTags(ctx, stackRef)
+			if err != nil {
+				// Skip stacks where we can't load tags, but log the error
+				logging.V(7).Infof("Failed to load tags for stack %s: %v", stackRef.String(), err)
+				continue
+			}
+
+			// Apply tag filtering
+			if filter.TagName != nil {
+				tagValue, exists := tags[*filter.TagName]
+				if !exists {
+					continue // Stack doesn't have the requested tag
+				}
+				if filter.TagValue != nil && tagValue != *filter.TagValue {
+					continue // Stack has the tag but with wrong value
+				}
+			}
+			// If we're only filtering by TagValue without TagName, search all tags
+			if filter.TagName == nil && filter.TagValue != nil {
+				found := false
+				for _, value := range tags {
+					if value == *filter.TagValue {
+						found = true
+						break
+					}
+				}
+				if !found {
+					continue
+				}
+			}
+
+			tagFilteredStacks = append(tagFilteredStacks, stackRef)
+		}
+		filteredStacks = tagFilteredStacks
 	}
 
 	// Create a worker pool to process stacks in parallel
@@ -824,11 +949,10 @@ func (b *diyBackend) ListStacks(
 
 	// Enqueue work for each stack
 	for i, stackRef := range filteredStacks {
-		i, stackRef := i, stackRef // https://golang.org/doc/faq#closures_and_goroutines
 		pool.Enqueue(func() error {
 			// TODO: Improve getCheckpoint to return errCheckpointNotFound directly when the checkpoint doesn't exist,
 			// instead of having to call stackExists separately.
-			chk, err := b.getCheckpoint(ctx, stackRef)
+			chk, _, _, err := b.getCheckpoint(ctx, stackRef)
 			if err != nil {
 				// First check if the checkpoint exists
 				_, existsErr := b.stackExists(ctx, stackRef)
@@ -861,7 +985,29 @@ func (b *diyBackend) ListStacks(
 	return summaries, nil, nil
 }
 
-func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
+func (b *diyBackend) ListStackNames(
+	ctx context.Context, filter backend.ListStackNamesFilter, _ backend.ContinuationToken) (
+	[]backend.StackReference, backend.ContinuationToken, error,
+) {
+	stacks, err := b.getStacks(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	filteredStacks := slice.Prealloc[backend.StackReference](len(stacks))
+	for _, stackRef := range stacks {
+		// We can check for project name filter here, but be careful about legacy stores where project is always blank.
+		stackProject, hasProject := stackRef.Project()
+		if filter.Project != nil && hasProject && string(stackProject) != *filter.Project {
+			continue
+		}
+		filteredStacks = append(filteredStacks, stackRef)
+	}
+
+	return filteredStacks, nil, nil
+}
+
+func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force, removeBackups bool) (bool, error) {
 	diyStackRef, err := b.getReference(stack.Ref())
 	if err != nil {
 		return false, err
@@ -873,17 +1019,20 @@ func (b *diyBackend) RemoveStack(ctx context.Context, stack backend.Stack, force
 	}
 	defer b.Unlock(ctx, diyStackRef)
 
-	checkpoint, err := b.getCheckpoint(ctx, diyStackRef)
+	checkpoint, _, _, err := b.getCheckpoint(ctx, diyStackRef)
 	if err != nil {
 		return false, err
 	}
 
 	// Don't remove stacks that still have resources.
 	if !force && checkpoint != nil && checkpoint.Latest != nil && len(checkpoint.Latest.Resources) > 0 {
-		return true, errors.New("refusing to remove stack because it still contains resources")
+		// If the one and only resource is the root stack we can carry on, the cloud backend allows removal from this state.
+		if len(checkpoint.Latest.Resources) > 1 || checkpoint.Latest.Resources[0].Type != tokens.RootStackType {
+			return true, errors.New("refusing to remove stack because it still contains resources")
+		}
 	}
 
-	return false, b.removeStack(ctx, diyStackRef)
+	return false, b.removeStack(ctx, diyStackRef, removeBackups)
 }
 
 func (b *diyBackend) RenameStack(ctx context.Context, stack backend.Stack,
@@ -927,7 +1076,7 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 	}
 
 	// Get the current state from the stack to be renamed.
-	chk, err := b.getCheckpoint(ctx, oldRef)
+	chk, version, features, err := b.getCheckpoint(ctx, oldRef)
 	if err != nil {
 		return fmt.Errorf("failed to load checkpoint: %w", err)
 	}
@@ -936,19 +1085,23 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 	if chk != nil && chk.Latest != nil {
 		project, has := newRef.Project()
 		contract.Assertf(has || project == "", "project should be blank for legacy stacks")
-		if err = edit.RenameStack(chk.Latest, newRef.name, tokens.PackageName(project)); err != nil {
+		oldProject, oldHas := oldRef.Project()
+		if !oldHas && len(chk.Latest.Resources) > 0 {
+			// Legacy refs carry no project, but their URNs still do; scope the rewrite to it.
+			oldProject = tokens.Name(chk.Latest.Resources[0].URN.Project())
+		}
+		if err = edit.RenameStack(chk.Latest, newRef.name, tokens.PackageName(project),
+			edit.RenameStackOptions{
+				OldName:    oldRef.name,
+				OldProject: tokens.PackageName(oldProject),
+			}); err != nil {
 			return err
 		}
 	}
 
-	chkJSON, err := encoding.JSON.Marshal(chk)
+	versionedCheckpoint, err := marshalVersionedCheckpoint(version, features, *chk)
 	if err != nil {
-		return fmt.Errorf("marshalling checkpoint: %w", err)
-	}
-
-	versionedCheckpoint := &apitype.VersionedCheckpoint{
-		Version:    apitype.DeploymentSchemaVersionCurrent,
-		Checkpoint: json.RawMessage(chkJSON),
+		return err
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
@@ -969,16 +1122,16 @@ func (b *diyBackend) renameStack(ctx context.Context, oldRef *diyBackendReferenc
 
 func (b *diyBackend) GetLatestConfiguration(ctx context.Context,
 	stack backend.Stack,
-) (config.Map, error) {
+) (backend.LatestConfiguration, error) {
 	hist, err := b.GetHistory(ctx, stack.Ref(), 1 /*pageSize*/, 1 /*page*/)
 	if err != nil {
-		return nil, err
+		return backend.LatestConfiguration{}, err
 	}
 	if len(hist) == 0 {
-		return nil, backend.ErrNoPreviousDeployment
+		return backend.LatestConfiguration{}, backenderr.ErrNoPreviousDeployment
 	}
 
-	return hist[0].Config, nil
+	return backend.LatestConfiguration{Config: hist[0].Config}, nil
 }
 
 func (b *diyBackend) PackPolicies(
@@ -992,16 +1145,11 @@ func (b *diyBackend) PackPolicies(
 func (b *diyBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, events chan<- engine.Event,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
-	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
-	opts := backend.ApplierOptions{
-		DryRun:   true,
-		ShowLink: true,
-	}
-	return b.apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
+	return backend.Preview(ctx, stack, op, b.apply, events)
 }
 
 func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
+	op backend.UpdateOperation, events chan<- engine.Event,
 ) (sdkDisplay.ResourceChanges, error) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
@@ -1009,18 +1157,12 @@ func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, nil /*events*/)
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply, nil, events)
 }
 
 func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import,
 ) (sdkDisplay.ResourceChanges, error) {
-	err := b.Lock(ctx, stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-	defer b.Unlock(ctx, stack.Ref())
-
 	op.Imports = imports
 
 	if op.Opts.PreviewOnly {
@@ -1036,18 +1178,18 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil /*events*/)
-}
-
-func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
-) (sdkDisplay.ResourceChanges, error) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
 		return nil, err
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil, nil)
+}
+
+func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation,
+) (sdkDisplay.ResourceChanges, error) {
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
@@ -1061,18 +1203,18 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, nil /*events*/)
-}
-
-func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
-) (sdkDisplay.ResourceChanges, error) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
 		return nil, err
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, nil, nil)
+}
+
+func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation,
+) (sdkDisplay.ResourceChanges, error) {
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
@@ -1086,7 +1228,13 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil /*events*/)
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, err
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil, nil)
 }
 
 func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
@@ -1109,13 +1257,21 @@ func (b *diyBackend) apply(
 		return nil, nil, err
 	}
 
-	if currentProjectContradictsWorkspace(diyStackRef) {
-		return nil, nil, fmt.Errorf("provided project name %q doesn't match Pulumi.yaml", diyStackRef.project)
+	if err := backend.CurrentProjectContradictsWorkspace(b.currentProject.Load(), stackRef); err != nil {
+		return nil, nil, err
 	}
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
+	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON &&
+		op.Opts.Display.Type != display.DisplayWatch {
+		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
+		// than a logical span, but this is a convenient way to record this information.
+		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
+			tracer := otel.Tracer("pulumi-cli")
+			_, span := tracer.Start(ctx, "time-to-first-print", trace.WithTimestamp(startTime))
+			span.End()
+		}
 		// Print a banner so it's clear this is a diy deployment.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
@@ -1137,7 +1293,7 @@ func (b *diyBackend) apply(
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
 	engineEvents := make(chan engine.Event)
 
-	scope := op.Scopes.NewScope(engineEvents, opts.DryRun)
+	scope := op.Scopes.NewScope(ctx, engineEvents, opts.DryRun)
 	eventsDone := make(chan bool)
 	go func() {
 		// Pull in all events from the engine and send them to the two listeners.
@@ -1153,18 +1309,22 @@ func (b *diyBackend) apply(
 		close(eventsDone)
 	}()
 
+	engineCtx := &engine.Context{
+		Cancel:        scope.Context(),
+		Events:        engineEvents,
+		BackendClient: backend.NewBackendClient(b, op.SecretsProvider),
+	}
 	// Create the management machinery.
 	// We only need a snapshot manager if we're doing an update.
 	var manager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !opts.DryRun {
 		persister := b.newSnapshotPersister(ctx, diyStackRef)
-		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.GetTarget().Snapshot)
+		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot, nil)
+		engineCtx.SnapshotManager = manager
 	}
-	engineCtx := &engine.Context{
-		Cancel:          scope.Context(),
-		Events:          engineEvents,
-		SnapshotManager: manager,
-		BackendClient:   backend.NewBackendClient(b, op.SecretsProvider),
+
+	if op.Opts.Engine.HostFactory == nil {
+		op.Opts.Engine.HostFactory = backend.DefaultHostFactory(b.GetReadOnlyCloudRegistry())
 	}
 
 	// Perform the update
@@ -1176,11 +1336,15 @@ func (b *diyBackend) apply(
 	case apitype.PreviewUpdate:
 		plan, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		_, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		plan, changes, updateErr = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.ResourceImportUpdate:
 		_, changes, updateErr = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
 	case apitype.RefreshUpdate:
-		_, changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		if op.Opts.Engine.RefreshProgram {
+			_, changes, updateErr = engine.RefreshV2(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		} else {
+			_, changes, updateErr = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
+		}
 	case apitype.DestroyUpdate:
 		if op.Opts.Engine.DestroyProgram {
 			_, changes, updateErr = engine.DestroyV2(update, engineCtx, op.Opts.Engine, opts.DryRun)
@@ -1225,7 +1389,7 @@ func (b *diyBackend) apply(
 		StartTime:   start,
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
-		Config:      update.GetTarget().Config,
+		Config:      update.Target.Config,
 		Result:      backendUpdateResult,
 		EndTime:     end,
 		// IDEA: it would be nice to populate the *Deployment, so that addToHistory below doesn't need to
@@ -1256,7 +1420,8 @@ func (b *diyBackend) apply(
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
-	if !op.Opts.Display.SuppressPermalink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
+	if !op.Opts.Display.SuppressPermalink && opts.ShowLink &&
+		!op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
 		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
 		// file:// links so we manually create the link ourselves.
 		var link string
@@ -1275,7 +1440,7 @@ func (b *diyBackend) apply(
 				// printing a statefile perma link happens after all the providers have finished
 				// deploying the infrastructure, failing the pulumi update because there was a
 				// problem printing a statefile perma link can be missleading in automated CI environments.
-				cmdutil.Diag().Warningf(diag.Message("", "Unable to create signed url for current backend to "+
+				b.d.Warningf(diag.Message("", "Unable to create signed url for current backend to "+
 					"create a Permalink. Please visit https://www.pulumi.com/docs/troubleshooting/ "+
 					"for more information\n"))
 			}
@@ -1322,11 +1487,13 @@ func (b *diyBackend) GetLogs(ctx context.Context,
 		return nil, err
 	}
 
-	return GetLogsForTarget(target, query)
+	return GetLogsForTarget(ctx, target, query)
 }
 
 // GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
-func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]operations.LogEntry, error) {
+func GetLogsForTarget(
+	ctx context.Context, target *deploy.Target, query operations.LogQuery,
+) ([]operations.LogEntry, error) {
 	contract.Requiref(target != nil, "target", "must not be nil")
 
 	if target.Snapshot == nil {
@@ -1341,7 +1508,7 @@ func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]opera
 
 	components := operations.NewResourceTree(target.Snapshot.Resources)
 	ops := components.OperationsProvider(config)
-	logs, err := ops.GetLogs(query)
+	logs, err := ops.GetLogs(ctx, query)
 	if logs == nil {
 		return nil, err
 	}
@@ -1356,7 +1523,7 @@ func (b *diyBackend) ExportDeployment(ctx context.Context,
 		return nil, err
 	}
 
-	chk, err := b.getCheckpoint(ctx, diyStackRef)
+	chk, version, features, err := b.getCheckpoint(ctx, diyStackRef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load checkpoint: %w", err)
 	}
@@ -1367,7 +1534,8 @@ func (b *diyBackend) ExportDeployment(ctx context.Context,
 	}
 
 	return &apitype.UntypedDeployment{
-		Version:    3,
+		Version:    version,
+		Features:   features,
 		Deployment: json.RawMessage(data),
 	}, nil
 }
@@ -1387,7 +1555,11 @@ func (b *diyBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	defer b.Unlock(ctx, diyStackRef)
 
 	stackName := diyStackRef.FullyQualifiedName()
-	chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpoint(stackName, deployment)
+	chk, err := stack.MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+		diyJSONMarshaler,
+		stackName,
+		deployment,
+	)
 	if err != nil {
 		return err
 	}
@@ -1412,22 +1584,22 @@ func (b *diyBackend) getStacks(ctx context.Context) ([]*diyBackendReference, err
 func (b *diyBackend) UpdateStackTags(ctx context.Context,
 	stack backend.Stack, tags map[apitype.StackTagName]string,
 ) error {
-	// The diy backend does not currently persist tags.
-	return errors.New("stack tags not supported in diy mode")
-}
+	ref, ok := stack.Ref().(*diyBackendReference)
+	if !ok {
+		return errors.New("invalid stack reference type")
+	}
 
-func (b *diyBackend) EncryptStackDeploymentSettingsSecret(ctx context.Context,
-	stack backend.Stack, secret string,
-) (*apitype.SecretValue, error) {
-	// The local backend does not support managing deployments.
-	return nil, errors.New("stack deployments not supported with diy backends")
-}
+	if err := b.saveStackTags(ctx, ref, tags); err != nil {
+		return fmt.Errorf("failed to save stack tags: %w", err)
+	}
 
-func (b *diyBackend) UpdateStackDeploymentSettings(ctx context.Context, stack backend.Stack,
-	deployment apitype.DeploymentSettings,
-) error {
-	// The local backend does not support managing deployments.
-	return errors.New("stack deployments not supported with diy backends")
+	if diyStack, ok := stack.(*diyStack); ok {
+		tagsCopy := make(map[apitype.StackTagName]string, len(tags))
+		maps.Copy(tagsCopy, tags)
+		diyStack.tags.Store(&tagsCopy)
+	}
+
+	return nil
 }
 
 func (b *diyBackend) DestroyStackDeploymentSettings(ctx context.Context, stack backend.Stack) error {
@@ -1486,10 +1658,25 @@ func (b *diyBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.S
 	return nil
 }
 
-func (b *diyBackend) DefaultSecretManager(ps *workspace.ProjectStack) (secrets.Manager, error) {
+func (b *diyBackend) DefaultSecretManager(_ context.Context, ps *workspace.ProjectStack) (secrets.Manager, error) {
 	// The default secrets manager for stacks against a DIY backend is a
 	// passphrase-based manager.
 	return passphrase.NewPromptingPassphraseSecretsManager(ps, false /* rotateSecretsProvider */)
+}
+
+func resolveCompression(e env.Env) (encoding.Compression, error) {
+	gzip := e.GetBool(env.DIYBackendGzip)
+	zstd := e.GetBool(env.DIYBackendZstd)
+	if gzip && zstd {
+		return "", errors.New("DIY_BACKEND_GZIP and DIY_BACKEND_ZSTD cannot both be enabled")
+	}
+	if zstd {
+		return encoding.CompressionZstd, nil
+	}
+	if gzip {
+		return encoding.CompressionGzip, nil
+	}
+	return encoding.CompressionNone, nil
 }
 
 // getParallel returns the number of parallel operations to use from the environment
@@ -1504,6 +1691,10 @@ func (b *diyBackend) getParallel() int {
 	return parallel
 }
 
-func (b *diyBackend) GetPackageRegistry() (backend.PackageRegistry, error) {
-	return nil, errors.New("package registry is not supported by diy backends")
+func (b *diyBackend) GetCloudRegistry() (backend.CloudRegistry, error) {
+	return nil, errors.New("Private Registry is not supported by diy backends")
+}
+
+func (b *diyBackend) GetReadOnlyCloudRegistry() registry.Registry {
+	return unauthenticatedregistry.New(b.d, b.Env)
 }

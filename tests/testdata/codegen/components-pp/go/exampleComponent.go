@@ -5,7 +5,6 @@ import (
 
 	"github.com/pulumi/pulumi-random/sdk/v4/go/random"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
 type DeploymentZonesArgs struct {
@@ -101,6 +100,6 @@ func NewExampleComponent(
 	if err != nil {
 		return nil, err
 	}
-	componentResource.Result = password.Result
+	componentResource.Result = pulumi.Any(password.Result)
 	return &componentResource, nil
 }

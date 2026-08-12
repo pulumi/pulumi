@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import { ProjectSettings } from "./projectSettings";
 import { OutputMap } from "./stack";
 import { StackSettings } from "./stackSettings";
 import { TagMap } from "./tag";
+import * as CLI from "./interface";
 
 /**
  * {@link Workspace} is the execution context containing a single Pulumi
@@ -59,6 +60,13 @@ export interface Workspace {
      * The underlying Pulumi CLI.
      */
     readonly pulumiCommand: PulumiCommand;
+
+    /**
+     * Low-level Automation API for invoking Pulumi CLI commands.
+     *
+     * @internal
+     */
+    readonly cliApi: CLI.API;
 
     /**
      * The inline program {@link PulumiFn} to be used for preview/update
@@ -201,6 +209,17 @@ export interface Workspace {
      *  The keys contain a path to a property in a map or list to set
      */
     setAllConfig(stackName: string, config: ConfigMap, path?: boolean): Promise<void>;
+
+    /**
+     * Sets all config values from a JSON string for the specified stack name.
+     * The JSON string should be in the format produced by "pulumi config --json".
+     *
+     * @param stackName
+     *  The stack to operate on
+     * @param configJson
+     *  A JSON string containing the configuration values to set
+     */
+    setAllConfigJson(stackName: string, configJson: string): Promise<void>;
 
     /**
      * Removes the specified key-value pair on the provided stack name.

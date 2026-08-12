@@ -1,0 +1,8 @@
+name: config-skip-validation
+description: A project with a required config schema key that the program does not read
+runtime:
+  name: nodejs
+config:
+  config-skip-validation:example:
+    description: A required configuration parameter the program never reads
+    type: string

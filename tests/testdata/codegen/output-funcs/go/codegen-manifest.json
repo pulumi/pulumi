@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "mypkg/doc.go",
     "mypkg/funcWithAllOptionalInputs.go",
     "mypkg/funcWithConstInput.go",

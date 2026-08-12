@@ -1,5 +1,13 @@
+from enum import Enum
 from typing import TypedDict
 import pulumi
+
+
+class Enu(Enum):
+    """This is an enum"""
+
+    A = "a"
+    """Docstring for Enu.A"""
 
 
 class NestedComplexType(TypedDict):
@@ -20,6 +28,13 @@ class ComplexType(TypedDict):
     another_value: pulumi.Input[NestedComplexType]
 
 
+class ComplexTypeOutput(TypedDict):
+    """ComplexTypeOutput doc string"""
+
+    value: str
+    """value doc string"""
+
+
 class Args(TypedDict):
     """Args doc string"""
 
@@ -33,11 +48,13 @@ class Args(TypedDict):
 
     """input_with_comment_and_description doc string"""
 
+    enu: pulumi.Input[Enu]
+
 
 class Component(pulumi.ComponentResource):
     """Component doc string"""
 
-    complex_output: pulumi.Output[ComplexType]
+    complex_output: pulumi.Output[ComplexTypeOutput]
     """complex_output doc string"""
 
     def __init__(self, args: Args): ...

@@ -262,8 +262,7 @@
         }
     },
     "required":[
-        "name",
-        "runtime"
+        "name"
     ],
     "additionalProperties":true,
     "$defs":{
@@ -289,6 +288,24 @@
                         "type": "string"
                     },
                     "description":"Additional parameters for parameterized providers"
+                },
+                "pluginDownloadURL":{
+                    "type": "string",
+                    "description":"The server from which to download the provider plugin from"
+                },
+                "checksums":{
+                    "type": "object",
+                    "description":"The checksums of the downloaded plugin, by os-arch",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "extensions":{
+                    "type":"array",
+                    "items":{
+                        "type":"string"
+                    },
+                    "description":"For an extension package, the parameters that extend the base provider"
                 }
             }
         },
@@ -321,7 +338,8 @@
                 "string",
                 "integer",
                 "boolean",
-                "array"
+                "array",
+                "object"
             ]
         },
         "configItemsType":{

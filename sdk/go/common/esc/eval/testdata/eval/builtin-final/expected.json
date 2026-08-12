@@ -1,0 +1,2492 @@
+{
+    "checkDiags": [
+        {
+            "Severity": 2,
+            "Summary": "cannot override final value",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-final",
+                "Start": {
+                    "Line": 4,
+                    "Column": 17,
+                    "Byte": 39
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 27,
+                    "Byte": 49
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.final_scalar"
+        },
+        {
+            "Severity": 2,
+            "Summary": "cannot override final value",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-final",
+                "Start": {
+                    "Line": 6,
+                    "Column": 5,
+                    "Byte": 70
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 15,
+                    "Byte": 80
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.final_object"
+        },
+        {
+            "Severity": 2,
+            "Summary": "cannot override final value",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-final",
+                "Start": {
+                    "Line": 8,
+                    "Column": 10,
+                    "Byte": 106
+                },
+                "End": {
+                    "Line": 8,
+                    "Column": 20,
+                    "Byte": 116
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.final_nested.key"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "final_nested": {
+                "range": {
+                    "environment": "builtin-final",
+                    "begin": {
+                        "line": 8,
+                        "column": 5,
+                        "byte": 101
+                    },
+                    "end": {
+                        "line": 9,
+                        "column": 25,
+                        "byte": 141
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "key": {
+                            "type": "string",
+                            "const": "nested_frozen"
+                        },
+                        "other_key": {
+                            "type": "string",
+                            "const": "new_value"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "key",
+                        "other_key"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 9,
+                            "column": 5,
+                            "byte": 138
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 28,
+                            "byte": 201
+                        }
+                    },
+                    "schema": {
+                        "properties": {
+                            "key": {
+                                "type": "string",
+                                "const": "nested_frozen"
+                            },
+                            "other_key": {
+                                "type": "string",
+                                "const": "can_override"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "key",
+                            "other_key"
+                        ]
+                    },
+                    "keyRanges": {
+                        "key": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 9,
+                                "column": 5,
+                                "byte": 138
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 8,
+                                "byte": 141
+                            }
+                        },
+                        "other_key": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 11,
+                                "column": 5,
+                                "byte": 178
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 14,
+                                "byte": 187
+                            }
+                        }
+                    },
+                    "object": {
+                        "key": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 149
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 31,
+                                    "byte": 173
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "nested_frozen"
+                            },
+                            "builtin": {
+                                "name": "fn::final",
+                                "nameRange": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 7,
+                                        "byte": 149
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 16,
+                                        "byte": 158
+                                    }
+                                },
+                                "argSchema": true,
+                                "arg": {
+                                    "range": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 10,
+                                            "column": 18,
+                                            "byte": 160
+                                        },
+                                        "end": {
+                                            "line": 10,
+                                            "column": 31,
+                                            "byte": 173
+                                        }
+                                    },
+                                    "schema": {
+                                        "type": "string",
+                                        "const": "nested_frozen"
+                                    },
+                                    "literal": "nested_frozen"
+                                }
+                            }
+                        },
+                        "other_key": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 16,
+                                    "byte": 189
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 28,
+                                    "byte": 201
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "can_override"
+                            },
+                            "literal": "can_override"
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "key": {
+                        "environment": "builtin-final",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 101
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 8,
+                            "byte": 104
+                        }
+                    },
+                    "other_key": {
+                        "environment": "builtin-final",
+                        "begin": {
+                            "line": 9,
+                            "column": 5,
+                            "byte": 121
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 14,
+                            "byte": 130
+                        }
+                    }
+                },
+                "object": {
+                    "key": {
+                        "range": {
+                            "environment": "builtin-final",
+                            "begin": {
+                                "line": 8,
+                                "column": 10,
+                                "byte": 106
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 20,
+                                "byte": 116
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "nested_frozen"
+                        },
+                        "base": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 149
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 31,
+                                    "byte": 173
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "nested_frozen"
+                            },
+                            "builtin": {
+                                "name": "fn::final",
+                                "nameRange": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 7,
+                                        "byte": 149
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 16,
+                                        "byte": 158
+                                    }
+                                },
+                                "argSchema": true,
+                                "arg": {
+                                    "range": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 10,
+                                            "column": 18,
+                                            "byte": 160
+                                        },
+                                        "end": {
+                                            "line": 10,
+                                            "column": 31,
+                                            "byte": 173
+                                        }
+                                    },
+                                    "schema": {
+                                        "type": "string",
+                                        "const": "nested_frozen"
+                                    },
+                                    "literal": "nested_frozen"
+                                }
+                            }
+                        },
+                        "literal": "overridden"
+                    },
+                    "other_key": {
+                        "range": {
+                            "environment": "builtin-final",
+                            "begin": {
+                                "line": 9,
+                                "column": 16,
+                                "byte": 132
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 25,
+                                "byte": 141
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "new_value"
+                        },
+                        "base": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 16,
+                                    "byte": 189
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 28,
+                                    "byte": 201
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "can_override"
+                            },
+                            "literal": "can_override"
+                        },
+                        "literal": "new_value"
+                    }
+                }
+            },
+            "final_object": {
+                "range": {
+                    "environment": "builtin-final",
+                    "begin": {
+                        "line": 6,
+                        "column": 5,
+                        "byte": 70
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 15,
+                        "byte": 80
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "retries": {
+                            "type": "number",
+                            "const": 3
+                        },
+                        "timeout": {
+                            "type": "number",
+                            "const": 30
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "retries",
+                        "timeout"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 72
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 18,
+                            "byte": 117
+                        }
+                    },
+                    "schema": {
+                        "properties": {
+                            "retries": {
+                                "type": "number",
+                                "const": 3
+                            },
+                            "timeout": {
+                                "type": "number",
+                                "const": 30
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "retries",
+                            "timeout"
+                        ]
+                    },
+                    "builtin": {
+                        "name": "fn::final",
+                        "nameRange": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 5,
+                                "column": 5,
+                                "byte": 72
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 14,
+                                "byte": 81
+                            }
+                        },
+                        "argSchema": true,
+                        "arg": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 7,
+                                    "byte": 89
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 18,
+                                    "byte": 117
+                                }
+                            },
+                            "schema": {
+                                "properties": {
+                                    "retries": {
+                                        "type": "number",
+                                        "const": 3
+                                    },
+                                    "timeout": {
+                                        "type": "number",
+                                        "const": 30
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "retries",
+                                    "timeout"
+                                ]
+                            },
+                            "keyRanges": {
+                                "retries": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 7,
+                                        "byte": 89
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 14,
+                                        "byte": 96
+                                    }
+                                },
+                                "timeout": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 7,
+                                        "byte": 106
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 14,
+                                        "byte": 113
+                                    }
+                                }
+                            },
+                            "object": {
+                                "retries": {
+                                    "range": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 6,
+                                            "column": 16,
+                                            "byte": 98
+                                        },
+                                        "end": {
+                                            "line": 6,
+                                            "column": 17,
+                                            "byte": 99
+                                        }
+                                    },
+                                    "schema": {
+                                        "type": "number",
+                                        "const": 3
+                                    },
+                                    "literal": 3
+                                },
+                                "timeout": {
+                                    "range": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 7,
+                                            "column": 16,
+                                            "byte": 115
+                                        },
+                                        "end": {
+                                            "line": 7,
+                                            "column": 18,
+                                            "byte": 117
+                                        }
+                                    },
+                                    "schema": {
+                                        "type": "number",
+                                        "const": 30
+                                    },
+                                    "literal": 30
+                                }
+                            }
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "retries": {
+                        "environment": "builtin-final",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 70
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 12,
+                            "byte": 77
+                        }
+                    }
+                },
+                "object": {
+                    "retries": {
+                        "range": {
+                            "environment": "builtin-final",
+                            "begin": {
+                                "line": 6,
+                                "column": 14,
+                                "byte": 79
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 15,
+                                "byte": 80
+                            }
+                        },
+                        "schema": {
+                            "type": "number",
+                            "const": 5
+                        },
+                        "base": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 16,
+                                    "byte": 98
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 17,
+                                    "byte": 99
+                                }
+                            },
+                            "schema": {
+                                "type": "number",
+                                "const": 3
+                            },
+                            "literal": 3
+                        },
+                        "literal": 5
+                    }
+                }
+            },
+            "final_scalar": {
+                "range": {
+                    "environment": "builtin-final",
+                    "begin": {
+                        "line": 4,
+                        "column": 17,
+                        "byte": 39
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 27,
+                        "byte": 49
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "frozen_value"
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 28
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 28,
+                            "byte": 51
+                        }
+                    },
+                    "schema": {
+                        "type": "string",
+                        "const": "frozen_value"
+                    },
+                    "builtin": {
+                        "name": "fn::final",
+                        "nameRange": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 3,
+                                "column": 5,
+                                "byte": 28
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 14,
+                                "byte": 37
+                            }
+                        },
+                        "argSchema": true,
+                        "arg": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 16,
+                                    "byte": 39
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 28,
+                                    "byte": 51
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "frozen_value"
+                            },
+                            "literal": "frozen_value"
+                        }
+                    }
+                },
+                "literal": "overridden"
+            },
+            "not_final": {
+                "range": {
+                    "environment": "builtin-final",
+                    "begin": {
+                        "line": 10,
+                        "column": 14,
+                        "byte": 155
+                    },
+                    "end": {
+                        "line": 10,
+                        "column": 29,
+                        "byte": 170
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "new_plain_value"
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 12,
+                            "column": 14,
+                            "byte": 215
+                        },
+                        "end": {
+                            "line": 12,
+                            "column": 25,
+                            "byte": 226
+                        }
+                    },
+                    "schema": {
+                        "type": "string",
+                        "const": "plain_value"
+                    },
+                    "literal": "plain_value"
+                },
+                "literal": "new_plain_value"
+            }
+        },
+        "properties": {
+            "final_nested": {
+                "value": {
+                    "key": {
+                        "value": "nested_frozen",
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 149
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 31,
+                                    "byte": 173
+                                }
+                            }
+                        }
+                    },
+                    "other_key": {
+                        "value": "new_value",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-final",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 16,
+                                    "byte": 132
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 25,
+                                    "byte": 141
+                                }
+                            },
+                            "base": {
+                                "value": "can_override",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 11,
+                                            "column": 16,
+                                            "byte": 189
+                                        },
+                                        "end": {
+                                            "line": 11,
+                                            "column": 28,
+                                            "byte": 201
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "builtin-final",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 101
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 25,
+                            "byte": 141
+                        }
+                    },
+                    "base": {
+                        "value": {
+                            "key": {
+                                "value": "nested_frozen",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 10,
+                                            "column": 7,
+                                            "byte": 149
+                                        },
+                                        "end": {
+                                            "line": 10,
+                                            "column": 31,
+                                            "byte": 173
+                                        }
+                                    }
+                                }
+                            },
+                            "other_key": {
+                                "value": "can_override",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 11,
+                                            "column": 16,
+                                            "byte": 189
+                                        },
+                                        "end": {
+                                            "line": 11,
+                                            "column": 28,
+                                            "byte": 201
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 5,
+                                    "byte": 138
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 28,
+                                    "byte": 201
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "final_object": {
+                "value": {
+                    "retries": {
+                        "value": 3,
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 16,
+                                    "byte": 98
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 17,
+                                    "byte": 99
+                                }
+                            }
+                        }
+                    },
+                    "timeout": {
+                        "value": 30,
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 16,
+                                    "byte": 115
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 18,
+                                    "byte": 117
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 72
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 18,
+                            "byte": 117
+                        }
+                    }
+                }
+            },
+            "final_scalar": {
+                "value": "frozen_value",
+                "trace": {
+                    "def": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 28
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 28,
+                            "byte": 51
+                        }
+                    }
+                }
+            },
+            "not_final": {
+                "value": "new_plain_value",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-final",
+                        "begin": {
+                            "line": 10,
+                            "column": 14,
+                            "byte": 155
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 29,
+                            "byte": 170
+                        }
+                    },
+                    "base": {
+                        "value": "plain_value",
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 14,
+                                    "byte": 215
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 25,
+                                    "byte": 226
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "final_nested": {
+                    "properties": {
+                        "key": {
+                            "type": "string",
+                            "const": "nested_frozen"
+                        },
+                        "other_key": {
+                            "type": "string",
+                            "const": "new_value"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "key",
+                        "other_key"
+                    ]
+                },
+                "final_object": {
+                    "properties": {
+                        "retries": {
+                            "type": "number",
+                            "const": 3
+                        },
+                        "timeout": {
+                            "type": "number",
+                            "const": 30
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "retries",
+                        "timeout"
+                    ]
+                },
+                "final_scalar": {
+                    "type": "string",
+                    "const": "frozen_value"
+                },
+                "not_final": {
+                    "type": "string",
+                    "const": "new_plain_value"
+                }
+            },
+            "type": "object",
+            "required": [
+                "final_nested",
+                "final_object",
+                "final_scalar",
+                "not_final"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-final",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-final",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-final",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-final",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-final",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-final",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-final",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-final",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-final",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-final"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-final"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "final_nested": {
+            "key": "nested_frozen",
+            "other_key": "new_value"
+        },
+        "final_object": {
+            "retries": 3,
+            "timeout": 30
+        },
+        "final_scalar": "frozen_value",
+        "not_final": "new_plain_value"
+    },
+    "evalDiags": [
+        {
+            "Severity": 2,
+            "Summary": "cannot override final value",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-final",
+                "Start": {
+                    "Line": 4,
+                    "Column": 17,
+                    "Byte": 39
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 27,
+                    "Byte": 49
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.final_scalar"
+        },
+        {
+            "Severity": 2,
+            "Summary": "cannot override final value",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-final",
+                "Start": {
+                    "Line": 6,
+                    "Column": 5,
+                    "Byte": 70
+                },
+                "End": {
+                    "Line": 6,
+                    "Column": 15,
+                    "Byte": 80
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.final_object"
+        },
+        {
+            "Severity": 2,
+            "Summary": "cannot override final value",
+            "Detail": "",
+            "Subject": {
+                "Filename": "builtin-final",
+                "Start": {
+                    "Line": 8,
+                    "Column": 10,
+                    "Byte": 106
+                },
+                "End": {
+                    "Line": 8,
+                    "Column": 20,
+                    "Byte": 116
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "values.final_nested.key"
+        }
+    ],
+    "eval": {
+        "exprs": {
+            "final_nested": {
+                "range": {
+                    "environment": "builtin-final",
+                    "begin": {
+                        "line": 8,
+                        "column": 5,
+                        "byte": 101
+                    },
+                    "end": {
+                        "line": 9,
+                        "column": 25,
+                        "byte": 141
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "key": {
+                            "type": "string",
+                            "const": "nested_frozen"
+                        },
+                        "other_key": {
+                            "type": "string",
+                            "const": "new_value"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "key",
+                        "other_key"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 9,
+                            "column": 5,
+                            "byte": 138
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 28,
+                            "byte": 201
+                        }
+                    },
+                    "schema": {
+                        "properties": {
+                            "key": {
+                                "type": "string",
+                                "const": "nested_frozen"
+                            },
+                            "other_key": {
+                                "type": "string",
+                                "const": "can_override"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "key",
+                            "other_key"
+                        ]
+                    },
+                    "keyRanges": {
+                        "key": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 9,
+                                "column": 5,
+                                "byte": 138
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 8,
+                                "byte": 141
+                            }
+                        },
+                        "other_key": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 11,
+                                "column": 5,
+                                "byte": 178
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 14,
+                                "byte": 187
+                            }
+                        }
+                    },
+                    "object": {
+                        "key": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 149
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 31,
+                                    "byte": 173
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "nested_frozen"
+                            },
+                            "builtin": {
+                                "name": "fn::final",
+                                "nameRange": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 7,
+                                        "byte": 149
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 16,
+                                        "byte": 158
+                                    }
+                                },
+                                "argSchema": true,
+                                "arg": {
+                                    "range": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 10,
+                                            "column": 18,
+                                            "byte": 160
+                                        },
+                                        "end": {
+                                            "line": 10,
+                                            "column": 31,
+                                            "byte": 173
+                                        }
+                                    },
+                                    "schema": {
+                                        "type": "string",
+                                        "const": "nested_frozen"
+                                    },
+                                    "literal": "nested_frozen"
+                                }
+                            }
+                        },
+                        "other_key": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 16,
+                                    "byte": 189
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 28,
+                                    "byte": 201
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "can_override"
+                            },
+                            "literal": "can_override"
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "key": {
+                        "environment": "builtin-final",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 101
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 8,
+                            "byte": 104
+                        }
+                    },
+                    "other_key": {
+                        "environment": "builtin-final",
+                        "begin": {
+                            "line": 9,
+                            "column": 5,
+                            "byte": 121
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 14,
+                            "byte": 130
+                        }
+                    }
+                },
+                "object": {
+                    "key": {
+                        "range": {
+                            "environment": "builtin-final",
+                            "begin": {
+                                "line": 8,
+                                "column": 10,
+                                "byte": 106
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 20,
+                                "byte": 116
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "nested_frozen"
+                        },
+                        "base": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 149
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 31,
+                                    "byte": 173
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "nested_frozen"
+                            },
+                            "builtin": {
+                                "name": "fn::final",
+                                "nameRange": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 7,
+                                        "byte": 149
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 16,
+                                        "byte": 158
+                                    }
+                                },
+                                "argSchema": true,
+                                "arg": {
+                                    "range": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 10,
+                                            "column": 18,
+                                            "byte": 160
+                                        },
+                                        "end": {
+                                            "line": 10,
+                                            "column": 31,
+                                            "byte": 173
+                                        }
+                                    },
+                                    "schema": {
+                                        "type": "string",
+                                        "const": "nested_frozen"
+                                    },
+                                    "literal": "nested_frozen"
+                                }
+                            }
+                        },
+                        "literal": "overridden"
+                    },
+                    "other_key": {
+                        "range": {
+                            "environment": "builtin-final",
+                            "begin": {
+                                "line": 9,
+                                "column": 16,
+                                "byte": 132
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 25,
+                                "byte": 141
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "new_value"
+                        },
+                        "base": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 16,
+                                    "byte": 189
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 28,
+                                    "byte": 201
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "can_override"
+                            },
+                            "literal": "can_override"
+                        },
+                        "literal": "new_value"
+                    }
+                }
+            },
+            "final_object": {
+                "range": {
+                    "environment": "builtin-final",
+                    "begin": {
+                        "line": 6,
+                        "column": 5,
+                        "byte": 70
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 15,
+                        "byte": 80
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "retries": {
+                            "type": "number",
+                            "const": 3
+                        },
+                        "timeout": {
+                            "type": "number",
+                            "const": 30
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "retries",
+                        "timeout"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 72
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 18,
+                            "byte": 117
+                        }
+                    },
+                    "schema": {
+                        "properties": {
+                            "retries": {
+                                "type": "number",
+                                "const": 3
+                            },
+                            "timeout": {
+                                "type": "number",
+                                "const": 30
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "retries",
+                            "timeout"
+                        ]
+                    },
+                    "builtin": {
+                        "name": "fn::final",
+                        "nameRange": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 5,
+                                "column": 5,
+                                "byte": 72
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 14,
+                                "byte": 81
+                            }
+                        },
+                        "argSchema": true,
+                        "arg": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 7,
+                                    "byte": 89
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 18,
+                                    "byte": 117
+                                }
+                            },
+                            "schema": {
+                                "properties": {
+                                    "retries": {
+                                        "type": "number",
+                                        "const": 3
+                                    },
+                                    "timeout": {
+                                        "type": "number",
+                                        "const": 30
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "retries",
+                                    "timeout"
+                                ]
+                            },
+                            "keyRanges": {
+                                "retries": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 7,
+                                        "byte": 89
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 14,
+                                        "byte": 96
+                                    }
+                                },
+                                "timeout": {
+                                    "environment": "a",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 7,
+                                        "byte": 106
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 14,
+                                        "byte": 113
+                                    }
+                                }
+                            },
+                            "object": {
+                                "retries": {
+                                    "range": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 6,
+                                            "column": 16,
+                                            "byte": 98
+                                        },
+                                        "end": {
+                                            "line": 6,
+                                            "column": 17,
+                                            "byte": 99
+                                        }
+                                    },
+                                    "schema": {
+                                        "type": "number",
+                                        "const": 3
+                                    },
+                                    "literal": 3
+                                },
+                                "timeout": {
+                                    "range": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 7,
+                                            "column": 16,
+                                            "byte": 115
+                                        },
+                                        "end": {
+                                            "line": 7,
+                                            "column": 18,
+                                            "byte": 117
+                                        }
+                                    },
+                                    "schema": {
+                                        "type": "number",
+                                        "const": 30
+                                    },
+                                    "literal": 30
+                                }
+                            }
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "retries": {
+                        "environment": "builtin-final",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 70
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 12,
+                            "byte": 77
+                        }
+                    }
+                },
+                "object": {
+                    "retries": {
+                        "range": {
+                            "environment": "builtin-final",
+                            "begin": {
+                                "line": 6,
+                                "column": 14,
+                                "byte": 79
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 15,
+                                "byte": 80
+                            }
+                        },
+                        "schema": {
+                            "type": "number",
+                            "const": 5
+                        },
+                        "base": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 16,
+                                    "byte": 98
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 17,
+                                    "byte": 99
+                                }
+                            },
+                            "schema": {
+                                "type": "number",
+                                "const": 3
+                            },
+                            "literal": 3
+                        },
+                        "literal": 5
+                    }
+                }
+            },
+            "final_scalar": {
+                "range": {
+                    "environment": "builtin-final",
+                    "begin": {
+                        "line": 4,
+                        "column": 17,
+                        "byte": 39
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 27,
+                        "byte": 49
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "frozen_value"
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 28
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 28,
+                            "byte": 51
+                        }
+                    },
+                    "schema": {
+                        "type": "string",
+                        "const": "frozen_value"
+                    },
+                    "builtin": {
+                        "name": "fn::final",
+                        "nameRange": {
+                            "environment": "a",
+                            "begin": {
+                                "line": 3,
+                                "column": 5,
+                                "byte": 28
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 14,
+                                "byte": 37
+                            }
+                        },
+                        "argSchema": true,
+                        "arg": {
+                            "range": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 16,
+                                    "byte": 39
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 28,
+                                    "byte": 51
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "frozen_value"
+                            },
+                            "literal": "frozen_value"
+                        }
+                    }
+                },
+                "literal": "overridden"
+            },
+            "not_final": {
+                "range": {
+                    "environment": "builtin-final",
+                    "begin": {
+                        "line": 10,
+                        "column": 14,
+                        "byte": 155
+                    },
+                    "end": {
+                        "line": 10,
+                        "column": 29,
+                        "byte": 170
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "new_plain_value"
+                },
+                "base": {
+                    "range": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 12,
+                            "column": 14,
+                            "byte": 215
+                        },
+                        "end": {
+                            "line": 12,
+                            "column": 25,
+                            "byte": 226
+                        }
+                    },
+                    "schema": {
+                        "type": "string",
+                        "const": "plain_value"
+                    },
+                    "literal": "plain_value"
+                },
+                "literal": "new_plain_value"
+            }
+        },
+        "properties": {
+            "final_nested": {
+                "value": {
+                    "key": {
+                        "value": "nested_frozen",
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 7,
+                                    "byte": 149
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 31,
+                                    "byte": 173
+                                }
+                            }
+                        }
+                    },
+                    "other_key": {
+                        "value": "new_value",
+                        "trace": {
+                            "def": {
+                                "environment": "builtin-final",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 16,
+                                    "byte": 132
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 25,
+                                    "byte": 141
+                                }
+                            },
+                            "base": {
+                                "value": "can_override",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 11,
+                                            "column": 16,
+                                            "byte": 189
+                                        },
+                                        "end": {
+                                            "line": 11,
+                                            "column": 28,
+                                            "byte": 201
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "builtin-final",
+                        "begin": {
+                            "line": 8,
+                            "column": 5,
+                            "byte": 101
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 25,
+                            "byte": 141
+                        }
+                    },
+                    "base": {
+                        "value": {
+                            "key": {
+                                "value": "nested_frozen",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 10,
+                                            "column": 7,
+                                            "byte": 149
+                                        },
+                                        "end": {
+                                            "line": 10,
+                                            "column": 31,
+                                            "byte": 173
+                                        }
+                                    }
+                                }
+                            },
+                            "other_key": {
+                                "value": "can_override",
+                                "trace": {
+                                    "def": {
+                                        "environment": "a",
+                                        "begin": {
+                                            "line": 11,
+                                            "column": 16,
+                                            "byte": 189
+                                        },
+                                        "end": {
+                                            "line": 11,
+                                            "column": 28,
+                                            "byte": 201
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 5,
+                                    "byte": 138
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 28,
+                                    "byte": 201
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "final_object": {
+                "value": {
+                    "retries": {
+                        "value": 3,
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 16,
+                                    "byte": 98
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 17,
+                                    "byte": 99
+                                }
+                            }
+                        }
+                    },
+                    "timeout": {
+                        "value": 30,
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 16,
+                                    "byte": 115
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 18,
+                                    "byte": 117
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 72
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 18,
+                            "byte": 117
+                        }
+                    }
+                }
+            },
+            "final_scalar": {
+                "value": "frozen_value",
+                "trace": {
+                    "def": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 3,
+                            "column": 5,
+                            "byte": 28
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 28,
+                            "byte": 51
+                        }
+                    }
+                }
+            },
+            "not_final": {
+                "value": "new_plain_value",
+                "trace": {
+                    "def": {
+                        "environment": "builtin-final",
+                        "begin": {
+                            "line": 10,
+                            "column": 14,
+                            "byte": 155
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 29,
+                            "byte": 170
+                        }
+                    },
+                    "base": {
+                        "value": "plain_value",
+                        "trace": {
+                            "def": {
+                                "environment": "a",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 14,
+                                    "byte": 215
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 25,
+                                    "byte": 226
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "final_nested": {
+                    "properties": {
+                        "key": {
+                            "type": "string",
+                            "const": "nested_frozen"
+                        },
+                        "other_key": {
+                            "type": "string",
+                            "const": "new_value"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "key",
+                        "other_key"
+                    ]
+                },
+                "final_object": {
+                    "properties": {
+                        "retries": {
+                            "type": "number",
+                            "const": 3
+                        },
+                        "timeout": {
+                            "type": "number",
+                            "const": 30
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "retries",
+                        "timeout"
+                    ]
+                },
+                "final_scalar": {
+                    "type": "string",
+                    "const": "frozen_value"
+                },
+                "not_final": {
+                    "type": "string",
+                    "const": "new_plain_value"
+                }
+            },
+            "type": "object",
+            "required": [
+                "final_nested",
+                "final_object",
+                "final_scalar",
+                "not_final"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-final",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-final",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-final",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "builtin-final",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-final",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-final",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "builtin-final",
+                            "trace": {
+                                "def": {
+                                    "environment": "builtin-final",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "builtin-final",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-final"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "builtin-final"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "final_nested": {
+            "key": "nested_frozen",
+            "other_key": "new_value"
+        },
+        "final_object": {
+            "retries": 3,
+            "timeout": 30
+        },
+        "final_scalar": "frozen_value",
+        "not_final": "new_plain_value"
+    },
+    "evalJSONRevealed": {
+        "final_nested": {
+            "key": "nested_frozen",
+            "other_key": "new_value"
+        },
+        "final_object": {
+            "retries": 3,
+            "timeout": 30
+        },
+        "final_scalar": "frozen_value",
+        "not_final": "new_plain_value"
+    }
+}

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -28,8 +33,7 @@ import (
 
 func newPackagePackSdkCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "pack-sdk <language> <path>",
-		Args:   cobra.ExactArgs(2),
+		Use:    "pack-sdk",
 		Short:  "Pack a package SDK to a language specific artifact.",
 		Hidden: !env.Dev.Value(),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -38,30 +42,43 @@ func newPackagePackSdkCmd() *cobra.Command {
 				return fmt.Errorf("get current working directory: %w", err)
 			}
 
-			pCtx, err := NewPluginContext(cwd)
+			reg := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+			pCtx, err := packages.NewPluginContext(cwd, reg)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
+			// The context owns its loader/mapper servers; the host is caller-owned. Close the
+			// context first, then the host.
 			defer contract.IgnoreClose(pCtx.Host)
+			defer contract.IgnoreClose(pCtx)
 
 			language := args[0]
 			path := args[1]
 
-			programInfo := plugin.NewProgramInfo(pCtx.Root, cwd, ".", nil)
-			languagePlugin, err := pCtx.Host.LanguageRuntime(language, programInfo)
+			languagePlugin, err := pCtx.Host.LanguageRuntime(pCtx, language)
 			if err != nil {
 				return err
 			}
 
-			artifact, err := languagePlugin.Pack(path, cwd)
+			artifact, err := languagePlugin.Pack(pCtx.Request(), path, cwd)
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("%s", artifact)
+			fmt.Fprintf(cmd.OutOrStdout(), "%s", artifact)
 
 			return nil
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "language"},
+			{Name: "path"},
+		},
+		Required: 2,
+	})
+
 	return cmd
 }

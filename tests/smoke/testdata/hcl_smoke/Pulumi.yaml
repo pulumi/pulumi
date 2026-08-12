@@ -1,0 +1,3 @@
+name: hcl-smoke
+runtime: hcl
+description: A minimal HCL program with no resources, used to smoke test that the engine downloads and runs the pulumi-language-hcl runtime.

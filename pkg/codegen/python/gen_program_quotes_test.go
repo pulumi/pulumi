@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,14 +21,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLowerPropertyAccess(t *testing.T) {
 	t.Parallel()
 
-	const source = `zones = invoke("aws:index:getAvailabilityZones", {})
+	const source = `zones = invoke("infra:index:getZones", {})
 
-resource vpcSubnet "aws:ec2:Subnet" {
+resource vpcSubnet "infra:index:Subnet" {
 	options { range = zones.names }
 
 	cidrBlock = "10.100.${range.key}.0/24"
@@ -36,7 +37,7 @@ resource vpcSubnet "aws:ec2:Subnet" {
 	vpcId = 1
 }
 
-resource rta "aws:ec2:RouteTableAssociation" {
+resource rta "infra:index:RouteTableAssociation" {
 	options { range = zones.names }
 
 	subnetId = vpcSubnet[range.key].id
@@ -47,7 +48,7 @@ resource rta "aws:ec2:RouteTableAssociation" {
 	contract.Ignore(diags)
 
 	g, err := newGenerator(program)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var rta *pcl.Resource
 	for _, n := range g.program.Nodes {
@@ -56,14 +57,14 @@ resource rta "aws:ec2:RouteTableAssociation" {
 			break
 		}
 	}
-	assert.NotNil(t, rta)
+	require.NotNil(t, rta)
 
 	// Lower the "subnetId" property of the resource.
 	prop, ok := rta.Definition.Body.Attribute("subnetId")
 	assert.True(t, ok)
 
 	x, temps := g.lowerExpression(prop.Value, prop.Type())
-	assert.Len(t, temps, 0)
+	require.Len(t, temps, 0)
 
 	x.SetLeadingTrivia(nil)
 	x.SetTrailingTrivia(nil)

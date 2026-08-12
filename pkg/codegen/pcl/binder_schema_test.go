@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -22,16 +23,17 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
 func BenchmarkLoadPackage(b *testing.B) {
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 	for n := 0; n < b.N; n++ {
-		_, err := NewPackageCache().loadPackageSchema(loader, "aws", "")
+		_, err := NewPackageCache().loadPackageSchema(b.Context(), loader, "aws", "", "")
 		if err != nil {
 			b.Fatalf("failed to load package schema: %v", err)
 		}
@@ -40,19 +42,16 @@ func BenchmarkLoadPackage(b *testing.B) {
 
 func TestGenEnum(t *testing.T) {
 	t.Parallel()
-	enum := &model.EnumType{
-		Elements: []cty.Value{
+	enum := model.NewEnumType(
+		"my:enum", model.StringType,
+		[]cty.Value{
 			cty.StringVal("foo"),
 			cty.StringVal("bar"),
 		},
-		Type:  model.StringType,
-		Token: "my:enum",
-		Annotations: []interface{}{
-			enumSchemaType{
-				Type: &schema.EnumType{Elements: []*schema.Enum{{Value: "foo"}, {Value: "bar"}}},
-			},
+		enumSchemaType{
+			Type: &schema.EnumType{Elements: []*schema.Enum{{Value: "foo"}, {Value: "bar"}}},
 		},
-	}
+	)
 	safeEnumFunc := func(member *schema.Enum) {}
 	unsafeEnumFunc := func(from model.Expression) {}
 
@@ -66,4 +65,31 @@ func TestGenEnum(t *testing.T) {
 	}, safeEnumFunc, unsafeEnumFunc)
 	assert.Equal(t, d.Summary, `"Bar" is not a valid value of the enum "my:enum"`)
 	assert.Equal(t, d.Detail, `Valid members are "foo", "bar"`)
+}
+
+func TestGetSchemaForType(t *testing.T) {
+	t.Parallel()
+
+	newObj := func(i int) (*model.ObjectType, schema.Type) {
+		t := &schema.ObjectType{Token: fmt.Sprintf("pkg:mod:Type%d", i)}
+		return model.NewObjectType(map[string]model.Type{
+			fmt.Sprintf("field%d", i): model.StringType,
+		}, t), t
+	}
+
+	objects := make([]model.Type, 10)
+	types := make([]schema.Type, len(objects))
+	for i := range objects {
+		obj, typ := newObj(i)
+		objects[i] = obj
+		types[i] = typ
+	}
+
+	unionType := model.NewUnionType(objects...)
+
+	actualType, ok := GetSchemaForType(unionType)
+	require.True(t, ok)
+	actualUnion, ok := actualType.(*schema.UnionType)
+	require.True(t, ok)
+	assert.Equal(t, types, actualUnion.ElementTypes)
 }

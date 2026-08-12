@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,6 +42,9 @@ import (
 func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opts Options) {
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
 
+	// track resources errored
+	resourcesErrored := 0
+
 	stdout := opts.Stdout
 	if stdout == nil {
 		stdout = os.Stdout
@@ -77,13 +80,22 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 
 			out := stdout
 			if event.Type == engine.DiagEvent {
-				payload := event.Payload().(engine.DiagEventPayload)
-				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
-					out = stderr
-				}
+				out = stderr
+			}
+			if event.Type == engine.ResourceOperationFailed {
+				resourcesErrored++
 			}
 
-			msg := RenderDiffEvent(event, seen, opts)
+			var msg string
+
+			// When the event received is SummaryEvent we can safely use `resourcesErrored`
+			// as all resource events have finished at this point.
+			if event.Type != engine.SummaryEvent {
+				msg = RenderDiffEvent(event, 0, seen, opts)
+			} else {
+				msg = RenderDiffEvent(event, resourcesErrored, seen, opts)
+			}
+
 			if msg != "" && out != nil {
 				fprintIgnoreError(out, msg)
 			}
@@ -95,7 +107,9 @@ func ShowDiffEvents(op string, events <-chan engine.Event, done chan<- bool, opt
 	}
 }
 
-func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventMetadata, opts Options) string {
+func RenderDiffEvent(event engine.Event, resourcesErrored int,
+	seen map[resource.URN]engine.StepEventMetadata, opts Options,
+) string {
 	switch event.Type {
 	case engine.CancelEvent:
 		return ""
@@ -105,13 +119,21 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 		return ""
 	case engine.ProgressEvent:
 		return ""
+	case engine.ErrorEvent:
+		return ""
+	case engine.PolicyAnalyzeSummaryEvent:
+		return ""
+	case engine.PolicyRemediateSummaryEvent:
+		return ""
+	case engine.PolicyAnalyzeStackSummaryEvent:
+		return ""
 
 		// Currently, prelude, summary, and stdout events are printed the same for both the diff and
 		// progress displays.
 	case engine.PreludeEvent:
 		return renderPreludeEvent(event.Payload().(engine.PreludeEventPayload), opts)
 	case engine.SummaryEvent:
-		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), true, opts)
+		return renderSummaryEvent(event.Payload().(engine.SummaryEventPayload), resourcesErrored, true, opts)
 	case engine.StdoutColorEvent:
 		return renderStdoutColorEvent(event.Payload().(engine.StdoutEventPayload), opts)
 
@@ -138,10 +160,30 @@ func RenderDiffEvent(event engine.Event, seen map[resource.URN]engine.StepEventM
 }
 
 func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
-	if payload.Severity == diag.Debug && !opts.Debug {
+	if opts.SuppressDiagEventsInDiff ||
+		payload.Severity == diag.Debug && !opts.Debug {
 		return ""
 	}
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
+}
+
+// resourceText returns the full URN string when ShowURNs is set, or the short
+// resource name otherwise.
+func resourceText(urn resource.URN, opts Options) string {
+	if opts.ShowURNs {
+		return string(urn)
+	}
+	return urn.Name()
+}
+
+// policyResourceClause renders the "  (type: name)" suffix for a policy event's target
+// resource, or "" for an invalid URN — URN.Type/URN.Name panic on the empty URN a
+// stack-level violation may carry.
+func policyResourceClause(urn resource.URN, opts Options) string {
+	if !urn.IsValid() {
+		return ""
+	}
+	return fmt.Sprintf("  (%s: %s)", urn.Type().DisplayName(), resourceText(urn, opts))
 }
 
 func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPayload,
@@ -153,9 +195,10 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 		return ""
 	}
 
-	// Print the individual remediation's name and target resource type/name.
-	remediationLine := fmt.Sprintf("%s[remediate]  %s%s  (%s: %s)",
-		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), payload.ResourceURN.Name())
+	// Print the individual remediation's name and its target resource type and name.
+	remediationLine := fmt.Sprintf("%s[remediate]  %s%s%s",
+		colors.SpecInfo, payload.PolicyName, colors.Reset,
+		policyResourceClause(payload.ResourceURN, opts))
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {
@@ -169,12 +212,12 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 	// a short diff summary similar to what is show for an update row is emitted.
 	if detailed {
 		var b bytes.Buffer
-		PrintObjectDiff(&b, *diff, nil,
-			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/, opts.ShowSecrets)
+		PrintObjectDiff(&b, *resource.ToResourceObjectDiff(diff), nil,
+			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/, opts.ShowSecrets, nil)
 		remediationLine = fmt.Sprintf("%s\n%s", remediationLine, b.String())
 	} else {
 		var b bytes.Buffer
-		writeShortDiff(&b, diff, nil)
+		writeShortDiff(&b, resource.ToResourceObjectDiff(diff), nil)
 		remediationLine = fmt.Sprintf("%s [%s]", remediationLine, b.String())
 	}
 
@@ -190,10 +233,16 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 		c = colors.SpecError
 	}
 
-	// Print the individual policy's name and target resource type/name.
-	policyLine := fmt.Sprintf("%s[%s]  %s%s  (%s: %s)",
-		c, payload.EnforcementLevel, payload.PolicyName, colors.Reset,
-		payload.ResourceURN.Type(), payload.ResourceURN.Name())
+	var severity string
+	if payload.Severity != apitype.PolicySeverityUnspecified {
+		severity = fmt.Sprintf(" [severity: %s]", payload.Severity)
+	}
+
+	// Print the individual policy's name and, for resource-scoped violations, the
+	// target resource type and name. Stack-level violations carry no resource URN.
+	policyLine := fmt.Sprintf("%s[%s]%s  %s%s%s",
+		c, payload.EnforcementLevel, severity, payload.PolicyName, colors.Reset,
+		policyResourceClause(payload.ResourceURN, opts))
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {
@@ -219,7 +268,9 @@ func renderStdoutColorEvent(payload engine.StdoutEventPayload, opts Options) str
 	return opts.Color.Colorize(payload.Message)
 }
 
-func renderSummaryEvent(event engine.SummaryEventPayload, diffStyleSummary bool, opts Options) string {
+func renderSummaryEvent(event engine.SummaryEventPayload, resourcesErrored int,
+	diffStyleSummary bool, opts Options,
+) string {
 	changes := event.ResourceChanges
 
 	out := &bytes.Buffer{}
@@ -284,6 +335,13 @@ func renderSummaryEvent(event engine.SummaryEventPayload, diffStyleSummary bool,
 		}
 
 		fprintIgnoreError(out, "\n")
+	}
+
+	// add error summary
+	if resourcesErrored > 0 {
+		errSummary := "    " + colors.Red + fmt.Sprintf("%d errored", resourcesErrored) + colors.Reset
+		out.WriteString(errSummary)
+		out.WriteString("\n")
 	}
 
 	if diffStyleSummary {
@@ -378,8 +436,8 @@ func renderDiff(
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options,
 ) {
-	indent := getIndent(metadata, seen)
-	summary := getResourcePropertiesSummary(metadata, indent)
+	indent := getIndent(metadata, seen, opts)
+	summary := getResourcePropertiesSummary(metadata, indent, opts.ShowURNs)
 
 	var details string
 	// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
@@ -387,9 +445,9 @@ func renderDiff(
 	if metadata.Op != deploy.OpSame {
 		if metadata.DetailedDiff != nil {
 			var buf bytes.Buffer
-			if diff := engine.TranslateDetailedDiff(&metadata, refresh); diff != nil {
+			if diff, hidden := engine.TranslateDetailedDiff(&metadata, refresh); diff != nil {
 				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1,
-					opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets)
+					opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets, hidden)
 			} else {
 				PrintObject(
 					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true, /*prefix*/
@@ -468,15 +526,21 @@ func renderDiffResourceOutputsEvent(
 		// * As with other `--show-sames`-related checks, we always display the root stack.
 		// * If we have been asked to suppress outputs (e.g., because they contain sensitive information), then we will not
 		//   display them.
-		indent := getIndent(payload.Metadata, seen)
+		indent := getIndent(payload.Metadata, seen, opts)
 
 		text := getResourceOutputsPropertiesString(
-			payload.Metadata, indent+1, payload.Planning,
-			payload.Debug, refresh, opts.ShowSameResources, opts.ShowSecrets)
-
+			payload.Metadata,
+			indent+1,
+			payload.Planning,
+			payload.Debug,
+			refresh,
+			opts.ShowSameResources,
+			opts.ShowSecrets,
+			opts.TruncateOutput,
+		)
 		if refresh && (payload.Metadata.Op != deploy.OpRefresh || text != "" || isRootStack(payload.Metadata)) {
 			// We would not have rendered the summary yet in this case, so do it now.
-			summary := getResourcePropertiesSummary(payload.Metadata, indent)
+			summary := getResourcePropertiesSummary(payload.Metadata, indent, opts.ShowURNs)
 			fprintIgnoreError(out, opts.Color.Colorize(summary))
 		}
 
@@ -511,7 +575,7 @@ func CreateDiff(events []engine.Event, displayOpts Options) (string, error) {
 			continue
 		}
 
-		msg := RenderDiffEvent(e, seen, displayOpts)
+		msg := RenderDiffEvent(e, 0, seen, displayOpts)
 		if msg == "" {
 			continue
 		}

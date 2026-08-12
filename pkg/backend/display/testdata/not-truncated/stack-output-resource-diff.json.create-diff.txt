@@ -14,3 +14,12 @@ Configuration:
         [urn=urn:pulumi:dev::pulumi-stack-output-diff::some:demo:Taxi::taxi]
       some:demo:Vehicles: (same)
         [urn=urn:pulumi:dev::pulumi-stack-output-diff::some:demo:Vehicles::vehicles]
+    --outputs:--
+  ~ vehicles: {
+      ~ taxi: {
+            color: "yellow"
+            size : "big"
+            urn  : "urn:pulumi:dev::pulumi-stack-output-diff::some:demo:Taxi::taxi"
+        }
+        urn : "urn:pulumi:dev::pulumi-stack-output-diff::some:demo:Vehicles::vehicles"
+    }

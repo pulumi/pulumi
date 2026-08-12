@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,14 @@
 package operations
 
 import (
+	"context"
 	"sort"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/hashicorp/go-multierror"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -31,26 +34,26 @@ import (
 type Resource struct {
 	Stack    tokens.QName
 	Project  tokens.PackageName
-	State    *resource.State
+	State    *pkgresource.State
 	Parent   *Resource
 	Provider *Resource
 	Children map[resource.URN]*Resource
 }
 
 // NewResourceMap constructs a map of resources with parent/child relations, indexed by URN.
-func NewResourceMap(source []*resource.State) map[resource.URN]*Resource {
+func NewResourceMap(source []*pkgresource.State) map[resource.URN]*Resource {
 	_, resources := makeResourceTreeMap(source)
 	return resources
 }
 
 // NewResourceTree constructs a tree representation of a resource/component hierarchy
-func NewResourceTree(source []*resource.State) *Resource {
+func NewResourceTree(source []*pkgresource.State) *Resource {
 	root, _ := makeResourceTreeMap(source)
 	return root
 }
 
 // makeResourceTreeMap is a helper used by the two above functions to construct a resource hierarchy.
-func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]*Resource) {
+func makeResourceTreeMap(source []*pkgresource.State) (*Resource, map[resource.URN]*Resource) {
 	resources := make(map[resource.URN]*Resource)
 
 	var stack tokens.QName
@@ -140,7 +143,7 @@ type resourceOperations struct {
 var _ Provider = (*resourceOperations)(nil)
 
 // GetLogs gets logs for a Resource
-func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
+func (ops *resourceOperations) GetLogs(ctx context.Context, query LogQuery) (*[]LogEntry, error) {
 	if ops.resource == nil {
 		return nil, nil
 	}
@@ -155,7 +158,7 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			ResourceFilter: nil,
 		}
 		// Try to get an operations provider for this resource, it may be `nil`
-		opsProvider, err := ops.getOperationsProvider()
+		opsProvider, err := ops.getOperationsProvider(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -163,7 +166,7 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			// If this resource has an operations provider - use it and don't recur into children.  It is the
 			// responsibility of it's GetLogs implementation to aggregate all logs from children, either by passing them
 			// through or by filtering specific content out.
-			logsResult, err := opsProvider.GetLogs(query)
+			logsResult, err := opsProvider.GetLogs(ctx, query)
 			if err != nil {
 				return logsResult, err
 			}
@@ -183,7 +186,7 @@ func (ops *resourceOperations) GetLogs(query LogQuery) (*[]LogEntry, error) {
 			config:   ops.config,
 		}
 		go func() {
-			childLogs, err := childOps.GetLogs(query)
+			childLogs, err := childOps.GetLogs(ctx, query)
 			ch <- childLogs
 			errch <- err
 		}()
@@ -256,7 +259,7 @@ func (ops *resourceOperations) matchesResourceFilter(filter *ResourceFilter) boo
 	return false
 }
 
-func (ops *resourceOperations) getOperationsProvider() (Provider, error) {
+func (ops *resourceOperations) getOperationsProvider(ctx context.Context) (Provider, error) {
 	if ops.resource == nil || ops.resource.State == nil {
 		return nil, nil
 	}
@@ -270,9 +273,9 @@ func (ops *resourceOperations) getOperationsProvider() (Provider, error) {
 	case "cloud":
 		return CloudOperationsProvider(ops.config, ops.resource)
 	case "aws":
-		return AWSOperationsProvider(ops.config, ops.resource)
+		return AWSOperationsProvider(ctx, ops.config, ops.resource)
 	case "gcp":
-		return GCPOperationsProvider(ops.config, ops.resource)
+		return GCPOperationsProvider(ctx, ops.config, ops.resource)
 	default:
 		return nil, nil
 	}

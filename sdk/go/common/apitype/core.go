@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,13 +29,18 @@
 package apitype
 
 import (
+	"crypto/sha256"
 	_ "embed" // for embedded schemas
 	"encoding/json"
+	"fmt"
 	"time"
 
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 //go:embed deployments.json
@@ -73,15 +78,23 @@ func PropertyValueSchema() string {
 }
 
 const (
-	// DeploymentSchemaVersionCurrent is the current version of the `Deployment` schema.
-	// Any deployments newer than this version will be rejected.
+	// DeploymentSchemaVersionCurrent is the current version of the `Deployment` schema
+	// when not using features that require v4.
 	DeploymentSchemaVersionCurrent = 3
+
+	// DeploymentSchemaVersionLatest is the latest version of the `Deployment` schema, when
+	// using features that require v4.
+	DeploymentSchemaVersionLatest = 4
 )
 
 // VersionedCheckpoint is a version number plus a json document. The version number describes what
 // version of the Checkpoint structure the Checkpoint member's json document can decode into.
 type VersionedCheckpoint struct {
-	Version    int             `json:"version"`
+	Version int `json:"version"`
+	// Features contains an optional list of features used by this Checkpoint. The CLI will error when reading a
+	// Checkpoint that uses a feature that is not supported by that version of the CLI. This is only looked at
+	// when `Version` is 4 or greater.
+	Features   []string        `json:"features,omitempty"`
 	Checkpoint json.RawMessage `json:"checkpoint"`
 }
 
@@ -139,6 +152,7 @@ type DeploymentV2 struct {
 
 // DeploymentV3 is the third version of the Deployment. It contains newer versions of the
 // Resource and Operation API types and a placeholder for a stack's secrets configuration.
+// Note that both deployment schema versions 3 and 4 can be unmarshaled into DeploymentV3.
 type DeploymentV3 struct {
 	// Manifest contains metadata about this deployment.
 	Manifest ManifestV1 `json:"manifest" yaml:"manifest"`
@@ -150,6 +164,118 @@ type DeploymentV3 struct {
 	PendingOperations []OperationV2 `json:"pending_operations,omitempty" yaml:"pending_operations,omitempty"`
 	// Metadata associated with the snapshot.
 	Metadata SnapshotMetadataV1 `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	// Snippets are any PCL snippets associated with the snapshot. The engine reruns these on every update to
+	// produce additional resources alongside the program's. Deployments that include snippets must declare the
+	// "snippets" feature so older CLIs that cannot evaluate them refuse the snapshot rather than silently
+	// dropping the resources they would produce.
+	Snippets []SnippetV1 `json:"snippets,omitempty" yaml:"snippets,omitempty"`
+	// Extensions is a map of extension blobs
+	Extensions map[ExtensionRef]Extension `json:"extensions,omitempty" yaml:"extensions,omitempty"`
+}
+
+func (snap *DeploymentV3) ToUntypedDeployment(version int, features []string) (*UntypedDeployment, error) {
+	if snap == nil {
+		return &UntypedDeployment{}, nil
+	}
+	jsonDeployment, err := json.Marshal(snap)
+	if err != nil {
+		return &UntypedDeployment{}, err
+	}
+	return &UntypedDeployment{
+		Version:    version,
+		Features:   features,
+		Deployment: jsonDeployment,
+	}, nil
+}
+
+// NormalizeURNReferences fixes up all URN references in a snapshot to use the new URNs instead of potentially-aliased
+// URNs.  This will affect resources that are "old", and which would be expected to be updated to refer to the new names
+// later in the deployment.  But until they are, we still want to ensure that any serialization of the snapshot uses URN
+// references which do not need to be indirected through any alias lookups, and which instead refer directly to the URN
+// of a resource in the resources map.
+func (snap *DeploymentV3) NormalizeURNReferences() (*DeploymentV3, error) {
+	if snap == nil {
+		return nil, nil
+	}
+	aliased := make(map[resource.URN]resource.URN)
+	for _, res := range snap.Resources {
+		for _, alias := range res.Aliases {
+			// For ease of implementation, some SDKs may end up creating the same alias to the
+			// same resource multiple times.  That's fine, only error if we see the same alias,
+			// but it maps to *different* resources.
+			if otherURN, has := aliased[alias]; has && otherURN != res.URN {
+				return nil, fmt.Errorf("two resources ('%s' and '%s') have the same alias: '%s'", otherURN, res.URN, alias)
+			}
+			aliased[alias] = res.URN
+		}
+		// If our parent has changed URN, then we need to update our URN as well.
+		if parent, has := aliased[res.Parent]; has {
+			if parent != "" && parent.QualifiedType() != resource.RootStackType {
+				aliased[res.URN] = resource.NewURN(
+					res.URN.Stack(), res.URN.Project(),
+					parent.QualifiedType(), res.URN.Type(),
+					res.URN.Name())
+			}
+		}
+	}
+
+	fixURN := func(urn resource.URN) resource.URN {
+		if newURN, has := aliased[urn]; has {
+			// TODO: should this recur to see if newUrn is similarly aliased?
+			return newURN
+		}
+		return urn
+	}
+
+	fixProvider := func(provider string) string {
+		if provider == "" {
+			return provider
+		}
+		ref, err := providers.ParseReference(provider)
+		contract.AssertNoErrorf(err, "malformed provider reference: %s", provider)
+		newURN := fixURN(ref.URN())
+		ref, err = providers.NewReference(newURN, ref.ID())
+		contract.AssertNoErrorf(err, "could not create provider reference with URN %s and ID %s", newURN, ref.ID())
+		return ref.String()
+	}
+
+	for i := range snap.Resources {
+		res := &snap.Resources[i]
+
+		res.URN = fixURN(res.URN)
+		res.Parent = fixURN(res.Parent)
+		res.Provider = fixProvider(res.Provider)
+
+		// Rewrite the resource's dependencies.
+		for j, dep := range res.Dependencies {
+			res.Dependencies[j] = fixURN(dep)
+		}
+
+		// Rewrite the resource's property dependencies.
+		for key, deps := range res.PropertyDependencies {
+			for j, dep := range deps {
+				res.PropertyDependencies[key][j] = fixURN(dep)
+			}
+		}
+
+		res.DeletedWith = fixURN(res.DeletedWith)
+		res.ViewOf = fixURN(res.ViewOf)
+		// Remove all "Aliases" from the state. Once URN normalisation is done we don't want to write aliases out.
+		if len(res.Aliases) > 0 {
+			snap.Resources[i].Aliases = nil
+		}
+	}
+
+	// Rewrite References on every snippet. Each value is a URN that may have been an alias for a resource that
+	// is now stored under its canonical URN; updating in place keeps future updates resolving cleanly through
+	// the registration observer.
+	for i := range snap.Snippets {
+		for k, v := range snap.Snippets[i].References {
+			snap.Snippets[i].References[k] = string(fixURN(resource.URN(v)))
+		}
+	}
+
+	return snap, nil
 }
 
 type SecretsProvidersV1 struct {
@@ -163,6 +289,47 @@ type SnapshotMetadataV1 struct {
 	IntegrityErrorMetadata *SnapshotIntegrityErrorMetadataV1 `json:"integrity_error,omitempty" yaml:"integrity_error,omitempty"`
 }
 
+// SnippetV1 is the serialized form of a PCL snippet stored alongside a snapshot. Snippets are evaluated by the
+// engine on every update to produce additional resource registrations.
+type SnippetV1 struct {
+	// UUID is the stable identity of this snippet within the snapshot.
+	UUID string `json:"uuid" yaml:"uuid"`
+	// Name is the logical name of the resource this snippet registers.
+	Name string `json:"name" yaml:"name"`
+	// Type is the type token of the resource this snippet registers.
+	Type string `json:"type" yaml:"type"`
+	// Code is the PCL source for the body of the resource.
+	Code string `json:"code" yaml:"code"`
+	// Descriptor identifies the package that owns the resource type.
+	Descriptor PackageDescriptorV1 `json:"descriptor" yaml:"descriptor"`
+	// References declares external resources that the snippet's Code may refer to by HCL identifier. The map
+	// key is the identifier used inside Code; the value is the URN of the target resource. Subject to URN
+	// normalisation (aliases) on each snapshot write.
+	References map[string]string `json:"references,omitempty" yaml:"references,omitempty"`
+}
+
+// PackageDescriptorV1 is the serialized form of a package descriptor for a snippet.
+type PackageDescriptorV1 struct {
+	// Name is the simple name of the plugin.
+	Name string `json:"name" yaml:"name"`
+	// Version is the optional version of the plugin.
+	Version *semver.Version `json:"version,omitempty" yaml:"version,omitempty"`
+	// DownloadURL is the optional URL to use when downloading the provider plugin binary.
+	DownloadURL string `json:"downloadURL,omitempty" yaml:"downloadURL,omitempty"`
+	// Parameterization is the optional parameterization of the package.
+	Parameterization *ParameterizationDescriptorV1 `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
+}
+
+// ParameterizationDescriptorV1 is the serialized form of a parameterization for a packaged plugin.
+type ParameterizationDescriptorV1 struct {
+	// Name is the name of the parameterized package.
+	Name string `json:"name" yaml:"name"`
+	// Version is the version of the parameterized package.
+	Version semver.Version `json:"version" yaml:"version"`
+	// Value is the parameter value of the package.
+	Value []byte `json:"value" yaml:"value"`
+}
+
 // SnapshotIntegrityErrorMetadataV1 contains metadata about a snapshot integrity error, such as the version
 // and invocation of the Pulumi engine that caused it.
 type SnapshotIntegrityErrorMetadataV1 struct {
@@ -172,6 +339,8 @@ type SnapshotIntegrityErrorMetadataV1 struct {
 	Command string `json:"command,omitempty" yaml:"command,omitempty"`
 	// The error message associated with the integrity error.
 	Error string `json:"error,omitempty" yaml:"error,omitempty"`
+	// EnvVars contains the Pulumi environment variables that were set when the integrity error occurred.
+	EnvVars map[string]string `json:"env_vars,omitempty" yaml:"env_vars,omitempty"`
 }
 
 // OperationType is the type of an operation initiated by the engine. Its value indicates the type of operation
@@ -213,10 +382,26 @@ type OperationV2 struct {
 type UntypedDeployment struct {
 	// Version indicates the schema of the encoded deployment.
 	Version int `json:"version,omitempty"`
+	// Features contains an optional list of features used by this deployment. The CLI will error when reading a
+	// Deployment that uses a feature that is not supported by that version of the CLI. This is only looked at
+	// when `Version` is 4 or greater.
+	Features []string `json:"features,omitempty"`
 	// The opaque Pulumi deployment. This is conceptually of type `Deployment`, but we use `json.Message` to
 	// permit round-tripping of stack contents when an older client is talking to a newer server.  If we unmarshaled
 	// the contents, and then remarshaled them, we could end up losing important information.
 	Deployment json.RawMessage `json:"deployment,omitempty"`
+}
+
+// TypedDeployment contains an inner, typed deployment structure.
+type TypedDeployment struct {
+	// Version indicates the schema of the encoded deployment.
+	Version int `json:"version,omitempty"`
+	// Features contains an optional list of features used by this deployment. The CLI will error when reading a
+	// Deployment that uses a feature that is not supported by that version of the CLI. This is only looked at
+	// when `Version` is 4 or greater.
+	Features []string `json:"features,omitempty"`
+	// The typed Pulumi deployment.
+	Deployment *DeploymentV3 `json:"deployment,omitempty"`
 }
 
 // ResourceV1 describes a Cloud resource constructed by Pulumi.
@@ -232,11 +417,11 @@ type ResourceV1 struct {
 	// Type is the resource's full type token.
 	Type tokens.Type `json:"type" yaml:"type"`
 	// Inputs are the input properties supplied to the provider.
-	Inputs map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	Inputs map[string]any `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Defaults contains the default values supplied by the provider (DEPRECATED, see #637).
-	Defaults map[string]interface{} `json:"defaults,omitempty" yaml:"defaults,omitempty"`
+	Defaults map[string]any `json:"defaults,omitempty" yaml:"defaults,omitempty"`
 	// Outputs are the output properties returned by the provider after provisioning.
-	Outputs map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Outputs map[string]any `json:"outputs,omitempty" yaml:"outputs,omitempty"`
 	// Parent is an optional parent URN if this resource is a child of it.
 	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
 	// Protect is set to true when this resource is "protected" and may not be deleted.
@@ -274,9 +459,9 @@ type ResourceV2 struct {
 	// Type is the resource's full type token.
 	Type tokens.Type `json:"type" yaml:"type"`
 	// Inputs are the input properties supplied to the provider.
-	Inputs map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	Inputs map[string]any `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Outputs are the output properties returned by the provider after provisioning.
-	Outputs map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Outputs map[string]any `json:"outputs,omitempty" yaml:"outputs,omitempty"`
 	// Parent is an optional parent URN if this resource is a child of it.
 	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
 	// Protect is set to true when this resource is "protected" and may not be deleted.
@@ -313,13 +498,15 @@ type ResourceV3 struct {
 	// Type is the resource's full type token.
 	Type tokens.Type `json:"type" yaml:"type"`
 	// Inputs are the input properties supplied to the provider.
-	Inputs map[string]interface{} `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	Inputs map[string]any `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Outputs are the output properties returned by the provider after provisioning.
-	Outputs map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Outputs map[string]any `json:"outputs,omitempty" yaml:"outputs,omitempty"`
 	// Parent is an optional parent URN if this resource is a child of it.
 	Parent resource.URN `json:"parent,omitempty" yaml:"parent,omitempty"`
 	// Protect is set to true when this resource is "protected" and may not be deleted.
 	Protect bool `json:"protect,omitempty" yaml:"protect,omitempty"`
+	// Taint is set to true when we wish to force it to be replaced upon the next update.
+	Taint bool `json:"taint,omitempty" yaml:"taint,omitempty"`
 	// External is set to true when the lifecycle of this resource is not managed by Pulumi.
 	External bool `json:"external,omitempty" yaml:"external,omitempty"`
 	// Dependencies contains the dependency edges to other resources that this depends on.
@@ -347,14 +534,40 @@ type ResourceV3 struct {
 	// If set, the providers Delete method will not be called for this resource
 	// if specified resource is being deleted as well.
 	DeletedWith resource.URN `json:"deletedWith,omitempty" yaml:"deletedWith,omitempty"`
+	// ReplaceWith is a list of resources whose replaces will also trigger this resource's replace.
+	ReplaceWith []resource.URN `json:"replaceWith,omitempty" yaml:"replaceWith,omitempty"`
 	// Created tracks when the remote resource was first added to state by pulumi. Checkpoints prior to early 2023 do not include this.
 	Created *time.Time `json:"created,omitempty" yaml:"created,omitempty"`
 	// Modified tracks when the resource state was last altered. Checkpoints prior to early 2023 do not include this.
 	Modified *time.Time `json:"modified,omitempty" yaml:"modified,omitempty"`
 	// SourcePosition tracks the source location of this resource's registration
 	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
+	// StackTrace records the stack at the time this resource was registered
+	StackTrace []StackFrameV1 `json:"stackTrace,omitempty" yaml:"stackTrace,omitempty"`
 	// IgnoreChanges is a list of properties to ignore changes for.
 	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
+	// HideDiff is a list of properties to hide the diff for.
+	HideDiff []resource.PropertyPath `json:"hideDiff,omitempty" yaml:"hideDiff,omitempty"`
+	// ReplaceOnChanges is a list of properties that if changed trigger a replace.
+	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
+	// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
+	ReplacementTrigger any `json:"replacementTrigger,omitempty" yaml:"replacementTrigger,omitempty"`
+	// RefreshBeforeUpdate indicates that this resource should always be refreshed prior to updates.
+	RefreshBeforeUpdate bool `json:"refreshBeforeUpdate,omitempty" yaml:"refreshBeforeUpdate,omitempty"`
+	// ViewOf is a reference to the resource that this resource is a view of.
+	ViewOf resource.URN `json:"viewOf,omitempty" yaml:"viewOf,omitempty"`
+	// ResourceHooks is a map of hook types to lists of hook names for the given type.
+	ResourceHooks map[resource.HookType][]string `json:"resourceHooks,omitempty" yaml:"resourceHooks,omitempty"`
+	// ExtensionRef is a pointer into the extensions map if any.
+	ExtensionRef ExtensionRef `json:"extensionRef,omitempty" yaml:"extensionRef,omitempty"`
+	// SnippetID is the UUID of the snippet that most recently registered this resource, if any.
+	SnippetID string `json:"snippetID,omitempty" yaml:"snippetID,omitempty"`
+}
+
+// StackFrameV1 captures information about a stack frame.
+type StackFrameV1 struct {
+	// SourcePosition contains the source position associated with the stack frame.
+	SourcePosition string `json:"sourcePosition,omitempty" yaml:"sourcePosition,omitempty"`
 }
 
 // ManifestV1 captures meta-information about this checkpoint file, such as versions of binaries, etc.
@@ -367,6 +580,13 @@ type ManifestV1 struct {
 	Version string `json:"version" yaml:"version"`
 	// Plugins contains the binary version info of plug-ins used.
 	Plugins []PluginInfoV1 `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+}
+
+func (m ManifestV1) NewMagic() string {
+	if m.Version == "" {
+		return ""
+	}
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(m.Version)))
 }
 
 // PluginInfoV1 captures the version and information about a plugin.
@@ -434,6 +654,11 @@ const (
 
 // Stack describes a Stack running on a Pulumi Cloud.
 type Stack struct {
+	// ID is the logical ID of the stack.
+	//
+	// For maintainers of the Pulumi service:
+	// ID corresponds to the Program ID, not the Stack ID inside the Pulumi service.
+	ID          string       `json:"id"`
 	OrgName     string       `json:"orgName"`
 	ProjectName string       `json:"projectName"`
 	StackName   tokens.QName `json:"stackName"`
@@ -442,7 +667,25 @@ type Stack struct {
 	ActiveUpdate     string                  `json:"activeUpdate"`
 	Tags             map[StackTagName]string `json:"tags,omitempty"`
 
+	// Optional cloud-persisted stack configuration.
+	// If set, then the stack's configuration is loaded from the cloud and not a file on disk.
+	Config *StackConfig `json:"config,omitempty"`
+
 	Version int `json:"version"`
+}
+
+// StackConfig describes the configuration of a stack from Pulumi Cloud.
+type StackConfig struct {
+	// Reference to ESC environment to use as stack configuration.
+	Environment string `json:"environment"`
+	// SecretsProvider is this stack's secrets provider.
+	SecretsProvider string `json:"secretsProvider,omitempty"`
+	// EncryptedKey is the KMS-encrypted ciphertext for the data key used for secrets encryption.
+	// Only used for cloud-based secrets providers.
+	EncryptedKey string `json:"encryptedKey,omitempty"`
+	// EncryptionSalt is this stack's base64 encoded encryption salt. Only used for
+	// passphrase-based secrets providers.
+	EncryptionSalt string `json:"encryptionSalt,omitempty"`
 }
 
 // OperationStatus describes the state of an operation being performed on a Pulumi stack.
@@ -450,4 +693,12 @@ type OperationStatus struct {
 	Kind    UpdateKind `json:"kind"`
 	Author  string     `json:"author"`
 	Started int64      `json:"started"`
+}
+
+type ExtensionRef string
+
+type Extension struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	Value   []byte `json:"value"`
 }

@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@ from typing import Optional, TypeVar, Awaitable, List, Any
 import asyncio
 import os
 import unittest
+from unittest import mock
 import pytest
+import pytest_asyncio
 
 from pulumi.resource import DependencyProviderResource
 from pulumi.runtime import settings, mocks
@@ -29,20 +31,19 @@ import pulumi
 T = TypeVar("T")
 
 
-class DependencyProviderResourceTests(unittest.TestCase):
-    def test_get_package(self):
-        res = DependencyProviderResource(
-            "urn:pulumi:stack::project::pulumi:providers:aws::default_4_13_0"
-        )
-        self.assertEqual("aws", res.package)
+@pytest.mark.asyncio
+async def test_get_package():
+    res = DependencyProviderResource(
+        "urn:pulumi:stack::project::pulumi:providers:aws::default_4_13_0"
+    )
+    assert "aws" == res.package
 
 
 @pytest.fixture(autouse=True)
 def clean_up_env_vars():
-    try:
-        del os.environ[ERROR_ON_DEPENDENCY_CYCLES_VAR]
-    except KeyError:
-        pass
+    with mock.patch.dict(os.environ):
+        os.environ.pop(ERROR_ON_DEPENDENCY_CYCLES_VAR, None)
+        yield
 
 
 @pulumi.runtime.test
@@ -55,12 +56,12 @@ def test_depends_on_accepts_outputs(dep_tracker):
     def check(urns):
         (dep1_urn, dep2_urn, res_urn) = urns
         res_deps = dep_tracker.dependencies[res_urn]
-        assert (
-            dep1_urn in res_deps
-        ), "Failed to propagate indirect dependencies via depends_on"
-        assert (
-            dep2_urn in res_deps
-        ), "Failed to propagate direct dependencies via depends_on"
+        assert dep1_urn in res_deps, (
+            "Failed to propagate indirect dependencies via depends_on"
+        )
+        assert dep2_urn in res_deps, (
+            "Failed to propagate direct dependencies via depends_on"
+        )
 
     return pulumi.Output.all(dep1.urn, dep2.urn, res.urn).apply(check)
 
@@ -197,9 +198,9 @@ def test_component_resource_propagates_provider() -> None:
         opts=pulumi.ResourceOptions(parent=component),
     )
 
-    assert (
-        provider == custom._provider
-    ), "Failed to propagate provider to child resource"
+    assert provider == custom._provider, (
+        "Failed to propagate provider to child resource"
+    )
 
 
 @pulumi.runtime.test
@@ -218,9 +219,9 @@ def test_component_resource_propagates_providers_list() -> None:
         opts=pulumi.ResourceOptions(parent=component),
     )
 
-    assert (
-        provider == custom._provider
-    ), "Failed to propagate provider to child resource"
+    assert provider == custom._provider, (
+        "Failed to propagate provider to child resource"
+    )
 
 
 def output_depending_on_resource(
@@ -234,14 +235,14 @@ def output_depending_on_resource(
     return pulumi.Output(resources=set([r]), is_known=is_known_fut, future=o.future())
 
 
-@pytest.fixture
-def dep_tracker():
+@pytest_asyncio.fixture
+async def dep_tracker():
     for dt in build_dep_tracker():
         yield dt
 
 
-@pytest.fixture
-def dep_tracker_preview():
+@pytest_asyncio.fixture
+async def dep_tracker_preview():
     for dt in build_dep_tracker(preview=True):
         yield dt
 
@@ -305,6 +306,16 @@ class MergeResourceOptions(unittest.TestCase):
         opts6 = ResourceOptions.merge(opts5, None)
         assert opts6.protect is True
         assert opts6.retain_on_delete is True
+
+    def test_env_var_mappings(self):
+        opts1 = ResourceOptions(env_var_mappings={"MY_VAR": "PROVIDER_VAR"})
+        assert opts1.env_var_mappings == {"MY_VAR": "PROVIDER_VAR"}
+        opts2 = ResourceOptions.merge(opts1, ResourceOptions())
+        assert opts2.env_var_mappings == {"MY_VAR": "PROVIDER_VAR"}
+        opts3 = ResourceOptions.merge(
+            opts2, ResourceOptions(env_var_mappings={"OTHER_VAR": "TARGET_VAR"})
+        )
+        assert opts3.env_var_mappings == {"OTHER_VAR": "TARGET_VAR"}
 
 
 # Regression test for https://github.com/pulumi/pulumi/issues/12032

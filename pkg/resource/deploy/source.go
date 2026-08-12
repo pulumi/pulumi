@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,11 @@ import (
 	"context"
 	"io"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -53,7 +55,8 @@ type Source interface {
 
 // A SourceIterator enumerates the list of resources that a source has to offer and tracks associated state.
 type SourceIterator interface {
-	io.Closer
+	// Cancel the iterator. This will cancel the SourceResourceMonitor monitor attached to the iterator.
+	Cancel(context.Context) error
 
 	// Next returns the next event from the source.
 	Next() (SourceEvent, error)
@@ -66,9 +69,9 @@ type SourceResourceMonitor interface {
 	// query implementations of `Source` do not implement precisely the same signatures.
 
 	Address() string
-	Cancel() error
+	Cancel(ctx context.Context) error
 	AbortChan() <-chan bool
-	Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.InvokeResponse, error)
+	Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error)
 	Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 	ReadResource(ctx context.Context,
 		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
@@ -88,15 +91,23 @@ type SourceEvent interface {
 type RegisterResourceEvent interface {
 	SourceEvent
 	// Goal returns the goal state for the resource object that was allocated by the program.
-	Goal() *resource.Goal
+	Goal() *pkgresource.Goal
 	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
 	Done(result *RegisterResult)
+	// Extension returns the extension parameterization, if any. A non-nil value
+	// means this resource came from an extension-parameterized package and the
+	// engine must apply that extension to the provider before producing steps.
+	Extension() *apitype.Extension
+	// ExtensionRef returns the per-deployment UUID identifying which extension
+	// registration this resource came from.
+	ExtensionRef() apitype.ExtensionRef
 }
 
 // RegisterResult is the state of the resource after it has been registered.
 type RegisterResult struct {
-	State  *resource.State // the resource state.
-	Result ResultState     // the result of the registration.
+	State   *pkgresource.State // the resource state.
+	Result  ResultState        // the result of the registration.
+	Unknown bool               // true if the result is unknown, e.g. because the create was elided.
 }
 
 // RegisterResourceOutputsEvent is an event that asks the engine to complete the provisioning of a resource.
@@ -134,9 +145,11 @@ type ReadResourceEvent interface {
 	AdditionalSecretOutputs() []resource.PropertyKey
 	// The source position of the resource read
 	SourcePosition() string
+	// The stack grace at the time of the read
+	StackTrace() []pkgresource.StackFrame
 }
 
 type ReadResult struct {
-	State  *resource.State
+	State  *pkgresource.State
 	Result ResultState
 }

@@ -1,4 +1,4 @@
-# Copyright 2016-2022, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +14,12 @@
 
 import asyncio
 import json
+import os
 import unittest
+from unittest.mock import patch
 from typing import Mapping, Optional, Sequence, cast
 
+from pulumi.output import Output, _OutputToStringError, _safe_str
 from pulumi.runtime import rpc, rpc_manager, settings
 from pulumi.runtime._serialization import (
     _deserialize,
@@ -24,7 +27,6 @@ from pulumi.runtime._serialization import (
 )
 
 import pulumi
-from pulumi import Output
 
 
 def pulumi_test(coro):
@@ -40,7 +42,7 @@ def pulumi_test(coro):
     return wrapper
 
 
-class OutputSecretTests(unittest.TestCase):
+class OutputSecretTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_secret(self):
         x = Output.secret("foo")
@@ -60,7 +62,7 @@ class OutputSecretTests(unittest.TestCase):
         self.assertFalse(y_is_secret)
 
 
-class OutputFromInputTests(unittest.TestCase):
+class OutputFromInputTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_unwrap_empty_dict(self):
         x = Output.from_input({})
@@ -275,7 +277,7 @@ class Obj:
         self.x = x
 
 
-class OutputHoistingTests(unittest.TestCase):
+class OutputHoistingTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_item(self):
         o = Output.from_input([1, 2, 3])
@@ -304,24 +306,84 @@ class OutputHoistingTests(unittest.TestCase):
                 print(i)
 
 
-class OutputStrTests(unittest.TestCase):
-    @pulumi_test
-    async def test_str(self):
-        o = Output.from_input(1)
-        self.assertEqual(
-            str(o),
-            """Calling __str__ on an Output[T] is not supported.
+class OutputStrTests(unittest.IsolatedAsyncioTestCase):
+    output_str_message = """Calling __str__ on an Output[T] is not supported.
 
 To get the value of an Output[T] as an Output[str] consider:
 1. o.apply(lambda v: f"prefix{v}suffix")
 
-See https://www.pulumi.com/docs/concepts/inputs-outputs for more details.
-This function may throw in a future version of Pulumi.""",
+See https://www.pulumi.com/docs/concepts/inputs-outputs for more details."""
+
+    def test_str(self):
+        """Test that the str function returns a warning when Output.__str__ is
+        called."""
+
+        o = Output.from_input(1)
+        self.assertEqual(
+            str(o),
+            self.output_str_message
+            + "\nThis function may throw in a future version of Pulumi.",
         )
+
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
+    def test_str_error(self):
+        """Test that the str function raises an error when
+        PULUMI_ERROR_OUTPUT_STRING is set."""
+
+        with self.assertRaises(_OutputToStringError, msg=self.output_str_message):
+            o = Output.from_input(1)
+            str(o)
+
+    # This is not strictly necessary but allows us to test the "explicitly
+    # disabled" case.
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "false"})
+    def test_safe_str_spot_output_by_default(self):
+        """Test that the _safe_str function spots outputs and returns a fallback
+        string, even if PULUMI_ERROR_OUTPUT_STRING is not set."""
+
+        o = Output.from_input(1)
+        self.assertEqual(_safe_str(o), "Output[T]")
+
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "1"})
+    def test_safe_str_spot_output_before_errors(self):
+        """Test that the _safe_str function spots outputs and returns a fallback
+        string when PULUMI_ERROR_OUTPUT_STRING is set."""
+
+        o = Output.from_input(1)
+        self.assertEqual(_safe_str(o), "Output[T]")
+
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
+    def test_safe_str_catch_error(self):
+        """Test that the _safe_str function catches _OutputToStringErrors and
+        returns a fallback string."""
+
+        class Broken:
+            def __init__(self, o):
+                self.o = o
+
+            def __str__(self):
+                return f"Broken: {self.o}"
+
+        o = Output.from_input(1)
+        x = Broken(o)
+        self.assertEqual(_safe_str(x), "Output[T]")
+
+    @patch.dict(os.environ, {"PULUMI_ERROR_OUTPUT_STRING": "true"})
+    def test_safe_str_reraise_error(self):
+        """Test that the _safe_str function re-raises any error which is not an
+        _OutputToStringError."""
+
+        class Broken:
+            def __str__(self):
+                raise Exception("This should be re-raised")
+
+        with self.assertRaises(Exception):
+            x = Broken()
+            _safe_str(x)
 
 
 class OutputApplyTests(unittest.TestCase):
-    async def test_apply_always_sets_is_secret_and_is_known(self):
+    def test_apply_always_sets_is_secret_and_is_known(self):
         """Regressing a convoluted situation where apply created an Output
         with incomplete is_secret, is_known future, manifesting in
         program hangs when those futures were awaited.
@@ -349,7 +411,76 @@ class OutputApplyTests(unittest.TestCase):
             test()
 
 
-class OutputAllTests(unittest.TestCase):
+class OutputRecoverTests(unittest.TestCase):
+    def _faulted_output(self, exc: Exception) -> Output:
+        bad = asyncio.Future()
+        bad.set_exception(exc)
+        ok_res: asyncio.Future = asyncio.Future()
+        ok_res.set_result(set())
+        ok_known: asyncio.Future = asyncio.Future()
+        ok_known.set_result(True)
+        return Output(resources=ok_res, future=bad, is_known=ok_known)
+
+    def test_faulted_output_raises_at_program_exit(self):
+        """Baseline: a faulted Output causes pulumi_test to raise."""
+
+        @pulumi_test
+        async def test():
+            self._faulted_output(Exception("boom"))
+
+        with self.assertRaises(Exception) as cm:
+            test()
+        self.assertIn("boom", str(cm.exception))
+
+    def test_recover_returns_value_on_failure(self):
+        @pulumi_test
+        async def test():
+            recovered = self._faulted_output(Exception("boom")).recover(lambda _: 42)
+            self.assertEqual(await recovered.future(), 42)
+
+        test()
+
+    def test_recover_receives_exception(self):
+        seen: list[Exception] = []
+        exc = ValueError("boom")
+
+        @pulumi_test
+        async def test():
+            def handler(e: Exception) -> str:
+                seen.append(e)
+                return "fallback"
+
+            recovered = self._faulted_output(exc).recover(handler)
+            self.assertEqual(await recovered.future(), "fallback")
+
+        test()
+        self.assertEqual(len(seen), 1)
+        self.assertIs(seen[0], exc)
+
+    def test_recover_passes_through_value_on_success(self):
+        called = []
+
+        @pulumi_test
+        async def test():
+            ok = Output.from_input("hello")
+            recovered = ok.recover(lambda _: called.append("x") or "fallback")
+            self.assertEqual(await recovered.future(), "hello")
+
+        test()
+        self.assertEqual(called, [])
+
+    def test_recover_accepts_output_returning_func(self):
+        @pulumi_test
+        async def test():
+            recovered = self._faulted_output(Exception("boom")).recover(
+                lambda _: Output.from_input("recovered")
+            )
+            self.assertEqual(await recovered.future(), "recovered")
+
+        test()
+
+
+class OutputAllTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_args(self):
         o1 = Output.from_input(1)
@@ -367,7 +498,7 @@ class OutputAllTests(unittest.TestCase):
         self.assertEqual(x_val, {"x": 1, "y": "hi"})
 
 
-class OutputFormatTests(unittest.TestCase):
+class OutputFormatTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_nothing(self):
         x = Output.format("blank format")
@@ -390,7 +521,7 @@ class OutputFormatTests(unittest.TestCase):
         self.assertEqual(x_val, "1, hi")
 
 
-class OutputJsonDumpsTests(unittest.TestCase):
+class OutputJsonDumpsTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_basic(self):
         i = Output.from_input([0, 1])
@@ -482,7 +613,7 @@ class OutputJsonDumpsTests(unittest.TestCase):
         self.assertEqual(await x.is_known(), True)
 
 
-class OutputJsonLoadsTests(unittest.TestCase):
+class OutputJsonLoadsTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_basic(self):
         i = Output.from_input("[0, 1]")
@@ -492,7 +623,7 @@ class OutputJsonLoadsTests(unittest.TestCase):
         self.assertEqual(await x.is_known(), True)
 
 
-class OutputSerializationTests(unittest.TestCase):
+class OutputSerializationTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_get_raises(self):
         i = Output.from_input("hello")
@@ -566,7 +697,7 @@ class OutputSerializationTests(unittest.TestCase):
             i.is_secret()
 
 
-class DeferredOutputTests(unittest.TestCase):
+class DeferredOutputTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
     async def test_deferred_output(self):
         output, resolve = pulumi.deferred_output()

@@ -1,0 +1,10 @@
+{
+    "name": "bun",
+    "main": "index.ts",
+    "dependencies": {
+        "@pulumi/pulumi": "^3.0.0"
+    },
+    "devDependencies": {
+        "@types/bun": "latest"
+    }
+}

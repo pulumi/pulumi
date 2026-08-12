@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
-func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+func errorf(subject hcl.Range, f string, args ...any) *hcl.Diagnostic {
 	return diagf(hcl.DiagError, subject, f, args...)
 }
 
-func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {
+func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ...any) *hcl.Diagnostic {
 	message := fmt.Sprintf(f, args...)
 	return &hcl.Diagnostic{
 		Severity: severity,
@@ -36,7 +36,7 @@ func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ..
 	}
 }
 
-func labelsErrorf(block *hclsyntax.Block, f string, args ...interface{}) *hcl.Diagnostic {
+func labelsErrorf(block *hclsyntax.Block, f string, args ...any) *hcl.Diagnostic {
 	startRange := block.LabelRanges[0]
 
 	diagRange := hcl.Range{
@@ -48,7 +48,7 @@ func labelsErrorf(block *hclsyntax.Block, f string, args ...interface{}) *hcl.Di
 }
 
 func malformedToken(token string, sourceRange hcl.Range) *hcl.Diagnostic {
-	return errorf(sourceRange, "malformed token '%v': expected 'pkg:module:member'", token)
+	return errorf(sourceRange, "malformed token '%v': expected 'pkg:module:member' or 'pkg:member'", token)
 }
 
 func unknownPackage(pkg string, tokenRange hcl.Range) *hcl.Diagnostic {
@@ -70,6 +70,10 @@ func asWarningDiagnostic(diag *hcl.Diagnostic) *hcl.Diagnostic {
 
 func unknownResourceType(token string, tokenRange hcl.Range) *hcl.Diagnostic {
 	return errorf(tokenRange, "unknown resource type '%s'", token)
+}
+
+func componentResourceCannotBeRead(token string, tokenRange hcl.Range) *hcl.Diagnostic {
+	return errorf(tokenRange, "component resources cannot be read: '%s'", token)
 }
 
 func functionLoadError(token string, err error, tokenRange hcl.Range) *hcl.Diagnostic {
@@ -106,4 +110,8 @@ func stringAttributeError(attr *model.Attribute) *hcl.Diagnostic {
 
 func boolAttributeError(attr *model.Attribute) *hcl.Diagnostic {
 	return errorf(attr.Syntax.Expr.Range(), "attribute %v must be a boolean literal", attr.Name)
+}
+
+func cannotTraversePulumiBlock(rng hcl.Range) *hcl.Diagnostic {
+	return errorf(rng, "pulumi blocks cannot be traversed")
 }

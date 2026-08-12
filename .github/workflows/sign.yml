@@ -19,25 +19,29 @@ on:
 jobs:
   sign:
     name: sign
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
 
       - name: Install b3sum
-        uses: baptiste0928/cargo-install@bf6758885262d0e6f61089a9d8c8790d3ac3368f # v1.3.0
+        uses: ./.github/actions/retry
         with:
-          crate: b3sum
-          version: 1.3.0
+          action: baptiste0928/cargo-install@b687c656bda5733207e629b50a22bf68974a0305 # v3
+          with: |
+            crate: b3sum
+            version: 1.3.0
 
-      - uses: sigstore/cosign-installer@11086d25041f77fe8fe7b9ea4e48e3b9192b8f19 # v3.1.2
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/retry
         with:
-          path: artifacts.tmp
+          action: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+          with: |
+            path: artifacts.tmp
       - name: Remove performance test artifacts
         run: rm -rf artifacts.tmp/*-perf
       - name: Remove integration test artifacts
@@ -55,6 +59,12 @@ jobs:
             cd artifacts.tmp/artifacts-nodejs-sdk
             for file in *.tgz ; do
               mv -vT "$file" "sdk-nodejs-$file"
+            done
+          )
+          (
+            cd artifacts.tmp/artifacts-npm-package
+            for file in *.tgz ; do
+              mv -vT "$file" "sdk-npm-$file"
             done
           )
       - name: Flatten artifact directories
@@ -117,10 +127,12 @@ jobs:
           # flatten to a single directory to upload:
           mv sums.tmp/* sigs.tmp
 
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/retry
         with:
-          name: artifacts-signatures
-          retention-days: 1
-          path: |
-            sigs.tmp/*
-          if-no-files-found: error
+          action: actions/upload-artifact@v7
+          with: |
+            name: artifacts-signatures
+            retention-days: 1
+            path: |
+              sigs.tmp/*
+            if-no-files-found: error

@@ -63,12 +63,15 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
 		DecrypterF: func() config.Decrypter {
-			return &secrets.MockDecrypter{DecryptValueF: func() string { return "defaulted plaintext" }}
+			return &secrets.MockDecrypter{DecryptValueF: func(_ string) string { return "defaulted plaintext" }}
 		},
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
@@ -78,16 +81,16 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	decrypter, state, err := ssml.GetDecrypter(context.Background(), s, ps)
+	decrypter, state, err := ssml.GetDecrypter(t.Context(), s, ps)
 	require.NoError(t, err)
-	plaintext, err := decrypter.DecryptValue(context.Background(), "test")
+	plaintext, err := decrypter.DecryptValue(t.Context(), "test")
 
 	// Assert.
 	//
 	// We can't assert that the decrypter we get back is the one we returned since
 	// it may be decorated (e.g. with a caching decrypter). We thus assert that
 	// our fallback was called as a proxy.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(
 		t, SecretsManagerUnchanged, state,
 		"A mock decrypter should have no effect on the project stack",
@@ -107,6 +110,9 @@ func TestStackSecretsManagerLoaderDecrypterUpdatesConfig(t *testing.T) {
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
@@ -116,10 +122,10 @@ func TestStackSecretsManagerLoaderDecrypterUpdatesConfig(t *testing.T) {
 	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	_, state, err := ssml.GetDecrypter(context.Background(), s, ps)
+	_, state, err := ssml.GetDecrypter(t.Context(), s, ps)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(
 		t, SecretsManagerShouldSave, state,
 		"A fallback passphrase decrypter should be written to the project stack",
@@ -134,12 +140,15 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
 		DecrypterF: func() config.Decrypter {
-			return &secrets.MockDecrypter{DecryptValueF: func() string { return "defaulted plaintext" }}
+			return &secrets.MockDecrypter{DecryptValueF: func(_ string) string { return "defaulted plaintext" }}
 		},
 	}
 
 	s := &backend.MockStack{
-		DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
+		DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return sm, nil
 		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
@@ -151,12 +160,12 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 	ssml := SecretsManagerLoader{FallbackToState: false}
 
 	// Act.
-	decrypter, state, err := ssml.GetDecrypter(context.Background(), s, ps)
+	decrypter, state, err := ssml.GetDecrypter(t.Context(), s, ps)
 	require.NoError(t, err)
-	plaintext, err := decrypter.DecryptValue(context.Background(), "test")
+	plaintext, err := decrypter.DecryptValue(t.Context(), "test")
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(
 		t, SecretsManagerUnchanged, state,
 		"No fallback manager should mean no changes to the project stack",
@@ -171,12 +180,15 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
 		EncrypterF: func() config.Encrypter {
-			return &secrets.MockEncrypter{EncryptValueF: func() string { return "defaulted ciphertext" }}
+			return &secrets.MockEncrypter{EncryptValueF: func(_ string) string { return "defaulted ciphertext" }}
 		},
 	}
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
@@ -186,16 +198,16 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	encrypter, state, err := ssml.GetEncrypter(context.Background(), s, ps)
+	encrypter, state, err := ssml.GetEncrypter(t.Context(), s, ps)
 	require.NoError(t, err)
-	ciphertext, err := encrypter.EncryptValue(context.Background(), "test")
+	ciphertext, err := encrypter.EncryptValue(t.Context(), "test")
 
 	// Assert.
 	//
 	// We can't assert that the encrypter we get back is the one we returned since
 	// it may be decorated (e.g. with a caching encrypter). We thus assert that
 	// our fallback was called as a proxy.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(
 		t, SecretsManagerUnchanged, state,
 		"A mock encrypter should have no effect on the project stack",
@@ -215,6 +227,9 @@ func TestStackSecretsManagerLoaderEncrypterUpdatesConfig(t *testing.T) {
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
@@ -224,10 +239,10 @@ func TestStackSecretsManagerLoaderEncrypterUpdatesConfig(t *testing.T) {
 	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	_, state, err := ssml.GetEncrypter(context.Background(), s, ps)
+	_, state, err := ssml.GetEncrypter(t.Context(), s, ps)
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(
 		t, SecretsManagerShouldSave, state,
 		"A fallback passphrase encrypter should be written to the project stack",
@@ -242,12 +257,15 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 	sm := &secrets.MockSecretsManager{
 		TypeF: func() string { return "mock" },
 		EncrypterF: func() config.Encrypter {
-			return &secrets.MockEncrypter{EncryptValueF: func() string { return "defaulted ciphertext" }}
+			return &secrets.MockEncrypter{EncryptValueF: func(_ string) string { return "defaulted ciphertext" }}
 		},
 	}
 
 	s := &backend.MockStack{
-		DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
+		DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return sm, nil
 		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
@@ -259,12 +277,12 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 	ssml := SecretsManagerLoader{FallbackToState: false}
 
 	// Act.
-	encrypter, state, err := ssml.GetEncrypter(context.Background(), s, ps)
+	encrypter, state, err := ssml.GetEncrypter(t.Context(), s, ps)
 	require.NoError(t, err)
-	ciphertext, err := encrypter.EncryptValue(context.Background(), "test")
+	ciphertext, err := encrypter.EncryptValue(t.Context(), "test")
 
 	// Assert.
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(
 		t, SecretsManagerUnchanged, state,
 		"No fallback manager should mean no changes to the project stack",

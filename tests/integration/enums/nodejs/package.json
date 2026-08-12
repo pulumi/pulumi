@@ -1,8 +1,8 @@
 {
   "name": "enum_output_ts",
   "devDependencies": {
-    "typescript": "^4.0.0",
-    "@types/node": "^8.0.0"
+    "typescript": "4.9.5",
+    "@types/node": "8.10.66"
   },
   "peerDependencies": {
     "@pulumi/pulumi": "latest"

@@ -1,0 +1,189 @@
+// Copyright 2016, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package registry
+
+import (
+	"context"
+	"io"
+	"iter"
+	"sync"
+
+	"github.com/blang/semver"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+)
+
+// Read only methods on the registry.
+type Registry interface {
+	// Retrieve metadata about a specific package.
+	//
+	// {source}/{publisher}/{name} should form the identifier that describes the
+	// desired package.
+	//
+	// If version is nil, it will default to latest.
+	//
+	// Implementations of GetPackage should return `apitype.PackageMetadata{}, err`
+	// such that `errors.Is(err, ErrNotFound{})` returns true when the arguments to
+	// GetPackage do not point to a package.
+	GetPackage(
+		ctx context.Context, source, publisher, name string, version *semver.Version,
+	) (apitype.PackageMetadata, error)
+
+	// Retrieve a list of packages.
+	//
+	// If name is non-nil, it will filter to accessible packages that exactly match
+	// */*/{name}.
+	//
+	// Implementations of ListPackages should return an empty iterator and nil if
+	// there are no matching packages in the Registry.
+	ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
+
+	GetTemplate(
+		ctx context.Context, source, publisher, name string, version *semver.Version,
+	) (apitype.TemplateMetadata, error)
+
+	// ListTemplates retrieves registry-backed templates matching the given options.
+	//
+	// The iterator yields one [apitype.ListTemplatesResponse] per service page:
+	// implementations follow continuation tokens internally, so callers iterate pages
+	// without managing pagination themselves. Fields that describe the request as a
+	// whole, such as [apitype.ListTemplatesResponse.VcsTemplateSourceTotals], are
+	// repeated on every page. Use [Templates] to iterate the individual templates.
+	//
+	// VCS-backed templates (those sourced from GitHub or GitLab repositories) are
+	// not returned by this method.
+	ListTemplates(
+		ctx context.Context, opts ListTemplatesOptions,
+	) iter.Seq2[apitype.ListTemplatesResponse, error]
+
+	// DownloadTemplate downloads a template given the value of
+	// [apitype.TemplateMetadata].DownloadURL.
+	DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error)
+}
+
+// ListTemplatesOptions filters the results returned by [Registry.ListTemplates].
+// An empty field means "no filter on that dimension".
+type ListTemplatesOptions struct {
+	// Name filters results to templates whose name matches the given value.
+	Name string
+	// Org filters results to templates owned by the given organization (orgLogin).
+	Org string
+	// Search performs a case-insensitive partial match against the template
+	// name, display name, description, metadata values, and runtime language.
+	Search string
+	// Backing restricts results to the given backings. Listing
+	// [apitype.TemplateBackingVcs] makes the service fetch from the upstream provider, which
+	// is far slower than the other backings.
+	Backing []apitype.TemplateBacking
+}
+
+// Templates flattens the pages of a [Registry.ListTemplates] listing into the individual
+// templates they carry.
+func Templates(
+	pages iter.Seq2[apitype.ListTemplatesResponse, error],
+) iter.Seq2[apitype.TemplateMetadata, error] {
+	return func(yield func(apitype.TemplateMetadata, error) bool) {
+		for page, err := range pages {
+			if err != nil {
+				if !yield(apitype.TemplateMetadata{}, err) {
+					return
+				}
+				continue
+			}
+			for _, t := range page.Templates {
+				if !yield(t, nil) {
+					return
+				}
+			}
+		}
+	}
+}
+
+type registryKey struct{}
+
+func Set(ctx context.Context, registry Registry) context.Context {
+	return context.WithValue(ctx, registryKey{}, registry)
+}
+
+func Get(ctx context.Context) Registry {
+	v := ctx.Value(registryKey{})
+	if v == nil {
+		return nil
+	}
+	return v.(Registry)
+}
+
+// NewOnDemandRegistry allows delaying the creation of a registry until it's necessary.
+//
+// If f returns an error, all calls to registry functions will return that error.
+func NewOnDemandRegistry(f func() (Registry, error)) Registry {
+	return &onDemandRegistry{sync.OnceValues(f)}
+}
+
+type onDemandRegistry struct{ factory func() (Registry, error) }
+
+func (r *onDemandRegistry) GetPackage(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.PackageMetadata, error) {
+	impl, err := r.factory()
+	if err != nil {
+		return apitype.PackageMetadata{}, err
+	}
+	return impl.GetPackage(ctx, source, publisher, name, version)
+}
+
+func (r *onDemandRegistry) ListPackages(
+	ctx context.Context, name *string,
+) iter.Seq2[apitype.PackageMetadata, error] {
+	impl, err := r.factory()
+	if err != nil {
+		return func(consumer func(apitype.PackageMetadata, error) bool) {
+			consumer(apitype.PackageMetadata{}, err)
+		}
+	}
+	return impl.ListPackages(ctx, name)
+}
+
+func (r *onDemandRegistry) GetTemplate(
+	ctx context.Context, source, publisher, name string, version *semver.Version,
+) (apitype.TemplateMetadata, error) {
+	impl, err := r.factory()
+	if err != nil {
+		return apitype.TemplateMetadata{}, err
+	}
+	return impl.GetTemplate(ctx, source, publisher, name, version)
+}
+
+func (r *onDemandRegistry) ListTemplates(
+	ctx context.Context, opts ListTemplatesOptions,
+) iter.Seq2[apitype.ListTemplatesResponse, error] {
+	impl, err := r.factory()
+	if err != nil {
+		return func(consumer func(apitype.ListTemplatesResponse, error) bool) {
+			consumer(apitype.ListTemplatesResponse{}, err)
+		}
+	}
+	return impl.ListTemplates(ctx, opts)
+}
+
+func (r *onDemandRegistry) DownloadTemplate(
+	ctx context.Context, downloadURL string,
+) (io.ReadCloser, error) {
+	impl, err := r.factory()
+	if err != nil {
+		return nil, err
+	}
+	return impl.DownloadTemplate(ctx, downloadURL)
+}

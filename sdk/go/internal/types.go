@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:lll, interfacer
+//nolint:lll
 package internal
 
 import (
@@ -42,15 +42,15 @@ var FullyResolvedTypes = make(map[reflect.Type]struct{})
 type Output interface {
 	ElementType() reflect.Type
 
-	ApplyT(applier interface{}) Output
-	ApplyTWithContext(ctx context.Context, applier interface{}) Output
+	ApplyT(applier any) Output
+	ApplyTWithContext(ctx context.Context, applier any) Output
 
 	getState() *OutputState
 }
 
 var (
-	outputType = reflect.TypeOf((*Output)(nil)).Elem()
-	inputType  = reflect.TypeOf((*Input)(nil)).Elem()
+	outputType = reflect.TypeFor[Output]()
+	inputType  = reflect.TypeFor[Input]()
 )
 
 var concreteTypeToOutputType sync.Map // map[reflect.Type]reflect.Type
@@ -119,10 +119,10 @@ type OutputState struct {
 
 	state OutputStatus // one of Output{Pending,Resolved,Rejected}
 
-	value  interface{} // the value of this output if it is resolved.
-	err    error       // the error associated with this output if it is rejected.
-	known  bool        // true if this output's value is known.
-	secret bool        // true if this output's value is secret
+	value  any   // the value of this output if it is resolved.
+	err    error // the error associated with this output if it is rejected.
+	known  bool  // true if this output's value is known.
+	secret bool  // true if this output's value is secret
 
 	element reflect.Type // the element type of this output.
 
@@ -161,7 +161,7 @@ func (o *OutputState) dependencies() []Resource {
 	return o.deps
 }
 
-func (o *OutputState) fulfill(value interface{}, known, secret bool, deps []Resource, err error) {
+func (o *OutputState) fulfill(value any, known, secret bool, deps []Resource, err error) {
 	o.fulfillValue(reflect.ValueOf(value), known, secret, deps, err)
 }
 
@@ -246,7 +246,7 @@ func mergeDependencies(ours []Resource, theirs []Resource) []Resource {
 	return mergedDeps
 }
 
-func (o *OutputState) resolve(value interface{}, known, secret bool, deps []Resource) {
+func (o *OutputState) resolve(value any, known, secret bool, deps []Resource) {
 	o.fulfill(value, known, secret, deps, nil)
 }
 
@@ -260,7 +260,7 @@ func (o *OutputState) reject(err error) {
 
 // awaitOnce is a single iteration of the "await" loop, using the condition variable as a lock to
 // guard accessing the fields to avoid tearing reads and writes.
-func (o *OutputState) awaitOnce(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
+func (o *OutputState) awaitOnce(ctx context.Context) (any, bool, bool, []Resource, error) {
 	if o == nil {
 		// If the state is nil, treat its value as resolved and unknown.
 		return nil, false, false, nil, nil
@@ -278,12 +278,12 @@ func (o *OutputState) awaitOnce(ctx context.Context) (interface{}, bool, bool, [
 	return o.value, o.known, o.secret, o.deps, o.err
 }
 
-func (o *OutputState) await(ctx context.Context) (interface{}, bool, bool, []Resource, error) {
+func (o *OutputState) await(ctx context.Context) (any, bool, bool, []Resource, error) {
 	// For type-unsafe await, we'll unwrap nested outputs.
 	return o.awaitWithOptions(ctx, true /* unwrapNested */)
 }
 
-func (o *OutputState) awaitWithOptions(ctx context.Context, unwrapNested bool) (interface{}, bool, bool, []Resource, error) {
+func (o *OutputState) awaitWithOptions(ctx context.Context, unwrapNested bool) (any, bool, bool, []Resource, error) {
 	known := true
 	secret := false
 	var deps []Resource
@@ -342,7 +342,7 @@ func NewOutputState(join *WorkGroup, elementType reflect.Type, deps ...Resource)
 }
 
 var (
-	outputStateType = reflect.TypeOf((*OutputState)(nil))
+	outputStateType = reflect.TypeFor[*OutputState]()
 
 	// outputTypeToOutputState is a map from a type
 	// to the index of the field that embeds *OutputState.
@@ -387,8 +387,8 @@ func NewOutput(wg *WorkGroup, typ reflect.Type, deps ...Resource) Output {
 }
 
 var (
-	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
-	errorType   = reflect.TypeOf((*error)(nil)).Elem()
+	contextType = reflect.TypeFor[context.Context]()
+	errorType   = reflect.TypeFor[error]()
 )
 
 // applier is a normalized version of a function
@@ -408,7 +408,7 @@ type applier struct {
 	convertTo reflect.Type
 }
 
-func newApplier(fn interface{}, elemType reflect.Type) (_ *applier, err error) {
+func newApplier(fn any, elemType reflect.Type) (_ *applier, err error) {
 	fv := reflect.ValueOf(fn)
 	if fv.Kind() != reflect.Func {
 		return nil, fmt.Errorf("applier must be a function, got %T", fn)
@@ -542,7 +542,7 @@ func (ap *applier) Call(ctx context.Context, in reflect.Value) (reflect.Value, e
 //	intOutput := stringOutput.ApplyT(func(v string) []rune {
 //	    return []rune(v)
 //	}).(pulumi.AnyOutput)
-func (o *OutputState) ApplyT(applier interface{}) Output {
+func (o *OutputState) ApplyT(applier any) Output {
 	ap, err := newApplier(applier, o.elementType())
 	if err != nil {
 		panic(err)
@@ -574,7 +574,7 @@ func (o *OutputState) ApplyT(applier interface{}) Output {
 //	intOutput := stringOutput.ApplyT(func(_ context.Context, v string) []rune {
 //	    return []rune(v)
 //	}).(pulumi.AnyOutput)
-func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}) Output {
+func (o *OutputState) ApplyTWithContext(ctx context.Context, applier any) Output {
 	ap, err := newApplier(applier, o.elementType())
 	if err != nil {
 		panic(err)
@@ -679,19 +679,19 @@ func UnsecretWithContext(ctx context.Context, input Output) Output {
 
 // ToSecret wraps the input in an Output marked as secret
 // that will resolve when all Inputs contained in the given value have resolved.
-func ToSecret(input interface{}) Output {
+func ToSecret(input any) Output {
 	return ToSecretWithContext(context.Background(), input)
 }
 
 // ToSecretWithContext wraps the input in an Output marked as secret
 // that will resolve when all Inputs contained in the given value have resolved.
-func ToSecretWithContext(ctx context.Context, input interface{}) Output {
+func ToSecretWithContext(ctx context.Context, input any) Output {
 	x := true
 	o := toOutputWithContext(ctx, nil, input, &x, nil /* output Type */)
 	return o
 }
 
-func gatherJoins(v interface{}) workGroups {
+func gatherJoins(v any) workGroups {
 	if v == nil {
 		return nil
 	}
@@ -710,7 +710,7 @@ func gatherJoins(v interface{}) workGroups {
 	return joins
 }
 
-var resourceType = reflect.TypeOf((*Resource)(nil)).Elem()
+var resourceType = reflect.TypeFor[Resource]()
 
 func gatherJoinSet(v reflect.Value, joins map[*WorkGroup]struct{}) {
 	for {
@@ -729,7 +729,7 @@ func gatherJoinSet(v reflect.Value, joins map[*WorkGroup]struct{}) {
 
 		//nolint:exhaustive // We only need to further process a few kinds of values.
 		switch v.Kind() {
-		case reflect.Interface, reflect.Ptr:
+		case reflect.Interface, reflect.Pointer:
 			if v.IsNil() {
 				return
 			}
@@ -737,12 +737,12 @@ func gatherJoinSet(v reflect.Value, joins map[*WorkGroup]struct{}) {
 			continue
 		case reflect.Struct:
 			numFields := v.Type().NumField()
-			for i := 0; i < numFields; i++ {
+			for i := range numFields {
 				gatherJoinSet(v.Field(i), joins)
 			}
 		case reflect.Array, reflect.Slice:
 			l := v.Len()
-			for i := 0; i < l; i++ {
+			for i := range l {
 				gatherJoinSet(v.Index(i), joins)
 			}
 		case reflect.Map:
@@ -820,7 +820,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 			// A non-input type is already fully-resolved.
 			return true, false, nil, nil
 		}
-		if val := reflect.ValueOf(input); val.Kind() == reflect.Ptr && val.IsNil() {
+		if val := reflect.ValueOf(input); val.Kind() == reflect.Pointer && val.IsNil() {
 			// A nil input is already fully-resolved.
 			return true, false, nil, nil
 		}
@@ -829,7 +829,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		assignInput := false
 
 		// If the element type of the input is not identical to the type of the destination and the destination is not
-		// the any type (i.e. interface{}), attempt to convert the input to the appropriately-typed output.
+		// the any type, attempt to convert the input to the appropriately-typed output.
 		if valueType != resolved.Type() && resolved.Type() != anyType {
 			if newOutput, ok := CallToOutputMethod(ctx, reflect.ValueOf(input), resolved.Type()); ok {
 				// We were able to convert the input. Use the result as the new input value.
@@ -875,7 +875,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		// This requirement is trivially (and unintentionally) violated by `*T` if `*T` does not define `ElementType`,
 		// but `T` does (https://golang.org/ref/spec#Method_sets).
 		// In this case, dereference the pointer to get at its actual value.
-		if v.Kind() == reflect.Ptr && valueType.Kind() != reflect.Ptr {
+		if v.Kind() == reflect.Pointer && valueType.Kind() != reflect.Pointer {
 			v = v.Elem()
 			elemType := v.Interface().(Input).ElementType()
 			contract.Assertf(elemType == valueType, "input element type must be %v, got %v", valueType, elemType)
@@ -886,7 +886,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 			valueType = v.Type()
 		} else {
 			// Handle pointer inputs.
-			if v.Kind() == reflect.Ptr && !v.Type().Implements(resourceType) {
+			if v.Kind() == reflect.Pointer && !v.Type().Implements(resourceType) {
 				v = v.Elem()
 				valueType = valueType.Elem()
 				if resolved.Type() != anyType {
@@ -924,7 +924,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		if !v.IsNil() {
 			return awaitInputs(ctx, v.Elem(), resolved)
 		}
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if !v.IsNil() {
 			resolved.Set(reflect.New(resolved.Type().Elem()))
 			return awaitInputs(ctx, v.Elem(), resolved.Elem())
@@ -933,7 +933,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		typ := v.Type()
 		getMappedField := MapStructTypes(typ, resolved.Type())
 		numFields := typ.NumField()
-		for i := 0; i < numFields; i++ {
+		for i := range numFields {
 			_, field := getMappedField(resolved, i)
 			fknown, fsecret, fdeps, ferr := awaitInputs(ctx, v.Field(i), field)
 			known = known && fknown
@@ -945,7 +945,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		}
 	case reflect.Array:
 		l := v.Len()
-		for i := 0; i < l; i++ {
+		for i := range l {
 			eknown, esecret, edeps, eerr := awaitInputs(ctx, v.Index(i), resolved.Index(i))
 			known = known && eknown
 			secret = secret || esecret
@@ -957,7 +957,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	case reflect.Slice:
 		l := v.Len()
 		resolved.Set(reflect.MakeSlice(resolved.Type(), l, l))
-		for i := 0; i < l; i++ {
+		for i := range l {
 			eknown, esecret, edeps, eerr := awaitInputs(ctx, v.Index(i), resolved.Index(i))
 			known = known && eknown
 			secret = secret || esecret
@@ -1000,7 +1000,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	return known, secret, deps, err
 }
 
-func toOutputTWithContext(ctx context.Context, join *WorkGroup, outputType reflect.Type, v interface{}, result reflect.Value, forceSecretVal *bool) Output {
+func toOutputTWithContext(ctx context.Context, join *WorkGroup, outputType reflect.Type, v any, result reflect.Value, forceSecretVal *bool) Output {
 	// forceSecretVal enables ensuring the value is marked secret before the secret field of the
 	// output could be observed (read: raced) by any user of the returned Output prior to awaiting.
 	joins := gatherJoins(v)
@@ -1048,20 +1048,20 @@ func toOutputTWithContext(ctx context.Context, join *WorkGroup, outputType refle
 }
 
 // ToOutput returns an Output that will resolve when all Inputs contained in the given value have resolved.
-func ToOutput(v interface{}) Output {
+func ToOutput(v any) Output {
 	return ToOutputWithContext(context.Background(), v)
 }
 
 // ToOutputWithContext returns an Output that will resolve when all Outputs contained in the given value have
 // resolved.
-func ToOutputWithContext(ctx context.Context, v interface{}) Output {
+func ToOutputWithContext(ctx context.Context, v any) Output {
 	return toOutputWithContext(ctx, nil, v, nil, nil /* outputType */)
 }
 
 func ToOutputWithOutputType(
 	ctx context.Context,
 	outType reflect.Type,
-	v interface{},
+	v any,
 ) Output {
 	contract.Requiref(outType.Implements(outputType), "outType", "type %v does not implement Output", outType)
 	return toOutputWithContext(ctx, nil, v, nil, outType)
@@ -1070,7 +1070,7 @@ func ToOutputWithOutputType(
 func toOutputWithContext(
 	ctx context.Context,
 	join *WorkGroup,
-	v interface{},
+	v any,
 	forceSecretVal *bool,
 	// Optional explicit output type.
 	// If not provided, the output type will be inferred from the type of the value.
@@ -1133,4 +1133,4 @@ type Input interface {
 	ElementType() reflect.Type
 }
 
-var anyType = reflect.TypeOf((*interface{})(nil)).Elem()
+var anyType = reflect.TypeFor[any]()

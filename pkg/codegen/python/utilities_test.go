@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
@@ -40,9 +41,8 @@ func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOpt
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
-
-	program, diags, err := pcl.BindProgram(parser.Files, options...)
+	program, diags, err := pcl.BindProgram(parser.Files,
+		schema.NewPluginLoader(utils.NewContext(testdataPath)), options...)
 	if err != nil {
 		t.Fatalf("could not bind program: %v", err)
 	}
@@ -75,7 +75,6 @@ func TestMakeSafeEnumName(t *testing.T) {
 		{"ZeroPointOne", "ZERO_POINT_ONE", false},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -108,9 +107,12 @@ func TestMakePyPiVersion(t *testing.T) {
 		{"0.0.1-alpha.18", "0.0.1a18"},
 		{"0.0.1-beta.18", "0.0.1b18"},
 		{"0.0.1-rc.18", "0.0.1rc18"},
+		{"1.2.3-dev.20", "1.2.3.dev20"},
+		{"1.2.3-dev.1", "1.2.3.dev1"},
+		{"1.2.3-post.1", "1.2.3.post1"},
+		{"1.2.3-post.20", "1.2.3.post20"},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 
@@ -132,7 +134,6 @@ func TestPythonCase(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.input, func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, tt.expected, pythonCase(tt.input))

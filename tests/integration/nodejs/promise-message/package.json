@@ -1,0 +1,7 @@
+{
+    "name": "promise-message",
+    "license": "Apache-2.0",
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    }
+}

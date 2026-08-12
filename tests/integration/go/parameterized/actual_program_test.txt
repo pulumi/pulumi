@@ -1,0 +1,52 @@
+package main
+
+import (
+	"testing"
+	"context"
+
+	"example.com/pulumi-pkg/sdk/go/pkg"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/stretchr/testify/require"
+)
+
+type mocks int
+
+func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
+	return args.Name + "_id", args.Inputs, nil
+}
+
+func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+	return args.Args, nil
+}
+
+func (mocks) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+	return args.Args, nil
+}
+
+func TestParameterized(t *testing.T) {
+	err := pulumi.RunErr(func(ctx *pulumi.Context) error {
+		res, err := pkg.NewRandom(ctx, "random", &pkg.RandomArgs{
+			Length: pulumi.Int(8),
+		})
+		if err != nil {
+			return err
+		}
+
+		// Wait for res.Id and assert it is "random_id"
+		pcs := &promise.CompletionSource[string]{}
+		res.ID().ApplyT(func(id string) (string, error) {
+			pcs.Fulfill(id)
+			return "", nil
+		})
+		result, err := pcs.Promise().Result(context.Background())
+		if err != nil {
+			return err
+		}
+
+		require.Equal(t, "random_id", result)
+		return nil
+	}, pulumi.WithMocks("project", "stack", mocks(1)))
+	require.NoError(t, err)
+}

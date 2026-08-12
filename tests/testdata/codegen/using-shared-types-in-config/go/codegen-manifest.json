@@ -1,5 +1,6 @@
 {
   "emittedFiles": [
+    ".gitattributes",
     "credentials/config/config.go",
     "credentials/doc.go",
     "credentials/init.go",

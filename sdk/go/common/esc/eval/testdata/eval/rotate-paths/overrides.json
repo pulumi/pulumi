@@ -1,0 +1,8 @@
+{
+  "rotate": true,
+  "rotatePaths": [
+    "examples[\"subscript-path\"][0]",
+    "examples.deeply.nested[0][\"quoted \\\"property\\\"\"].path",
+    "examples.embedded-in-another-fn[\"fn::open::test\"].some-input"
+  ]
+}

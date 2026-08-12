@@ -90,16 +90,16 @@ export namespace Foo {
      * The set of arguments for the Foo.bar method.
      */
     export interface BarArgs {
-        baz?: pulumi.Input<inputs.nested.BazArgs>;
+        baz?: pulumi.Input<inputs.nested.BazArgs | undefined>;
         bazPlain?: inputs.nested.BazArgs;
         bazRequired: pulumi.Input<inputs.nested.BazArgs>;
-        boolValue?: pulumi.Input<boolean>;
+        boolValue?: pulumi.Input<boolean | undefined>;
         boolValuePlain?: boolean;
         boolValueRequired: pulumi.Input<boolean>;
-        name?: pulumi.Input<pulumiRandom.RandomPet>;
+        name?: pulumi.Input<pulumiRandom.RandomPet | undefined>;
         namePlain?: pulumiRandom.RandomPet;
         nameRequired: pulumi.Input<pulumiRandom.RandomPet>;
-        stringValue?: pulumi.Input<string>;
+        stringValue?: pulumi.Input<string | undefined>;
         stringValuePlain?: string;
         stringValueRequired: pulumi.Input<string>;
     }

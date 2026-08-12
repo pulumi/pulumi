@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,11 +25,14 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	pbempty "google.golang.org/protobuf/types/known/emptypb"
 )
 
 var ErrPlugins = errors.New("pulumi: plugins requested")
@@ -56,7 +59,7 @@ func Run(body RunFunc, opts ...RunOption) {
 		printRequiredPlugins()
 	}
 
-	os.Exit(constant.ExitStatusLoggedError)
+	os.Exit(constant.ExitStatusLoggedError) //nolint:noosexit // Run's contract terminates the process on failure.
 }
 
 // RunErr executes the body of a Pulumi program, granting it access to a deployment context that it may use
@@ -88,18 +91,37 @@ func runErrInner(body RunFunc, logError func(*Context, error), opts ...RunOption
 		return errors.New("missing engine RPC address")
 	}
 
+	ctx := initTracing(context.TODO())
+	defer shutdownTracing()
+
 	// Create a fresh context.
-	ctx, err := NewContext(context.TODO(), info)
+	pctx, err := NewContext(ctx, info)
 	if err != nil {
 		return err
 	}
-	defer contract.IgnoreClose(ctx)
+	defer contract.IgnoreClose(pctx)
 
-	err = RunWithContext(ctx, body)
+	err = RunWithContext(pctx, body)
 	// Log the error message
 	if err != nil {
-		logError(ctx, err)
+		logError(pctx, err)
+	} else {
+		if _, signalErr := pctx.state.monitor.SignalAndWaitForShutdown(pctx.ctx, &pbempty.Empty{}); signalErr != nil {
+			status, ok := status.FromError(signalErr)
+			if ok && status.Code() != codes.Unimplemented {
+				// If we are running against an older version of the CLI,
+				// SignalAndWaitForShutdown might not be implemented. This is
+				// mostly fine, but means that delete hooks do not work. Since
+				// we check if the CLI supports the `resourceHook` feature when
+				// registering hooks, it's fine to ignore the `UNIMPLEMENTED`
+				// error here.
+				err := fmt.Errorf("error waiting for shutdown: %v", signalErr)
+				logError(pctx, err)
+				return err
+			}
+		}
 	}
+
 	return err
 }
 
@@ -142,18 +164,17 @@ type RunFunc func(ctx *Context) error
 
 // RunInfo contains all the metadata about a run request.
 type RunInfo struct {
-	Project           string
-	RootDirectory     string
-	Stack             string
-	Config            map[string]string
-	ConfigSecretKeys  []string
-	ConfigPropertyMap resource.PropertyMap
-	Parallel          int32
-	DryRun            bool
-	MonitorAddr       string
-	EngineAddr        string
-	Organization      string
-	Mocks             MockResourceMonitor
+	Project          string
+	RootDirectory    string
+	Stack            string
+	Config           map[string]string
+	ConfigSecretKeys []string
+	Parallel         int32
+	DryRun           bool
+	MonitorAddr      string
+	EngineAddr       string
+	Organization     string
+	Mocks            MockResourceMonitor
 
 	getPlugins bool
 	engineConn *grpc.ClientConn // Pre-existing engine connection. If set this is used over EngineAddr.
@@ -233,13 +254,13 @@ func RegisterPackage(info PackageInfo) {
 }
 
 func printRequiredPlugins() {
-	plugins := []PackageInfo{}
+	plugins := slice.Prealloc[PackageInfo](len(packageRegistry))
 	for info := range packageRegistry {
 		plugins = append(plugins, info)
 	}
 
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetEscapeHTML(false)
-	err := enc.Encode(map[string]interface{}{"plugins": plugins})
+	err := enc.Encode(map[string]any{"plugins": plugins})
 	contract.IgnoreError(err)
 }

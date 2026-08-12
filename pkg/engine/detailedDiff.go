@@ -1,4 +1,4 @@
-// Copyright 2019-2024, Pulumi Corporation.
+// Copyright 2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,34 +15,46 @@
 package engine
 
 import (
+	"cmp"
+	"slices"
+
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// getProperty fetches the child property with the indicated key from the given property value. If the key does not
-// exist, it returns an empty `PropertyValue`.
-func getProperty(key interface{}, v resource.PropertyValue) resource.PropertyValue {
+// getProperty fetches the child property with the indicated key from the given property value. The second result
+// reports whether the key exists; if it does not, an empty `PropertyValue` is returned.
+func getProperty(key any, v resource.PropertyValue) (resource.PropertyValue, bool) {
 	switch {
 	case v.IsArray():
 		index, ok := key.(int)
 		if !ok || index < 0 || index >= len(v.ArrayValue()) {
-			return resource.PropertyValue{}
+			return resource.PropertyValue{}, false
 		}
-		return v.ArrayValue()[index]
+		return v.ArrayValue()[index], true
 	case v.IsObject():
 		k, ok := key.(string)
 		if !ok {
-			return resource.PropertyValue{}
+			return resource.PropertyValue{}, false
 		}
-		return v.ObjectValue()[resource.PropertyKey(k)]
+		pv, has := v.ObjectValue()[resource.PropertyKey(k)]
+		return pv, has
 	case v.IsComputed() || v.IsOutput() || v.IsSecret():
 		// We consider the contents of these values opaque and return them as-is, as we cannot know whether or not the
 		// value will or does contain an element with the given key.
-		return v
+		return v, true
 	default:
-		return resource.PropertyValue{}
+		return resource.PropertyValue{}, false
 	}
+}
+
+// valueOrUnknown returns v if the property it came from exists, and an unknown value otherwise.
+func valueOrUnknown(v resource.PropertyValue, exists bool) resource.PropertyValue {
+	if exists {
+		return v
+	}
+	return resource.MakeComputed(resource.NewProperty(""))
 }
 
 // addDiff inserts a diff of the given kind at the given path into the parent ValueDiff.
@@ -58,7 +70,8 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 
 	element := path[0]
 
-	old, new := getProperty(element, oldParent), getProperty(element, newParent)
+	old, hasOld := getProperty(element, oldParent)
+	new, hasNew := getProperty(element, newParent)
 
 	switch element := element.(type) {
 	case int:
@@ -76,9 +89,9 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 		if len(path) == 1 {
 			switch kind {
 			case plugin.DiffAdd, plugin.DiffAddReplace:
-				parent.Array.Adds[element] = new
+				parent.Array.Adds[element] = valueOrUnknown(new, hasNew)
 			case plugin.DiffDelete, plugin.DiffDeleteReplace:
-				parent.Array.Deletes[element] = old
+				parent.Array.Deletes[element] = valueOrUnknown(old, hasOld)
 			case plugin.DiffUpdate, plugin.DiffUpdateReplace:
 				valueDiff := resource.ValueDiff{Old: old, New: new}
 				if d := old.Diff(new); d != nil {
@@ -114,9 +127,9 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 		if len(path) == 1 {
 			switch kind {
 			case plugin.DiffAdd, plugin.DiffAddReplace:
-				parent.Object.Adds[e] = new
+				parent.Object.Adds[e] = valueOrUnknown(new, hasNew)
 			case plugin.DiffDelete, plugin.DiffDeleteReplace:
-				parent.Object.Deletes[e] = old
+				parent.Object.Deletes[e] = valueOrUnknown(old, hasOld)
 			case plugin.DiffUpdate, plugin.DiffUpdateReplace:
 				valueDiff := resource.ValueDiff{Old: old, New: new}
 				if d := old.Diff(new); d != nil {
@@ -145,32 +158,58 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 
 // TranslateDetailedDiff converts the detailed diff stored in the step event into an ObjectDiff that is appropriate
 // for display.
-func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) *resource.ObjectDiff {
+//
+// The second returned argument is the list of hidden diffs.
+func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) (*resource.ObjectDiff, []resource.PropertyPath) {
 	contract.Assertf(step.DetailedDiff != nil, "%v step has no detailed diff", step.Op)
 
 	// The rich diff is presented as a list of simple JS property paths and corresponding diffs. We translate this to
 	// an ObjectDiff by iterating the list and inserting ValueDiffs that reflect the changes in the detailed diff. Old
 	// values are always taken from a step's Outputs; new values are always taken from its Inputs.
 
+	var hiddenPaths []resource.PropertyPath
+	var hiddenDiffs []resource.PropertyPath
+	if step.New != nil {
+		hiddenPaths = step.New.HideDiffs
+	} else if step.Old != nil {
+		hiddenPaths = step.Old.HideDiffs
+	}
+
 	var diff resource.ValueDiff
+diffs:
 	for path, pdiff := range step.DetailedDiff {
 		elements, err := resource.ParsePropertyPath(path)
 		if err != nil {
-			elements = []interface{}{path}
+			elements = []any{path}
 		}
 
-		olds := resource.NewObjectProperty(step.Old.Outputs)
+		for _, hiddenPath := range hiddenPaths {
+			if hiddenPath.Contains(elements) {
+				hiddenDiffs = append(hiddenDiffs, hiddenPath)
+				continue diffs
+			}
+		}
+
+		olds := resource.NewProperty(step.Old.Outputs)
 		if pdiff.InputDiff {
-			olds = resource.NewObjectProperty(step.Old.Inputs)
+			olds = resource.NewProperty(step.Old.Inputs)
 		}
 
-		news := resource.NewObjectProperty(step.New.Inputs)
-		if refresh {
-			news = resource.NewObjectProperty(step.New.Outputs)
+		news := resource.NewProperty(step.New.Inputs)
+		if refresh && !pdiff.InputDiff {
+			news = resource.NewProperty(step.New.Outputs)
 		}
 
 		addDiff(elements, pdiff.Kind, &diff, olds, news)
 	}
 
-	return diff.Object
+	// Ensure that our paths are unique and sorted
+	slices.SortFunc(hiddenDiffs, func(a, b resource.PropertyPath) int {
+		return cmp.Compare(a.String(), b.String())
+	})
+	hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b resource.PropertyPath) bool {
+		return a.String() == b.String()
+	})
+
+	return diff.Object, hiddenDiffs
 }

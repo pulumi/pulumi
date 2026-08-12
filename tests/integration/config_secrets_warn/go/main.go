@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 //go:build !all
 // +build !all
 
@@ -65,7 +65,7 @@ func main() {
 		c.RequireSecretFloat64("plainfloat11")
 		c.TrySecretFloat64("plainfloat12")
 
-		var obj interface{}
+		var obj any
 		config.GetObject(ctx, "plainobjj1", &obj)
 		config.RequireObject(ctx, "plainobj2", &obj)
 		config.TryObject(ctx, "plainobj3", &obj)

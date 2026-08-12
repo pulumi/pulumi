@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,13 +16,14 @@ package stack
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -35,7 +36,7 @@ func newStackSelectCmd() *cobra.Command {
 	var secretsProvider string
 	var create bool
 	cmd := &cobra.Command{
-		Use:   "select [<stack>]",
+		Use:   "select",
 		Short: "Switch the current workspace to the given stack",
 		Long: "Switch the current workspace to the given stack.\n" +
 			"\n" +
@@ -44,16 +45,16 @@ func newStackSelectCmd() *cobra.Command {
 			"\n" +
 			"If no <stack> argument is supplied, you will be prompted to select one interactively.\n" +
 			"If provided stack name is not found you may pass the --create flag to create and select it",
-		Args: cmdutil.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
 			// Try to read the current project
-			project, root, err := ws.ReadProject()
+			project, root, err := ws.ReadProject("")
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
 			}
@@ -71,6 +72,10 @@ func newStackSelectCmd() *cobra.Command {
 				stack = args[0]
 			}
 
+			if stack == "" && !cmdutil.Interactive() {
+				return backenderr.NoStackSelectedError{}
+			}
+
 			if stack != "" {
 				// A stack was given, ask the backend about it.
 				stackRef, stackErr := b.ParseStackReference(stack)
@@ -80,38 +85,52 @@ func newStackSelectCmd() *cobra.Command {
 
 				s, stackErr := b.GetStack(ctx, stackRef)
 				if stackErr != nil {
+					var notFound backenderr.NotFoundError
+					if errors.As(stackErr, &notFound) {
+						return backenderr.StackNotFoundError{StackName: stackRef.String()}
+					}
 					return stackErr
 				} else if s != nil {
-					return state.SetCurrentStack(stackRef.String())
+					return state.SetCurrentStack(ws, state.BackendURLKey(b), stackRef.FullyQualifiedName().String())
 				}
 				// If create flag was passed and stack was not found, create it and select it.
 				if create && stack != "" {
-					s, err := InitStack(ctx, ws, b, stack, root, false, secretsProvider)
+					s, err := InitStack(ctx, sink, ws, b, stack, root, false, secretsProvider, false /*useRemoteConfig*/, "")
 					if err != nil {
 						return err
 					}
-					return state.SetCurrentStack(s.Ref().String())
+					return state.SetCurrentStack(ws, state.BackendURLKey(b), s.Ref().FullyQualifiedName().String())
 				}
 
-				return fmt.Errorf("no stack named '%s' found", stackRef)
+				return backenderr.StackNotFoundError{StackName: stackRef.String()}
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.
 			stack, err := ChooseStack(
 				ctx,
+				sink,
 				ws,
 				b,
 				OfferNew|SetCurrent,
 				opts,
+				"",
 			)
 			if err != nil {
 				return err
 			}
 
 			contract.Assertf(stack != nil, "must select a stack")
-			return state.SetCurrentStack(stack.Ref().String())
+			return state.SetCurrentStack(ws, state.BackendURLKey(b), stack.Ref().FullyQualifiedName().String())
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "stack"},
+		},
+		Required: 0,
+	})
+
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to select")

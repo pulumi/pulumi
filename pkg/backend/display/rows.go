@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -101,7 +101,11 @@ func (data *headerRowData) ColorizedColumns() []string {
 		} else {
 			statusColumn = header("Status")
 		}
-		data.columns = []string{"", header("Type"), header("Name"), statusColumn, header("Info")}
+		if data.display.opts.ShowURNs {
+			data.columns = []string{"", header("URN"), statusColumn, header("Info")}
+		} else {
+			data.columns = []string{"", header("Type"), header("Name"), statusColumn, header("Info")}
+		}
 	}
 
 	return data.columns
@@ -135,6 +139,10 @@ type resourceRowData struct {
 	// If this row should be hidden by default.  We will hide unless we have any child nodes
 	// we need to show.
 	hideRowIfUnnecessary bool
+
+	// True for the placeholder stack row synthesized by ensureHeaderAndStackRows before any
+	// stack event arrives.
+	syntheticStackRow bool
 }
 
 func (data *resourceRowData) DisplayOrderIndex() int {
@@ -254,13 +262,21 @@ const (
 	infoColumn   column = 4
 )
 
+// When ShowURNs is enabled, Type and Name are collapsed into a single URN
+// column, so the total column count drops from 5 to 4.
+const (
+	urnColumn       column = 1
+	urnStatusColumn column = 2
+	urnInfoColumn   column = 3
+)
+
 func (data *resourceRowData) IsDone() bool {
 	if data.failed {
 		// consider a failed resource 'done'.
 		return true
 	}
 
-	if data.display.done {
+	if data.display.done.Load() {
 		// if the display is done, then we're definitely done.
 		return true
 	}
@@ -286,6 +302,34 @@ func (data *resourceRowData) ContainsOutputsStep(op display.StepOp) bool {
 	return false
 }
 
+// isInterrupted reports whether the update was forced to its terminal "done"
+// state while this resource's operation was still in flight (e.g. the user
+// cancelled). We can only detect this for custom resources, which always emit an
+// outputs step on completion; components may legitimately complete without one.
+func (data *resourceRowData) isInterrupted() bool {
+	if !data.display.done.Load() {
+		return false
+	}
+	if !data.stepIsCustom() {
+		return false
+	}
+	switch data.display.getStepOp(data.step) {
+	case deploy.OpSame, deploy.OpRemovePendingReplace:
+		// These ops just change state, not the actual resource, so they don't have an outputs step.
+		return false
+	}
+	return !data.ContainsOutputsStep(data.step.Op)
+}
+
+func (data *resourceRowData) stepIsCustom() bool {
+	for _, s := range []*engine.StepEventStateMetadata{data.step.Res, data.step.New, data.step.Old} {
+		if s != nil {
+			return s.Custom
+		}
+	}
+	return false
+}
+
 func (data *resourceRowData) ColorizedSuffix() string {
 	if !data.IsDone() && data.display.isTerminal {
 		op := data.display.getStepOp(data.step)
@@ -308,40 +352,30 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		// If we don't have a URN yet, mock parent it to the global stack.
 		urn = resource.DefaultRootStackURN(data.display.stack.Q(), data.display.proj)
 	}
-	name := urn.Name()
-	typ := urn.Type().DisplayName()
-
 	done := data.IsDone()
+
+	diagInfo := data.diagInfo
+	failed := data.failed || diagInfo.ErrorCount > 0
+	interrupted := !failed && data.isInterrupted()
+
+	if data.display.opts.ShowURNs {
+		// When showing URNs, collapse Type and Name into a single URN column.
+		// The URN already contains the type, so showing both would be redundant.
+		columns := make([]string, 4)
+		columns[opColumn] = data.display.getStepOpLabel(step, done)
+		columns[urnColumn] = escapeURN(string(urn))
+		columns[urnStatusColumn] = data.display.getStepStatus(step, done, failed, interrupted)
+		columns[urnInfoColumn] = data.getInfoColumn()
+		return columns
+	}
 
 	columns := make([]string, 5)
 	columns[opColumn] = data.display.getStepOpLabel(step, done)
-	columns[typeColumn] = typ
-	columns[nameColumn] = name
-
-	diagInfo := data.diagInfo
-
-	failed := data.failed || diagInfo.ErrorCount > 0
-
-	columns[statusColumn] = data.display.getStepStatus(step, done, failed)
+	columns[typeColumn] = urn.Type().DisplayName()
+	columns[nameColumn] = escapeURN(urn.Name())
+	columns[statusColumn] = data.display.getStepStatus(step, done, failed, interrupted)
 	columns[infoColumn] = data.getInfoColumn()
 	return columns
-}
-
-// addRetainStatusFlag adds a "[retain]" suffix to the input string if the resource is marked as
-// RetainOnDelete and the step will discard the resource.
-func addRetainStatusFlag(status string, step engine.StepEventMetadata) string {
-	if step.Old == nil || !step.Old.RetainOnDelete {
-		return status
-	}
-
-	switch step.Op {
-	// Deletes and Replacements should indicate retain on delete behavior as they can leave
-	// untracked resources in the environment.
-	case deploy.OpDelete, deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced:
-		status += "[retain]"
-	}
-
-	return status
 }
 
 func (data *resourceRowData) getInfoColumn() string {
@@ -380,7 +414,7 @@ func (data *resourceRowData) getInfoColumn() string {
 	}
 
 	diagInfo := data.diagInfo
-	if data.display.done {
+	if data.display.done.Load() {
 		// If we are done, show a summary of how many messages were printed.
 		if c := diagInfo.ErrorCount; c > 0 {
 			appendDiagMessage(fmt.Sprintf("%d %s%s%s",
@@ -437,9 +471,10 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 		// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
 		if step.Op != deploy.OpSame {
 			if step.DetailedDiff != nil {
-				diff = engine.TranslateDetailedDiff(&step, false)
+				diff, _ = engine.TranslateDetailedDiff(&step, false)
 			} else if step.Old.Inputs != nil && step.New.Inputs != nil {
-				diff = step.Old.Inputs.Diff(step.New.Inputs)
+				diff = step.Old.Inputs.DiffWithOptions(step.New.Inputs,
+					resource.IgnoreKeyFunc(resource.IsInternalPropertyKey))
 			}
 		}
 
@@ -461,9 +496,11 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 		}
 
 		recordMetadataDiff("provider",
-			resource.NewStringProperty(step.Old.Provider), resource.NewStringProperty(step.New.Provider))
+			resource.NewProperty(step.Old.Provider), resource.NewProperty(step.New.Provider))
 		recordMetadataDiff("protect",
-			resource.NewBoolProperty(step.Old.Protect), resource.NewBoolProperty(step.New.Protect))
+			resource.NewProperty(step.Old.Protect), resource.NewProperty(step.New.Protect))
+		recordMetadataDiff(colors.Red+"taint"+colors.Reset,
+			resource.NewProperty(step.Old.Taint), resource.NewProperty(step.New.Taint))
 
 		writeShortDiff(changesBuf, diff, step.Diffs)
 	}

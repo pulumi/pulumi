@@ -1,4 +1,4 @@
-// Copyright 2021-2024, Pulumi Corporation.
+// Copyright 2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,13 +57,15 @@ func TestGenResourceMappingsIsDeterministic(t *testing.T) {
 	}
 
 	generateInitHash := func() string {
-		pkg, err := schema.ImportSpec(pkgSpec, nil)
+		pkg, err := schema.ImportSpec(pkgSpec, nil, schema.NewNullLoader(), schema.ValidationOptions{
+			AllowDanglingReferences: true,
+		})
 		if err != nil {
 			t.Error(err)
 			return ""
 		}
 
-		files, err := GeneratePackage("tool", pkg, nil)
+		files, err := GeneratePackage("tool", pkg, nil, nil)
 		if err != nil {
 			t.Error(err)
 			return ""
@@ -79,7 +81,7 @@ func TestGenResourceMappingsIsDeterministic(t *testing.T) {
 	}
 
 	h1 := generateInitHash()
-	for i := 0; i < 16; i++ {
+	for range 16 {
 		assert.Equal(t, h1, generateInitHash())
 	}
 }

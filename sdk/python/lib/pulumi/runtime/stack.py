@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,16 +17,23 @@ Support for automatic stack components.
 """
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from inspect import isawaitable
-from typing import Any, Callable, Dict, List, Awaitable, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+from google.protobuf import empty_pb2
+import grpc
+
 
 from . import settings
+from ._instrumentation import wrap_with_context
 from .. import log
 from ..resource import (
     ComponentResource,
     Resource,
     ResourceTransformation,
     ResourceTransform,
+    export,
 )
 from ..invoke import (
     InvokeTransform,
@@ -39,6 +46,7 @@ from .settings import (
     _shutdown_callbacks,
     _sync_monitor_supports_transforms,
     _sync_monitor_supports_invoke_transforms,
+    get_monitor,
     get_project,
     get_root_resource,
     get_stack,
@@ -47,16 +55,108 @@ from .settings import (
 )
 from .sync_await import _sync_await
 
+if TYPE_CHECKING:
+    from ..output import Inputs
 
-async def run_pulumi_func(func: Callable[[], None]):
+
+_AsyncProgram = Callable[[], Awaitable[Optional["Inputs"]]]
+
+
+def run(program: _AsyncProgram) -> None:
+    """Register an asynchronous entrypoint for the current Pulumi program.
+
+    The entrypoint is invoked and awaited after the program's top-level module
+    code has finished running. Each entry in a mapping returned by the entrypoint
+    is exported as if :func:`pulumi.export` had been called with its key and
+    value. This means returned entries merge with existing exports, overwriting
+    any existing export with the same name. The entrypoint may instead return
+    ``None`` and use :func:`pulumi.export` directly.
+
+    ``pulumi.run`` may only be called once per Pulumi program.
+
+    Example::
+
+        import pulumi
+
+        async def main() -> pulumi.Inputs:
+            value = await some_async_operation()
+            return {"value": value}
+
+        pulumi.run(main)
+
+    :param program: A zero-argument callable that returns an awaitable.
+    """
+    if not callable(program):
+        raise TypeError("pulumi.run expects a callable")
+
+    root = get_root_resource()
+    if not isinstance(root, Stack):
+        from ..errors import RunError
+
+        raise RunError(
+            "pulumi.run may only be called while a Pulumi program is running"
+        )
+
+    root._register_async_program(program)
+
+
+async def _wait_for_shutdown() -> None:
     try:
-        func()
-    finally:
+        monitor = get_monitor()
+        if monitor is None:
+            return
+        await asyncio.get_running_loop().run_in_executor(
+            None,
+            wrap_with_context(
+                lambda: monitor.SignalAndWaitForShutdown(empty_pb2.Empty())
+            ),
+        )
+    except grpc.RpcError as exn:
+        # If we are running against an older version of the CLI,
+        # SignalAndWaitForShutdown might not be implemented. This is mostly
+        # fine, but means that delete hooks do not work. Since we check if the
+        # CLI supports the `resourceHook` feature when registering hooks, it's
+        # fine to ignore the `UNIMPLEMENTED` error here.
+        if exn.code() == grpc.StatusCode.UNIMPLEMENTED:
+            log.debug("Monitor does not implement `SignalAndWaitForShutdown`")
+
+
+class ResourceRegistrationFailed(Exception):
+    """
+    Marker exception used to fault the outputs of a resource whose registration the engine
+    reported as failed (via a non-SUCCESS result). Consumers can catch it via `Output.recover`;
+    unrecovered instances are silently ignored by `wait_for_rpcs` at program exit so that
+    continue-on-error updates can keep going.
+    """
+
+
+async def run_pulumi_func(
+    func: Callable[[], Optional[Awaitable[None]]],
+) -> None:
+    # Run the function and grab any exception it generates
+    ex: Optional[BaseException] = None
+    try:
+        result = func()
+        if isawaitable(result):
+            await result
+    except BaseException as e:  # noqa: BLE001 re-raised after runtime cleanup
+        ex = e
+
+    # Wait for RPCs to complete, then signal and wait for shutdown.
+    try:
         await wait_for_rpcs()
+        # If func succeeded, let the monitor decide when we should shutdown.
+        if ex is None:
+            await _wait_for_shutdown()
+    finally:
+        # Finally, we must always shutdown the callbacks server when we're done.
         await _shutdown_callbacks()
 
-        # By now, all tasks have exited and we're good to go.
-        log.debug("run_pulumi_func completed")
+    # By now, all tasks have exited and we're good to go.
+    log.debug("run_pulumi_func completed")
+    if ex is not None:
+        # Re-raise ex so the language runtime can report the error.
+        raise ex
 
 
 async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
@@ -99,27 +199,38 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
 
         # If the RPCs have successfully completed, now await all remaining outstanding tasks.
         if await_all_outstanding_tasks:
-            while len(SETTINGS.outputs) != 0:
-                await asyncio.sleep(0)
-                if settings.excessive_debug_output:
-                    log.debug(
-                        f"waiting for quiescence; {len(SETTINGS.outputs)} outputs outstanding"
-                    )
+            while True:
                 with SETTINGS.lock:
                     # the task may have been removed from the queue by the time we get to it, so we need to re-check if
                     # its empty.
                     if len(SETTINGS.outputs) == 0:
                         break
-                    task: asyncio.Task = SETTINGS.outputs.popleft()
+                    # Copy the outputs and clear so new outputs added while we wait are picked up on the next iteration.
+                    pending_outputs: list[asyncio.Task] = list(SETTINGS.outputs)
+                    SETTINGS.outputs.clear()
 
-                # check if the task is ready yet, else just add it back to the queue. This is so if a long running task
-                # is added to the queue first, then a short running task that fails is added to the queue we quickly see
-                # that short running failure and exit, not waiting for the long running task to complete.
-                if task.done():
-                    await task
-                else:
+                # Wait for a task to complete or be cancelled
+                done, not_done = await asyncio.wait(
+                    pending_outputs, return_when=asyncio.FIRST_COMPLETED
+                )
+
+                # Await the completed task so any exception is re-raised here.
+                for task in done:
+                    try:
+                        await task
+                    except ResourceRegistrationFailed:
+                        # Outputs of a resource whose registration the engine reported as failed
+                        # are intentionally faulted. Users can consume the failure via
+                        # `Output.recover`; if they don't, we still shouldn't tear down the
+                        # program at exit — continue-on-error updates want other resources to
+                        # keep running.
+                        pass
+
+                # Put unfinished tasks back for the next iteration.
+                if not_done:
                     with SETTINGS.lock:
-                        SETTINGS.outputs.append(task)
+                        for task in not_done:
+                            SETTINGS.outputs.add(task)
 
             log.debug("All outstanding outputs completed.")
 
@@ -136,8 +247,24 @@ async def run_in_stack(func: Callable[[], Optional[Awaitable[None]]]):
     is meant for internal runtime use only and is used by the Python SDK entrypoint program.
     """
 
-    def run() -> None:
-        Stack(func)
+    async def run() -> None:
+        stack = Stack()
+        try:
+            result = func()
+            if isawaitable(result):
+                await result
+
+            program = stack._take_async_program()
+            if program is not None:
+                outputs = program()
+                if not isawaitable(outputs):
+                    raise TypeError(
+                        "The function passed to pulumi.run must return an awaitable"
+                    )
+
+                stack._add_program_outputs(await outputs)
+        finally:
+            stack._finish()
 
     await _load_monitor_feature_support()
     await run_pulumi_func(run)
@@ -148,9 +275,12 @@ class Stack(ComponentResource):
     A synthetic stack component that automatically parents resources as the program runs.
     """
 
-    outputs: Dict[str, Any]
+    outputs: dict[str, Any]
 
-    def __init__(self, func: Callable[[], Optional[Awaitable[None]]]) -> None:
+    def __init__(
+        self,
+        func: Optional[Callable[[], Optional[Awaitable[None]]]] = None,
+    ) -> None:
         # Ensure we don't already have a stack registered.
         if get_root_resource() is not None:
             raise Exception("Only one root Pulumi Stack may be active at once")
@@ -159,12 +289,22 @@ class Stack(ComponentResource):
         name = f"{get_project()}-{get_stack()}"
         super().__init__("pulumi:pulumi:Stack", name, None, None)
 
-        # Invoke the function while this stack is active and then register its outputs. func might return an awaitable
-        # so we need to await it, ideally we'd do this in a standard way but alas back compatibility means we do
-        # everything in stack constructors, so we have to use sync_await here.
-
         self.outputs = {}
+        self._async_program: Optional[_AsyncProgram] = None
+        self._async_program_registration_closed = False
+        self._outputs_registered = False
         set_root_resource(self)
+
+        # Stack historically invoked the program callback and finalized outputs
+        # in its constructor. Keep Stack(func) working for direct callers of this
+        # importable internal class. run_in_stack now creates Stack() and awaits
+        # user code itself.
+        if func is not None:
+            self._run_legacy_callback(func)
+
+    def _run_legacy_callback(
+        self, func: Callable[[], Optional[Awaitable[None]]]
+    ) -> None:
         try:
             awaitable = func()
             # This _should_ be an awaitable but old pulumi executors returned modules here, so we need to handle that
@@ -172,8 +312,36 @@ class Stack(ComponentResource):
             if isawaitable(awaitable):
                 _sync_await(awaitable)
         finally:
-            self.register_outputs(massage(self.outputs, []))
+            self._finish()
             # Intentionally leave this resource installed in case subsequent async work uses it.
+
+    def _register_async_program(self, program: _AsyncProgram) -> None:
+        from ..errors import RunError
+
+        if self._async_program is not None or self._async_program_registration_closed:
+            raise RunError("pulumi.run may only be called once")
+
+        self._async_program = program
+
+    def _take_async_program(self) -> Optional[_AsyncProgram]:
+        self._async_program_registration_closed = True
+        return self._async_program
+
+    def _add_program_outputs(self, outputs: Optional["Inputs"]) -> None:
+        if outputs is None:
+            return
+        for name, value in outputs.items():
+            export(name, value)
+
+    def _finish(self) -> None:
+        """Register this stack's outputs exactly once."""
+        if self._outputs_registered:
+            return
+
+        self._async_program_registration_closed = True
+        outputs = massage(self.outputs, [])
+        self._outputs_registered = True
+        self.register_outputs(outputs)
 
     def output(self, name: str, value: Any):
         """
@@ -184,7 +352,7 @@ class Stack(ComponentResource):
 
 # Note: we use a List here instead of a set as many objects are unhashable.  This is inefficient,
 # but python seems to offer no alternative.
-def massage(attr: Any, seen: List[Any]):
+def massage(attr: Any, seen: list[Any]):
     """
     massage takes an arbitrary python value and attempts to *deeply* convert it into
     plain-old-python-value that can registered as an output.  In general, this means leaving alone
@@ -223,16 +391,25 @@ def massage(attr: Any, seen: List[Any]):
             raise Exception("Invariant broken when processing stack outputs")
 
 
-def massage_complex(attr: Any, seen: List[Any]) -> Any:
+def massage_complex(attr: Any, seen: list[Any]) -> Any:
+    from .. import Asset, Archive
+
     def is_public_key(key: str) -> bool:
         return not key.startswith("_")
 
     def serialize_all_keys(include: Callable[[str], bool]):
-        plain_object: Dict[str, Any] = {}
+        plain_object: dict[str, Any] = {}
         for key in attr.__dict__.keys():
             if include(key):
                 plain_object[key] = massage(attr.__dict__[key], seen)
         return plain_object
+
+    # Preserve Asset / Archive instances so subsequent gRPC serialization
+    # tags them with the special signature key; without that, the engine
+    # deserializes them as weakly-typed dicts and assets in stack outputs
+    # lose their identity. See pulumi/pulumi#16384.
+    if isinstance(attr, (Asset, Archive)):
+        return attr
 
     if isinstance(attr, Resource):
         serialized_attr = serialize_all_keys(is_public_key)
@@ -251,9 +428,7 @@ def massage_complex(attr: Any, seen: List[Any]) -> Any:
     # make sure this is a popo.
     if isinstance(attr, dict):
         # Don't use attr.items() here, as it will error in the case of outputs with an `items` property.
-        return {
-            key: massage(attr[key], seen) for key in attr if not key.startswith("_")
-        }
+        return {key: massage(attr[key], seen) for key in attr}
 
     if hasattr(attr, "__iter__"):
         return [massage(item, seen) for item in attr]
@@ -261,7 +436,7 @@ def massage_complex(attr: Any, seen: List[Any]) -> Any:
     return serialize_all_keys(is_public_key)
 
 
-def reference_contains(val1: Any, seen: List[Any]) -> bool:
+def reference_contains(val1: Any, seen: list[Any]) -> bool:
     for val2 in seen:
         if val1 is val2:
             return True

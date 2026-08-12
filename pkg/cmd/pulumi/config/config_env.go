@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,28 +21,39 @@ import (
 	"io"
 	"os"
 
-	"github.com/erikgeiser/promptkit/confirmation"
+	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
-func newConfigEnvCmd(stackRef *string) *cobra.Command {
+// errBackendNoEnvironments indicates that the given backend does not support ESC environments and
+// points the user at the Pulumi Cloud backend, which does.
+func errBackendNoEnvironments(b backend.Backend) error {
+	return fmt.Errorf("backend %v does not support environments; Pulumi ESC environments require the "+
+		"Pulumi Cloud backend, use `pulumi login` without arguments to log into the Pulumi Cloud backend", b.Name())
+}
+
+func newConfigEnvCmd(ws pkgWorkspace.Context, stackRef *string, configFile *string) *cobra.Command {
 	impl := configEnvCmd{
 		stdin:            os.Stdin,
-		stdout:           os.Stdout,
-		ws:               pkgWorkspace.Instance,
+		diags:            cmdutil.Diag(),
+		ws:               ws,
 		requireStack:     cmdStack.RequireStack,
 		loadProjectStack: cmdStack.LoadProjectStack,
 		saveProjectStack: cmdStack.SaveProjectStack,
 		stackRef:         stackRef,
+		configFile:       configFile,
 	}
 
 	cmd := &cobra.Command{
@@ -50,13 +61,17 @@ func newConfigEnvCmd(stackRef *string) *cobra.Command {
 		Short: "Manage ESC environments for a stack",
 		Long: "Manages the ESC environment associated with a specific stack. To create a new environment\n" +
 			"from a stack's configuration, use `pulumi config env init`.",
-		Args: cmdutil.NoArgs,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			impl.stdout = cmd.OutOrStdout()
+		},
 	}
+
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newConfigEnvInitCmd(&impl))
 	cmd.AddCommand(newConfigEnvAddCmd(&impl))
-	cmd.AddCommand(newConfigEnvRmCmd(&impl))
-	cmd.AddCommand(newConfigEnvLsCmd(&impl))
+	cmd.AddCommand(newConfigEnvRemoveCmd(&impl))
+	cmd.AddCommand(newConfigEnvListCmd(&impl))
 
 	return cmd
 }
@@ -67,30 +82,44 @@ type configEnvCmd struct {
 
 	interactive bool
 	color       colors.Colorization
+	diags       diag.Sink
 
 	ssml cmdStack.SecretsManagerLoader
 	ws   pkgWorkspace.Context
 
 	requireStack func(
 		ctx context.Context,
+		sink diag.Sink,
 		ws pkgWorkspace.Context,
 		lm cmdBackend.LoginManager,
 		stackName string,
 		lopt cmdStack.LoadOption,
 		opts display.Options,
+		configFile string,
 	) (backend.Stack, error)
 
-	loadProjectStack func(project *workspace.Project, stack backend.Stack) (*workspace.ProjectStack, error)
+	loadProjectStack func(
+		ctx context.Context,
+		diags diag.Sink,
+		project *workspace.Project,
+		stack backend.Stack,
+		configFile string,
+	) (*workspace.ProjectStack, error)
 
-	saveProjectStack func(stack backend.Stack, ps *workspace.ProjectStack) error
+	saveProjectStack func(ctx context.Context, stack backend.Stack, ps *workspace.ProjectStack, configFile string) error
 
-	stackRef *string
+	// prompt asks the user to pick one of options.
+	prompt func(msg string, options []string, defaultOption string, colorization colors.Colorization,
+		surveyAskOpts ...survey.AskOpt) string
+
+	stackRef   *string
+	configFile *string
 }
 
 func (cmd *configEnvCmd) initArgs() {
 	cmd.interactive = cmdutil.Interactive()
 	cmd.color = cmdutil.GetGlobalColorization()
-
+	cmd.prompt = ui.PromptUser
 	cmd.ssml = cmdStack.NewStackSecretsManagerLoaderFromEnv()
 }
 
@@ -98,18 +127,25 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 ) (*workspace.ProjectStack, *workspace.Project, *backend.Stack, error) {
 	opts := display.Options{Color: cmd.color}
 
-	project, _, err := cmd.ws.ReadProject()
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("getting current working directory: %w", err)
+	}
+
+	project, _, err := cmd.ws.ReadProject(cwd)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	stack, err := cmd.requireStack(
 		ctx,
+		cmd.diags,
 		cmd.ws,
 		cmdBackend.DefaultLoginManager,
 		*cmd.stackRef,
 		cmdStack.OfferNew|cmdStack.SetCurrent,
 		opts,
+		*cmd.configFile,
 	)
 	if err != nil {
 		return nil, nil, nil, err
@@ -117,10 +153,10 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 
 	_, ok := stack.Backend().(backend.EnvironmentsBackend)
 	if !ok {
-		return nil, nil, nil, fmt.Errorf("backend %v does not support environments", stack.Backend().Name())
+		return nil, nil, nil, errBackendNoEnvironments(stack.Backend())
 	}
 
-	projectStack, err := cmd.loadProjectStack(project, stack)
+	projectStack, err := cmd.loadProjectStack(ctx, cmd.diags, project, stack, *cmd.configFile)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -128,40 +164,14 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 	return projectStack, project, &stack, nil
 }
 
-func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, jsonOut bool) error {
+func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, render stackEnvironmentsRenderFunc) error {
 	projectStack, _, _, err := cmd.loadEnvPreamble(ctx)
 	if err != nil {
 		return err
 	}
 	imports := projectStack.Environment.Imports()
 
-	if jsonOut {
-		if len(imports) == 0 {
-			ui.Fprintf(cmd.stdout, "[]\n")
-		} else {
-			err := ui.FprintJSON(cmd.stdout, imports)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		rows := []cmdutil.TableRow{}
-		for _, imp := range imports {
-			rows = append(rows, cmdutil.TableRow{Columns: []string{imp}})
-		}
-
-		if len(imports) > 0 {
-			ui.FprintTable(cmd.stdout, cmdutil.Table{
-				Headers: []string{"ENVIRONMENTS"},
-				Rows:    rows,
-			}, nil)
-		} else {
-			ui.Fprintf(cmd.stdout, "This stack configuration has no environments listed. "+
-				"Try adding one with `pulumi config env add <projectName>/<envName>`.\n")
-		}
-	}
-
-	return nil
+	return render(cmd.stdout, imports)
 }
 
 func (cmd *configEnvCmd) editStackEnvironment(
@@ -171,7 +181,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 	edit func(stack *workspace.ProjectStack) error,
 ) error {
 	if !yes && !cmd.interactive {
-		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
+		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
 	projectStack, project, stack, err := cmd.loadEnvPreamble(ctx)
@@ -193,6 +203,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 		showSecrets,
 		false, /*jsonOut*/
 		false, /*openEnvironment*/
+		*cmd.configFile,
 	); err != nil {
 		return err
 	}
@@ -200,19 +211,15 @@ func (cmd *configEnvCmd) editStackEnvironment(
 	if !yes {
 		fmt.Fprintln(cmd.stdout)
 
-		confirm := confirmation.New("Save?", confirmation.Yes)
-		confirm.Input, confirm.Output = cmd.stdin, cmd.stdout
-
-		save, err := confirm.RunPrompt()
-		if err != nil {
-			return err
-		}
-		if !save {
+		response := cmd.prompt("Save?", []string{"yes", "no"}, "yes", cmdutil.GetGlobalColorization())
+		switch response {
+		case "no":
 			return errors.New("canceled")
+		case "yes":
 		}
 	}
 
-	if err = cmd.saveProjectStack(*stack, projectStack); err != nil {
+	if err = cmd.saveProjectStack(ctx, *stack, projectStack, *cmd.configFile); err != nil {
 		return fmt.Errorf("saving stack config: %w", err)
 	}
 	return nil

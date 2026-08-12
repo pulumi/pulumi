@@ -1,0 +1,104 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package securestore
+
+import (
+	"fmt"
+	"sync"
+	"testing"
+)
+
+type memStore struct {
+	mu    sync.Mutex
+	value string
+	set_  bool
+}
+
+func (m *memStore) available() (Outcome, error) { return Ready, nil }
+
+func (m *memStore) get() (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if !m.set_ {
+		return "", ErrKeyNotFound
+	}
+	return m.value, nil
+}
+
+func (m *memStore) set(value string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.value, m.set_ = value, true
+	return nil
+}
+
+func (m *memStore) delete() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.value, m.set_ = "", false
+	return nil
+}
+
+// Never resolves outside tests.
+const BackendMock Backend = "mock"
+
+const BackendMockStrong Backend = "mock-strong"
+
+// Toggleable availability, simulating a platform gaining a stronger tier.
+type gatedStore struct {
+	inner   itemStore
+	enabled *bool
+}
+
+func (g *gatedStore) available() (Outcome, error) {
+	if !*g.enabled {
+		return Absent, fmt.Errorf("%w: mock backend not yet enabled", ErrUnavailable)
+	}
+	return g.inner.available()
+}
+
+func (g *gatedStore) get() (string, error)   { return g.inner.get() }
+func (g *gatedStore) set(value string) error { return g.inner.set(value) }
+func (g *gatedStore) delete() error          { return g.inner.delete() }
+
+type refusingStore struct{ memStore }
+
+func (*refusingStore) available() (Outcome, error) { return Declined, ErrDeclined }
+
+func MockInit(t *testing.T) {
+	t.Helper()
+	mem := &memStore{}
+	prev := platformCandidatesHook
+	platformCandidatesHook = func(bool, string) []backendImpl {
+		return []backendImpl{{id: BackendMock, store: mem, wrap: rawWrapper{}}}
+	}
+	t.Cleanup(func() { platformCandidatesHook = prev })
+}
+
+// The preferred backend becomes available only once promote is called.
+func MockInitDual(t *testing.T) (promote func()) {
+	t.Helper()
+	enabled := false
+	weak, strong := &memStore{}, &memStore{}
+	prev := platformCandidatesHook
+	platformCandidatesHook = func(bool, string) []backendImpl {
+		return []backendImpl{
+			{id: BackendMockStrong, store: &gatedStore{inner: strong, enabled: &enabled}, wrap: rawWrapper{}},
+			{id: BackendMock, store: weak, wrap: rawWrapper{}},
+		}
+	}
+	t.Cleanup(func() { platformCandidatesHook = prev })
+	return func() { enabled = true }
+}

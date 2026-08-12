@@ -1,0 +1,3 @@
+name: ts-with-package-exports
+runtime: nodejs
+description: Run a TypeScript program where the entrypoint is defined in package.exports.

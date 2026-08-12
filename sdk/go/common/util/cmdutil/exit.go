@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,9 +17,10 @@ package cmdutil
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -30,25 +31,28 @@ import (
 
 // DetailedError extracts a detailed error message, including stack trace, if there is one.
 func DetailedError(err error) string {
-	msg := errorMessage(err)
+	var msg strings.Builder
+	msg.WriteString(errorMessage(err))
+
 	hasstack := false
+
 	for {
 		if stackerr, ok := err.(interface {
-			StackTrace() errors.StackTrace
+			StackTrace() pkgerrors.StackTrace
 		}); ok {
-			msg += "\n"
+			msg.WriteString("\n")
 			if hasstack {
-				msg += "CAUSED BY...\n"
+				msg.WriteString("CAUSED BY...\n")
 			}
 			hasstack = true
 
 			// Append the stack trace.
 			for _, f := range stackerr.StackTrace() {
-				msg += fmt.Sprintf("%+v\n", f)
+				fmt.Fprintf(&msg, "%+v\n", f)
 			}
 
 			// Keep going up the causer chain, if any.
-			cause := errors.Cause(err)
+			cause := pkgerrors.Cause(err)
 			if cause == err || cause == nil {
 				break
 			}
@@ -57,7 +61,7 @@ func DetailedError(err error) string {
 			break
 		}
 	}
-	return msg
+	return msg.String()
 }
 
 // RunFunc wraps an error-returning run func with standard Pulumi error handling.  All
@@ -69,14 +73,13 @@ func DetailedError(err error) string {
 //
 // If run returns a BailError, we will not print an error message.
 //
-// Deprecated: Instead of using [RunFunc], you should call [DisplayErrorMessage] and then
-// manually exit with `os.Exit(-1)`
+// Deprecated: Use the default cobra error handling logic.
 func RunFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) {
 	return func(cmd *cobra.Command, args []string) {
 		err := run(cmd, args)
 		if err != nil {
 			DisplayErrorMessage(err)
-			os.Exit(-1)
+			os.Exit(-1) //nolint:noosexit // RunFunc is deprecated
 		}
 	}
 }
@@ -111,8 +114,25 @@ func Exit(err error) {
 // ExitError issues an error and exits with a standard error exit code.
 func ExitError(msg string) {
 	Diag().Errorf(diag.Message("", "%s"), msg)
-	os.Exit(-1)
+	os.Exit(ExitCodeError) //nolint:noosexit // ExitError is also forbidden outside of main functions
 }
+
+// Exit code taxonomy for the Pulumi CLI. These values form part of the
+// contract for automation and agent integrations and must be treated as
+// stable once released.
+const (
+	ExitSuccess             = 0
+	ExitCodeError           = 1 // generic/unclassified error
+	ExitConfigurationError  = 2 // invalid flags, config, or invocation
+	ExitAuthenticationError = 3
+	ExitResourceError       = 4
+	ExitPolicyViolation     = 5
+	ExitStackNotFound       = 6
+	ExitNoChanges           = 7
+	ExitCancelled           = 8
+	ExitTimeout             = 9
+	ExitInternalError       = 255
+)
 
 // errorMessage returns a message, possibly cleaning up the text if appropriate.
 func errorMessage(err error) string {
@@ -128,11 +148,12 @@ func errorMessage(err error) string {
 		return underlying[0].Error()
 
 	default:
-		msg := fmt.Sprintf("%d errors occurred:", len(underlying))
+		var msg strings.Builder
+		fmt.Fprintf(&msg, "%d errors occurred:", len(underlying))
 		for i, werr := range underlying {
-			msg += fmt.Sprintf("\n    %d) %s", i+1, errorMessage(werr))
+			fmt.Fprintf(&msg, "\n    %d) %s", i+1, errorMessage(werr))
 		}
-		return msg
+		return msg.String()
 	}
 }
 

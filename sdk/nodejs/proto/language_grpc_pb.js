@@ -1,7 +1,7 @@
 // GENERATED CODE -- DO NOT EDIT!
 
 // Original file comments:
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -232,6 +232,28 @@ function deserialize_pulumirpc_LanguageHandshakeResponse(buffer_arg) {
   return pulumi_language_pb.LanguageHandshakeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_LinkRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.LinkRequest)) {
+    throw new Error('Expected argument of type pulumirpc.LinkRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_LinkRequest(buffer_arg) {
+  return pulumi_language_pb.LinkRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_LinkResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.LinkResponse)) {
+    throw new Error('Expected argument of type pulumirpc.LinkResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_LinkResponse(buffer_arg) {
+  return pulumi_language_pb.LinkResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_PackRequest(arg) {
   if (!(arg instanceof pulumi_language_pb.PackRequest)) {
     throw new Error('Expected argument of type pulumirpc.PackRequest');
@@ -331,6 +353,28 @@ function deserialize_pulumirpc_RuntimeOptionsResponse(buffer_arg) {
   return pulumi_language_pb.RuntimeOptionsResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_TemplateRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.TemplateRequest)) {
+    throw new Error('Expected argument of type pulumirpc.TemplateRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_TemplateRequest(buffer_arg) {
+  return pulumi_language_pb.TemplateRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_TemplateResponse(arg) {
+  if (!(arg instanceof pulumi_language_pb.TemplateResponse)) {
+    throw new Error('Expected argument of type pulumirpc.TemplateResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_TemplateResponse(buffer_arg) {
+  return pulumi_language_pb.TemplateResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // The LanguageRuntime service defines a standard interface for [language hosts/runtimes](languages). At a high level, a
 // language runtime provides the ability to execute programs, install and query dependencies, and generate code for a
@@ -371,12 +415,13 @@ getRequiredPlugins: {
     responseDeserialize: deserialize_pulumirpc_GetRequiredPluginsResponse,
   },
   // `GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
-// by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
-// to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
-// back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
-// determine which plugins are required to service the import of a given resource, since given the presence of
-// [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
-// with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+// by a program or plugin. It is used to pre-install packages before running a program with
+// [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+// registrations](resource-registration) sent back from the running program to the engine. Moreover, when importing
+// resources into a stack, it is used to determine which plugins are required to service the import of a given
+// resource, since given the presence of [parameterized providers](parameterized-providers), it is not in general
+// true that a package name corresponds 1:1 with a plugin name. It replaces
+// [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
 // providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
 // provide multiple packages.
 getRequiredPackages: {
@@ -443,6 +488,20 @@ runtimeOptionsPrompts: {
     responseSerialize: serialize_pulumirpc_RuntimeOptionsResponse,
     responseDeserialize: deserialize_pulumirpc_RuntimeOptionsResponse,
   },
+  // `Template` allows the language runtime to perform additional templating on a newly instantiated project template.
+// For example the Python runtime might want to convert a requirements.txt into a pyproject.toml suitable for use
+// with uv or poetry.
+template: {
+    path: '/pulumirpc.LanguageRuntime/Template',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.TemplateRequest,
+    responseType: pulumi_language_pb.TemplateResponse,
+    requestSerialize: serialize_pulumirpc_TemplateRequest,
+    requestDeserialize: deserialize_pulumirpc_TemplateRequest,
+    responseSerialize: serialize_pulumirpc_TemplateResponse,
+    responseDeserialize: deserialize_pulumirpc_TemplateResponse,
+  },
   // `About` returns information about the language runtime being used.
 about: {
     path: '/pulumirpc.LanguageRuntime/About',
@@ -469,7 +528,7 @@ getProgramDependencies: {
     responseDeserialize: deserialize_pulumirpc_GetProgramDependenciesResponse,
   },
   // `RunPlugin` is used to execute a program written in this host's language that implements a Pulumi
-// [plugin](plugins). It it is plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
+// [plugin](plugins). It is to plugins what [](pulumirpc.LanguageRuntime.Run) is to programs. Since a plugin is not
 // expected to terminate until instructed/for a long time, this method returns a stream of
 // [](pulumirpc.RunPluginResponse) messages containing information about standard error and output, as well as the
 // exit code of the plugin when it does terminate.
@@ -546,6 +605,34 @@ pack: {
     responseSerialize: serialize_pulumirpc_PackResponse,
     responseDeserialize: deserialize_pulumirpc_PackResponse,
   },
+  // `Link` links local dependencies into a project (program or plugin). The dependencies can be binary artifacts such
+// as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
+// `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
+// user on how to use the linked package in the project.
+link: {
+    path: '/pulumirpc.LanguageRuntime/Link',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_language_pb.LinkRequest,
+    responseType: pulumi_language_pb.LinkResponse,
+    requestSerialize: serialize_pulumirpc_LinkRequest,
+    requestDeserialize: deserialize_pulumirpc_LinkRequest,
+    responseSerialize: serialize_pulumirpc_LinkResponse,
+    responseDeserialize: deserialize_pulumirpc_LinkResponse,
+  },
+  // `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
+// Operations aborted in this way will return an error.
+cancel: {
+    path: '/pulumirpc.LanguageRuntime/Cancel',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
 };
 
-exports.LanguageRuntimeClient = grpc.makeGenericClientConstructor(LanguageRuntimeService);
+exports.LanguageRuntimeClient = grpc.makeGenericClientConstructor(LanguageRuntimeService, 'LanguageRuntime');

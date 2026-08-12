@@ -1,0 +1,3 @@
+name: signal-cancellation-nodejs
+description: Test that Node.js programs receive SIGINT on cancellation
+runtime: nodejs

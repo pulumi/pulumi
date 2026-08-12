@@ -9,7 +9,7 @@ paths:
       - 3
     string: '{"nums":[1,2,3]}'
     redacted: '{"nums":[1,2,3]}'
-    object: KBAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9/4EEAQL/ggABDAEQAABJ/4IiAAEEbnVtcw5bXWludGVyZmFjZSB7ff+DAgEC/4QAARAAACP/hCAAAwVpbnQ2NAQCAAIFaW50NjQEAgAEBWludDY0BAIABg==
+    object: JxAAF21hcFtzdHJpbmddaW50ZXJmYWNlIHt9fwQBAv+AAAEMARAAAEn/gCIAAQRudW1zDltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAI/+CIAADBWludDY0BAIAAgVpbnQ2NAQCAAQFaW50NjQEAgAG
     secure: false
     isObject: true
   my:mapKey.nums:
@@ -19,7 +19,7 @@ paths:
     - 3
     string: '[1,2,3]'
     redacted: '[1,2,3]'
-    object: HRAADltdaW50ZXJmYWNlIHt9/4MCAQL/hAABEAAAI/+EIAADBWludDY0BAIAAgVpbnQ2NAQCAAQFaW50NjQEAgAG
+    object: HRAADltdaW50ZXJmYWNlIHt9/4ECAQL/ggABEAAAI/+CIAADBWludDY0BAIAAgVpbnQ2NAQCAAQFaW50NjQEAgAG
     secure: false
     isObject: true
   my:mapKey.nums[0]:

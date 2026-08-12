@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 //go:build !all
 // +build !all
 
@@ -172,12 +172,6 @@ func (p *Provider) Invoke(ctx context.Context,
 	req *pulumirpc.InvokeRequest,
 ) (*pulumirpc.InvokeResponse, error) {
 	return nil, fmt.Errorf("unknown Invoke %q", req.GetTok())
-}
-
-func (p *Provider) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer,
-) error {
-	return fmt.Errorf("unknown StreamInvoke %q", req.GetTok())
 }
 
 func (p *Provider) Call(ctx context.Context,

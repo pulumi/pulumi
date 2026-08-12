@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package mapper
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 // MappingError represents a collection of decoding errors, defined below.
@@ -45,16 +46,17 @@ func (e *mappingError) AddFailure(err error) {
 }
 
 func (e *mappingError) Error() string {
-	str := fmt.Sprintf("%d failures decoding:", len(e.failures))
+	var str strings.Builder
+	fmt.Fprintf(&str, "%d failures decoding:", len(e.failures))
 	for _, failure := range e.failures {
 		switch f := failure.(type) {
 		case FieldError:
-			str += fmt.Sprintf("\n\t%v: %v", f.Field(), f.Reason())
+			fmt.Fprintf(&str, "\n\t%v: %v", f.Field(), f.Reason())
 		default:
-			str += fmt.Sprintf("\n\t%v", f)
+			fmt.Fprintf(&str, "\n\t%v", f)
 		}
 	}
-	return str
+	return str.String()
 }
 
 // FieldError represents a failure during decoding of a specific field.

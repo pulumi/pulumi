@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -81,6 +81,7 @@ func init() {
 
 	addEndpoint("GET", "/api/user", "getCurrentUser")
 	addEndpoint("GET", "/api/user/stacks", "listUserStacks")
+	addEndpoint("GET", "/api/user/organizations/default", "getDefaultOrg")
 	addEndpoint("GET", "/api/stacks/{orgName}", "listOrganizationStacks")
 	addEndpoint("POST", "/api/stacks/{orgName}", "createStack")
 	addEndpoint("DELETE", "/api/stacks/{orgName}/{projectName}/{stackName}", "deleteStack")
@@ -95,10 +96,22 @@ func init() {
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}", "getStackUpdate")
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}/contents/files", "getUpdateContentsFiles")
 	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/updates/{version}/contents/file/{path:.*}", "getUpdateContentsFilePath")
+	addEndpoint("GET", "/api/orgs/{orgName}/members", "listOrganizationMembers")
 	addEndpoint("GET", "/api/orgs/{orgName}/templates", "listTemplates")
 	addEndpoint("GET", "/api/orgs/{orgName}/templates/download", "downloadTemplates")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/batch-decrypt", "batchDecrypt")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/batch-encrypt", "batchEncrypt")
+	addEndpoint("HEAD", "/api/stacks/{orgName}/{projectName}", "projectExists")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/rename", "renameStack")
+	addEndpoint("PATCH", "/api/stacks/{orgName}/{projectName}/{stackName}/tags", "updateStackTags")
+	addEndpoint("PUT", "/api/stacks/{orgName}/{projectName}/{stackName}/config", "updateStackConfig")
+
+	// Deployment settings APIs.
+	addEndpoint("PUT", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments/settings", "updateDeploymentSettings")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments/settings/encrypt", "encryptDeploymentSecret")
+	addEndpoint("DELETE", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments/settings", "destroyDeploymentSettings")
+	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments", "listStackDeployments")
+	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments/{deploymentId}/cancel", "cancelStackDeployment")
 
 	// The APIs for performing updates of various kind all have the same set of API endpoints. Only
 	// differentiate the "create update of kind X" APIs, and introduce a pseudo route param "updateKind".
@@ -114,16 +127,36 @@ func init() {
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/complete", "completeUpdate")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/events", "postEngineEvent")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/events/batch", "postEngineEventBatch")
+	addEndpoint("PATCH", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/journalentries", "patchJournalEntries")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/{updateKind}/{updateID}/renew_lease", "renewLease")
+
+	// GitHub App integration.
+	addEndpoint("GET", "/api/console/orgs/{orgName}/integrations/github-app", "getGHAppIntegration")
 
 	// APIs for managing `PolicyPack`s.
 	addEndpoint("POST", "/api/orgs/{orgName}/policypacks", "publishPolicyPack")
+	addEndpoint("POST", "/api/orgs/{orgName}/policypacks/{policyPackName}/{versionTag}/complete", "completePolicyPackPublish")
+
+	// APIs for usage summaries (Resources Under Management).
+	addEndpoint("GET", "/api/orgs/{orgName}/resources/summary", "getUsageSummaryResourceHours")
 
 	// APIs for managing Search capabilities
 	addEndpoint("GET", "/api/orgs/{orgName}/search/resources", "getSearchResources")
 	addEndpoint("GET", "/api/orgs/{orgName}/search/resources/parse", "getSearchResourcesParse")
+	addEndpoint("GET", "/api/orgs/{orgName}/search/resourcesv2", "getOrgResourceSearchV2")
+
+	// APIs for managing Pulumi Insights
+	addEndpoint("GET", "/api/preview/insights/{orgName}/accounts", "listInsightsAccounts")
+	addEndpoint("GET",
+		"/api/preview/insights/{orgName}/accounts/{accountName}/scans/{scanId}/logs",
+		"getScanLogs")
 
 	// APIs for interacting with the Package Registry
-	addEndpoint("POST", "/api/preview/registry/packages/{source}/{publisher}/{name}/versions", "publishPackage")
-	addEndpoint("POST", "/api/preview/registry/packages/{source}/{publisher}/{name}/versions/{version}/complete", "completePackagePublish")
+	addEndpoint("POST", "/api/registry/packages/{source}/{publisher}/{name}/versions", "publishPackage")
+	addEndpoint("POST", "/api/registry/packages/{source}/{publisher}/{name}/versions/{version}/complete", "completePackagePublish")
+	addEndpoint("DELETE", "/api/registry/packages/{source}/{publisher}/{name}/versions/{version}", "deletePackageVersion")
+
+	// APIs for interacting with the Template Registry
+	addEndpoint("POST", "/api/registry/templates/{source}/{publisher}/{name}/versions", "publishTemplate")
+	addEndpoint("POST", "/api/registry/templates/{source}/{publisher}/{name}/versions/{version}/complete", "completeTemplatePublish")
 }

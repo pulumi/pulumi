@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,8 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-import { AsyncIterable } from "@pulumi/query/interfaces";
 
 type CloseValue = "7473659d-924c-414d-84e5-b1640b2a6296";
 const closeValue: CloseValue = "7473659d-924c-414d-84e5-b1640b2a6296";

@@ -1,0 +1,15 @@
+{
+	"name": "l2-keywords",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/keywords": "ROOT/artifacts/pulumi-keywords-20.0.0.tgz"
+	}
+}

@@ -1,0 +1,3 @@
+# ESC CLI golden tests compare exact command output against testdata,
+# which breaks under CRLF checkout on Windows. Force LF on all platforms.
+* text=auto eol=lf

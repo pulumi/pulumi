@@ -1,0 +1,5 @@
+name: l2-primitive-ref-optional
+runtime:
+  name: nodejs
+  options:
+    typescript: false

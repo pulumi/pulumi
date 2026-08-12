@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,12 +14,11 @@
 
 import execa from "execa";
 import * as fs from "fs";
-import got from "got";
 import * as os from "os";
 import * as path from "path";
 import * as semver from "semver";
-import * as tmp from "tmp";
 import { version as DEFAULT_VERSION } from "../version";
+import { download } from "./download";
 import { minimumVersion } from "./minimumVersion";
 import { createCommandError } from "./errors";
 
@@ -83,7 +82,7 @@ export class PulumiCommand {
      */
     static async get(opts?: PulumiCommandOptions): Promise<PulumiCommand> {
         const command = opts?.root ? path.resolve(path.join(opts.root, "bin/pulumi")) : "pulumi";
-        const { stdout } = await exec(command, ["version"]);
+        const { stdout } = await exec(command, ["version"], undefined, { PULUMI_SKIP_UPDATE_CHECK: "true" });
         const skipVersionCheck = !!opts?.skipVersionCheck || !!process.env[SKIP_VERSION_CHECK_VAR];
         let min = minimumVersion;
         if (opts?.version && semver.gt(opts.version, minimumVersion)) {
@@ -114,8 +113,8 @@ export class PulumiCommand {
     }
 
     private static async installWindows(opts: Required<PulumiCommandOptions>): Promise<void> {
-        const response = await got("https://get.pulumi.com/install.ps1");
-        const script = await writeTempFile(response.body, { extension: ".ps1" });
+        const body = await download("https://get.pulumi.com/install.ps1");
+        const script = await writeTempFile(body, { extension: ".ps1" });
 
         try {
             const command = process.env.SystemRoot
@@ -144,8 +143,8 @@ export class PulumiCommand {
     }
 
     private static async installPosix(opts: Required<PulumiCommandOptions>): Promise<void> {
-        const response = await got("https://get.pulumi.com/install.sh");
-        const script = await writeTempFile(response.body);
+        const body = await download("https://get.pulumi.com/install.sh");
+        const script = await writeTempFile(body);
 
         try {
             const args = [script.path, "--no-edit-path", "--install-root", opts.root, "--version", `${opts.version}`];
@@ -162,6 +161,7 @@ export class PulumiCommand {
         cwd: string,
         additionalEnv: { [key: string]: string },
         onOutput?: (data: string) => void,
+        onError?: (data: string) => void,
         signal?: AbortSignal,
     ): Promise<CommandResult> {
         // all commands should be run in non-interactive mode.
@@ -170,16 +170,18 @@ export class PulumiCommand {
             args.push("--non-interactive");
         }
 
+        const env = { ...additionalEnv };
         // Prepend the folder where the CLI is installed to the path to ensure
         // we pickup the matching bundled plugins.
         if (path.isAbsolute(this.command)) {
             const pulumiBin = path.dirname(this.command);
             const sep = os.platform() === "win32" ? ";" : ":";
             const envPath = pulumiBin + sep + (additionalEnv["PATH"] || process.env.PATH);
-            additionalEnv["PATH"] = envPath;
+            env["PATH"] = envPath;
         }
+        env["PULUMI_AUTOMATION_API"] = "true";
 
-        return exec(this.command, args, cwd, additionalEnv, onOutput, signal);
+        return exec(this.command, args, cwd, env, onOutput, onError, signal);
     }
 }
 
@@ -189,6 +191,7 @@ async function exec(
     cwd?: string,
     additionalEnv?: { [key: string]: string },
     onOutput?: (data: string) => void,
+    onError?: (data: string) => void,
     signal?: AbortSignal,
 ): Promise<CommandResult> {
     const unknownErrCode = -2;
@@ -197,6 +200,15 @@ async function exec(
 
     try {
         const proc = execa(command, args, { env, cwd });
+
+        if (onError && proc.stderr) {
+            proc.stderr!.on("data", (data: any) => {
+                if (data?.toString) {
+                    data = data.toString();
+                }
+                onError(data);
+            });
+        }
 
         if (onOutput && proc.stdout) {
             proc.stdout!.on("data", (data: any) => {
@@ -239,34 +251,20 @@ function withDefaults(opts?: PulumiCommandOptions): Required<PulumiCommandOption
     return { version, root, skipVersionCheck };
 }
 
-function writeTempFile(
+async function writeTempFile(
     contents: string,
     options?: { extension?: string },
 ): Promise<{ path: string; cleanup: () => void }> {
-    return new Promise<{ path: string; cleanup: () => void }>((resolve, reject) => {
-        tmp.file(
-            {
-                // Powershell requires a `.ps1` extension.
-                postfix: options?.extension,
-                // Powershell won't execute the script if the file descriptor is open.
-                discardDescriptor: true,
-            },
-            (tmpErr, tmpPath, _fd, cleanup) => {
-                if (tmpErr) {
-                    reject(tmpErr);
-                } else {
-                    fs.writeFile(tmpPath, contents, (writeErr) => {
-                        if (writeErr) {
-                            cleanup();
-                            reject(writeErr);
-                        } else {
-                            resolve({ path: tmpPath, cleanup });
-                        }
-                    });
-                }
-            },
-        );
-    });
+    const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "pulumi-"));
+    const cleanup = () => fs.rmSync(dir, { recursive: true, force: true });
+    try {
+        const filePath = path.join(dir, `tmp${options?.extension ?? ""}`);
+        await fs.promises.writeFile(filePath, contents);
+        return { path: filePath, cleanup };
+    } catch (err) {
+        cleanup();
+        throw err;
+    }
 }
 
 /**

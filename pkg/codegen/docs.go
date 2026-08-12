@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,24 +23,84 @@ import (
 // DocLanguageHelper is an interface for extracting language-specific information from a Pulumi schema.
 // See the implementation for this interface under each of the language code generators.
 type DocLanguageHelper interface {
+	// GetModuleName returns the in-language name of the module.
+	//
+	// For example, lets get the hypothetical name of the module for the "pkg:module/nestedMod:Type" token in python:
+	//
+	//	var python python_codegen.DocLanguageHelper
+	//	python.GetModuleName(pkgRef, pkgRef.TokenToModule("pkg:module/nestedMod:Type")) // "module.nestedmod"
+	GetModuleName(pkg schema.PackageReference, modName string) string
+
 	GetPropertyName(p *schema.Property) (string, error)
 	GetEnumName(e *schema.Enum, typeName string) (string, error)
-	GetDocLinkForResourceType(pkg *schema.Package, moduleName, typeName string) string
-	GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string
-	GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
-	GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
-	GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string
+	// GetTypeName gets the name of a type in the language of the DocLanguageHelper.
+	//
+	// relativeToModule describes the module that is consuming the type
+	// name. Typically, GetTypeName will output an unqualified name if typ is native
+	// to relativeToModule. Otherwise GetTypeName may return a qualified name.
+	// relativeToModule should always be a module returned from pkg.TokenToModule. It
+	// should not be language specialized.
+	//
+	// For example, lets get the name of a hypothetical python property type:
+	//
+	//	var pkg *schema.Package = getOurPackage(/* Schema{
+	//		Name: "pkg",
+	//		Resource: []{
+	//			{
+	//				Token: "pkg:myModule:Resource",
+	//				Properties: []{
+	//					{
+	//						Type: Object{Name: "pkg:myModule:TheType"},
+	//						Name: "theType",
+	//					},
+	//				},
+	//			},
+	//		},
+	//	} */)
+	//	var res *schema.Resource = pkg.Resources[i]
+	//	var prop *schema.Property := res.Properties[j]
+	//
+	//	var python python_codegen.DocLanguageHelper
+	//
+	//	unqualifiedName := python.GetTypeName(pkg, prop.Type, false, pkg.TokenToModule(res.Token))
+	//	fmt.Println(unqualifiedName) // Prints "TheType".
+	//
+	//	qualifiedName := python.GetTypeName(pkg, prop.Type, false, "")
+	//	fmt.Println(qualifiedName) // Prints "my_module.TheType"
+	GetTypeName(pkg schema.PackageReference, t schema.Type, input bool, relativeToModule string) string
+	// GetResourceName returns the name of the resource.
+	//
+	// Implements should prefer a short name if possible: "MyResource" over "Pulumi.MyPackage.MyModule.MyResource".
+	GetResourceName(r *schema.Resource) string
+	GetFunctionName(f *schema.Function) string
 
-	GetFunctionName(modName string, f *schema.Function) string
 	// GetResourceFunctionResultName returns the name of the result type when a static resource function is used to lookup
 	// an existing resource.
 	GetResourceFunctionResultName(modName string, f *schema.Function) string
 
+	// Methods
 	GetMethodName(m *schema.Method) string
-	GetMethodResultName(pkg *schema.Package, modName string, r *schema.Resource, m *schema.Method) string
+	GetMethodResultName(pkg schema.PackageReference, modName string, r *schema.Resource, m *schema.Method) string
 
-	// GetModuleDocLink returns the display name and the link for a module (including root modules) in a given package.
-	GetModuleDocLink(pkg *schema.Package, modName string) (string, string)
+	// ResolveDocRef renders a single `{{% ref %}}` shortcode target as a name in the target
+	// language (e.g. PascalCase types in Go, snake_case properties in Python). Callers typically
+	// use this as the resolver callback passed to schema.PackageReference.InterpretPulumiRefs.
+	//
+	// selfRef identifies the entity whose documentation is being rendered. Property refs that
+	// belong to that entity are emitted unqualified (e.g. `prop` rather than `Self.prop`). Pass
+	// the zero `schema.DocRef{}` if there is no enclosing entity.
+	//
+	// The boolean return mirrors `schema.PulumiRefResolver`: false means the ref could not be
+	// resolved and the caller should fall back to a default rendering. The error return is for
+	// setup failures (e.g. Go's package-context map cannot be built); successful resolution to
+	// "ref not found" returns `("", false, nil)`.
+	ResolveDocRef(pkg schema.PackageReference, selfRef, ref schema.DocRef) (string, bool, error)
+
+	// Doc links
+	GetDocLinkForResourceType(pkg *schema.Package, moduleName, typeName string) string
+	GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string
+	GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
+	GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
 }
 
 func filterExamples(source []byte, node ast.Node, lang string) {

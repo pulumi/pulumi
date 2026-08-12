@@ -5,8 +5,11 @@ package-mode = false
 version = "0.1.0"
 
 [tool.poetry.dependencies]
-python = "^3.8"
-pulumi = "*"
+python = "^3.10"
+# We want to depend on the local SDK, not a published version This avoids issues
+# when updating the supported python versions beyond what any published SDK
+# supports.
+pulumi = { path = "PULUMI_CORE_SDK_PATH_PLACEHOLDER" }
 
 [build-system]
 requires = ["poetry-core"]

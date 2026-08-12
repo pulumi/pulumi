@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,15 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The linter doesn't see the uses since the consumers are conditionally compiled tests.
-//
-//nolint:unused,deadcode,varcheck
 package ints
 
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -28,17 +24,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/tests/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -55,7 +47,8 @@ func testComponentSlowLocalProvider(t *testing.T) integration.LocalDependency {
 }
 
 func testComponentProviderSchema(t *testing.T, path string) {
-	runComponentSetup(t, "component_provider_schema")
+	const testDir = "component_provider_schema"
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		name          string
@@ -80,16 +73,15 @@ func testComponentProviderSchema(t *testing.T, path string) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			// Start the plugin binary.
 			cmd := exec.Command(path, "ignored")
 			cmd.Env = append(os.Environ(), test.env...)
 			stdout, err := cmd.StdoutPipe()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = cmd.Start()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer func() {
 				// Ignore the error as it may fail with access denied on Windows.
 				cmd.Process.Kill() //nolint:errcheck
@@ -98,7 +90,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			// Read the port from standard output.
 			reader := bufio.NewReader(stdout)
 			bytes, err := reader.ReadBytes('\n')
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			port := strings.TrimSpace(string(bytes))
 
 			// Create a connection to the server.
@@ -107,11 +99,11 @@ func testComponentProviderSchema(t *testing.T, path string) {
 				grpc.WithTransportCredentials(insecure.NewCredentials()),
 				rpcutil.GrpcChannelOptions(),
 			)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			client := pulumirpc.NewResourceProviderClient(conn)
 
 			// Call GetSchema and verify the results.
-			resp, err := client.GetSchema(context.Background(), &pulumirpc.GetSchemaRequest{Version: test.version})
+			resp, err := client.GetSchema(t.Context(), &pulumirpc.GetSchemaRequest{Version: test.version})
 			if test.expectedError != "" {
 				assert.ErrorContains(t, err, test.expectedError)
 			} else {
@@ -124,7 +116,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 // Test remote component inputs properly handle unknowns.
 func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_unknown"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -140,7 +132,6 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -163,7 +154,7 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 // Test methods properly handle unknowns.
 func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_methods_unknown"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 	tests := []struct {
 		componentDir string
 	}{
@@ -178,8 +169,6 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 		},
 	}
 	for _, test := range tests {
-		test := test
-
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -199,117 +188,10 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 	}
 }
 
-func runComponentSetup(t *testing.T, testDir string) {
-	ptesting.YarnInstallMutex.Lock()
-	defer ptesting.YarnInstallMutex.Unlock()
-
-	setupFilename, err := filepath.Abs("component_setup.sh")
-	require.NoError(t, err, "could not determine absolute path")
-	// Even for Windows, we want forward slashes as bash treats backslashes as escape sequences.
-	setupFilename = filepath.ToSlash(setupFilename)
-
-	synchronouslyDo(t, filepath.Join(testDir, ".lock"), 10*time.Minute, func() {
-		out := iotest.LogWriter(t)
-
-		cmd := exec.Command("bash", "-x", setupFilename)
-		cmd.Dir = testDir
-		cmd.Stdout = out
-		cmd.Stderr = out
-		err := cmd.Run()
-
-		// This runs in a separate goroutine, so don't use 'require'.
-		assert.NoError(t, err, "failed to run setup script")
-	})
-
-	// The function above runs in a separate goroutine
-	// so it can't halt test execution.
-	// Verify that it didn't fail separately
-	// and halt execution if it did.
-	require.False(t, t.Failed(), "component setup failed")
-}
-
-func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn func()) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	lockWait := make(chan struct{})
-	go func() {
-		mutex := fsutil.NewFileMutex(lockfile)
-
-		// ctx.Err will be non-nil when the context finishes
-		// either because it timed out or because it got canceled.
-		for ctx.Err() == nil {
-			if err := mutex.Lock(); err != nil {
-				time.Sleep(1 * time.Second)
-				continue
-			}
-
-			defer func() {
-				assert.NoError(t, mutex.Unlock())
-			}()
-			break
-		}
-
-		// Context may hav expired
-		// by the time we acquired the lock.
-		if ctx.Err() == nil {
-			fn()
-			close(lockWait)
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		t.Fatalf("timed out waiting for lock on %s", lockfile)
-	case <-lockWait:
-		// waited for fn, success.
-	}
-}
-
-// Verifies that if a file lock is already acquired,
-// synchronouslyDo is able to time out properly.
-func TestSynchronouslyDo_timeout(t *testing.T) {
-	t.Parallel()
-
-	path := filepath.Join(t.TempDir(), "foo")
-	mu := fsutil.NewFileMutex(path)
-	require.NoError(t, mu.Lock())
-	defer func() {
-		assert.NoError(t, mu.Unlock())
-	}()
-
-	fakeT := nonfatalT{T: t}
-	synchronouslyDo(&fakeT, path, 10*time.Millisecond, func() {
-		t.Errorf("timed-out operation should not be called")
-	})
-
-	assert.True(t, fakeT.fatal, "must have a fatal failure")
-	if assert.Len(t, fakeT.messages, 1) {
-		assert.Contains(t, fakeT.messages[0], "timed out waiting")
-	}
-}
-
-// nonfatalT wraps a testing.T to capture fatal errors.
-type nonfatalT struct {
-	*testing.T
-
-	mu       sync.Mutex
-	fatal    bool
-	messages []string
-}
-
-func (t *nonfatalT) Fatalf(msg string, args ...interface{}) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-
-	t.fatal = true
-	t.messages = append(t.messages, fmt.Sprintf(msg, args...))
-}
-
 // Test methods that create resources.
 func testConstructMethodsResources(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_methods_resources"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -325,7 +207,6 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -336,8 +217,8 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 				LocalProviders: localProviders,
 				Quick:          true,
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-					assert.NotNil(t, stackInfo.Deployment)
-					assert.Equal(t, 6, len(stackInfo.Deployment.Resources))
+					require.NotNil(t, stackInfo.Deployment)
+					require.Len(t, stackInfo.Deployment.Resources, 6)
 					var hasExpectedResource bool
 					var result string
 					for _, res := range stackInfo.Deployment.Resources {
@@ -345,7 +226,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 							hasExpectedResource = true
 							result = res.Outputs["result"].(string)
 							assert.Equal(t, float64(10), res.Inputs["length"])
-							assert.Equal(t, 10, len(result))
+							require.Len(t, result, 10)
 						}
 					}
 					assert.True(t, hasExpectedResource)
@@ -359,7 +240,7 @@ func testConstructMethodsResources(t *testing.T, lang string, dependencies ...st
 // Test failures returned from methods are observed.
 func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_methods_errors"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -375,7 +256,6 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			stderr := &bytes.Buffer{}
 			expectedError := "the failure reason (the failure property)"
@@ -402,7 +282,7 @@ func testConstructMethodsErrors(t *testing.T, lang string, dependencies ...strin
 // Tests methods work when there is an explicit provider for another provider set on the component.
 func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_methods_provider"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -418,13 +298,12 @@ func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...str
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProvider := integration.LocalDependency{
 				Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir),
 			}
 			testProvider := integration.LocalDependency{
-				Package: "testprovider", Path: filepath.Join("..", "testprovider"),
+				Package: "testprovider", Path: testutil.TestProviderDir(t),
 			}
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				Dir:            filepath.Join(testDir, lang),
@@ -442,7 +321,7 @@ func testConstructMethodsProvider(t *testing.T, lang string, dependencies ...str
 
 func testConstructOutputValues(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_output_values"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -458,7 +337,6 @@ func testConstructOutputValues(t *testing.T, lang string, dependencies ...string
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			localProviders := []integration.LocalDependency{
 				{Package: "testcomponent", Path: filepath.Join(testDir, test.componentDir)},
@@ -481,7 +359,7 @@ func assertOutputContainsEvent(t *testing.T, evt apitype.EngineEvent, output str
 	encoder := json.NewEncoder(&evtJSON)
 	encoder.SetEscapeHTML(false)
 	err := encoder.Encode(evt)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Contains(t, output, evtJSON.String())
 }
 
@@ -505,7 +383,6 @@ func printfTestValidation(t *testing.T, stack integration.RuntimeValidationStack
 
 func testConstructProviderExplicit(t *testing.T, lang string, dependencies []string) {
 	const testDir = "construct_component_provider_explicit"
-	runComponentSetup(t, testDir)
 
 	localProvider := integration.LocalDependency{
 		Package: "testcomponent", Path: filepath.Join(testDir, "testcomponent-go"),
@@ -523,69 +400,10 @@ func testConstructProviderExplicit(t *testing.T, lang string, dependencies []str
 	})
 }
 
-func testConstructComponentConfigureProviderCommonOptions() integration.ProgramTestOptions {
-	const testDir = "construct_component_configure_provider"
-	localProvider := integration.LocalDependency{
-		Package: "metaprovider", Path: filepath.Join(testDir, "testcomponent-go"),
-	}
-	return integration.ProgramTestOptions{
-		NoParallel: true,
-		Config: map[string]string{
-			"proxy": "FromEnv",
-		},
-		LocalProviders:           []integration.LocalDependency{localProvider},
-		Quick:                    false, // intentional, need to test preview here
-		AllowEmptyPreviewChanges: true,  // Pulumi will warn that provider has unknowns in its config
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.Contains(t, stackInfo.Outputs, "keyAlgo")
-			assert.Equal(t, "ECDSA", stackInfo.Outputs["keyAlgo"])
-			assert.Contains(t, stackInfo.Outputs, "keyAlgo2")
-			assert.Equal(t, "ECDSA", stackInfo.Outputs["keyAlgo2"])
-
-			var providerURNID string
-			for _, r := range stackInfo.Deployment.Resources {
-				if strings.Contains(string(r.URN), "PrivateKey") {
-					providerURNID = r.Provider
-				}
-			}
-			require.NotEmptyf(t, providerURNID, "Did not find the provider of PrivateKey resource")
-			var providerFromEnvSetting *bool
-			for _, r := range stackInfo.Deployment.Resources {
-				if fmt.Sprintf("%s::%s", r.URN, r.ID) == providerURNID {
-					providerFromEnvSetting = new(bool)
-
-					proxy, ok := r.Inputs["proxy"]
-					require.Truef(t, ok, "expected %q Inputs to contain 'proxy'", providerURNID)
-
-					proxyMap, ok := proxy.(map[string]any)
-					require.Truef(t, ok, "expected %q Inputs 'proxy' to be of type map[string]any", providerURNID)
-
-					fromEnv, ok := proxyMap["fromEnv"]
-					require.Truef(t, ok, "expected %q Inputs 'proxy' to contain 'fromEnv'", providerURNID)
-
-					fromEnvB, ok := fromEnv.(bool)
-					require.Truef(t, ok, "expected %q Inputs 'proxy.fromEnv' to have type bool", providerURNID)
-
-					*providerFromEnvSetting = fromEnvB
-				}
-			}
-			require.NotNilf(t, providerFromEnvSetting,
-				"Did not find the inputs of the provider PrivateKey was provisioned with")
-			require.Truef(t, *providerFromEnvSetting,
-				"Expected PrivateKey to be provisioned with a provider with fromEnv=true")
-
-			require.Equalf(t, float64(42), stackInfo.Outputs["meaningOfLife"],
-				"Expected meaningOfLife output to be set to the integer 42")
-			require.Equalf(t, float64(42), stackInfo.Outputs["meaningOfLife2"],
-				"Expected meaningOfLife2 output to be set to the integer 42")
-		},
-	}
-}
-
 // Test failures returned from construct.
 func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "construct_component_failures"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -601,7 +419,6 @@ func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			stderr := &bytes.Buffer{}
 			expectedError := `error: testcomponent:index:Component resource 'component' has a problem: failing for a reason
@@ -629,7 +446,7 @@ func testConstructFailures(t *testing.T, lang string, dependencies ...string) {
 // Test failures returned from call.
 func testCallFailures(t *testing.T, lang string, dependencies ...string) {
 	const testDir = "call_component_failures"
-	runComponentSetup(t, testDir)
+	integration.RunComponentSetup(t, testDir)
 
 	tests := []struct {
 		componentDir string
@@ -645,7 +462,6 @@ func testCallFailures(t *testing.T, lang string, dependencies ...string) {
 		},
 	}
 	for _, test := range tests {
-		test := test
 		t.Run(test.componentDir, func(t *testing.T) {
 			stderr := &bytes.Buffer{}
 			expectedError := `error: call to function 'testcomponent:index:Component/getMessage' failed:

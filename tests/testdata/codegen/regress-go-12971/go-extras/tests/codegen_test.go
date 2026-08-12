@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,11 +16,10 @@ package codegentest
 
 import (
 	"context"
-	"testing"
-	"time"
-
 	"regress-go-12971/example"
 	"regress-go-12971/example/config"
+	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -192,6 +191,9 @@ func TestEnvironmentDefaults(t *testing.T) {
 }
 
 type mockResourceMonitor struct {
+	// Actually corresponds to a "Call" in provider parlance, but must be named such for consistency with the test interface.
+	MethodCallF func(pulumi.MockCallArgs) (resource.PropertyMap, error)
+	// Actually corresponds to a "Invoke" in provider parlance, but must be named such for consistency with the test interface.
 	CallF        func(pulumi.MockCallArgs) (resource.PropertyMap, error)
 	NewResourceF func(pulumi.MockResourceArgs) (string, resource.PropertyMap, error)
 }
@@ -199,6 +201,13 @@ type mockResourceMonitor struct {
 func (m *mockResourceMonitor) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	if m.CallF != nil {
 		return m.CallF(args)
+	}
+	return args.Args, nil
+}
+
+func (m *mockResourceMonitor) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+	if m.MethodCallF != nil {
+		return m.MethodCallF(args)
 	}
 	return args.Args, nil
 }
@@ -226,7 +235,7 @@ func waitForOutput[T any](t testing.TB, o pulumi.Output) T {
 		return x
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	select {

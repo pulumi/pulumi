@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,12 +16,13 @@ package policy
 
 import (
 	"encoding/json"
+	"maps"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/spf13/cobra"
 )
 
@@ -36,8 +37,7 @@ func newPolicyEnableCmd() *cobra.Command {
 	args := policyEnableArgs{}
 
 	cmd := &cobra.Command{
-		Use:   "enable <org-name>/<policy-pack-name> <latest|version>",
-		Args:  cmdutil.ExactArgs(2),
+		Use:   "enable",
 		Short: "Enable a Policy Pack for a Pulumi organization",
 		Long: "Enable a Policy Pack for a Pulumi organization. " +
 			"Can specify latest to enable the latest version of the Policy Pack or a specific version number.",
@@ -74,6 +74,14 @@ func newPolicyEnableCmd() *cobra.Command {
 		},
 	}
 
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "policy-pack", Usage: "<org-name>/<policy-pack-name>"},
+			{Name: "version", Usage: "<latest|version>"},
+		},
+		Required: 2,
+	})
+
 	cmd.PersistentFlags().StringVar(
 		&args.policyGroup, "policy-group", "",
 		"The Policy Group for which the Policy Pack will be enabled; if not specified, the default Policy Group is used")
@@ -106,10 +114,8 @@ func loadPolicyConfigFromFile(file string) (map[string]*json.RawMessage, error) 
 // marshalAnalyzerPolicyConfig converts the type plugin.AnalyzerPolicyConfig to structure the data
 // in a format the way the API service is expecting.
 func marshalAnalyzerPolicyConfig(c plugin.AnalyzerPolicyConfig) (*json.RawMessage, error) {
-	m := make(map[string]interface{})
-	for k, v := range c.Properties {
-		m[k] = v
-	}
+	m := make(map[string]any)
+	maps.Copy(m, c.Properties)
 	if c.EnforcementLevel != "" {
 		m["enforcementLevel"] = c.EnforcementLevel
 	}

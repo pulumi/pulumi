@@ -1,0 +1,8 @@
+HasPlugin{PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {false, nil, nil}
+HasPlugin{PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {false}
+HasPluginGTE{PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {false, nil, nil}
+GetLatestVersion{ctx, PluginDescriptor{Name:"plugin-spec", Kind:"resource", PluginDownloadURL:"https://example.com/plugin-spec.tar.gz"}} -> {nil, nil}
+RunPackage{ctx, "/project", "$HOME/.pulumi/plugins/resource-plugin-spec/pulumi-resource-plugin-spec", ParameterizeArgs{Args:[1]{"paramB"}}} -> {invariantProvider{path:"$HOME/.pulumi/plugins/resource-plugin-spec", params:ParameterizeArgs{Args:[1]{"paramB"}}}, nil}
+GenerateLocalSDK{ctx, ProjectRuntimeInfo{name:"go"}, "/project", invariantProvider{path:"$HOME/.pulumi/plugins/resource-plugin-spec", params:ParameterizeArgs{Args:[1]{"paramB"}}}} -> {LinkablePackageDescriptor{Path:"$HOME/.pulumi/plugins/resource-plugin-spec/sdk-&plugin.ParameterizeArgs{Args:[]string{\"paramB\"}}"}, nil}
+LinkIntoProject{ctx, ProjectRuntimeInfo{name:"go"}, "/project", [1]{LinkablePackageDescriptor{Path:"$HOME/.pulumi/plugins/resource-plugin-spec/sdk-&plugin.ParameterizeArgs{Args:[]string{\"paramB\"}}"}}} -> {nil}

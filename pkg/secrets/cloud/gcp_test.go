@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ func createGCPKey(ctx context.Context, t *testing.T) string {
 
 	parent := "projects/pulumi-development/locations/global/keyRings/pulumi-testing"
 	client, err := kms.NewKeyManagementClient(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Build the request.
 	req := &kmspb.CreateCryptoKeyRequest{
@@ -47,23 +47,40 @@ func createGCPKey(ctx context.Context, t *testing.T) string {
 
 	// Call the API.
 	result, err := client.CreateCryptoKey(ctx, req)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	t.Cleanup(func() {
 		_, err := client.DestroyCryptoKeyVersion(ctx, &kmspb.DestroyCryptoKeyVersionRequest{
 			Name: result.Name + "/cryptoKeyVersions/1",
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		client.Close()
 	})
 	return result.Name
 }
 
-//nolint:paralleltest // mutates environment variables
-func TestGCPCloudManager(t *testing.T) {
+func skipIfNoCredentials(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping GCP integration test in short mode")
+	}
+
+	// In CI we always set GOOGLE_APPLICATION_CREDENTIALS to a filename, but that file might be
+	// empty if we have no credentials.  Check for that here.
 	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
 		t.Skip("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is not set")
 	}
-	ctx := context.Background()
+	st, err := os.Stat(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+	if err != nil {
+		t.Skipf("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is not set: %v", err)
+	}
+	if st.Size() == 0 {
+		t.Skip("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is set to an empty file")
+	}
+}
+
+//nolint:paralleltest // mutates environment variables
+func TestGCPCloudManager(t *testing.T) {
+	skipIfNoCredentials(t)
+	ctx := context.Background() //nolint:usetesting // ctx is used in t.Cleanup, which runs after t.Context is canceled
 	keyName := createGCPKey(ctx, t)
 	url := "gcpkms://" + keyName
 	testURL(ctx, t, url)
@@ -71,10 +88,8 @@ func TestGCPCloudManager(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPExistingKey(t *testing.T) {
-	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
-		t.Skip("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is not set")
-	}
-	ctx := context.Background()
+	skipIfNoCredentials(t)
+	ctx := t.Context()
 
 	url := "gcpkms://projects/pulumi-development/locations/global/keyRings/pulumi-testing/cryptoKeys/pulumi-ci-test-key"
 
@@ -99,10 +114,8 @@ func TestGCPExistingKey(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPExistingState(t *testing.T) {
-	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
-		t.Skip("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is not set")
-	}
-	ctx := context.Background()
+	skipIfNoCredentials(t)
+	ctx := t.Context()
 
 	//nolint:lll // this includes a base64 encoded key
 	cloudState := `{
@@ -127,9 +140,7 @@ func TestGCPExistingState(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestGCPKeyEditProjectStack(t *testing.T) {
-	if os.Getenv("GOOGLE_APPLICATION_CREDENTIALS") == "" {
-		t.Skip("Skipping test because GOOGLE_APPLICATION_CREDENTIALS is not set")
-	}
+	skipIfNoCredentials(t)
 	url := "gcpkms://projects/pulumi-development/locations/global/keyRings/pulumi-testing/cryptoKeys/pulumi-ci-test-key"
 
 	//nolint:lll // this is a base64 encoded key

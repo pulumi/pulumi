@@ -1,0 +1,7 @@
+{
+    "name": "provider",
+    "version": "0.0.1",
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    }
+}

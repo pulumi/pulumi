@@ -9,6 +9,22 @@
         }
     },
 
+    "features": {
+        // The base image (pulumi/pulumi) is on Debian "trixie", which doesn't ship the
+        // Moby packages this feature installs by default. Use Docker CE instead.
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {
+            "moby": false
+        },
+        "ghcr.io/devcontainers/features/common-utils:2": {
+            "installZsh": false,
+            "installOhMyZsh": false,
+            "upgradePackages": false,
+            "username": "automatic",
+            "userUid": "automatic",
+            "userGid": "automatic"
+        }
+    },
+
     "containerEnv": {
         "PULUMI_ACCESS_TOKEN": "${localEnv:PULUMI_ACCESS_TOKEN}",
         "PULUMI_TEST_ORG": "${localEnv:PULUMI_TEST_ORG}"

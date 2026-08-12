@@ -37,7 +37,7 @@
             "inputs": {
                 "properties": {
                     "__self__": {
-                        "$ref": "#/resources/pulumi:providers:xyz"
+                        "$ref": "#/provider"
                     }
                 },
                 "required": ["__self__"]

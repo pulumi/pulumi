@@ -1,4 +1,4 @@
-// Copyright 2018-2024, Pulumi Corporation.
+// Copyright 2018, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,17 +17,28 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/agentauth"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
@@ -39,15 +50,15 @@ import (
 // DisplayErrorMessage adds additional error handling specific to the Pulumi CLI. This
 // includes e.g. specific and more helpful messages in the case of decryption or snapshot
 // integrity errors.
-func DisplayErrorMessage(err error) {
-	err = processCmdErrors(err)
+func DisplayErrorMessage(ctx context.Context, err error, stderr io.Writer) {
+	err = processCmdErrors(ctx, err, stderr)
 	cmdutil.DisplayErrorMessage(err)
 }
 
 // Processes errors that may be returned from commands, providing a central
 // location to insert more human-friendly messages when certain errors occur, or
 // to perform other type-specific handling.
-func processCmdErrors(err error) error {
+func processCmdErrors(ctx context.Context, err error, stderr io.Writer) error {
 	// If no error occurred, we have nothing to do.
 	if err == nil {
 		return nil
@@ -61,11 +72,30 @@ func processCmdErrors(err error) error {
 		return err
 	}
 
+	// `pulumi api` errors have already had their structured envelope
+	// written to stderr by runWithEnvelope, so suppress the generic
+	// message print. ExitCodeFor still recovers the semantic exit code via
+	// errors.As.
+	var apiErr *cloud.APIError
+	if errors.As(err, &apiErr) && apiErr.Silent {
+		return result.BailError(err)
+	}
+
+	if isAuthRequiredError(err) {
+		if message := agentauth.AuthRequiredMessage(time.Now()); message != "" {
+			_, printErr := fmt.Fprint(stderr, message)
+			contract.IgnoreError(printErr)
+			return result.BailError(err)
+		}
+	} else {
+		agentauth.MaybePrintClaimWarning(ctx, stderr)
+	}
+
 	// Other type-specific error handling.
 	if de, ok := engine.AsDecryptError(err); ok {
 		printDecryptError(*de)
 		return nil
-	} else if sie, ok := deploy.AsSnapshotIntegrityError(err); ok {
+	} else if sie, ok := snapshot.AsSnapshotIntegrityError(err); ok {
 		printSnapshotIntegrityError(err, *sie)
 
 		// Having printed out a specific error, we don't want RunFunc to print out
@@ -76,6 +106,13 @@ func processCmdErrors(err error) error {
 
 	// In all other cases, return the unexpected error as-is for generic handling.
 	return err
+}
+
+func isAuthRequiredError(err error) bool {
+	var apiErr *apitype.ErrorResponse
+	return errors.Is(err, backenderr.LoginRequiredError{}) ||
+		errors.Is(err, httpstate.ErrUnauthorized) ||
+		errors.As(err, &apiErr) && apiErr.Code == http.StatusUnauthorized
 }
 
 // A type-specific handler for engine.DecryptErrors that prints out help text
@@ -100,31 +137,43 @@ func printDecryptError(e engine.DecryptError) {
 // Pulumi engine. This function is a type-specific handler for these errors that
 // prints out a panic-like banner with information about the error and how to
 // report it.
-func printSnapshotIntegrityError(err error, sie deploy.SnapshotIntegrityError) {
+func printSnapshotIntegrityError(err error, sie snapshot.SnapshotIntegrityError) {
 	var message strings.Builder
 	message.WriteString(`The Pulumi CLI encountered a snapshot integrity error. This is a bug!
 
-You can try to repair your snapshot as follows:
+`)
+
+	if sie.AutoRepairErr != nil {
+		fmt.Fprintf(&message, "The Pulumi CLI attempted to automatically repair this error but was unable to\n"+
+			"do so (%v). You can try to repair the snapshot by passing the `--disable-integrity-checking` flag."+
+			"This will disable integrity checking on many Pulumi commands. This will allow you to execute "+
+			"fine-grained repairs using e.g. `pulumi state delete`",
+			sie.AutoRepairErr)
+	} else {
+		message.WriteString(`You can try to repair your snapshot as follows:
 
 ` + "* Using the `pulumi state repair` command." + ` This is the recommended approach.
   Run ` + "`pulumi state repair --help`" + ` for more information.
 ` + "* Passing the `--disable-integrity-checking` flag." + ` This will disable integrity
   checking on many Pulumi commands. This is riskier, but may allow you to
   execute fine-grained repairs using e.g. ` + "`pulumi state delete`" + `.
+`)
+	}
 
+	message.WriteString(`
 ================================================================================
 We would appreciate a report: https://github.com/pulumi/pulumi/issues/
 `)
 
-	if sie.Op == deploy.SnapshotIntegrityRead && sie.Metadata == nil {
+	if sie.Op == snapshot.SnapshotIntegrityRead && sie.Metadata == nil {
 		message.WriteString(`
-NOTE: This error occurred while reading a snaphot. This error was introduced by
+NOTE: This error occurred while reading a snapshot. This error was introduced by
 a previous operation when it wrote the snapshot. If you have details about that
 operation, please include them in your report as well.
 `)
 	}
 
-	message.WriteString(fmt.Sprintf(`
+	fmt.Fprintf(&message, `
 Please provide all of the text below in your report.
 ================================================================================
 Go Version:        %s
@@ -134,46 +183,59 @@ Operating System:  %s`,
 		runtime.Version(),
 		runtime.Compiler,
 		runtime.GOARCH,
-		runtime.GOOS,
-	))
+		runtime.GOOS)
 
-	if sie.Op == deploy.SnapshotIntegrityRead && sie.Metadata != nil {
-		message.WriteString(fmt.Sprintf(`
+	if sie.Op == snapshot.SnapshotIntegrityRead && sie.Metadata != nil {
+		fmt.Fprintf(&message, `
 
 Write Version:     %s
 Write Command:     %s
+Write Env Vars:    %s
 Write Error:       %s
 
 Read Version:      %s
 Read Command:      %s
+Read Env Vars:     %s
 Read Error:        %s`,
 			sie.Metadata.Version,
 			sie.Metadata.Command,
+			formatEnvVars(sie.Metadata.EnvVars),
 			sie.Metadata.Error,
 			version.Version,
 			strings.Join(os.Args, " "),
-			err,
-		))
+			formatEnvVars(env.ConfiguredVariables()),
+			err)
 	} else {
-		message.WriteString(fmt.Sprintf(`
+		fmt.Fprintf(&message, `
 
 Pulumi Version:    %s
 Command:           %s
+Env Vars:          %s
 Error:             %s`,
 			version.Version,
 			strings.Join(os.Args, " "),
-			err,
-		))
+			formatEnvVars(env.ConfiguredVariables()),
+			err)
 	}
 
-	message.WriteString(fmt.Sprintf(`
+	fmt.Fprintf(&message, `
 
 Stack Trace:
 
 %s
 `,
-		string(sie.Stack),
-	))
+		string(sie.Stack))
 
 	cmdutil.Diag().Errorf(diag.RawMessage("" /*urn*/, message.String()))
+}
+
+func formatEnvVars(envVars map[string]string) string {
+	if len(envVars) == 0 {
+		return "(none)"
+	}
+	parts := make([]string, 0, len(envVars))
+	for k, v := range envVars {
+		parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+	}
+	return strings.Join(parts, ", ")
 }

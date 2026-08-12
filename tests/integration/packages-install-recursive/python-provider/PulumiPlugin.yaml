@@ -1,0 +1,7 @@
+name: python-provider
+runtime:
+  name: python
+  options:
+    toolchain: uv
+packages:
+  typescript-a: ../ts-provider-a

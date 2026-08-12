@@ -1,0 +1,3 @@
+<{%fg 14%}>> pkgA:m:typA: (read)
+<{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

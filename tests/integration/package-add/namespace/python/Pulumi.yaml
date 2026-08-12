@@ -1,0 +1,5 @@
+name: package-add-with-namespace-python
+runtime:
+  name: python
+  options:
+    toolchain: uv

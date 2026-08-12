@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,12 +42,13 @@ const (
 
 var providerSchema = pschema.PackageSpec{
 	Name:        "testprovider",
+	Version:     "0.0.1", // So that this provider can be installed without additional arguments
 	Description: "A test provider.",
 	DisplayName: "testprovider",
 
 	Config: pschema.ConfigSpec{},
 
-	Provider: pschema.ResourceSpec{
+	Provider: &pschema.ResourceSpec{
 		ObjectTypeSpec: pschema.ObjectTypeSpec{
 			Description: "The provider type for the testprovider package.",
 			Type:        "object",
@@ -95,12 +96,12 @@ func providerForURN(urn string) (testProvider, string, bool) {
 	return provider, ty, ok
 }
 
-//nolint:unused,deadcode
+//nolint:unused
 func main() {
 	if err := provider.Main(providerName, func(host *provider.HostClient) (rpc.ResourceProviderServer, error) {
 		return makeProvider(host, providerName, version)
 	}); err != nil {
-		cmdutil.ExitError(err.Error())
+		cmdutil.Exit(err)
 	}
 }
 
@@ -182,15 +183,6 @@ func (p *testproviderProvider) Invoke(_ context.Context, req *rpc.InvokeRequest)
 		}, nil
 	}
 	return nil, fmt.Errorf("Unknown Invoke token '%s'", tok)
-}
-
-// StreamInvoke dynamically executes a built-in function in the provider. The result is streamed
-// back as a series of messages.
-func (p *testproviderProvider) StreamInvoke(req *rpc.InvokeRequest,
-	server rpc.ResourceProvider_StreamInvokeServer,
-) error {
-	tok := req.GetTok()
-	return fmt.Errorf("Unknown StreamInvoke token '%s'", tok)
 }
 
 func (p *testproviderProvider) Call(_ context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {

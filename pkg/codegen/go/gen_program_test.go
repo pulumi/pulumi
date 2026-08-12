@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/hashicorp/hcl/v2"
@@ -32,42 +33,31 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
+	"github.com/zclconf/go-cty/cty"
 )
 
 var testdataPath = filepath.Join("..", "testing", "test", "testdata")
 
-func TestGenerateProgramVersionSelection(t *testing.T) {
-	t.Parallel()
-
-	rootDir, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	require.NoError(t, err)
-
-	test.GenerateGoProgramTest(
-		t,
-		rootDir,
-		func(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
-			// Prevent tests from interfering with each other
-			return GenerateProgramWithOptions(program, GenerateProgramOptions{ExternalCache: NewCache()})
-		},
-		GenerateProject,
-	)
-}
-
 func TestCollectImports(t *testing.T) {
 	t.Parallel()
 
-	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
 	g.collectImports(g.program)
 
-	var allImports []string
-	for _, group := range g.importer.ImportGroups() {
+	groups := g.importer.ImportGroups()
+	totalImports := 0
+	for _, group := range groups {
+		totalImports += len(group)
+	}
+	allImports := slice.Prealloc[string](totalImports)
+	for _, group := range groups {
 		allImports = append(allImports, group...)
 	}
 
 	assert.Equal(t, []string{
-		`"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/s3"`,
+		`"github.com/pulumi/pulumi-random/sdk/v4/go/random"`,
 	}, allImports)
 }
 
@@ -312,7 +302,6 @@ func TestFileImporter(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -368,7 +357,6 @@ func TestToIdentifier(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.give, func(t *testing.T) {
 			t.Parallel()
 
@@ -423,7 +411,6 @@ func TestSecondLastIndex(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -447,7 +434,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	program, diags, err := pcl.BindProgram(parser.Files, pcl.PluginHost(utils.NewHost(testdataPath)))
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewPluginLoader(utils.NewContext(testdataPath)))
 	if err != nil {
 		t.Fatalf("could not bind program: %v", err)
 	}
@@ -459,10 +446,11 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 		program:             program,
 		jsonTempSpiller:     &jsonSpiller{},
 		ternaryTempSpiller:  &tempSpiller{},
-		readDirTempSpiller:  &readDirSpiller{},
 		splatSpiller:        &splatSpiller{},
+		forSpiller:          &forSpiller{},
 		optionalSpiller:     &optionalSpiller{},
 		inlineInvokeSpiller: &inlineInvokeSpiller{},
+		callSpiller:         &callSpiller{},
 		scopeTraversalRoots: codegen.NewStringSet(),
 		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
 		importer:            newFileImporter(),
@@ -485,9 +473,50 @@ func parseAndBindProgram(t *testing.T,
 		t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 	}
 
-	options = append(options, pcl.PluginHost(utils.NewHost(testdataPath)))
+	return pcl.BindProgram(parser.Files, schema.NewPluginLoader(utils.NewContext(testdataPath)), options...)
+}
 
-	return pcl.BindProgram(parser.Files, options...)
+func TestPlainInvokeUsesPlainArgTypes(t *testing.T) {
+	t.Parallel()
+
+	source := `
+policy = invoke("infra:index:getPolicyDocument", {
+	statements = [{
+		sid = "1"
+	}]
+})`
+
+	program, diags, err := parseAndBindProgram(t, source, "plain_invoke.pp")
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	files, diags, err := GenerateProgram(program)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	assert.Equal(t, `package main
+
+import (
+	"example.com/pulumi-infra/sdk/go/infra"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+func main() {
+	pulumi.Run(func(ctx *pulumi.Context) error {
+		_, err := infra.GetPolicyDocument(ctx, &infra.GetPolicyDocumentArgs{
+			Statements: []infra.GetPolicyDocumentStatement{
+				{
+					Sid: pulumi.StringRef("1"),
+				},
+			},
+		}, nil)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
+`, string(files["main.go"]))
 }
 
 func TestGenerateProjectDoesNotPanicWhenMissingVersion(t *testing.T) {
@@ -504,7 +533,7 @@ resource main "auto-deploy:index:AutoDeployer" {
 	require.False(t, diags.HasErrors())
 
 	files, diags, err := GenerateProjectFiles(workspace.Project{}, program, nil)
-	assert.NotNil(t, files, "Files were generated")
+	require.NotNil(t, files, "Files were generated")
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors())
 }
@@ -545,4 +574,109 @@ func TestDeferredOutputCastTypeParameter(t *testing.T) {
 	assert.Equal(t, "pulumi.BoolMapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.BoolType)))
 	assert.Equal(t, "pulumi.Float64MapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.NumberType)))
 	assert.Equal(t, "pulumi.MapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.DynamicType)))
+}
+
+func TestReplacementTriggerInputConversion(t *testing.T) {
+	t.Parallel()
+
+	g := &generator{
+		jsonTempSpiller:     &jsonSpiller{},
+		ternaryTempSpiller:  &tempSpiller{},
+		splatSpiller:        &splatSpiller{},
+		forSpiller:          &forSpiller{},
+		optionalSpiller:     &optionalSpiller{},
+		inlineInvokeSpiller: &inlineInvokeSpiller{},
+		callSpiller:         &callSpiller{},
+		scopeTraversalRoots: codegen.NewStringSet(),
+		arrayHelpers:        make(map[string]*promptToInputArrayHelper),
+		importer:            newFileImporter(),
+	}
+	g.Formatter = format.NewFormatter(g)
+
+	tests := []struct {
+		name           string
+		expr           model.Expression
+		expectedOutput string
+		description    string
+	}{
+		{
+			name: "Input types",
+			expr: &model.RelativeTraversalExpression{
+				Source: &model.ScopeTraversalExpression{
+					RootName:  "other",
+					Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "other"}},
+					Parts:     []model.Traversable{&pcl.Resource{}},
+				},
+				Traversal: hcl.Traversal{hcl.TraverseAttr{Name: "value"}},
+				Parts:     []model.Traversable{&model.OutputType{ElementType: model.StringType}},
+			},
+			expectedOutput: "pulumi.ReplacementTrigger(other.Value)",
+			description:    "output values should not be wrapped",
+		},
+		{
+			name: "Known types",
+			expr: &model.LiteralValueExpression{
+				Value: cty.StringVal("test"),
+			},
+			expectedOutput: "pulumi.ReplacementTrigger(pulumi.String(\"test\"))",
+			description:    "string literals should be wrapped with pulumi.String",
+		},
+		{
+			name: "Integer literals",
+			expr: &model.LiteralValueExpression{
+				Value: cty.NumberIntVal(42),
+			},
+			expectedOutput: "pulumi.ReplacementTrigger(pulumi.Int(42))",
+			description:    "integer literals should be wrapped with pulumi.Int",
+		},
+		{
+			name: "Number literals",
+			expr: &model.LiteralValueExpression{
+				Value: cty.NumberFloatVal(42.5),
+			},
+			expectedOutput: "pulumi.ReplacementTrigger(pulumi.Float64(42.5))",
+			description:    "number literals should be wrapped with pulumi.Float64",
+		},
+		{
+			name: "Bool literals",
+			expr: &model.LiteralValueExpression{
+				Value: cty.BoolVal(true),
+			},
+			expectedOutput: "pulumi.ReplacementTrigger(pulumi.Bool(true))",
+			description:    "bool literals should be wrapped with pulumi.Bool",
+		},
+		{
+			name: "Unknown argument type",
+			expr: &model.ScopeTraversalExpression{
+				RootName:  "dynamicVar",
+				Traversal: hcl.Traversal{hcl.TraverseRoot{Name: "dynamicVar"}},
+				Parts:     []model.Traversable{&model.Variable{Name: "dynamicVar", VariableType: model.DynamicType}},
+			},
+			expectedOutput: "pulumi.ReplacementTrigger(pulumi.Any(",
+			description:    "dynamic types should be wrapped with pulumi.Any",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			block := &model.Block{
+				Type: "options",
+				Body: &model.Body{
+					Items: []model.BodyItem{
+						&model.Attribute{
+							Name:  "ReplacementTrigger",
+							Value: tt.expr,
+						},
+					},
+				},
+			}
+
+			var buf bytes.Buffer
+
+			g.genResourceOptions(&buf, block)
+			assert.Contains(t, buf.String(), tt.expectedOutput)
+		})
+	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 //go:build !all
 // +build !all
 
@@ -9,14 +9,14 @@ import (
 	"fmt"
 	"reflect"
 
+	"google.golang.org/protobuf/types/known/emptypb"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
-	pbempty "github.com/golang/protobuf/ptypes/empty"
 )
 
 type Resource struct {
@@ -24,7 +24,7 @@ type Resource struct {
 }
 
 type resourceArgs struct {
-	Echo interface{} `pulumi:"echo"`
+	Echo any `pulumi:"echo"`
 }
 
 type ResourceArgs struct {
@@ -70,7 +70,7 @@ func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
 		return nil, err
 	}
 
-	component.Id = pulumi.All(res.ID(), args.Id).ApplyT(func(resolvedArgs []interface{}) (string, error) {
+	component.Id = pulumi.All(res.ID(), args.Id).ApplyT(func(resolvedArgs []any) (string, error) {
 		resourceId := resolvedArgs[0].(pulumi.ID)
 		argsId := resolvedArgs[1].(string)
 		return fmt.Sprintf("%s-%s", resourceId, argsId), nil
@@ -95,7 +95,7 @@ func main() {
 		return makeProvider(host, providerName, version)
 	})
 	if err != nil {
-		cmdutil.ExitError(err.Error())
+		cmdutil.Exit(err)
 	}
 }
 
@@ -181,12 +181,6 @@ func (p *Provider) Invoke(ctx context.Context,
 	return nil, fmt.Errorf("Unknown Invoke token '%s'", req.GetTok())
 }
 
-func (p *Provider) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer,
-) error {
-	return fmt.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
-}
-
 func (p *Provider) Call(ctx context.Context,
 	req *pulumirpc.CallRequest,
 ) (*pulumirpc.CallResponse, error) {
@@ -218,18 +212,18 @@ func (p *Provider) Update(ctx context.Context,
 	}, nil
 }
 
-func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*pbempty.Empty, error) {
-	return &pbempty.Empty{}, nil
+func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
-func (p *Provider) GetPluginInfo(context.Context, *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+func (p *Provider) GetPluginInfo(context.Context, *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
 	return &pulumirpc.PluginInfo{
 		Version: p.version,
 	}, nil
 }
 
-func (p *Provider) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*pbempty.Empty, error) {
-	return &pbempty.Empty{}, nil
+func (p *Provider) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 func (p *Provider) GetSchema(ctx context.Context,
@@ -238,8 +232,8 @@ func (p *Provider) GetSchema(ctx context.Context,
 	return &pulumirpc.GetSchemaResponse{}, nil
 }
 
-func (p *Provider) Cancel(context.Context, *pbempty.Empty) (*pbempty.Empty, error) {
-	return &pbempty.Empty{}, nil
+func (p *Provider) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 func (p *Provider) GetMapping(context.Context, *pulumirpc.GetMappingRequest) (*pulumirpc.GetMappingResponse, error) {

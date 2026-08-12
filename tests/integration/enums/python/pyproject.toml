@@ -1,0 +1,4 @@
+[project]
+name = "enum_outputs_python"
+version = "0.0.0"
+dependencies = []

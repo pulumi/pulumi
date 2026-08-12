@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import { Stack } from "./stack";
 
 import * as engrpc from "../proto/engine_grpc_pb";
 import * as resrpc from "../proto/resource_grpc_pb";
+import type { Resource } from "../resource";
 import type { ResourceModule, ResourcePackage } from "./rpc";
 
 const nodeEnvKeys = {
@@ -26,7 +27,6 @@ const nodeEnvKeys = {
     rootDirectory: "PULUMI_NODEJS_ROOT_DIRECTORY",
     stack: "PULUMI_NODEJS_STACK",
     dryRun: "PULUMI_NODEJS_DRY_RUN",
-    queryMode: "PULUMI_NODEJS_QUERY_MODE",
     parallel: "PULUMI_NODEJS_PARALLEL",
     monitorAddr: "PULUMI_NODEJS_MONITOR",
     engineAddr: "PULUMI_NODEJS_ENGINE",
@@ -42,11 +42,6 @@ const nodeEnvKeys = {
 const pulumiEnvKeys = {
     legacyApply: "PULUMI_ENABLE_LEGACY_APPLY",
 };
-
-/**
- * @internal
- */
-export const asyncLocalStorage = new AsyncLocalStorage<Store>();
 
 /**
  * @internal
@@ -86,11 +81,6 @@ export interface WriteableOptions {
      * True if we're in testing mode (allows execution without the CLI).
      */
     testModeEnabled?: boolean;
-
-    /**
-     * True if we're in query mode (does not allow resource registration).
-     */
-    queryMode?: boolean;
 
     /**
      * True if we will resolve missing outputs to inputs during preview.
@@ -136,6 +126,7 @@ export interface Store {
     stackResource?: Stack;
     leakCandidates: Set<Promise<any>>;
     logErrorCount: number;
+    terminated: boolean;
 
     /**
      * Tells us if the resource monitor we are connected to is able to support
@@ -166,6 +157,12 @@ export interface Store {
 
     /**
      * Tells us if the resource monitor we are connected to is able to support
+     * the `replaceWith` resource option across its RPC interface.
+     */
+    supportsReplaceWith: boolean;
+
+    /**
+     * Tells us if the resource monitor we are connected to is able to support
      * alias specs across its RPC interface. When it does, we marshal aliases in
      * a special way.
      */
@@ -192,6 +189,24 @@ export interface Store {
     supportsParameterization: boolean;
 
     /**
+     * Tells us if the resource monitor we are connected to is able to support
+     * resource hooks.
+     */
+    supportsResourceHooks: boolean;
+
+    /**
+     * Tells us if the resource monitor we are connected to is able to support
+     * error hooks.
+     */
+    supportsErrorHooks: boolean;
+
+    /**
+     * Tells us if the resource monitor we are connected to gates invokes on
+     * the created-ness of their declared dependencies.
+     */
+    supportsInvokeDependsOn: boolean;
+
+    /**
      * The callback service running for this deployment. This registers
      * callbacks and forwards them to the engine.
      */
@@ -208,9 +223,76 @@ export interface Store {
     resourceModules: Map<string, ResourceModule[]>;
 
     /**
+     * Caches package references returned by `RegisterPackage` for
+     * parameterized providers. Scoped to the deployment so concurrent inline
+     * programs each register against their own engine and receive distinct
+     * refs.
+     */
+    packageRefs: Map<string, Promise<string>>;
+
+    pendingResourceRegistrations: Map<Resource, PendingResourceRegistration>;
+
+    deferredOutputSources: WeakMap<object, object>;
+
+    /**
      * Within an unknown conditional.
      */
     conditional: boolean;
+}
+
+/**
+ * @internal
+ */
+export type PendingRegistrationPhase = "dependencies" | "inputs" | "parent" | "provider" | "dependency-urns";
+
+/**
+ * @internal
+ */
+export interface PendingResourceRegistration {
+    res: Resource;
+    parent: Resource | undefined;
+    label: string;
+    type?: string;
+    name?: string;
+    phase: PendingRegistrationPhase;
+    inputProperty?: string;
+    awaitingOutput?: unknown;
+    fail?: (err: Error) => void;
+}
+
+/**
+ * @internal
+ */
+export function getDeferredOutputSources(): WeakMap<object, object> {
+    const store = getStore();
+    if (store.deferredOutputSources === undefined) {
+        // deferredOutputSources may be undefined if the Store was created by an older
+        // copy of the SDK runtime that didn't define this field.
+        store.deferredOutputSources = new WeakMap();
+    }
+    return store.deferredOutputSources;
+}
+
+/**
+ * @internal
+ */
+export function failPendingRegistration(res: Resource, err: Error): void {
+    const pending = getPendingResourceRegistrations();
+    pending.get(res)?.fail?.(err);
+    pending.delete(res);
+}
+
+/**
+ * @internal
+ */
+export function getPendingResourceRegistrations(): Map<Resource, PendingResourceRegistration> {
+    const store = getStore();
+    if (store.pendingResourceRegistrations === undefined) {
+        // pendingResourceRegistrations may be undefined if the Store was created by an older
+        // copy of the SDK runtime that didn't define this field.
+        store.pendingResourceRegistrations = new Map();
+    }
+    return store.pendingResourceRegistrations;
 }
 
 /**
@@ -226,7 +308,6 @@ export class LocalStore implements Store {
             rootDirectory: process.env[nodeEnvKeys.rootDirectory] || "rootDirectory",
             stack: process.env[nodeEnvKeys.stack] || "stack",
             dryRun: process.env[nodeEnvKeys.dryRun] === "true",
-            queryMode: process.env[nodeEnvKeys.queryMode] === "true",
             monitorAddr: process.env[nodeEnvKeys.monitorAddr],
             engineAddr: process.env[nodeEnvKeys.engineAddr],
             syncDir: process.env[nodeEnvKeys.syncDir],
@@ -250,16 +331,26 @@ export class LocalStore implements Store {
 
     logErrorCount = 0;
 
+    /* Tracks whether the monitor was terminated while we were waiting for an operation to complete */
+    terminated = false;
+
     supportsSecrets = false;
     supportsResourceReferences = false;
     supportsOutputValues = false;
     supportsDeletedWith = false;
+    supportsReplaceWith = false;
     supportsAliasSpecs = false;
     supportsTransforms = false;
     supportsInvokeTransforms = false;
     supportsParameterization = false;
+    supportsResourceHooks = false;
+    supportsErrorHooks = false;
+    supportsInvokeDependsOn = false;
     resourcePackages = new Map<string, ResourcePackage[]>();
     resourceModules = new Map<string, ResourceModule[]>();
+    packageRefs = new Map<string, Promise<string>>();
+    pendingResourceRegistrations = new Map<Resource, PendingResourceRegistration>();
+    deferredOutputSources = new WeakMap<object, object>();
 }
 
 /**
@@ -303,6 +394,21 @@ export function getResourceModules(): Map<string, ResourceModule[]> {
 }
 
 /**
+ * Get the package reference cache for the current stack deployment.
+ *
+ * @internal
+ */
+export function getPackageRefs(): Map<string, Promise<string>> {
+    const store = getStore();
+    if (store.packageRefs === undefined) {
+        // packageRefs may be undefined if the Store was created by an older
+        // copy of the SDK runtime that didn't define this field.
+        store.packageRefs = new Map<string, Promise<string>>();
+    }
+    return store.packageRefs;
+}
+
+/**
  * @internal
  */
 export function setStackResource(newStackResource?: Stack) {
@@ -313,8 +419,27 @@ export function setStackResource(newStackResource?: Stack) {
 
 declare global {
     /* eslint-disable no-var */
+
+    // globalStore & asyncLocalStorage need to be in the global namespace to work with
+    // multiple versions of the runtime module, as we might see in pre-compiled local
+    // SDKs.
     var globalStore: Store;
+    var asyncLocalStorage: AsyncLocalStorage<Store>;
     var stackResource: Stack | undefined;
+}
+
+// Ensure there is a global.asyncLocalStorage if this is the first copy of `runtime` to
+// load.
+if (global.asyncLocalStorage === undefined) {
+    global.asyncLocalStorage = new AsyncLocalStorage<Store>();
+}
+
+/**
+ * @internal
+ */
+export function withLocalStorage<R>(callback: (...args1: any[]) => R, ...args: any[]): R {
+    const store = new LocalStore();
+    return global.asyncLocalStorage.run(store, callback, ...args);
 }
 
 /**
@@ -335,7 +460,7 @@ export function runConditional<R>(callback: () => R): R {
  * @internal
  */
 export function getLocalStore(): Store | undefined {
-    return asyncLocalStorage.getStore();
+    return global.asyncLocalStorage.getStore();
 }
 
 /**

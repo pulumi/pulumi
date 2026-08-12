@@ -1,4 +1,4 @@
-# Copyright 2016-2023, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,9 @@ import json
 import os
 import tempfile
 from datetime import datetime
-from typing import TYPE_CHECKING, Callable, List, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
+from collections.abc import Callable
+from collections.abc import Mapping
 
 import yaml
 from semver import VersionInfo
@@ -31,6 +33,7 @@ from ._project_settings import ProjectSettings
 from ._stack import _DATETIME_FORMAT, Stack
 from ._stack_settings import StackSettings
 from ._tag import TagMap
+from .interface import API
 from ._workspace import (
     Deployment,
     PluginInfo,
@@ -46,6 +49,36 @@ if TYPE_CHECKING:
     from pulumi.automation._remote_workspace import RemoteGitAuth
 
 _setting_extensions = [".yaml", ".yml", ".json"]
+
+
+class DockerImageCredentials:
+    """
+    Credentials for the remote execution Docker image.
+    """
+
+    username: str
+    password: str
+
+    def __init__(self, username: str, password: str):
+        self.username = username
+        self.password = password
+
+
+class ExecutorImage:
+    """
+    Information about the remote execution image.
+    """
+
+    image: Optional[str]
+    credentials: Optional[DockerImageCredentials]
+
+    def __init__(
+        self,
+        image: Optional[str] = None,
+        credentials: Optional[DockerImageCredentials] = None,
+    ):
+        self.image = image
+        self.credentials = credentials
 
 
 class Secret(str):
@@ -100,8 +133,9 @@ class LocalWorkspace(Workspace):
 
     _remote: bool = False
     _remote_env_vars: Optional[Mapping[str, Union[str, Secret]]]
-    _remote_pre_run_commands: Optional[List[str]]
+    _remote_pre_run_commands: Optional[list[str]]
     _remote_skip_install_dependencies: Optional[bool]
+    _remote_executor_image: Optional[ExecutorImage]
     _remote_inherit_settings: Optional[bool]
     _remote_git_url: Optional[str]
     _remote_git_project_path: Optional[str]
@@ -131,6 +165,7 @@ class LocalWorkspace(Workspace):
         self.pulumi_command = pulumi_command or PulumiCommand(
             skip_version_check=self._version_check_opt_out()
         )
+        self.cli_api = API(self.pulumi_command)
 
         if project_settings:
             self.save_project_settings(project_settings)
@@ -178,7 +213,7 @@ class LocalWorkspace(Workspace):
             path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{ext}")
             if not os.path.exists(path):
                 continue
-            with open(path, "r", encoding="utf-8") as file:
+            with open(path, encoding="utf-8") as file:
                 settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
                 return StackSettings._deserialize(settings)
         raise FileNotFoundError(
@@ -202,7 +237,7 @@ class LocalWorkspace(Workspace):
             else:
                 yaml.dump(settings._serialize(), stream=file)
 
-    def serialize_args_for_op(self, stack_name: str) -> List[str]:
+    def serialize_args_for_op(self, stack_name: str) -> list[str]:
         # Not used by LocalWorkspace
         return []
 
@@ -228,7 +263,7 @@ class LocalWorkspace(Workspace):
                 "upgrade to at least version 3.95.0."
             )
 
-    def list_environments(self, stack_name: str) -> List[str]:
+    def list_environments(self, stack_name: str) -> list[str]:
         # Assume an old version. Doesn't really matter what this is as long as it's pre-3.99.
         ver = VersionInfo(3)
         if self.pulumi_command.version is not None:
@@ -327,6 +362,10 @@ class LocalWorkspace(Workspace):
 
         self._run_pulumi_cmd_sync(args)
 
+    def set_all_config_json(self, stack_name: str, config_json: str) -> None:
+        args = ["config", "set-all", "--stack", stack_name, "--json", config_json]
+        self._run_pulumi_cmd_sync(args)
+
     def remove_config(self, stack_name: str, key: str, *, path: bool = False) -> None:
         args = ["config", "rm", key, "--stack", stack_name]
         if path:
@@ -334,7 +373,7 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(args)
 
     def remove_all_config(
-        self, stack_name: str, keys: List[str], *, path: bool = False
+        self, stack_name: str, keys: list[str], *, path: bool = False
     ) -> None:
         args = ["config", "rm-all", "--stack", stack_name]
         if path:
@@ -399,6 +438,26 @@ class LocalWorkspace(Workspace):
         result = self._run_pulumi_cmd_sync(["whoami"])
         return WhoAmIResult(user=result.stdout.strip())
 
+    def org_get_default(self) -> str:
+        result = self.cli_api.org_get_default(**self._base_kwargs())
+        return result.stdout.strip()
+
+    def org_set_default(self, org_name: str) -> None:
+        self.cli_api.org_set_default(org_name, **self._base_kwargs())
+
+    def _base_kwargs(self) -> dict:
+        """
+        Build the shared low-level CLI kwargs for workspace-level operations,
+        mirroring the environment setup done by ``_run_pulumi_cmd_sync``.
+        """
+        envs: dict[str, str] = {}
+        if self.pulumi_home is not None:
+            envs["PULUMI_HOME"] = self.pulumi_home
+        if self._remote:
+            envs["PULUMI_EXPERIMENTAL"] = "true"
+        envs = {**envs, **self.env_vars}
+        return {"cwd": self.work_dir, "additional_env": envs}
+
     def stack(self) -> Optional[StackSummary]:
         stacks = self.list_stacks()
         for stack in stacks:
@@ -417,7 +476,7 @@ class LocalWorkspace(Workspace):
     def select_stack(self, stack_name: str) -> None:
         # If this is a remote workspace, we don't want to actually select the stack (which would modify global state);
         # but we will ensure the stack exists by calling `pulumi stack`.
-        args: List[str] = ["stack"]
+        args: list[str] = ["stack"]
         if not self._remote:
             args.append("select")
         args.append("--stack")
@@ -438,13 +497,13 @@ class LocalWorkspace(Workspace):
         args.append(stack_name)
         self._run_pulumi_cmd_sync(args)
 
-    def list_stacks(self, include_all: Optional[bool] = None) -> List[StackSummary]:
+    def list_stacks(self, include_all: Optional[bool] = None) -> list[StackSummary]:
         args = ["stack", "ls", "--json"]
         if include_all:
             args.append("--all")
         result = self._run_pulumi_cmd_sync(args)
         json_list = json.loads(result.stdout)
-        stack_list: List[StackSummary] = []
+        stack_list: list[StackSummary] = []
         for stack_json in json_list:
             stack = StackSummary(
                 name=stack_json["name"],
@@ -509,6 +568,72 @@ class LocalWorkspace(Workspace):
             "upgrade to at least version 3.91.0."
         )
 
+    def new(
+        self,
+        template_or_url: Optional[str] = None,
+        *,
+        ai: Optional[str] = None,
+        config: Optional[list[str]] = None,
+        config_path: bool = False,
+        description: Optional[str] = None,
+        dir: Optional[str] = None,
+        force: bool = False,
+        generate_only: bool = False,
+        language: Optional[str] = None,
+        list_templates: bool = False,
+        name: Optional[str] = None,
+        offline: bool = False,
+        remote_stack_config: bool = False,
+        runtime_options: Optional[list[str]] = None,
+        secrets_provider: Optional[str] = None,
+        stack: Optional[str] = None,
+        template_mode: bool = False,
+        on_output: Optional[OnOutput] = None,
+    ) -> CommandResult:
+        """Creates a new Pulumi project from a template.
+
+        :param template_or_url: The template name or URL to use.
+        :param ai: Prompt to use for Pulumi AI.
+        :param config: Config values to save (list of "key=value" strings).
+        :param config_path: Config keys contain a path to a property in a map or list to set.
+        :param description: The project description.
+        :param dir: The location to place the generated project.
+        :param force: Forces content to be generated even if it would change existing files.
+        :param generate_only: Generate the project only; do not create a stack, save config, or install dependencies.
+        :param language: Language to use for Pulumi AI.
+        :param list_templates: List locally installed templates and exit.
+        :param name: The project name.
+        :param offline: Use locally cached templates without making any network requests.
+        :param remote_stack_config: Store stack configuration remotely.
+        :param runtime_options: Additional options for the language runtime (list of "key=value" strings).
+        :param secrets_provider: The type of the provider that should be used to encrypt and decrypt secrets.
+        :param stack: The stack name; either an existing stack or stack to create.
+        :param template_mode: Run in template mode, which will skip prompting for AI or Template functionality.
+        :param on_output: A callback that receives the standard output of the command.
+        :returns: CommandResult
+        """
+        return self.cli_api.new(
+            template_or_url,
+            ai=ai,
+            config=config,
+            config_path=config_path,
+            description=description,
+            dir=dir,
+            force=force,
+            generate_only=generate_only,
+            language=language,
+            list_templates=list_templates,
+            name=name,
+            offline=offline,
+            remote_stack_config=remote_stack_config,
+            runtime_options=runtime_options,
+            secrets_provider=secrets_provider,
+            stack=stack,
+            template_mode=template_mode,
+            on_output=on_output,
+            **self._base_kwargs(),
+        )
+
     def install_plugin(self, name: str, version: str, kind: str = "resource") -> None:
         self._run_pulumi_cmd_sync(["plugin", "install", kind, name, version])
 
@@ -531,10 +656,10 @@ class LocalWorkspace(Workspace):
         args.append("--yes")
         self._run_pulumi_cmd_sync(args)
 
-    def list_plugins(self) -> List[PluginInfo]:
+    def list_plugins(self) -> list[PluginInfo]:
         result = self._run_pulumi_cmd_sync(["plugin", "ls", "--json"])
         json_list = json.loads(result.stdout)
-        plugin_list: List[PluginInfo] = []
+        plugin_list: list[PluginInfo] = []
         for plugin_json in json_list:
             plugin = PluginInfo(
                 name=plugin_json["name"],
@@ -605,16 +730,19 @@ class LocalWorkspace(Workspace):
         return "--remote-inherit-settings" in help_string
 
     def _run_pulumi_cmd_sync(
-        self, args: List[str], on_output: Optional[OnOutput] = None
+        self,
+        args: list[str],
+        on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
     ) -> CommandResult:
         envs = {"PULUMI_HOME": self.pulumi_home} if self.pulumi_home else {}
         if self._remote:
             envs["PULUMI_EXPERIMENTAL"] = "true"
         envs = {**envs, **self.env_vars}
-        return self.pulumi_command.run(args, self.work_dir, envs, on_output)
+        return self.pulumi_command.run(args, self.work_dir, envs, on_output, on_error)
 
-    def _remote_args(self) -> List[str]:
-        args: List[str] = []
+    def _remote_args(self) -> list[str]:
+        args: list[str] = []
         if not self._remote:
             return args
 
@@ -667,6 +795,22 @@ class LocalWorkspace(Workspace):
 
         if self._remote_skip_install_dependencies:
             args.append("--remote-skip-install-dependencies")
+
+        if self._remote_executor_image:
+            if self._remote_executor_image.image:
+                args.append(
+                    "--remote-executor-image=" + self._remote_executor_image.image
+                )
+
+            if self._remote_executor_image.credentials:
+                args.append(
+                    "--remote-executor-image-username="
+                    + self._remote_executor_image.credentials.username
+                )
+                args.append(
+                    "--remote-executor-image-password="
+                    + self._remote_executor_image.credentials.password
+                )
 
         if self._remote_inherit_settings:
             args.append("--remote-inherit-settings")
@@ -726,7 +870,7 @@ def create_stack(
     :param program: The inline program - required for inline programs.
     :param work_dir: The directory for a CLI-driven stack - required for local programs.
     :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
-           variables to pass through to every command.
+        variables to pass through to every command.
     :return: Stack
     """
     args = locals()
@@ -786,7 +930,7 @@ def select_stack(
     :param program: The inline program - required for inline programs.
     :param work_dir: The directory for a CLI-driven stack - required for local programs.
     :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
-           variables to pass through to every command.
+        variables to pass through to every command.
     :return: Stack
     """
     args = locals()
@@ -845,7 +989,7 @@ def create_or_select_stack(
     :param program: The inline program - required for inline programs.
     :param work_dir: The directory for a CLI-driven stack - required for local programs.
     :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
-           variables to pass through to every command.
+        variables to pass through to every command.
     :return: Stack
     """
     args = locals()
@@ -931,7 +1075,7 @@ def _load_project_settings(work_dir: str) -> ProjectSettings:
         project_path = os.path.join(work_dir, f"Pulumi{ext}")
         if not os.path.exists(project_path):
             continue
-        with open(project_path, "r", encoding="utf-8") as file:
+        with open(project_path, encoding="utf-8") as file:
             settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
             return ProjectSettings.from_dict(settings)
     raise FileNotFoundError(

@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,15 +17,19 @@ package lifecycletest
 import (
 	"testing"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -40,7 +44,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, _ *deploytest.ResourceMonitor) error {
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -52,7 +56,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 	// Create an old snapshot with two copies of a resource that share a URN: one that is pending deletion and one
 	// that is not.
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:    resURN.Type(),
 				URN:     resURN,
@@ -83,7 +87,7 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 			deletedID0, deletedID1 := false, false
 			for _, entry := range entries {
 				// Ignore non-terminal steps and steps that affect the injected default provider.
-				if entry.Kind != JournalEntrySuccess || entry.Step.URN() != resURN ||
+				if entry.Kind != TestJournalEntrySuccess || entry.Step.URN() != resURN ||
 					(entry.Step.Op() != deploy.OpDelete && entry.Step.Op() != deploy.OpDeleteReplaced) {
 					continue
 				}
@@ -117,7 +121,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 		}),
 	}
 
-	hostF := deploytest.NewPluginHostF(nil, nil, nil, loaders...)
+	hostF := deploytest.NewPluginHostF(nil, nil, nil, nil, nil, loaders...)
 
 	p := &lt.TestPlan{
 		// Skip display tests because different ordering makes the colouring different.
@@ -129,7 +133,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 	// Create an old snapshot with two copies of a resource that share a URN: one that is pending deletion and one
 	// that is not.
 	old := &deploy.Snapshot{
-		Resources: []*resource.State{
+		Resources: []*pkgresource.State{
 			{
 				Type:    resURN.Type(),
 				URN:     resURN,
@@ -160,7 +164,7 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 			deletedID0, deletedID1 := false, false
 			for _, entry := range entries {
 				// Ignore non-terminal steps and steps that affect the injected default provider.
-				if entry.Kind != JournalEntrySuccess || entry.Step.URN() != resURN ||
+				if entry.Kind != TestJournalEntrySuccess || entry.Step.URN() != resURN ||
 					(entry.Step.Op() != deploy.OpDelete && entry.Step.Op() != deploy.OpDeleteReplaced) {
 					continue
 				}
@@ -183,4 +187,59 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 		},
 	}}
 	p.Run(t, old)
+}
+
+func TestDestroyWithUntargetedPendingDelete(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	hostF := deploytest.NewPluginHostF(nil, nil, nil, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:     t,
+			HostF: hostF,
+			// Skip display tests because different ordering makes the colouring different.
+			SkipDisplayTests: true,
+			UpdateOptions: engine.UpdateOptions{
+				Targets: deploy.NewUrnTargetsFromUrns(
+					[]resource.URN{"urn:pulumi:test::test::pkgA:m:typA::resA"}),
+			},
+		},
+	}
+
+	resAURN := p.NewURN("pkgA:m:typA", "resA", "")
+	resBURN := p.NewURN("pkgA:m:typA", "resB", "")
+
+	old := &deploy.Snapshot{
+		Resources: []*pkgresource.State{
+			{
+				Type:    resAURN.Type(),
+				URN:     resAURN,
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
+			},
+			{
+				Type:    resBURN.Type(),
+				URN:     resBURN,
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
+				Delete:  true,
+			},
+		},
+	}
+
+	p.Steps = []lt.TestStep{{
+		Op: Destroy,
+	}}
+	snap := p.Run(t, old)
+	// ResB was not targeted, so it should remain in the snapshot.
+	require.Len(t, snap.Resources, 1)
+	require.Equal(t, resBURN, snap.Resources[0].URN)
+	require.Equal(t, true, snap.Resources[0].Delete)
 }

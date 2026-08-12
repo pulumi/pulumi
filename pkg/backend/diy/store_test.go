@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package diy
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -103,7 +102,6 @@ func TestProjectReferenceStore_ParseReference(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -140,7 +138,6 @@ func TestLegacyReferenceStore_ParseReference_errors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -202,7 +199,6 @@ func TestProjectReferenceStore_ParseReference_errors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -248,13 +244,21 @@ func TestLegacyReferenceStore_ListReferences(t *testing.T) {
 			want: []tokens.QName{"foo"},
 		},
 		{
+			desc: "zstd",
+			files: []string{
+				".pulumi/stacks/foo.json.zst",
+			},
+			want: []tokens.QName{"foo"},
+		},
+		{
 			desc: "multiple",
 			files: []string{
 				".pulumi/stacks/foo.json",
 				".pulumi/stacks/bar.json.gz",
+				".pulumi/stacks/qux.json.zst",
 				".pulumi/stacks/baz.json",
 			},
-			want: []tokens.QName{"bar", "baz", "foo"},
+			want: []tokens.QName{"bar", "baz", "foo", "qux"},
 		},
 		{
 			desc: "extraneous directories",
@@ -267,14 +271,13 @@ func TestLegacyReferenceStore_ListReferences(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
 			bucket := memblob.OpenBucket(nil)
 			store := newLegacyReferenceStore(bucket)
 
-			ctx := context.Background()
+			ctx := t.Context()
 			for _, f := range tt.files {
 				require.NoError(t, bucket.WriteAll(ctx, f, []byte{}, nil))
 			}
@@ -331,18 +334,28 @@ func TestProjectReferenceStore_List(t *testing.T) {
 			projects: []tokens.Name{"foo"},
 		},
 		{
+			desc: "zstd",
+			files: []string{
+				".pulumi/stacks/foo/bar.json.zst",
+			},
+			stacks:   []tokens.QName{"organization/foo/bar"},
+			projects: []tokens.Name{"foo"},
+		},
+		{
 			desc: "multiple",
 			files: []string{
 				".pulumi/stacks/a/foo.json",
 				".pulumi/stacks/b/bar.json.gz",
+				".pulumi/stacks/d/qux.json.zst",
 				".pulumi/stacks/c/baz.json",
 			},
 			stacks: []tokens.QName{
 				"organization/a/foo",
 				"organization/b/bar",
 				"organization/c/baz",
+				"organization/d/qux",
 			},
-			projects: []tokens.Name{"a", "b", "c"},
+			projects: []tokens.Name{"a", "b", "c", "d"},
 		},
 		{
 			desc: "extraneous files and directories",
@@ -358,7 +371,6 @@ func TestProjectReferenceStore_List(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -367,7 +379,7 @@ func TestProjectReferenceStore_List(t *testing.T) {
 				return &workspace.Project{Name: "test"}
 			})
 
-			ctx := context.Background()
+			ctx := t.Context()
 			for _, f := range tt.files {
 				require.NoError(t, bucket.WriteAll(ctx, f, []byte{}, nil))
 			}
@@ -449,7 +461,6 @@ func TestProjectReferenceStore_ProjectExists(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -458,13 +469,13 @@ func TestProjectReferenceStore_ProjectExists(t *testing.T) {
 				return &workspace.Project{Name: "test"}
 			})
 
-			ctx := context.Background()
+			ctx := t.Context()
 			for _, f := range tt.files {
 				require.NoError(t, bucket.WriteAll(ctx, f, []byte{}, nil))
 			}
 
 			exist, err := store.ProjectExists(ctx, tt.projectName)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tt.exist, exist)
 		})
 	}

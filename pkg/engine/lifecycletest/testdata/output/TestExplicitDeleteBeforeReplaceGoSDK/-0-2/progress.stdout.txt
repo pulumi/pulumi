@@ -1,0 +1,18 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test-test running 
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA provA <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 9%}>--<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 9%}>deleting original<{%reset%}> 
+ <{%fg 9%}>--<{%reset%}> pkgA:m:typA resA <{%fg 9%}>deleted original<{%reset%}> 
+ <{%bold%}><{%fg 13%}>+-<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 13%}>replacing<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%fg 13%}>+-<{%reset%}> pkgA:m:typA resA <{%fg 13%}>replaced<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 10%}>++<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%fg 10%}>++<{%reset%}> pkgA:m:typA resA <{%fg 10%}>created replacement<{%reset%}> [diff: <{%fg 3%}>~foo<{%reset%}><{%reset%}>]
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test-test <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-1 replaced<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

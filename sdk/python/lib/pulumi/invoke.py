@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,15 +14,13 @@
 import copy
 from typing import (
     Any,
-    Awaitable,
-    Callable,
-    List,
     Optional,
-    Sequence,
     TYPE_CHECKING,
     Union,
     cast,
 )
+from collections.abc import Callable
+from collections.abc import Awaitable, Sequence
 
 if TYPE_CHECKING:
     from .output import Inputs, Input
@@ -238,7 +236,7 @@ class InvokeOutputOptions(InvokeOptions):
 
         return dest
 
-    def _depends_on_list(self) -> "Input[List[Input[Resource]]]":
+    def _depends_on_list(self) -> "Input[list[Input[Resource]]]":
         if self.depends_on is None:
             return []
 

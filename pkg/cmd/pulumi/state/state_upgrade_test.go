@@ -1,4 +1,4 @@
-// Copyright 2023-2025, Pulumi Corporation.
+// Copyright 2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -56,12 +58,11 @@ func TestStateUpgradeCommand_parseArgsErrors(t *testing.T) {
 		{
 			desc:    "unexpected argument",
 			give:    []string{"arg"},
-			wantErr: `unknown command "arg" for "upgrade"`,
+			wantErr: `accepts 0 arg(s), received 1`,
 		},
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			t.Parallel()
 
@@ -90,7 +91,7 @@ func TestStateUpgradeCommand_Run_upgrade(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -120,7 +121,7 @@ func TestStateUpgradeCommand_Run_upgrade_yes_flag(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -148,7 +149,7 @@ func TestStateUpgradeCommand_Run_upgradeRejected(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -162,6 +163,77 @@ func TestStateUpgradeCommand_Run_upgradeRejected(t *testing.T) {
 	require.NoError(t, err)
 }
 
+//nolint:paralleltest // uses process-wide working directory via t.Chdir.
+func TestStateUpgradeCommand_Run_respectsProjectBackendURL(t *testing.T) {
+	t.Setenv("PULUMI_BACKEND_URL", "")
+
+	tests := []struct {
+		name       string
+		projectDir string
+		workingDir string
+	}{
+		{
+			name:       "pulumi yaml in current directory",
+			projectDir: "project",
+			workingDir: "project",
+		},
+		{
+			name:       "pulumi yaml in parent directory",
+			projectDir: "project",
+			workingDir: filepath.Join("project", "sub", "dir"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+
+			projDir := filepath.Join(root, tt.projectDir)
+			require.NoError(t, os.MkdirAll(projDir, 0o755))
+
+			wantURL := "s3://test-state-upgrade-backend"
+			projectFile := filepath.Join(projDir, "Pulumi.yaml")
+			projectContents := strings.Join([]string{
+				"name: test-project",
+				"runtime: yaml",
+				"backend:",
+				"  url: " + wantURL,
+				"",
+			}, "\n")
+			require.NoError(t, os.WriteFile(projectFile, []byte(projectContents), 0o600))
+
+			cwd := filepath.Join(root, tt.workingDir)
+			require.NoError(t, os.MkdirAll(cwd, 0o755))
+			t.Chdir(cwd)
+
+			var gotURL string
+			lm := &cmdBackend.MockLoginManager{
+				LoginF: func(
+					_ context.Context,
+					_ pkgWorkspace.Context,
+					_ diag.Sink,
+					url string,
+					_ *workspace.Project,
+					_ bool,
+					_ bool,
+					_ colors.Colorization,
+				) (backend.Backend, error) {
+					gotURL = url
+					return &backend.MockBackend{}, nil
+				},
+			}
+
+			cmd := newStateUpgradeCommand(pkgWorkspace.Instance, lm)
+			cmd.SetOut(io.Discard)
+			cmd.SetArgs([]string{})
+			err := cmd.Execute()
+			require.NoError(t, err)
+
+			assert.Equal(t, wantURL, gotURL)
+		})
+	}
+}
+
 func TestStateUpgradeCommand_Run_unsupportedBackend(t *testing.T) {
 	t.Parallel()
 
@@ -171,7 +243,7 @@ func TestStateUpgradeCommand_Run_unsupportedBackend(t *testing.T) {
 	be := &backend.MockBackend{}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -194,7 +266,7 @@ func TestStateUpgradeCmd_Run_backendError(t *testing.T) {
 	ws := &pkgWorkspace.MockContext{}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, colors.Colorization,
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
 		) (backend.Backend, error) {
 			return nil, giveErr
 		},
@@ -248,7 +320,7 @@ func TestStateUpgradeProjectNameWidget(t *testing.T) {
 	)
 	require.NoError(t, err, "creating console")
 	defer func() {
-		assert.NoError(t, console.Close(), "close console")
+		require.NoError(t, console.Close(), "close console")
 	}()
 
 	expect := func(t *testing.T, s string) {
@@ -283,12 +355,12 @@ func TestStateUpgradeProjectNameWidget(t *testing.T) {
 			Stdout: console.Tty(),
 			Stderr: iotest.LogWriterPrefixed(t, "[stderr] "),
 		}).Prompt(stacks, projects)
-		assert.NoError(t, err, "prompt failed")
+		require.NoError(t, err, "prompt failed")
 		assert.Equal(t, []tokens.Name{"foo-project", "", "baz-project"}, projects)
 
 		// We need to close the TTY after we're done here
 		// so that ExpectEOF unblocks.
-		assert.NoError(t, console.Tty().Close(), "close tty")
+		require.NoError(t, console.Tty().Close(), "close tty")
 	}()
 	defer func() {
 		select {
@@ -335,7 +407,7 @@ func TestStateUpgradeProjectNameWidget(t *testing.T) {
 	// ExpectEOF blocks until the console reaches EOF on its input.
 	// This will happen when the widget exits and closes the TTY.
 	_, err = console.ExpectEOF()
-	assert.NoError(t, err, "expect EOF")
+	require.NoError(t, err, "expect EOF")
 }
 
 func TestStateUpgradeProjectNameWidget_noStacks(t *testing.T) {
@@ -348,8 +420,8 @@ func TestStateUpgradeProjectNameWidget_noStacks(t *testing.T) {
 	ptty, tty, err := pty.Open()
 	require.NoError(t, err, "creating pseudo-terminal")
 	defer func() {
-		assert.NoError(t, ptty.Close())
-		assert.NoError(t, tty.Close())
+		require.NoError(t, ptty.Close())
+		require.NoError(t, tty.Close())
 	}()
 
 	err = (&stateUpgradeProjectNameWidget{

@@ -17,18 +17,19 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  GOLANGCI_LINT_VERSION: v1.64.2
+  # Must match the `version:` field in .custom-gcl.yml.
+  GOLANGCI_LINT_VERSION: v2.12.2
 
 jobs:
   golangci:
     name: Lint Go
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           check-latest: true
@@ -41,47 +42,39 @@ jobs:
       # The action doesn't have an install-only mode,
       # so we'll ask it to print its help output instead.
       - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: ./.github/actions/retry
         with:
-          version: ${{ env.GOLANGCI_LINT_VERSION }}
-          args: --help
+          action: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9
+          with: |
+            version: ${{ env.GOLANGCI_LINT_VERSION }}
+            args: --help
 
       - name: Run golangci-lint
-        # Print GitHub Actions-friendly output so that errors get marked
-        # in the pull request.
-        run: make lint_golang GOLANGCI_LINT_ARGS=--out-format=colored-line-number
-
+        run: make lint_golang
   tidy:
     name: go mod tidy
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           check-latest: true
       - name: Run go mod tidy
         run: make tidy
-      - name: Fail if go mod not tidy
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "::error go.mod not tidy"
-            echo "::error Please run 'make tidy'"
-            exit 1
-          fi
 
   gen:
     name: Generate Go SDK
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           check-latest: true
@@ -97,42 +90,55 @@ jobs:
 
   protobuf-lint:
     name: Lint Protobufs
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
+      - uses: ./.github/actions/retry
+        env:
+          MISE_NPM_SHELL_OUT: "true"
+        with:
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
+            cache_key_prefix: mise-npm-shell-out-v0
       - name: Check Protobufs
-        run: |
-          make check_proto
+        run: make check_proto
 
   sdk-lint:
     name: Lint SDKs
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
+      - name: Configure dependency cooldown
+        uses: ./.github/actions/dependency-cooldown
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           check-latest: true
       - name: Set up uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           cache-dependency-glob: sdk/python/uv.lock
       - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ fromJson(inputs.version-set).python }}
       - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
+          cache: npm
+          cache-dependency-path: sdk/nodejs/package-lock.json
+      - name: Install npm
+        # npm added min-release-age-exclude in 11.17.0. Use a compatible npm 11 version so the
+        # cooldown and first-party exceptions work across every Node.js version in the matrix.
+        run: npm install -g npm@^11.17.0
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet
@@ -143,9 +149,11 @@ jobs:
       - name: Update path
         run: |
           echo "$RUNNER_TEMP/opt/pulumi/bin" >> "$GITHUB_PATH"
-      - uses: actions/checkout@v4
+      - uses: ./.github/actions/retry
         with:
-          ref: ${{ inputs.ref }}
+          action: actions/checkout@v6
+          with: |
+            ref: ${{ inputs.ref }}
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname "$(pwd)")" >> "$GITHUB_ENV"
@@ -161,15 +169,62 @@ jobs:
 
   actionlint:
     name: Lint GHA
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           ref: ${{ inputs.ref }}
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ fromJson(inputs.version-set).go }}
           check-latest: true
       - run: |
           make lint_actions
+
+  changelog:
+    name: Lint changelog entries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set up Go
+        uses: ./.github/actions/retry
+        with:
+          action: actions/setup-go@v6
+          with: |
+            go-version: ${{ fromJson(inputs.version-set).go }}
+            check-latest: true
+          attempt_limit: 3
+          attempt_delay: 5000
+      - uses: ./.github/actions/retry
+        with:
+          action: jdx/mise-action@v2
+          with: |
+            experimental: true
+      - run: make lint_changelog
+
+  pulumi-json:
+    name: Lint pulumi.json
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
+          cache: npm
+          cache-dependency-path: sdk/nodejs/package-lock.json
+      - name: Ensure Node # We need to install Node.js deps so that biome is available
+        run: |
+          cd sdk/nodejs && make ensure
+      - run: |
+          make lint_pulumi_json

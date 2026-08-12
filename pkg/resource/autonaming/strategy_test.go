@@ -4,19 +4,20 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package autonaming
 
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
@@ -27,26 +28,26 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 
 	tests := []struct {
 		name                    string
-		options                 globalAutonaming
+		options                 Global
 		wantOptions             *plugin.AutonamingOptions
 		wantDeleteBeforeReplace bool
 		wantErrMsg              string
 	}{
 		{
 			name:        "no config returns no options",
-			options:     globalAutonaming{},
+			options:     Global{},
 			wantOptions: nil,
 		},
 		{
 			name: "default config returns no options",
-			options: globalAutonaming{
-				Default: &defaultAutonamingConfig,
+			options: Global{
+				Default: defaultAutonamingConfig,
 			},
 			wantOptions: nil,
 		},
 		{
 			name: "verbatim config enforces logical name",
-			options: globalAutonaming{
+			options: Global{
 				Default: &verbatimAutonaming{},
 			},
 			wantOptions: &plugin.AutonamingOptions{
@@ -58,9 +59,9 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 		},
 		{
 			name: "verbatim config on provider enforces logical name",
-			options: globalAutonaming{
-				Default: &defaultAutonamingConfig,
-				Providers: map[string]providerAutonaming{
+			options: Global{
+				Default: defaultAutonamingConfig,
+				Providers: map[string]Provider{
 					"aws": {
 						Default: &verbatimAutonaming{},
 					},
@@ -75,11 +76,11 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 		},
 		{
 			name: "verbatim config on resource enforces logical name",
-			options: globalAutonaming{
-				Default: &defaultAutonamingConfig,
-				Providers: map[string]providerAutonaming{
+			options: Global{
+				Default: defaultAutonamingConfig,
+				Providers: map[string]Provider{
 					"aws": {
-						Default: &defaultAutonamingConfig,
+						Default: defaultAutonamingConfig,
 						Resources: map[string]Autonamer{
 							"aws:s3/bucket:Bucket": &verbatimAutonaming{},
 						},
@@ -95,7 +96,7 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 		},
 		{
 			name: "disabled config",
-			options: globalAutonaming{
+			options: Global{
 				Default: &disabledAutonaming{},
 			},
 			wantOptions: &plugin.AutonamingOptions{
@@ -106,9 +107,9 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 		},
 		{
 			name: "disabled config on provider",
-			options: globalAutonaming{
-				Default: &defaultAutonamingConfig,
-				Providers: map[string]providerAutonaming{
+			options: Global{
+				Default: defaultAutonamingConfig,
+				Providers: map[string]Provider{
 					"aws": {
 						Default: &disabledAutonaming{},
 					},
@@ -122,9 +123,9 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 		},
 		{
 			name: "disabled config on resource",
-			options: globalAutonaming{
+			options: Global{
 				Default: &verbatimAutonaming{},
-				Providers: map[string]providerAutonaming{
+				Providers: map[string]Provider{
 					"aws": {
 						Default: &verbatimAutonaming{},
 						Resources: map[string]Autonamer{
@@ -141,11 +142,11 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 		},
 		{
 			name: "provider-specific config overrides default",
-			options: globalAutonaming{
-				Default: &defaultAutonamingConfig,
-				Providers: map[string]providerAutonaming{
+			options: Global{
+				Default: defaultAutonamingConfig,
+				Providers: map[string]Provider{
 					"aws": {
-						Default: &patternAutonaming{
+						Default: &Pattern{
 							Pattern: "aws-${name}",
 							Enforce: false,
 						},
@@ -161,16 +162,16 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 		},
 		{
 			name: "resource-specific config overrides provider default",
-			options: globalAutonaming{
-				Default: &defaultAutonamingConfig,
-				Providers: map[string]providerAutonaming{
+			options: Global{
+				Default: defaultAutonamingConfig,
+				Providers: map[string]Provider{
 					"aws": {
-						Default: &patternAutonaming{
+						Default: &Pattern{
 							Pattern: "aws-${name}",
 							Enforce: false,
 						},
 						Resources: map[string]Autonamer{
-							"aws:s3/bucket:Bucket": &patternAutonaming{
+							"aws:s3/bucket:Bucket": &Pattern{
 								Pattern: "bucket-${name}",
 								Enforce: true,
 							},
@@ -187,21 +188,21 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 		},
 		{
 			name: "invalid resource type returns error",
-			options: globalAutonaming{
-				Default: &defaultAutonamingConfig,
+			options: Global{
+				Default: defaultAutonamingConfig,
 			},
 			wantErrMsg: "invalid resource type format: invalid:type",
 		},
 		{
 			name: "unrelated provider and resource configs are ignored",
-			options: globalAutonaming{
-				Default: &defaultAutonamingConfig,
-				Providers: map[string]providerAutonaming{
+			options: Global{
+				Default: defaultAutonamingConfig,
+				Providers: map[string]Provider{
 					"azure": {
 						Default: &disabledAutonaming{},
 					},
 					"aws": {
-						Default: &defaultAutonamingConfig,
+						Default: defaultAutonamingConfig,
 						Resources: map[string]Autonamer{
 							"aws:s3/object:Object": &disabledAutonaming{},
 						},
@@ -213,9 +214,9 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 		},
 		{
 			name: "global config is used if provider does not define a config other than specific resource",
-			options: globalAutonaming{
+			options: Global{
 				Default: &verbatimAutonaming{},
-				Providers: map[string]providerAutonaming{
+				Providers: map[string]Provider{
 					"aws": {
 						Resources: map[string]Autonamer{
 							"aws:s3/object:Object": &disabledAutonaming{},
@@ -233,7 +234,6 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -241,6 +241,59 @@ func TestGlobalAutonaming_AutonamingForResource(t *testing.T) {
 			got, deleteBeforeReplace := tt.options.AutonamingForResource(urn, nil)
 			assert.Equal(t, tt.wantDeleteBeforeReplace, deleteBeforeReplace)
 			assert.Equal(t, tt.wantOptions, got)
+		})
+	}
+}
+
+func TestGenerateName(t *testing.T) {
+	t.Parallel()
+	urn := urn.New("mystack", "myproject", "", "aws:s3/bucket:Bucket", "myresource")
+	randomSeed := []byte("test seed")
+
+	tests := []struct {
+		name          string
+		pattern       string
+		want          string
+		wantHasRandom bool
+	}{
+		{
+			name:          "hex generation",
+			pattern:       "${name}-${hex(4)}",
+			want:          "myresource-f93c",
+			wantHasRandom: true,
+		},
+		{
+			name:          "alphanum generation",
+			pattern:       "${name}-${alphanum(5)}",
+			want:          "myresource-3ufv0",
+			wantHasRandom: true,
+		},
+		{
+			name:          "string generation",
+			pattern:       "${name}-${string(6)}",
+			want:          "myresource-xgtfme",
+			wantHasRandom: true,
+		},
+		{
+			name:          "num generation",
+			pattern:       "${num(7)}_${name}",
+			want:          "5657624_myresource",
+			wantHasRandom: true,
+		},
+		{
+			name:          "uuid generation",
+			pattern:       "${uuid}",
+			want:          "f93c359b-82a2-9def-ec84-776cd822c95a",
+			wantHasRandom: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, hasRandom := generateName(tt.pattern, urn, randomSeed)
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.wantHasRandom, hasRandom)
 		})
 	}
 }

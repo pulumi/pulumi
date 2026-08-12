@@ -1,0 +1,6 @@
+[project]
+name = "python-plugin"
+version = "0.0.0"
+dependencies = [
+    "pulumi>=3.159.0,<4.0.0",
+]

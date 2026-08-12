@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -111,7 +111,7 @@ func captureToMap(r *regexp.Regexp, s string) map[string]string {
 	return capMap
 }
 
-func mustFprintf(w io.Writer, format string, a ...interface{}) {
+func mustFprintf(w io.Writer, format string, a ...any) {
 	_, err := fmt.Fprintf(w, format, a...)
 	contract.AssertNoErrorf(err, "failed to write")
 }

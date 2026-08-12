@@ -8,12 +8,12 @@
         "build": "tsc"
     },
     "optionalDependencies": {
-        "typescript": "^2.5.3"
+        "typescript": "3.9.10"
     },
     "peerDependencies": {
-        "pulumi": "latest"
+        "@pulumi/pulumi": "latest"
     },
     "dependencies": {
-        "@types/node": "^8.0.0"
+        "@types/node": "8.10.66"
     }
 }

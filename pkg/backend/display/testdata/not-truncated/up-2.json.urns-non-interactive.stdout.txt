@@ -1,0 +1,17 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>link<{%reset%}>
+
+<{%reset%}>Configuration:<{%reset%}>
+    aws:region: us-west-2
+
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev running 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:dev::eks::aws:iam/role:Role::eks-role <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-service-policy <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:dev::eks::aws:iam/rolePolicyAttachment:RolePolicyAttachment::eks-rpa-cluster-policy <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:dev::eks::aws:ec2/securityGroup:SecurityGroup::eks-sg <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:dev::eks::aws:eks/cluster:Cluster::eks-cluster <{%bold%}><{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:dev::eks::pulumi:pulumi:Stack::eks-dev <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    6 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

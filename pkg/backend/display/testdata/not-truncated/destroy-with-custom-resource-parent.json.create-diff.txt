@@ -1,0 +1,9 @@
+Configuration:
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:dev::myproject::pulumi:pulumi:Stack::myproject-dev]
+- aws:s3/bucketObject:BucketObject: (delete)
+    [id=myobject-id]
+    [urn=urn:pulumi:dev::myproject::aws:s3/bucketObject:BucketObject::myobject]
+    - aws:s3/bucket:Bucket: (delete)
+        [id=mybucket-id]
+        [urn=urn:pulumi:dev::myproject::aws:s3/bucket:Bucket::mybucket]

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -28,6 +28,10 @@ type PublishOperation struct {
 	PlugCtx    *plugin.Context
 	PolicyPack *workspace.PolicyPackProject
 	Scopes     CancellationScopeSource
+
+	// Metadata contains optional data about the environment performing the publish operation,
+	// e.g. the current source code control commit information.
+	Metadata map[string]string
 }
 
 // PolicyPackOperation is used to make various operations against a Policy Pack.

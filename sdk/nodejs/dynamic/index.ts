@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -105,6 +105,12 @@ export interface ReadResult<Outputs = any> {
      * The current property state read from the live environment.
      */
     readonly props?: Outputs;
+    /**
+     * The input properties to use for subsequent diffs. If not provided, inputs will remain unchanged.
+     * This is useful when a refresh operation detects drift and wants to update the inputs to match
+     * the current outputs, ensuring subsequent diffs compare against the refreshed state.
+     */
+    readonly inputs?: Outputs;
 }
 
 /**

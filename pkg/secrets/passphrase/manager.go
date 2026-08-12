@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -183,8 +183,9 @@ func NewPassphraseSecretsManager(phrase string) (string, secrets.Manager, error)
 		return "", nil, fmt.Errorf("marshalling state: %w", err)
 	}
 
+	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	sm := &localSecretsManager{
-		crypter: crypter,
+		crypter: cachedCrypter,
 		state:   jsonState,
 	}
 	return state, sm, nil
@@ -209,8 +210,9 @@ func GetPassphraseSecretsManager(phrase string, state string) (secrets.Manager, 
 		return nil, fmt.Errorf("marshalling state: %w", err)
 	}
 
+	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
 	sm := &localSecretsManager{
-		crypter: crypter,
+		crypter: cachedCrypter,
 		state:   jsonState,
 	}
 	setCachedSecretsManager(state, sm)

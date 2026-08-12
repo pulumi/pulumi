@@ -1,0 +1,5 @@
+name: l2-provider-config-enum
+runtime:
+  name: nodejs
+  options:
+    typescript: false

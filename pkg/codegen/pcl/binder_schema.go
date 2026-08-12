@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -147,7 +147,10 @@ func (c *PackageCache) getPackageSchema(pkg PackageInfo) (*packageSchema, bool) 
 // loadPackageSchema loads the schema for a given package by loading the corresponding provider and calling its
 // GetSchema method.
 // If a version is passed in, the cache will be bypassed and the package will be reloaded.
-func (c *PackageCache) loadPackageSchema(loader schema.Loader, name, version string) (*packageSchema, error) {
+func (c *PackageCache) loadPackageSchema(
+	ctx context.Context, loader schema.Loader,
+	name, version, pluginDownloadURL string,
+) (*packageSchema, error) {
 	pkgInfo := PackageInfo{
 		name:    name,
 		version: version,
@@ -157,11 +160,22 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name, version str
 	}
 
 	var versionSemver *semver.Version
-	if v, err := semver.Make(version); err == nil {
+	if version != "" {
+		v, err := semver.Parse(version)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"package %q version %q is not valid semver: %w",
+				name, version, err,
+			)
+		}
 		versionSemver = &v
 	}
 
-	pkg, err := schema.LoadPackageReference(loader, name, versionSemver)
+	pkg, err := schema.LoadPackageReferenceV2(ctx, loader, &schema.PackageDescriptor{
+		Name:        name,
+		Version:     versionSemver,
+		DownloadURL: pluginDownloadURL,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -177,6 +191,7 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name, version str
 }
 
 func (c *PackageCache) loadPackageSchemaFromDescriptor(
+	ctx context.Context,
 	loader schema.Loader,
 	descriptor *schema.PackageDescriptor,
 ) (*packageSchema, error) {
@@ -196,7 +211,7 @@ func (c *PackageCache) loadPackageSchemaFromDescriptor(
 		return s, nil
 	}
 
-	pkg, err := schema.LoadPackageReferenceV2(context.TODO(), loader, descriptor)
+	pkg, err := schema.LoadPackageReferenceV2(ctx, loader, descriptor)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +235,7 @@ func canonicalizeToken(tok string, pkg schema.PackageReference) string {
 // getPkgOpts gets the package options from an unbound resource node.
 func (b *binder) getPkgOpts(node *Resource) packageOpts {
 	node.VariableType = model.NewObjectType(map[string]model.Type{
-		"id":  model.NewOutputType(model.StringType),
+		"id":  model.NewOutputType(model.IDType),
 		"urn": model.NewOutputType(model.StringType),
 	})
 	var rangeKey, rangeValue model.Type
@@ -269,20 +284,77 @@ func (b *binder) getPkgOpts(node *Resource) packageOpts {
 	return pkgOpts
 }
 
+func (b *binder) getReadPkgOpts(node *ReadResource) packageOpts {
+	node.VariableType = model.NewObjectType(map[string]model.Type{
+		"id":  model.NewOutputType(model.StringType),
+		"urn": model.NewOutputType(model.StringType),
+	})
+	var rangeKey, rangeValue model.Type
+	for _, block := range node.syntax.Body.Blocks {
+		if block.Type == "options" {
+			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
+				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
+				typ := model.ResolveOutputs(expr.Type())
+				strict := !b.options.skipRangeTypecheck
+				rk, rv, _ := model.GetCollectionTypes(typ, rng.Range(), strict)
+				rangeKey, rangeValue = rk, rv
+			}
+		}
+	}
+
+	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
+	block, _ := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
+
+	var options *model.Block
+	for _, item := range block.Body.Items {
+		if item, ok := item.(*model.Block); ok && item.Type == "options" {
+			options = item
+			break
+		}
+	}
+
+	pkgOpts := packageOpts{}
+	if options != nil {
+		for _, item := range options.Body.Items {
+			switch item := item.(type) {
+			case *model.Attribute:
+				switch item.Name {
+				case "version":
+					pkgOpts.version = modelExprToString(&item.Value)
+				case "pluginDownloadURL":
+					pkgOpts.pluginDownloadURL = modelExprToString(&item.Value)
+				}
+			}
+		}
+	}
+
+	return pkgOpts
+}
+
 // loadReferencedPackageSchemas loads the schemas for any packages referenced by a given node.
-func (b *binder) loadReferencedPackageSchemas(n Node) error {
+func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error {
 	var pkgOpts packageOpts
 	packageNames := codegen.StringSet{}
 
-	if r, ok := n.(*Resource); ok {
-		token, tokenRange := getResourceToken(r)
+	switch r := n.(type) {
+	case *Resource:
+		token, tokenRange := r.GetToken()
 		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
-		if mod == "providers" {
+		if packageName == "pulumi" && mod == "providers" {
 			packageNames.Add(name)
 		} else {
 			packageNames.Add(packageName)
 		}
 		pkgOpts = b.getPkgOpts(r)
+	case *ReadResource:
+		token, tokenRange := r.GetToken()
+		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
+		if packageName == "pulumi" && mod == "providers" {
+			packageNames.Add(name)
+		} else {
+			packageNames.Add(packageName)
+		}
+		pkgOpts = b.getReadPkgOpts(r)
 	}
 
 	diags := hclsyntax.VisitAll(n.SyntaxNode(), func(node hclsyntax.Node) hcl.Diagnostics {
@@ -312,9 +384,12 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 		var pkg *packageSchema
 		var err error
 		if packageDescriptor, ok := b.packageDescriptors[name]; ok {
-			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+			pkg, err = b.options.packageCache.loadPackageSchemaFromDescriptor(ctx, b.options.loader, packageDescriptor)
 		} else {
-			pkg, err = b.options.packageCache.loadPackageSchema(b.options.loader, name, pkgOpts.version)
+			pkg, err = b.options.packageCache.loadPackageSchema(
+				ctx, b.options.loader,
+				name, pkgOpts.version, pkgOpts.pluginDownloadURL,
+			)
 		}
 		if err != nil {
 			if b.options.skipResourceTypecheck || b.options.skipInvokeTypecheck {
@@ -327,7 +402,7 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 	return nil
 }
 
-func buildEnumValue(v interface{}) cty.Value {
+func buildEnumValue(v any) cty.Value {
 	switch v := v.(type) {
 	case string:
 		return cty.StringVal(v)
@@ -366,7 +441,8 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 		for _, el := range src.Elements {
 			values = append(values, buildEnumValue(el.Value))
 		}
-		return model.NewEnumType(src.Token, elType, values, enumSchemaType{src})
+		tk := canonicalizeToken(src.Token, src.PackageReference)
+		return model.NewEnumType(tk, elType, values, enumSchemaType{src})
 	case *schema.ObjectType:
 		if t, ok := b.schemaTypes[src]; ok {
 			return t
@@ -374,6 +450,9 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 
 		properties := map[string]model.Type{}
 		objType := model.NewObjectType(properties, src)
+		if b.options.skipResourceTypecheck || b.options.allowMissingProperties {
+			objType.Strict = false
+		}
 		b.schemaTypes[src] = objType
 		for _, prop := range src.Properties {
 			typ := prop.Type
@@ -415,6 +494,9 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 
 		properties := map[string]model.Type{}
 		objType := model.NewObjectType(properties, src)
+		if b.options.skipResourceTypecheck || b.options.allowMissingProperties {
+			objType.Strict = false
+		}
 		b.schemaTypes[src] = objType
 		for _, prop := range src.Resource.Properties {
 			typ := prop.Type
@@ -505,7 +587,7 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 				return a, true
 			}
 		}
-		schemas := codegen.Set{}
+		schemas := newOrderedSet[schema.Type]()
 		for _, t := range t.ElementTypes {
 			if s, ok := GetSchemaForType(t); ok {
 				if union, ok := s.(*schema.UnionType); ok {
@@ -517,12 +599,12 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 				}
 			}
 		}
-		if len(schemas) == 0 {
+		if schemas.Len() == 0 {
 			return nil, false
 		}
-		schemaTypes := slice.Prealloc[schema.Type](len(schemas))
-		for t := range schemas {
-			schemaTypes = append(schemaTypes, t.(schema.Type))
+		schemaTypes := slice.Prealloc[schema.Type](schemas.Len())
+		for t := range schemas.Iter() {
+			schemaTypes = append(schemaTypes, t)
 		}
 		if len(schemaTypes) == 1 {
 			return schemaTypes[0], true
@@ -547,6 +629,18 @@ func GetDiscriminatedUnionObjectMapping(t *model.UnionType) map[string]model.Typ
 	mapping := map[string]model.Type{}
 	for _, t := range t.ElementTypes {
 		k, v := getDiscriminatedUnionObjectItem(t)
+		if k == "" {
+			continue
+		}
+		// When the union comes from a lifted schema.InputType, each variant
+		// appears twice — once as the input-shape ObjectType and once wrapped
+		// in an OutputType containing the plain shape. Both share a token.
+		// Prefer the first (input-shape) match so downstream conversion picks
+		// the shape whose fields carry OutputType, which is what triggers
+		// literals to be wrapped as pulumi.String / pulumi.Bool inputs.
+		if _, exists := mapping[k]; exists {
+			continue
+		}
 		mapping[k] = v
 	}
 	return mapping
@@ -651,7 +745,7 @@ func GenEnum(
 			safeEnum(member)
 		} else {
 			unsafeEnum(from)
-			knownVal := strings.Split(strings.Split(known.GoString(), "(")[1], ")")[0]
+			knownVal, _, _ := strings.Cut(strings.Split(known.GoString(), "(")[1], ")")
 			diag := &hcl.Diagnostic{
 				Severity: hcl.DiagError,
 				Summary:  fmt.Sprintf("%v is not a valid value of the enum \"%v\"", knownVal, t.Token),
@@ -667,20 +761,20 @@ func GenEnum(
 	return nil
 }
 
-func enumMemberValues(t *model.EnumType) []interface{} {
+func enumMemberValues(t *model.EnumType) []any {
 	srcBase, ok := GetSchemaForType(t)
 	if !ok {
 		return nil
 	}
 	src := srcBase.(*schema.EnumType)
-	members := make([]interface{}, len(src.Elements))
+	members := make([]any, len(src.Elements))
 	for i, el := range src.Elements {
 		members[i] = el.Value
 	}
 	return members
 }
 
-func listToString(l []interface{}) string {
+func listToString(l []any) string {
 	vals := ""
 	for i, v := range l {
 		if i == 0 {

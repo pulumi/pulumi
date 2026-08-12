@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ import (
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 )
 
@@ -64,7 +64,7 @@ func TestAutonaming(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...),
+			HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...),
 			T:     t,
 			UpdateOptions: UpdateOptions{
 				GeneratePlan: true,
@@ -79,7 +79,7 @@ func TestAutonaming(t *testing.T) {
 	deleteBeforeReplace := false
 	plan, err := lt.TestOp(Update).Plan(project, target, p.Options, p.BackendClient, nil)
 	require.NoError(t, err)
-	assert.NotNil(t, plan)
+	require.NotNil(t, plan)
 	for _, r := range plan.ResourcePlans {
 		if r.Goal == nil {
 			continue

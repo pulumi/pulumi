@@ -1,0 +1,4 @@
+component: sdkgen
+kind: chore
+body: Extension-parameterized packages now namespace their resource and function
+    tokens under their own package name rather than the base provider's

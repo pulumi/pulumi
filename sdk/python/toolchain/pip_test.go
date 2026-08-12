@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,14 +15,16 @@
 package toolchain
 
 import (
-	"context"
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,10 +40,10 @@ func TestIsVirtualEnv(t *testing.T) {
 
 	// Create and run a python command to create a virtual environment.
 	venvDir := filepath.Join(tempdir, "venv")
-	cmd, err := Command(context.Background(), "-m", "venv", venvDir)
-	assert.NoError(t, err)
+	cmd, err := Command(t.Context(), "-m", "venv", venvDir)
+	require.NoError(t, err)
 	err = cmd.Run()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Assert the new venv directory is a virtual environment.
 	assert.True(t, IsVirtualEnv(venvDir))
@@ -86,7 +88,6 @@ func TestActivateVirtualEnv(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, test := range tests {
-		test := test
 		t.Run(fmt.Sprintf("%#v", test.input), func(t *testing.T) {
 			t.Parallel()
 
@@ -109,14 +110,14 @@ func TestRunningPipInVirtualEnvironment(t *testing.T) {
 
 	// Create and run a python command to create a virtual environment.
 	venvDir := filepath.Join(tempdir, "venv")
-	cmd, err := Command(context.Background(), "-m", "venv", venvDir)
-	assert.NoError(t, err)
+	cmd, err := Command(t.Context(), "-m", "venv", venvDir)
+	require.NoError(t, err)
 	err = cmd.Run()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Create a requirements.txt file in the temp directory.
 	requirementsFile := filepath.Join(tempdir, "requirements.txt")
-	assert.NoError(t, os.WriteFile(requirementsFile, []byte("pulumi==2.0.0\n"), 0o600))
+	require.NoError(t, os.WriteFile(requirementsFile, []byte("pulumi==2.0.0\n"), 0o600))
 
 	// Create a command to run pip from the virtual environment.
 	pipCmd := VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-r", "requirements.txt")
@@ -130,12 +131,16 @@ func TestRunningPipInVirtualEnvironment(t *testing.T) {
 }
 
 func TestCommandNoVenv(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO[pulumi/pulumi#19675]: Fix this test on Windows
+		t.Skip("Skipping tests on Windows")
+	}
 	t.Parallel()
 
 	tc, err := newPip(".", "")
 	require.NoError(t, err)
 
-	cmd, err := tc.Command(context.Background())
+	cmd, err := tc.Command(t.Context())
 	require.NoError(t, err)
 
 	globalPython, err := exec.LookPath("python3")
@@ -146,14 +151,190 @@ func TestCommandNoVenv(t *testing.T) {
 	require.Nil(t, cmd.Env)
 }
 
-//nolint:paralleltest // modifies environment variables
 func TestCommandPulumiPythonCommand(t *testing.T) {
 	t.Setenv("PULUMI_PYTHON_CMD", "python-not-found")
 
 	tc, err := newPip(".", "")
 	require.NoError(t, err)
 
-	cmd, err := tc.Command(context.Background())
+	cmd, err := tc.Command(t.Context())
 	require.ErrorContains(t, err, "python-not-found")
 	require.Nil(t, cmd)
+}
+
+func TestPipLinkPackages(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                string
+		requirementsContent string
+		packages            map[string]string
+		expectedLines       []string
+	}{
+		{
+			name:                "replaces existing packages",
+			requirementsContent: "pulumi>=3.0.0\ncat==1.2.3\n",
+			packages:            map[string]string{"pulumi": "/path/to/sdk"},
+			expectedLines:       []string{"cat==1.2.3", "/path/to/sdk", ""},
+		},
+		{
+			name:                "multiple packages",
+			requirementsContent: "pulumi>=3.0.0\ncat==1.2.3\ndog>=1.20.0",
+			packages:            map[string]string{"pulumi": "/path/to/sdk"},
+			expectedLines:       []string{"cat==1.2.3", "dog>=1.20.0", "/path/to/sdk"},
+		},
+		{
+			name:                "empty requirements",
+			requirementsContent: "",
+			packages:            map[string]string{"pulumi": "/path/to/sdk"},
+			expectedLines:       []string{"/path/to/sdk", ""},
+		},
+		{
+			name:                "link multiple packages packages",
+			requirementsContent: "cat==1.2.3\n",
+			packages: map[string]string{
+				"pulumi":     "/path/to/sdk",
+				"pulumi-aws": "/path/to/aws-sdk",
+			},
+			expectedLines: []string{"cat==1.2.3", "/path/to/aws-sdk", "/path/to/sdk", ""},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			tmp := t.TempDir()
+			tc, err := newPip(tmp, "")
+			require.NoError(t, err)
+			requirementsTxt := filepath.Join(tmp, "requirements.txt")
+			require.NoError(t, os.WriteFile(requirementsTxt, []byte(test.requirementsContent), 0o600))
+
+			err = tc.LinkPackages(t.Context(), test.packages)
+			require.NoError(t, err)
+
+			b, err := os.ReadFile(requirementsTxt)
+			require.NoError(t, err)
+			lines := strings.Split(string(b), "\n")
+			require.Equal(t, test.expectedLines, lines)
+		})
+	}
+}
+
+func TestParsePipVersion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		versionString  string
+		expectedSemver string
+		expectError    bool
+	}{
+		{
+			name:           "pip with patch version",
+			versionString:  "pip 25.3.1 from /Users/julien/.local/share/mise/installs/python/3.11.14/lib/python3.11/site-packages/pip (python 3.11)", //nolint:lll
+			expectedSemver: "25.3.1",
+			expectError:    false,
+		},
+		{
+			name:           "pip without patch version",
+			versionString:  "pip 25.3 from /Users/julien/.local/share/mise/installs/python/3.11.14/lib/python3.11/site-packages/pip (python 3.11)", //nolint:lll
+			expectedSemver: "25.3.0",
+			expectError:    false,
+		},
+		{
+			name:           "pip simple version",
+			versionString:  "pip 20.0.2",
+			expectedSemver: "20.0.2",
+			expectError:    false,
+		},
+		{
+			name:           "pip with extra spaces",
+			versionString:  "  pip 22.1    from /some/path  ",
+			expectedSemver: "22.1.0",
+			expectError:    false,
+		},
+		{
+			name:           "pip dev version",
+			versionString:  "pip 26.0.dev0 from /Users/julien/tmp/pip-v/.venv/lib/python3.13/site-packages/pip (python 3.13)", //nolint:lll
+			expectedSemver: "26.0.0",
+			expectError:    false,
+		},
+		{
+			name:          "invalid pip version format",
+			versionString: "invalid output",
+			expectError:   true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			version, err := ParsePipVersion(test.versionString)
+
+			if test.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				expected := semver.MustParse(test.expectedSemver)
+				assert.Equal(t, expected, version)
+			}
+		})
+	}
+}
+
+// Test that we show the underlying error from `pip` when linking fails
+func TestPipLinkPackagesError(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	err := os.WriteFile(filepath.Join(root, "requirements.txt"), []byte(``), 0o600)
+	require.NoError(t, err)
+	pip, err := newPip(root, "venv")
+	require.NoError(t, err)
+
+	err = pip.LinkPackages(t.Context(), map[string]string{"nope": "." + string(filepath.Separator) + "nope"})
+	require.NoError(t, err)
+	// Pip linking just adds the package to requirements.txt, but does not actually try to resolve any package names or
+	// versions. Run the installation to catch the error.
+	err = pip.InstallDependencies(t.Context(), root, false, false, nil, nil)
+
+	require.Regexp(t, "It looks like a path. File '.*nope' does not exist.", err)
+}
+
+// Test that we show the underlying error from `pip` when dependency installation fails
+func TestPipInstallDependenciesError(t *testing.T) {
+	t.Parallel()
+
+	requirements := []byte("./fail-to-install")
+	if runtime.GOOS == "windows" {
+		requirements = []byte(".\\fail-to-install")
+	}
+
+	t.Run("show output false", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		err := os.WriteFile(filepath.Join(root, "requirements.txt"), requirements, 0o600)
+		require.NoError(t, err)
+		pip, err := newPip(root, "venv")
+		require.NoError(t, err)
+
+		err = pip.InstallDependencies(t.Context(), root, false, false /* showOutput */, nil, nil)
+		require.Regexp(t, "File '.*fail-to-install' does not exist.", err)
+	})
+
+	t.Run("show output true", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		err := os.WriteFile(filepath.Join(root, "requirements.txt"), requirements, 0o600)
+		require.NoError(t, err)
+		pip, err := newPip(root, "venv")
+		require.NoError(t, err)
+		stdout := &bytes.Buffer{}
+		stderr := &bytes.Buffer{}
+
+		err = pip.InstallDependencies(t.Context(), root, false, true /* showOutput */, stdout, stderr)
+
+		require.ErrorContains(t, err, "exit status")
+		require.Regexp(t, "File '.*fail-to-install' does not exist.", stderr)
+	})
 }

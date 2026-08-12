@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,11 +15,12 @@
 package secrets
 
 import (
+	"context"
 	"encoding/json"
 )
 
 // Provider allows for the creation of secrets managers based on a well-known type name.
 type Provider interface {
 	// OfType returns a secrets manager for the given type, initialized with its previous state.
-	OfType(ty string, state json.RawMessage) (Manager, error)
+	OfType(ctx context.Context, ty string, state json.RawMessage) (Manager, error)
 }

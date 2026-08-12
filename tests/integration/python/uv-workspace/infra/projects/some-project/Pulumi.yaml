@@ -1,0 +1,6 @@
+name: some-project
+description: A Python project inside a uv workspace
+runtime:
+  name: python
+  options:
+    toolchain: uv

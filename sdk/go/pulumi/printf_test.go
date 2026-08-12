@@ -1,10 +1,10 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,9 +20,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func testPrintf(t *testing.T, ins ...interface{}) {
+func testPrintf(t *testing.T, ins ...any) {
 	const f = "%v %v %v"
 	expected := fmt.Sprintf(f, "foo", 42, true)
 
@@ -33,7 +34,7 @@ func testPrintf(t *testing.T, ins ...interface{}) {
 	assert.True(t, known)
 	assert.False(t, secret)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected, buf.String())
 
 	// Sprintf
@@ -42,7 +43,7 @@ func testPrintf(t *testing.T, ins ...interface{}) {
 	assert.False(t, secret)
 	assert.True(t, known)
 	assert.Nil(t, deps)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected, v)
 }
 

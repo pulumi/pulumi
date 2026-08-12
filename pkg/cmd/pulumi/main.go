@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,11 @@ import (
 // finished should be set to false when the handler is deferred and set to true as the
 // last statement in the scope. This trick is necessary to avoid catching and then
 // discarding a panic(nil).
+//
+// The panic handler runs before (and around) the cobra command, so it writes
+// directly to os.Stderr rather than going through cmd.ErrOrStderr().
+//
+//nolint:forbidigo
 func panicHandler(finished *bool) {
 	if panicPayload := recover(); !*finished {
 		stack := string(debug.Stack())
@@ -47,21 +52,23 @@ func panicHandler(finished *bool) {
 		fmt.Fprintf(os.Stderr, "Operating System: %s\n", runtime.GOOS)
 		fmt.Fprintf(os.Stderr, "Panic:            %s\n\n", panicPayload)
 		fmt.Fprintln(os.Stderr, stack)
-		os.Exit(1)
+		os.Exit(1) //nolint:noosexit // panicHandler is the last-resort crash reporter; it must terminate.
 	}
 }
 
 func main() {
-	// Fix for https://github.com/pulumi/pulumi/issues/18814, set GOMAXPROCs to the number of CPUs available
-	// taking into account quotas and cgroup limits.
-	maxprocs.Set() //nolint:errcheck // we don't care if this fails
+	maxprocs.Set() //nolint:errcheck
 
 	finished := new(bool)
 	defer panicHandler(finished)
 
-	if err := NewPulumiCmd().Execute(); err != nil {
-		cmd.DisplayErrorMessage(err)
-		os.Exit(-1)
+	pulumiCmd, cleanup := NewPulumiCmd()
+
+	if err := pulumiCmd.Execute(); err != nil {
+		cmd.DisplayErrorMessage(pulumiCmd.Context(), err, pulumiCmd.ErrOrStderr())
+		cleanup()
+		os.Exit(cmd.ExitCodeFor(err))
 	}
 	*finished = true
+	cleanup()
 }

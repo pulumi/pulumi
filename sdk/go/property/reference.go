@@ -26,6 +26,8 @@ import "github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 //   - Otherwise, the ID must be a string.
 type ResourceReference struct {
 	URN            urn.URN
+	Name           string
+	Type           string
 	ID             Value
 	PackageVersion string
 }

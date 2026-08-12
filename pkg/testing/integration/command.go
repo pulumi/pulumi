@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,6 +52,9 @@ func RunCommandPulumiHome(
 	env = append(env, "PULUMI_DEBUG_COMMANDS=true")
 	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
 	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
+	if coverdir := os.Getenv("PULUMI_GOCOVERDIR"); coverdir != "" {
+		env = append(env, "GOCOVERDIR="+coverdir)
+	}
 	if pulumiHome != "" {
 		env = append(env, "PULUMI_HOME="+pulumiHome)
 	}
@@ -80,7 +83,7 @@ func RunCommandPulumiHome(
 	if opts.ReportStats != nil {
 		// Note: This data is archived and used by external analytics tools.  Take care if changing the schema or format
 		// of this data.
-		opts.ReportStats.ReportCommand(TestCommandStats{
+		opts.ReportStats.ReportCommand(t.Context(), TestCommandStats{
 			StartTime:      startTime.Format("2006/01/02 15:04:05"),
 			EndTime:        endTime.Format("2006/01/02 15:04:05"),
 			ElapsedSeconds: float64((endTime.Sub(startTime)).Nanoseconds()) / 1000000000,

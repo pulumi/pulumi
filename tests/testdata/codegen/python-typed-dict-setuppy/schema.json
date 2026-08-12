@@ -10,7 +10,7 @@
                     "type": "number"
                 },
                 "externalProp": {
-                    "$ref": "/kubernetes/v3.7.0/schema.json#/types/kubernetes:core%2Fv1:Pod"
+                    "$ref": "/other/v0.1.0/schema.json#/types/other:module:Config"
                 }
             },
             "required": [
@@ -78,7 +78,7 @@
         "python": {
             "requires": {
                 "pulumi": ">=3.0.0,<4.0.0",
-                "pulumi-kubernetes": ">=3.0.0,<4.0.0"
+                "third-party": ">=0.1.0,<0.2.0"
             },
             "inputTypes": "classes-and-dicts"
         }

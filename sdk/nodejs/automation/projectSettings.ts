@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
  */
 export interface ProjectSettings {
     name: string;
-    runtime: ProjectRuntimeInfo | ProjectRuntime;
+    runtime?: ProjectRuntimeInfo | ProjectRuntime;
     main?: string;
     description?: string;
     author?: string;

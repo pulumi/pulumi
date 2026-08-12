@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import * as parseFunctionModule from "./parseFunction";
 import { rewriteSuperReferences } from "./rewriteSuper";
 import { getModuleFromPath } from "./package";
 import * as utils from "./utils";
-import * as v8 from "./v8";
 
 /**
  * @internal
@@ -367,9 +366,11 @@ export async function createClosureInfoAsync(
 
         for (let current = global; current; current = Object.getPrototypeOf(current)) {
             for (const key of Object.getOwnPropertyNames(current)) {
-                // "GLOBAL" and "root" are deprecated and give warnings if you try to access them.  So
-                // just skip them.
-                if (key !== "GLOBAL" && key !== "root") {
+                // "GLOBAL" and "root" are deprecated and give warnings if you try to access them.
+                // "localStorage" throws when webstorage is enabled but the `--localstorage-file`
+                // option is not provided, which happens by default on Node.js v25.2.0 and later.
+                // So just skip them.
+                if (key !== "GLOBAL" && key !== "root" && key !== "localStorage") {
                     await addGlobalInfoAsync(key);
                 }
             }
@@ -440,6 +441,9 @@ export async function createClosureInfoAsync(
         // actually tried to deserialize the instances/prototypes we have we would end up failing when
         // we hit native functions.
         //
+        // The same applies to async generators, which have their own prototypes separate from
+        // regular generators.
+        //
         // see http://www.ecma-international.org/ecma-262/6.0/#sec-generatorfunction-objects and
         // http://www.ecma-international.org/ecma-262/6.0/figure-2.png
         async function addGeneratorEntriesAsync() {
@@ -451,6 +455,20 @@ export async function createClosureInfoAsync(
             await addEntriesAsync(
                 Object.getPrototypeOf(emptyGenerator.prototype),
                 "Object.getPrototypeOf((function*(){}).prototype)",
+            );
+
+            // Also handle async generators, which have their own separate prototypes
+            // eslint-disable-next-line no-empty,no-empty-function,@typescript-eslint/no-empty-function
+            const emptyAsyncGenerator = async function* (): any {};
+
+            await addEntriesAsync(
+                Object.getPrototypeOf(emptyAsyncGenerator),
+                "Object.getPrototypeOf(async function*(){})",
+            );
+
+            await addEntriesAsync(
+                Object.getPrototypeOf(emptyAsyncGenerator.prototype),
+                "Object.getPrototypeOf((async function*(){}).prototype)",
             );
         }
     }
@@ -470,6 +488,10 @@ async function analyzeFunctionInfoAsync(
     serialize: (o: any) => boolean,
     logInfo?: boolean,
 ): Promise<FunctionInfo> {
+    if (process.versions.bun) {
+        throw new Error("Function serialization is not supported when using bun as a runtime.");
+    }
+    const v8 = await import("./v8");
     // logInfo = logInfo || func.name === "addHandler";
 
     const { file, line, column } = await v8.getFunctionLocationAsync(func);
@@ -786,7 +808,11 @@ async function computeIsAsyncFunction(func: Function): Promise<boolean> {
     // Note, i can't think of a better way to determine this.  This is particularly hard because we
     // can't even necessary refer to async function objects here as this code is rewritten by TS,
     // converting all async functions to non async functions.
-    return func.constructor && func.constructor.name === "AsyncFunction";
+    // Also check for AsyncGeneratorFunction, which has a similar special prototype structure.
+    return (
+        func.constructor &&
+        (func.constructor.name === "AsyncFunction" || func.constructor.name === "AsyncGeneratorFunction")
+    );
 }
 
 function throwSerializationError(func: Function, context: Context, info: string) {
@@ -1363,7 +1389,15 @@ async function getOrCreateEntryAsync(
         const moduleParts = normalizedModuleName.split("/");
 
         const nodeModulesSegment = "node_modules";
-        const nodeModulesSegmentIndex = moduleParts.findIndex((v) => v === nodeModulesSegment);
+        // pnpm installs packages into a store keyed with version numbers
+        // `node_modules/.pnpm/<pkg>@<version>/node_modules/<pkg>/...`, and adds a symlink to this in
+        // `node_modules/<pkg>` so Node.js can resolve the package. We see the real path here, not the symlink. In that
+        // layout the real package name follows the *last* `node_modules` segment. For npm/yarn (and pnpm's hoisted
+        // node-linker) the package name follows the *first* `node_modules` segment.
+        const isPnpmStore = moduleParts.includes(".pnpm");
+        const nodeModulesSegmentIndex = isPnpmStore
+            ? moduleParts.lastIndexOf(nodeModulesSegment)
+            : moduleParts.indexOf(nodeModulesSegment);
         const isInNodeModules = nodeModulesSegmentIndex >= 0;
 
         const isLocalModule = normalizedModuleName.startsWith(".") && !isInNodeModules;
@@ -1521,6 +1555,36 @@ function getBuiltInModules(): Promise<Map<any, string>> {
 }
 
 /**
+ * Returns true if obj looks like the result of TypeScript's __importStar() helper, i.e. a plain wrapper object where
+ * `default` holds the original module and all other own properties are re-exports from that module.
+ */
+function isImportStarResult(obj: any): obj is { default: unknown } {
+    if (obj == null || typeof obj !== "object" || !("default" in obj)) {
+        return false;
+    }
+    // __importStar creates its result with `var result = {}`, so the prototype is Object.prototype.
+    if (Object.getPrototypeOf(obj) !== Object.prototype) {
+        return false;
+    }
+    const mod = obj.default;
+    if (mod == null) {
+        return false;
+    }
+    // Every re-exported property must also exist on the underlying module
+    let hasReExport = false;
+    for (const k of Object.getOwnPropertyNames(obj)) {
+        if (k === "default" || k === "__esModule") {
+            continue;
+        }
+        if (!(k in mod)) {
+            return false;
+        }
+        hasReExport = true;
+    }
+    return hasReExport;
+}
+
+/**
  * Attempts to find a global name bound to the object, which can be used as a
  * stable reference across serialization.  For built-in modules (i.e. `os`,
  * `fs`, etc.) this will return that exact name of the module.  Otherwise, this
@@ -1537,6 +1601,16 @@ async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefin
     const key = modules.get(obj);
     if (key) {
         return key;
+    }
+
+    // When TypeScript compiles `import * as foo from "foo"` with `module: "nodenext"`, it emits
+    // `__importStar(require("foo"))`. This creates a wrapper object with a `default` property that holds the original
+    // module.
+    if (isImportStarResult(obj)) {
+        const unwrappedKey = modules.get(obj.default);
+        if (unwrappedKey) {
+            return unwrappedKey;
+        }
     }
 
     // Next, check the Node module require cache, which will store cached values

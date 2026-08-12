@@ -1,0 +1,6 @@
+name: nodejs-component-provider-pnpm
+description: Using a component provider written in TypeScript from TypeScript, using pnpm as package manager
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm

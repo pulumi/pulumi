@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
@@ -65,13 +66,13 @@ func (msm *MockSecretsManager) Decrypter() config.Decrypter {
 }
 
 type MockEncrypter struct {
-	EncryptValueF func() string
-	BatchEncryptF func() []string
+	EncryptValueF func(plaintext string) string
+	BatchEncryptF func(secrets []string) []string
 }
 
 func (me *MockEncrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
 	if me.EncryptValueF != nil {
-		return me.EncryptValueF(), nil
+		return me.EncryptValueF(plaintext), nil
 	}
 
 	return "", errors.New("mock value not provided")
@@ -79,19 +80,19 @@ func (me *MockEncrypter) EncryptValue(ctx context.Context, plaintext string) (st
 
 func (me *MockEncrypter) BatchEncrypt(ctx context.Context, secrets []string) ([]string, error) {
 	if me.BatchEncryptF != nil {
-		return me.BatchEncryptF(), nil
+		return me.BatchEncryptF(secrets), nil
 	}
 	return nil, errors.New("batch encrypt mock not provided")
 }
 
 type MockDecrypter struct {
-	DecryptValueF func() string
-	BatchDecryptF func() []string
+	DecryptValueF func(ciphertext string) string
+	BatchDecryptF func(ciphertexts []string) []string
 }
 
 func (md *MockDecrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
 	if md.DecryptValueF != nil {
-		return md.DecryptValueF(), nil
+		return md.DecryptValueF(ciphertext), nil
 	}
 
 	return "", errors.New("mock value not provided")
@@ -99,7 +100,7 @@ func (md *MockDecrypter) DecryptValue(ctx context.Context, ciphertext string) (s
 
 func (md *MockDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
 	if md.BatchDecryptF != nil {
-		return md.BatchDecryptF(), nil
+		return md.BatchDecryptF(ciphertexts), nil
 	}
 
 	return nil, errors.New("mock value not provided")
@@ -109,7 +110,7 @@ type MockProvider struct {
 	managers map[string]func(json.RawMessage) (Manager, error)
 }
 
-func (mp *MockProvider) OfType(ty string, state json.RawMessage) (Manager, error) {
+func (mp *MockProvider) OfType(_ context.Context, ty string, state json.RawMessage) (Manager, error) {
 	if f, ok := mp.managers[ty]; ok {
 		return f(state)
 	}
@@ -122,9 +123,7 @@ func (mp *MockProvider) Add(ty string, f func(json.RawMessage) (Manager, error))
 	new := &MockProvider{
 		managers: make(map[string]func(json.RawMessage) (Manager, error)),
 	}
-	for k, v := range mp.managers {
-		new.managers[k] = v
-	}
+	maps.Copy(new.managers, mp.managers)
 	new.managers[ty] = f
 	return new
 }

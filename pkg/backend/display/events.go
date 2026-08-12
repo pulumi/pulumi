@@ -1,4 +1,4 @@
-// Copyright 2019-2024, Pulumi Corporation.
+// Copyright 2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,19 +18,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"regexp"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -106,6 +107,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			PolicyPackVersion:    p.PolicyPackVersion,
 			PolicyPackVersionTag: p.PolicyPackVersion,
 			EnforcementLevel:     string(p.EnforcementLevel),
+			Severity:             string(p.Severity),
 		}
 
 	case engine.PolicyRemediationEvent:
@@ -117,9 +119,9 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		// Serialize properties, ignoring errors, as with other event types.
 		ctx := context.TODO()
 		encrypter := config.BlindingCrypter
-		before, err := stack.SerializeProperties(ctx, p.Before, encrypter, showSecrets)
+		before, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(p.Before), encrypter, showSecrets)
 		contract.IgnoreError(err)
-		after, err := stack.SerializeProperties(ctx, p.After, encrypter, showSecrets)
+		after, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(p.After), encrypter, showSecrets)
 		contract.IgnoreError(err)
 
 		apiEvent.PolicyRemediationEvent = &apitype.PolicyRemediationEvent{
@@ -133,6 +135,47 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			After:                after,
 		}
 
+	case engine.PolicyAnalyzeSummaryEvent:
+		p, ok := e.Payload().(engine.PolicyAnalyzeSummaryEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.PolicyAnalyzeSummaryEvent = &apitype.PolicyAnalyzeSummaryEvent{
+			ResourceURN:          string(p.ResourceURN),
+			PolicyPackName:       p.PolicyPackName,
+			PolicyPackVersion:    p.PolicyPackVersion,
+			PolicyPackVersionTag: p.PolicyPackVersion,
+			Passed:               p.Passed,
+			Failed:               p.Failed,
+		}
+
+	case engine.PolicyRemediateSummaryEvent:
+		p, ok := e.Payload().(engine.PolicyRemediateSummaryEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.PolicyRemediateSummaryEvent = &apitype.PolicyRemediateSummaryEvent{
+			ResourceURN:          string(p.ResourceURN),
+			PolicyPackName:       p.PolicyPackName,
+			PolicyPackVersion:    p.PolicyPackVersion,
+			PolicyPackVersionTag: p.PolicyPackVersion,
+			Passed:               p.Passed,
+			Failed:               p.Failed,
+		}
+
+	case engine.PolicyAnalyzeStackSummaryEvent:
+		p, ok := e.Payload().(engine.PolicyAnalyzeStackSummaryEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.PolicyAnalyzeStackSummaryEvent = &apitype.PolicyAnalyzeStackSummaryEvent{
+			PolicyPackName:       p.PolicyPackName,
+			PolicyPackVersion:    p.PolicyPackVersion,
+			PolicyPackVersionTag: p.PolicyPackVersion,
+			Passed:               p.Passed,
+			Failed:               p.Failed,
+		}
+
 	case engine.PreludeEvent:
 		p, ok := e.Payload().(engine.PreludeEventPayload)
 		if !ok {
@@ -140,9 +183,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		}
 		// Convert the config bag.
 		cfg := make(map[string]string)
-		for k, v := range p.Config {
-			cfg[k] = v
-		}
+		maps.Copy(cfg, p.Config)
 		apiEvent.PreludeEvent = &apitype.PreludeEvent{
 			Config: cfg,
 		}
@@ -162,6 +203,8 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			DurationSeconds: int(math.Ceil(p.Duration.Seconds())),
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
+			IsPreview:       p.IsPreview,
+			Result:          p.Result,
 		}
 
 	case engine.ResourcePreEvent:
@@ -210,6 +253,14 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Completed: p.Completed,
 			Total:     p.Total,
 			Done:      p.Done,
+		}
+	case engine.ErrorEvent:
+		p, ok := e.Payload().(engine.ErrorEventPayload)
+		if !ok {
+			return apiEvent, eventTypePayloadMismatch
+		}
+		apiEvent.ErrorEvent = &apitype.ErrorEvent{
+			Error: p.Error,
 		}
 
 	default:
@@ -305,10 +356,13 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 		Parent:         string(md.Parent),
 		Provider:       md.Provider,
 		Protect:        md.Protect,
+		Taint:          md.Taint,
+		External:       md.External,
 		RetainOnDelete: md.RetainOnDelete,
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
+		HideDiffs:      md.HideDiffs,
 	}
 }
 
@@ -353,6 +407,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
 			EnforcementLevel:  apitype.EnforcementLevel(p.EnforcementLevel),
+			Severity:          apitype.PolicySeverity(p.Severity),
 		})
 
 	case apiEvent.PolicyRemediationEvent != nil:
@@ -372,8 +427,37 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyName:        p.PolicyName,
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
-			Before:            before,
-			After:             after,
+			Before:            resource.FromResourcePropertyMap(before),
+			After:             resource.FromResourcePropertyMap(after),
+		})
+
+	case apiEvent.PolicyAnalyzeSummaryEvent != nil:
+		p := apiEvent.PolicyAnalyzeSummaryEvent
+		event = engine.NewEvent(engine.PolicyAnalyzeSummaryEventPayload{
+			ResourceURN:       resource.URN(p.ResourceURN),
+			PolicyPackName:    p.PolicyPackName,
+			PolicyPackVersion: p.PolicyPackVersion,
+			Passed:            p.Passed,
+			Failed:            p.Failed,
+		})
+
+	case apiEvent.PolicyRemediateSummaryEvent != nil:
+		p := apiEvent.PolicyRemediateSummaryEvent
+		event = engine.NewEvent(engine.PolicyRemediateSummaryEventPayload{
+			ResourceURN:       resource.URN(p.ResourceURN),
+			PolicyPackName:    p.PolicyPackName,
+			PolicyPackVersion: p.PolicyPackVersion,
+			Passed:            p.Passed,
+			Failed:            p.Failed,
+		})
+
+	case apiEvent.PolicyAnalyzeStackSummaryEvent != nil:
+		p := apiEvent.PolicyAnalyzeStackSummaryEvent
+		event = engine.NewEvent(engine.PolicyAnalyzeStackSummaryEventPayload{
+			PolicyPackName:    p.PolicyPackName,
+			PolicyPackVersion: p.PolicyPackVersion,
+			Passed:            p.Passed,
+			Failed:            p.Failed,
 		})
 
 	case apiEvent.PreludeEvent != nil:
@@ -396,6 +480,8 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			Duration:        time.Duration(p.DurationSeconds) * time.Second,
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
+			IsPreview:       p.IsPreview,
+			Result:          p.Result,
 		})
 
 	case apiEvent.ResourcePreEvent != nil:
@@ -423,6 +509,12 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 	case apiEvent.PolicyLoadEvent != nil:
 		event = engine.NewEvent(engine.PolicyLoadEventPayload{})
 
+	case apiEvent.StartDebuggingEvent != nil:
+		p := apiEvent.StartDebuggingEvent
+		event = engine.NewEvent(engine.StartDebuggingEventPayload{
+			Config: p.Config,
+		})
+
 	case apiEvent.ProgressEvent != nil:
 		p := apiEvent.ProgressEvent
 		event = engine.NewEvent(engine.ProgressEventPayload{
@@ -432,6 +524,12 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			Completed: p.Completed,
 			Total:     p.Total,
 			Done:      p.Done,
+		})
+
+	case apiEvent.ErrorEvent != nil:
+		p := apiEvent.ErrorEvent
+		event = engine.NewEvent(engine.ErrorEventPayload{
+			Error: p.Error,
 		})
 
 	default:
@@ -530,9 +628,12 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Parent:         resource.URN(md.Parent),
 		Provider:       md.Provider,
 		Protect:        md.Protect,
+		Taint:          md.Taint,
+		External:       md.External,
 		RetainOnDelete: md.RetainOnDelete,
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
+		HideDiffs:      md.HideDiffs,
 	}
 }

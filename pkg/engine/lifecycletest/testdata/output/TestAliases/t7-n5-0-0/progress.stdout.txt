@@ -1,7 +1,6 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
 
- <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 9%}>--<{%reset%}> pkgA:index:t6 n4 <{%bold%}><{%fg 9%}>deleting original<{%reset%}> 
  <{%fg 9%}>--<{%reset%}> pkgA:index:t6 n4 <{%fg 9%}>deleted original<{%reset%}> 
  <{%bold%}><{%fg 13%}>+-<{%reset%}> pkgA:index:t7 n5 <{%bold%}><{%fg 13%}>replacing<{%reset%}> [diff: <{%fg 3%}>~forcesReplacement<{%reset%}><{%reset%}>]

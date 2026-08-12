@@ -22,14 +22,16 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
@@ -85,7 +87,7 @@ func TestLoader(t *testing.T) {
 		defer conn.Close()
 		loader := codegenrpc.NewLoaderClient(conn)
 
-		ctx := context.Background()
+		ctx := context.Background() //nolint:usetesting // ctx outlives t.Context inside the engine
 		resp, err := loader.GetSchema(ctx, &codegenrpc.GetSchemaRequest{
 			Package: "pkgA",
 		})
@@ -104,11 +106,37 @@ func TestLoader(t *testing.T) {
 
 		return nil
 	})
-	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	hostF := deploytest.NewPluginHostF(
+		nil, nil, programF,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		loaders...)
 
 	p := &lt.TestPlan{
-		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	_, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
+}
+
+// TestMapperAddressIsPassed verifies that the engine populates RunInfo.MapperAddress when
+// invoking the language runtime, so that program runtimes (e.g. HCL) can resolve provider
+// mappings while the program is executing.
+func TestMapperAddressIsPassed(t *testing.T) {
+	t.Parallel()
+
+	var observedMapperAddress string
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		observedMapperAddress = info.MapperAddress
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(
+		nil, nil, programF,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	_, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotEmpty(t, observedMapperAddress, "engine did not pass a MapperAddress to the language runtime")
 }

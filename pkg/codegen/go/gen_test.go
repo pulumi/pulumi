@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 )
 
 func TestInputUsage(t *testing.T) {
@@ -82,7 +83,9 @@ func TestGoPackageName(t *testing.T) {
 func TestGeneratePackage(t *testing.T) {
 	t.Parallel()
 
-	generatePackage := func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
+	generatePackage := func(
+		tool string, pkg *schema.Package, files map[string][]byte, _ schema.ReferenceLoader,
+	) (map[string][]byte, error) {
 		for f := range files {
 			t.Logf("Ignoring extraFile %s", f)
 		}
@@ -144,34 +147,48 @@ func inferModuleName(codeDir string) string {
 	return filepath.Base(filepath.Dir(codeDir))
 }
 
-func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
+// copyToTempDir copies the generated package into a fresh t.TempDir so that commands that mutate
+// the tree (go mod init/edit/tidy) do not modify the committed golden fixture.
+func copyToTempDir(t *testing.T, codeDir string) string {
+	tmp := t.TempDir()
+	require.NoError(t, fsutil.CopyFile(tmp, codeDir, nil))
+	return tmp
+}
+
+func setupPackageInTempDir(t *testing.T, goExe, codeDir string) string {
 	sdk, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk"))
 	require.NoError(t, err)
 
-	goExe, err := executable.FindExecutable("go")
-	require.NoError(t, err)
+	workDir := copyToTempDir(t, codeDir)
 
-	goMod := filepath.Join(codeDir, "go.mod")
+	goMod := filepath.Join(workDir, "go.mod")
 	alreadyHaveGoMod, err := test.PathExists(goMod)
 	require.NoError(t, err)
 
-	if alreadyHaveGoMod {
-		t.Logf("Found an existing go.mod, leaving as is")
-	} else {
-		test.RunCommand(t, "go_mod_init", codeDir, goExe, "mod", "init", inferModuleName(codeDir))
-		replacement := "github.com/pulumi/pulumi/sdk/v3=" + sdk
-		test.RunCommand(t, "go_mod_edit", codeDir, goExe, "mod", "edit", "-replace", replacement)
+	if !alreadyHaveGoMod {
+		test.RunCommand(t, "go_mod_init", workDir, goExe, "mod", "init", inferModuleName(codeDir))
 	}
+	replacement := "github.com/pulumi/pulumi/sdk/v3=" + sdk
+	test.RunCommand(t, "go_mod_edit", workDir, goExe, "mod", "edit", "-replace", replacement)
+	test.RunCommand(t, "go_mod_tidy", workDir, goExe, "mod", "tidy")
 
-	test.RunCommand(t, "go_mod_tidy", codeDir, goExe, "mod", "tidy")
-	test.RunCommand(t, "go_build", codeDir, goExe, "build", "-v", "all")
+	return workDir
+}
+
+func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
+	goExe, err := executable.FindExecutable("go")
+	require.NoError(t, err)
+
+	workDir := setupPackageInTempDir(t, goExe, codeDir)
+	test.RunCommand(t, "go_build", workDir, goExe, "build", "-v", "all")
 }
 
 func testGeneratedPackage(t *testing.T, codeDir string) {
 	goExe, err := executable.FindExecutable("go")
 	require.NoError(t, err)
 
-	test.RunCommand(t, "go-test", codeDir, goExe, "test", inferModuleName(codeDir)+"/...")
+	workDir := setupPackageInTempDir(t, goExe, codeDir)
+	test.RunCommand(t, "go-test", workDir, goExe, "test", "./...")
 }
 
 func TestGenerateTypeNames(t *testing.T) {
@@ -194,7 +211,7 @@ func TestGenerateTypeNames(t *testing.T) {
 		return func(t schema.Type) string {
 			return root.typeString(t)
 		}
-	})
+	}, filepath.FromSlash("../testing/test/testdata/"))
 }
 
 func readSchemaFile(file string) *schema.Package {
@@ -207,8 +224,10 @@ func readSchemaFile(file string) *schema.Package {
 	if err = json.Unmarshal(schemaBytes, &pkgSpec); err != nil {
 		panic(err)
 	}
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -230,8 +249,10 @@ func readYamlSchemaFile(file string) *schema.Package {
 	if err = yaml.Unmarshal(schemaBytes, &pkgSpec); err != nil {
 		panic(err)
 	}
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -247,7 +268,6 @@ func TestLanguageResources(t *testing.T) {
 	t.Parallel()
 
 	for _, test := range test.PulumiPulumiSDKTests {
-		test := test
 		t.Run(test.Directory, func(t *testing.T) {
 			t.Parallel()
 			var pkg *schema.Package
@@ -291,7 +311,6 @@ func TestPackageNaming(t *testing.T) {
 		},
 	}
 	for _, tt := range testCases {
-		tt := tt
 		t.Run(tt.expectedRoot, func(t *testing.T) {
 			t.Parallel()
 
@@ -304,7 +323,7 @@ func TestPackageNaming(t *testing.T) {
 				// default to the schema.
 				schema.Name = tt.name
 			}
-			schema.Language = map[string]interface{}{
+			schema.Language = map[string]any{
 				"go": GoPackageInfo{
 					ImportBasePath:  tt.importBasePath,
 					RootPackageName: tt.rootPackageName,
@@ -319,7 +338,10 @@ func TestPackageNaming(t *testing.T) {
 			sort.Strings(ordering)
 			require.NotEmpty(t, files, "This test only works when files are generated")
 			for _, k := range ordering {
-				root := strings.Split(k, "/")[0]
+				if k == ".gitattributes" {
+					continue
+				}
+				root, _, _ := strings.Cut(k, "/")
 				if tt.expectedRoot != "" {
 					require.Equal(t, tt.expectedRoot, root, "Root should precede all cases. Got file %s", k)
 				}
@@ -383,7 +405,6 @@ func TestTokenToType(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
 			t.Parallel()
 
@@ -447,7 +468,6 @@ func TestTokenToResource(t *testing.T) {
 	}
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.token+"=>"+tt.expected, func(t *testing.T) {
 			t.Parallel()
 
@@ -458,8 +478,11 @@ func TestTokenToResource(t *testing.T) {
 }
 
 func importSpec(t *testing.T, spec schema.PackageSpec) *schema.Package {
-	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{})
-	assert.NoError(t, err)
+	importedPkg, err := schema.ImportSpec(spec, map[string]schema.Language{},
+		schema.NewNullLoader(), schema.ValidationOptions{
+			AllowDanglingReferences: true,
+		})
+	require.NoError(t, err)
 	return importedPkg
 }
 
@@ -492,7 +515,7 @@ import (
 	autogenerated := regexp.MustCompile(`^// Code generated .* DO NOT EDIT\.$`)
 	found := false
 loop:
-	for _, l := range strings.Split(s, "\n") {
+	for l := range strings.SplitSeq(s, "\n") {
 		switch {
 		case autogenerated.Match([]byte(l)):
 			found = true
@@ -518,6 +541,10 @@ func TestTitle(t *testing.T) {
 	assert.Equal("WaldoThud_Fred", Title("waldo-Thud_Fred"))
 	assert.Equal("WaldoThud_Fred", Title("waldo-thud_Fred"))
 	assert.Equal("WaldoThud_Fred", Title("$waldo-thud_Fred"))
+	assert.Equal("_6to4Interface", Title("6to4Interface"))
+	assert.Equal("_3gppInfos", Title("3gppInfos"))
+	assert.Equal("_3gppRaw", Title("3gppRaw"))
+	assert.Equal("_0foo", Title("0foo"))
 }
 
 func TestRegressTypeDuplicatesInChunking(t *testing.T) {
@@ -571,7 +598,7 @@ func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 	}
 
 	// Need to have N>500 but N<1000 to obtain 2 chunks.
-	for i := 0; i < 750; i++ {
+	for i := range 750 {
 		ttok := fmt.Sprintf("test:index:Typ%d", i)
 		pkgSpec.Types[ttok] = schema.ComplexTypeSpec{
 			ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -584,8 +611,10 @@ func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 		}
 	}
 
-	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
-	pkg, diags, err := schema.BindSpec(pkgSpec, loader)
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	require.NoError(t, err)
 	t.Logf("%v", diags)
 	require.False(t, diags.HasErrors())
@@ -605,7 +634,7 @@ func TestRegressTypeDuplicatesInChunking(t *testing.T) {
 	// The types defined in the chunks should be mutually exclusive.
 	typedefs := func(s string) []string {
 		var types []string
-		for _, line := range strings.Split(s, "\n") {
+		for line := range strings.SplitSeq(s, "\n") {
 			line = strings.TrimSpace(line)
 			if strings.HasPrefix(line, "type") {
 				types = append(types, line)

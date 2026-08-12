@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,7 +37,14 @@ type applyRewriter struct {
 	skipToJSON    bool
 
 	activeContext applyRewriteContext
-	exprStack     []model.Expression
+	exprStack     []struct {
+		expr model.Expression
+		// We may be expected to rewrite expressions that are not type-valid.
+		//
+		// We assert that we do not break type-correctness only for expressions that were
+		// originally type-correct.
+		expectTypeValid bool
+	}
 }
 
 type applyRewriteContext interface {
@@ -137,7 +144,7 @@ func (r *applyRewriter) isIteratorExpr(x model.Expression) (bool, model.Type) {
 		return false, nil
 	}
 
-	parent := r.exprStack[len(r.exprStack)-2]
+	parent := r.exprStack[len(r.exprStack)-2].expr
 	switch parent := parent.(type) {
 	case *model.ForExpression:
 		return x != parent.Collection, parent.ValueVariable.Type()
@@ -247,7 +254,13 @@ func (r *applyRewriter) observesEventualValues(x model.Expression) bool {
 }
 
 func (r *applyRewriter) preVisit(expr model.Expression) (model.Expression, hcl.Diagnostics) {
-	r.exprStack = append(r.exprStack, expr)
+	r.exprStack = append(r.exprStack, struct {
+		expr            model.Expression
+		expectTypeValid bool
+	}{
+		expr:            expr,
+		expectTypeValid: !expr.Typecheck(false).HasErrors(),
+	})
 	return r.activeContext.PreVisit(expr)
 }
 
@@ -307,7 +320,7 @@ func (ctx *observeContext) bestArgName(x model.Expression) string {
 			return ctx.bestArgName(x.Args[0])
 		case "fileArchive", "remoteArchive", "assetArchive",
 			"fileAsset", "stringAsset", "remoteAsset",
-			"readDir", "readFile":
+			"readFile":
 			return ctx.bestArgName(x.Args[0])
 		case "lookup":
 			return ctx.bestArgName(x.Args[1])
@@ -364,9 +377,14 @@ func (ctx *observeContext) bestArgName(x model.Expression) string {
 // disambiguateArgName applies type-specific disambiguation to an argument name.
 func (ctx *observeContext) disambiguateArgName(x model.Expression, bestName string) string {
 	if x, ok := x.(*model.ScopeTraversalExpression); ok {
-		if n, ok := x.Parts[0].(*Resource); ok {
-			// If dealing with a broken access, defer to the generic disambiguator. Otherwise, attempt to disambiguate
-			// by prepending the resource's variable name.
+		switch n := x.Parts[0].(type) {
+		// If dealing with a broken access, defer to the generic disambiguator. Otherwise, attempt to disambiguate
+		// by prepending the resource's variable name.
+		case *Resource:
+			if len(x.Traversal) > 1 {
+				return ctx.disambiguateName(n.Name() + titleCase(bestName))
+			}
+		case *ReadResource:
 			if len(x.Traversal) > 1 {
 				return ctx.disambiguateName(n.Name() + titleCase(bestName))
 			}
@@ -374,6 +392,47 @@ func (ctx *observeContext) disambiguateArgName(x model.Expression, bestName stri
 	}
 	// Hand off to the generic disambiguator.
 	return ctx.disambiguateName(bestName)
+}
+
+// applyArgsEqual returns true if two apply argument expressions bind to the same entity
+// and access the same traversal path. It uses pointer identity on the bound definition
+// (Parts[0]) rather than lexical name comparison, which is safer when variables in
+// different scopes share the same name. This is used to deduplicate apply arguments so
+// that the same output/promise is not passed multiple times.
+func applyArgsEqual(a, b model.Expression) bool {
+	switch a := a.(type) {
+	case *model.ScopeTraversalExpression:
+		b, ok := b.(*model.ScopeTraversalExpression)
+		if !ok || len(a.Parts) == 0 || len(b.Parts) == 0 || len(a.Traversal) != len(b.Traversal) {
+			return false
+		}
+		// Compare by binding identity: Parts[0] is the bound definition from scope resolution.
+		if a.Parts[0] != b.Parts[0] {
+			return false
+		}
+		// The root traverser is already covered by Parts[0] identity, so compare the
+		// remaining traversal steps to ensure the same field path is accessed.
+		for i := 1; i < len(a.Traversal); i++ {
+			at, bt := a.Traversal[i], b.Traversal[i]
+			switch at := at.(type) {
+			case hcl.TraverseAttr:
+				bt, ok := bt.(hcl.TraverseAttr)
+				if !ok || at.Name != bt.Name {
+					return false
+				}
+			case hcl.TraverseIndex:
+				bt, ok := bt.(hcl.TraverseIndex)
+				if !ok || !at.Key.RawEquals(bt.Key) {
+					return false
+				}
+			default:
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
 }
 
 // rewriteApplyArg replaces a single expression with an apply parameter.
@@ -384,12 +443,24 @@ func (ctx *observeContext) rewriteApplyArg(applyArg model.Expression, paramType 
 		return applyArg
 	}
 
-	callbackParam := &model.Variable{
-		Name:         fmt.Sprintf("<arg%d>", len(ctx.callbackParams)),
-		VariableType: paramType,
+	// Check for an existing identical apply argument to deduplicate.
+	// This avoids generating unnecessary Promise.all / pulumi.all / Output.All
+	// when the same output or promise is referenced multiple times.
+	var callbackParam *model.Variable
+	for i, existing := range ctx.applyArgs {
+		if applyArgsEqual(existing, applyArg) {
+			callbackParam = ctx.callbackParams[i]
+			break
+		}
 	}
 
-	ctx.applyArgs, ctx.callbackParams = append(ctx.applyArgs, applyArg), append(ctx.callbackParams, callbackParam)
+	if callbackParam == nil {
+		callbackParam = &model.Variable{
+			Name:         fmt.Sprintf("<arg%d>", len(ctx.callbackParams)),
+			VariableType: paramType,
+		}
+		ctx.applyArgs, ctx.callbackParams = append(ctx.applyArgs, applyArg), append(ctx.callbackParams, callbackParam)
+	}
 
 	// TODO(pdg): this risks information loss for nested output-typed properties... The `Types` array on traversals
 	// ought to store the original types.
@@ -432,8 +503,15 @@ func (ctx *observeContext) rewriteRelativeTraversalExpression(expr *model.Relati
 			partResolvedType, isEventual = ctx.isEventualType(model.GetTraversableType(expr.Parts[i+1]))
 		}
 		if isEventual {
-			expr.Traversal, expr.Parts = expr.Traversal[:i+1], expr.Parts[:i+1]
-			paramType, traversal, parts = partResolvedType, expr.Traversal[i+1:], expr.Parts[i+1:]
+			// Invariant: len(expr.Parts) == len(expr.Traversal) + 1, because Parts holds one entry
+			// for the source type plus one entry per traversal hop. Since i < len(expr.Traversal),
+			// i+2 <= len(expr.Parts) and expr.Parts[i+2:] is guaranteed to be in bounds.
+			contract.Assertf(i+2 <= len(expr.Parts),
+				"Parts index out of bounds: i=%d, len(expr.Parts)=%d, len(expr.Traversal)=%d; "+
+					"expected len(Parts) == len(Traversal)+1",
+				i, len(expr.Parts), len(expr.Traversal))
+			expr.Traversal, expr.Parts = expr.Traversal[:i+1], expr.Parts[:i+2]
+			paramType, traversal, parts = partResolvedType, expr.Traversal[i+1:], expr.Parts[i+2:]
 			break
 		}
 	}
@@ -458,8 +536,6 @@ func (ctx *observeContext) rewriteScopeTraversalExpression(expr *model.ScopeTrav
 	}
 
 	// Otherwise, append the access to the list of apply arguments and return an appropriate call to __applyArg.
-	//
-	// TODO: deduplicate multiple accesses to the same variable and field.
 
 	// Compute the type of the apply and callback arguments.
 	var applyArg *model.ScopeTraversalExpression
@@ -574,8 +650,11 @@ func (ctx *observeContext) PostVisit(expr model.Expression) (model.Expression, h
 	isRoot := expr == ctx.root
 
 	// TODO(pdg): arrays of outputs, for expressions, etc.
-	diagnostics := expr.Typecheck(false)
-	contract.Assertf(len(diagnostics) == 0, "error typechecking expression: %v", diagnostics)
+
+	if ctx.exprStack[len(ctx.exprStack)-1].expectTypeValid {
+		diagnostics := expr.Typecheck(false)
+		contract.Assertf(!diagnostics.HasErrors(), "error typechecking expression: %v; code: %v", diagnostics, expr)
+	}
 
 	if isIteratorExpr, _ := ctx.isIteratorExpr(expr); isIteratorExpr {
 		return expr, nil

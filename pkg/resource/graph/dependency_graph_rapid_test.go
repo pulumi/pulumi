@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 // Model-checks dependency_graph functionality against simple models
 // using property-based testing.
 //
-// Currently this assumes a simplified model of `resource.State`
+// Currently this assumes a simplified model of `pkgresource.State`
 // relevant to dependency calculations; `dependency_graph` only
 // accesses these fields:
 //
@@ -35,10 +35,12 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"slices"
 	"testing"
 
 	"pgregory.net/rapid"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,21 +48,16 @@ import (
 
 // Models ------------------------------------------------------------------------------------------
 
-var isParent R = func(child, parent *resource.State) bool {
+var isParent R = func(child, parent *pkgresource.State) bool {
 	return child.Parent == parent.URN
 }
 
-var hasProvider R = func(res, provider *resource.State) bool {
+var hasProvider R = func(res, provider *pkgresource.State) bool {
 	return resource.URN(res.Provider) == provider.URN
 }
 
-var hasDependency R = func(res, dependency *resource.State) bool {
-	for _, dep := range res.Dependencies {
-		if dependency.URN == dep {
-			return true
-		}
-	}
-	return false
+var hasDependency R = func(res, dependency *pkgresource.State) bool {
+	return slices.Contains(res.Dependencies, dependency.URN)
 }
 
 var expectedDependenciesOf = union(isParent, hasProvider, hasDependency)
@@ -69,7 +66,7 @@ var expectedDependenciesOf = union(isParent, hasProvider, hasDependency)
 func TestRapidDependenciesOf(t *testing.T) {
 	t.Parallel()
 
-	graphCheck(t, func(t *rapid.T, universe []*resource.State) {
+	graphCheck(t, func(t *rapid.T, universe []*pkgresource.State) {
 		dg := NewDependencyGraph(universe)
 		for _, a := range universe {
 			aD := dg.DependenciesOf(a)
@@ -104,7 +101,7 @@ func TestRapidDependenciesOf(t *testing.T) {
 func TestRapidDependenciesOfAntisymmetric(t *testing.T) {
 	t.Parallel()
 
-	graphCheck(t, func(t *rapid.T, universe []*resource.State) {
+	graphCheck(t, func(t *rapid.T, universe []*pkgresource.State) {
 		dg := NewDependencyGraph(universe)
 		for _, a := range universe {
 			aD := dg.DependenciesOf(a)
@@ -118,7 +115,7 @@ func TestRapidDependenciesOfAntisymmetric(t *testing.T) {
 }
 
 // Model `DependingOn`.
-func expectedDependingOn(universe []*resource.State, includeChildren bool) R {
+func expectedDependingOn(universe []*pkgresource.State, includeChildren bool) R {
 	if !includeChildren {
 		// TODO currently DependingOn is not the inverse transitive
 		// closure of `dependenciesOf`. Should this be
@@ -128,7 +125,7 @@ func expectedDependingOn(universe []*resource.State, includeChildren bool) R {
 	}
 
 	dependingOn := expectedDependingOn(universe, false)
-	return transitively(universe)(func(a, b *resource.State) bool {
+	return transitively(universe)(func(a, b *pkgresource.State) bool {
 		if dependingOn(a, b) || isParent(b, a) {
 			return true
 		}
@@ -147,10 +144,10 @@ func expectedDependingOn(universe []*resource.State, includeChildren bool) R {
 func TestRapidDependingOn(t *testing.T) {
 	t.Parallel()
 
-	test := func(t *rapid.T, universe []*resource.State, includingChildren bool) {
+	test := func(t *rapid.T, universe []*pkgresource.State, includingChildren bool) {
 		expected := expectedDependingOn(universe, includingChildren)
 		dg := NewDependencyGraph(universe)
-		dependingOn := func(a, b *resource.State) bool {
+		dependingOn := func(a, b *pkgresource.State) bool {
 			for _, x := range dg.DependingOn(a, nil, includingChildren) {
 				if b.URN == x.URN {
 					return true
@@ -170,11 +167,10 @@ func TestRapidDependingOn(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, includingChildren := range []bool{false, true} {
-		includingChildren := includingChildren
 		t.Run(fmt.Sprintf("includingChildren=%v", includingChildren), func(t *testing.T) {
 			t.Parallel()
 
-			graphCheck(t, func(t *rapid.T, universe []*resource.State) {
+			graphCheck(t, func(t *rapid.T, universe []*pkgresource.State) {
 				test(t, universe, includingChildren)
 			})
 		})
@@ -186,7 +182,7 @@ func TestRapidDependingOn(t *testing.T) {
 func TestRapidDependingOnOrdered(t *testing.T) {
 	t.Parallel()
 
-	test := func(t *rapid.T, universe []*resource.State, includingChildren bool) {
+	test := func(t *rapid.T, universe []*pkgresource.State, includingChildren bool) {
 		expectedDependingOn := expectedDependingOn(universe, includingChildren)
 		dg := NewDependencyGraph(universe)
 		for _, a := range universe {
@@ -205,11 +201,10 @@ func TestRapidDependingOnOrdered(t *testing.T) {
 
 	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, includingChildren := range []bool{false, true} {
-		includingChildren := includingChildren
 		t.Run(fmt.Sprintf("includingChildren=%v", includingChildren), func(t *testing.T) {
 			t.Parallel()
 
-			graphCheck(t, func(t *rapid.T, universe []*resource.State) {
+			graphCheck(t, func(t *rapid.T, universe []*pkgresource.State) {
 				test(t, universe, includingChildren)
 			})
 		})
@@ -219,7 +214,7 @@ func TestRapidDependingOnOrdered(t *testing.T) {
 func TestRapidTransitiveDependenciesOf(t *testing.T) {
 	t.Parallel()
 
-	graphCheck(t, func(t *rapid.T, universe []*resource.State) {
+	graphCheck(t, func(t *rapid.T, universe []*pkgresource.State) {
 		expectedInTDepsOf := transitively(universe)(expectedDependenciesOf)
 		dg := NewDependencyGraph(universe)
 		for _, a := range universe {
@@ -254,22 +249,22 @@ func TestRapidTransitiveDependenciesOf(t *testing.T) {
 //
 // - Support Component resources
 // - Support non-nil r.Provider references
-func resourceStateSliceGenerator() *rapid.Generator[[]*resource.State] {
+func resourceStateSliceGenerator() *rapid.Generator[[]*pkgresource.State] {
 	urnGen := rapid.StringMatching(`urn:pulumi:a::b::c:d:e::[abcd][123]`)
 
-	stateGen := rapid.Custom(func(t *rapid.T) *resource.State {
+	stateGen := rapid.Custom(func(t *rapid.T) *pkgresource.State {
 		urn := urnGen.Draw(t, "URN")
-		return &resource.State{
+		return &pkgresource.State{
 			Custom: true,
 			URN:    resource.URN(urn),
 		}
 	})
 
-	getUrn := func(st *resource.State) resource.URN { return st.URN }
+	getUrn := func(st *pkgresource.State) resource.URN { return st.URN }
 
 	statesGen := rapid.SliceOfDistinct(stateGen, getUrn)
 
-	return rapid.Custom(func(t *rapid.T) []*resource.State {
+	return rapid.Custom(func(t *rapid.T) []*pkgresource.State {
 		states := statesGen.Draw(t, "states")
 
 		randInt := rapid.IntRange(-len(states), len(states))
@@ -299,12 +294,12 @@ func resourceStateSliceGenerator() *rapid.Generator[[]*resource.State] {
 
 // Helper code: relations --------------------------------------------------------------------------
 
-// Shorthand for relations over `*resource.State`
-type R = func(a, b *resource.State) bool
+// Shorthand for relations over `*pkgresource.State`
+type R = func(a, b *pkgresource.State) bool
 
 // Union of one or more relations.
 func union(rs ...R) R {
-	return func(a, b *resource.State) bool {
+	return func(a, b *pkgresource.State) bool {
 		for _, r := range rs {
 			if r(a, b) {
 				return true
@@ -316,17 +311,17 @@ func union(rs ...R) R {
 
 // Flips the relation, `inverse(R)(a,b) = R(b,a)`.
 func inverse(r R) R {
-	return func(a, b *resource.State) bool {
+	return func(a, b *pkgresource.State) bool {
 		return r(b, a)
 	}
 }
 
 // Memoized transitive closure of a relation.
-func transitively(universe []*resource.State) func(R) R {
+func transitively(universe []*pkgresource.State) func(R) R {
 	return func(rel R) R {
-		trel := make(map[*resource.State]map[*resource.State]bool)
+		trel := make(map[*pkgresource.State]map[*pkgresource.State]bool)
 		for _, a := range universe {
-			trel[a] = make(map[*resource.State]bool)
+			trel[a] = make(map[*pkgresource.State]bool)
 			for _, b := range universe {
 				if rel(a, b) {
 					trel[a][b] = true
@@ -354,7 +349,7 @@ func transitively(universe []*resource.State) func(R) R {
 		for extend() {
 		}
 
-		return func(a, b *resource.State) bool {
+		return func(a, b *pkgresource.State) bool {
 			return trel[a][b]
 		}
 	}
@@ -362,7 +357,7 @@ func transitively(universe []*resource.State) func(R) R {
 
 // Helper code: misc -------------------------------------------------------------------------------
 
-func printState(w io.Writer, st *resource.State) {
+func printState(w io.Writer, st *pkgresource.State) {
 	fmt.Fprintf(w, "%s", st.URN)
 	if st.Parent != "" {
 		fmt.Fprintf(w, " parent=%s", st.Parent)
@@ -377,7 +372,7 @@ func printState(w io.Writer, st *resource.State) {
 	fmt.Fprintf(w, "\n")
 }
 
-func showStates(sts []*resource.State) string {
+func showStates(sts []*pkgresource.State) string {
 	buf := &bytes.Buffer{}
 	fmt.Fprintf(buf, "[\n\n")
 	for _, st := range sts {
@@ -388,7 +383,7 @@ func showStates(sts []*resource.State) string {
 	return buf.String()
 }
 
-func graphCheck(t *testing.T, check func(*rapid.T, []*resource.State)) {
+func graphCheck(t *testing.T, check func(*rapid.T, []*pkgresource.State)) {
 	rss := resourceStateSliceGenerator()
 	rapid.Check(t, func(t *rapid.T) {
 		universe := rss.Draw(t, "universe")

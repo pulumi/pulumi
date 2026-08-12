@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,18 +16,16 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	pbempty "google.golang.org/protobuf/types/known/emptypb"
 
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -40,84 +38,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type hostEngine struct {
-	pulumirpc.UnimplementedEngineServer
-	t *testing.T
-
-	logLock         sync.Mutex
-	logRepeat       int
-	previousMessage string
-}
-
-func (e *hostEngine) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
-	e.logLock.Lock()
-	defer e.logLock.Unlock()
-
-	var sev diag.Severity
-	switch req.Severity {
-	case pulumirpc.LogSeverity_DEBUG:
-		sev = diag.Debug
-	case pulumirpc.LogSeverity_INFO:
-		sev = diag.Info
-	case pulumirpc.LogSeverity_WARNING:
-		sev = diag.Warning
-	case pulumirpc.LogSeverity_ERROR:
-		sev = diag.Error
-	default:
-		return nil, fmt.Errorf("Unrecognized logging severity: %v", req.Severity)
-	}
-
-	message := req.Message
-	if os.Getenv("PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT") != "true" {
-		// Cut down logs so they don't overwhelm the test output
-		if len(message) > 2048 {
-			message = message[:2048] + "... (truncated, run with PULUMI_LANGUAGE_TEST_SHOW_FULL_OUTPUT=true to see full logs))"
-		}
-	}
-
-	if e.previousMessage == message {
-		e.logRepeat++
-		return &pbempty.Empty{}, nil
-	}
-
-	if e.logRepeat > 1 {
-		e.t.Logf("Last message repeated %d times", e.logRepeat)
-	}
-	e.logRepeat = 1
-	e.previousMessage = message
-
-	if req.StreamId != 0 {
-		e.t.Logf("(%d) %s[%s]: %s", req.StreamId, sev, req.Urn, message)
-	} else {
-		e.t.Logf("%s[%s]: %s", sev, req.Urn, message)
-	}
-	return &pbempty.Empty{}, nil
-}
-
-func runEngine(t *testing.T) string {
-	// Run a gRPC server that implements the Pulumi engine RPC interface. But all we do is forward logs on to T.
-	engine := &hostEngine{t: t}
-	stop := make(chan bool)
-	t.Cleanup(func() {
-		close(stop)
-	})
-	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: stop,
-		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterEngineServer(srv, engine)
-			return nil
-		},
-		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),
-	})
-	require.NoError(t, err)
-	return fmt.Sprintf("127.0.0.1:%v", handle.Port)
-}
-
 func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	// We can't just go run the pulumi-test-language package because of
 	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
 	binary := t.TempDir() + "/pulumi-test-language"
-	cmd := exec.Command("go", "build", "-C", "../../../../cmd/pulumi-test-language", "-o", binary)
+	cmd := exec.Command("go", "build", "-C", "../../../../pkg", "-o", binary, "./testing/pulumi-test-language")
 	output, err := cmd.CombinedOutput()
 	t.Logf("build output: %s", output)
 	require.NoError(t, err)
@@ -138,7 +63,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 				wg.Done()
 				return
 			}
-			t.Logf("engine: %s", text)
+			t.Log(text)
 		}
 	}()
 
@@ -162,42 +87,65 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	client := testingrpc.NewLanguageTestClient(conn)
 
 	t.Cleanup(func() {
-		assert.NoError(t, cmd.Process.Kill())
+		require.NoError(t, cmd.Process.Kill())
 		wg.Wait()
 		// We expect this to error because we just killed it.
 		contract.IgnoreError(cmd.Wait())
 	})
 
-	engineAddress := runEngine(t)
-	return engineAddress, client
+	return address, client
 }
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-invoke-options-depends-on": "not implemented yet",
-	"l2-rtti":                      "not implemented yet",
+	"l1-expand-final":                    "Node.js program generation does not support `...` argument expansion",
+	"l3-deferred-outputs":                "Cannot find name '_arg0_'.",
+	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
+	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
+	"l3-range-invoke-output-traversal":   "pulumi#12507: range loop variable captured by reference; indexed output resolves with the wrong index",                  //nolint:lll
+	"l2-raw-string-bytes":                "the Node.js SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
 }
 
-func TestLanguage(t *testing.T) {
-	t.Parallel()
+// testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
+// forceTsc controls whether to pre-compile TypeScript before running.
+func testLanguage(t *testing.T, runtime string, forceTsc bool) {
+	if testing.Short() {
+		t.Skip("skipping language conformance tests in short mode")
+	}
+
+	// Set PATH to include the local dist directory so policy can run.
+	dist, err := filepath.Abs(filepath.Join("..", "..", "dist"))
+	require.NoError(t, err)
+	t.Setenv("PATH", fmt.Sprintf("%s%c%s", dist, os.PathListSeparator, os.Getenv("PATH")))
 
 	engineAddress, engine := runTestingHost(t)
 
 	tests, err := engine.GetLanguageTests(t.Context(), &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
 
-	// We should run the nodejs tests twice. Once with tsc and once with ts-node.
-	for _, forceTsc := range []bool{false, true} {
-		forceTsc := forceTsc
-		t.Run(fmt.Sprintf("forceTsc=%v", forceTsc), func(t *testing.T) {
+	for _, local := range []bool{false, true} {
+		t.Run(fmt.Sprintf("local=%v", local), func(t *testing.T) {
 			t.Parallel()
 
+			if local {
+				// Local doesn't currently work:
+				//
+				// npm error   stdout: "error TS2688: Cannot find type definition file for 'node'.\n" +
+				// npm error     '  The file is in the program because:\n' +
+				// npm error     "    Entry point of type library 'node' specified in compilerOptions\n",
+				t.Skip("node doesn't currently work with local SDKs")
+			}
+
 			cancel := make(chan bool)
+
+			// Share installed node_modules trees between test projects with
+			// identical dependency manifests; see installcache.go.
+			installCacheDir := t.TempDir()
 
 			// Run the language plugin
 			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 				Init: func(srv *grpc.Server) error {
-					host := newLanguageHost(engineAddress, "", forceTsc)
+					host := newLanguageHost(t.Context(), engineAddress, runtime, "", "", forceTsc, installCacheDir)
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},
@@ -209,21 +157,37 @@ func TestLanguage(t *testing.T) {
 			rootDir, err := filepath.Abs(t.TempDir())
 			require.NoError(t, err)
 
-			snapshotDir := "./testdata/"
-			if forceTsc {
-				snapshotDir += "tsc"
+			providersDir := "testdata/providers"
+			policyPackDir := "testdata/policies"
+			snapshotDir := "./testdata"
+			if local {
+				snapshotDir += "/local"
 			} else {
-				snapshotDir += "tsnode"
+				snapshotDir += "/published"
+			}
+			switch runtime {
+			case "bun":
+				snapshotDir += "/bun"
+				providersDir = "testdata/providers-bun"
+				policyPackDir = "testdata/policies-bun"
+			case "nodejs":
+				if forceTsc {
+					snapshotDir += "/tsc"
+				} else {
+					snapshotDir += "/tsnode"
+				}
 			}
 
 			// Prepare to run the tests
 			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
-				LanguagePluginName:   "nodejs",
+				LanguagePluginName:   runtime,
 				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 				TemporaryDirectory:   rootDir,
 				SnapshotDirectory:    snapshotDir,
 				CoreSdkDirectory:     "../..",
 				CoreSdkVersion:       sdk.Version.String(),
+				PolicyPackDirectory:  policyPackDir,
+				Local:                local,
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{
 						Path:        "package\\.json",
@@ -236,20 +200,46 @@ func TestLanguage(t *testing.T) {
 						Replacement: "ROOT/artifacts",
 					},
 				},
+				ProvidersDirectory: providersDir,
 			})
 			require.NoError(t, err)
 
 			for _, tt := range tests.Tests {
-				tt := tt
 				t.Run(tt, func(t *testing.T) {
 					t.Parallel()
 
-					if tt != "l2-resource-conditional" {
-						return
+					// We can skip the l1- local tests without any SDK there's nothing new being tested here.
+					if local && strings.HasPrefix(tt, "l1-") {
+						t.Skip("Skipping l1- tests in local mode")
+					}
+
+					if runtime == "bun" {
+						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" ||
+							tt == "provider-replacement-trigger-component" || tt == "l2-docs" {
+							t.Skip(
+								"On linux bun has trouble resolving indirect dependencies that point to a local file" +
+									"https://github.com/pulumi/pulumi/issues/22100")
+						}
 					}
 
 					if expected, ok := expectedFailures[tt]; ok {
 						t.Skipf("Skipping known failure: %s", expected)
+					}
+
+					// Skip l2-large-string on Node.js 24 https://github.com/nodejs/node/issues/58197
+					// TODO: https://github.com/pulumi/pulumi/issues/19442
+					if runtime == "nodejs" && tt == "l2-large-string" {
+						cmd := exec.Command("node", "-v")
+						output, err := cmd.Output()
+						require.NoError(t, err)
+
+						var major int
+						_, err = fmt.Sscanf(string(output), "v%d", &major)
+						require.NoError(t, err)
+
+						if major >= 24 {
+							t.Skip("Skipping test on Node.js 24+ due to known regression")
+						}
 					}
 
 					result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
@@ -261,16 +251,31 @@ func TestLanguage(t *testing.T) {
 					for _, msg := range result.Messages {
 						t.Log(msg)
 					}
-					ptesting.LogTruncated(t, "stdout", result.Stdout)
-					ptesting.LogTruncated(t, "stderr", result.Stderr)
+					ptesting.LogIfVerbose(t, "stdout", result.Stdout)
+					ptesting.LogIfVerbose(t, "stderr", result.Stderr)
 					assert.True(t, result.Success)
 				})
 			}
 
 			t.Cleanup(func() {
 				close(cancel)
-				assert.NoError(t, <-handle.Done)
+				require.NoError(t, <-handle.Done)
 			})
 		})
 	}
+}
+
+//nolint:paralleltest // testLanguage uses t.Setenv
+func TestLanguageTSC(t *testing.T) {
+	testLanguage(t, "nodejs", true)
+}
+
+//nolint:paralleltest // testLanguage uses t.Setenv
+func TestLanguageTSNode(t *testing.T) {
+	testLanguage(t, "nodejs", false)
+}
+
+//nolint:paralleltest // testLanguage uses t.Setenv
+func TestLanguageBun(t *testing.T) {
+	testLanguage(t, "bun", false)
 }

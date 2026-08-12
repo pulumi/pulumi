@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 import * as pulumi from "@pulumi/pulumi";
 
@@ -7,7 +7,7 @@ interface ComponentArgs {
 }
 
 export class Component extends pulumi.ComponentResource {
-    public readonly foo!: pulumi.Output<string>;
+    declare public readonly foo: pulumi.Output<string>;
 
     constructor(name: string, args: ComponentArgs, opts?: pulumi.ComponentResourceOptions) {
         const inputs: any = {};

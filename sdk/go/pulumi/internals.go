@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ import (
 )
 
 // Functions in this file are exposed in pulumi/internals via go:linkname
-func awaitWithContext(ctx context.Context, o Output) (interface{}, bool, bool, []Resource, error) {
+func awaitWithContext(ctx context.Context, o Output) (any, bool, bool, []Resource, error) {
 	value, known, secret, deps, err := internal.AwaitOutput(ctx, o)
 	return value, known, secret, resourcesFromInternal(deps), err
 }

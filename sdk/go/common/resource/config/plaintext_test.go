@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package config
 
 import (
-	"context"
 	"encoding/json"
 	"math"
 	"testing"
@@ -46,7 +45,7 @@ func TestPlaintextSecure(t *testing.T) {
 	plain := NewPlaintext("hello")
 	assert.False(t, plain.Secure())
 
-	plain = NewSecurePlaintext("hello")
+	plain = NewPlaintext(PlaintextSecret("hello"))
 	assert.True(t, plain.Secure())
 
 	plain = NewPlaintext(map[string]Plaintext{
@@ -56,7 +55,7 @@ func TestPlaintextSecure(t *testing.T) {
 			NewPlaintext(uint64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+			NewPlaintext(PlaintextSecret("moon")),
 		}),
 	})
 	assert.True(t, plain.Secure())
@@ -83,10 +82,10 @@ func TestPlaintextEncrypt(t *testing.T) {
 			NewPlaintext(uint64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+			NewPlaintext(PlaintextSecret("moon")),
 		}),
 	})
-	actual, err := plain.encrypt(context.Background(), nil, NopEncrypter)
+	actual, err := plain.encrypt(t.Context(), nil, NopEncrypter)
 	require.NoError(t, err)
 
 	expected := newObject(map[string]object{
@@ -96,7 +95,7 @@ func TestPlaintextEncrypt(t *testing.T) {
 			newObject(uint64(math.MaxUint64)),
 			newObject(float64(3.14159)),
 			newObject("world"),
-			newSecureObject("moon"),
+			newObject(CiphertextSecret{"moon"}),
 		}),
 	})
 	assert.Equal(t, expected, actual)
@@ -112,28 +111,16 @@ func TestPlaintextRoundtrip(t *testing.T) {
 			NewPlaintext(uint64(math.MaxUint64)),
 			NewPlaintext(float64(3.14159)),
 			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
+			NewPlaintext(PlaintextSecret("moon")),
 		}),
 	})
-	value, err := plain.Encrypt(context.Background(), NopEncrypter)
+	obj, err := plain.encrypt(t.Context(), nil, NopEncrypter)
 	require.NoError(t, err)
 
-	actual, err := value.Decrypt(context.Background(), NopDecrypter)
+	actual, err := obj.decrypt(t.Context(), nil, NopDecrypter)
 	require.NoError(t, err)
 
-	rt := NewPlaintext(map[string]Plaintext{
-		"hello": NewPlaintext([]Plaintext{
-			NewPlaintext(true),
-			NewPlaintext(int64(42)),
-			// uint64 can't roundtrip through JSON
-			NewPlaintext(float64(math.MaxUint64)),
-			NewPlaintext(float64(3.14159)),
-			NewPlaintext("world"),
-			NewSecurePlaintext("moon"),
-		}),
-	})
-
-	assert.Equal(t, rt, actual)
+	assert.Equal(t, plain, actual)
 }
 
 func TestMarshalPlaintext(t *testing.T) {
@@ -159,5 +146,86 @@ func TestMarshalPlaintext(t *testing.T) {
 	assert.Panics(t, func() {
 		err := yaml.Unmarshal([]byte("42"), &plain)
 		contract.IgnoreError(err)
+	})
+}
+
+//nolint:paralleltest // changes global defaultMaxChunkSize variable
+func TestEncryptMap(t *testing.T) {
+	ctx := t.Context()
+
+	t.Run("empty map", func(t *testing.T) {
+		result, err := encryptMap(ctx, map[Key]Plaintext{}, nopCrypter{})
+		require.NoError(t, err)
+		assert.Empty(t, result)
+	})
+
+	t.Run("Plaintext values", func(t *testing.T) {
+		input := map[Key]Plaintext{
+			MustParseKey("ns:foo"): NewPlaintext("bar"),
+			MustParseKey("ns:num"): NewPlaintext(int64(42)),
+		}
+		result, err := encryptMap(ctx, input, nopCrypter{})
+		require.NoError(t, err)
+		assert.Equal(t, "bar", result[MustParseKey("ns:foo")].value)
+		assert.Equal(t, int64(42), result[MustParseKey("ns:num")].value)
+	})
+
+	t.Run("secure values", func(t *testing.T) {
+		input := map[Key]Plaintext{
+			MustParseKey("ns:secret"): NewPlaintext(PlaintextSecret("Plaintext")),
+		}
+		result, err := encryptMap(ctx, input, nopCrypter{})
+		require.NoError(t, err)
+		assert.Equal(t, CiphertextSecret{"Plaintext"}, result[MustParseKey("ns:secret")].value)
+		assert.True(t, result[MustParseKey("ns:secret")].Secure())
+	})
+
+	t.Run("nested secure values", func(t *testing.T) {
+		input := map[Key]Plaintext{
+			MustParseKey("ns:secret"): NewPlaintext(map[string]Plaintext{
+				"foo": NewPlaintext(PlaintextSecret("Plaintext")),
+			}),
+		}
+		result, err := encryptMap(t.Context(), input, nopCrypter{})
+		require.NoError(t, err)
+		assert.Equal(t,
+			newObject(CiphertextSecret{"Plaintext"}),
+			result[MustParseKey("ns:secret")].value.(map[string]object)["foo"],
+		)
+		assert.True(t, result[MustParseKey("ns:secret")].Secure())
+	})
+
+	t.Run("mixed values", func(t *testing.T) {
+		input := map[Key]Plaintext{
+			MustParseKey("ns:plain"):  NewPlaintext("value"),
+			MustParseKey("ns:secret"): NewPlaintext(PlaintextSecret("Plaintext")),
+		}
+		result, err := encryptMap(ctx, input, nopCrypter{})
+		require.NoError(t, err)
+		assert.Equal(t, "value", result[MustParseKey("ns:plain")].value)
+		assert.Equal(t, CiphertextSecret{"Plaintext"}, result[MustParseKey("ns:secret")].value)
+		assert.True(t, result[MustParseKey("ns:secret")].Secure())
+	})
+
+	t.Run("chunking", func(t *testing.T) {
+		origChunkSize := defaultMaxChunkSize
+		defaultMaxChunkSize = 2 // force batching for test
+		defer func() { defaultMaxChunkSize = origChunkSize }()
+
+		input := map[Key]Plaintext{
+			MustParseKey("ns:a"): NewPlaintext(PlaintextSecret("s1")),
+			MustParseKey("ns:b"): NewPlaintext(PlaintextSecret("s2")),
+			MustParseKey("ns:c"): NewPlaintext(PlaintextSecret("s3")),
+			MustParseKey("ns:d"): NewPlaintext("plain"),
+		}
+		result, err := encryptMap(ctx, input, nopCrypter{})
+		require.NoError(t, err)
+		assert.Equal(t, CiphertextSecret{"s1"}, result[MustParseKey("ns:a")].value)
+		assert.Equal(t, CiphertextSecret{"s2"}, result[MustParseKey("ns:b")].value)
+		assert.Equal(t, CiphertextSecret{"s3"}, result[MustParseKey("ns:c")].value)
+		assert.Equal(t, "plain", result[MustParseKey("ns:d")].value)
+		assert.True(t, result[MustParseKey("ns:a")].Secure())
+		assert.True(t, result[MustParseKey("ns:b")].Secure())
+		assert.True(t, result[MustParseKey("ns:c")].Secure())
 	})
 }

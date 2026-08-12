@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,14 +24,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/esc"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -62,7 +63,8 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 	t.Parallel()
 	// Don't check return values. Just check that GetLatestConfiguration() is not called.
 	_, _, _ = GetStackConfiguration(
-		context.Background(),
+		t.Context(),
+		nil, /*sink*/
 		stack.SecretsManagerLoader{},
 		&backend.MockStack{
 			RefF: func() backend.StackReference {
@@ -73,15 +75,23 @@ func TestGetStackConfigurationDoesNotGetLatestConfiguration(t *testing.T) {
 					FullyQualifiedNameV: tokens.QName("org/project/name"),
 				}
 			},
+			LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+				return workspace.LoadProjectStack(cmdutil.Diag(), project, "Pulumi.name.yaml")
+			},
+			DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
+				return nil, nil
+			},
 			BackendF: func() backend.Backend {
 				return &backend.MockBackend{
-					GetLatestConfigurationF: func(context.Context, backend.Stack) (config.Map, error) {
+					GetLatestConfigurationF: func(context.Context, backend.Stack) (backend.LatestConfiguration, error) {
 						t.Fatalf("GetLatestConfiguration should not be called in typical getStackConfiguration calls.")
-						return config.Map{}, nil
+						return backend.LatestConfiguration{}, nil
 					},
 				}
 			},
 		},
+		nil,
+		"",
 		nil,
 	)
 }
@@ -91,7 +101,8 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 	// Don't check return values. Just check that GetLatestConfiguration() is called.
 	called := false
 	_, _, _ = GetStackConfigurationOrLatest(
-		context.Background(),
+		t.Context(),
+		nil, /*sink*/
 		stack.SecretsManagerLoader{},
 		&backend.MockStack{
 			RefF: func() backend.StackReference {
@@ -102,18 +113,23 @@ func TestGetStackConfigurationOrLatest(t *testing.T) {
 					FullyQualifiedNameV: tokens.QName("org/project/name"),
 				}
 			},
-			DefaultSecretManagerF: func(info *workspace.ProjectStack) (secrets.Manager, error) {
+			LoadRemoteF: func(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error) {
+				return nil, workspace.ErrProjectNotFound
+			},
+			DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 				return nil, nil
 			},
 			BackendF: func() backend.Backend {
 				return &backend.MockBackend{
-					GetLatestConfigurationF: func(context.Context, backend.Stack) (config.Map, error) {
+					GetLatestConfigurationF: func(context.Context, backend.Stack) (backend.LatestConfiguration, error) {
 						called = true
-						return config.Map{}, nil
+						return backend.LatestConfiguration{}, nil
 					},
 				}
 			},
 		},
+		nil,
+		"",
 		nil,
 	)
 	if !called {
@@ -175,8 +191,8 @@ func TestOpenStackEnvNoEnv(t *testing.T) {
 	err := yaml.Unmarshal([]byte(""), &projectStack)
 	require.NoError(t, err)
 
-	_, _, err = openStackEnv(context.Background(), stack, &projectStack)
-	assert.NoError(t, err)
+	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil)
+	require.NoError(t, err)
 }
 
 func TestOpenStackEnvUnsupportedBackend(t *testing.T) {
@@ -189,7 +205,7 @@ func TestOpenStackEnvUnsupportedBackend(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, _, err = openStackEnv(context.Background(), stack, &projectStack)
+	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil)
 	assert.Error(t, err)
 }
 
@@ -205,6 +221,7 @@ func getMockStackWithEnv(t *testing.T, env map[string]esc.Value) *backend.MockSt
 			org string,
 			yaml []byte,
 			duration time.Duration,
+			_ map[string]string,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			assert.Equal(t, "test-org", org)
 			assert.NotEmpty(t, yaml)
@@ -241,9 +258,9 @@ func TestOpenStackEnv(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	openEnv, diags, err := openStackEnv(context.Background(), stack, &projectStack)
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
 	require.NoError(t, err)
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
 }
 
@@ -268,9 +285,147 @@ func TestOpenStackEnvLiteral(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  imports:\n    - test"), &projectStack)
 	require.NoError(t, err)
 
-	openEnv, diags, err := openStackEnv(context.Background(), stack, &projectStack)
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
 	require.NoError(t, err)
-	assert.Len(t, diags, 0)
+	require.Len(t, diags, 0)
+	assert.Equal(t, env, openEnv.Properties)
+}
+
+func TestOpenStackEnvVersionPinned(t *testing.T) {
+	t.Parallel()
+
+	env := map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"test:string": esc.NewValue("esc"),
+		}),
+	}
+
+	be := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF: func() string { return "test" },
+		},
+		OpenYAMLEnvironmentF: func(
+			ctx context.Context,
+			org string,
+			yamlBody []byte,
+			duration time.Duration,
+			_ map[string]string,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			assert.Equal(t, "test-org", org)
+			assert.Contains(t, string(yamlBody), "project/env@3")
+			assert.Contains(t, string(yamlBody), "project/other@stable")
+			return &esc.Environment{Properties: env}, nil, nil
+		},
+	}
+	stack := &backend.MockStack{
+		OrgNameF: func() string { return "test-org" },
+		BackendF: func() backend.Backend { return be },
+	}
+
+	var projectStack workspace.ProjectStack
+	err := yaml.Unmarshal([]byte("environment:\n  - project/env@3\n  - project/other@stable"), &projectStack)
+	require.NoError(t, err)
+
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
+	require.NoError(t, err)
+	require.Len(t, diags, 0)
+	assert.Equal(t, env, openEnv.Properties)
+}
+
+func TestOpenStackEnvOverrides(t *testing.T) {
+	t.Parallel()
+
+	var gotOverrides map[string]string
+	be := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF: func() string { return "test" },
+		},
+		OpenYAMLEnvironmentF: func(
+			ctx context.Context,
+			org string,
+			yamlBody []byte,
+			duration time.Duration,
+			environmentOverrides map[string]string,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			gotOverrides = environmentOverrides
+			return &esc.Environment{Properties: map[string]esc.Value{}}, nil, nil
+		},
+	}
+	stack := &backend.MockStack{
+		OrgNameF: func() string { return "test-org" },
+		BackendF: func() backend.Backend { return be },
+	}
+
+	var projectStack workspace.ProjectStack
+	err := yaml.Unmarshal([]byte("environment:\n  - proj/env"), &projectStack)
+	require.NoError(t, err)
+
+	_, diags, err := openStackEnv(t.Context(), stack, &projectStack,
+		[]string{"proj/env=proj/other@tag", "proj/env2=proj/other2"})
+	require.NoError(t, err)
+	require.Len(t, diags, 0)
+	assert.Equal(t, map[string]string{
+		"proj/env":  "proj/other@tag",
+		"proj/env2": "proj/other2",
+	}, gotOverrides)
+}
+
+func TestParseEnvironmentOverrides(t *testing.T) {
+	t.Parallel()
+
+	overrides, err := parseEnvironmentOverrides(nil)
+	require.NoError(t, err)
+	assert.Nil(t, overrides)
+
+	overrides, err = parseEnvironmentOverrides([]string{"proj/env=proj/other@tag", "a=b"})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]string{"proj/env": "proj/other@tag", "a": "b"}, overrides)
+
+	for _, bad := range []string{"noequals", "=replacement", "match="} {
+		_, err := parseEnvironmentOverrides([]string{bad})
+		assert.ErrorContains(t, err, "invalid --override-env value")
+	}
+}
+
+func TestOpenStackEnvVersionPinnedLiteral(t *testing.T) {
+	t.Parallel()
+
+	env := map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"test:string": esc.NewValue("esc"),
+		}),
+	}
+
+	be := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF: func() string { return "test" },
+		},
+		OpenYAMLEnvironmentF: func(
+			ctx context.Context,
+			org string,
+			yamlBody []byte,
+			duration time.Duration,
+			_ map[string]string,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			assert.Equal(t, "test-org", org)
+			assert.Contains(t, string(yamlBody), "project/env@3")
+			return &esc.Environment{Properties: env}, nil, nil
+		},
+	}
+	stack := &backend.MockStack{
+		OrgNameF: func() string { return "test-org" },
+		BackendF: func() backend.Backend { return be },
+	}
+
+	var projectStack workspace.ProjectStack
+	stackYAML := "environment:\n  imports:\n    - project/env@3\n" +
+		"  values:\n    pulumiConfig:\n      test:string: esc"
+	err := yaml.Unmarshal([]byte(stackYAML), &projectStack)
+	require.NoError(t, err)
+
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
+	require.NoError(t, err)
+	require.Len(t, diags, 0)
 	assert.Equal(t, env, openEnv.Properties)
 }
 
@@ -294,15 +449,15 @@ func TestStackEnvConfig(t *testing.T) {
 
 	mockSecretsManager := &secrets.MockSecretsManager{
 		EncrypterF: func() config.Encrypter {
-			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
+			encrypter := &secrets.MockEncrypter{EncryptValueF: func(_ string) string { return "ciphertext" }}
 			return encrypter
 		},
 		DecrypterF: func() config.Decrypter {
 			decrypter := &secrets.MockDecrypter{
-				DecryptValueF: func() string {
+				DecryptValueF: func(_ string) string {
 					return "plaintext"
 				},
-				BatchDecryptF: func() []string {
+				BatchDecryptF: func(_ []string) []string {
 					return []string{
 						"whatiamdoing",
 					}
@@ -323,7 +478,7 @@ func TestStackEnvConfig(t *testing.T) {
 				FullyQualifiedNameV: tokens.QName("org/project/" + name),
 			}
 		}
-		stack.DefaultSecretManagerF = func(info *workspace.ProjectStack) (secrets.Manager, error) {
+		stack.DefaultSecretManagerF = func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return mockSecretsManager, nil
 		}
 
@@ -338,20 +493,23 @@ func TestStackEnvConfig(t *testing.T) {
 
 	project := workspace.Project{Name: tokens.PackageName("project")}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	cfg, err := getStackConfigurationFromProjectStack(
 		ctx,
 		stack,
 		&project,
 		mockSecretsManager,
 		&projectStack,
+		nil,
 	)
 	require.NoError(t, err)
 
 	assert.Nil(t, cfg.Config)
 	cfg.Config = config.Map{}
 
-	err = workspace.ApplyProjectConfig(ctx, "mystack", &project, cfg.Environment, cfg.Config, config.NopEncrypter)
+	err = pkgWorkspace.ApplyProjectConfig(
+		ctx, "mystack", &project, cfg.Environment, cfg.Config, config.NopEncrypter, config.NopDecrypter,
+	)
 	require.NoError(t, err)
 
 	assert.Equal(t, config.Map{
@@ -379,15 +537,15 @@ func TestCopyConfig(t *testing.T) {
 
 	mockSecretsManager := &secrets.MockSecretsManager{
 		EncrypterF: func() config.Encrypter {
-			encrypter := &secrets.MockEncrypter{EncryptValueF: func() string { return "ciphertext" }}
+			encrypter := &secrets.MockEncrypter{EncryptValueF: func(_ string) string { return "ciphertext" }}
 			return encrypter
 		},
 		DecrypterF: func() config.Decrypter {
 			decrypter := &secrets.MockDecrypter{
-				DecryptValueF: func() string {
+				DecryptValueF: func(_ string) string {
 					return "plaintext"
 				},
-				BatchDecryptF: func() []string {
+				BatchDecryptF: func(_ []string) []string {
 					return []string{
 						"whatiamdoing",
 					}
@@ -408,7 +566,7 @@ func TestCopyConfig(t *testing.T) {
 				FullyQualifiedNameV: tokens.QName("org/project/" + name),
 			}
 		}
-		stack.DefaultSecretManagerF = func(info *workspace.ProjectStack) (secrets.Manager, error) {
+		stack.DefaultSecretManagerF = func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return mockSecretsManager, nil
 		}
 
@@ -429,7 +587,7 @@ func TestCopyConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		requiresSaving, err := stack.CopyEntireConfigMap(
-			context.Background(),
+			t.Context(),
 			stack.SecretsManagerLoader{},
 			sourceStack,
 			&sourceProjectStack,
@@ -459,6 +617,7 @@ func TestOpenStackEnvDiags(t *testing.T) {
 			org string,
 			yaml []byte,
 			duration time.Duration,
+			_ map[string]string,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			return nil, []apitype.EnvironmentDiagnostic{{Summary: "diag"}}, nil
 		},
@@ -472,9 +631,9 @@ func TestOpenStackEnvDiags(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, diags, err := openStackEnv(context.Background(), stack, &projectStack)
+	_, diags, err := openStackEnv(t.Context(), stack, &projectStack, nil)
 	require.NoError(t, err)
-	assert.Len(t, diags, 1)
+	require.Len(t, diags, 1)
 }
 
 func TestOpenStackEnvError(t *testing.T) {
@@ -489,6 +648,7 @@ func TestOpenStackEnvError(t *testing.T) {
 			org string,
 			yaml []byte,
 			duration time.Duration,
+			_ map[string]string,
 		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 			return nil, nil, errors.New("error")
 		},
@@ -502,7 +662,7 @@ func TestOpenStackEnvError(t *testing.T) {
 	err := yaml.Unmarshal([]byte("environment:\n  - test"), &projectStack)
 	require.NoError(t, err)
 
-	_, _, err = openStackEnv(context.Background(), stack, &projectStack)
+	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil)
 	assert.Error(t, err)
 }
 
@@ -633,7 +793,7 @@ func TestParseConfigKey(t *testing.T) {
 	}
 
 	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
 			return &workspace.Project{
 				Name: "test-project",
 			}, "/test/path", nil
@@ -641,7 +801,6 @@ func TestParseConfigKey(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			got, err := ParseConfigKey(ws, tt.input, tt.path)

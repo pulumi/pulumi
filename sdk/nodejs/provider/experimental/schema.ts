@@ -1,4 +1,4 @@
-// Copyright 2025-2025, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { ComponentDefinition, TypeDefinition, PropertyDefinition } from "./analyzer";
+import { ComponentDefinition, TypeDefinition, PropertyDefinition, Dependency } from "./analyzer";
 
 export type PropertyType = "string" | "integer" | "number" | "boolean" | "array" | "object";
 
@@ -43,10 +43,19 @@ export interface ObjectType {
 }
 
 /**
+ * https://www.pulumi.com/docs/iac/using-pulumi/extending-pulumi/schema/#enumvalue
+ */
+export interface EnumValue {
+    name: string;
+    value: string | number;
+    description?: string;
+}
+
+/**
  * https://www.pulumi.com/docs/iac/using-pulumi/pulumi-packages/schema/#complextype
  */
 export interface ComplexType extends ObjectType {
-    enum?: string[];
+    enum?: EnumValue[];
 }
 
 /**
@@ -56,6 +65,12 @@ export interface Resource extends ObjectType {
     isComponent?: boolean;
     inputProperties?: { [key: string]: Property };
     requiredInputs?: string[];
+}
+
+export interface PackageDescriptor {
+    name: string;
+    version?: string;
+    downloadURL?: string;
 }
 
 /**
@@ -69,6 +84,7 @@ export interface PackageSpec {
     resources: { [key: string]: Resource };
     types: { [key: string]: ComplexType };
     language?: { [key: string]: any };
+    dependencies?: PackageDescriptor[];
 }
 
 export function generateSchema(
@@ -77,7 +93,7 @@ export function generateSchema(
     description: string,
     components: Record<string, ComponentDefinition>,
     typeDefinitions: Record<string, TypeDefinition>,
-    packageReferences: Record<string, string>,
+    dependencies: Dependency[],
     namespace?: string,
 ): PackageSpec {
     const result: PackageSpec = {
@@ -89,10 +105,6 @@ export function generateSchema(
         types: {},
         language: {
             nodejs: {
-                dependencies: {},
-                devDependencies: {
-                    typescript: "^5.0.0",
-                },
                 respectSchemaVersion: true,
             },
             python: {
@@ -108,6 +120,7 @@ export function generateSchema(
                 respectSchemaVersion: true,
             },
         },
+        dependencies,
     };
 
     for (const [name, component] of Object.entries(components)) {
@@ -123,33 +136,19 @@ export function generateSchema(
     }
 
     for (const [name, type] of Object.entries(typeDefinitions)) {
-        result.types[`${providerName}:index:${name}`] = {
-            type: "object",
-            properties: type.properties,
-            required: required(type.properties),
-        };
-    }
-
-    for (const [packageName, packageVersion] of Object.entries(packageReferences)) {
-        result.language!.nodejs.dependencies[`@pulumi/${packageName}`] = packageVersion;
-        if (!result.language!.python.requires) {
-            result.language!.python.requires = {};
+        const typeName = `${providerName}:index:${name}`;
+        if (type.enum) {
+            result.types[typeName] = {
+                type: type.type,
+                enum: type.enum,
+            };
+        } else if (type.properties) {
+            result.types[`${providerName}:index:${name}`] = {
+                type: "object",
+                properties: type.properties,
+                required: required(type.properties),
+            };
         }
-        if (!result.language!.csharp.packageReferences) {
-            result.language!.csharp.packageReferences = {};
-        }
-        if (!result.language!.java.dependencies) {
-            result.language!.java.dependencies = {};
-        }
-        result.language!.python.requires[`pulumi-${packageName}`] = `==${packageVersion}`;
-
-        const csharpPackageName = packageName
-            .split("-")
-            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-            .join("");
-        result.language!.csharp.packageReferences[`Pulumi.${csharpPackageName}`] = packageVersion;
-
-        result.language!.java.dependencies[`com.pulumi:${packageName}`] = packageVersion;
     }
 
     return result;

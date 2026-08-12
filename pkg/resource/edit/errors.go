@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,14 +17,14 @@ package edit
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 )
 
 // ResourceHasDependenciesError is returned by DeleteResource if a resource can't be deleted due to the presence of
 // resources that depend directly or indirectly upon it.
 type ResourceHasDependenciesError struct {
-	Condemned    *resource.State
-	Dependencies []*resource.State
+	Condemned    *pkgresource.State
+	Dependencies []*pkgresource.State
 }
 
 func (r ResourceHasDependenciesError) Error() string {
@@ -33,7 +33,7 @@ func (r ResourceHasDependenciesError) Error() string {
 
 // ResourceProtectedError is returned by DeleteResource if a resource is protected.
 type ResourceProtectedError struct {
-	Condemned *resource.State
+	Condemned *pkgresource.State
 }
 
 func (ResourceProtectedError) Error() string {

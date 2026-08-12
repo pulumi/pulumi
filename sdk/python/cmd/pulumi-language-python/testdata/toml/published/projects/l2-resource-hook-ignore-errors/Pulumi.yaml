@@ -1,0 +1,7 @@
+name: l2-resource-hook-ignore-errors
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

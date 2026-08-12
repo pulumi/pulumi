@@ -15,10 +15,10 @@
 import functools
 import warnings
 from typing import (
-    Callable,
     TypeVar,
     cast,
 )
+from collections.abc import Callable
 from .log import warn
 from ._types import _PULUMI_DEPRECATED_CALLABLE
 

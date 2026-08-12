@@ -1,0 +1,28 @@
+View in Browser (Ctrl+O): link
+
+     Type                       Name           Status      Info
+     pulumi:pulumi:Stack        myproject-dev              1 message
+ -   └─ aws:s3:Bucket           mybucket       deleted     
+ -      └─ aws:s3:BucketObject  myobject       deleted     
+
+Changes:
+  aws:s3:Bucket (mybucket):
+    - aws:s3/bucket:Bucket: (delete)
+        [id=mybucket-id]
+        [urn=urn:pulumi:dev::myproject::aws:s3/bucket:Bucket::mybucket]
+
+  aws:s3:BucketObject (myobject):
+    - aws:s3/bucketObject:BucketObject: (delete)
+        [id=myobject-id]
+        [urn=urn:pulumi:dev::myproject::aws:s3/bucketObject:BucketObject::myobject]
+
+Diagnostics:
+  pulumi:pulumi:Stack (myproject-dev):
+    Configuration:
+
+Resources:
+    - 2 deleted
+    1 unchanged
+
+Duration: 7s
+

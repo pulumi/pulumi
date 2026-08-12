@@ -1,0 +1,5 @@
+name: provider-depends-on-component
+runtime:
+  name: nodejs
+  options:
+    typescript: false

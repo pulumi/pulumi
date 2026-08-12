@@ -1,1 +1,0 @@
-<{%fg 3%}>warning: <{%reset%}><{%reset%}>diff unavailable<{%reset%}>

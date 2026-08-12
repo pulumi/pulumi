@@ -23,8 +23,9 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -57,39 +58,39 @@ type basePluginMapperSpec struct {
 	version semver.Version
 }
 
+// parseDebugProviderNames returns the provider names listed in a
+// PULUMI_DEBUG_PROVIDERS env var (format: name:port[,name:port…]).
+func parseDebugProviderNames(env string) []string {
+	if env == "" {
+		return nil
+	}
+	var out []string
+	for entry := range strings.SplitSeq(env, ",") {
+		k, _, ok := strings.Cut(entry, ":")
+		if !ok {
+			continue
+		}
+		out = append(out, strings.TrimSpace(k))
+	}
+	return out
+}
+
 // Workspace encapsulates an environment containing an enumerable set of plugins.
-type Workspace interface {
-	// GetPlugins returns the list of plugins installed in the workspace.
-	GetPlugins() ([]workspace.PluginInfo, error)
-}
-
-type defaultWorkspace struct{}
-
-func (defaultWorkspace) GetPlugins() ([]workspace.PluginInfo, error) {
-	return workspace.GetPlugins()
-}
-
-// DefaultWorkspace returns a default workspace implementation that uses the workspace module directly to get plugin
-// info.
-func DefaultWorkspace() Workspace {
-	return defaultWorkspace{}
-}
-
-// NewBasePluginMapper creates a new plugin mapper backed by the supplied workspace.
+// NewBasePluginMapper creates a new plugin mapper backed by the supplied plugin context.
 func NewBasePluginMapper(
-	ws Workspace,
+	pluginContext pluginstorage.Context,
 	conversionKey string,
 	providerFactory ProviderFactory,
 	installPlugin func(pluginName string) *semver.Version,
 	mappings []string,
 ) (Mapper, error) {
-	contract.Requiref(ws != nil, "ws", "must not be nil")
+	contract.Requiref(pluginContext != nil, "pluginContext", "must not be nil")
 	contract.Requiref(providerFactory != nil, "providerFactory", "must not be nil")
 
 	// Enumerate _all_ our installed plugins to ask for any mappings they provide. This allows users to convert aws
 	// terraform code for example by just having 'pulumi-aws' plugin locally, without needing to specify it anywhere on
 	// the command line, and without tf2pulumi needing to know about every possible plugin.
-	allPlugins, err := ws.GetPlugins()
+	allPlugins, err := pluginContext.GetPlugins(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("could not get plugins: %w", err)
 	}
@@ -117,6 +118,7 @@ func NewBasePluginMapper(
 	// We now have a list of plugin specs (i.e. a name and version). Save that list because we don't want to iterate all
 	// the plugins now because the convert might not even ask for any mappings.
 	plugins := []basePluginMapperSpec{}
+	seen := map[string]bool{}
 	for _, plugin := range allPlugins {
 		if plugin.Kind != apitype.ResourcePlugin {
 			continue
@@ -129,6 +131,17 @@ func NewBasePluginMapper(
 			name:    plugin.Name,
 			version: version,
 		})
+		seen[plugin.Name] = true
+	}
+
+	// Also enumerate providers attached via PULUMI_DEBUG_PROVIDERS so the
+	// mapper considers them alongside installed plugins. The host's Provider
+	// loader respects the same env var, so providerFactory will dial them.
+	for _, name := range parseDebugProviderNames(os.Getenv("PULUMI_DEBUG_PROVIDERS")) {
+		if seen[name] {
+			continue
+		}
+		plugins = append(plugins, basePluginMapperSpec{name: name})
 	}
 
 	// Explicitly supplied mappings take precedence over any plugin returned mappings, but we want to error early if we
@@ -188,7 +201,15 @@ func (m *basePluginMapper) GetMapping(
 	ctx context.Context,
 	provider string,
 	hint *MapperPackageHint,
+	ecosystem string,
 ) ([]byte, error) {
+	// The ecosystem passed on the request identifies the mappings the caller consumes and takes precedence over
+	// the conversion key this mapper was configured with. When empty, fall back to the configured key.
+	key := m.conversionKey
+	if ecosystem != "" {
+		key = ecosystem
+	}
+
 	// See https://github.com/pulumi/pulumi/issues/14718 for why we need this lock. It may be possible to be
 	// smarter about this and only lock when mutating, or at least splitting to a read/write lock, but this is
 	// a quick fix to unblock providers. If you do attempt this then write tests to ensure this doesn't
@@ -236,7 +257,7 @@ func (m *basePluginMapper) GetMapping(
 
 	// Try the list of plugins we have and see if any of them produce a mapping we can return.
 	for _, mapperSpec := range m.pluginSpecs {
-		pluginSpec, err := workspace.NewPluginSpec(mapperSpec.name, apitype.ResourcePlugin, nil, "", nil)
+		pluginSpec, err := workspace.NewPluginDescriptor(ctx, mapperSpec.name, apitype.ResourcePlugin, nil, "", nil)
 		if err != nil {
 			return nil, fmt.Errorf("could not create plugin spec for plugin %s: %w", pluginSpec.Name, err)
 		}
@@ -257,12 +278,12 @@ func (m *basePluginMapper) GetMapping(
 		defer contract.IgnoreClose(providerPlugin)
 
 		mappings, err := providerPlugin.GetMappings(ctx, plugin.GetMappingsRequest{
-			Key: m.conversionKey,
+			Key: key,
 		})
 		if err != nil {
 			return nil, fmt.Errorf(
 				"could not get %s mappings for package %s: %w",
-				m.conversionKey, descriptor.PackageName(), err,
+				key, descriptor.PackageName(), err,
 			)
 		}
 
@@ -272,17 +293,17 @@ func (m *basePluginMapper) GetMapping(
 			}
 
 			mapping, err := providerPlugin.GetMapping(ctx, plugin.GetMappingRequest{
-				Key:      m.conversionKey,
+				Key:      key,
 				Provider: provider,
 			})
 			if err != nil {
-				return nil, fmt.Errorf("could not get advertized %s mapping for provider %s: %w", m.conversionKey, provider, err)
+				return nil, fmt.Errorf("could not get advertized %s mapping for provider %s: %w", key, provider, err)
 			}
 
 			if mapping.Provider != provider {
 				return nil, fmt.Errorf(
 					"unexpected provider in %s mapping response for provider %s: %s",
-					m.conversionKey, provider, mapping.Provider,
+					key, provider, mapping.Provider,
 				)
 			}
 
@@ -293,11 +314,11 @@ func (m *basePluginMapper) GetMapping(
 		// none of them matched. We'll try a blind GetMapping call with an empty provider name to see if the plugin has
 		// a mapping that matches that way.
 		mapping, err := providerPlugin.GetMapping(ctx, plugin.GetMappingRequest{
-			Key:      m.conversionKey,
+			Key:      key,
 			Provider: "",
 		})
 		if err != nil {
-			return nil, fmt.Errorf("could not get %s mapping for provider %s: %w", m.conversionKey, provider, err)
+			return nil, fmt.Errorf("could not get %s mapping for provider %s: %w", key, provider, err)
 		}
 
 		if mapping.Provider == provider {

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ package diy
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // diySnapshotPersister is a simple SnapshotManager implementation that persists snapshots
@@ -31,8 +31,8 @@ type diySnapshotPersister struct {
 	backend *diyBackend
 }
 
-func (sp *diySnapshotPersister) Save(snapshot *deploy.Snapshot) error {
-	_, err := sp.backend.saveStack(sp.ctx, sp.ref, snapshot)
+func (sp *diySnapshotPersister) Save(deployment apitype.TypedDeployment) error {
+	_, err := sp.backend.saveStack(sp.ctx, sp.ref, deployment)
 	return err
 }
 

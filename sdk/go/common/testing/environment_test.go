@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEnvOverrideGetCommandResults(t *testing.T) {
@@ -28,7 +29,7 @@ func TestEnvOverrideGetCommandResults(t *testing.T) {
 	checkDebug := func(expect string) {
 		stdout, stderr, err := e.GetCommandResults("bash", "-c", "echo $PULUMI_DEBUG_COMMANDS")
 		stdout = strings.TrimSuffix(stdout, "\n")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Empty(t, stderr)
 		assert.Equal(t, expect, stdout)
 	}

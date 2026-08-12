@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -47,8 +48,12 @@ func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.Propert
 	return args.Name, args.Inputs.Copy(), nil
 }
 
-func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+func (mocks) MethodCall(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 	panic("Call not supported")
+}
+
+func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+	panic("Invoke not supported")
 }
 
 func TestObjectDefaults(t *testing.T) {
@@ -81,7 +86,7 @@ func TestDefaultResource(t *testing.T) {
 			KubeClientSettings:       example.KubeClientSettingsPtr(&example.KubeClientSettingsArgs{}),
 			BackupKubeClientSettings: &example.KubeClientSettingsArgs{Qps: pulumi.Float64(7)},
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		return nil
 	}, pulumi.WithMocks("example", "stack", mocks(0)))
 }

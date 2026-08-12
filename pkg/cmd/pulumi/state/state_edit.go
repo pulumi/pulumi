@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,11 +26,12 @@ import (
 	"github.com/google/shlex"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -46,7 +47,8 @@ func newStateEditCommand() *cobra.Command {
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
 	cmd := &cobra.Command{
-		Use: "edit",
+		Use:     "edit",
+		Aliases: []string{"update", "modify"},
 		// TODO(dixler) Add test for unicode round-tripping before unhiding.
 		// TODO(fraser) This needs tests _in general_ it is currently basically untested.
 		Hidden: !env.Experimental.Value(),
@@ -56,15 +58,16 @@ func newStateEditCommand() *cobra.Command {
 This command can be used to surgically edit a stack's state in the editor
 specified by the EDITOR environment variable and will provide the user with
 a preview showing a diff of the altered state.`,
-		Args: cmdutil.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmdutil.Interactive() {
 				return errors.New("pulumi state edit must be run in interactive mode")
 			}
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 			s, err := cmdStack.RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
@@ -73,9 +76,13 @@ a preview showing a diff of the altered state.`,
 					Color:         cmdutil.GetGlobalColorization(),
 					IsInteractive: true,
 				},
+				"",
 			)
 			if err != nil {
 				return err
+			}
+			if stateEdit.Stdout == nil {
+				stateEdit.Stdout = cmd.OutOrStdout()
 			}
 			if err := stateEdit.Run(ctx, s); err != nil {
 				return err
@@ -83,6 +90,8 @@ a preview showing a diff of the altered state.`,
 			return nil
 		},
 	}
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+
 	cmd.PersistentFlags().StringVar(
 		&stackName, "stack", "",
 		"The name of the stack to operate on. Defaults to the current stack")
@@ -146,11 +155,8 @@ func (cmd *stateEditCmd) Run(ctx context.Context, s backend.Stack) error {
 	if cmd.Stdin == nil {
 		cmd.Stdin = os.Stdin
 	}
-	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
-	}
 
-	snap, err := s.Snapshot(ctx, stack.DefaultSecretsProvider)
+	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
 	if err != nil {
 		return err
 	}
@@ -273,10 +279,13 @@ func openInEditorInternal(editor, filename string) error {
 	}
 	args = append(args, filename)
 
+	// Launching an editor subprocess; wire it to the actual terminal so the
+	// user can interact with it. Using the cobra writers (which may be
+	// buffered or piped) would break vim/emacs/etc.
 	cmd := exec.Command(args[0], args[1:]...) //nolint:gosec
 	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout //nolint:forbidigo
+	cmd.Stderr = os.Stderr //nolint:forbidigo
 
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(cmd.Stdout, "Failed to exec EDITOR: %v\n", err)

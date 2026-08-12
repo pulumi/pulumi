@@ -1,0 +1,789 @@
+{
+    "title": "Pulumi ESC Environment Schema",
+    "properties": {
+        "imports": {
+            "description": "The list of environments to import",
+            "type": "array",
+            "items": {
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "merge": {
+                                "description": "Controls whether or not this import participates in the JSON merge stack.",
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [ "merge" ]
+                    }
+                ]
+            }
+        },
+        "values": {
+            "description": "The configuration and secrets that make up the environment.",
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/$defs/value"
+            }
+        }
+    },
+    "$defs": {
+        "value": {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "number"
+                },
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/value"
+                    }
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/$defs/value"
+                    }
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::join": {
+                            "description": "Joins a list of strings to create a single string.",
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "prefixItems": [
+                                {
+                                    "description": "The delimiter to place between elements. Must be a string.",
+                                    "$ref": "#/$defs/value"
+                                },
+                                {
+                                    "description": "The elements to join with the delimiter. Must be a list of strings.",
+                                    "$ref": "#/$defs/value"
+                                }
+                            ]
+                        }
+                    },
+                    "required": [ "fn::join" ],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::secret": {
+                            "description": "Marks its argument as secret. Downstream tools may use this information to e.g. redact secret values from logs.",
+                            "$ref": "#/$defs/value"
+                        }
+                    },
+                    "required": [ "fn::secret" ],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::toBase64": {
+                            "description": "Encodes a string as base64. Returns a string.",
+                            "$ref": "#/$defs/value"
+                        }
+                    },
+                    "required": [ "fn::toBase64" ],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::toJSON": {
+                            "description": "Encodes a value as JSON. Returns a string.",
+                            "$ref": "#/$defs/value"
+                        }
+                    },
+                    "required": [ "fn::toJSON" ],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::toString": {
+                            "description": "Encodes a value as a string.",
+                            "$ref": "#/$defs/value"
+                        }
+                    },
+                    "required": [ "fn::toString" ],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::open": {
+                            "oneOf": [
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "provider": {
+                                            "description": "Logs into an AWS account.",
+                                            "type": "string",
+                                            "const": "aws-login"
+                                        },
+                                        "inputs": {
+                                            "$ref": "#/$defs/aws-login"
+                                        }
+                                    },
+                                    "required": [ "provider", "inputs" ],
+                                    "additionalProperties": false
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "provider": {
+                                            "description": "Reads secrets from AWS Secrets Manager.",
+                                            "type": "string",
+                                            "const": "aws-secrets"
+                                        },
+                                        "inputs": {
+                                            "$ref": "#/$defs/aws-secrets"
+                                        }
+                                    },
+                                    "required": [ "provider", "inputs" ],
+                                    "additionalProperties": false
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "provider": {
+                                            "description": "Logs into Microsoft Azure.",
+                                            "type": "string",
+                                            "const": "azure-login"
+                                        },
+                                        "inputs": {
+                                            "$ref": "#/$defs/azure-login"
+                                        }
+                                    },
+                                    "required": [ "provider", "inputs" ],
+                                    "additionalProperties": false
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "provider": {
+                                            "description": "Reads secrets from Azure Key Vault.",
+                                            "type": "string",
+                                            "const": "azure-secrets"
+                                        },
+                                        "inputs": {
+                                            "$ref": "#/$defs/azure-secrets"
+                                        }
+                                    },
+                                    "required": [ "provider", "inputs" ],
+                                    "additionalProperties": false
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "provider": {
+                                            "description": "Logs into Google Cloud.",
+                                            "type": "string",
+                                            "const": "gcp-login"
+                                        },
+                                        "inputs": {
+                                            "$ref": "#/$defs/gcp-login"
+                                        }
+                                    },
+                                    "required": [ "provider", "inputs" ],
+                                    "additionalProperties": false
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "provider": {
+                                            "description": "Reads secrets from Google Secrets Manager.",
+                                            "type": "string",
+                                            "const": "gcp-secrets"
+                                        },
+                                        "inputs": {
+                                            "$ref": "#/$defs/gcp-secrets"
+                                        }
+                                    },
+                                    "required": [ "provider", "inputs" ],
+                                    "additionalProperties": false
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "provider": {
+                                            "description": "Logs into a Hashicorp Vault server.",
+                                            "type": "string",
+                                            "const": "vault-login"
+                                        },
+                                        "inputs": {
+                                            "$ref": "#/$defs/vault-login"
+                                        }
+                                    },
+                                    "required": [ "provider", "inputs" ],
+                                    "additionalProperties": false
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "provider": {
+                                            "description": "Reads secrets from a Hashicorp Vault server.",
+                                            "type": "string",
+                                            "const": "vault-secrets"
+                                        },
+                                        "inputs": {
+                                            "$ref": "#/$defs/vault-secrets"
+                                        }
+                                    },
+                                    "required": [ "provider", "inputs" ],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        }
+                    },
+                    "required": [ "fn::open" ],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::open::aws-login": {
+                            "description": "Logs into an AWS account.",
+                            "$ref": "#/$defs/aws-login"
+                        }
+                    },
+                    "required": [ "fn::open::aws-login" ],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::open::aws-secrets": {
+                            "description": "Reads secrets from AWS Secrets Manager.",
+                            "$ref": "#/$defs/aws-secrets"
+                        }
+                    },
+                    "required": [ "fn::open::aws-secrets" ],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::open::azure-login": {
+                            "description": "Logs into Microsoft Azure.",
+                            "$ref": "#/$defs/azure-login"
+                        }
+                    },
+                    "required": [ "fn::open::azure-login" ],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::open::azure-secrets": {
+                            "description": "Reads secrets from Azure Key Vault.",
+                            "$ref": "#/$defs/azure-secrets"
+                        }
+                    },
+                    "required": [ "fn::open::azure-secrets" ],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::open::gcp-login": {
+                            "description": "Logs into Google Cloud.",
+                            "$ref": "#/$defs/gcp-login"
+                        }
+                    },
+                    "required": [ "fn::open::gcp-login" ],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::open::gcp-secrets": {
+                            "description": "Reads secrets from Google Secrets Manager.",
+                            "$ref": "#/$defs/gcp-secrets"
+                        }
+                    },
+                    "required": [ "fn::open::gcp-secrets" ],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::open::vault-login": {
+                            "description": "Logs into a Hashicorp Vault server.",
+                            "$ref": "#/$defs/vault-login"
+                        }
+                    },
+                    "required": [ "fn::open::vault-login" ],
+                    "additionalProperties": false
+                },
+                {
+                    "type": "object",
+                    "properties": {
+                        "fn::open::vault-secrets": {
+                            "description": "Reads secrets from a Hashicorp Vault server.",
+                            "$ref": "#/$defs/vault-secrets"
+                        }
+                    },
+                    "required": [ "fn::open::vault-secrets" ],
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "aws-login": {
+            "properties": {
+                "oidc": {
+                    "properties": {
+                        "duration": {
+                            "type": "string",
+                            "pattern": "^([0-9]+h)?([0-9]+m)?([0-9]+s)?$",
+                            "description": "The duration of the role session."
+                        },
+                        "policyArns": {
+                            "items": {
+                                "type": "string",
+                                "maxLength": 2048,
+                                "minLength": 20
+                            },
+                            "type": "array",
+                            "description": "ARNs for additional policies to apply to the role session."
+                        },
+                        "roleArn": {
+                            "type": "string",
+                            "maxLength": 2048,
+                            "minLength": 20,
+                            "description": "The ARN of the role to assume."
+                        },
+                        "sessionName": {
+                            "type": "string",
+                            "maxLength": 64,
+                            "minLength": 2,
+                            "pattern": "[\\w+=,.@-]*",
+                            "description": "The name of the role session."
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "sessionName",
+                        "roleArn"
+                    ],
+                    "description": "Options for temporary OIDC credentials."
+                },
+                "static": {
+                    "properties": {
+                        "accessKeyId": {
+                            "type": "string",
+                            "description": "The AWS access key ID."
+                        },
+                        "secretAccessKey": {
+                            "type": "string",
+                            "description": "The AWS secret access key."
+                        },
+                        "sessionToken": {
+                            "type": "string",
+                            "description": "The AWS session token, if any."
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "accessKeyId",
+                        "secretAccessKey"
+                    ],
+                    "description": "Options for static credentials."
+                }
+            },
+            "type": "object"
+        },
+        "aws-secrets": {
+            "properties": {
+                "get": {
+                    "additionalProperties": {
+                        "properties": {
+                            "secretId": {
+                                "type": "string",
+                                "description": "The ID of the secret to get."
+                            },
+                            "versionId": {
+                                "type": "string",
+                                "description": "The version of the secret to get."
+                            },
+                            "versionStage": {
+                                "type": "string",
+                                "description": "The version stage of the secret to get."
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "secretId"
+                        ]
+                    },
+                    "type": "object",
+                    "minProperties": 1,
+                    "description": "The secrets to get."
+                },
+                "login": {
+                    "properties": {
+                        "accessKeyId": {
+                            "type": "string",
+                            "description": "The AWS access key ID."
+                        },
+                        "secretAccessKey": {
+                            "type": "string",
+                            "description": "The AWS secret access key."
+                        },
+                        "sessionToken": {
+                            "type": "string",
+                            "description": "The AWS session token, if any."
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "accessKeyId",
+                        "secretAccessKey"
+                    ],
+                    "description": "The credentials to use to get secrets."
+                }
+            },
+            "type": "object",
+            "required": [
+                "get",
+                "login"
+            ]
+        },
+        "azure-login": {
+            "properties": {
+                "clientId": {
+                    "type": "string",
+                    "description": "The client ID to use."
+                },
+                "clientSecret": {
+                    "type": "string",
+                    "description": "The client secret to use for authentication, if any."
+                },
+                "oidc": {
+                    "type": "boolean",
+                    "description": "True to use OIDC for authentication."
+                },
+                "subscriptionId": {
+                    "type": "string",
+                    "description": "The subscription ID to use."
+                },
+                "tenantId": {
+                    "type": "string",
+                    "description": "The tenant ID to use."
+                }
+            },
+            "type": "object",
+            "required": [
+                "clientId",
+                "tenantId",
+                "subscriptionId"
+            ]
+        },
+        "azure-secrets": {
+            "properties": {
+                "get": {
+                    "additionalProperties": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "The name of the secret to access."
+                            },
+                            "version": {
+                                "type": "string",
+                                "description": "The secret version to access."
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "type": "object",
+                    "minProperties": 1,
+                    "description": "A map from names to secrets to read from Azure Key Vault. The outputs will map each name to the secret's sensitive data."
+                },
+                "login": {
+                    "properties": {
+                        "clientId": {
+                            "type": "string",
+                            "description": "The client ID to use."
+                        },
+                        "clientSecret": {
+                            "type": "string",
+                            "description": "The client secret to use for authentication, if any."
+                        },
+                        "oidc": {
+                            "properties": {
+                                "token": {
+                                    "type": "string",
+                                    "description": "The OIDC token to use for authentication."
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "token"
+                            ],
+                            "description": "OIDC-related data, if OIDC is used for authentication."
+                        },
+                        "subscriptionId": {
+                            "type": "string",
+                            "description": "The subscription ID to use."
+                        },
+                        "tenantId": {
+                            "type": "string",
+                            "description": "The tenant ID to use."
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "clientId",
+                        "tenantId",
+                        "subscriptionId"
+                    ]
+                },
+                "vault": {
+                    "type": "string",
+                    "description": "The vault to read from"
+                }
+            },
+            "type": "object",
+            "required": [
+                "get",
+                "login",
+                "vault"
+            ]
+        },
+        "gcp-login": {
+            "properties": {
+                "accessToken": {
+                    "properties": {
+                        "accessToken": {
+                            "type": "string",
+                            "description": "The token used to authenticate with Google Cloud."
+                        },
+                        "serviceAccount": {
+                            "type": "string",
+                            "description": "The service account to impersonate, if any."
+                        },
+                        "tokenLifetime": {
+                            "type": "string",
+                            "pattern": "^([0-9]+h)?([0-9]+m)?([0-9]+s)?$",
+                            "description": "The lifetime of the temporary credentials when impersonating a service account."
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "accessToken"
+                    ],
+                    "description": "Options for access token login."
+                },
+                "oidc": {
+                    "properties": {
+                        "providerId": {
+                            "type": "string",
+                            "description": "The ID of the identity provider associated with the workload pool."
+                        },
+                        "region": {
+                            "type": "string",
+                            "description": "The region of the GCP project."
+                        },
+                        "serviceAccount": {
+                            "type": "string",
+                            "description": "The email address of the service account to use."
+                        },
+                        "tokenLifetime": {
+                            "type": "string",
+                            "pattern": "^([0-9]+h)?([0-9]+m)?([0-9]+s)?$",
+                            "description": "The lifetime of the temporary credentials."
+                        },
+                        "workloadPoolId": {
+                            "type": "string",
+                            "description": "The ID of the workload pool to use."
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "workloadPoolId",
+                        "providerId",
+                        "serviceAccount"
+                    ],
+                    "description": "Options for OIDC login."
+                },
+                "project": {
+                    "type": "number",
+                    "description": "The numerical ID of the GCP project"
+                }
+            },
+            "type": "object",
+            "required": [
+                "project"
+            ]
+        },
+        "gcp-secrets": {
+            "properties": {
+                "access": {
+                    "additionalProperties": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "The name of the secret to access."
+                            },
+                            "version": {
+                                "type": "number",
+                                "description": "The secret version to access."
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "type": "object",
+                    "minProperties": 1,
+                    "description": "A map from names to secrets to read from Google Cloud. The outputs will map each name to the secret's sensitive data."
+                },
+                "login": {
+                    "properties": {
+                        "accessToken": {
+                            "type": "string",
+                            "description": "The access token to use for authentication."
+                        },
+                        "project": {
+                            "type": "number",
+                            "description": "The numerical ID of the project to use."
+                        },
+                        "tokenType": {
+                            "type": "string",
+                            "description": "The type of the access token."
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "accessToken",
+                        "project",
+                        "tokenType"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "access",
+                "login"
+            ]
+        },
+        "vault-login": {
+            "properties": {
+                "address": {
+                    "type": "string",
+                    "description": "The URL of the Vault server. Must contain a scheme and hostname, but no path."
+                },
+                "jwt": {
+                    "properties": {
+                        "mount": {
+                            "type": "string",
+                            "description": "The name of the authentication engine mount."
+                        },
+                        "role": {
+                            "type": "string",
+                            "description": "The name of the role to use for login."
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "role"
+                    ],
+                    "description": "Options for JWT login. JWT login uses an OIDC token issued by the Pulumi Cloud to generate an ephemeral token."
+                },
+                "token": {
+                    "properties": {
+                        "displayName": {
+                            "type": "string",
+                            "description": "The display name of the ephemeral token. Defaults to 'pulumi'."
+                        },
+                        "maxTtl": {
+                            "type": "string",
+                            "pattern": "^([0-9]+h)?([0-9]+m)?([0-9]+s)?$",
+                            "description": "The maximum TTL of the ephemeral token."
+                        },
+                        "token": {
+                            "type": "string",
+                            "description": "The parent token."
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "token"
+                    ],
+                    "description": "Options for token login. Token login creates an ephemeral child token."
+                }
+            },
+            "type": "object",
+            "required": [
+                "address"
+            ]
+        },
+        "vault-secrets": {
+            "properties": {
+                "login": {
+                    "properties": {
+                        "address": {
+                            "type": "string",
+                            "description": "The URL of the Vault server. Must contain a scheme and hostname, but no path."
+                        },
+                        "token": {
+                            "type": "string",
+                            "description": "The token to use for authentication."
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "address",
+                        "token"
+                    ]
+                },
+                "read": {
+                    "additionalProperties": {
+                        "properties": {
+                            "field": {
+                                "type": "string",
+                                "description": "The field of the value to read."
+                            },
+                            "path": {
+                                "type": "string",
+                                "description": "The path to read."
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "path"
+                        ]
+                    },
+                    "type": "object",
+                    "minProperties": 1,
+                    "description": "A map from names to paths to read from the server. The outputs will map each name to the raw data for the value."
+                }
+            },
+            "type": "object",
+            "required": [
+                "login",
+                "read"
+            ]
+        }
+    }
+}

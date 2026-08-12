@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,14 +25,18 @@ import (
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -46,6 +50,7 @@ const (
 	nameKey             resource.PropertyKey = "name"
 	pluginDownloadKey   resource.PropertyKey = "pluginDownloadURL"
 	pluginChecksumsKey  resource.PropertyKey = "pluginChecksums"
+	envVarMappingsKey   resource.PropertyKey = "envVarMappings"
 
 	// versionKey is the key used to store the version of the provider in the Pulumi state. This is _not_ treated as an
 	// internal key. As such a provider can't define it's own configuration key "version". However the "version" that is
@@ -58,12 +63,27 @@ func addOrGetInternal(inputs resource.PropertyMap) resource.PropertyMap {
 	internalInputs := inputs[internalKey]
 	if !internalInputs.IsObject() {
 		newMap := resource.PropertyMap{}
-		internalInputs = resource.NewObjectProperty(newMap)
+		internalInputs = resource.NewProperty(newMap)
 		inputs[internalKey] = internalInputs
 		return newMap
 	}
 	return internalInputs.ObjectValue()
 }
+
+func mustNewReference(urn resource.URN, id resource.ID) providers.Reference {
+	ref, err := providers.NewReference(urn, id)
+	contract.AssertNoErrorf(err, "could not create reference with URN '%v' and ID '%v'", urn, id)
+	return ref
+}
+
+// UnknownID is a distinguished token used to indicate that a provider's ID is not known (e.g. because we are
+// performing a preview).
+const UnknownID = plugin.UnknownStringValue
+
+// UnconfiguredID is a distinguished token used to indicate that a provider doesn't yet have an ID because it hasn't
+// been configured yet. This should never be returned back to SDKs by the engine but is used for internal tracking so we
+// maximally reuse provider instances but only configure them once.
+const UnconfiguredID = "unconfigured"
 
 func getInternal(inputs resource.PropertyMap) (resource.PropertyMap, error) {
 	internalInputs := inputs[internalKey]
@@ -85,10 +105,10 @@ func SetProviderChecksums(inputs resource.PropertyMap, value map[string][]byte) 
 	propMap := make(resource.PropertyMap)
 	for key, checksum := range value {
 		hex := hex.EncodeToString(checksum)
-		propMap[resource.PropertyKey(key)] = resource.NewStringProperty(hex)
+		propMap[resource.PropertyKey(key)] = resource.NewProperty(hex)
 	}
 
-	internalInputs[pluginChecksumsKey] = resource.NewObjectProperty(propMap)
+	internalInputs[pluginChecksumsKey] = resource.NewProperty(propMap)
 }
 
 // GetProviderChecksums fetches a provider plugin checksums from the given property map.
@@ -121,7 +141,7 @@ func GetProviderChecksums(inputs resource.PropertyMap) (map[string][]byte, error
 // SetProviderURL sets the provider plugin download server URL in the given property map.
 func SetProviderURL(inputs resource.PropertyMap, value string) {
 	internalInputs := addOrGetInternal(inputs)
-	internalInputs[pluginDownloadKey] = resource.NewStringProperty(value)
+	internalInputs[pluginDownloadKey] = resource.NewProperty(value)
 }
 
 // GetProviderDownloadURL fetches a provider plugin download server URL from the given property map.
@@ -148,7 +168,7 @@ func SetProviderVersion(inputs resource.PropertyMap, value *semver.Version) {
 	// __internal, and don't try and look up the key from the root config where a provider may just have a config key
 	// itself of the same text.
 	addOrGetInternal(inputs)
-	inputs[versionKey] = resource.NewStringProperty(value.String())
+	inputs[versionKey] = resource.NewProperty(value.String())
 }
 
 // GetProviderVersion fetches and parses a provider version from the given property map. If the
@@ -184,7 +204,7 @@ func GetProviderVersion(inputs resource.PropertyMap) (*semver.Version, error) {
 // Sets the provider name in the given property map.
 func SetProviderName(inputs resource.PropertyMap, name tokens.Package) {
 	internalInputs := addOrGetInternal(inputs)
-	internalInputs[nameKey] = resource.NewStringProperty(name.String())
+	internalInputs[nameKey] = resource.NewProperty(name.String())
 }
 
 // GetProviderName fetches and parses a provider name from the given property map. If the
@@ -219,10 +239,68 @@ func SetProviderParameterization(inputs resource.PropertyMap, value *workspace.P
 	// SetVersion will have written the base plugin version to inputs["version"], if we're parameterized we need to move
 	// it, and replace it with our package version.
 	internalInputs[versionKey] = inputs[versionKey]
-	inputs[versionKey] = resource.NewStringProperty(value.Version.String())
+	inputs[versionKey] = resource.NewProperty(value.Version.String())
 	// We don't write name here because we can reconstruct that from the providers type token
-	internalInputs[parameterizationKey] = resource.NewStringProperty(
+	internalInputs[parameterizationKey] = resource.NewProperty(
 		base64.StdEncoding.EncodeToString(value.Value))
+}
+
+// GetEnvironmentVariableMappings fetches environment variable remappings.
+// Returns a map of NEW_KEY -> OLD_KEY mappings.
+// If NEW_KEY exists in the environment, the provider will see OLD_KEY=value(NEW_KEY).
+func GetEnvironmentVariableMappings(
+	inputs resource.PropertyMap,
+) (map[string]string, error) {
+	internalInputs, err := getInternal(inputs)
+	if err != nil {
+		return nil, err
+	}
+	mappings, ok := internalInputs[envVarMappingsKey]
+	if !ok {
+		return nil, nil
+	}
+	if !mappings.IsObject() {
+		return nil, fmt.Errorf("'%s' must be an object", envVarMappingsKey)
+	}
+	result := make(map[string]string)
+	for k, v := range mappings.ObjectValue() {
+		if !v.IsString() {
+			return nil, fmt.Errorf("'%s[%s]' must be a string", envVarMappingsKey, k)
+		}
+		// NEW_KEY -> OLD_KEY: take value from NEW_KEY, apply to OLD_KEY
+		result[string(k)] = v.StringValue()
+	}
+	return result, nil
+}
+
+// SetEnvironmentVariableMappings sets environment variable remappings in the given property map.
+// The mappings map should be NEW_KEY -> OLD_KEY (if NEW_KEY exists, provider sees OLD_KEY=value(NEW_KEY)).
+func SetEnvironmentVariableMappings(inputs resource.PropertyMap, mappings map[string]string) {
+	internalInputs := addOrGetInternal(inputs)
+	propMap := make(resource.PropertyMap)
+	for newKey, oldKey := range mappings {
+		propMap[resource.PropertyKey(newKey)] = resource.NewProperty(oldKey)
+	}
+	internalInputs[envVarMappingsKey] = resource.NewProperty(propMap)
+}
+
+// buildEnvWithMappings creates an env.Env with the given mappings applied.
+// Mappings are NEW_KEY -> OLD_KEY: if NEW_KEY exists in the environment, the
+// returned env will have OLD_KEY set to the value of NEW_KEY.
+func buildEnvWithMappings(mappings map[string]string) env.Env {
+	baseStore := env.Global().GetStore()
+	if len(mappings) > 0 {
+		mappedStore := make(env.MapStore)
+		for newKey, oldKey := range mappings {
+			if value, ok := baseStore.Raw(newKey); ok {
+				mappedStore[oldKey] = value
+			}
+		}
+		if len(mappedStore) > 0 {
+			baseStore = envutil.JoinStore(mappedStore, baseStore)
+		}
+	}
+	return envutil.NewEnv(baseStore)
 }
 
 // GetProviderParameterization fetches and parses a provider parameterization from the given property map. If the
@@ -281,9 +359,9 @@ func GetProviderParameterization(
 type Registry struct {
 	plugin.NotForwardCompatibleProvider
 
-	host      plugin.Host
+	pctx      *plugin.Context
 	isPreview bool
-	providers map[Reference]plugin.Provider
+	providers map[providers.Reference]plugin.Provider
 	builtins  plugin.Provider
 	aliases   map[resource.URN]resource.URN
 	m         sync.RWMutex
@@ -292,23 +370,21 @@ type Registry struct {
 var _ plugin.Provider = (*Registry)(nil)
 
 func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Version, downloadURL string,
-	checksums map[string][]byte, host plugin.Host, builtins plugin.Provider,
+	checksums map[string][]byte, pctx *plugin.Context, builtins plugin.Provider, e env.Env,
 ) (plugin.Provider, error) {
-	if builtins != nil && pkg == builtins.Pkg() {
+	if builtins != nil && pkg == "pulumi" {
 		return builtins, nil
 	}
 
-	descriptor := workspace.PackageDescriptor{
-		PluginSpec: workspace.PluginSpec{
-			Kind:              apitype.ResourcePlugin,
-			Name:              string(pkg),
-			Version:           version,
-			PluginDownloadURL: downloadURL,
-			Checksums:         checksums,
-		},
+	descriptor := workspace.PluginDescriptor{
+		Kind:              apitype.ResourcePlugin,
+		Name:              string(pkg),
+		Version:           version,
+		PluginDownloadURL: downloadURL,
+		Checksums:         checksums,
 	}
 
-	provider, err := host.Provider(descriptor)
+	provider, err := pctx.Host.Provider(pctx, descriptor, e)
 	if err == nil {
 		return provider, nil
 	}
@@ -330,16 +406,16 @@ func loadProvider(ctx context.Context, pkg tokens.Package, version *semver.Versi
 	}
 
 	log := func(sev diag.Severity, msg string) {
-		host.Log(sev, "", msg, 0)
+		pctx.Host.Log(sev, "", msg, 0)
 	}
 
-	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor.PluginSpec, log)
+	_, err = pkgWorkspace.InstallPlugin(ctx, descriptor, log, schema.NewLoaderServerFromContext)
 	if err != nil {
 		return nil, err
 	}
 
 	// Try to load the provider again, this time it should succeed.
-	return host.Provider(descriptor)
+	return pctx.Host.Provider(pctx, descriptor, e)
 }
 
 // loadParameterizedProvider wraps loadProvider to also support loading parameterized providers.
@@ -347,9 +423,10 @@ func loadParameterizedProvider(
 	ctx context.Context,
 	name tokens.Package, version *semver.Version, downloadURL string, checksums map[string][]byte,
 	parameter *workspace.Parameterization,
-	host plugin.Host, builtins plugin.Provider,
+	pctx *plugin.Context, builtins plugin.Provider,
+	e env.Env,
 ) (plugin.Provider, error) {
-	provider, err := loadProvider(ctx, name, version, downloadURL, checksums, host, builtins)
+	provider, err := loadProvider(ctx, name, version, downloadURL, checksums, pctx, builtins, e)
 	if err != nil {
 		return nil, err
 	}
@@ -385,19 +462,19 @@ func FilterProviderConfig(inputs resource.PropertyMap) resource.PropertyMap {
 	return result
 }
 
-// NewRegistry creates a new provider registry using the given host.
-func NewRegistry(host plugin.Host, isPreview bool, builtins plugin.Provider) *Registry {
+// NewRegistry creates a new provider registry using the given plugin context.
+func NewRegistry(pctx *plugin.Context, isPreview bool, builtins plugin.Provider) *Registry {
 	return &Registry{
-		host:      host,
+		pctx:      pctx,
 		isPreview: isPreview,
-		providers: make(map[Reference]plugin.Provider),
+		providers: make(map[providers.Reference]plugin.Provider),
 		builtins:  builtins,
 		aliases:   make(map[resource.URN]resource.URN),
 	}
 }
 
 // GetProvider returns the provider plugin that is currently registered under the given reference, if any.
-func (r *Registry) GetProvider(ref Reference) (plugin.Provider, bool) {
+func (r *Registry) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
 	r.m.RLock()
 	defer r.m.RUnlock()
 
@@ -407,10 +484,15 @@ func (r *Registry) GetProvider(ref Reference) (plugin.Provider, bool) {
 	return provider, ok
 }
 
-func (r *Registry) setProvider(ref Reference, provider plugin.Provider) {
+func (r *Registry) setProvider(ref providers.Reference, provider plugin.Provider) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
+	r.setProviderLocked(ref, provider)
+}
+
+// setProviderLocked sets the provider at ref. Must be called with r.m held.
+func (r *Registry) setProviderLocked(ref providers.Reference, provider plugin.Provider) {
 	logging.V(7).Infof("setProvider(%v)", ref)
 
 	r.providers[ref] = provider
@@ -420,15 +502,52 @@ func (r *Registry) setProvider(ref Reference, provider plugin.Provider) {
 	}
 }
 
-func (r *Registry) deleteProvider(ref Reference) (plugin.Provider, bool) {
+// setProviderAndCloseOld sets the provider at ref and closes any previously registered provider at that ref.
+// This should be used when overwriting is expected (e.g., Update) to avoid leaking the old provider instance.
+func (r *Registry) setProviderAndCloseOld(ref providers.Reference, provider plugin.Provider) {
+	r.m.Lock()
+	oldProvider, hadOld := r.providers[ref]
+	r.setProviderLocked(ref, provider)
+	r.m.Unlock()
+
+	if hadOld && oldProvider != provider {
+		logging.V(7).Infof("setProviderAndCloseOld(%v): closing old provider", ref)
+		contract.IgnoreClose(oldProvider)
+	}
+}
+
+// setProviderIfNotExists atomically sets the provider at ref only if no provider is currently registered there.
+// Returns true if the provider was set, false if a provider already existed (in which case the caller should
+// close their provider instance to avoid leaks).
+func (r *Registry) setProviderIfNotExists(ref providers.Reference, provider plugin.Provider) bool {
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	if _, ok := r.providers[ref]; ok {
+		logging.V(7).Infof("setProviderIfNotExists(%v): already exists", ref)
+		return false
+	}
+
+	logging.V(7).Infof("setProviderIfNotExists(%v): set", ref)
+	r.providers[ref] = provider
+
+	if alias, ok := r.aliases[ref.URN()]; ok {
+		r.providers[mustNewReference(alias, ref.ID())] = provider
+	}
+	return true
+}
+
+func (r *Registry) deleteProvider(ref providers.Reference) (plugin.Provider, bool) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
 	provider, ok := r.providers[ref]
 	if !ok {
+		logging.V(7).Infof("deleteProvider(%v): false", ref)
 		return nil, false
 	}
 	delete(r.providers, ref)
+	logging.V(7).Infof("deleteProvider(%v): true", ref)
 	return provider, true
 }
 
@@ -436,10 +555,6 @@ func (r *Registry) deleteProvider(ref Reference) (plugin.Provider, bool) {
 
 func (r *Registry) Close() error {
 	return nil
-}
-
-func (r *Registry) Pkg() tokens.Package {
-	return "pulumi"
 }
 
 func (r *Registry) label() string {
@@ -505,13 +620,13 @@ func (r *Registry) Configure(context.Context, plugin.ConfigureRequest) (plugin.C
 //   - if we are running a preview, we need to configure the provider, as its corresponding CRUD operations will not run
 //     (we would normally configure the provider in Create or Update).
 func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
-	contract.Requiref(IsProviderType(req.URN.Type()), "urn", "must be a provider type, got %v", req.URN.Type())
+	contract.Requiref(providers.IsProviderType(req.URN.Type()), "urn", "must be a provider type, got %v", req.URN.Type())
 
 	label := fmt.Sprintf("%s.Check(%s)", r.label(), req.URN)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
 
 	// Parse the version from the provider properties and load the provider.
-	providerPkg := GetProviderPackage(req.URN.Type())
+	providerPkg := providers.GetProviderPackage(req.URN.Type())
 	name, err := GetProviderName(providerPkg, req.News)
 	if err != nil {
 		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
@@ -536,9 +651,17 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 			Property: "parameter", Reason: err.Error(),
 		}}}, nil
 	}
+
+	envVarMappings, err := GetEnvironmentVariableMappings(req.News)
+	if err != nil {
+		return plugin.CheckResponse{Failures: []plugin.CheckFailure{{
+			Property: "envVarMappings", Reason: err.Error(),
+		}}}, nil
+	}
+
 	// TODO: We should thread checksums through here.
 	provider, err := loadParameterizedProvider(
-		ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		ctx, name, version, downloadURL, nil, parameter, r.pctx, r.builtins, buildEnvWithMappings(envVarMappings))
 	if err != nil {
 		return plugin.CheckResponse{}, err
 	}
@@ -554,21 +677,40 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		AllowUnknowns: true,
 	})
 	if len(resp.Failures) != 0 || err != nil {
-		closeErr := r.host.CloseProvider(provider)
-		contract.IgnoreError(closeErr)
+		contract.IgnoreClose(provider)
 		return plugin.CheckResponse{Failures: resp.Failures}, err
 	}
 
 	// Create a provider reference using the URN and the unconfigured ID and register the provider.
 	r.setProvider(mustNewReference(req.URN, UnconfiguredID), provider)
-
-	// We stripped __internal off of "News" when we passed it to CheckConfig, we need to readd it
-	// the checked properties returned from the plugin.
 	if resp.Properties == nil {
 		resp.Properties = resource.PropertyMap{}
 	}
-	// Only add __internal back if it was originally in the inputs.
+
+	// If the provider tries to drop the versions field reset it back to the original value.
+	if _, ok := resp.Properties[versionKey]; !ok {
+		// Only set it if we had it originally
+		if _, ok := req.News[versionKey]; ok {
+			resp.Properties[versionKey] = req.News[versionKey]
+		}
+	}
+	// If the provider tries to change the version field return an error
+	if newV, ok := resp.Properties[versionKey]; ok {
+		if oldV, ok := req.News[versionKey]; ok {
+			if !oldV.DeepEquals(newV) {
+				return plugin.CheckResponse{}, fmt.Errorf("provider %q attempted to change version from %q to %q",
+					req.URN, oldV.StringValue(), newV.StringValue())
+			}
+		}
+	}
+
+	// We stripped __internal off of "News" when we passed it to CheckConfig, we need to readd it the checked
+	// properties returned from the plugin. Only add __internal back if it was originally in the inputs.
 	if _, has := req.News[internalKey]; has {
+		// Before we reset it warn the user that the providers data is being discarded
+		if _, has := resp.Properties[internalKey]; has {
+			r.pctx.Host.Log(diag.Warning, req.URN, "provider attempted to use __internal key that is reserved by the engine", 0)
+		}
 		resp.Properties[internalKey] = req.News[internalKey]
 	}
 
@@ -629,8 +771,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 
 	// If the diff requires replacement, unload the provider: the engine will reload it during its replacememnt Check.
 	if diff.Replace() {
-		closeErr := r.host.CloseProvider(provider)
-		contract.IgnoreError(closeErr)
+		contract.IgnoreClose(provider)
 	}
 
 	logging.V(7).Infof("%s: executed (%#v, %#v)", label, diff.Changes, diff.ReplaceKeys)
@@ -640,9 +781,14 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 
 // Same executes as part of the "Same" step for a provider that has not changed. It configures the provider
 // instance with the given state and fixes up aliases.
-func (r *Registry) Same(ctx context.Context, res *resource.State) error {
+//
+// If fromCheck is true, we attempt to reuse a provider registered during Check/Diff. This should be true
+// when called from SameStep.Apply after the Check→Diff flow determined the provider hasn't changed.
+// If fromCheck is false (e.g., called from EnsureProvider for dependency diffing), we always load fresh
+// and do not touch the UnconfiguredID entry, which may be in use by a concurrent provider update.
+func (r *Registry) Same(ctx context.Context, res *pkgresource.State, fromCheck bool) error {
 	urn := res.URN
-	if !IsProviderType(urn.Type()) {
+	if !providers.IsProviderType(urn.Type()) {
 		return fmt.Errorf("urn %v is not a provider type", urn)
 	}
 
@@ -652,7 +798,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	}
 
 	ref := mustNewReference(urn, res.ID)
-	logging.V(7).Infof("Same(%v)", ref)
+	logging.V(7).Infof("Same(%v, fromCheck=%v)", ref, fromCheck)
 
 	// If this provider is already configured, then we're done.
 	_, ok := r.GetProvider(ref)
@@ -663,10 +809,18 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	// We may have started this provider up for Check/Diff, but then decided to Same it, if so we can just
 	// reuse that instance, but as we're now configuring it remove the unconfigured ID from the provider map
 	// so nothing else tries to use it.
-	provider, ok := r.deleteProvider(mustNewReference(urn, UnconfiguredID))
+	//
+	// IMPORTANT: We only do this when fromCheck is true (i.e., we're coming from SameStep.Apply after Check/Diff).
+	// When fromCheck is false (e.g., called from EnsureProvider for dependency diffing), we must NOT touch
+	// the UnconfiguredID entry, as it may belong to a concurrent provider update operation (Check→Diff→Update).
+	// See https://github.com/pulumi/pulumi/issues/20529
+	var provider plugin.Provider
+	if fromCheck {
+		provider, ok = r.deleteProvider(mustNewReference(urn, UnconfiguredID))
+	}
 	if !ok {
 		// Else we need to load it fresh
-		providerPkg := GetProviderPackage(urn.Type())
+		providerPkg := providers.GetProviderPackage(urn.Type())
 
 		// Parse the provider version, then load, configure, and register the provider.
 		name, err := GetProviderName(providerPkg, res.Inputs)
@@ -685,8 +839,14 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		if err != nil {
 			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
+		envVarMappings, err := GetEnvironmentVariableMappings(res.Inputs)
+		if err != nil {
+			return fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, urn, err)
+		}
+
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		provider, err = loadParameterizedProvider(
+			ctx, name, version, downloadURL, nil, parameter, r.pctx, r.builtins, buildEnvWithMappings(envVarMappings))
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -706,14 +866,23 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		ID:     &res.ID,
 		Inputs: FilterProviderConfig(res.Inputs),
 	}); err != nil {
-		closeErr := r.host.CloseProvider(provider)
-		contract.IgnoreError(closeErr)
+		contract.IgnoreClose(provider)
 		return fmt.Errorf("configure provider '%v': %w", urn, err)
 	}
 
 	logging.V(7).Infof("loaded provider %v", ref)
 
-	r.setProvider(ref, provider)
+	// When fromCheck is false, we're loading from state for dependency diffing. Another thread may have
+	// registered the provider (via Update) while we were loading/configuring. Use setProviderIfNotExists
+	// to avoid overwriting and leaking our instance if that happened.
+	if fromCheck {
+		r.setProvider(ref, provider)
+	} else {
+		if !r.setProviderIfNotExists(ref, provider) {
+			// A provider was already registered (likely by a concurrent Update). Close ours to avoid leaks.
+			contract.IgnoreClose(provider)
+		}
+	}
 
 	return nil
 }
@@ -733,7 +902,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 		// The unconfigured provider may have been Same'd after Check and this provider could be a replacement create.
 		// In which case we need to start up a fresh copy.
 
-		providerPkg := GetProviderPackage(req.URN.Type())
+		providerPkg := providers.GetProviderPackage(req.URN.Type())
 
 		// Parse the provider version, then load, configure, and register the provider.
 		name, err := GetProviderName(providerPkg, req.Properties)
@@ -756,8 +925,16 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
+
+		envVarMappings, err := GetEnvironmentVariableMappings(req.Properties)
+		if err != nil {
+			return plugin.CreateResponse{Status: resource.StatusUnknown},
+				fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, req.URN, err)
+		}
+
 		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.host, r.builtins)
+		provider, err = loadParameterizedProvider(
+			ctx, name, version, downloadURL, nil, parameter, r.pctx, r.builtins, buildEnvWithMappings(envVarMappings))
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, req.URN, err)
@@ -830,8 +1007,10 @@ func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin
 		return plugin.UpdateResponse{Status: resource.StatusUnknown}, err
 	}
 
-	// Publish the configured provider.
-	r.setProvider(mustNewReference(req.URN, req.ID), provider)
+	// Publish the configured provider. Use setProviderAndCloseOld because a concurrent Same (from
+	// EnsureProvider for dependency diffing) may have registered an old provider at this ref.
+	// See https://github.com/pulumi/pulumi/issues/20529
+	r.setProviderAndCloseOld(mustNewReference(req.URN, req.ID), provider)
 	return plugin.UpdateResponse{Properties: filteredProperties, Status: resource.StatusOK}, nil
 }
 
@@ -846,13 +1025,16 @@ func (r *Registry) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.D
 		return plugin.DeleteResponse{}, nil
 	}
 
-	closeErr := r.host.CloseProvider(provider)
-	contract.IgnoreError(closeErr)
+	contract.IgnoreClose(provider)
 	return plugin.DeleteResponse{}, nil
 }
 
 func (r *Registry) Read(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 	return plugin.ReadResponse{}, errors.New("provider resources may not be read")
+}
+
+func (r *Registry) List(context.Context, plugin.ListRequest) (*plugin.ListStream, error) {
+	return nil, errors.New("provider resources may not be listed")
 }
 
 func (r *Registry) Construct(context.Context, plugin.ConstructRequest) (plugin.ConstructResponse, error) {
@@ -866,10 +1048,6 @@ func (r *Registry) Invoke(context.Context, plugin.InvokeRequest) (plugin.InvokeR
 	return plugin.InvokeResponse{}, errors.New("the provider registry is not invokable")
 }
 
-func (r *Registry) StreamInvoke(context.Context, plugin.StreamInvokeRequest) (plugin.StreamInvokeResponse, error) {
-	return plugin.StreamInvokeResponse{}, errors.New("the provider registry does not implement streaming invokes")
-}
-
 func (r *Registry) Call(context.Context, plugin.CallRequest) (plugin.CallResponse, error) {
 	// It is the responsibility of the eval source to ensure that we never attempt an call using the provider
 	// registry.
@@ -877,9 +1055,9 @@ func (r *Registry) Call(context.Context, plugin.CallRequest) (plugin.CallRespons
 	return plugin.CallResult{}, errors.New("the provider registry is not callable")
 }
 
-func (r *Registry) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
+func (r *Registry) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	// return an error: this should not be called for the provider registry
-	return workspace.PluginInfo{}, errors.New("the provider registry does not report plugin info")
+	return plugin.PluginInfo{}, errors.New("the provider registry does not report plugin info")
 }
 
 func (r *Registry) SignalCancellation(context.Context) error {

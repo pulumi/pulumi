@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,6 @@ func Fail() {
 }
 
 // Failf unconditionally abandons the process, formatting and logging the given message.
-func Failf(msg string, args ...interface{}) {
+func Failf(msg string, args ...any) {
 	failfast(fmt.Sprintf("%v: %v", failMsg, fmt.Sprintf(msg, args...)))
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAboutCommands(t *testing.T) {
@@ -36,8 +37,8 @@ func TestAboutCommands(t *testing.T) {
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
 		stdout, _ := e.RunCommand("pulumi", "about", "--json")
-		var res interface{}
-		assert.NoError(t, json.Unmarshal([]byte(stdout), &res), "Should be valid json")
+		var res any
+		require.NoError(t, json.Unmarshal([]byte(stdout), &res), "Should be valid json")
 		assert.Regexp(t, `"goVersion": "go1\..*"`, stdout)
 		assert.Contains(t, stdout, runtime.Compiler)
 		assert.Contains(t, stdout, "Failed to get information about the current stack:")

@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,11 +16,7 @@
 package nodejs
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -57,8 +53,8 @@ func TestGeneratePackageThree(t *testing.T) {
 func testGeneratePackageBatch(t *testing.T, testCases []*test.SDKTest) {
 	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
 		Language: "nodejs",
-		GenPackage: func(s string, p *schema.Package, m map[string][]byte) (map[string][]byte, error) {
-			return GeneratePackage(s, p, m, nil, false)
+		GenPackage: func(s string, p *schema.Package, m map[string][]byte, l schema.ReferenceLoader) (map[string][]byte, error) {
+			return GeneratePackage(s, p, m, nil, false, l)
 		},
 		Checks: map[string]test.CodegenCheck{
 			"nodejs/compile": func(t *testing.T, pwd string) {
@@ -72,14 +68,8 @@ func testGeneratePackageBatch(t *testing.T, testCases []*test.SDKTest) {
 
 // Runs unit tests against the generated code.
 func testGeneratedPackage(t *testing.T, pwd string) {
-	// Some tests have do not have mocha as a dependency.
-	hasMocha := false
-	for _, c := range getYarnCommands(t, pwd) {
-		if c == "mocha" {
-			hasMocha = true
-			break
-		}
-	}
+	_, mochaErr := os.Stat(filepath.Join(pwd, "node_modules", ".bin", "mocha"))
+	hasMocha := mochaErr == nil
 
 	// We are attempting to ensure that we don't write tests that are not run. The `nodejs-extras`
 	// folder exists to mixin tests of the form `*.spec.ts`. We assume that if this folder is
@@ -101,68 +91,13 @@ func testGeneratedPackage(t *testing.T, pwd string) {
 	if hasMocha {
 		// If mocha is a dev dependency but no test files exist, this will fail.
 		test.RunCommand(t, "mocha", pwd,
-			"yarn", "run", "mocha",
+			filepath.Join(pwd, "node_modules", ".bin", "mocha"),
+			"--timeout", "120000",
 			"--require", "ts-node/register",
 			"tests/**/*.spec.ts")
 	} else {
 		t.Logf("No mocha tests found for %s", pwd)
 	}
-}
-
-// Get the commands runnable with yarn run
-func getYarnCommands(t *testing.T, pwd string) []string {
-	cmd := exec.Command("yarn", "run", "--json")
-	cmd.Dir = pwd
-	out, err := cmd.Output()
-	if err != nil {
-		t.Errorf("Got error determining valid commands: %s", err)
-	}
-	dec := json.NewDecoder(bytes.NewReader(out))
-	parsed := []map[string]interface{}{}
-	for {
-		var m map[string]interface{}
-		if err := dec.Decode(&m); err != nil {
-			if err == io.EOF {
-				break
-			}
-			t.FailNow()
-		}
-		parsed = append(parsed, m)
-	}
-	var cmds []string
-
-	addProvidedCmds := func(c map[string]interface{}) {
-		// If this fails, we want the test to fail. We don't want to accidentally skip tests.
-		data := c["data"].(map[string]interface{})
-		if data["type"] == "possibleCommands" {
-			return
-		}
-		for _, cmd := range data["items"].([]interface{}) {
-			cmds = append(cmds, cmd.(string))
-		}
-	}
-
-	addBinaryCmds := func(c map[string]interface{}) {
-		data := c["data"].(string)
-		if !strings.HasPrefix(data, "Commands available from binary scripts:") {
-			return
-		}
-		cmdList := data[strings.Index(data, ":")+1:]
-		for _, cmd := range strings.Split(cmdList, ",") {
-			cmds = append(cmds, strings.TrimSpace(cmd))
-		}
-	}
-
-	for _, c := range parsed {
-		switch c["type"] {
-		case "list":
-			addProvidedCmds(c)
-		case "info":
-			addBinaryCmds(c)
-		}
-	}
-	t.Logf("Found yarn commands in %s: %v", pwd, cmds)
-	return cmds
 }
 
 func TestGenerateTypeNames(t *testing.T) {
@@ -191,7 +126,7 @@ func TestGenerateTypeNames(t *testing.T) {
 			defer mutex.Unlock()
 			return root.typeString(t, false, nil)
 		}
-	})
+	}, filepath.FromSlash("../testing/test/testdata/"))
 }
 
 func TestPascalCases(t *testing.T) {
@@ -242,7 +177,6 @@ func Test_isStringType(t *testing.T) {
 		}, false},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			if got := isStringType(tt.input); got != tt.expected {

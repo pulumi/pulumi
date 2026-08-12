@@ -1,4 +1,4 @@
-# Copyright 2016-2023, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,8 +15,6 @@
 """
 The Pulumi codegen system's Protobufs and gRPC stubs. These are meant for internal use only.
 """
-
-from __future__ import absolute_import
 
 from .hcl_pb2 import *
 from .hcl_pb2_grpc import *

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ func (b *bailError) Error() string {
 }
 
 // BailErrorf is a helper for BailError(fmt.Errorf(...)).
-func BailErrorf(format string, args ...interface{}) error {
+func BailErrorf(format string, args ...any) error {
 	return BailError(fmt.Errorf(format, args...))
 }
 

@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -268,20 +268,19 @@
 import builtins
 import collections.abc
 import functools
+import inspect
 import sys
+import types
 import typing
+from collections import abc
+from collections.abc import Callable, Iterator
 from typing import (
     Any,
-    Callable,
-    Dict,
-    Iterator,
-    Mapping,
     Optional,
-    Tuple,
-    Type,
     TypeVar,
     Union,
     cast,
+    get_origin,
     get_type_hints,
     overload,
 )
@@ -345,14 +344,12 @@ def property(name: str, *, default: Any = MISSING) -> Any:  # noqa: A001 shadowi
     return _Property(name, default)
 
 
-def _properties_from_annotations(cls: type) -> Dict[str, _Property]:
+def _properties_from_annotations(cls: type) -> dict[str, _Property]:
     """
     Returns a dictionary of properties from annotations defined on the class.
     """
 
-    # Get annotations that are defined on this class (not base classes).
-    # These are returned in the order declared on Python 3.6+.
-    cls_annotations = cls.__dict__.get("__annotations__", {})
+    cls_annotations = inspect.get_annotations(cls)
 
     def get_property(cls: type, a_name: str, a_type: Any) -> _Property:
         default = getattr(cls, a_name, MISSING)
@@ -447,17 +444,20 @@ def _create_py_property(a_name: str, pulumi_name: str, typ: Any, setter: bool = 
     return builtins.property(fget=getter_fn)
 
 
-def _py_properties(cls: type) -> Iterator[Tuple[str, str, builtins.property]]:
+@functools.cache
+def _py_properties(cls: type) -> tuple[tuple[str, str, builtins.property], ...]:
+    result: list[tuple[str, str, builtins.property]] = []
     for base in reversed(cls.__mro__):
         for python_name, v in base.__dict__.items():
             if isinstance(v, builtins.property):
-                prop = cast(builtins.property, v)
+                prop = v
                 pulumi_name = getattr(prop.fget, _PULUMI_NAME, MISSING)
                 if pulumi_name is not MISSING:
-                    yield (python_name, cast(str, pulumi_name), prop)
+                    result.append((python_name, cast(str, pulumi_name), prop))
+    return tuple(result)
 
 
-def input_type(cls: Type[T]) -> Type[T]:
+def input_type(cls: type[T]) -> type[T]:
     """
     Returns the same class as was passed in, but marked as an input type.
     """
@@ -479,7 +479,7 @@ def input_type(cls: Type[T]) -> Type[T]:
 
     # Now, process the class's properties, replacing properties with empty setters with
     # an actual setter.
-    for python_name, _, prop in _py_properties(cls):
+    for python_name, _, prop in _py_properties(cls):  # type: ignore[arg-type] # https://github.com/python/mypy/issues/11470
         if prop.fset is not None and _utils.is_empty_function(prop.fset):
             setter_fn = create_setter(python_name)
             setter_fn.__name__ = prop.fset.__name__
@@ -490,7 +490,7 @@ def input_type(cls: Type[T]) -> Type[T]:
     return cls
 
 
-def input_type_py_to_pulumi_names(input_type_cls: Type) -> Dict[str, str]:
+def input_type_py_to_pulumi_names(input_type_cls: type) -> dict[str, str]:
     """
     Returns a dict of Python names to Pulumi names for the input type.
     """
@@ -501,7 +501,7 @@ def input_type_py_to_pulumi_names(input_type_cls: Type) -> Dict[str, str]:
     }
 
 
-def input_type_types(input_type_cls: type) -> Dict[str, type]:
+def input_type_types(input_type_cls: type) -> dict[str, type]:
     """
     Returns a dict of Pulumi names to types for the input type.
     """
@@ -509,7 +509,7 @@ def input_type_types(input_type_cls: type) -> Dict[str, type]:
     return _types_from_py_properties(input_type_cls)
 
 
-def input_type_to_dict(obj: Any) -> Dict[str, Any]:
+def input_type_to_dict(obj: Any) -> dict[str, Any]:
     """
     Returns a dict for the input type.
 
@@ -519,8 +519,8 @@ def input_type_to_dict(obj: Any) -> Dict[str, Any]:
     assert is_input_type(cls)
 
     # Build a dictionary of properties to return
-    result: Dict[str, Any] = {}
-    for _, pulumi_name, prop in _py_properties(cls):
+    result: dict[str, Any] = {}
+    for _, pulumi_name, prop in _py_properties(cls):  # type: ignore[arg-type] # https://github.com/python/mypy/issues/11470
         fget = prop.fget
 
         # If the property has a _pulumi_deprecated_callable attribute, use that
@@ -538,7 +538,7 @@ def input_type_to_dict(obj: Any) -> Dict[str, Any]:
     return result
 
 
-def input_type_to_untranslated_dict(obj: Any) -> Dict[str, Any]:
+def input_type_to_untranslated_dict(obj: Any) -> dict[str, Any]:
     """
     Returns an untranslated dict for the input type.
     """
@@ -547,7 +547,7 @@ def input_type_to_untranslated_dict(obj: Any) -> Dict[str, Any]:
     return obj if issubclass(cls, dict) else obj.__dict__
 
 
-def output_type(cls: Type[T]) -> Type[T]:
+def output_type(cls: type[T]) -> type[T]:
     """
     Returns the same class as was passed in, but marked as an output type.
 
@@ -574,7 +574,7 @@ def output_type(cls: Type[T]) -> Type[T]:
     # provider codegen, will be the translated name from _tables.CAMEL_TO_SNAKE_CASE_TABLE).
     if hasattr(cls, _TRANSLATE_PROPERTY):
         python_to_pulumi_table = None
-        for python_name, pulumi_name, _ in _py_properties(cls):
+        for python_name, pulumi_name, _ in _py_properties(cls):  # type: ignore[arg-type] # https://github.com/python/mypy/issues/11470
             if python_name != pulumi_name:
                 python_to_pulumi_table = python_to_pulumi_table or {}
                 python_to_pulumi_table[python_name] = pulumi_name
@@ -584,11 +584,11 @@ def output_type(cls: Type[T]) -> Type[T]:
     return cls
 
 
-def output_type_from_dict(cls: Type[T], output: Dict[str, Any]) -> T:
+def output_type_from_dict(cls: type[T], output: dict[str, Any]) -> T:
     assert isinstance(output, dict)
     assert is_output_type(cls)
     args = {}
-    for python_name, pulumi_name, _ in _py_properties(cls):
+    for python_name, pulumi_name, _ in _py_properties(cls):  # type: ignore[arg-type] # https://github.com/python/mypy/issues/11470
         args[python_name] = output.get(pulumi_name)
     return cls(**args)  # type: ignore
 
@@ -704,9 +704,11 @@ def set(self, name: str, value: Any) -> None:
 
 
 def _is_union_type(tp):
-    return (
-        tp is Union or isinstance(tp, typing._GenericAlias) and tp.__origin__ is Union
-    )
+    # Check for `Union[a, b]`
+    if get_origin(tp) == Union:
+        return True
+    # Check for `a | b`
+    return get_origin(tp) == types.UnionType
 
 
 def _is_optional_type(tp):
@@ -717,7 +719,7 @@ def _is_optional_type(tp):
     return False
 
 
-def _globals_for_cls(cls: type) -> Optional[Dict[str, Any]]:
+def _globals_for_cls(cls: type) -> Optional[dict[str, Any]]:
     """
     Returns a dict of globals for the class and its base classes.
     """
@@ -732,7 +734,8 @@ def _globals_for_cls(cls: type) -> Optional[Dict[str, Any]]:
     return globalns
 
 
-def _types_from_py_properties(cls: type) -> Dict[str, type]:
+@functools.cache
+def _types_from_py_properties(cls: type) -> dict[str, type]:
     """
     Returns a dict of Pulumi names to types for a type.
     """
@@ -762,7 +765,7 @@ def _types_from_py_properties(cls: type) -> Dict[str, type]:
     # Python properties on the class that have a getter marked as a Pulumi property getter,
     # and looking at the getter function's return type annotation.
     # Types that are Output[T] and Optional[T] are unwrapped to just T.
-    result: Dict[str, type] = {}
+    result: dict[str, type] = {}
     for _, pulumi_name, prop in _py_properties(cls):
         cls_hints = get_type_hints(prop.fget, globalns=globalns, localns=localns)
         # Get the function's return type hint.
@@ -779,19 +782,19 @@ def _types_from_py_properties(cls: type) -> Dict[str, type]:
     return result
 
 
-def _pulumi_to_py_names_from_py_properties(cls: type) -> Dict[str, str]:
+def _pulumi_to_py_names_from_py_properties(cls: type) -> dict[str, str]:
     return {
         pulumi_name: python_name for python_name, pulumi_name, _ in _py_properties(cls)
     }
 
 
-def _py_to_pulumi_names_from_py_properties(cls: type) -> Dict[str, str]:
+def _py_to_pulumi_names_from_py_properties(cls: type) -> dict[str, str]:
     return {
         python_name: pulumi_name for python_name, pulumi_name, _ in _py_properties(cls)
     }
 
 
-def _types_from_annotations(cls: type) -> Dict[str, type]:
+def _types_from_annotations(cls: type) -> dict[str, type]:
     """
     Returns a dict of Pulumi names to types for a type.
     """
@@ -802,11 +805,7 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
 
     from . import Output
 
-    # We want resolved types for just the cls's type annotations (not base classes),
-    # but get_type_hints() looks at the annotations of the class and its base classes.
-    # So create a type dynamically that has the annotations from cls but doesn't have
-    # any base classes, and pass the dynamically created type to get_type_hints().
-    dynamic_cls_attrs = {"__annotations__": cls.__dict__.get("__annotations__", {})}
+    dynamic_cls_attrs = {"__annotations__": inspect.get_annotations(cls)}
     dynamic_cls = type(cls.__name__, (object,), dynamic_cls_attrs)
 
     # Pass along globals for the cls, to help resolve forward references.
@@ -824,7 +823,7 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
 
     # Return a dictionary of Pulumi property names to types. Types that are Output[T] and
     # Optional[T] are unwrapped to just T.
-    result: Dict[str, type] = {}
+    result: dict[str, type] = {}
     for name, prop in props.items():
         typ = unwrap_type(cls_hints[name])
         # If typ is Output, it was specified non-generically (as Output rather than Output[T]),
@@ -837,10 +836,8 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
     return result
 
 
-def _names_from_annotations(cls: type) -> Iterator[Tuple[str, str]]:
-    # Get annotations that are defined on this class (not base classes).
-    # These are returned in the order declared on Python 3.6+.
-    cls_annotations = cls.__dict__.get("__annotations__", {})
+def _names_from_annotations(cls: type) -> Iterator[tuple[str, str]]:
+    cls_annotations = inspect.get_annotations(cls)
 
     def get_pulumi_name(a_name: str) -> str:
         default = getattr(cls, a_name, MISSING)
@@ -850,18 +847,18 @@ def _names_from_annotations(cls: type) -> Iterator[Tuple[str, str]]:
         yield (python_name, get_pulumi_name(python_name))
 
 
-def _pulumi_to_py_names_from_annotations(cls: type) -> Dict[str, str]:
+def _pulumi_to_py_names_from_annotations(cls: type) -> dict[str, str]:
     return {
         pulumi_name: python_name
         for python_name, pulumi_name in _names_from_annotations(cls)
     }
 
 
-def _py_to_pulumi_names_from_annotations(cls: type) -> Dict[str, str]:
+def _py_to_pulumi_names_from_annotations(cls: type) -> dict[str, str]:
     return dict(_names_from_annotations(cls))
 
 
-def output_type_types(output_type_cls: type) -> Dict[str, type]:
+def output_type_types(output_type_cls: type) -> dict[str, type]:
     """
     Returns a dict of Pulumi names to types for the output type.
     """
@@ -869,7 +866,7 @@ def output_type_types(output_type_cls: type) -> Dict[str, type]:
     return _types_from_py_properties(output_type_cls)
 
 
-def resource_types(resource_cls: type) -> Dict[str, type]:
+def resource_types(resource_cls: type) -> dict[str, type]:
     """
     Returns a dict of Pulumi names to types for the resource.
     """
@@ -883,7 +880,7 @@ def resource_types(resource_cls: type) -> Dict[str, type]:
     return {**types_from_annotations, **types_from_py_properties}
 
 
-def resource_pulumi_to_py_names(resource_cls: type) -> Dict[str, str]:
+def resource_pulumi_to_py_names(resource_cls: type) -> dict[str, str]:
     """
     Returns a dict of Pulumi names to types for the resource.
     """
@@ -897,7 +894,7 @@ def resource_pulumi_to_py_names(resource_cls: type) -> Dict[str, str]:
     return {**names_from_annotations, **names_from_py_properties}
 
 
-def resource_py_to_pulumi_names(resource_cls: type) -> Dict[str, str]:
+def resource_py_to_pulumi_names(resource_cls: type) -> dict[str, str]:
     """
     Returns a dict of Pulumi names to types for the resource.
     """
@@ -950,7 +947,12 @@ def unwrap_type(val: type) -> type:
                 is_input_type(args[0])
                 and args[1] is dict
                 or typing.get_origin(args[1])
-                in [dict, Dict, Mapping, collections.abc.Mapping]
+                in [
+                    dict,
+                    typing.Dict,  # noqa - we want to check for the deprecated `typing.Dict` type here
+                    abc.Mapping,
+                    typing.Mapping,  # noqa - we want to check for the deprecated `typing.Mapping` type here
+                ]
             )
 
         def isInput(args, i=1):
@@ -972,6 +974,8 @@ def unwrap_type(val: type) -> type:
                 return args[0]
         elif len(args) == 4:
             if isInput(args) and args[3] is type(None):  # Optional[Input[T]]
+                return args[0]
+            if args[1] is type(None) and isInput(args, 2):  # Input[Optional[T]]
                 return args[0]
             if isInputType(args) and isInput(args, 2):  # Input[InputType[T]]
                 return args[0]
@@ -1056,7 +1060,7 @@ def _init_param(python_name: str, prop: _Property):
     return f"{python_name}:_type_{python_name}{default}"
 
 
-def _init_fn(props: Dict[str, _Property], globals, is_dict: bool, has_translate: bool):
+def _init_fn(props: dict[str, _Property], globals, is_dict: bool, has_translate: bool):
     # Make sure we don't have properties without defaults following properties
     # with defaults. This actually would be caught when exec-ing the
     # function source code, but catching it here gives a better error
@@ -1068,7 +1072,7 @@ def _init_fn(props: Dict[str, _Property], globals, is_dict: bool, has_translate:
             seen_default = True
         elif seen_default:
             raise TypeError(
-                f"non-default argument {python_name!r} " "follows default argument"
+                f"non-default argument {python_name!r} follows default argument"
             )
 
     locals = {f"_type_{python_name}": prop.type for python_name, prop in props.items()}

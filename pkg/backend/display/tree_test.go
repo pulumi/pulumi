@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Table Test using different terminal widths and heights to ensure that the display does not panic.
@@ -46,7 +47,6 @@ func TestTreeFrameSize(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			var buf bytes.Buffer
@@ -85,7 +85,7 @@ func createRendererAndDisplay(term terminal.Terminal, initializeDisplay bool) (*
 }
 
 func addManySystemEvents(display *ProgressDisplay, count int, message string) {
-	for i := 0; i < count; i++ {
+	for range count {
 		display.handleSystemEvent(engine.StdoutEventPayload{
 			Message: message,
 			Color:   colors.Always,
@@ -94,7 +94,7 @@ func addManySystemEvents(display *ProgressDisplay, count int, message string) {
 }
 
 func addManyNormalEvents(display *ProgressDisplay, count int, message string) {
-	for i := 0; i < count; i++ {
+	for i := range count {
 		display.processNormalEvent(engine.NewEvent(
 			engine.DiagEventPayload{
 				URN:     resource.NewURN("stack", "project", "qualifier", "typ", fmt.Sprintf("row-%d", i)),
@@ -197,7 +197,7 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 		assert.Falsef(t, treeRenderer.dirty, "Expecting the renderer to not be dirty after a frame is called")
 
 		// An observable consequence of rendering is that the treeRenderer now has an array of system messages
-		assert.Equalf(t, 1000, len(treeRenderer.systemMessages),
+		require.Len(t, treeRenderer.systemMessages, 1000,
 			"Expecting 1000 system messages to now be in the tree renderer")
 	}()
 

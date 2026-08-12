@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,11 +25,15 @@ import (
 
 func testTraverse(t *testing.T, receiver Traversable, traverser hcl.Traverser, expected Traversable, expectDiags bool) {
 	actual, diags := receiver.Traverse(traverser)
-	assert.Equal(t, expected, actual)
+	if a, ok := actual.(Type); ok {
+		assert.True(t, a.Equals(expected.(Type)))
+	} else {
+		assert.Equal(t, expected, actual)
+	}
 	if expectDiags {
 		assert.Greater(t, len(diags), 0)
 	} else {
-		assert.Equal(t, 0, len(diags))
+		assert.Empty(t, diags)
 	}
 }
 
@@ -119,6 +123,28 @@ func TestDynamicType(t *testing.T) {
 	testTraverse(t, DynamicType, hcl.TraverseIndex{Key: encapsulateType(DynamicType)}, DynamicType, false)
 }
 
+func TestIDType(t *testing.T) {
+	t.Parallel()
+
+	assert.False(t, IDType.AssignableFrom(StringType))
+	assert.False(t, StringType.AssignableFrom(IDType))
+
+	assert.Equal(t, SafeConversion, IDType.ConversionFrom(StringType))
+	assert.Equal(t, SafeConversion, StringType.ConversionFrom(IDType))
+
+	assert.Equal(t, SafeConversion, IDType.ConversionFrom(BoolType))
+	assert.Equal(t, SafeConversion, IDType.ConversionFrom(IntType))
+	assert.Equal(t, SafeConversion, IDType.ConversionFrom(NumberType))
+
+	assert.Equal(t, UnsafeConversion, BoolType.ConversionFrom(IDType))
+	assert.Equal(t, UnsafeConversion, IntType.ConversionFrom(IDType))
+	assert.Equal(t, UnsafeConversion, NumberType.ConversionFrom(IDType))
+
+	safeType, unsafeType := UnifyTypes(IDType, StringType)
+	assert.True(t, safeType.Equals(StringType))
+	assert.True(t, unsafeType.Equals(StringType))
+}
+
 func TestOptionalType(t *testing.T) {
 	t.Parallel()
 
@@ -188,9 +214,15 @@ func TestOutputType(t *testing.T) {
 
 	// Test that output(T) is _not_ assignable from output(U), where U is not assignable to T.
 	assert.False(t, NewOutputType(BoolType).AssignableFrom(NewOutputType(IntType)))
+	assert.False(t, NewOutputType(NumberType).AssignableFrom(NewOutputType(StringType)))
 
 	// Test that output(T) is _not_ assignable from promise(U), where U is not assignable to T.
 	assert.False(t, NewOutputType(BoolType).AssignableFrom(NewPromiseType(IntType)))
+	assert.False(t, NewOutputType(NumberType).AssignableFrom(NewPromiseType(StringType)))
+
+	// But output(T) is still convertible from output(U)/promise(U) if U is convertible to T.
+	assert.Equal(t, UnsafeConversion, NewOutputType(NumberType).ConversionFrom(NewOutputType(StringType)))
+	assert.Equal(t, UnsafeConversion, NewOutputType(NumberType).ConversionFrom(NewPromiseType(StringType)))
 
 	// Test that traversing an output(T) returns an output(U), where U is the result of the inner traversal.
 	typ = NewOutputType(NewMapType(StringType))
@@ -569,16 +601,16 @@ func TestInputType(t *testing.T) {
 
 func assertUnified(t *testing.T, expectedSafe, expectedUnsafe Type, types ...Type) {
 	actualSafe, actualUnsafe := UnifyTypes(types...)
-	assert.Equal(t, expectedSafe, actualSafe)
-	assert.Equal(t, expectedUnsafe, actualUnsafe)
+	assert.True(t, expectedSafe.Equals(actualSafe))
+	assert.True(t, expectedUnsafe.Equals(actualUnsafe))
 
 	// Reverse the types and ensure we get the same results.
 	for i, j := 0, len(types)-1; i < j; i, j = i+1, j-1 {
 		types[i], types[j] = types[j], types[i]
 	}
 	actualSafe2, actualUnsafe2 := UnifyTypes(types...)
-	assert.Equal(t, actualSafe, actualSafe2)
-	assert.Equal(t, actualUnsafe, actualUnsafe2)
+	assert.True(t, actualSafe.Equals(actualSafe2))
+	assert.True(t, actualUnsafe.Equals(actualUnsafe2))
 }
 
 func TestUnifyType(t *testing.T) {
@@ -714,6 +746,91 @@ func TestRecursiveObjectType(t *testing.T) {
 	inputLinkedListType := InputType(resolvedLinkedListType)
 	hasOutputs, _ = ContainsEventuals(inputLinkedListType)
 	assert.True(t, hasOutputs)
+}
+
+// TestRecursiveObjectTypeConvertsFromFiniteSource verifies that a finite source
+// value can be converted to a self-referential ObjectType.
+func TestRecursiveObjectTypeConvertsFromFiniteSource(t *testing.T) {
+	t.Parallel()
+
+	// Build a self-referential object type: Obj { a: Optional<Obj> }.
+	props := map[string]Type{}
+	recursive := NewObjectType(props)
+	props["a"] = NewOptionalType(recursive)
+
+	// Optional `a` means the property may be absent, so an empty source satisfies.
+	t.Run("empty source converts safely", func(t *testing.T) {
+		t.Parallel()
+		empty := NewObjectType(map[string]Type{})
+		assert.Equal(t, SafeConversion, recursive.ConversionFrom(empty))
+	})
+
+	t.Run("none source converts safely", func(t *testing.T) {
+		t.Parallel()
+		// Source: { a: <recursive itself absent> } — the recursive property is Optional.
+		src := NewObjectType(map[string]Type{"a": NoneType})
+		assert.Equal(t, SafeConversion, recursive.ConversionFrom(src))
+	})
+
+	t.Run("source mirroring schema converges", func(t *testing.T) {
+		t.Parallel()
+		// Source: { a: { a: {} } } has finite depth and matches the recursive shape.
+		outer := NewObjectType(map[string]Type{
+			"a": NewObjectType(map[string]Type{
+				"a": NewObjectType(map[string]Type{}),
+			}),
+		})
+		assert.Equal(t, SafeConversion, recursive.ConversionFrom(outer))
+	})
+
+	t.Run("source with incompatible property still rejected", func(t *testing.T) {
+		t.Parallel()
+		// Coinductive cycle handling shouldn't make conversions universally permissive:
+		// a source whose recursive property has a primitive type that can't satisfy the
+		// recursive target should still fail to convert.
+		src := NewObjectType(map[string]Type{"a": StringType})
+		assert.Equal(t, NoConversion, recursive.ConversionFrom(src))
+	})
+
+	t.Run("source with deeply incompatible nested property still rejected", func(t *testing.T) {
+		t.Parallel()
+		// Source: { a: { a: "string" } }. The OUTER "a" matches the recursive shape
+		// (it's an object), but the INNER nested "a" is a string and can never satisfy
+		// Optional<recursive>. The conversion check must descend into the source rather
+		// than short-circuit on the destination cycle.
+		src := NewObjectType(map[string]Type{
+			"a": NewObjectType(map[string]Type{
+				"a": StringType,
+			}),
+		})
+		assert.Equal(t, NoConversion, recursive.ConversionFrom(src))
+	})
+}
+
+// TestRecursiveObjectTypeViaInputUnion mirrors the InputShape/PlainShape
+// pattern produced by codegen/pcl.schemaTypeToType: the schema property is
+// reachable as `Optional<Union<recursiveInputObj | Output<recursivePlainObj>>>`,
+// and the value is an empty object that should satisfy `recursiveInputObj`.
+// Before the cycle-handling fix, the conversion bailed out with NoConversion.
+func TestRecursiveObjectTypeViaInputUnion(t *testing.T) {
+	t.Parallel()
+
+	inputProps := map[string]Type{}
+	inputObj := NewObjectType(inputProps)
+	inputProps["a"] = NewOptionalType(inputObj)
+
+	plainProps := map[string]Type{}
+	plainObj := NewObjectType(plainProps)
+	plainProps["a"] = NewOptionalType(plainObj)
+
+	schemaTyp := NewOptionalType(NewUnionType(inputObj, NewOutputType(plainObj)))
+
+	// Value type: { a: {} } - finite, satisfies inputObj.
+	value := NewObjectType(map[string]Type{
+		"a": NewObjectType(map[string]Type{}),
+	})
+
+	assert.Equal(t, SafeConversion, schemaTyp.ConversionFrom(value))
 }
 
 // Tests that object type annotations can be added and queried correctly.

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 // limitations under the License.
 
 //go:build js
-// +build js
 
 package cmdutil
 
@@ -36,5 +35,9 @@ func processExistsWithParent(pid int, ppid int) (bool, error) {
 }
 
 func RegisterProcessGroup(cmd *exec.Cmd) {
+	panic(errors.New("unsupported"))
+}
+
+func InterruptChildren(pid int) error {
 	panic(errors.New("unsupported"))
 }

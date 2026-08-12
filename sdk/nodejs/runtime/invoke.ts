@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
 
 import * as grpc from "@grpc/grpc-js";
 
-import { AsyncIterable } from "@pulumi/query/interfaces";
-
 import { InvokeOptions, InvokeOutputOptions } from "../invoke";
 import * as log from "../log";
 import { Inputs, Output } from "../output";
@@ -30,11 +28,16 @@ import {
     containsUnknownValues,
 } from "./rpc";
 import { awaitStackRegistrations, excessiveDebugOutput, getMonitor, rpcKeepAlive, terminateRpcs } from "./settings";
+import { getStore } from "./state";
 
 import { CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
 import * as utils from "../utils";
 import { PushableAsyncIterable } from "./asyncIterableUtil";
-import { gatherExplicitDependencies, getAllTransitivelyReferencedResources } from "./dependsOn";
+import {
+    gatherExplicitDependencies,
+    getAllTransitivelyReferencedResourceURNs,
+    getAllTransitivelyReferencedResources,
+} from "./dependsOn";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as resourceproto from "../proto/resource_pb";
@@ -172,53 +175,6 @@ export function invokeSingleOutput<T>(
     return output;
 }
 
-export async function streamInvoke(
-    tok: string,
-    props: Inputs,
-    opts: InvokeOptions = {},
-): Promise<StreamInvokeResponse<any>> {
-    const label = `StreamInvoking function: tok=${tok} asynchronously`;
-    log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
-
-    // Wait for all values to be available, and then perform the RPC.
-    const done = rpcKeepAlive();
-    try {
-        const serialized = await serializeProperties(`streamInvoke:${tok}`, props);
-        log.debug(
-            `StreamInvoke RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
-        );
-
-        // Fetch the monitor and make an RPC request.
-        const monitor: any = getMonitor();
-
-        const provider = await ProviderResource.register(getProvider(tok, opts));
-        const req = await createInvokeRequest(tok, serialized, provider, opts);
-
-        // Call `streamInvoke`.
-        const result = monitor.streamInvoke(req, {});
-
-        const queue = new PushableAsyncIterable();
-        result.on("data", function (thing: any) {
-            const live = deserializeResponse(tok, thing);
-            queue.push(live);
-        });
-        result.on("error", (err: any) => {
-            if (err.code === 1) {
-                return;
-            }
-            throw err;
-        });
-        result.on("end", () => {
-            queue.complete();
-        });
-
-        // Return a cancellable handle to the stream.
-        return new StreamInvokeResponse(queue, () => result.cancel());
-    } finally {
-        done();
-    }
-}
-
 async function invokeAsync(
     tok: string,
     props: Inputs,
@@ -241,8 +197,17 @@ async function invokeAsync(
     try {
         // The direct dependencies of the invoke call from the dependsOn option.
         const dependsOnDeps = await gatherExplicitDependencies(opts.dependsOn);
-        // The dependencies of the inputs to the invoke call.
-        const [serialized, deps] = await serializePropertiesReturnDeps(`invoke:${tok}`, props);
+        // The dependencies of the inputs to the invoke call. The output-returning invoke variants resolve a
+        // serialization failure into the returned Output rather than surfacing it, so log it here to keep it visible.
+        let serialized: Record<string, any>;
+        let deps: Map<string, Set<Resource>>;
+        try {
+            [serialized, deps] = await serializePropertiesReturnDeps(`invoke:${tok}`, props);
+        } catch (err) {
+            const detail = err instanceof Error ? err.stack || err.message : String(err);
+            log.error(`Error serializing arguments for invoke ${tok}: ${detail}`);
+            throw err;
+        }
         if (containsUnknownValues(serialized)) {
             // if any of the input properties are unknown,
             // make sure the entire response is marked as unknown
@@ -259,10 +224,8 @@ async function invokeAsync(
         // these should only receive plain arguments, but this is not strictly
         // enforced, and in practice people pass in outputs. This happens to
         // work because we serialize the arguments.
+        let invokeDependsOn: Set<string> | undefined;
         if (checkDependencies) {
-            // If we depend on any CustomResources, we need to ensure that their
-            // ID is known before proceeding. If it is not known, we will return
-            // an unknown result.
             const resourcesToWaitFor = new Set<Resource>(dependsOnDeps);
             // Add the dependencies from the inputs to the set of resources to wait for.
             for (const resourceDeps of deps.values()) {
@@ -270,20 +233,28 @@ async function invokeAsync(
                     resourcesToWaitFor.add(value);
                 }
             }
-            // The expanded set of dependencies, including children of components.
-            const expandedDeps = await getAllTransitivelyReferencedResources(resourcesToWaitFor, new Set());
-            // Ensure that all resource IDs are known before proceeding.
-            for (const dep of expandedDeps.values()) {
-                // DependencyResources inherit from CustomResource, but they don't set the id. Skip them.
-                if (CustomResource.isInstance(dep) && dep.id) {
-                    const known = await dep.id.isKnown;
-                    if (!known) {
-                        return {
-                            result: {},
-                            isKnown: false,
-                            containsSecrets: false,
-                            dependencies: [],
-                        };
+            if (getStore().supportsInvokeDependsOn) {
+                invokeDependsOn = await getAllTransitivelyReferencedResourceURNs(resourcesToWaitFor, new Set());
+            } else {
+                // Older engines cannot gate invokes: if we depend on any CustomResources, we need to ensure
+                // that their ID is known before proceeding. If it is not known, we will return an unknown
+                // result.
+                //
+                // The expanded set of dependencies, including children of components.
+                const expandedDeps = await getAllTransitivelyReferencedResources(resourcesToWaitFor, new Set());
+                // Ensure that all resource IDs are known before proceeding.
+                for (const dep of expandedDeps.values()) {
+                    // DependencyResources inherit from CustomResource, but they don't set the id. Skip them.
+                    if (CustomResource.isInstance(dep) && dep.id) {
+                        const known = await dep.id.isKnown;
+                        if (!known) {
+                            return {
+                                result: {},
+                                isKnown: false,
+                                containsSecrets: false,
+                                dependencies: [],
+                            };
+                        }
                     }
                 }
             }
@@ -297,10 +268,10 @@ async function invokeAsync(
         const monitor: any = getMonitor();
 
         const provider = await ProviderResource.register(getProvider(tok, opts));
-        // keep track of the the secretness of the inputs
+        // keep track of the secretness of the inputs
         // if any of the inputs are secret, the invoke response should be marked as secret
         const [plainInputs, inputsContainSecrets] = unwrapSecretValues(serialized);
-        const req = await createInvokeRequest(tok, plainInputs, provider, opts, packageRef);
+        const req = await createInvokeRequest(tok, plainInputs, provider, opts, packageRef, invokeDependsOn);
 
         const resp: any = await debuggablePromise(
             new Promise((innerResolve, innerReject) =>
@@ -336,6 +307,17 @@ async function invokeAsync(
             }
         }
 
+        // The engine declines to service an invoke whose dependencies are pending creation: the result is
+        // wholly unknown.
+        if (resp.getUnknown?.()) {
+            return {
+                result: {},
+                isKnown: false,
+                containsSecrets: false,
+                dependencies: flatDependencies,
+            };
+        }
+
         // Finally propagate any other properties that were given to us as outputs.
         const deserialized = deserializeResponse(tok, resp);
         return {
@@ -349,33 +331,13 @@ async function invokeAsync(
     }
 }
 
-/**
- * {@link StreamInvokeResponse} represents a (potentially infinite) streaming
- * response to `streamInvoke`, with facilities to gracefully cancel and clean up
- * the stream.
- */
-export class StreamInvokeResponse<T> implements AsyncIterable<T> {
-    constructor(
-        private source: AsyncIterable<T>,
-        private cancelSource: () => void,
-    ) {}
-
-    // cancel signals the `streamInvoke` should be cancelled and cleaned up gracefully.
-    public cancel() {
-        this.cancelSource();
-    }
-
-    [Symbol.asyncIterator]() {
-        return this.source[Symbol.asyncIterator]();
-    }
-}
-
 async function createInvokeRequest(
     tok: string,
     serialized: any,
     provider: string | undefined,
     opts: InvokeOptions,
     packageRef?: Promise<string | undefined>,
+    dependsOn?: Set<string>,
 ) {
     if (provider !== undefined && typeof provider !== "string") {
         throw new Error("Incorrect provider type.");
@@ -399,6 +361,9 @@ async function createInvokeRequest(
     req.setPlugindownloadurl(opts.pluginDownloadURL || "");
     req.setAcceptresources(!utils.disableResourceReferences);
     req.setPackageref(packageRefStr || "");
+    if (dependsOn !== undefined) {
+        req.setDependsonList(Array.from(dependsOn));
+    }
     return req;
 }
 
@@ -451,20 +416,25 @@ function deserializeResponse(
 }
 
 /**
- * Dynamically calls the function `tok`, which is offered by a provider plugin.
- */
-export function call<T>(
+ * Helper function to call a method `tok`, which is offered by a provider plugin resource.
+ *
+ * May return a scalar as an object with a single key or a normal object.
+ **/
+function callAsync<T>(
     tok: string,
     props: Inputs,
     res?: Resource,
     packageRef?: Promise<string | undefined>,
-): Output<T> {
+): Promise<{
+    result: Inputs | undefined;
+    isKnown: boolean;
+    containsSecrets: boolean;
+    dependencies: Resource[];
+}> {
     const label = `Calling function: tok=${tok}`;
     log.debug(label + (excessiveDebugOutput ? `, props=${JSON.stringify(props)}` : ``));
 
-    const [out, resolver] = createOutput<T>(`call(${tok})`);
-
-    debuggablePromise(
+    return debuggablePromise(
         Promise.resolve().then(async () => {
             const done = rpcKeepAlive();
             try {
@@ -480,14 +450,24 @@ export function call<T>(
                     pluginDownloadURL = res.__pluginDownloadURL;
                 }
 
-                const [serialized, propertyDepsResources] = await serializePropertiesReturnDeps(`call:${tok}`, props, {
-                    // We keep output values when serializing inputs for call.
-                    keepOutputValues: true,
-                    // We exclude resource references from 'argDependencies' when serializing inputs for call.
-                    // This way, component providers creating outputs for component inputs based on
-                    // 'argDependencies' won't create outputs for properties that only contain resource references.
-                    excludeResourceReferencesFromDependencies: true,
-                });
+                // The call variants resolve a serialization failure into the returned Output rather than
+                // surfacing it, so log it here to keep it visible.
+                let serialized: Record<string, any>;
+                let propertyDepsResources: Map<string, Set<Resource>>;
+                try {
+                    [serialized, propertyDepsResources] = await serializePropertiesReturnDeps(`call:${tok}`, props, {
+                        // We keep output values when serializing inputs for call.
+                        keepOutputValues: true,
+                        // We exclude resource references from 'argDependencies' when serializing inputs for call.
+                        // This way, component providers creating outputs for component inputs based on
+                        // 'argDependencies' won't create outputs for properties that only contain resource references.
+                        excludeResourceReferencesFromDependencies: true,
+                    });
+                } catch (err) {
+                    const detail = err instanceof Error ? err.stack || err.message : String(err);
+                    log.error(`Error serializing arguments for call ${tok}: ${detail}`);
+                    throw err;
+                }
                 log.debug(
                     `Call RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``,
                 );
@@ -553,20 +533,70 @@ export function call<T>(
                     }
                 }
 
-                // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
-                // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
-                // present during previews (i.e. isDryRun() will be true).
-                resolver(<any>result, true, containsSecrets, deps);
-            } catch (e) {
-                resolver(<any>undefined, true, false, undefined, e);
+                return {
+                    result: result,
+                    containsSecrets: containsSecrets,
+                    dependencies: deps,
+                    isKnown: true,
+                };
             } finally {
                 done();
             }
         }),
         label,
     );
+}
 
-    return out;
+/**
+ * Calls a method `tok` offered by a provider plugin resource.
+ */
+export function call<T>(
+    tok: string,
+    props: Inputs,
+    res?: Resource,
+    packageRef?: Promise<string | undefined>,
+): Output<T> {
+    const [output, resolve] = createOutput<T>(`call(${tok})`);
+    callAsync(tok, props, res, packageRef)
+        .then((response) => {
+            const { result, isKnown, containsSecrets, dependencies } = response;
+
+            // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
+            // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
+            // present during previews (i.e. isDryRun() will be true).
+            resolve(<any>result, isKnown, containsSecrets, dependencies);
+        })
+        .catch((err) => {
+            resolve(<any>undefined, true, false, [], err);
+        });
+
+    return output;
+}
+
+/**
+ * Calls a method `tok` offered by a provider plugin resource, but returns a single value.
+ *
+ * This method expects the result of `callAsync` to be a map containing a single value,
+ * which it unwraps.
+ */
+export function callSingle<T>(
+    tok: string,
+    props: Inputs,
+    res?: Resource,
+    packageRef?: Promise<string | undefined>,
+): Output<T> {
+    const [output, resolve] = createOutput<T>(`callSingle(${tok})`);
+    callAsync(tok, props, res, packageRef)
+        .then((response) => {
+            const { result, isKnown, containsSecrets, dependencies } = response;
+            const value = extractSingleValue(result);
+            resolve(<T>value, isKnown, containsSecrets, dependencies, undefined);
+        })
+        .catch((err) => {
+            resolve(<any>undefined, true, false, [], err);
+        });
+
+    return output;
 }
 
 function createOutput<T>(

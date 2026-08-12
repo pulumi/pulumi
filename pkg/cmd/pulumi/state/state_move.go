@@ -22,10 +22,14 @@ import (
 	"os"
 	"strings"
 
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -41,6 +45,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
+
+const providerPrefix = "pulumi:providers:"
 
 type stateMoveCmd struct {
 	Stdin          io.Reader
@@ -61,16 +67,17 @@ func newStateMoveCommand() *cobra.Command {
 		Colorizer: cmdutil.GetGlobalColorization(),
 	}
 	cmd := &cobra.Command{
-		Use:   "move [flags] <urn>...",
-		Short: "Move resources from one stack to another",
+		Use:     "move",
+		Aliases: []string{"mv"},
+		Short:   "Move resources from one stack to another",
 		Long: `Move resources from one stack to another
 
 This command can be used to move resources from one stack to another. This can be useful when
 splitting a stack into multiple stacks or when merging multiple stacks into one.
 `,
-		Args: cmdutil.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sink := cmdutil.Diag()
 			ws := pkgWorkspace.Instance
 
 			if sourceStackName == "" && destStackName == "" {
@@ -78,6 +85,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			}
 			sourceStack, err := cmdStack.RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				sourceStackName,
@@ -86,12 +94,14 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 					Color:         cmdutil.GetGlobalColorization(),
 					IsInteractive: true,
 				},
+				"",
 			)
 			if err != nil {
 				return err
 			}
 			destStack, err := cmdStack.RequireStack(
 				ctx,
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				destStackName,
@@ -100,6 +110,7 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 					Color:         cmdutil.GetGlobalColorization(),
 					IsInteractive: true,
 				},
+				"",
 			)
 			if err != nil {
 				return err
@@ -108,16 +119,27 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 			stateMove.Yes = yes
 			stateMove.IncludeParents = includeParents
 
-			sourceSecretsProvider := stack.NamedStackSecretsProvider{
+			sourceSecretsProvider := backend_secrets.NamedStackProvider{
 				StackName: sourceStack.Ref().FullyQualifiedName().String(),
 			}
-			destSecretsProvider := stack.NamedStackSecretsProvider{
+			destSecretsProvider := backend_secrets.NamedStackProvider{
 				StackName: destStack.Ref().FullyQualifiedName().String(),
 			}
 
+			if stateMove.Stdout == nil {
+				stateMove.Stdout = cmd.OutOrStdout()
+			}
 			return stateMove.Run(ctx, sourceStack, destStack, args, sourceSecretsProvider, destSecretsProvider)
 		},
 	}
+
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "urn"},
+		},
+		Required: 1,
+		Variadic: true,
+	})
 
 	cmd.Flags().StringVarP(&sourceStackName, "source", "", "", "The name of the stack to move resources from")
 	cmd.Flags().StringVarP(&destStackName, "dest", "", "", "The name of the stack to move resources to")
@@ -136,7 +158,7 @@ func (cmd *stateMoveCmd) Run(
 		cmd.Stdin = os.Stdin
 	}
 	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
+		cmd.Stdout = io.Discard
 	}
 	if cmd.ws == nil {
 		cmd.ws = pkgWorkspace.Instance
@@ -190,30 +212,30 @@ func (cmd *stateMoveCmd) Run(
 		}
 
 		// The user is in the right directory.  If we fail below we will return the error of that failure.
-		err = cmdStack.CreateSecretsManagerForExistingStack(ctx, cmd.ws, dest, "", false, true)
+		err = cmdStack.CreateSecretsManagerForExistingStack(ctx, cmdutil.Diag(), cmd.ws, dest, "", false, true)
 		if err != nil {
 			return err
 		}
-		ps, err := cmdStack.LoadProjectStack(project, dest)
+		ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, dest, "")
 		if err != nil {
 			return err
 		}
 
-		destSecretManager, err := dest.DefaultSecretManager(ps)
+		destSecretManager, err := dest.DefaultSecretManager(ctx, ps)
 		if err != nil {
 			return err
 		}
 		destSnapshot.SecretsManager = destSecretManager
 	}
 
-	resourcesToMove := make(map[string]*resource.State)
+	resourcesToMove := make(map[string]*pkgresource.State)
 	providersToCopy := make(map[string]bool)
 	unmatchedArgs := mapset.NewSet(args...)
 	rootStackURN := ""
 	for _, res := range sourceSnapshot.Resources {
 		matchedArg := resourceMatches(res, args)
 		if matchedArg != "" {
-			if strings.HasPrefix(string(res.Type), "pulumi:providers:") {
+			if strings.HasPrefix(string(res.Type), providerPrefix) {
 				//nolint:lll
 				return errors.New("cannot move providers. Only resources can be moved, and providers will be included automatically")
 			}
@@ -232,7 +254,8 @@ func (cmd *stateMoveCmd) Run(
 	}
 
 	if len(resourcesToMove) == 0 {
-		return errors.New("no resources found to move")
+		return fmt.Errorf("no resources found to move\n%s",
+			listURNsHint(string(source.Ref().FullyQualifiedName())))
 	}
 
 	sourceDepGraph := graph.NewDependencyGraph(sourceSnapshot.Resources)
@@ -240,8 +263,10 @@ func (cmd *stateMoveCmd) Run(
 	if cmd.IncludeParents {
 		for _, res := range resourcesToMove {
 			for _, parent := range sourceDepGraph.ParentsOf(res) {
-				if res.Type == resource.RootStackType && res.Parent == "" {
-					// We don't move the root stack explicitly, the code below will take care of dealing with that correctly.
+				if (parent.Type == resource.RootStackType && parent.Parent == "") ||
+					strings.HasPrefix(string(parent.Type), providerPrefix) {
+					// We don't move the root stack or providers explicitly, the code below
+					// will take care of dealing with that correctly.
 					continue
 				}
 				resourcesToMove[string(parent.URN)] = parent
@@ -253,6 +278,9 @@ func (cmd *stateMoveCmd) Run(
 	// include all children in the list of resources to move
 	for _, res := range resourcesToMove {
 		for _, dep := range sourceDepGraph.ChildrenOf(res) {
+			if strings.HasPrefix(string(dep.Type), providerPrefix) {
+				continue
+			}
 			resourcesToMove[string(dep.URN)] = dep
 			providersToCopy[dep.Provider] = true
 		}
@@ -266,8 +294,8 @@ func (cmd *stateMoveCmd) Run(
 	// so that resources with relationships are in the right order.  Also check which
 	// resources are remaining in the source stack, now that we know all resources
 	// that are going to be moved.
-	remainingResources := make(map[string]*resource.State)
-	var resourcesToMoveOrdered []*resource.State
+	remainingResources := make(map[string]*pkgresource.State)
+	var resourcesToMoveOrdered []*pkgresource.State
 	for _, res := range sourceSnapshot.Resources {
 		if _, ok := resourcesToMove[string(res.URN)]; ok {
 			resourcesToMoveOrdered = append(resourcesToMoveOrdered, res)
@@ -280,7 +308,7 @@ func (cmd *stateMoveCmd) Run(
 	// that need to be copied, remove all the resources that need
 	// to be removed, and break the dependencies that are no
 	// longer valid.
-	var providers []*resource.State
+	var providers []*pkgresource.State
 	var brokenSourceDependencies []brokenDependency
 	i := 0
 	for _, res := range sourceSnapshot.Resources {
@@ -314,19 +342,24 @@ func (cmd *stateMoveCmd) Run(
 		}
 		rootStack = stack.CreateRootStackResource(
 			dest.Ref().Name().Q(), tokens.PackageName(projectName))
-		destSnapshot.Resources = append([]*resource.State{rootStack}, destSnapshot.Resources...)
+		destSnapshot.Resources = append([]*pkgresource.State{rootStack}, destSnapshot.Resources...)
 	}
 
-	destResMap := make(map[urn.URN]*resource.State)
+	destResMap := make(map[urn.URN]*pkgresource.State)
 	for _, res := range destSnapshot.Resources {
 		destResMap[res.URN] = res
 	}
 
+	var brokenDestDependencies []brokenDependency
 	rewriteMap := make(map[string]string)
 	for _, res := range providers {
 		// Providers stay in the source stack, so we need a copy of the provider to be able to
 		// rewrite the URNs of the resource.
+		originalProviderRef := fmt.Sprintf("%s::%s", res.URN, res.ID)
 		r := res.Copy()
+		// Copied providers must not depend on resources that remain in the source stack,
+		// otherwise destination snapshot integrity verification fails.
+		brokenDestDependencies = append(brokenDestDependencies, breakDependencies(r, remainingResources)...)
 		if _, ok := resourcesToMove[string(r.Parent)]; !ok {
 			rootStack, err := stack.GetRootStackResource(destSnapshot)
 			if err != nil {
@@ -342,6 +375,7 @@ func (cmd *stateMoveCmd) Run(
 		if destRes, ok := destResMap[r.URN]; ok {
 			// If the provider ID matches, we can assume that the provider has previously been copied and we can just copy it.
 			if destRes.ID == r.ID {
+				rewriteMap[originalProviderRef] = fmt.Sprintf("%s::%s", destRes.URN, destRes.ID)
 				continue
 			}
 			// If all the inputs of the provider in the destination stack are the same as the provider in the source stack,
@@ -354,6 +388,7 @@ func (cmd *stateMoveCmd) Run(
 			return fmt.Errorf("provider %s already exists in destination stack", r.URN)
 		}
 
+		rewriteMap[originalProviderRef] = fmt.Sprintf("%s::%s", r.URN, r.ID)
 		destSnapshot.Resources = append(destSnapshot.Resources, r)
 	}
 
@@ -367,7 +402,6 @@ func (cmd *stateMoveCmd) Run(
 	}
 	fmt.Fprintf(cmd.Stdout, "\n")
 
-	var brokenDestDependencies []brokenDependency
 	for _, res := range resourcesToMoveOrdered {
 		// We need the original resources URNs later in case of errors, so make a copy here before modifying them.
 		r := res.Copy()
@@ -384,6 +418,7 @@ func (cmd *stateMoveCmd) Run(
 		if err != nil {
 			return err
 		}
+		rewriteMap[string(res.URN)] = string(r.URN)
 
 		if _, ok := destResMap[r.URN]; ok {
 			return fmt.Errorf("resource %s already exists in destination stack", r.URN)
@@ -431,10 +466,19 @@ func (cmd *stateMoveCmd) Run(
 		case yes:
 		// continue
 		case no:
-			fmt.Println("Confirmation denied, not proceeding with the state move")
+			fmt.Fprintln(cmd.Stdout, "Confirmation denied, not proceeding with the state move")
 			return nil
 		}
 	}
+
+	// Carry extension blobs across the move so any moved resource's ExtensionRef
+	// still resolves on the destination. Drop blobs the source no longer references.
+	destExts, missing := deploy.MapExtensions(destSnapshot.Resources, destSnapshot.Extensions, sourceSnapshot)
+	if len(missing) > 0 {
+		return fmt.Errorf("source snapshot is missing extension blob(s) %v referenced by moved resources", missing)
+	}
+	destSnapshot.Extensions = destExts
+	sourceSnapshot.Extensions, _ = deploy.MapExtensions(sourceSnapshot.Resources, sourceSnapshot.Extensions, nil)
 
 	err = destSnapshot.VerifyIntegrity()
 	if err != nil {
@@ -466,11 +510,10 @@ None of the resources have been moved, it is safe to try again`, err)
 		destSnapshot.Resources = originalDestResources
 		errDest := cmdStack.SaveSnapshot(ctx, dest, destSnapshot, false)
 		if errDest != nil {
-			var deleteCommands string
+			var deleteCommands strings.Builder
 			// Iterate over the resources in reverse order, so resources with no dependencies will be deleted first.
 			for i := len(resourcesToMoveOrdered) - 1; i >= 0; i-- {
-				deleteCommands += fmt.Sprintf(
-					"\n    pulumi state delete --stack %s '%s'",
+				fmt.Fprintf(&deleteCommands, "\n    pulumi state delete --stack %s '%s'",
 					source.Ref().FullyQualifiedName(),
 					resourcesToMoveOrdered[i].URN)
 			}
@@ -478,7 +521,7 @@ None of the resources have been moved, it is safe to try again`, err)
 
 The resources being moved have already been appended to the destination stack, but will still also be in the
 source stack.  Please remove the resources from the source stack manually using the following commands:%v
-'`, err, deleteCommands)
+'`, err, deleteCommands.String())
 		}
 		return fmt.Errorf(`failed to save source snapshot: %w
 
@@ -492,7 +535,7 @@ None of the resources have been moved.  Please fix the error and try again`, err
 	return nil
 }
 
-func resourceMatches(res *resource.State, args []string) string {
+func resourceMatches(res *pkgresource.State, args []string) string {
 	for _, arg := range args {
 		if string(res.URN) == arg {
 			return arg
@@ -507,6 +550,7 @@ const (
 	dependency dependencyType = iota
 	propertyDependency
 	deletedWith
+	replaceWith
 )
 
 type brokenDependency struct {
@@ -516,21 +560,22 @@ type brokenDependency struct {
 	resourceURN    urn.URN
 }
 
-func breakDependencies(res *resource.State, resourcesToMove map[string]*resource.State) []brokenDependency {
+func breakDependencies(res *pkgresource.State, resourcesToMove map[string]*pkgresource.State) []brokenDependency {
 	var brokenDeps []brokenDependency
 
 	var preservedDeps []urn.URN
 	preservedPropDeps := map[resource.PropertyKey][]urn.URN{}
 	preservedDeletedWith := urn.URN("")
+	preservedReplaceWith := []urn.URN{}
 
 	// Providers are always moved, so we don't need to break the dependency and can ignore them here.
 	_, allDeps := res.GetAllDependencies()
 	for _, dep := range allDeps {
 		switch dep.Type {
-		case resource.ResourceParent:
+		case pkgresource.ResourceParent:
 			// Resources are reparented appropriately later on, so we ignore parent dependencies here.
 			continue
-		case resource.ResourceDependency:
+		case pkgresource.ResourceDependency:
 			if _, ok := resourcesToMove[string(dep.URN)]; ok {
 				brokenDeps = append(brokenDeps, brokenDependency{
 					dependencyURN:  dep.URN,
@@ -540,7 +585,7 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 			} else {
 				preservedDeps = append(preservedDeps, dep.URN)
 			}
-		case resource.ResourcePropertyDependency:
+		case pkgresource.ResourcePropertyDependency:
 			if _, ok := resourcesToMove[string(dep.URN)]; ok {
 				brokenDeps = append(brokenDeps, brokenDependency{
 					dependencyURN:  dep.URN,
@@ -551,7 +596,7 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 			} else {
 				preservedPropDeps[dep.Key] = append(preservedPropDeps[dep.Key], dep.URN)
 			}
-		case resource.ResourceDeletedWith:
+		case pkgresource.ResourceDeletedWith:
 			if _, ok := resourcesToMove[string(dep.URN)]; ok {
 				brokenDeps = append(brokenDeps, brokenDependency{
 					dependencyURN:  dep.URN,
@@ -561,12 +606,23 @@ func breakDependencies(res *resource.State, resourcesToMove map[string]*resource
 			} else {
 				preservedDeletedWith = dep.URN
 			}
+		case pkgresource.ResourceReplaceWith:
+			if _, ok := resourcesToMove[string(dep.URN)]; ok {
+				brokenDeps = append(brokenDeps, brokenDependency{
+					dependencyURN:  dep.URN,
+					dependencyType: replaceWith,
+					resourceURN:    res.URN,
+				})
+			} else {
+				preservedReplaceWith = append(preservedReplaceWith, dep.URN)
+			}
 		}
 	}
 
 	res.Dependencies = preservedDeps
 	res.PropertyDependencies = preservedPropDeps
 	res.DeletedWith = preservedDeletedWith
+	res.ReplaceWith = preservedReplaceWith
 
 	return brokenDeps
 }
@@ -582,7 +638,7 @@ func renameStackAndProject(urn urn.URN, stack backend.Stack) (urn.URN, error) {
 	return newURN, nil
 }
 
-func rewriteURNs(res *resource.State, dest backend.Stack, rewriteMap map[string]string) error {
+func rewriteURNs(res *pkgresource.State, dest backend.Stack, rewriteMap map[string]string) error {
 	var err error
 	res.URN, err = renameStackAndProject(res.URN, dest)
 	if err != nil {
@@ -606,22 +662,37 @@ func rewriteURNs(res *resource.State, dest backend.Stack, rewriteMap map[string]
 	rewrittenPropDeps := map[resource.PropertyKey][]urn.URN{}
 
 	for _, dep := range allDeps {
-		rewrittenURN, err := renameStackAndProject(dep.URN, dest)
-		if err != nil {
-			return err
+		var rewrittenURN resource.URN
+		if newURN, ok := rewriteMap[string(dep.URN)]; ok {
+			rewrittenURN = urn.URN(newURN)
+		} else {
+			var err error
+			rewrittenURN, err = renameStackAndProject(dep.URN, dest)
+			if err != nil {
+				return err
+			}
 		}
 
 		switch dep.Type {
-		case resource.ResourceParent:
+		case pkgresource.ResourceParent:
 			res.Parent = rewrittenURN
-		case resource.ResourceDependency:
+		case pkgresource.ResourceDependency:
 			rewrittenDeps = append(rewrittenDeps, rewrittenURN)
-		case resource.ResourcePropertyDependency:
+		case pkgresource.ResourcePropertyDependency:
 			rewrittenPropDeps[dep.Key] = append(rewrittenPropDeps[dep.Key], rewrittenURN)
-		case resource.ResourceDeletedWith:
+		case pkgresource.ResourceDeletedWith:
 			res.DeletedWith = rewrittenURN
+		case pkgresource.ResourceReplaceWith:
+			res.ReplaceWith = append(res.ReplaceWith, rewrittenURN)
 		}
 	}
+
+	// Update the URN to point to our new parent.
+	parentType := tokens.Type("")
+	if res.Parent != "" {
+		parentType = res.Parent.QualifiedType()
+	}
+	res.URN = urn.New(res.URN.Stack(), res.URN.Project(), parentType, res.URN.Type(), res.URN.Name())
 
 	res.Dependencies = rewrittenDeps
 	res.PropertyDependencies = rewrittenPropDeps
@@ -639,6 +710,8 @@ func (cmd *stateMoveCmd) printBrokenDependencyRelationships(brokenDeps []brokenD
 				res.resourceURN, res.propdepKey, res.dependencyURN)
 		case deletedWith:
 			fmt.Fprintf(cmd.Stdout, "  - %s is marked as deleted with %s\n", res.resourceURN, res.dependencyURN)
+		case replaceWith:
+			fmt.Fprintf(cmd.Stdout, "  - %s is marked as replace with %s\n", res.resourceURN, res.dependencyURN)
 		}
 	}
 }

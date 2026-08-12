@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,18 +28,18 @@ type intOutput struct {
 	*OutputState
 }
 
-func (o intOutput) ElementType() reflect.Type { return reflect.TypeOf(0) }
+func (o intOutput) ElementType() reflect.Type { return reflect.TypeFor[int]() }
 
 func TestRejectOutput(t *testing.T) {
 	t.Parallel()
 
 	giveErr := errors.New("great sadness")
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	assert.Equal(t, OutputPending, GetOutputStatus(out))
 	RejectOutput(out, giveErr)
 
-	_, _, _, _, err := AwaitOutput(context.Background(), out)
+	_, _, _, _, err := AwaitOutput(t.Context(), out)
 	assert.ErrorIs(t, err, giveErr)
 	assert.Equal(t, OutputRejected, GetOutputStatus(out))
 }
@@ -47,11 +47,11 @@ func TestRejectOutput(t *testing.T) {
 func TestResolveOutput(t *testing.T) {
 	t.Parallel()
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	assert.Equal(t, OutputPending, GetOutputStatus(out))
 	ResolveOutput(out, 42, true, false, nil)
 
-	got, known, secret, deps, err := AwaitOutput(context.Background(), out)
+	got, known, secret, deps, err := AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.Equal(t, 42, got)
 	assert.True(t, known)
@@ -63,12 +63,12 @@ func TestResolveOutput(t *testing.T) {
 func TestResolveOutput_alreadyResolved(t *testing.T) {
 	t.Parallel()
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	ResolveOutput(out, 42, true, false, nil)
 	assert.Equal(t, OutputResolved, GetOutputStatus(out))
 
 	ResolveOutput(out, 43, true, false, nil)
-	got, _, _, _, err := AwaitOutput(context.Background(), out)
+	got, _, _, _, err := AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.Equal(t, 42, got)
 }
@@ -76,10 +76,10 @@ func TestResolveOutput_alreadyResolved(t *testing.T) {
 func TestFulfillOutput_success(t *testing.T) {
 	t.Parallel()
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	FulfillOutput(out, 42, true, false, nil, nil)
 
-	got, known, secret, deps, err := AwaitOutput(context.Background(), out)
+	got, known, secret, deps, err := AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.Equal(t, 42, got)
 	assert.True(t, known)
@@ -92,10 +92,10 @@ func TestFulfillOutput_error(t *testing.T) {
 
 	giveErr := errors.New("great sadness")
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	FulfillOutput(out, 42, true, false, nil, giveErr)
 
-	_, _, _, _, err := AwaitOutput(context.Background(), out)
+	_, _, _, _, err := AwaitOutput(t.Context(), out)
 	assert.ErrorIs(t, err, giveErr)
 }
 
@@ -105,7 +105,7 @@ func TestOutputDependencies(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		t.Parallel()
 
-		out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+		out := NewOutput(nil, reflect.TypeFor[intOutput]())
 		assert.Empty(t, OutputDependencies(out))
 	})
 
@@ -114,11 +114,11 @@ func TestOutputDependencies(t *testing.T) {
 
 		deps := []Resource{&ResourceState{}, &ResourceState{}}
 
-		out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+		out := NewOutput(nil, reflect.TypeFor[intOutput]())
 		ResolveOutput(out, 42, true, false, deps)
 
 		gotDeps := OutputDependencies(out)
-		assert.Len(t, gotDeps, 2)
+		require.Len(t, gotDeps, 2)
 		for i, dep := range deps {
 			assert.Same(t, dep, gotDeps[i])
 		}
@@ -137,7 +137,7 @@ func TestGetOutputState(t *testing.T) {
 func TestGetOutputValue(t *testing.T) {
 	t.Parallel()
 
-	o := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	o := NewOutput(nil, reflect.TypeFor[intOutput]())
 	assert.Nil(t, GetOutputValue(o))
 
 	ResolveOutput(o, 42, true, false, nil)
@@ -147,10 +147,10 @@ func TestGetOutputValue(t *testing.T) {
 func TestAwaitOutput_contextExpired(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	out := NewOutput(nil, reflect.TypeOf(intOutput{}))
+	out := NewOutput(nil, reflect.TypeFor[intOutput]())
 	_, _, _, _, err := AwaitOutput(ctx, out)
 
 	assert.ErrorIs(t, err, context.Canceled)

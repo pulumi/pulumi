@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ type StackReference struct {
 // If the given name is not present in the StackReference, Output<nil> is returned.
 func (s *StackReference) GetOutput(name StringInput) AnyOutput {
 	return All(name, s.rawOutputs).
-		ApplyT(func(args []interface{}) (interface{}, error) {
+		ApplyT(func(args []any) (any, error) {
 			n, stack := args[0].(string), args[1].(resource.PropertyMap)
 			if !stack["outputs"].IsObject() {
 				return Any(nil), fmt.Errorf("failed to convert stack output %T to object", stack)
@@ -74,12 +74,12 @@ type StackReferenceOutputDetails struct {
 	// Output value returned by the StackReference.
 	// This field is nil if the value is a secret
 	// or it does not exist.
-	Value interface{}
+	Value any
 
 	// Secret output value returned by the StackReference.
 	// This field is nil if the value is not a secret
 	// or it does not exist.
-	SecretValue interface{}
+	SecretValue any
 }
 
 // GetOutputDetails retrieves a stack output keyed by the given name
@@ -106,7 +106,7 @@ func (s *StackReference) GetOutputDetails(name string) (*StackReferenceOutputDet
 
 // GetStringOutput returns a stack output keyed by the given name as an StringOutput
 func (s *StackReference) GetStringOutput(name StringInput) StringOutput {
-	return All(name, s.GetOutput(name)).ApplyT(func(args []interface{}) (string, error) {
+	return All(name, s.GetOutput(name)).ApplyT(func(args []any) (string, error) {
 		name, out := args[0].(string), args[1]
 		if out == nil {
 			return "", fmt.Errorf(
@@ -135,7 +135,7 @@ func (s *StackReference) GetIDOutput(name StringInput) IDOutput {
 
 // GetFloat64Output returns a stack output keyed by the given name as an Float64Output
 func (s *StackReference) GetFloat64Output(name StringInput) Float64Output {
-	return All(name, s.GetOutput(name)).ApplyT(func(args []interface{}) (float64, error) {
+	return All(name, s.GetOutput(name)).ApplyT(func(args []any) (float64, error) {
 		name, out := args[0].(string), args[1]
 		if out == nil {
 			return 0.0, fmt.Errorf(
@@ -157,7 +157,7 @@ func (s *StackReference) GetFloat64Output(name StringInput) Float64Output {
 
 // GetIntOutput returns a stack output keyed by the given name as an IntOutput
 func (s *StackReference) GetIntOutput(name StringInput) IntOutput {
-	return All(name, s.GetOutput(name)).ApplyT(func(args []interface{}) (int, error) {
+	return All(name, s.GetOutput(name)).ApplyT(func(args []any) (int, error) {
 		name, out := args[0].(string), args[1]
 		if out == nil {
 			return 0, fmt.Errorf(
@@ -188,7 +188,7 @@ type StackReferenceArgs struct {
 }
 
 func (StackReferenceArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*stackReferenceArgs)(nil)).Elem()
+	return reflect.TypeFor[stackReferenceArgs]()
 }
 
 // NewStackReference creates a stack reference that makes available outputs from the specified stack
