@@ -16,13 +16,9 @@ package do
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"sort"
-	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	hclv2syntax "github.com/hashicorp/hcl/v2/hclsyntax"
@@ -32,154 +28,15 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
-
-// autoResourceNames returns a deterministic identifier→URN map derived from the given snapshot.
-// Callers merge this with the user's --resources-file, letting user entries win on collisions.
-//
-// Naming rules:
-//   - Resources produced by a snippet try to use the snippet's plain name.
-//   - All other resources, and snippet resources whose plain name is already taken, use the
-//     sanitized base name plus a hash of the URN.
-//   - Iteration is in URN order, so conflict resolution is deterministic.
-//
-// Renames can still happen when the resource that previously held a preferred name is deleted —
-// the next run may hand that shorter name to a resource that previously fell through to a longer
-// candidate. That's an intentional trade for keeping the common-case names short.
-func autoResourceNames(snap *deploy.Snapshot) map[string]string {
-	if snap == nil {
-		return nil
-	}
-
-	type entry struct {
-		urn         resource.URN
-		name        string
-		snippetName string
-	}
-	snippets := map[string]string{}
-	for _, s := range snap.Snippets {
-		snippets[s.UUID] = s.Name
-	}
-	var entries []entry
-	for _, s := range snap.Resources {
-		if s == nil || s.Delete {
-			continue
-		}
-		if s.Type == tokens.RootStackType {
-			continue
-		}
-		// Skip provider resources — they're generally not used for their outputs.
-		if sdkproviders.IsProviderType(s.Type) {
-			continue
-		}
-		snippetName := ""
-		if s.SnippetID != "" {
-			snippetName = snippets[s.SnippetID]
-		}
-		entries = append(entries, entry{
-			urn:         s.URN,
-			name:        s.URN.Name(),
-			snippetName: snippetName,
-		})
-	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].urn < entries[j].urn })
-
-	// Count how many entries would claim each sanitized snippet name so that when two entries
-	// share one, both fall through to the hashed form rather than one arbitrarily winning the
-	// plain name.
-	snippetNameCounts := map[string]int{}
-	for _, e := range entries {
-		if e.snippetName != "" {
-			snippetNameCounts[sanitizeIdent(e.snippetName)]++
-		}
-	}
-
-	assigned := map[string]string{} // ident -> urn
-	for _, e := range entries {
-		if e.snippetName != "" {
-			c := sanitizeIdent(e.snippetName)
-			if snippetNameCounts[c] == 1 {
-				if _, taken := assigned[c]; !taken {
-					assigned[c] = string(e.urn)
-					continue
-				}
-			}
-		}
-
-		baseName := e.name
-		if e.snippetName != "" {
-			baseName = e.snippetName
-		}
-		c := availableHashedResourceIdent(baseName, e.urn, assigned)
-		assigned[c] = string(e.urn)
-	}
-	return assigned
-}
-
-func availableHashedResourceIdent(name string, urn resource.URN, assigned map[string]string) string {
-	base := sanitizeIdent(name)
-	hashBytes := sha256.Sum256([]byte(urn))
-	hash := hex.EncodeToString(hashBytes[:])
-	for chars := 6; chars <= len(hash); chars++ {
-		c := base + "_" + hash[:chars]
-		if _, taken := assigned[c]; !taken {
-			return c
-		}
-	}
-	return base + "_" + hash
-}
-
-// mergeResourceNames overlays user on top of auto, with user entries winning. When a user maps an
-// identifier that auto already used for a different URN, the user's mapping replaces it (both the
-// identifier and any auto-assigned identifier still pointing at the URN are preserved). User
-// entries may map multiple identifiers to the same URN.
-func mergeResourceNames(auto, user map[string]string) map[string]string {
-	if len(auto) == 0 && len(user) == 0 {
-		return nil
-	}
-	out := make(map[string]string, len(auto)+len(user))
-	maps.Copy(out, auto)
-	maps.Copy(out, user)
-	return out
-}
-
-// sanitizeIdent rewrites s into a valid PCL identifier: it keeps letters, digits and underscores,
-// replaces everything else with `_`, and prefixes a leading `_` if s would otherwise start with a
-// digit. An empty input returns "".
-func sanitizeIdent(s string) string {
-	if s == "" {
-		return ""
-	}
-	var b strings.Builder
-	b.Grow(len(s))
-	for i, r := range s {
-		switch {
-		case r == '_' ||
-			(r >= 'a' && r <= 'z') ||
-			(r >= 'A' && r <= 'Z'):
-			b.WriteRune(r)
-		case r >= '0' && r <= '9':
-			if i == 0 {
-				b.WriteByte('_')
-			}
-			b.WriteRune(r)
-		default:
-			b.WriteByte('_')
-		}
-	}
-	return b.String()
-}
 
 // filterReferencesByPCLUsage returns the subset of refs whose keys appear as top-level identifier
 // roots (the leading name in a scope traversal, e.g. `myBucket` in `myBucket.arn`) in the given
@@ -286,7 +143,7 @@ func runShowResources(cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
-	names := autoResourceNames(snap)
+	names := autonames.ResourceNames(snap)
 	switch output {
 	case "", "default", "text":
 		return printShowResourcesText(cmd, names)
