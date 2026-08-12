@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
@@ -123,7 +124,7 @@ func TestResourceJSONFromEvent_SkipsInternal(t *testing.T) {
 	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
 	payload := makePreEvent(deploy.OpCreate, urn, "parent-urn", "", true /* internal */)
 
-	got := resourceJSONFromEvent(payload, false)
+	got := resourceJSONFromEvent(payload, Options{})
 	assert.Nil(t, got, "internal events must not surface in the summary")
 }
 
@@ -133,7 +134,7 @@ func TestResourceJSONFromEvent_SkipsSameByDefault(t *testing.T) {
 	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
 	payload := makePreEvent(deploy.OpSame, urn, "parent-urn", "", false)
 
-	got := resourceJSONFromEvent(payload, false /* showSames */)
+	got := resourceJSONFromEvent(payload, Options{})
 	assert.Nil(t, got, "same resources are filtered out unless --show-sames is set")
 }
 
@@ -143,7 +144,7 @@ func TestResourceJSONFromEvent_IncludesSameWhenShowSames(t *testing.T) {
 	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
 	payload := makePreEvent(deploy.OpSame, urn, "parent-urn", "", false)
 
-	got := resourceJSONFromEvent(payload, true /* showSames */)
+	got := resourceJSONFromEvent(payload, Options{ShowSameResources: true})
 	require.NotNil(t, got)
 	assert.Equal(t, apitype.OpType("same"), got.Op)
 }
@@ -155,7 +156,7 @@ func TestResourceJSONFromEvent_ExtractsTypeAndName(t *testing.T) {
 	parentURN := resource.NewURN("dev", "myapp", "", "pulumi:pulumi:Stack", "myapp-dev")
 	payload := makePreEvent(deploy.OpUpdate, urn, parentURN, "", false)
 
-	got := resourceJSONFromEvent(payload, false)
+	got := resourceJSONFromEvent(payload, Options{})
 	require.NotNil(t, got)
 	assert.Equal(t, string(urn), got.URN)
 	assert.Equal(t, "aws:s3/bucket:Bucket", got.Type)
@@ -180,7 +181,7 @@ func TestResourceJSONFromEvent_ParentFallsBackToOldOnDelete(t *testing.T) {
 		},
 	}
 
-	got := resourceJSONFromEvent(payload, false)
+	got := resourceJSONFromEvent(payload, Options{})
 	require.NotNil(t, got)
 	assert.Equal(t, string(parentURN), got.Parent)
 	assert.Equal(t, apitype.OpType("delete"), got.Op)
@@ -246,6 +247,178 @@ func TestTapSummaryJSON_OmitsResourcesFieldWhenEmpty(t *testing.T) {
 	}
 
 	assert.NotContains(t, buf.String(), `"resources"`)
+}
+
+func TestDiffJSONFromStep_UpdateWithoutDetailedDiff(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
+	meta := engine.StepEventMetadata{
+		Op:  deploy.OpUpdate,
+		URN: urn,
+		Old: &engine.StepEventStateMetadata{URN: urn, Inputs: resource.PropertyMap{
+			"acl":    resource.NewProperty("private"),
+			"tags":   resource.NewProperty(resource.PropertyMap{"env": resource.NewProperty("dev")}),
+			"secret": resource.MakeSecret(resource.NewProperty("hunter2")),
+		}},
+		New: &engine.StepEventStateMetadata{URN: urn, Inputs: resource.PropertyMap{
+			"acl": resource.NewProperty("public-read"),
+			"tags": resource.NewProperty(resource.PropertyMap{
+				"env":  resource.NewProperty("dev"),
+				"team": resource.NewProperty("infra"),
+			}),
+		}},
+	}
+
+	got := diffJSONFromStep(&meta, false, false)
+	require.NotNil(t, got)
+
+	assert.Equal(t, PropertyDiffJSON{Kind: "update", Old: "private", New: "public-read"}, got["acl"])
+	assert.Equal(t, PropertyDiffJSON{Kind: "add", New: "infra"}, got["tags.team"])
+	assert.Equal(t, PropertyDiffJSON{Kind: "delete", Old: "[secret]"}, got["secret"])
+	assert.NotContains(t, got, "tags.env", "unchanged nested properties must not appear")
+}
+
+func TestDiffJSONFromStep_DetailedDiff(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
+	meta := engine.StepEventMetadata{
+		Op:  deploy.OpUpdate,
+		URN: urn,
+		Old: &engine.StepEventStateMetadata{URN: urn, Outputs: resource.PropertyMap{
+			"acl": resource.NewProperty("private"),
+		}},
+		New: &engine.StepEventStateMetadata{URN: urn, Inputs: resource.PropertyMap{
+			"acl": resource.NewProperty("public-read"),
+		}},
+		DetailedDiff: map[string]plugin.PropertyDiff{
+			"acl": {Kind: plugin.DiffUpdate},
+		},
+	}
+
+	got := diffJSONFromStep(&meta, false, false)
+	require.NotNil(t, got)
+	assert.Equal(t, PropertyDiffJSON{Kind: "update", Old: "private", New: "public-read"}, got["acl"])
+}
+
+func TestDiffJSONFromStep_CreateAndDelete(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
+	inputs := resource.PropertyMap{"acl": resource.NewProperty("private")}
+
+	create := engine.StepEventMetadata{
+		Op: deploy.OpCreate, URN: urn,
+		New: &engine.StepEventStateMetadata{URN: urn, Inputs: inputs},
+	}
+	got := diffJSONFromStep(&create, false, false)
+	assert.Equal(t, map[string]PropertyDiffJSON{"acl": {Kind: "add", New: "private"}}, got)
+
+	del := engine.StepEventMetadata{
+		Op: deploy.OpDelete, URN: urn,
+		Old: &engine.StepEventStateMetadata{URN: urn, Inputs: inputs},
+	}
+	got = diffJSONFromStep(&del, false, false)
+	assert.Equal(t, map[string]PropertyDiffJSON{"acl": {Kind: "delete", Old: "private"}}, got)
+}
+
+func TestDiffJSONFromStep_SameNeverReportsDiff(t *testing.T) {
+	t.Parallel()
+
+	// An OpSame can surface for metadata-only changes (e.g. protect); it must
+	// never carry a property diff even if inputs appear to differ.
+	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
+	meta := engine.StepEventMetadata{
+		Op:  deploy.OpSame,
+		URN: urn,
+		Old: &engine.StepEventStateMetadata{URN: urn, Inputs: resource.PropertyMap{
+			"acl": resource.NewProperty("private"),
+		}},
+		New: &engine.StepEventStateMetadata{URN: urn, Inputs: resource.PropertyMap{
+			"acl": resource.NewProperty("public-read"),
+		}},
+	}
+
+	assert.Nil(t, diffJSONFromStep(&meta, false, false))
+}
+
+func TestResourceJSONFromEvent_DiffOnlyInDiffMode(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
+	payload := engine.ResourcePreEventPayload{
+		Metadata: engine.StepEventMetadata{
+			Op:  deploy.OpUpdate,
+			URN: urn,
+			Old: &engine.StepEventStateMetadata{URN: urn, Inputs: resource.PropertyMap{
+				"acl": resource.NewProperty("private"),
+			}},
+			New: &engine.StepEventStateMetadata{URN: urn, Inputs: resource.PropertyMap{
+				"acl": resource.NewProperty("public-read"),
+			}},
+		},
+	}
+
+	got := resourceJSONFromEvent(payload, Options{})
+	require.NotNil(t, got)
+	assert.Nil(t, got.Diff, "diff must not be populated without --diff")
+
+	got = resourceJSONFromEvent(payload, Options{Type: DisplayDiff})
+	require.NotNil(t, got)
+	assert.Equal(t, PropertyDiffJSON{Kind: "update", Old: "private", New: "public-read"}, got.Diff["acl"])
+}
+
+func TestTapSummaryJSON_RefreshDiffFromOutputsEvent(t *testing.T) {
+	t.Parallel()
+
+	// Refresh discovers changes after reading the resource: the pre-event has
+	// op `refresh` and no diff; the outputs event is rewritten to an update
+	// carrying the detailed diff, which the tap attaches to the entry.
+	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
+	pre := engine.ResourcePreEventPayload{
+		Metadata: engine.StepEventMetadata{
+			Op:  deploy.OpRefresh,
+			URN: urn,
+			Old: &engine.StepEventStateMetadata{URN: urn},
+			New: &engine.StepEventStateMetadata{URN: urn},
+		},
+	}
+	outputs := engine.ResourceOutputsEventPayload{
+		Metadata: engine.StepEventMetadata{
+			Op:  deploy.OpUpdate,
+			URN: urn,
+			Old: &engine.StepEventStateMetadata{URN: urn, Outputs: resource.PropertyMap{
+				"acl": resource.NewProperty("private"),
+			}},
+			New: &engine.StepEventStateMetadata{URN: urn, Outputs: resource.PropertyMap{
+				"acl": resource.NewProperty("public-read"),
+			}},
+			DetailedDiff: map[string]plugin.PropertyDiff{
+				"acl": {Kind: plugin.DiffUpdate},
+			},
+		},
+	}
+
+	in := make(chan engine.Event, 3)
+	in <- engine.NewEvent(pre)
+	in <- engine.NewEvent(outputs)
+	in <- engine.NewEvent(engine.SummaryEventPayload{
+		Result:          apitype.OperationResultSucceeded,
+		ResourceChanges: display.ResourceChanges{"update": 1},
+	})
+	close(in)
+
+	var buf bytes.Buffer
+	out := tapSummaryJSON(in, Options{Stdout: &buf, Type: DisplayDiff})
+	for range out { //nolint:revive // intentional drain
+	}
+
+	var summary SummaryJSON
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &summary))
+	require.Len(t, summary.Resources, 1)
+	assert.Equal(t, apitype.OpType("refresh"), summary.Resources[0].Op)
+	assert.Equal(t, PropertyDiffJSON{Kind: "update", Old: "private", New: "public-read"}, summary.Resources[0].Diff["acl"])
 }
 
 func TestTapSummaryJSON_ReturnsOnCancelEvent(t *testing.T) {
