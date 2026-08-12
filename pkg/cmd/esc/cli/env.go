@@ -22,6 +22,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
@@ -49,6 +50,9 @@ type envCommand struct {
 	esc *escCommand
 
 	envNameFlag string
+
+	// Zero means approvalPollInterval.
+	pollInterval time.Duration
 }
 
 func newEnvCmd(esc *escCommand) *cobra.Command {

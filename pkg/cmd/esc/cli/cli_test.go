@@ -260,6 +260,8 @@ type testPulumiClient struct {
 	// submittedChangeRequests records submitted change requests in call order, so tests can assert
 	// that a command actually submits the change requests it creates.
 	submittedChangeRequests []submittedChangeRequest
+
+	accessDurationSeconds int
 }
 
 type submittedChangeRequest struct {
@@ -1535,6 +1537,8 @@ func (c *testPulumiClient) CreateEnvironmentOpenRequest(
 	grantExpirationSeconds int,
 	accessDurationSeconds int,
 ) (*client.CreateEnvironmentOpenRequestResponse, error) {
+	c.accessDurationSeconds = accessDurationSeconds
+
 	// Check if environment exists
 	key := fmt.Sprintf("%s/%s/%s", orgName, projectName, envName)
 	if _, exists := c.environments[key]; !exists {
