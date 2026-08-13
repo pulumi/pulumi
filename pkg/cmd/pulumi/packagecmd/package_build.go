@@ -61,15 +61,15 @@ PulumiPlugin.yaml declaring 'runtime: oci' with options:
       name: my-component        # the package name
       version: "1.0.0"          # the package version
       build:
-        image: my-builder:latest   # the build environment image
-        # command: optional; the default builds ./Dockerfile into an OCI layout
+        image: my-builder:latest   # the build environment image (required)
+        command: "..."             # the build command (required)
         # context: optional; widens the build context (e.g. .. for a monorepo)
 
 The build runs in a container started from build.image (which supplies the
-toolchain). It writes a runtime-neutral OCI image layout to $PULUMI_PACKAGE_LAYOUT
-(the default command uses buildkit's OCI exporter, so the daemon needs a containerd
-image store or a docker-container buildx builder). The engine then loads that layout
-into the local container store under the convention ref, which is printed to stdout.`,
+toolchain). The build command must write a runtime-neutral OCI image layout to
+$PULUMI_PACKAGE_LAYOUT (e.g. via buildkit's OCI exporter or kaniko's
+--oci-layout-path). The engine then loads that layout into the local container
+store under the convention ref, which is printed to stdout.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dir := "."
 			if len(args) > 0 {

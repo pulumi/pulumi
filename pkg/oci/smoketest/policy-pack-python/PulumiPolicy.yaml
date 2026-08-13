@@ -13,3 +13,4 @@ runtime:
     image: oci-smoke-policy-py:latest
     build:
       image: docker:cli
+      command: docker build -f Dockerfile --output type=oci,tar=false,dest="$PULUMI_PACKAGE_LAYOUT" "$PULUMI_BUILD_CONTEXT"

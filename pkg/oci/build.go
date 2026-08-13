@@ -121,15 +121,7 @@ func runPackageBuild(
 	}
 	command, _ := build["command"].(string)
 	if command == "" {
-		// Default: build the package's Dockerfile with buildkit and write a runtime-neutral
-		// OCI layout to $PULUMI_PACKAGE_LAYOUT — no ref, no runtime store. The Dockerfile is
-		// named relative to the builder's working directory (the package dir), so it stays
-		// package-relative even when $PULUMI_BUILD_CONTEXT is widened past the package (as a
-		// monorepo does) — the same way `docker build -f <path> <context>` decouples the two.
-		// Needs buildkit's OCI exporter (a containerd image store, or a docker-container
-		// buildx builder); see the trial-kit README.
-		command = `docker build -f Dockerfile ` +
-			`--output type=oci,tar=false,dest="$PULUMI_PACKAGE_LAYOUT" "$PULUMI_BUILD_CONTEXT"`
+		return fmt.Errorf("package %s must declare runtime.options.build.command (the build command)", name)
 	}
 
 	// Where the build writes its OCI layout when it takes the neutral path. A pod-provided
