@@ -337,7 +337,7 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 		// running to completion against a cancelled turn. The handlers are
 		// ctx-aware: shell kills the process, pulumi does an engine graceful
 		// cancel. Batches enqueued after this point (a new turn) get a fresh
-		// context. No-op when nothing is running.
+		// context.
 		if s.batchCancel != nil {
 			s.batchCancel()
 			s.batchCancel = nil

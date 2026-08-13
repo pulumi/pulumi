@@ -1623,8 +1623,8 @@ func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 		Type: backendEventCancelled,
 	})}
 
-	// Desired: UICancelled reaches the TUI promptly, without waiting for the
-	// tool to finish.
+	// UICancelled must reach the TUI promptly, without waiting for the tool
+	// to finish.
 	gotCancelled := func() bool {
 		for {
 			select {
