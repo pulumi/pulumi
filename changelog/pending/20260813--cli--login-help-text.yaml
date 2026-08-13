@@ -3,3 +3,5 @@ kind: chore
 body: Rewrite the `pulumi login` and `pulumi logout` help text to cover all supported
     state backends and document `PULUMI_ACCESS_TOKEN`, `--default-org`, and `--interactive`
 time: 2026-08-13T12:00:00Z
+custom:
+    PR: "24319"
