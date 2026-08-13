@@ -1,3 +1,5 @@
 component: cli/esc
 kind: chore
 body: Move ESC environment preparation into a shared package so the policy pack path no longer duplicates it
+custom:
+    PR: "24321"
