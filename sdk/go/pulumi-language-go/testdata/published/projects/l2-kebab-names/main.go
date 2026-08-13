@@ -1,7 +1,7 @@
 package main
 
 import (
-	kebabmodule "example.com/pulumi-kebab-names/sdk/go/v50/kebabnames/kebab-module"
+	kebabmodule "example.com/pulumi-kebab-names/sdk/go/v52/kebabnames/kebab-module"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 

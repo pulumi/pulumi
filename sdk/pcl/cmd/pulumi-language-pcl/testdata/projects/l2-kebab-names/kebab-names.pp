@@ -1,4 +1,4 @@
 package "kebab-names" {
   baseProviderName    = "kebab-names"
-  baseProviderVersion = "50.0.0"
+  baseProviderVersion = "52.0.0"
 }

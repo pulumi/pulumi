@@ -6,6 +6,6 @@
 	"dependencies": {
 		"typescript": "^4.7.0",
 		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
-		"@pulumi/kebab-names": "ROOT/artifacts/pulumi-kebab-names-50.0.0.tgz"
+		"@pulumi/kebab-names": "ROOT/artifacts/pulumi-kebab-names-52.0.0.tgz"
 	}
 }

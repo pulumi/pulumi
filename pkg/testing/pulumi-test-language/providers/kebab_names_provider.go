@@ -53,7 +53,7 @@ func (p *KebabNamesProvider) GetSchema(
 ) (plugin.GetSchemaResponse, error) {
 	pkg := schema.PackageSpec{
 		Name:    "kebab-names",
-		Version: "50.0.0",
+		Version: "52.0.0",
 		Types: map[string]schema.ComplexTypeSpec{
 			"kebab-names:kebab-module:nestedInput": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -141,9 +141,9 @@ func (p *KebabNamesProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "50.0.0" {
+	if version.StringValue() != "52.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 50.0.0"),
+			Failures: makeCheckFailure("version", "version is not 52.0.0"),
 		}, nil
 	}
 	if len(req.News) != 1 {
@@ -244,7 +244,7 @@ func (p *KebabNamesProvider) Create(
 }
 
 func (p *KebabNamesProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
-	ver := semver.Version{Major: 50}
+	ver := semver.Version{Major: 52}
 	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil
