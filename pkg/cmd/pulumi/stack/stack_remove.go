@@ -23,6 +23,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
@@ -36,6 +37,41 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// terraformCLIRuntime is the Pulumi.yaml runtime for stacks whose resources are
+// managed by the Terraform CLI rather than by `pulumi destroy`.
+const terraformCLIRuntime = "terraform-cli"
+
+// stackRuntimeName returns the project's language runtime for s.
+// Prefer a matching local Pulumi.yaml, then fall back to the stack's runtime tag.
+func stackRuntimeName(s backend.Stack) string {
+	if proj, err := workspace.DetectProject(); err == nil {
+		stackProj, has := s.Ref().Project()
+		if !has || stackProj == tokens.Name(proj.Name) {
+			return proj.Runtime.Name()
+		}
+	}
+	if tags := s.Tags(); tags != nil {
+		return tags[apitype.ProjectRuntimeTag]
+	}
+	return ""
+}
+
+// stackRemoveHasResourcesError is the user-facing error when stack removal is
+// rejected because the stack still has resources. terraform-cli stacks must be
+// cleaned up with `terraform destroy`, not `pulumi destroy`.
+func stackRemoveHasResourcesError(stackRef, runtime string) error {
+	destroyHint := "Run `pulumi destroy` to delete the resources, then run `pulumi stack rm`"
+	if runtime == terraformCLIRuntime {
+		destroyHint = "Run `terraform destroy` to delete the resources, then run `pulumi stack rm`"
+	}
+	return fmt.Errorf(
+		"'%s' still has resources; removal rejected. Possible actions:\n"+
+			"- Make sure that '%[1]s' is the stack that you want to destroy\n"+
+			"- %s\n"+
+			"- Run `pulumi stack rm --force` to override this error",
+		stackRef, destroyHint)
+}
 
 func newStackRemoveCmd() *cobra.Command {
 	var stack string
@@ -94,11 +130,7 @@ func newStackRemoveCmd() *cobra.Command {
 			hasResources, err := backend.RemoveStack(ctx, s, force, removeBackups)
 			if err != nil {
 				if hasResources {
-					return fmt.Errorf(
-						"'%s' still has resources; removal rejected. Possible actions:\n"+
-							"- Make sure that '%[1]s' is the stack that you want to destroy\n"+
-							"- Run `pulumi destroy` to delete the resources, then run `pulumi stack rm`\n"+
-							"- Run `pulumi stack rm --force` to override this error", s.Ref())
+					return stackRemoveHasResourcesError(s.Ref().String(), stackRuntimeName(s))
 				}
 				return err
 			}
