@@ -48,6 +48,7 @@ import (
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -272,57 +273,17 @@ func runNew(ctx context.Context, args newArgs) error {
 		args.name = projectName
 	}
 
-	// Show instructions, if we're going to show at least one prompt.
-	hasAtLeastOnePrompt := (args.name == "") || (args.description == "") || (!args.generateOnly && args.stack == "")
-	if !args.yes && hasAtLeastOnePrompt {
-		fmt.Fprintln(args.stdout, "This command will walk you through creating a new Pulumi project.")
-		fmt.Fprintln(args.stdout)
-		fmt.Fprintln(args.stdout,
-			opts.Color.Colorize(
-				colors.Highlight("Enter a value or leave blank to accept the (default), and press <ENTER>.",
-					"<ENTER>", colors.BrightCyan+colors.Bold),
-			))
-		fmt.Fprintln(args.stdout,
-			opts.Color.Colorize(
-				colors.Highlight("Press ^C at any time to quit.", "^C", colors.BrightCyan+colors.Bold),
-			))
-		fmt.Fprintln(args.stdout)
+	defaults := resolveProjectDefaults(ctx, b, orgName, template, args, opts, cwd)
+	confirmed, err := confirmGuidedValues(ctx, b, orgName, defaults, template, args, opts)
+	if err != nil {
+		return err
 	}
-
-	// Prompt for the project name, if it wasn't already specified.
-	if args.name == "" {
-		defaultValue := pkgWorkspace.ValueOrSanitizedDefaultProjectName(args.name, template.ProjectName, filepath.Base(cwd))
-		err := validateProjectName(
-			ctx, b, orgName, defaultValue, args.generateOnly, opts.WithIsInteractive(false),
-		)
-		if err != nil {
-			// If --yes is given error out now that the default value is invalid. If we allow prompt to catch
-			// this case it can lead to a confusing error message because we set the defaultValue to "" below.
-			// See https://github.com/pulumi/pulumi/issues/8747.
-			if args.yes {
-				return fmt.Errorf("'%s' is not a valid project name. %w", defaultValue, err)
-			}
-		}
-		validate := func(s string) error {
-			return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts)
-		}
-		args.name, err = args.prompt(args.yes, "Project name", defaultValue, false, validate, opts)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Prompt for the project description, if it wasn't already specified.
-	if args.description == "" {
-		defaultValue := pkgWorkspace.ValueOrDefaultProjectDescription(
-			args.description, template.ProjectDescription, template.Description,
-		)
-		args.description, err = args.prompt(
-			args.yes, "Project description", defaultValue, false, pkgWorkspace.ValidateProjectDescription, opts,
-		)
-		if err != nil {
-			return err
-		}
+	if confirmed != nil {
+		args.name, args.description = confirmed.name, confirmed.description
+	} else if args.name, args.description, err = promptSequentialValues(
+		ctx, b, orgName, defaults, args, opts,
+	); err != nil {
+		return err
 	}
 
 	// Actually copy the files.
@@ -333,8 +294,10 @@ func runNew(ctx context.Context, args newArgs) error {
 		return err
 	}
 
-	fmt.Fprintf(args.stdout, "Created project '%s'\n", args.name)
-	fmt.Fprintln(args.stdout)
+	if confirmed == nil {
+		fmt.Fprintf(args.stdout, "Created project '%s'\n", args.name)
+		fmt.Fprintln(args.stdout)
+	}
 
 	// Load the project, update the name & description, remove the template section, and save it.
 	proj, root, err := ws.ReadProject("")
@@ -381,14 +344,12 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Create the stack, if needed.
+	var createdStackName string
 	if !args.generateOnly && s == nil {
-		if s, err = PromptAndCreateStack(ctx, cmdutil.Diag(), ws, b, args.prompt,
-			args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider,
-			args.remoteStackConfig, ""); err != nil {
+		sink := diag.DefaultSink(args.stderr, args.stderr, diag.FormatOptions{Color: opts.Color})
+		if s, createdStackName, err = confirmed.createStack(ctx, sink, ws, b, root, args, opts); err != nil {
 			return err
 		}
-		// cmdStack.CreateStack prints "Created stack '<stack>'" on success.
-		fmt.Fprintln(args.stdout)
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
@@ -457,23 +418,7 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Prompt for config values (if needed) and save.
 	if !args.generateOnly {
-		err = HandleConfig(
-			ctx,
-			cmdutil.Diag(),
-			ssml,
-			ws,
-			args.prompt,
-			proj,
-			s,
-			args.templateNameOrURL,
-			template,
-			args.configArray,
-			args.yes,
-			args.configPath,
-			opts,
-			"",
-		)
-		if err != nil {
+		if err = confirmed.saveConfig(ctx, cmdutil.Diag(), ssml, ws, proj, s, template, args, opts); err != nil {
 			return err
 		}
 	}
@@ -508,6 +453,16 @@ func runNew(ctx context.Context, args newArgs) error {
 		)+
 			" "+cmdutil.EmojiOr("✨", ""))
 	fmt.Fprintln(args.stdout)
+
+	if confirmed != nil {
+		// Any other stack announced itself as it was created, or already existed.
+		rows := []field{{"Project name", args.name}}
+		if createdStackName != "" {
+			rows = append(rows, field{"Stack name", createdStackName})
+		}
+		printFields(args.stdout, opts.Color, "    ", rows)
+		fmt.Fprintln(args.stdout)
+	}
 
 	// Print out next steps.
 	printNextSteps(args.stdout, proj, originalCwd, cwd, args.generateOnly, opts)

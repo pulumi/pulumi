@@ -71,10 +71,17 @@ func (args newArgs) useGuidedFlow() bool {
 func declinedToChoose(
 	template cmdTemplates.Template, err error,
 ) (cmdTemplates.Template, error) {
-	if errors.Is(err, terminal.InterruptErr) {
-		return nil, errNoTemplateSelected
+	if err := friendlyInterrupt(err, errNoTemplateSelected); err != nil {
+		return nil, err
 	}
-	return template, err
+	return template, nil
+}
+
+func friendlyInterrupt(err, friendly error) error {
+	if errors.Is(err, terminal.InterruptErr) {
+		return friendly
+	}
+	return err
 }
 
 func resolveTemplate(
