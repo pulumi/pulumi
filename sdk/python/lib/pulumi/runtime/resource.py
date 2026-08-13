@@ -40,7 +40,7 @@ from .rpc import _expand_dependencies, serialize_property
 from .settings import (
     _get_callbacks,
     _get_rpc_manager,
-    _sync_monitor_supports_transforms,
+    monitor_supports_transforms,
     monitor_supports_error_hooks,
     monitor_supports_resource_hooks,
     handle_grpc_error,
@@ -265,7 +265,7 @@ async def prepare_resource(
     if opts is not None and opts.replacement_trigger is not None:
         replacement_trigger = opts.replacement_trigger
 
-    supports_alias_specs = await settings.monitor_supports_alias_specs()
+    supports_alias_specs = settings.monitor_supports_alias_specs()
     aliases = await prepare_aliases(res, opts, supports_alias_specs)
     deleted_with_urn: Optional[str] = ""
     if opts is not None and opts.deleted_with is not None:
@@ -1048,7 +1048,7 @@ def register_resource(
 
             callbacks: list[callback_pb2.Callback] = []
             if opts.transforms:
-                if not _sync_monitor_supports_transforms():
+                if not monitor_supports_transforms():
                     raise Exception(
                         "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
                     )
@@ -1079,7 +1079,7 @@ def register_resource(
 
             if (
                 resolver.deleted_with_urn
-                and not await settings.monitor_supports_deleted_with()
+                and not settings.monitor_supports_deleted_with()
             ):
                 raise Exception(
                     "The Pulumi CLI does not support the DeletedWith option. Please update the Pulumi CLI."
@@ -1087,7 +1087,7 @@ def register_resource(
 
             if (
                 resolver.replace_with_urns
-                and not await settings.monitor_supports_replace_with()
+                and not settings.monitor_supports_replace_with()
             ):
                 raise Exception(
                     "The Pulumi CLI does not support the ReplaceWith option. Please update the Pulumi CLI."
@@ -1404,7 +1404,7 @@ async def _prepare_resource_hooks(
             hooks, hook_type, []
         )
         for i, _hook in enumerate(hooks_for_type or []):
-            if not await monitor_supports_resource_hooks():
+            if not monitor_supports_resource_hooks():
                 raise Exception(
                     "The Pulumi CLI does not support resource hooks. Please update the Pulumi CLI."
                 )
@@ -1426,7 +1426,7 @@ async def _prepare_resource_hooks(
 
     on_error_hooks_list: list[ErrorHook] = getattr(hooks, "on_error", []) or []
     if on_error_hooks_list:
-        if not await monitor_supports_error_hooks():
+        if not monitor_supports_error_hooks():
             raise Exception(
                 "The Pulumi CLI does not support error hooks. Please update the Pulumi CLI."
             )
@@ -1448,7 +1448,7 @@ def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
         return callbacks.register_resource_hook(hook)
 
     async def wrapper() -> None:
-        if not await monitor_supports_resource_hooks():
+        if not monitor_supports_resource_hooks():
             raise Exception(
                 "The Pulumi CLI does not support resource hooks. Please update the Pulumi CLI."
             )
@@ -1471,7 +1471,7 @@ def register_error_hook(hook: "ErrorHook") -> asyncio.Future[None]:
         return callbacks.register_error_hook(hook)
 
     async def wrapper() -> None:
-        if not await monitor_supports_error_hooks():
+        if not monitor_supports_error_hooks():
             raise Exception(
                 "The Pulumi CLI does not support error hooks. Please update the Pulumi CLI."
             )

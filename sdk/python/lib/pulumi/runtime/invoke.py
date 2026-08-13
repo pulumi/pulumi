@@ -291,7 +291,7 @@ def _invoke(
                 resources_to_wait_for = resources_to_wait_for.union(deps)
             # The expanded set of dependencies, including children of components.
             expanded_deps = await rpc._expand_dependencies(resources_to_wait_for, None)
-            if await monitor_supports_invoke_depends_on():
+            if monitor_supports_invoke_depends_on():
                 invoke_depends_on = list(expanded_deps.keys())
             else:
                 # Older engines cannot gate invokes: if we depend on any

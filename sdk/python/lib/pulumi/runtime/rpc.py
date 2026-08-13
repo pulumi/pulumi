@@ -476,7 +476,7 @@ async def serialize_property(
 
         if (
             exclude_resource_refs_from_deps
-            and await settings.monitor_supports_resource_references()
+            and settings.monitor_supports_resource_references()
         ):
             # If excluding resource references from dependencies and the monitor supports resource
             # references, we don't want to track this dependency, so we set `deps` to `None` so when
@@ -484,7 +484,7 @@ async def serialize_property(
             deps = None
 
         # If we're retaining resources, serialize the resource as a reference.
-        if await settings.monitor_supports_resource_references():
+        if settings.monitor_supports_resource_references():
             res = {
                 _special_sig_key: _special_resource_sig,
                 "urn": await serialize_property(
@@ -654,7 +654,7 @@ async def serialize_property(
             deps.extend(promise_deps)
         value_resources.update(promise_deps)
 
-        if keep_output_values and await settings.monitor_supports_output_values():
+        if keep_output_values and settings.monitor_supports_output_values():
             urn_deps: list[Resource] = []
             for resource in value_resources:
                 await serialize_property(
@@ -683,7 +683,7 @@ async def serialize_property(
 
         if not is_known:
             return UNKNOWN
-        if is_secret and await settings.monitor_supports_secrets():
+        if is_secret and settings.monitor_supports_secrets():
             # Serializing an output with a secret value requires the use of a magical signature key,
             # which the engine detects.
             return {_special_sig_key: _special_secret_sig, "value": value}
