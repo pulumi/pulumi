@@ -29,11 +29,12 @@ type Condition struct {
 	// the name of block declaration
 	name string
 
+	Condition       model.Expression
 	TrueExpression  model.Expression
 	FalseExpression model.Expression
 
-	TrueBlock  Program
-	FalseBlock Program
+	TrueBlock  *Program
+	FalseBlock *Program
 }
 
 // SyntaxNode returns the syntax node associated with the component.
