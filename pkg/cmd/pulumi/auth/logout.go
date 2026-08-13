@@ -35,17 +35,25 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "logout",
-		Short: "Log out of the Pulumi Cloud",
-		Long: "Log out of the Pulumi Cloud.\n" +
+		Short: "Log out of a Pulumi state backend",
+		Long: "Log out of a Pulumi state backend.\n" +
 			"\n" +
-			"This command deletes stored credentials on the local machine for a single login.\n" +
+			"This command deletes the credentials stored on this machine for a single login. With no\n" +
+			"arguments, it logs you out of the current backend:\n" +
 			"\n" +
-			"Because you may be logged into multiple backends simultaneously, you can optionally pass\n" +
-			"a specific URL argument, formatted just as you logged in, to log out of a specific one.\n" +
-			"If no URL is provided, you will be logged out of the current backend." +
-			"\n\n" +
-			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n\n" +
-			"    $ pulumi logout --all",
+			"    $ pulumi logout\n" +
+			"\n" +
+			"You can be logged in to several backends at once. To choose one, pass its URL, written the\n" +
+			"same way you wrote it when logging in:\n" +
+			"\n" +
+			"    $ pulumi logout https://api.pulumi.acmecorp.com\n" +
+			"    $ pulumi logout s3://my-pulumi-state-bucket\n" +
+			"\n" +
+			"To log out of every backend at once, pass `--all`:\n" +
+			"\n" +
+			"    $ pulumi logout --all\n" +
+			"\n" +
+			"`--local` is a shortcut for `file://~`, matching `pulumi login --local`.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// If a <cloud> was specified as an argument, use it.
 			if len(args) > 0 {
@@ -106,11 +114,11 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	})
 
 	cmd.PersistentFlags().BoolVar(&all, "all", false,
-		"Logout of all backends")
+		"Log out of all backends")
 	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "",
-		"A cloud URL to log out of (defaults to current cloud)")
+		"A cloud URL to log out of (defaults to the current backend)")
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false,
-		"Log out of using local mode")
+		"Log out of local-only mode (an alias for `file://~`)")
 
 	return cmd
 }
