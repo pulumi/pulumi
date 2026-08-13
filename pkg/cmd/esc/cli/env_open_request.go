@@ -131,8 +131,7 @@ func addRequestApprovalFlags(cmd *cobra.Command, opts *openApprovalOptions) {
 		"an optional reason explaining why the environment is being opened, shown to approvers")
 }
 
-// submitOpenRequest submits every change request the open request produces: one for the target
-// environment and one for each gated import.
+// submitOpenRequest submits a change request for the target environment and for each gated import.
 func (env *envCommand) submitOpenRequest(
 	ctx context.Context,
 	ref environmentRef,
@@ -177,9 +176,8 @@ type openApprovalOptions struct {
 	reason          string
 }
 
-// withOpenApproval runs attempt and, if it fails and an open request was asked for, submits one
-// and retries. A successful attempt is the only approval signal available: the service exposes no
-// change request status API.
+// withOpenApproval runs attempt and, if it fails and an open request was asked for, submits one.
+// If opts.waitForApproval is true, it then waits until request is approved.
 func (env *envCommand) withOpenApproval(
 	ctx context.Context,
 	ref environmentRef,
