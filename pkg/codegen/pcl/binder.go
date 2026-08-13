@@ -868,10 +868,6 @@ func (b *binder) declareNodes(ctx context.Context, file *syntax.File) (hcl.Diagn
 
 				diags := b.declareNode(name, v)
 				diagnostics = append(diagnostics, diags...)
-
-			default:
-				// Error on any other block types.
-				diagnostics = append(diagnostics, labelsErrorf(item, "unknown block type %q", item.Type))
 			}
 		}
 	}
