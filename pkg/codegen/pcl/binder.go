@@ -102,17 +102,8 @@ type binder struct {
 	schemaTypes        map[schema.Type]model.Type
 
 	tokens syntax.TokenMap
+	nodes  []Node
 	root   *model.Scope
-}
-
-func (b *binder) nodes(yield func(Node) bool) {
-	for _, def := range b.root.Definitions {
-		if def, ok := def.(Node); ok {
-			if !yield(def) {
-				break
-			}
-		}
-	}
 }
 
 type BindOption func(*bindOptions)
@@ -524,10 +515,8 @@ func BindProgramWithContext(
 	}
 
 	// Now bind the nodes.
-	nodes := make([]Node, 0)
-	for n := range b.nodes {
+	for _, n := range b.nodes {
 		diagnostics = append(diagnostics, b.bindNode(ctx, n)...)
-		nodes = append(nodes, n)
 	}
 
 	if diagnostics.HasErrors() {
@@ -539,7 +528,7 @@ func BindProgramWithContext(
 	diagnostics = diagnostics.Extend(b.rewritePositionalInvokes(ctx))
 
 	return &Program{
-		Nodes:  nodes,
+		Nodes:  b.nodes,
 		files:  files,
 		binder: b,
 	}, diagnostics, nil
@@ -1124,6 +1113,7 @@ func (b *binder) declareNode(name string, n Node) hcl.Diagnostics {
 		existing, _ := b.root.BindReference(name)
 		return hcl.Diagnostics{errorf(existing.SyntaxNode().Range(), "%q already declared", name)}
 	}
+	b.nodes = append(b.nodes, n)
 	return nil
 }
 

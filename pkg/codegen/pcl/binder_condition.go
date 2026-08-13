@@ -83,9 +83,13 @@ func (b *binder) bindConditionBranch(
 	}
 
 	var diagnostics hcl.Diagnostics
-	oldRoot := b.root
+	oldRoot, oldNodes := b.root, b.nodes
 	b.root = branchScope
-	defer func() { b.root = oldRoot }()
+	b.nodes = nil
+	defer func() {
+		b.root = oldRoot
+		b.nodes = oldNodes
+	}()
 
 	var declared []Node
 

@@ -115,7 +115,7 @@ func (b *binder) invokeFunction(ctx context.Context, args []model.Expression) (*
 // object-argument form, so that program generators only need to handle the object form.
 func (b *binder) rewritePositionalInvokes(ctx context.Context) hcl.Diagnostics {
 	var diags hcl.Diagnostics
-	for n := range b.nodes {
+	for _, n := range b.nodes {
 		diags = diags.Extend(n.VisitExpressions(nil, func(expr model.Expression) (model.Expression, hcl.Diagnostics) {
 			return b.rewritePositionalInvoke(ctx, expr)
 		}))
