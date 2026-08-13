@@ -1421,7 +1421,11 @@ export function boundedFor<T, U>(
     for (let i = 0; i < limit; ++i) {
         results[i] = cond(
             array.apply((a) => a.length > i),
-            () => func(array.apply((a) => a[i]), i),
+            () =>
+                func(
+                    array.apply((a) => a[i]),
+                    i,
+                ),
             () => output(undefined),
         );
     }
