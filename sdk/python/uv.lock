@@ -12,6 +12,19 @@ resolution-markers = [
 exclude-newer = "0001-01-01T00:00:00Z" # This has no effect and is included for backwards compatibility when using relative exclude-newer values.
 exclude-newer-span = "P3D"
 
+[options.exclude-newer-package]
+pulumi-command = false
+pulumi-policy = false
+pulumi-aws = false
+pulumi-gcp = false
+pulumi-kubernetes = false
+pulumi-azure = false
+pulumi-cloudinit = false
+pulumi-random = false
+pulumi = false
+pulumi-azure-native = false
+pulumi-tls = false
+
 [[package]]
 name = "ast-serialize"
 version = "0.6.0"
@@ -1028,7 +1041,7 @@ wheels = [
 
 [[package]]
 name = "pulumi"
-version = "3.257.0"
+version = "3.258.0"
 source = { editable = "." }
 dependencies = [
     { name = "debugpy" },
