@@ -55,5 +55,27 @@ func (c *Condition) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Di
 }
 
 func (c *Condition) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagnostics {
-	panic("not implemented")
+	var diags hcl.Diagnostics
+	visit := func(expr *model.Expression) {
+		if expr == nil || *expr == nil {
+			return
+		}
+		newExpr, d := model.VisitExpression(*expr, pre, post)
+		diags = append(diags, d...)
+		*expr = newExpr
+	}
+	visit(&c.Condition)
+	visit(&c.TrueExpression)
+	visit(&c.FalseExpression)
+	if c.TrueBlock != nil {
+		for _, n := range c.TrueBlock.Nodes {
+			diags = append(diags, n.VisitExpressions(pre, post)...)
+		}
+	}
+	if c.FalseBlock != nil {
+		for _, n := range c.FalseBlock.Nodes {
+			diags = append(diags, n.VisitExpressions(pre, post)...)
+		}
+	}
+	return diags
 }
