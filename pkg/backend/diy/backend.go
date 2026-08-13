@@ -267,7 +267,10 @@ func newDIYBackend(
 
 	bucket, err := blobmux.OpenBucket(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to open bucket %s: %w", u, err)
+		// Report the URL as the user configured it. The normalized form carries internal
+		// query parameters, and where normalization matters (tilde and relative paths) the
+		// wrapped error already names the resolved location.
+		return nil, fmt.Errorf("unable to open bucket %q: %w", originalURL, err)
 	}
 
 	if !strings.HasPrefix(u, FilePathPrefix) {

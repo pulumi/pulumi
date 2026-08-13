@@ -1,0 +1,5 @@
+component: cli
+kind: improvement
+body: Explain which state backend `pulumi login` failed against, where that backend
+    was configured, and how to change it
+time: 2026-08-13T13:00:00Z
