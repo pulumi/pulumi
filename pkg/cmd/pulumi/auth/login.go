@@ -114,6 +114,16 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			// Login performs the plaintext-to-encrypted migration itself, so
+			// the "will encrypt on the next login" warning would be stale by
+			// the time this command exits.
+			workspace.SuppressPlaintextPendingWarning()
+
+			// Undecryptable is a terminal state: conditions the user could fix
+			// (a locked or momentarily unavailable store) surface as different
+			// errors that leave the file alone. The user is explicitly
+			// re-authenticating, so replace the unreadable file instead of
+			// sending them through `pulumi logout` first.
 			if _, err := workspace.GetStoredCredentials(); workspace.IsUndecryptableCredentials(err) {
 				fmt.Fprintf(cmd.ErrOrStderr(),
 					"warning: existing stored credentials can no longer be decrypted and will be replaced: %v\n", err)

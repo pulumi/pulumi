@@ -35,18 +35,8 @@ var stores keyStores = secureStores{}
 
 type secureStores struct{}
 
-// Deliberately GetPulumiHomeDir, not GetPulumiPath: the key file's location
-// must be stable, never redirected to a per-session agent directory.
-func pulumiHome() string {
-	dir, err := GetPulumiHomeDir()
-	if err != nil {
-		return ""
-	}
-	return dir
-}
-
 func (secureStores) Resolve(mode securestore.Mode) (keyStore, error) {
-	st, err := securestore.Resolve(mode, pulumiHome())
+	st, err := securestore.Resolve(mode)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +44,7 @@ func (secureStores) Resolve(mode securestore.Mode) (keyStore, error) {
 }
 
 func (secureStores) ForBackend(id securestore.Backend) (keyStore, error) {
-	st, err := securestore.ForBackend(id, pulumiHome())
+	st, err := securestore.ForBackend(id)
 	if err != nil {
 		return nil, err
 	}

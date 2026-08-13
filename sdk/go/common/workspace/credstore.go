@@ -15,11 +15,9 @@
 package workspace
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -52,6 +50,7 @@ func resetWriteStoreForTesting() {
 	writeStore = sync.OnceValues(resolveWriteStore)
 	replacedEnvelope.Store(false)
 	plaintextPendingOnce = sync.Once{}
+	encryptedNoteOnce = sync.Once{}
 }
 
 func resolveWriteStore() (keyStore, error) {
@@ -60,47 +59,6 @@ func resolveWriteStore() (keyStore, error) {
 		return nil, err
 	}
 	return stores.Resolve(mode)
-}
-
-// Deliberately does not record the backend: a stale decision could downgrade
-// a user who has protection available.
-type credStoreState struct {
-	Warned bool `json:"warned,omitempty"`
-}
-
-func credStoreStatePath() (string, error) {
-	credsFile, err := getCredsFilePath()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(filepath.Dir(credsFile), "credstore.json"), nil
-}
-
-func readCredStoreState() credStoreState {
-	var state credStoreState
-	path, err := credStoreStatePath()
-	if err != nil {
-		return state
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return state
-	}
-	_ = json.Unmarshal(data, &state)
-	return state
-}
-
-func writeCredStoreState(state credStoreState) {
-	path, err := credStoreStatePath()
-	if err != nil {
-		return
-	}
-	data, err := json.Marshal(state)
-	if err != nil {
-		return
-	}
-	// Best effort: losing this file only means the warning shows once more.
-	_ = os.WriteFile(path, data, 0o600)
 }
 
 var warnWriter io.Writer = os.Stderr
@@ -112,20 +70,44 @@ func warnPlaintextPending() {
 	if !securestore.Attended() {
 		return
 	}
+	// Encryption must actually be coming: with no usable store, the next
+	// login falls back to plaintext rather than encrypt. The probe behind
+	// writeStore is memoized, and only reads of a plaintext file in an
+	// opted-in mode reach here.
+	if st, err := writeStore(); err != nil || st.Backend() == securestore.BackendPlaintext {
+		return
+	}
 	plaintextPendingOnce.Do(func() {
 		fmt.Fprintf(warnWriter,
 			"warning: credentials are stored in plaintext; the next `pulumi login` or credential update will encrypt them\n")
 	})
 }
 
-// Once per machine, and only when someone is watching.
+// SuppressPlaintextPendingWarning silences the "the next `pulumi login` will
+// encrypt them" warning for commands that perform that migration themselves.
+func SuppressPlaintextPendingWarning() {
+	plaintextPendingOnce.Do(func() {})
+}
+
+var encryptedNoteOnce sync.Once
+
+// Confirms the migration the pending warning promised.
+func noteCredentialsEncrypted() {
+	if !securestore.Attended() {
+		return
+	}
+	encryptedNoteOnce.Do(func() {
+		fmt.Fprintf(warnWriter, "Stored Pulumi credentials are now encrypted\n")
+	})
+}
+
+// Callers invoke this only for a write that transitions the user into
+// plaintext (no plaintext file existed before), and only when someone is
+// watching. Rewrites of an already-plaintext file stay quiet, so nobody is
+// nagged on every credential refresh — no persisted warned-once state needed.
 func warnPlaintextFallback(reason error) {
 	if !securestore.Attended() {
 		logging.V(7).Infof("credential store unavailable, using plaintext: %v", reason)
-		return
-	}
-	state := readCredStoreState()
-	if state.Warned {
 		return
 	}
 	fmt.Fprintf(warnWriter,
@@ -133,6 +115,4 @@ func warnPlaintextFallback(reason error) {
 			"         Set PULUMI_CREDENTIAL_STORE=os to require OS-protected storage,\n"+
 			"         or PULUMI_CREDENTIAL_STORE=plaintext to silence this warning.\n",
 		reason)
-	state.Warned = true
-	writeCredStoreState(state)
 }

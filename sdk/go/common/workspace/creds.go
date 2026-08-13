@@ -504,33 +504,45 @@ func writeCredentialsFile(credsFile string, creds Credentials) error {
 	if err != nil {
 		return err
 	}
-	// Sticky: otherwise every command run without PULUMI_CREDENTIAL_STORE set
-	// would downgrade migrated credentials. Only explicit "plaintext"
-	// decrypts, and an unparseable envelope is never overwritten.
-	sticky := false
+	// Encryption is sticky: once an encrypted credentials file exists, keep
+	// writing with the backend that encrypted it, even when
+	// PULUMI_CREDENTIAL_STORE is unset — otherwise any command run without the
+	// variable would silently downgrade migrated credentials to plaintext.
+	// Only an explicit "plaintext" downgrades, and an envelope this build
+	// cannot parse is never overwritten.
+	hadPlaintext := false
+	hadEnvelope := false
 	if mode, _ := credentialStoreMode(); mode != securestore.ModePlaintext {
-		if existing, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(existing) {
-			backend, backendErr := securestore.EnvelopeBackend(existing)
-			if backendErr != nil {
-				return fmt.Errorf("refusing to overwrite credentials that %w. "+
-					"Upgrade the Pulumi CLI, or set PULUMI_CREDENTIAL_STORE=plaintext to store credentials unencrypted",
-					backendErr)
-			}
-			if st.Backend() == securestore.BackendPlaintext {
-				stickyStore, stickyErr := stores.ForBackend(backend)
-				if errors.Is(stickyErr, securestore.ErrDeclined) {
-					return stickyErr
+		if existing, readErr := os.ReadFile(credsFile); readErr == nil {
+			if !securestore.IsEnvelope(existing) {
+				hadPlaintext = len(existing) > 0
+			} else {
+				hadEnvelope = true
+				backend, backendErr := securestore.EnvelopeBackend(existing)
+				// An envelope whose metadata this build cannot read was in
+				// practice written by a newer CLI (unsupported envelope
+				// version).
+				if backendErr != nil {
+					return fmt.Errorf("refusing to overwrite credentials that %w. "+
+						"Upgrade the Pulumi CLI, or set PULUMI_CREDENTIAL_STORE=plaintext to store credentials unencrypted",
+						backendErr)
 				}
-				if stickyErr != nil {
-					return fmt.Errorf("refusing to overwrite encrypted credentials with plaintext: %w. "+
-						"Set PULUMI_CREDENTIAL_STORE=plaintext to store credentials unencrypted", stickyErr)
+				if st.Backend() == securestore.BackendPlaintext {
+					stickyStore, stickyErr := stores.ForBackend(backend)
+					if errors.Is(stickyErr, securestore.ErrDeclined) {
+						return stickyErr
+					}
+					if stickyErr != nil {
+						return fmt.Errorf("refusing to overwrite encrypted credentials with plaintext: %w. "+
+							"Set PULUMI_CREDENTIAL_STORE=plaintext to store credentials unencrypted", stickyErr)
+					}
+					st = stickyStore
 				}
-				st, sticky = stickyStore, true
 			}
 		}
 	}
 	recovery := false
-	if !sticky && st.Backend() == securestore.BackendPlaintext && replacedEnvelope.Load() {
+	if !hadEnvelope && st.Backend() == securestore.BackendPlaintext && replacedEnvelope.Load() {
 		if mode, _ := credentialStoreMode(); mode == securestore.ModeDefault {
 			recovered, rerr := stores.Resolve(securestore.ModeAuto)
 			if rerr != nil {
@@ -539,23 +551,27 @@ func writeCredentialsFile(credsFile string, creds Credentials) error {
 			st, recovery = recovered, true
 		}
 	}
+	encrypted := false
 	if st.Backend() != securestore.BackendPlaintext {
 		key, keyErr := st.GetOrCreateKey()
 		if keyErr != nil {
 			mode, _ := credentialStoreMode()
 			// Falling back would write plaintext over a proven envelope.
-			if sticky || mode == securestore.ModeOS || errors.Is(keyErr, securestore.ErrDeclined) {
+			if hadEnvelope || mode == securestore.ModeOS || errors.Is(keyErr, securestore.ErrDeclined) {
 				return fmt.Errorf("getting credentials encryption key: %w", keyErr)
 			}
 			// Auto: a store that probed available but then failed is absent.
-			warnPlaintextFallback(keyErr)
+			if !hadPlaintext {
+				warnPlaintextFallback(keyErr)
+			}
 		} else {
 			if raw, err = securestore.Seal(key, st.Backend(), raw); err != nil {
 				return fmt.Errorf("encrypting credentials: %w", err)
 			}
 			logging.V(7).Infof("Writing credentials with secure store backend %q", st.Backend())
+			encrypted = true
 		}
-	} else if mode, _ := credentialStoreMode(); mode == securestore.ModeAuto || recovery {
+	} else if mode, _ := credentialStoreMode(); (mode == securestore.ModeAuto || recovery) && !hadPlaintext {
 		reason := st.FallbackReason()
 		if reason == nil {
 			reason = securestore.ErrUnavailable
@@ -563,7 +579,13 @@ func writeCredentialsFile(credsFile string, creds Credentials) error {
 		warnPlaintextFallback(reason)
 	}
 
-	return lockedfile.Write(credsFile, bytes.NewReader(raw), 0o600)
+	if err := lockedfile.Write(credsFile, bytes.NewReader(raw), 0o600); err != nil {
+		return err
+	}
+	if hadPlaintext && encrypted {
+		noteCredentialsEncrypted()
+	}
+	return nil
 }
 
 // GetStoredCredentials returns any credentials stored on the local machine.
@@ -610,11 +632,6 @@ func dropEnvelopeKey(credsFile string, markReplaced bool) {
 		}
 	}
 	deleteCurrentBackendKey()
-	if statePath, stErr := credStoreStatePath(); stErr == nil {
-		if err := os.Remove(statePath); err != nil && !os.IsNotExist(err) {
-			logging.V(3).Infof("could not delete credential-store state: %v", err)
-		}
-	}
 }
 
 func ResetStoredCredentials() error {

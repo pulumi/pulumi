@@ -16,6 +16,7 @@ package workspace
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -156,7 +157,7 @@ func TestLostKeyProducesActionableError(t *testing.T) {
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
-func TestDeleteAllAccountsRemovesKeyAndState(t *testing.T) {
+func TestDeleteAllAccountsRemovesKey(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
 
@@ -168,10 +169,6 @@ func TestDeleteAllAccountsRemovesKeyAndState(t *testing.T) {
 
 	_, err = st.GetKey()
 	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
-	statePath, err := credStoreStatePath()
-	require.NoError(t, err)
-	_, err = os.Stat(statePath)
-	assert.True(t, os.IsNotExist(err))
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
@@ -206,21 +203,46 @@ func forceAttended(t *testing.T) {
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
-func TestWarnPlaintextFallbackOnlyOnce(t *testing.T) {
-	t.Setenv(PulumiCredentialsPathEnvVar, t.TempDir())
+func TestPlaintextFallbackWarnsOnTransitionOnly(t *testing.T) {
+	pinSecureCreds(t, "auto")
 	forceAttended(t)
+	fakeStore(t).absent = true
 
 	var buf bytes.Buffer
 	warnWriter = &buf
 	t.Cleanup(func() { warnWriter = os.Stderr })
 
-	warnPlaintextFallback(securestore.ErrUnavailable)
+	// The write that transitions the user into plaintext warns.
+	require.NoError(t, StoreCredentials(testCreds()))
 	first := buf.String()
 	assert.Contains(t, first, "plaintext")
 	assert.Contains(t, first, "PULUMI_CREDENTIAL_STORE")
 
+	// Rewrites of an already-plaintext file stay quiet, even from a fresh
+	// process: the existing file, not persisted state, carries the dedup.
 	buf.Reset()
-	warnPlaintextFallback(securestore.ErrUnavailable)
+	resetWriteStoreForTesting()
+	require.NoError(t, StoreCredentials(testCreds()))
+	assert.Empty(t, buf.String())
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestPreexistingPlaintextFileDoesNotWarnOnWrite(t *testing.T) {
+	// A user whose credentials were already plaintext keeps the status quo;
+	// only the transition into plaintext is worth a warning.
+	pinSecureCreds(t, "auto")
+	forceAttended(t)
+	fakeStore(t).absent = true
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(credsFile,
+		[]byte(`{"current":"x","accessTokens":{"x":"tok"}}`), 0o600))
+
+	var buf bytes.Buffer
+	warnWriter = &buf
+	t.Cleanup(func() { warnWriter = os.Stderr })
+
+	require.NoError(t, StoreCredentials(testCreds()))
 	assert.Empty(t, buf.String())
 }
 
@@ -638,6 +660,103 @@ func TestOptedInPlaintextReadWarnsOnce(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, buf.String(), "the warning fires once per process")
 	}
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestMigrationConfirmsEncryptionOnce(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	forceAttended(t)
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(credsFile,
+		[]byte(`{"current":"x","accessTokens":{"x":"tok"}}`), 0o600))
+
+	var buf bytes.Buffer
+	warnWriter = &buf
+	t.Cleanup(func() { warnWriter = os.Stderr })
+
+	require.NoError(t, StoreCredentials(testCreds()))
+	assert.Contains(t, buf.String(), "now encrypted")
+
+	buf.Reset()
+	require.NoError(t, StoreCredentials(testCreds()))
+	assert.Empty(t, buf.String(), "the confirmation fires once per process")
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestFreshEncryptedWriteDoesNotClaimMigration(t *testing.T) {
+	pinSecureCreds(t, "auto")
+	forceAttended(t)
+
+	var buf bytes.Buffer
+	warnWriter = &buf
+	t.Cleanup(func() { warnWriter = os.Stderr })
+
+	require.NoError(t, StoreCredentials(testCreds()))
+	assert.Empty(t, buf.String(), "nothing was migrated, so there is nothing to confirm")
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestSuppressPlaintextPendingWarning(t *testing.T) {
+	// `pulumi login` migrates the file itself, so the "next login will
+	// encrypt" warning from its own credential reads must stay silent.
+	pinSecureCreds(t, "os")
+	forceAttended(t)
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(credsFile,
+		[]byte(`{"current":"x","accessTokens":{"x":"tok"}}`), 0o600))
+
+	var buf bytes.Buffer
+	warnWriter = &buf
+	t.Cleanup(func() { warnWriter = os.Stderr })
+
+	SuppressPlaintextPendingWarning()
+	_, err = GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Empty(t, buf.String())
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestPendingWarningRequiresUsableStore(t *testing.T) {
+	// With no usable store the next login falls back to plaintext, so
+	// promising "will encrypt" would be false — and would nag every command.
+	pinSecureCreds(t, "auto")
+	forceAttended(t)
+	fakeStore(t).absent = true
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(credsFile,
+		[]byte(`{"current":"x","accessTokens":{"x":"tok"}}`), 0o600))
+
+	var buf bytes.Buffer
+	warnWriter = &buf
+	t.Cleanup(func() { warnWriter = os.Stderr })
+
+	_, err = GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Empty(t, buf.String())
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestKeyFailureOnAvailableStoreKeepsTheEnvelope(t *testing.T) {
+	// A store that resolves but then fails its key operation must not
+	// downgrade an encrypted file to plaintext, even in auto mode.
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	before, err := os.ReadFile(credsFile)
+	require.NoError(t, err)
+
+	fakeStore(t).createErr = errors.New("keychain hiccup")
+
+	err = StoreCredentials(testCreds())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "keychain hiccup")
+	after, err := os.ReadFile(credsFile)
+	require.NoError(t, err)
+	assert.Equal(t, before, after, "the encrypted file must be left untouched")
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs

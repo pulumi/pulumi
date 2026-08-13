@@ -34,6 +34,7 @@ type fakeKeyStore struct {
 	key        []byte
 	absent     bool
 	declineErr error
+	createErr  error
 }
 
 func (f *fakeKeyStore) Backend() securestore.Backend { return f.backend }
@@ -48,6 +49,9 @@ func (f *fakeKeyStore) GetKey() ([]byte, error) {
 func (f *fakeKeyStore) GetOrCreateKey() ([]byte, error) {
 	if f.declineErr != nil {
 		return nil, f.declineErr
+	}
+	if f.createErr != nil {
+		return nil, f.createErr
 	}
 	if f.key == nil {
 		f.key = make([]byte, 32)

@@ -18,7 +18,7 @@ package securestore
 
 // SecItem (per-app ACL, signed builds only) first, then the /usr/bin/security
 // fallback that works for any binary.
-func platformCandidates(allowPrompt bool, _ string) []backendImpl {
+func platformCandidates(allowPrompt bool) []backendImpl {
 	return []backendImpl{
 		aclKeychainBackend(allowPrompt),
 		{

@@ -17,6 +17,7 @@
 package securestore
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -30,7 +31,7 @@ func TestTPMFileStoreLifecycle(t *testing.T) {
 	t.Parallel()
 	home := filepath.Join(t.TempDir(), "pulumi-home")
 
-	store := newTPMFileStore(home)
+	store := tpmFileStore{path: filepath.Join(home, tpmFileName)}
 	outcome, err := store.available()
 	require.NoError(t, err)
 	require.Equal(t, Ready, outcome, "a writable home dir must be available")
@@ -68,7 +69,7 @@ func TestTPMFileStoreAvailableCreatesDir(t *testing.T) {
 	t.Parallel()
 	home := filepath.Join(t.TempDir(), "deep", "nested", ".pulumi")
 
-	store := newTPMFileStore(home)
+	store := tpmFileStore{path: filepath.Join(home, tpmFileName)}
 	outcome, err := store.available()
 	require.NoError(t, err)
 	require.Equal(t, Ready, outcome)
@@ -82,10 +83,20 @@ func TestTPMFileStoreAvailableCreatesDir(t *testing.T) {
 	assert.Empty(t, entries)
 }
 
+//nolint:paralleltest // t.Setenv forbids parallel runs
+func TestTPMFileStoreResolvesUnderPulumiHome(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("PULUMI_HOME", home)
+	store, ok := newTPMFileStore().(tpmFileStore)
+	require.True(t, ok)
+	require.NoError(t, store.err)
+	assert.Equal(t, filepath.Join(home, tpmFileName), store.path)
+}
+
 func TestTPMFileStoreUnavailableWithoutHomeDir(t *testing.T) {
 	t.Parallel()
-	store := newTPMFileStore("")
+	store := tpmFileStore{err: errors.New("home dir went missing")}
 	outcome, err := store.available()
 	assert.Equal(t, Absent, outcome)
-	assert.ErrorContains(t, err, "PULUMI_HOME")
+	assert.ErrorContains(t, err, "home dir went missing")
 }

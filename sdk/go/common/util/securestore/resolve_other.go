@@ -18,4 +18,4 @@ package securestore
 
 // platformCandidates: no protective backends on this platform; callers fall
 // back to plaintext.
-func platformCandidates(bool, string) []backendImpl { return nil }
+func platformCandidates(bool) []backendImpl { return nil }
