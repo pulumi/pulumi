@@ -26,7 +26,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"unicode"
 
 	"github.com/gofrs/uuid"
@@ -65,28 +64,7 @@ func startSpinner(prefix string) func() {
 		prefix, nil, cmdutil.GetGlobalColorization(), 8 /*timesPerSecond*/, !cmdutil.Interactive(),
 	)
 	spinner.Tick()
-	stop := make(chan struct{})
-	stopped := make(chan struct{})
-	go func() {
-		defer close(stopped)
-		for {
-			select {
-			case <-ticker.C:
-				spinner.Tick()
-			case <-stop:
-				spinner.Reset()
-				return
-			}
-		}
-	}()
-	var once sync.Once
-	return func() {
-		once.Do(func() {
-			ticker.Stop()
-			close(stop)
-			<-stopped
-		})
-	}
+	return cmdutil.SpinUntilStopped(spinner, ticker)
 }
 
 type functionEvalContext struct {
