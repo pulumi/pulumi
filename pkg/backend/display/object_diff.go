@@ -70,10 +70,10 @@ func printStepHeader(b io.StringWriter, step engine.StepEventMetadata, showURNs 
 	new := step.New
 	if new != nil && !new.Protect && old != nil && old.Protect {
 		// show an unlocked symbol, since we are unprotecting a resource.
-		extra = "🔓"
+		extra = " 🔓"
 	} else if (new != nil && new.Protect) || (old != nil && old.Protect) {
 		// show a locked symbol, since we are either newly protecting this resource, or retaining protection.
-		extra = "🔒"
+		extra = " 🔒"
 	}
 
 	maybe := ""
