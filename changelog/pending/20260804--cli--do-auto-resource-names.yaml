@@ -1,4 +1,0 @@
-component: cli/do
-kind: feat
-body: Auto-assign identifiers to existing stack resources in `pulumi do` input expressions,
-    and add `pulumi do show-resources` to list them

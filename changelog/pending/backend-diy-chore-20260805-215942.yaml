@@ -1,4 +1,0 @@
-component: backend/diy
-kind: chore
-body: The deprecation warning is now an error. PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_WARNING is now PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR.
-time: 2026-08-05T21:59:42.752778+01:00

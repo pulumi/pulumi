@@ -1,6 +1,0 @@
-component: programgen/go
-kind: fix
-body: Rename properties that collide with reserved names (e.g. `elementType`) the same way SDK codegen does, instead of emitting uncompilable code
-time: 2026-08-07T16:41:48.92153+02:00
-custom:
-  PR: "24235"
