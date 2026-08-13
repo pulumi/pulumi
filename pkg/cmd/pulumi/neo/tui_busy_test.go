@@ -182,6 +182,48 @@ func TestBusy_CancellingSubstate(t *testing.T) {
 	assert.Equal(t, -1, m.findBlockKind(blockBusy))
 }
 
+// TestBusy_LateToolCompletionAfterCancelStaysIdle — cancelling a local tool
+// delivers the backend's cancelled event before the killed tool's
+// UIToolCompleted (the session cancels the batch context only after
+// forwarding UICancelled, and the tool worker reports once the process
+// dies). The late completion must not resurrect the spinner: no further
+// event will ever arrive to clear it, and Enter is swallowed while busy, so
+// the session would be stuck on "Thinking..." with input blocked forever.
+func TestBusy_LateToolCompletionAfterCancelStaysIdle(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 8)
+	outCh := make(chan outboundEvent, 4)
+	model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh, Busy: true}))
+
+	// Hand-off with pending CLI work, then the tool starts locally.
+	model, _ = model.Update(UIAssistantMessage{IsFinal: true, HasPendingCLIWork: true})
+	model, _ = model.Update(UIToolStarted{Name: "shell__shell_execute", Args: json.RawMessage(`{"command":"sleep 180"}`)})
+	require.True(t, model.(Model).busy)
+
+	// ESC → backend confirms the cancel.
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	model, _ = model.Update(UICancelled{})
+	require.False(t, model.(Model).busy, "cancelled event must clear busy")
+
+	// The killed tool's completion lands after the turn already ended.
+	model, _ = model.Update(UIToolCompleted{
+		Name:    "shell__shell_execute",
+		Args:    json.RawMessage(`{"command":"sleep 180"}`),
+		IsError: true,
+	})
+	m := model.(Model)
+	assert.False(t, m.busy, "late tool completion must not resurrect the spinner")
+	assert.Equal(t, -1, m.findBlockKind(blockBusy))
+
+	// Same rule for a straggling start or progress event from the cancelled
+	// batch: relabel-only events never start the spinner from idle.
+	model, _ = model.Update(UIToolStarted{Name: "shell__shell_execute"})
+	assert.False(t, model.(Model).busy, "late tool start must not resurrect the spinner")
+	model, _ = model.Update(UIToolProgress{Name: "shell__shell_execute", Message: "tick"})
+	assert.False(t, model.(Model).busy, "late tool progress must not resurrect the spinner")
+}
+
 // TestBusy_EscIgnoredWhenIdle — ESC while the TUI is idle is a no-op. We
 // don't want to post a spurious user_cancel.
 func TestBusy_EscIgnoredWhenIdle(t *testing.T) {
