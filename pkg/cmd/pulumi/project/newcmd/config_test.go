@@ -16,9 +16,12 @@ package newcmd
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -300,4 +303,137 @@ func TestSetFail(t *testing.T) {
 			assert.Error(t, err)
 		})
 	}
+}
+
+func TestTemplateConfigResolvesWithoutPrompting(t *testing.T) {
+	t.Parallel()
+
+	values, err := resolveTemplateDefaults(
+		"proj",
+		map[string]workspace.ProjectTemplateConfigValue{
+			"aws:region":  {Description: "The AWS region to deploy into", Default: "us-east-1"},
+			"gcp:zone":    {Description: "The zone"},
+			"gcp:project": {Description: "The Google Cloud project to deploy into"},
+			"auth0:token": {Description: "The token", Secret: true},
+		},
+		config.Map{config.MustMakeKey("gcp", "zone"): config.NewValue("z")},
+		nil, nil,
+	)
+	require.NoError(t, err)
+	assert.True(t, slices.ContainsFunc(values, templateConfigValue.unset),
+		"the no-default keys are unset, which is what earns a question")
+
+	prompts := 0
+	prompt := func(yes bool, valueType, defaultValue string, secret bool,
+		isValidFn func(string) error, opts display.Options,
+	) (string, error) {
+		prompts++
+		return "typed:" + valueType, nil
+	}
+	require.NoError(t, askTemplateConfig(values, prompt, false, askUnset, display.Options{}))
+
+	byKey := map[string]templateConfigValue{}
+	for _, v := range values {
+		byKey[v.key.String()] = v
+	}
+	assert.Equal(t, "us-east-1", byKey["aws:region"].value, "a default is filled in silently")
+	assert.Equal(t, "z", byKey["gcp:zone"].value, "a flag value is filled in silently")
+	assert.True(t, byKey["gcp:zone"].fromFlag)
+	assert.Equal(t,
+		"typed:The Google Cloud project to deploy into (gcp:project)",
+		byKey["gcp:project"].value, "no default means a prompt, with promptForConfig's prompt text")
+	assert.True(t, byKey["auth0:token"].secret)
+	assert.Equal(t, 2, prompts, "only the two no-default keys prompt")
+}
+
+func TestTemplateConfigAsksForEveryKey(t *testing.T) {
+	t.Parallel()
+
+	values, err := resolveTemplateDefaults(
+		"proj",
+		map[string]workspace.ProjectTemplateConfigValue{
+			"aws:region": {Default: "us-east-1"},
+			"gcp:zone":   {Default: "a"},
+		},
+		config.Map{config.MustMakeKey("gcp", "zone"): config.NewValue("z")},
+		nil, nil,
+	)
+	require.NoError(t, err)
+	require.Len(t, values, 2)
+	// Overlay a prior value, as the decline path does with what its confirmation showed.
+	values[0].value = "eu-west-1"
+
+	defaults := map[string]string{}
+	prompt := func(yes bool, valueType, defaultValue string, secret bool,
+		isValidFn func(string) error, opts display.Options,
+	) (string, error) {
+		defaults[valueType] = defaultValue
+		return "typed", nil
+	}
+	require.NoError(t, askTemplateConfig(values, prompt, false, askAll, display.Options{}))
+
+	assert.Equal(t, map[string]string{"aws:region": "eu-west-1"}, defaults,
+		"the resolved value pre-fills the prompt, and a key fixed by --config is never asked")
+	byKey := map[string]templateConfigValue{}
+	for _, v := range values {
+		byKey[v.key.String()] = v
+	}
+	assert.Equal(t, "typed", byKey["aws:region"].value)
+	assert.Equal(t, "z", byKey["gcp:zone"].value, "the flag value survives, unasked")
+}
+
+func TestTemplateConfigNamespacesBareKeys(t *testing.T) {
+	t.Parallel()
+
+	// A bare key takes the project's namespace. Resolving it must not depend on a Pulumi.yaml
+	// being on disk, which it is not when the guided flow gathers config before creating one.
+	values, err := resolveTemplateDefaults(
+		"my-proj",
+		map[string]workspace.ProjectTemplateConfigValue{
+			"bucketName": {Description: "The bucket"},
+		},
+		nil, nil, nil,
+	)
+	require.NoError(t, err)
+	require.Len(t, values, 1)
+	assert.Equal(t, "my-proj:bucketName", values[0].key.String())
+	assert.Equal(t, "bucketName", values[0].templateKey)
+
+	prompt := func(yes bool, valueType, defaultValue string, secret bool,
+		isValidFn func(string) error, opts display.Options,
+	) (string, error) {
+		return "typed:" + valueType, nil
+	}
+	require.NoError(t, askTemplateConfig(values, prompt, false, askUnset, display.Options{}))
+	assert.Equal(t, "typed:The bucket (bucketName)", values[0].value,
+		"the prompt elides the namespace when it is the project's own")
+}
+
+func TestTemplateConfigOrdersKeys(t *testing.T) {
+	t.Parallel()
+
+	values, err := resolveTemplateDefaults(
+		"proj",
+		map[string]workspace.ProjectTemplateConfigValue{
+			"b:two": {Default: "2"}, "a:one": {Default: "1"},
+		},
+		nil, nil, nil,
+	)
+	require.NoError(t, err)
+	require.Len(t, values, 2)
+	assert.Equal(t, "a:one", values[0].key.String())
+	assert.Equal(t, "b:two", values[1].key.String())
+	assert.False(t, slices.ContainsFunc(values, templateConfigValue.unset),
+		"every key had a default, so nothing would be asked")
+}
+
+func TestParseConfigForProjectNamespacesBareKeys(t *testing.T) {
+	t.Parallel()
+
+	c, err := ParseConfigForProject("my-proj", []string{"bucketName=b", "aws:region=us-east-1"}, false)
+	require.NoError(t, err)
+	assert.Equal(t, config.Map{
+		config.MustMakeKey("my-proj", "bucketName"): config.NewValue("b"),
+		config.MustMakeKey("aws", "region"):         config.NewValue("us-east-1"),
+	}, c)
 }
