@@ -51,7 +51,6 @@ type envCommand struct {
 
 	envNameFlag string
 
-	// Zero means approvalPollInterval.
 	pollInterval time.Duration
 }
 
