@@ -19,7 +19,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,7 +26,7 @@ import (
 func TestStackRemoveHasResourcesError_DefaultSuggestsPulumiDestroy(t *testing.T) {
 	t.Parallel()
 
-	err := stackRemoveHasResourcesError("org/project/stack", "nodejs")
+	err := stackRemoveHasResourcesError("org/project/stack", false)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "still has resources; removal rejected")
 	assert.Contains(t, err.Error(), "Run `pulumi destroy` to delete the resources, then run `pulumi stack rm`")
@@ -37,30 +36,79 @@ func TestStackRemoveHasResourcesError_DefaultSuggestsPulumiDestroy(t *testing.T)
 func TestStackRemoveHasResourcesError_TerraformCLISuggestsTerraformDestroy(t *testing.T) {
 	t.Parallel()
 
-	err := stackRemoveHasResourcesError("org/project/stack", terraformCLIRuntime)
+	err := stackRemoveHasResourcesError("org/project/stack", true)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "still has resources; removal rejected")
 	assert.Contains(t, err.Error(), "Run `terraform destroy` to delete the resources, then run `pulumi stack rm`")
 	assert.NotContains(t, err.Error(), "pulumi destroy")
 }
 
-func TestStackRuntimeName_FromTags(t *testing.T) {
+func TestIsTerraformCLIStack(t *testing.T) {
 	t.Parallel()
 
-	s := &backend.MockStack{
-		RefF: func() backend.StackReference {
-			return &backend.MockStackReference{
-				StringV:  "org/project/stack",
-				NameV:    tokens.MustParseStackName("stack"),
-				ProjectV: "project",
-			}
+	tests := []struct {
+		name string
+		tags map[apitype.StackTagName]string
+		want bool
+	}{
+		{
+			name: "nil tags",
+			tags: nil,
+			want: false,
 		},
-		TagsF: func() map[apitype.StackTagName]string {
-			return map[apitype.StackTagName]string{
+		{
+			name: "empty tags",
+			tags: map[apitype.StackTagName]string{},
+			want: false,
+		},
+		{
+			name: "pulumi language runtime",
+			tags: map[apitype.StackTagName]string{
+				apitype.ProjectRuntimeTag: "nodejs",
+			},
+			want: false,
+		},
+		{
+			name: "pulumi:runtime terraform-cli",
+			tags: map[apitype.StackTagName]string{
 				apitype.ProjectRuntimeTag: terraformCLIRuntime,
-			}
+			},
+			want: true,
+		},
+		{
+			name: "terraform:execution-mode local",
+			tags: map[apitype.StackTagName]string{
+				terraformExecutionModeTag: "local",
+			},
+			want: true,
+		},
+		{
+			name: "terraform:execution-mode remote",
+			tags: map[apitype.StackTagName]string{
+				terraformExecutionModeTag: "remote",
+			},
+			want: true,
+		},
+		{
+			name: "both runtime and execution-mode",
+			tags: map[apitype.StackTagName]string{
+				apitype.ProjectRuntimeTag: terraformCLIRuntime,
+				terraformExecutionModeTag: "remote",
+			},
+			want: true,
 		},
 	}
 
-	assert.Equal(t, terraformCLIRuntime, stackRuntimeName(s))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			s := &backend.MockStack{
+				TagsF: func() map[apitype.StackTagName]string {
+					return tt.tags
+				},
+			}
+			assert.Equal(t, tt.want, isTerraformCLIStack(s))
+		})
+	}
 }

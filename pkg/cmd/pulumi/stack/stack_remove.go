@@ -38,31 +38,35 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// terraformCLIRuntime is the Pulumi.yaml runtime for stacks whose resources are
-// managed by the Terraform CLI rather than by `pulumi destroy`.
+// terraformCLIRuntime is the pulumi:runtime value named in issue 24139 for
+// Terraform-managed stacks. Those stacks have no Pulumi.yaml.
 const terraformCLIRuntime = "terraform-cli"
 
-// stackRuntimeName returns the project's language runtime for s.
-// Prefer a matching local Pulumi.yaml, then fall back to the stack's runtime tag.
-func stackRuntimeName(s backend.Stack) string {
-	if proj, err := workspace.DetectProject(); err == nil {
-		stackProj, has := s.Ref().Project()
-		if !has || stackProj == tokens.Name(proj.Name) {
-			return proj.Runtime.Name()
-		}
+// terraformExecutionModeTag is set on Terraform-managed Pulumi Cloud stacks
+// (local or remote). See https://www.pulumi.com/docs/iac/get-started/terraform/terraform-remote-execution/
+const terraformExecutionModeTag apitype.StackTagName = "terraform:execution-mode"
+
+// isTerraformCLIStack reports whether s is a Terraform-managed stack.
+// Detection uses backend tags only: these stacks are Terraform workspaces
+// stored in Pulumi Cloud and do not have a Pulumi.yaml.
+func isTerraformCLIStack(s backend.Stack) bool {
+	tags := s.Tags()
+	if tags == nil {
+		return false
 	}
-	if tags := s.Tags(); tags != nil {
-		return tags[apitype.ProjectRuntimeTag]
+	if tags[apitype.ProjectRuntimeTag] == terraformCLIRuntime {
+		return true
 	}
-	return ""
+	_, ok := tags[terraformExecutionModeTag]
+	return ok
 }
 
 // stackRemoveHasResourcesError is the user-facing error when stack removal is
-// rejected because the stack still has resources. terraform-cli stacks must be
-// cleaned up with `terraform destroy`, not `pulumi destroy`.
-func stackRemoveHasResourcesError(stackRef, runtime string) error {
+// rejected because the stack still has resources. Terraform-managed stacks
+// must be cleaned up with `terraform destroy`, not `pulumi destroy`.
+func stackRemoveHasResourcesError(stackRef string, terraformCLI bool) error {
 	destroyHint := "Run `pulumi destroy` to delete the resources, then run `pulumi stack rm`"
-	if runtime == terraformCLIRuntime {
+	if terraformCLI {
 		destroyHint = "Run `terraform destroy` to delete the resources, then run `pulumi stack rm`"
 	}
 	return fmt.Errorf(
@@ -130,7 +134,7 @@ func newStackRemoveCmd() *cobra.Command {
 			hasResources, err := backend.RemoveStack(ctx, s, force, removeBackups)
 			if err != nil {
 				if hasResources {
-					return stackRemoveHasResourcesError(s.Ref().String(), stackRuntimeName(s))
+					return stackRemoveHasResourcesError(s.Ref().String(), isTerraformCLIStack(s))
 				}
 				return err
 			}
