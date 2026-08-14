@@ -134,8 +134,6 @@ func newStateMigrationRewrite(
 
 // applyToResource rewrites references in state using the successor URNs and identities retained for one committed
 // migration.
-//
-//nolint:unused // Used by state-migration normalization added in the streaming-safety branch.
 func (rewrite *stateMigrationRewrite) applyToResource(state *pkgresource.State) (*pkgresource.State, error) {
 	rewritten, err := rewriteStateMigrationReferences(
 		[]*pkgresource.State{state}, rewrite.successorURNs, rewrite.successorIdentities)
