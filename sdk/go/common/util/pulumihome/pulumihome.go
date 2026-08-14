@@ -27,7 +27,7 @@ import (
 // BookkeepingDir is the name of the Pulumi bookkeeping folder (like .git for git).
 const BookkeepingDir = ".pulumi"
 
-// Dir returns the path of the '.pulumi' folder where Pulumi puts its artifacts.
+// Dir returns the path of the Pulumi home folder where Pulumi puts its artifacts.
 func Dir() (string, error) {
 	// Allow the folder we use to be overridden by an environment variable
 	dir := env.Home.Value()

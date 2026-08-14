@@ -16,7 +16,6 @@ package workspace
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"sync"
@@ -42,17 +41,13 @@ func credentialStoreMode() (securestore.Mode, error) {
 	}
 }
 
-// Memoized: probing costs an exec of /usr/bin/security on macOS.
-var writeStore = sync.OnceValues(resolveWriteStore)
-
 // Tests that change PULUMI_CREDENTIAL_STORE or install the mock must call this.
-func resetWriteStoreForTesting() {
-	writeStore = sync.OnceValues(resolveWriteStore)
+func resetCredStoreForTesting() {
 	replacedEnvelope.Store(false)
 	plaintextPendingOnce = sync.Once{}
-	encryptedNoteOnce = sync.Once{}
 }
 
+// Cheap to call repeatedly: the store probes memoize their own prechecks.
 func resolveWriteStore() (keyStore, error) {
 	mode, err := credentialStoreMode()
 	if err != nil {
@@ -61,24 +56,21 @@ func resolveWriteStore() (keyStore, error) {
 	return stores.Resolve(mode)
 }
 
-var warnWriter io.Writer = os.Stderr
-
 // Credentials are read by the engine and every language host alike.
 var plaintextPendingOnce sync.Once
 
+// The credentials file is plaintext and the user wants to use a secure store now, so warn that the
+// next write will encrypt it.
 func warnPlaintextPending() {
 	if !securestore.Attended() {
 		return
 	}
-	// Encryption must actually be coming: with no usable store, the next
-	// login falls back to plaintext rather than encrypt. The probe behind
-	// writeStore is memoized, and only reads of a plaintext file in an
-	// opted-in mode reach here.
-	if st, err := writeStore(); err != nil || st.Backend() == securestore.BackendPlaintext {
-		return
-	}
 	plaintextPendingOnce.Do(func() {
-		fmt.Fprintf(warnWriter,
+		st, err := resolveWriteStore()
+		if err != nil || st.Backend() == securestore.BackendPlaintext {
+			return
+		}
+		fmt.Fprintf(os.Stderr,
 			"warning: credentials are stored in plaintext; the next `pulumi login` or credential update will encrypt them\n")
 	})
 }
@@ -89,28 +81,23 @@ func SuppressPlaintextPendingWarning() {
 	plaintextPendingOnce.Do(func() {})
 }
 
-var encryptedNoteOnce sync.Once
-
-// Confirms the migration the pending warning promised.
+// Confirms the transition from plaintext to encrypted credentials.
 func noteCredentialsEncrypted() {
 	if !securestore.Attended() {
 		return
 	}
-	encryptedNoteOnce.Do(func() {
-		fmt.Fprintf(warnWriter, "Stored Pulumi credentials are now encrypted\n")
-	})
+	fmt.Fprintln(os.Stderr, "Stored Pulumi credentials are now encrypted")
 }
 
-// Callers invoke this only for a write that transitions the user into
-// plaintext (no plaintext file existed before), and only when someone is
-// watching. Rewrites of an already-plaintext file stay quiet, so nobody is
-// nagged on every credential refresh — no persisted warned-once state needed.
+// Called when a write lands on plaintext unexpectedly: an available store
+// failed its key operation, or a login recovery could not re-encrypt. Auto
+// mode resolving to plaintext because no store exists stays quiet though.
 func warnPlaintextFallback(reason error) {
 	if !securestore.Attended() {
 		logging.V(7).Infof("credential store unavailable, using plaintext: %v", reason)
 		return
 	}
-	fmt.Fprintf(warnWriter,
+	fmt.Fprintf(os.Stderr,
 		"warning: storing Pulumi credentials in plaintext: %v\n"+
 			"         Set PULUMI_CREDENTIAL_STORE=os to require OS-protected storage,\n"+
 			"         or PULUMI_CREDENTIAL_STORE=plaintext to silence this warning.\n",

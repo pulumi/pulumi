@@ -35,11 +35,15 @@ type fakeKeyStore struct {
 	absent     bool
 	declineErr error
 	createErr  error
+	getErr     error
 }
 
 func (f *fakeKeyStore) Backend() securestore.Backend { return f.backend }
 
 func (f *fakeKeyStore) GetKey() ([]byte, error) {
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
 	if f.key == nil {
 		return nil, securestore.ErrKeyNotFound
 	}
@@ -155,8 +159,8 @@ func installStores(t *testing.T, s keyStores) {
 	previous := stores
 	stores = s
 	t.Cleanup(func() { stores = previous })
-	resetWriteStoreForTesting()
-	t.Cleanup(resetWriteStoreForTesting)
+	resetCredStoreForTesting()
+	t.Cleanup(resetCredStoreForTesting)
 }
 
 func fakeStore(t *testing.T) *fakeKeyStore {

@@ -119,14 +119,26 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			// the time this command exits.
 			workspace.SuppressPlaintextPendingWarning()
 
-			// Undecryptable is a terminal state: conditions the user could fix
-			// (a locked or momentarily unavailable store) surface as different
-			// errors that leave the file alone. The user is explicitly
-			// re-authenticating, so replace the unreadable file instead of
-			// sending them through `pulumi logout` first.
+			// Clearly fixable conditions (a locked or momentarily unavailable
+			// store) surface as ordinary errors that leave the file alone and
+			// never reach this path. What does reach it may still be
+			// recoverable — e.g. by switching back to the OS credential store
+			// provider that holds the key — so ask before destroying it.
+			// Automation cannot answer and needs login to succeed, so
+			// non-interactive runs replace the file as before.
 			if _, err := workspace.GetStoredCredentials(); workspace.IsUndecryptableCredentials(err) {
 				fmt.Fprintf(cmd.ErrOrStderr(),
-					"warning: existing stored credentials can no longer be decrypted and will be replaced: %v\n", err)
+					"warning: existing stored credentials can no longer be decrypted: %v\n", err)
+				if cmdutil.Interactive() {
+					replace := false
+					if err := survey.AskOne(&survey.Confirm{
+						Message: "Replace the stored credentials with the ones from this login?",
+						Default: false,
+					}, &replace, ui.SurveyIcons(displayOptions.Color)); err != nil || !replace {
+						return errors.New("login cancelled: restore the OS credential store protecting the " +
+							"existing credentials, or run `pulumi logout --all` to discard them")
+					}
+				}
 				if err := workspace.ResetStoredCredentials(); err != nil {
 					return fmt.Errorf("removing undecryptable credentials: %w", err)
 				}
