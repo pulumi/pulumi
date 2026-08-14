@@ -221,6 +221,7 @@ type mockEvents struct {
 	OnResourceStepPreF   func(step Step) (any, error)
 	OnResourceStepPostF  func(ctx any, step Step, status resource.Status, err error) error
 	OnResourceOutputsF   func(step Step) error
+	OnStateMigrationF    func(transaction *StateMigrationTransaction) error
 	OnPolicyViolationF   func(resource.URN, plugin.AnalyzeDiagnostic)
 	OnPolicyRemediationF func(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap)
 }
@@ -271,6 +272,13 @@ func (e *mockEvents) OnSnapshotWrite(base *Snapshot) error {
 }
 
 func (e *mockEvents) OnRebuiltBaseState() error {
+	return nil
+}
+
+func (e *mockEvents) OnStateMigration(transaction *StateMigrationTransaction) error {
+	if e.OnStateMigrationF != nil {
+		return e.OnStateMigrationF(transaction)
+	}
 	return nil
 }
 

@@ -274,7 +274,8 @@ func (op TestOp) runWithContext(
 		require.NoErrorf(opts.T, err, "got error setting up journaler")
 
 		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot, nil)
-		journalSnapshotManager, err := engine.NewJournalSnapshotManager(journaler, target.Snapshot, secretsManager)
+		journalSnapshotManager, err := engine.NewJournalSnapshotManagerWithVersion(
+			journaler, target.Snapshot, secretsManager, apitype.LatestJournalVersion)
 		require.NoError(opts.T, err)
 
 		combined = &engine.CombinedManager{
@@ -287,11 +288,12 @@ func (op TestOp) runWithContext(
 		pluginManager = NopPluginManager{}
 	}
 	ctx := &engine.Context{
-		Cancel:          cancelCtx,
-		Events:          events,
-		SnapshotManager: combined,
-		BackendClient:   backendClient,
-		PluginManager:   pluginManager,
+		Cancel:                      cancelCtx,
+		Events:                      events,
+		SnapshotManager:             combined,
+		BackendClient:               backendClient,
+		PluginManager:               pluginManager,
+		SnapshotManagerCapabilities: opts.SnapshotManagerCapabilities,
 	}
 
 	updateOpts := opts.Options()
@@ -793,9 +795,11 @@ type TestUpdateOptions struct {
 	// a factory to produce a plugin host for an update operation.
 	HostF deploytest.PluginHostFactory
 	// PluginManager overrides the engine.Context.PluginManager used by the run. Defaults to NopPluginManager{}.
-	PluginManager    engine.PluginManager
-	T                TB
-	SkipDisplayTests bool
+	PluginManager engine.PluginManager
+	// SnapshotManagerCapabilities configures the backend persistence capabilities exposed to preview runs.
+	SnapshotManagerCapabilities engine.SnapshotManagerCapabilities
+	T                           TB
+	SkipDisplayTests            bool
 }
 
 // Options produces UpdateOptions for an update operation.

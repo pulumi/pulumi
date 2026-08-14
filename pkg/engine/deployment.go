@@ -26,8 +26,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
@@ -175,6 +177,9 @@ type deploymentOptions struct {
 	// operation preceding e.g. a refresh or destroy.
 	DryRun bool
 
+	// true if the resource monitor may accept state migration callbacks for this deployment.
+	supportsStateMigrations bool
+
 	// LoadedAnalyzers is populated by loadPolicyPlugins after policy packs are loaded
 	// and configured. This is the list that the step generator will run for policy checks.
 	LoadedAnalyzers []plugin.Analyzer
@@ -205,6 +210,31 @@ func ensureHost(ctx context.Context, opts *deploymentOptions, span opentracing.S
 	return nil
 }
 
+type stateMigrationResourceSerializer struct{}
+
+func (stateMigrationResourceSerializer) Serialize(
+	ctx context.Context, state *pkgresource.State,
+) (apitype.ResourceV3, error) {
+	serialized, _, err := stack.SerializeResource(ctx, state, config.NopEncrypter, true /* showSecrets */)
+	return serialized, err
+}
+
+func (stateMigrationResourceSerializer) Deserialize(state apitype.ResourceV3) (*pkgresource.State, error) {
+	return stack.DeserializeResource(state, config.NopDecrypter)
+}
+
+func supportsStateMigrations(
+	dryRun bool,
+	manager SnapshotManager,
+	capabilities SnapshotManagerCapabilities,
+) bool {
+	if dryRun {
+		// Previews don't have a SnapshotManager, check the backend's capabilities instead.
+		return capabilities.StateMigrations
+	}
+	return manager != nil && manager.SupportsStateMigrations()
+}
+
 // newDeployment creates a new deployment with the given context and options.
 func newDeployment(
 	ctx *Context,
@@ -223,7 +253,7 @@ func newDeployment(
 	projinfo := &Projinfo{Proj: proj, Root: info.Update.Root}
 
 	// Decrypt the configuration.
-	config, err := target.Config.Decrypt(target.Decrypter)
+	decryptedConfig, err := target.Config.Decrypt(target.Decrypter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decrypt config: %w", err)
 	}
@@ -233,7 +263,7 @@ func newDeployment(
 	// Create a context for plugins.
 	baseCtx := trace.ContextWithSpan(ctx.Cancel.Base(), info.otelSpan)
 	pwd, main, plugctx, err := ProjectInfoContext(baseCtx, projinfo, opts.host,
-		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan, config)
+		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan, decryptedConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -255,6 +285,9 @@ func newDeployment(
 	})
 
 	resourceHooks := deploy.NewResourceHooks(plugctx.DialOptions)
+
+	opts.supportsStateMigrations = supportsStateMigrations(
+		opts.DryRun, ctx.SnapshotManager, ctx.SnapshotManagerCapabilities)
 
 	// Now create the state source.  This may issue an error if it can't create the source.  This entails,
 	// for example, loading any plugins which will be required to execute a program, among other things.
@@ -295,6 +328,7 @@ func newDeployment(
 		Autonamer:                 opts.Autonamer,
 		ShowSecrets:               opts.ShowSecrets,
 		Analyzers:                 opts.LoadedAnalyzers,
+		StateMigrationSerializer:  stateMigrationResourceSerializer{},
 	}
 
 	var depl *deploy.Deployment
