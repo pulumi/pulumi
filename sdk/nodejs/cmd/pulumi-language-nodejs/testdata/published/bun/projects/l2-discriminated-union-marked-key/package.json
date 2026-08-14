@@ -1,0 +1,15 @@
+{
+	"name": "l2-discriminated-union-marked-key",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/discriminated-union-marked-key": "ROOT/artifacts/pulumi-discriminated-union-marked-key-53.0.0.tgz"
+	}
+}
