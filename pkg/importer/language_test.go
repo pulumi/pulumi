@@ -474,8 +474,9 @@ func TestGenerateLanguageDefinitionsGeneratesLocalComponents(t *testing.T) {
 
 	resources := []apitype.ResourceV3{
 		{
-			URN:  componentURN,
-			Type: "company:product:CRClass",
+			URN:     componentURN,
+			Type:    "company:product:CRClass",
+			Protect: true,
 		},
 		{
 			URN:      childURN,
@@ -498,6 +499,7 @@ func TestGenerateLanguageDefinitionsGeneratesLocalComponents(t *testing.T) {
 	expectedCode := `resource parentComponent "company:product:CRClass" {
     __logicalName = "example"
 options {
+protect =true
 component = true
 
 }
@@ -522,7 +524,9 @@ parent = parentComponent
 	expectedTypeScript := `import * as pulumi from "@pulumi/pulumi";
 import * as random from "@pulumi/random";
 
-const parentComponent = new pulumi.ComponentResource("company:product:CRClass", "example", {});
+const parentComponent = new pulumi.ComponentResource("company:product:CRClass", "example", {}, {
+    protect: true,
+});
 const randomPet = new random.RandomPet("randomPet", {}, {
     parent: parentComponent,
 });

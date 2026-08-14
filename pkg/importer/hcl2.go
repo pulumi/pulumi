@@ -87,16 +87,14 @@ func isLocalComponent(state *pkgresource.State) bool {
 	return !state.Custom && state.Provider == ""
 }
 
-// makeComponentResourceOptions builds the options block for a local component resource. Only the options that make
-// sense without a schema or a provider are carried over.
-func makeComponentResourceOptions(state *pkgresource.State, names NameTable) *model.Block {
-	options := appendResourceOption(nil, "component", &model.LiteralValueExpression{Value: cty.True})
-	if state.Parent != "" && state.Parent.QualifiedType() != resource.RootStackType {
-		if name, ok := names[state.Parent]; ok {
-			options = appendResourceOption(options, "parent", newVariableReference(name))
-		}
+// makeComponentResourceOptions builds the options block for a local component resource, marking it as a component so
+// that binding and code generation know not to look for a package.
+func makeComponentResourceOptions(state *pkgresource.State, names NameTable) (*model.Block, error) {
+	options, err := makeResourceOptions(state, names, map[string]bool{})
+	if err != nil {
+		return nil, err
 	}
-	return options
+	return appendResourceOption(options, "component", &model.LiteralValueExpression{Value: cty.True}), nil
 }
 
 // GenerateHCL2Definition generates a Pulumi HCL2 definition for a given resource.
@@ -133,7 +131,10 @@ func GenerateHCL2Definition(
 	// provider to look up and no schema to shape their inputs. Emit the type token as written and let code
 	// generation construct the SDK's base ComponentResource with it.
 	if isLocalComponent(state) {
-		options := makeComponentResourceOptions(state, importState.Names)
+		options, err := makeComponentResourceOptions(state, importState.Names)
+		if err != nil {
+			return nil, nil, err
+		}
 		if options != nil {
 			items = append(items, options)
 		}
