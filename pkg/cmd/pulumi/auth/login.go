@@ -217,14 +217,14 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 					oidcOrg, oidcTeam, oidcUser, oidcToken,
 				)
 				if innerErr != nil {
-					return fmt.Errorf("could not log in: %w", innerErr)
+					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
 
 				authContext, innerErr := workspace.NewAuthContextForTokenExchange(
 					resolvedOrg, resolvedTeam, resolvedUser, oidcToken, oidcExpiration,
 				)
 				if innerErr != nil {
-					return fmt.Errorf("could not log in: %w", innerErr)
+					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
 				be, err = lm.LoginFromAuthContext(
 					ctx, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext,

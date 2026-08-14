@@ -597,12 +597,13 @@ func TestLoginErrorMessage(t *testing.T) {
 					color colors.Colorization,
 				) (pkgBackend.Backend, error) {
 					// Mirror how the DIY backend reports a bucket it cannot open: the wrapper
-					// names the URL and the cause is a path error for the resolved location.
+					// names the normalized URL, which carries internal query parameters, and
+					// the cause is a path error for the resolved location.
 					resolved := tt.resolveTo
 					if resolved == "" {
 						resolved = strings.TrimPrefix(url, "file://")
 					}
-					return nil, fmt.Errorf("unable to open bucket %q: %w", url,
+					return nil, fmt.Errorf("unable to open bucket %s: %w", url+"?no_tmp_dir=true",
 						&fs.PathError{Op: "stat", Path: resolved, Err: fs.ErrNotExist})
 				},
 			}

@@ -1,7 +1,0 @@
-component: backend/diy
-kind: improvement
-body: Report the state backend URL as configured when a bucket cannot be opened, instead
-    of an internal normalized form
-time: 2026-08-13T13:30:00Z
-custom:
-    PR: "24322"
