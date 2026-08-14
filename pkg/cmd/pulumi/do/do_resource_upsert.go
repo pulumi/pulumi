@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
 
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
@@ -799,7 +800,12 @@ func DefaultRunStatefulUpdate(
 	}
 
 	ssml := cmdStack.SecretsManagerLoader{FallbackToState: true}
-	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, req.Sink, ssml, req.Stack, req.Proj, "", nil)
+	// Compute the stack config file path from req.Root rather than letting LoadProjectStack walk
+	// upward from CWD — for `pulumi do` we may be running outside any Pulumi project directory
+	// (with req.Proj/req.Root supplied by the global fallback under $PULUMI_HOME).
+	configFile := workspace.ProjectStackPath(
+		filepath.Join(req.Root, workspace.ProjectFile+".yaml"), req.Proj, req.Stack.Ref().Name().Q())
+	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, req.Sink, ssml, req.Stack, req.Proj, configFile, nil)
 	if err != nil {
 		return nil, fmt.Errorf("get stack configuration: %w", err)
 	}

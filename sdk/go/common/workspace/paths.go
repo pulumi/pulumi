@@ -80,13 +80,17 @@ func DetectProjectStackPath(stackName tokens.QName) (*Project, string, error) {
 		return nil, "", err
 	}
 
+	return proj, ProjectStackPath(projPath, proj, stackName), nil
+}
+
+// ProjectStackPath returns the stack-specific Pulumi.<stack-name>.<ext> path for the given project. Use this when the
+// project location is already known (e.g. from a caller-supplied root) so the caller does not have to walk from CWD.
+func ProjectStackPath(projPath string, proj *Project, stackName tokens.QName) string {
 	fileName := fmt.Sprintf("%s.%s%s", ProjectFile, qnameFileName(stackName), filepath.Ext(projPath))
-
 	if proj.StackConfigDir != "" {
-		return proj, filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName), nil
+		return filepath.Join(filepath.Dir(projPath), proj.StackConfigDir, fileName)
 	}
-
-	return proj, filepath.Join(filepath.Dir(projPath), fileName), nil
+	return filepath.Join(filepath.Dir(projPath), fileName)
 }
 
 var (
