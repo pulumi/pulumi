@@ -220,9 +220,8 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	// cmdStack.LoadProjectStack (called via GetStackConfiguration below) walks up
 	// from os.Getwd() to find Pulumi.<stack>.yaml, so we chdir into the project
 	// directory for the duration of the call. The engine itself derives its own
-	// working directory from op.Root and doesn't depend on cwd. Session runs tool
-	// batches on a single worker goroutine — one batch at a time, calls within a
-	// batch serial — so we don't lock here, but os.Chdir is process-global —
+	// working directory from op.Root and doesn't depend on cwd. The Session runs
+	// tool calls serially so we don't lock here, but os.Chdir is process-global —
 	// concurrent callers from outside the Session would race.
 	prevDir, err := os.Getwd()
 	if err != nil {

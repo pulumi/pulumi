@@ -1561,8 +1561,8 @@ func TestSession_RunDoesNotCloseUIEvents(t *testing.T) {
 	})
 }
 
-// probeHandler delegates Invoke to a closure, for tests that need to observe or
-// control the timing and context of tool execution.
+// probeHandler delegates Invoke to a closure so tests can observe or control
+// tool execution.
 type probeHandler struct {
 	invoke func(ctx context.Context) (any, error)
 }
@@ -1573,17 +1573,14 @@ func (h *probeHandler) Invoke(ctx context.Context, _ string, _ json.RawMessage) 
 
 // TestSession_CancelledEventDeliveredWhileLocalToolRuns is a regression test
 // for pulumi/pulumi-service#44059: a cancelled backend event must reach the
-// TUI even while a local tool call is executing. Tool batches run on a worker
-// goroutine so the drain loop keeps reading the SSE stream — a long-running
-// shell or pulumi_up call must not block the cancellation acknowledgement.
+// TUI even while a local tool call is executing.
 func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 	t.Parallel()
 
 	streamer := newFakeStreamer()
 	started := make(chan struct{})
 	release := make(chan struct{})
-	// Deliberately ignores ctx: the point is that events flow even while a tool
-	// keeps running.
+	// Deliberately ignores ctx: events must flow even while a tool keeps running.
 	bh := &probeHandler{invoke: func(_ context.Context) (any, error) {
 		close(started)
 		<-release
@@ -1603,8 +1600,7 @@ func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- s.Run(ctx) }()
 
-	// A final assistant_message dispatching one CLI tool call: the session
-	// starts executing it locally.
+	// An assistant_message dispatching one CLI tool call.
 	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
 		Type:    backendEventAssistantMessage,
 		IsFinal: true,
@@ -1618,13 +1614,12 @@ func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 		t.Fatal("tool handler never started")
 	}
 
-	// The task is cancelled server-side while the local tool is still running.
+	// Cancel server-side while the tool is still running; UICancelled must
+	// reach the TUI without waiting for the tool to finish.
 	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventCancelled{
 		Type: backendEventCancelled,
 	})}
 
-	// UICancelled must reach the TUI promptly, without waiting for the tool
-	// to finish.
 	gotCancelled := func() bool {
 		for {
 			select {
@@ -1651,17 +1646,16 @@ func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 }
 
 // TestSession_CancelledEventCancelsInFlightBatchContext verifies that a
-// server-side cancelled event cancels the running tool's context (so shell
-// kills its process and pulumi does an engine graceful-cancel), that no
+// server-side cancelled event cancels the running tool's context, that no
 // tool_result is posted for the cancelled turn, and that the next turn's
-// batch runs with a fresh, non-cancelled context.
+// batch runs with a fresh context.
 func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 	t.Parallel()
 
 	streamer := newFakeStreamer()
 	started := make(chan struct{})
 	finished := make(chan error, 1)
-	// Blocks until its context is cancelled, reporting the ctx error it observed.
+	// Blocks until its context is cancelled.
 	first := &probeHandler{invoke: func(ctx context.Context) (any, error) {
 		close(started)
 		<-ctx.Done()
@@ -1705,7 +1699,7 @@ func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 		t.Fatal("cancelled event did not cancel the in-flight tool context")
 	}
 
-	// A new turn dispatches another CLI call: it must run with a fresh context.
+	// A new turn's CLI call must run with a fresh context.
 	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
 		Type: backendEventAssistantMessage,
 		ToolCalls: []apitype.AgentBackendEventToolCall{
@@ -1727,8 +1721,8 @@ func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 		t.Fatal("session did not exit")
 	}
 
-	// The cancelled turn posted its exec_tool_call but must not post a
-	// tool_result; the fresh turn posts both.
+	// The cancelled turn posts exec_tool_call but no tool_result; the fresh
+	// turn posts both.
 	streamer.mu.Lock()
 	defer streamer.mu.Unlock()
 	var execNames []string
@@ -1748,8 +1742,8 @@ func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 }
 
 // TestSession_BatchesRunSeriallyAcrossAssistantMessages locks down that tool
-// batches from consecutive assistant messages never run concurrently:
-// tools/pulumi.go's process-global os.Chdir depends on serialized dispatch.
+// batches never run concurrently: tools/pulumi.go's process-global os.Chdir
+// depends on serialized dispatch.
 func TestSession_BatchesRunSeriallyAcrossAssistantMessages(t *testing.T) {
 	t.Parallel()
 
