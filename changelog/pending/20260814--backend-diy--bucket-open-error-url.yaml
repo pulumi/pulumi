@@ -1,0 +1,5 @@
+component: backend/diy
+kind: improvement
+body: Report the state backend URL as configured when a bucket cannot be opened, adding
+    the resolved form only when normalization changed it
+time: 2026-08-14T12:00:00Z

@@ -267,7 +267,7 @@ func newDIYBackend(
 
 	bucket, err := blobmux.OpenBucket(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to open bucket %s: %w", u, err)
+		return nil, fmt.Errorf("unable to open bucket %s: %w", describeBucketURL(originalURL, u, err), err)
 	}
 
 	if !strings.HasPrefix(u, FilePathPrefix) {
@@ -554,6 +554,41 @@ func (b *diyBackend) upgradeStack(
 	}
 
 	return nil
+}
+
+// describeBucketURL names the bucket we tried to open, for use in an error message. It
+// reports the URL as the user configured it, and adds the normalized form we actually
+// handed to go-cloud when normalization changed something the user did not write: a `~`
+// or relative path that resolved elsewhere, or legacy S3 parameters that were translated.
+// The `no_tmp_dir` parameter is excluded from that comparison, since massageBlobPath adds
+// it to every file:// URL and it says nothing about why the open failed. Some go-cloud
+// errors (the S3 ones) already quote the normalized URL, so cause is checked to avoid
+// printing it twice; if that ever stops being true we simply report it ourselves.
+func describeBucketURL(originalURL, normalized string, cause error) string {
+	resolved := withoutInjectedNoTmpDir(originalURL, normalized)
+	if resolved == originalURL || strings.Contains(cause.Error(), resolved) {
+		return fmt.Sprintf("%q", originalURL)
+	}
+	return fmt.Sprintf("%q (resolved to %q)", originalURL, resolved)
+}
+
+// withoutInjectedNoTmpDir strips the no_tmp_dir parameter that massageBlobPath adds, unless
+// the user set it themselves, in which case it is theirs to see.
+func withoutInjectedNoTmpDir(originalURL, normalized string) string {
+	if strings.Contains(originalURL, "no_tmp_dir") {
+		return normalized
+	}
+	u, err := url.Parse(normalized)
+	if err != nil {
+		return normalized
+	}
+	query := u.Query()
+	if query.Get("no_tmp_dir") == "" {
+		return normalized
+	}
+	query.Del("no_tmp_dir")
+	u.RawQuery = query.Encode()
+	return u.String()
 }
 
 // massageBlobPath takes the path the user provided and converts it to an appropriate form go-cloud
