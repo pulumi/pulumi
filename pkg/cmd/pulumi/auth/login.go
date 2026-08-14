@@ -338,11 +338,12 @@ func backendSourceHint(source pkgWorkspace.CloudURLSource, cwd string) string {
 	return ""
 }
 
-// unwrapBucketOpenError strips the DIY backend's bucket-open wrapper (see the "unable to
-// open bucket" error in pkg/backend/diy/backend.go), which repeats a URL we already name
-// ourselves.
+// unwrapBucketOpenError strips the DIY backend's open wrapper (see the "unable to open"
+// errors in pkg/backend/diy/backend.go), which repeats a URL we already name ourselves.
+// The noun varies with the backend scheme — bucket, state directory, state database — so
+// only the part common to all of them is matched.
 func unwrapBucketOpenError(err error, cloudURL string) error {
-	if !strings.HasPrefix(err.Error(), "unable to open bucket ") {
+	if !strings.HasPrefix(err.Error(), "unable to open ") {
 		return err
 	}
 	cause := errors.Unwrap(err)

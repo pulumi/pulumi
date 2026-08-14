@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -624,6 +625,60 @@ func TestLoginErrorMessage(t *testing.T) {
 			}
 			// The normalized URL and its internal query parameters are noise.
 			require.NotContains(t, err.Error(), "no_tmp_dir")
+		})
+	}
+}
+
+// TestUnwrapBucketOpenError checks that the DIY backend's wrapper is stripped whichever
+// noun it used for the backend scheme, since login names the URL itself.
+func TestUnwrapBucketOpenError(t *testing.T) {
+	t.Parallel()
+
+	notExist := &fs.PathError{Op: "stat", Path: "/srv/state", Err: fs.ErrNotExist}
+
+	tests := []struct {
+		name     string
+		err      error
+		cloudURL string
+		expected string
+	}{
+		{
+			name:     "bucket wrapper is stripped",
+			err:      fmt.Errorf("unable to open bucket %q: %w", "s3://state", notExist),
+			cloudURL: "file:///srv/state",
+			expected: "file does not exist",
+		},
+		{
+			name:     "state directory wrapper is stripped",
+			err:      fmt.Errorf("unable to open state directory %q: %w", "file:///srv/state", notExist),
+			cloudURL: "file:///srv/state",
+			expected: "file does not exist",
+		},
+		{
+			name:     "state database wrapper is stripped",
+			err:      fmt.Errorf("unable to open state database %q: %w", "postgres://db", errors.New("no route to host")),
+			cloudURL: "postgres://db",
+			expected: "no route to host",
+		},
+		{
+			name:     "a resolved path that the URL does not name is kept",
+			err:      fmt.Errorf("unable to open state directory %q: %w", "file://~/state", notExist),
+			cloudURL: "file://~/state",
+			expected: "stat /srv/state: file does not exist",
+		},
+		{
+			name:     "an unrelated error is left alone",
+			err:      errors.New("could not read access token"),
+			cloudURL: "https://api.pulumi.com",
+			expected: "could not read access token",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, unwrapBucketOpenError(tt.err, tt.cloudURL).Error())
 		})
 	}
 }
