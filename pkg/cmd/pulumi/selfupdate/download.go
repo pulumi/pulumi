@@ -127,11 +127,15 @@ func findChecksum(contents, artifact string) (string, error) {
 }
 
 // downloadVerified downloads artifact for the given version into dir and checks it against the published checksum.
+// A partially downloaded archive left in dir by an earlier run is resumed rather than fetched again.
 func downloadVerified(ctx context.Context, v semver.Version, artifact, dir string) (string, error) {
 	want, err := fetchChecksum(ctx, v, artifact)
 	if err != nil {
 		return "", err
 	}
+
+	// Only one archive is ever worth keeping, so anything left over for another version is dropped.
+	pruneDownloads(dir, artifact)
 
 	dest := filepath.Join(dir, artifact)
 	urls := []string{
@@ -162,30 +166,74 @@ func downloadVerified(ctx context.Context, v semver.Version, artifact, dir strin
 	return dest, nil
 }
 
-func downloadTo(ctx context.Context, url, dest string) error {
-	body, err := get(ctx, url)
+// pruneDownloads removes archives in dir other than keep, so an abandoned download cannot accumulate.
+func pruneDownloads(dir, keep string) {
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return err
+		return
 	}
-	defer contract.IgnoreClose(body)
+	for _, entry := range entries {
+		if !entry.IsDir() && entry.Name() != keep {
+			_ = os.Remove(filepath.Join(dir, entry.Name()))
+		}
+	}
+}
 
-	f, err := os.Create(dest)
+// downloadTo fetches url into dest, continuing from whatever is already there. Anything it writes is checked
+// against the published checksum afterwards, so a partial file that turns out to be unusable is caught there
+// rather than trusted here.
+func downloadTo(ctx context.Context, url, dest string) error {
+	f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		return err
 	}
 	defer contract.IgnoreClose(f)
 
-	_, err = io.Copy(f, body)
+	have, err := f.Seek(0, io.SeekEnd)
+	if err != nil {
+		return err
+	}
+
+	resp, err := request(ctx, url, have)
+	if err != nil {
+		return err
+	}
+	defer contract.IgnoreClose(resp.Body)
+
+	switch resp.StatusCode {
+	case http.StatusPartialContent:
+		// The server is sending the remainder, which appends onto what is already on disk.
+	case http.StatusOK:
+		// Range was ignored, or there was nothing to resume, so the response is the whole archive.
+		if err := f.Truncate(0); err != nil {
+			return err
+		}
+	case http.StatusRequestedRangeNotSatisfiable:
+		// Nothing left to fetch. Either the archive is complete or the local copy is too long, and the checksum
+		// decides which.
+		return nil
+	default:
+		return fmt.Errorf("GET %s returned %s", url, resp.Status)
+	}
+
+	_, err = io.Copy(f, resp.Body)
 	return err
 }
 
-func get(ctx context.Context, url string) (io.ReadCloser, error) {
+// request performs a GET, asking for everything from the given offset when resuming a download.
+func request(ctx context.Context, url string, from int64) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
+	if from > 0 {
+		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", from))
+	}
+	return httputil.DoWithRetry(req, http.DefaultClient)
+}
 
-	resp, err := httputil.DoWithRetry(req, http.DefaultClient)
+func get(ctx context.Context, url string) (io.ReadCloser, error) {
+	resp, err := request(ctx, url, 0)
 	if err != nil {
 		return nil, err
 	}

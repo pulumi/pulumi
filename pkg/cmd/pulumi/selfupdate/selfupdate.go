@@ -104,7 +104,8 @@ func update(
 
 	// Stage alongside the install directory so that the binaries can be moved into place with a rename rather than
 	// a copy, which keeps the swap quick and avoids a partially written executable.
-	staging, err := os.MkdirTemp(filepath.Dir(installDir), stagingPrefix+"*")
+	parent := filepath.Dir(installDir)
+	staging, err := os.MkdirTemp(parent, stagingPrefix+"*")
 	if err != nil {
 		return fmt.Errorf("could not create a staging directory: %w", err)
 	}
@@ -112,9 +113,16 @@ func update(
 		_ = os.RemoveAll(staging)
 	}()
 
+	// The archive is kept outside the staging directory, which is discarded when this run ends, so that an
+	// interrupted download is still on disk to resume from next time.
+	downloads := filepath.Join(parent, downloadDirName)
+	if err := os.MkdirAll(downloads, 0o700); err != nil {
+		return fmt.Errorf("could not create a download directory: %w", err)
+	}
+
 	fmt.Fprintf(out, "Updating Pulumi v%s to v%s...\n", current, target)
 
-	downloaded, err := downloadVerified(ctx, target, artifact, staging)
+	downloaded, err := downloadVerified(ctx, target, artifact, downloads)
 	if err != nil {
 		return err
 	}
@@ -127,6 +135,10 @@ func update(
 	if err := swapIn(staged, installDir); err != nil {
 		return err
 	}
+
+	// The archive has served its purpose, so there is nothing left to resume.
+	_ = os.Remove(downloaded)
+	_ = os.Remove(downloads)
 
 	fmt.Fprintf(out, "Pulumi is now at v%s.\n", target)
 	return nil

@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
@@ -41,6 +42,10 @@ type release struct {
 	corruptChecksum bool
 	// omitFromGitHub forces the download to fall back to the secondary host.
 	omitFromGitHub bool
+	// ignoreRange answers the whole archive even when a range was asked for, as some mirrors do.
+	ignoreRange bool
+	// ranges collects the Range headers the server was sent.
+	ranges *[]string
 }
 
 func serveRelease(t *testing.T, r release) {
@@ -60,17 +65,28 @@ func serveRelease(t *testing.T, r release) {
 		func(w http.ResponseWriter, _ *http.Request) {
 			fmt.Fprintf(w, "%s  %s\n", digest, r.artifact)
 		})
+	// http.ServeContent answers Range requests, which is what makes an interrupted download resumable.
+	serve := func(w http.ResponseWriter, req *http.Request) {
+		if got := req.Header.Get("Range"); got != "" && r.ranges != nil {
+			*r.ranges = append(*r.ranges, got)
+		}
+		http.ServeContent(w, req, r.artifact, time.Time{}, bytes.NewReader(r.archive))
+	}
+
 	mux.HandleFunc(fmt.Sprintf("/releases/v%s/%s", r.version, r.artifact),
-		func(w http.ResponseWriter, _ *http.Request) {
+		func(w http.ResponseWriter, req *http.Request) {
 			if r.omitFromGitHub {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			_, _ = w.Write(r.archive)
+			if r.ignoreRange {
+				// Some mirrors answer the whole body regardless of what was asked for.
+				_, _ = w.Write(r.archive)
+				return
+			}
+			serve(w, req)
 		})
-	mux.HandleFunc("/cdn/"+r.artifact, func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write(r.archive)
-	})
+	mux.HandleFunc("/cdn/"+r.artifact, serve)
 
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -252,6 +268,113 @@ func TestUpdateReportsAVersionThatWasNeverPublished(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "could not fetch checksums for v9.99.9")
+}
+
+// partialDownload writes the first n bytes of the release archive where the next run will look for it, standing in
+// for a download that was interrupted.
+func partialDownload(t *testing.T, installDir string, r release, n int) string {
+	t.Helper()
+
+	dir := filepath.Join(filepath.Dir(installDir), downloadDirName)
+	require.NoError(t, os.MkdirAll(dir, 0o700))
+	path := filepath.Join(dir, r.artifact)
+	require.NoError(t, os.WriteFile(path, r.archive[:n], 0o600))
+	return path
+}
+
+//nolint:paralleltest // serveRelease repoints package level URLs, so these cannot run alongside each other
+func TestUpdateResumesAnInterruptedDownload(t *testing.T) {
+	target := semver.MustParse("3.257.0")
+	r := newRelease(t, target, "new")
+	var ranges []string
+	r.ranges = &ranges
+	serveRelease(t, r)
+
+	install := bundle(t, "old")
+	have := len(r.archive) / 2
+	partialDownload(t, install, r, have)
+
+	err := update(t.Context(), new(bytes.Buffer), install, semver.MustParse("3.200.0"), "", false)
+
+	require.NoError(t, err)
+	// Only the part that was missing should have been requested.
+	require.Len(t, ranges, 1)
+	assert.Equal(t, fmt.Sprintf("bytes=%d-", have), ranges[0])
+
+	contents, err := os.ReadFile(filepath.Join(install, "pulumi"))
+	require.NoError(t, err)
+	assert.Equal(t, "new pulumi", string(contents))
+}
+
+//nolint:paralleltest // serveRelease repoints package level URLs, so these cannot run alongside each other
+func TestUpdateStartsOverWhenTheServerIgnoresTheRange(t *testing.T) {
+	target := semver.MustParse("3.257.0")
+	r := newRelease(t, target, "new")
+	r.ignoreRange = true
+	serveRelease(t, r)
+
+	install := bundle(t, "old")
+	partialDownload(t, install, r, len(r.archive)/2)
+
+	// Appending a whole archive onto a partial one would corrupt it, so the file has to be truncated first.
+	err := update(t.Context(), new(bytes.Buffer), install, semver.MustParse("3.200.0"), "", false)
+
+	require.NoError(t, err)
+	contents, err := os.ReadFile(filepath.Join(install, "pulumi"))
+	require.NoError(t, err)
+	assert.Equal(t, "new pulumi", string(contents))
+}
+
+//nolint:paralleltest // serveRelease repoints package level URLs, so these cannot run alongside each other
+func TestUpdateDiscardsAPartialDownloadThatDoesNotVerify(t *testing.T) {
+	target := semver.MustParse("3.257.0")
+	r := newRelease(t, target, "new")
+	serveRelease(t, r)
+
+	install := bundle(t, "old")
+	// A partial file holding the wrong bytes resumes into an archive that cannot match the published checksum.
+	path := partialDownload(t, install, r, len(r.archive)/2)
+	require.NoError(t, os.WriteFile(path, bytes.Repeat([]byte("x"), len(r.archive)/2), 0o600))
+
+	err := update(t.Context(), new(bytes.Buffer), install, semver.MustParse("3.200.0"), "", false)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "checksum mismatch")
+	// The bad archive must not be left behind for the next run to resume from.
+	assert.NoFileExists(t, path)
+}
+
+//nolint:paralleltest // serveRelease repoints package level URLs, so these cannot run alongside each other
+func TestUpdateDropsADownloadForAnotherVersion(t *testing.T) {
+	target := semver.MustParse("3.257.0")
+	r := newRelease(t, target, "new")
+	serveRelease(t, r)
+
+	install := bundle(t, "old")
+	downloads := filepath.Join(filepath.Dir(install), downloadDirName)
+	require.NoError(t, os.MkdirAll(downloads, 0o700))
+	stale := filepath.Join(downloads, "pulumi-v3.100.0-linux-x64.tar.gz")
+	require.NoError(t, os.WriteFile(stale, []byte("abandoned"), 0o600))
+
+	err := update(t.Context(), new(bytes.Buffer), install, semver.MustParse("3.200.0"), "", false)
+
+	require.NoError(t, err)
+	assert.NoFileExists(t, stale)
+}
+
+//nolint:paralleltest // serveRelease repoints package level URLs, so these cannot run alongside each other
+func TestUpdateRemovesTheArchiveOnceInstalled(t *testing.T) {
+	target := semver.MustParse("3.257.0")
+	r := newRelease(t, target, "new")
+	serveRelease(t, r)
+
+	install := bundle(t, "old")
+
+	err := update(t.Context(), new(bytes.Buffer), install, semver.MustParse("3.200.0"), "", false)
+
+	require.NoError(t, err)
+	// Nothing is left to resume, so the archive and its directory should be gone.
+	assert.NoDirExists(t, filepath.Join(filepath.Dir(install), downloadDirName))
 }
 
 func TestNewSelfUpdateCmdAcceptsItsFlags(t *testing.T) {

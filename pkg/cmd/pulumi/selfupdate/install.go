@@ -27,9 +27,13 @@ import (
 // binary is renamed out of the way and cleaned up by a later run instead.
 const staleSuffix = ".pulumi-old"
 
-// stagingPrefix names the directory an update downloads and unpacks into. Windows can hold a handle to a freshly
-// written executable for a moment, which makes removing that directory fail, so leftovers are swept by a later run.
+// stagingPrefix names the directory an update unpacks into. Windows can hold a handle to a freshly written
+// executable for a moment, which makes removing that directory fail, so leftovers are swept by a later run.
 const stagingPrefix = ".pulumi-update-"
+
+// downloadDirName holds the archive while it is being fetched. It outlives a run, unlike the staging directory, so
+// that a download interrupted part way through can be resumed rather than started again.
+const downloadDirName = ".pulumi-download"
 
 // managedPathMarkers are path segments belonging to package managers that own their own copy of the CLI. Updating
 // underneath one leaves the manager's metadata describing a version that is no longer on disk.
