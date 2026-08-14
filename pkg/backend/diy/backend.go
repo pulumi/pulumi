@@ -35,10 +35,10 @@ import (
 	"github.com/gofrs/uuid"
 
 	"gocloud.dev/blob"
-	_ "gocloud.dev/blob/azureblob" // driver for azblob://
-	_ "gocloud.dev/blob/fileblob"  // driver for file://
-	"gocloud.dev/blob/gcsblob"     // driver for gs://
-	_ "gocloud.dev/blob/s3blob"    // driver for s3://
+	"gocloud.dev/blob/azureblob"  // driver for azblob://
+	_ "gocloud.dev/blob/fileblob" // driver for file://
+	"gocloud.dev/blob/gcsblob"    // driver for gs://
+	_ "gocloud.dev/blob/s3blob"   // driver for s3://
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v3/authhelpers"
@@ -263,6 +263,19 @@ func newDIYBackend(
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// go-cloud's default azblob opener refuses to open buckets when
+	// AZURE_STORAGE_SAS_TOKEN is set and the URL overrides the service
+	// endpoint, e.g. via the storage_account query parameter. The backend URL
+	// is provided by the user at login rather than an untrusted source, so use
+	// a custom opener without that restriction to keep such URLs working.
+	if p.Scheme == azureblob.Scheme {
+		blobmux = &blob.URLMux{}
+		blobmux.RegisterBucket(azureblob.Scheme, &azureblob.URLOpener{
+			MakeClient:        azureblob.NewDefaultClient,
+			ServiceURLOptions: *azureblob.NewDefaultServiceURLOptions(),
+		})
 	}
 
 	bucket, err := blobmux.OpenBucket(ctx, u)
