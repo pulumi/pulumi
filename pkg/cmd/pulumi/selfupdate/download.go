@@ -183,7 +183,9 @@ func pruneDownloads(dir, keep string) {
 // against the published checksum afterwards, so a partial file that turns out to be unusable is caught there
 // rather than trusted here.
 func downloadTo(ctx context.Context, url, dest string) error {
-	f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	// Opened without O_APPEND, which on Windows withholds the write access that truncating the file needs, and
+	// seeking to the end instead leaves the handle positioned to carry on from what is already there.
+	f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return err
 	}
@@ -206,6 +208,9 @@ func downloadTo(ctx context.Context, url, dest string) error {
 	case http.StatusOK:
 		// Range was ignored, or there was nothing to resume, so the response is the whole archive.
 		if err := f.Truncate(0); err != nil {
+			return err
+		}
+		if _, err := f.Seek(0, io.SeekStart); err != nil {
 			return err
 		}
 	case http.StatusRequestedRangeNotSatisfiable:
