@@ -148,9 +148,9 @@ func runDeploymentSettingsGet(
 
 type deploymentSettingsGetRenderFunc func(w io.Writer, settings apitype.DeploymentSettings) error
 
-// deploymentSettingsView is the shared shape for both text and JSON output. Secret material (env
-// var values, git and Mercurial credentials) is never surfaced; authentication is reported as a
-// mode only.
+// deploymentSettingsView is the shared shape for both text and JSON output, and carries no secret
+// material: an environment variable the service marks secret loses its value, and credentials
+// survive only as an authentication mode or a presence flag.
 type deploymentSettingsView struct {
 	Tag                  string              `json:"tag,omitempty"`
 	Version              int                 `json:"version,omitempty"`

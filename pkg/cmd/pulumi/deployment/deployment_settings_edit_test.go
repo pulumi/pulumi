@@ -142,6 +142,7 @@ Pre-run commands
   echo hi
 
 Environment variables
+  API_KEY:                       [secret]
   BAZ:                           qux
   FOO:                           bar
 `, buf.String())
@@ -177,6 +178,7 @@ func TestDeploymentSettingsEdit_JSONOutput(t *testing.T) {
 		},
 		"preRunCommands": ["echo hi"],
 		"environmentVariables": [
+			{"name": "API_KEY", "secret": true},
 			{"name": "BAZ", "value": "qux"},
 			{"name": "FOO", "value": "bar"}
 		]

@@ -88,8 +88,9 @@ func sampleDeploymentSettings() *apitype.DeploymentSettings {
 			Operation:      apitype.Update,
 			PreRunCommands: []string{"echo hi"},
 			EnvironmentVariables: map[string]apitype.SecretValue{
-				"FOO": {Value: "bar"},
-				"BAZ": {Value: "qux"},
+				"FOO":     {Value: "bar"},
+				"BAZ":     {Value: "qux"},
+				"API_KEY": {Value: "s3cret", Secret: true},
 			},
 		},
 		AgentPoolID: &agentPool,
@@ -123,6 +124,7 @@ Pre-run commands
   echo hi
 
 Environment variables
+  API_KEY:                       [secret]
   BAZ:                           qux
   FOO:                           bar
 `, buf.String())
@@ -168,6 +170,7 @@ func TestDeploymentSettingsGet_JSONOutput(t *testing.T) {
 		},
 		"preRunCommands": ["echo hi"],
 		"environmentVariables": [
+			{"name": "API_KEY", "secret": true},
 			{"name": "BAZ", "value": "qux"},
 			{"name": "FOO", "value": "bar"}
 		]
@@ -220,6 +223,8 @@ func TestDeploymentSettingsGet_RichSections(t *testing.T) {
 
 	thirtyMin, err := time.ParseDuration("30m")
 	require.NoError(t, err)
+	fifteenMin, err := time.ParseDuration("15m")
+	require.NoError(t, err)
 	settings := &apitype.DeploymentSettings{
 		Tag: "rev-42",
 		Operation: &apitype.OperationContext{
@@ -231,24 +236,31 @@ func TestDeploymentSettingsGet_RichSections(t *testing.T) {
 					Duration:    apitype.DeploymentDuration(thirtyMin),
 					PolicyARNs:  []string{"arn:aws:iam::aws:policy/ReadOnlyAccess"},
 				},
+				Azure: &apitype.OperationContextAzureOIDCConfiguration{
+					ClientID:       "client-1",
+					TenantID:       "tenant-1",
+					SubscriptionID: "sub-1",
+				},
 				GCP: &apitype.OperationContextGCPOIDCConfiguration{
 					ProjectID:      "123456",
 					WorkloadPoolID: "pulumi-pool",
 					ProviderID:     "pulumi",
 					ServiceAccount: "pulumi@my-project.iam.gserviceaccount.com",
+					Region:         "us-central1",
+					TokenLifetime:  apitype.DeploymentDuration(fifteenMin),
 				},
 			},
 			Options: &apitype.OperationContextOptions{
-				SkipInstallDependencies: true,
-				Shell:                   "bash",
+				SkipInstallDependencies:     true,
+				SkipIntermediateDeployments: true,
+				Shell:                       "bash",
+				DeleteAfterDestroy:          true,
+				RemediateIfDriftDetected:    true,
 			},
 		},
 	}
 
-	var buf bytes.Buffer
-	c := &mockDeploymentSettingsGetClient{resp: settings}
-	require.NoError(t, runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c),
-		deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()}))
+	text, jsonOut := renderBoth(t, settings)
 
 	assert.Equal(t, `Tag:                             rev-42
 
@@ -258,16 +270,57 @@ OIDC
     Session name:                pulumi-deploy
     Session duration:            30m0s
     Policy ARNs:                 arn:aws:iam::aws:policy/ReadOnlyAccess
+  Azure
+    Client ID:                   client-1
+    Tenant ID:                   tenant-1
+    Subscription ID:             sub-1
   GCP
     Project number:              123456
     Workload pool:               pulumi-pool
     Provider:                    pulumi
     Service account:             pulumi@my-project.iam.gserviceaccount.com
+    Region:                      us-central1
+    Token lifetime:              15m0s
 
 Advanced
   Skip install dependencies:     yes
+  Skip intermediate deployments: yes
   Shell:                         bash
-`, buf.String())
+  Delete after destroy:          yes
+  Remediate on drift:            yes
+`, text)
+
+	assert.JSONEq(t, `{
+		"tag": "rev-42",
+		"oidc": {
+			"aws": {
+				"roleArn": "arn:aws:iam::123:role/pulumi-deploy",
+				"sessionName": "pulumi-deploy",
+				"sessionDuration": "30m0s",
+				"policyArns": ["arn:aws:iam::aws:policy/ReadOnlyAccess"]
+			},
+			"azure": {
+				"clientId": "client-1",
+				"tenantId": "tenant-1",
+				"subscriptionId": "sub-1"
+			},
+			"gcp": {
+				"projectNumber": "123456",
+				"workloadPoolId": "pulumi-pool",
+				"providerId": "pulumi",
+				"serviceAccount": "pulumi@my-project.iam.gserviceaccount.com",
+				"region": "us-central1",
+				"tokenLifetime": "15m0s"
+			}
+		},
+		"advanced": {
+			"skipInstallDependencies": true,
+			"skipIntermediateDeployments": true,
+			"shell": "bash",
+			"deleteAfterDestroy": true,
+			"remediateIfDriftDetected": true
+		}
+	}`, jsonOut)
 }
 
 // renderBoth runs the same settings through the text and JSON renderers.
