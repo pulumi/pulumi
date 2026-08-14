@@ -16,10 +16,14 @@
 
 package securestore
 
-// platformCandidates returns Windows backends: the Credential Manager holding
-// the raw key. TPM-wrapped tiers follow in a separate change.
-func platformCandidates(_ bool, _ string) []backendImpl {
+// platformCandidates returns Windows backends in preference order: the
+// Credential Manager holding a TPM-wrapped blob where a TPM is present, the
+// Credential Manager with the raw key otherwise, and a TPM-sealed file when
+// a TPM exists but the credential store is unusable (e.g. SSH sessions).
+func platformCandidates(_ bool, pulumiHome string) []backendImpl {
 	return []backendImpl{
+		{id: BackendWindowsCredManTPM, store: newKeyringStore(nil), wrap: tpmWrapper{}},
 		{id: BackendWindowsCredMan, store: newKeyringStore(nil), wrap: rawWrapper{}},
+		{id: BackendTPMFile, store: newTPMFileStore(pulumiHome), wrap: tpmWrapper{}},
 	}
 }

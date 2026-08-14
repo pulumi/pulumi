@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Show secrets in diff display when `--show-secrets` is passed
-time: 2026-08-10T17:47:51.923659813+02:00

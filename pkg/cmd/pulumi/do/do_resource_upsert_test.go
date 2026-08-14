@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -374,13 +375,16 @@ func TestDoCmdResourceUpsertConvertsReferences(t *testing.T) {
 			) {
 				assert.Equal(t, "upsert.yaml", filepath.Base(req.Filename))
 				assert.Equal(t, "name: ${source-name.name}\n", string(req.Source))
-				require.Len(t, req.Resources, 1)
+				require.Len(t, req.Resources, 2)
 				ref := req.Resources["source-name"]
 				assert.Equal(t, "azure:index:myResource", ref.Token)
 				require.NotNil(t, ref.Package)
 				assert.Equal(t, "azure", ref.Package.Package)
 				assert.Equal(t, "1.2.3", ref.Package.Version)
 				assert.Equal(t, "https://example.com/azure", ref.Package.DownloadUrl)
+				autoName := autonames.AvailableHashedIdent("source", referencedURN, nil)
+				assert.Equal(t, req.Resources["source-name"], req.Resources[autoName],
+					"auto-assigned identifier should describe the same resource")
 				return &plugin.ConvertSnippetResponse{
 					Filename: "upsert.pp",
 					Source:   []byte("name = sourceName.name\n"),
@@ -507,6 +511,110 @@ func TestDoCmdResourceUpsertReusesExistingSnippet(t *testing.T) {
 	assert.Equal(t, `name = "new"`, got.Snippets[len(got.Snippets)-1].Code,
 		"code should be replaced with the new file contents")
 	assert.Contains(t, stdout.String(), "Updated myres")
+	_ = stderr
+}
+
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourcePatchMergesAndFiltersReferences(t *testing.T) {
+	oldURN := resource.URN("urn:pulumi:dev::proj::azure:index:myResource::old")
+	newURN := resource.URN("urn:pulumi:dev::proj::azure:index:myResource::new")
+	existing := resource.Snippet{
+		UUID: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+		Name: "myres", Type: "azure:index:myResource",
+		Code:       "name = old.name\nsize = 1\n",
+		Descriptor: resource.PackageDescriptor{Name: "azure"},
+		References: map[string]string{
+			"old": string(oldURN),
+		},
+	}
+	snapshot := &deploy.Snapshot{
+		Resources: []*pkgresource.State{
+			{Type: oldURN.Type(), URN: oldURN, Custom: true, ID: "old-id"},
+			{Type: newURN.Type(), URN: newURN, Custom: true, ID: "new-id"},
+		},
+		Snippets: []resource.Snippet{existing},
+	}
+	mws, mlm := installMockUpsertBackend(t, snapshot)
+
+	var got StatefulUpdateRequest
+	stub := func(_ context.Context, _ *pflag.FlagSet, req StatefulUpdateRequest,
+	) (*StatefulUpdateResult, error) {
+		got = req
+		return &StatefulUpdateResult{SnippetUUIDs: []string{req.Snippets[len(req.Snippets)-1].UUID}}, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "patch.pcl", `name = new.name`)
+	resourcesFile := writeHCLFile(t, "resources.json", `{"new":"`+string(newURN)+`"}`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "patch", "myres", "--yes",
+		"--input", "pcl", "--input-file", inputFile, "--resources-file", resourcesFile,
+	})
+	require.NoError(t, cmd.Execute())
+
+	require.Len(t, got.Snippets, 1)
+	patched := got.Snippets[0]
+	assert.Equal(t, existing.UUID, patched.UUID)
+	assert.Contains(t, patched.Code, "name = new.name")
+	assert.Contains(t, patched.Code, "size = 1")
+	assert.Equal(t, map[string]string{"new": string(newURN)}, patched.References)
+	_ = stdout
+	_ = stderr
+}
+
+//nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
+func TestDoCmdResourcePatchRejectsReferenceRemapConflict(t *testing.T) {
+	oldURN := resource.URN("urn:pulumi:dev::proj::azure:index:myResource::old")
+	newURN := resource.URN("urn:pulumi:dev::proj::azure:index:myResource::new")
+	existing := resource.Snippet{
+		UUID: "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+		Name: "myres", Type: "azure:index:myResource",
+		Code:       "name = hi.name\n",
+		Descriptor: resource.PackageDescriptor{Name: "azure"},
+		References: map[string]string{
+			"hi": string(oldURN),
+		},
+	}
+	snapshot := &deploy.Snapshot{
+		Resources: []*pkgresource.State{
+			{Type: oldURN.Type(), URN: oldURN, Custom: true, ID: "old-id"},
+			{Type: newURN.Type(), URN: newURN, Custom: true, ID: "new-id"},
+		},
+		Snippets: []resource.Snippet{existing},
+	}
+	mws, mlm := installMockUpsertBackend(t, snapshot)
+
+	stub := func(context.Context, *pflag.FlagSet, StatefulUpdateRequest) (*StatefulUpdateResult, error) {
+		require.Fail(t, "conflicting patch references must not run an update")
+		return nil, nil
+	}
+	loader := func(_ context.Context, _ *plugin.Context, _, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		return &testProvider{spec: doResourceSpec(false)}, nil
+	}
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, stub)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+
+	inputFile := writeHCLFile(t, "patch.pcl", `name = hi.name`)
+	resourcesFile := writeHCLFile(t, "resources.json", `{"hi":"`+string(newURN)+`"}`)
+	cmd.SetArgs([]string{
+		"azure:index:myResource", "patch", "myres", "--yes",
+		"--input", "pcl", "--input-file", inputFile, "--resources-file", resourcesFile,
+	})
+	err := cmd.Execute()
+	require.ErrorContains(t, err, `resource reference "hi" already points to`)
+	require.ErrorContains(t, err, string(oldURN))
+	require.ErrorContains(t, err, string(newURN))
+	_ = stdout
 	_ = stderr
 }
 

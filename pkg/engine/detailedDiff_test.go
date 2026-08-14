@@ -801,3 +801,39 @@ func TestTranslateDetailedDiff(t *testing.T) {
 		})
 	}
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/23067: a detailed diff may name a property that the
+// engine has no value for, and rendering the missing value as a null misreports what is being added.
+func TestTranslateDetailedDiffAbsentValue(t *testing.T) {
+	t.Parallel()
+
+	oldOutputs := resource.PropertyMap{"forceDestroy": resource.NewNullProperty()}
+	newInputs := resource.PropertyMap{}
+
+	diff, _ := TranslateDetailedDiff(&StepEventMetadata{
+		Old:          &StepEventStateMetadata{Inputs: resource.PropertyMap{}, Outputs: oldOutputs},
+		New:          &StepEventStateMetadata{Inputs: newInputs},
+		DetailedDiff: map[string]plugin.PropertyDiff{"forceDestroy": {Kind: plugin.DiffAdd}},
+	}, false)
+
+	assert.Equal(t, resource.PropertyMap{
+		"forceDestroy": resource.MakeComputed(resource.NewProperty("")),
+	}, diff.Adds)
+}
+
+// Refresh diffs are computed over inputs, so the new value must be read from the new inputs rather than the new
+// outputs.
+func TestTranslateDetailedDiffRefreshInputDiff(t *testing.T) {
+	t.Parallel()
+
+	diff, _ := TranslateDetailedDiff(&StepEventMetadata{
+		Old: &StepEventStateMetadata{Inputs: resource.PropertyMap{}, Outputs: resource.PropertyMap{}},
+		New: &StepEventStateMetadata{
+			Inputs:  resource.PropertyMap{"oof": resource.NewProperty("rab")},
+			Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")},
+		},
+		DetailedDiff: map[string]plugin.PropertyDiff{"oof": {Kind: plugin.DiffAdd, InputDiff: true}},
+	}, true /* refresh */)
+
+	assert.Equal(t, resource.PropertyMap{"oof": resource.NewProperty("rab")}, diff.Adds)
+}

@@ -1614,6 +1614,12 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 			b, err := New(ctx, diagtest.LogSink(t), server.URL, nil, false)
 			require.NoError(t, err)
 
+			// New spawns goroutines that may log to the test's diag sink;
+			// wait for them before the test finishes.
+			cb := b.(*cloudBackend)
+			_, _ = cb.capabilities.Result(ctx)
+			_, _ = cb.userInfo.Result(ctx)
+
 			org, err := b.GetDefaultOrg(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedOrg, org)

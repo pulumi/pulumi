@@ -114,6 +114,11 @@ func formatPluginsJSON(w io.Writer, plugins []workspace.PluginInfo) error {
 		if plugin.Version != nil {
 			version = plugin.Version.String()
 		}
+		// Read times before Size: computing the size walks the plugin directory, which
+		// updates the directory access time LastUsedTime may fall back to.
+		installTime := plugin.InstallTime()
+		lastUsedTime := plugin.LastUsedTime()
+
 		jsonPluginInfo[idx] = pluginInfoJSON{
 			Name:    plugin.Name,
 			Kind:    string(plugin.Kind),
@@ -121,12 +126,10 @@ func formatPluginsJSON(w io.Writer, plugins []workspace.PluginInfo) error {
 			Size:    plugin.Size(),
 		}
 
-		installTime := plugin.InstallTime()
 		if !installTime.IsZero() {
 			jsonPluginInfo[idx].InstallTime = makeStringRef(cmd.FormatTime(installTime.UTC()))
 		}
 
-		lastUsedTime := plugin.LastUsedTime()
 		if !lastUsedTime.IsZero() {
 			jsonPluginInfo[idx].LastUsedTime = makeStringRef(cmd.FormatTime(lastUsedTime.UTC()))
 		}
@@ -145,6 +148,11 @@ func formatPluginConsole(w io.Writer, plugins []workspace.PluginInfo) error {
 		if plugin.Version != nil {
 			version = plugin.Version.String()
 		}
+		// Read times before Size: computing the size walks the plugin directory, which
+		// updates the directory access time LastUsedTime may fall back to.
+		installTime := plugin.InstallTime()
+		lastUsedTime := plugin.LastUsedTime()
+
 		var bytes string
 		if plugin.Size() == 0 {
 			bytes = naString
@@ -152,14 +160,12 @@ func formatPluginConsole(w io.Writer, plugins []workspace.PluginInfo) error {
 			bytes = humanize.Bytes(plugin.Size())
 		}
 		var installTimeStr string
-		installTime := plugin.InstallTime()
 		if installTime.IsZero() {
 			installTimeStr = naString
 		} else {
 			installTimeStr = humanize.Time(installTime)
 		}
 		var lastUsedTimeStr string
-		lastUsedTime := plugin.LastUsedTime()
 		if lastUsedTime.IsZero() {
 			lastUsedTimeStr = humanNeverTime
 		} else {

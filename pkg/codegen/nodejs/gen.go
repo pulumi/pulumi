@@ -143,7 +143,13 @@ func (mod *modContext) tokenToModName(tok string) string {
 	}
 
 	if modName != "" {
-		modName = strings.ReplaceAll(modName, "/", ".") + "."
+		// Each segment becomes a namespace name, so segments that aren't legal
+		// identifiers (e.g. containing hyphens) use their sanitized name.
+		segments := strings.Split(modName, "/")
+		for i, segment := range segments {
+			segments[i] = makeValidModuleSegment(segment)
+		}
+		modName = strings.Join(segments, ".") + "."
 	}
 
 	return modName
@@ -1898,7 +1904,10 @@ func (mod *modContext) getNamespaces() map[string]*namespace {
 		if !ok {
 			name := mod
 			if mod != "" {
-				name = path.Base(mod)
+				// The name is emitted as a namespace declaration, so it must be a
+				// legal (possibly dotted) namespace name even when the module name
+				// is not (e.g. contains hyphens).
+				name = makeValidModuleSegment(path.Base(mod))
 			}
 
 			ns = &namespace{name: name}
@@ -2402,8 +2411,8 @@ func printSubmoduleExports(w io.Writer, exports []string) {
 	fmt.Fprintf(w, "export {\n")
 	for _, mod := range exports {
 		ident := submoduleImportIdentifier(mod)
-		if ident == mod {
-			fmt.Fprintf(w, "    %s,\n", mod)
+		if ident == mod || !isLegalIdentifier(mod) {
+			fmt.Fprintf(w, "    %s,\n", ident)
 		} else {
 			fmt.Fprintf(w, "    %s as %s,\n", ident, mod)
 		}

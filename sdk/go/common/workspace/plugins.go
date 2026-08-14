@@ -1374,6 +1374,22 @@ func (spec PluginDescriptor) String() string {
 	return spec.Name + version
 }
 
+// pluginLastUsedSuffix is the suffix of the sidecar file, next to a cached plugin's
+// directory, whose mtime records the last time the plugin was resolved for execution.
+// The directory's access time can't serve this purpose: executing a file doesn't update
+// its parent directory's atime, and atime updates are disabled by default on Windows and
+// throttled on Linux (relatime). See https://github.com/pulumi/pulumi/issues/4404.
+const pluginLastUsedSuffix = ".lastused"
+
+// markPluginUsed records, best-effort, that the cached plugin at dir is about to be run.
+func markPluginUsed(dir string) {
+	contract.Requiref(strings.LastIndexByte(dir, filepath.Separator) != (len(dir)-1),
+		"dir", "%q must not end in / or be empty", dir)
+	if err := os.WriteFile(dir+pluginLastUsedSuffix, nil, 0o600); err != nil {
+		logging.V(6).Infof("failed to record last-use time for %s: %v", dir, err)
+	}
+}
+
 // PluginFS captures the filesystem operations used by PluginInfo (see Delete and
 // setFileMetadata). It exists so that plugin removal and metadata lookups can be exercised
 // without touching the real filesystem. A PluginInfo with a nil FS uses the real filesystem.
@@ -1483,10 +1499,11 @@ func (info *PluginInfo) Delete() error {
 	if err := fs.RemoveAll(dir); err != nil {
 		return err
 	}
-	// Attempt to delete any leftover .partial or .lock files.
+	// Attempt to delete any leftover .partial, .lock, or .lastused files.
 	// Don't fail the operation if we can't delete these.
 	contract.IgnoreError(fs.Remove(dir + ".partial"))
 	contract.IgnoreError(fs.Remove(dir + ".lock"))
+	contract.IgnoreError(fs.Remove(dir + pluginLastUsedSuffix))
 	return nil
 }
 
@@ -1511,7 +1528,13 @@ func (info *PluginInfo) setFileMetadata() error {
 		info.installTime = tinfo.ModTime()
 	}
 
-	info.lastUsedTime = tinfo.AccessTime()
+	// Prefer the last-used marker written by markPluginUsed; the directory's access time
+	// is only a fallback, since atime is unreliable on most platforms.
+	if marker, err := info.filesystem().Stat(info.Path + pluginLastUsedSuffix); err == nil {
+		info.lastUsedTime = marker.ModTime()
+	} else {
+		info.lastUsedTime = tinfo.AccessTime()
+	}
 
 	return nil
 }
@@ -2068,7 +2091,7 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
 func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (string, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins, true /*markUsed*/)
 	if err != nil {
 		return "", err
 	}
@@ -2080,7 +2103,7 @@ func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginDescriptor, proj
 
 func GetPluginInfo(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins, false /*markUsed*/)
 	if err != nil {
 		return nil, err
 	}
@@ -2111,11 +2134,15 @@ func getPluginPath(info *PluginInfo) string {
 //   - if found as an ambient plugin, nil and the path to the executable
 //   - if found in the pulumi dir's installed plugins, a PluginInfo and path to the executable
 //   - an error in all other cases.
+//
+// If markUsed is true and the plugin is resolved from the plugin cache, the plugin's
+// last-used time is recorded.
 func getPluginInfoAndPath(
 	ctx context.Context,
 	d diag.Sink,
 	spec PluginDescriptor,
 	projectPlugins []ProjectPlugin,
+	markUsed bool,
 ) (*PluginInfo, string, error) {
 	filename := spec.File()
 
@@ -2261,12 +2288,16 @@ func getPluginInfoAndPath(
 	}
 
 	_, subdir := spec.LocalName()
-	// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
-	if subdir != "" && match != nil {
-		match.Path = filepath.Join(match.Path, subdir)
-	}
-
 	if match != nil {
+		if markUsed {
+			// Record last use against the plugin's root directory in the cache, before any
+			// subdir fixup, to match the paths reported by GetPlugins.
+			markPluginUsed(match.Path)
+		}
+		// If the plugin is located in a subdir, we need to fix up the path to include the subdir.
+		if subdir != "" {
+			match.Path = filepath.Join(match.Path, subdir)
+		}
 		matchPath := getPluginPath(match)
 		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found in cache at %s",
 			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, matchPath)

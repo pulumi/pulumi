@@ -1259,8 +1259,13 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 
 	// Extract the command expressions from the Command tuple.
 	var cmdExprs []model.Expression
+	var cmdTemps []any
 	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
-		cmdExprs = tuple.Expressions
+		for _, expr := range tuple.Expressions {
+			expr, temps := g.lowerExpression(expr, model.StringType)
+			cmdExprs = append(cmdExprs, expr)
+			cmdTemps = append(cmdTemps, temps...)
+		}
 	}
 
 	if h.Kind == pcl.HookKindError {
@@ -1269,6 +1274,7 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 		g.Fgenf(w, "%s%s, err := ctx.RegisterErrorHook(%q, func(args *pulumi.ErrorHookArgs) (bool, error) {\n",
 			g.Indent, varName, hookName)
 		g.Indented(func() {
+			g.genTempsMultiReturn(w, cmdTemps, "bool")
 			if len(cmdExprs) > 0 {
 				g.Fgenf(w, "%sreturn exec.Command(%v", g.Indent, cmdExprs[0])
 				for _, arg := range cmdExprs[1:] {
@@ -1296,6 +1302,7 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 	g.Fgenf(w, "%s%s, err := ctx.RegisterResourceHook(%q, func(args *pulumi.ResourceHookArgs) error {\n",
 		g.Indent, varName, hookName)
 	g.Indented(func() {
+		g.genTemps(w, cmdTemps)
 		if len(cmdExprs) > 0 {
 			g.Fgenf(w, "%sreturn exec.Command(%v", g.Indent, cmdExprs[0])
 			for _, arg := range cmdExprs[1:] {
@@ -1681,7 +1688,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 						}
 					}
 				}
-				g.Fgenf(w, "%s: %.v,\n", strings.Title(attr.Name), attr.Value)
+				g.Fgenf(w, "%s: %.v,\n", structFieldName(attr.Name), attr.Value)
 				g.inPlainObjectField = false
 			}
 			g.Fprint(w, "}")
@@ -1822,7 +1829,7 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 		if len(stateInputs) > 0 {
 			g.Fgenf(w, "&%s.%sState{\n", modOrAlias, typ)
 			for _, attr := range stateInputs {
-				g.Fgenf(w, "%s: %.v,\n", strings.Title(attr.Name), attr.Value)
+				g.Fgenf(w, "%s: %.v,\n", structFieldName(attr.Name), attr.Value)
 			}
 			g.Fprint(w, "}")
 		} else {

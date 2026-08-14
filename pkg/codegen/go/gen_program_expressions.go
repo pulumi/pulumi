@@ -471,6 +471,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					// destination is the corresponding optional input, the output already implements
 					// that input interface. Wrapping it in the value constructor would not compile.
 					g.Fgenf(w, "%.v", from)
+				} else if !isFromOutput && model.ResolveOutputs(fromType).Equals(model.DynamicType) {
+					if isOutput && to.Equals(model.DynamicType) {
+						typeName = "pulumi.AnyOutput"
+					}
+					g.Fgenf(w, "%.v.(%s)", from, typeName)
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
 				}
@@ -775,11 +780,11 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 			for _, item := range args.Items {
 				key := item.Key.(*model.LiteralValueExpression).Value.AsString()
 				if destType, ok := propTypes[key]; ok {
-					g.Fgenf(w, "%s: ", Title(key))
+					g.Fgenf(w, "%s: ", structFieldName(key))
 					g.genInputValue(w, item.Value, destType)
 					g.Fgenf(w, ",\n")
 				} else {
-					g.Fgenf(w, "%s: %.v,\n", Title(key), item.Value)
+					g.Fgenf(w, "%s: %.v,\n", structFieldName(key), item.Value)
 				}
 			}
 			g.Fprint(w, "}")
@@ -1029,7 +1034,7 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 			if isMap || strings.HasSuffix(typeName, "Map") {
 				g.Fgenf(w, "%s", strconv.Quote(lit))
 			} else {
-				g.Fgenf(w, "%s", Title(lit))
+				g.Fgenf(w, "%s", structFieldName(lit))
 			}
 		} else {
 			g.Fgenf(w, "%.v", item.Key)
@@ -1722,7 +1727,7 @@ func (g *generator) genRelativeTraversal(w io.Writer,
 				if key.AsString() == "id" && shouldConvert {
 					g.Fgenf(w, ".ID()")
 				} else {
-					g.Fgenf(w, ".%s", Title(key.AsString()))
+					g.Fgenf(w, ".%s", structFieldName(key.AsString()))
 				}
 			}
 		case cty.Number:

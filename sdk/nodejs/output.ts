@@ -14,6 +14,7 @@
 
 import { Resource } from "./resource";
 import * as settings from "./runtime/settings";
+import { getDeferredOutputSources } from "./runtime/state";
 import * as utils from "./utils";
 
 /* eslint-disable no-shadow, @typescript-eslint/no-shadow */
@@ -408,6 +409,7 @@ export function deferredOutput<T>(): [Output<T>, (source: Output<T>) => void] {
             throw new Error("Deferred Output has already been resolved");
         }
         alreadyResolved = true;
+        getDeferredOutputSources().set(output, source);
         source.promise().then(resolveValue, rejectValue);
         source.isKnown.then(resolveIsKnown, rejectIsKnown);
         source.isSecret.then(resolveIsSecret, rejectIsSecret);
@@ -435,6 +437,7 @@ export function deferredOutput<T>(): [Output<T>, (source: Output<T>) => void] {
             rejectDeps = rej;
         }),
     );
+    (<any>output).__pulumiDeferredOutput = true;
 
     return [output, resolve];
 }

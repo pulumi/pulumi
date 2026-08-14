@@ -61,8 +61,6 @@ import (
 type promptForValueFunc func(yes bool, valueType string, defaultValue string, secret bool,
 	isValidFn func(value string) error, opts display.Options) (string, error)
 
-type chooseTemplateFunc func(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error)
-
 type runtimeOptionsFunc func(ctx *plugin.Context, language plugin.LanguageRuntime, info *workspace.ProjectRuntimeInfo,
 	main string, opts display.Options, yes, interactive bool, prompt promptForValueFunc) (map[string]any, error)
 
@@ -85,7 +83,7 @@ type newArgs struct {
 	prompt               promptForValueFunc
 	promptRuntimeOptions runtimeOptionsFunc
 	languageTemplate     languageTemplateFunc
-	chooseTemplate       chooseTemplateFunc
+	selectOne            selectFunc
 	secretsProvider      string
 	stack                string
 	templateNameOrURL    string
@@ -109,18 +107,23 @@ func runNew(ctx context.Context, args newArgs) error {
 		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
-	// Default to discarding output when callers (e.g. tests) don't provide writers.
+	// Default to discarding output and to the real prompt when callers (e.g. tests) don't provide
+	// their own.
 	if args.stdout == nil {
 		args.stdout = io.Discard
 	}
 	if args.stderr == nil {
 		args.stderr = io.Discard
 	}
+	if args.selectOne == nil {
+		args.selectOne = surveySelect
+	}
 
 	// Prepare options.
 	opts := display.Options{
 		Color:         cmdutil.GetGlobalColorization(),
 		IsInteractive: args.interactive,
+		Stdout:        args.stdout,
 	}
 
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -193,23 +196,9 @@ func runNew(ctx context.Context, args newArgs) error {
 		args.templateNameOrURL, scope, cmdTemplates.TemplateKindPulumiProject, env.Global())
 	defer contract.IgnoreClose(templateSource)
 
-	// List the templates from the repo.
-	templates, err := templateSource.Templates()
+	cmdTemplate, err := resolveTemplate(templateSource, args, opts, args.selectOne)
 	if err != nil {
 		return err
-	}
-
-	var cmdTemplate cmdTemplates.Template
-	if len(templates) == 0 {
-		if !args.yes {
-			return errors.New("no templates")
-		}
-	} else if len(templates) == 1 {
-		cmdTemplate = templates[0]
-	} else if !args.yes {
-		if cmdTemplate, err = args.chooseTemplate(templates, opts); err != nil {
-			return err
-		}
 	}
 
 	var template cmdTemplates.ProjectTemplate
@@ -540,7 +529,7 @@ func isInteractive() bool {
 func NewNewCmd() *cobra.Command {
 	args := newArgs{
 		prompt:               ui.PromptForValue,
-		chooseTemplate:       ChooseTemplate,
+		selectOne:            surveySelect,
 		promptRuntimeOptions: promptRuntimeOptions,
 		languageTemplate: func(ctx context.Context, language plugin.LanguageRuntime, programInfo plugin.ProgramInfo,
 			projectName tokens.PackageName,
@@ -620,11 +609,12 @@ func NewNewCmd() *cobra.Command {
 					slog.WarnContext(ctx, "could not list templates", "err", err)
 					return err
 				}
-				available, _ := templatesToOptionArrayAndMap(templates)
+				sorted := sortedForDisplay(templates)
+				label := templateLabeler(sorted)
 				fmt.Fprintln(cmd.OutOrStdout())
 				fmt.Fprintln(cmd.OutOrStdout(), "Available Templates:")
-				for _, t := range available {
-					fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", t)
+				for _, t := range sorted {
+					fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", label(t))
 				}
 				return nil
 			}
