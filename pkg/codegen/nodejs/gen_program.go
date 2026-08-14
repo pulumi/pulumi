@@ -1152,7 +1152,14 @@ func moduleName(module string, pkg schema.PackageReference) string {
 	if module == "index" {
 		return ""
 	}
-	return strings.ToLower(strings.ReplaceAll(module, "/", "."))
+	// Each segment becomes a property access on the package, so segments that aren't
+	// legal identifiers (e.g. containing hyphens) use the sanitized name the SDK
+	// exports them under.
+	segments := strings.Split(strings.ToLower(module), "/")
+	for i, segment := range segments {
+		segments[i] = makeValidModuleSegment(segment)
+	}
+	return strings.Join(segments, ".")
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name

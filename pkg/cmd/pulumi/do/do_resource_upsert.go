@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -223,7 +224,7 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	}
 	// Merge the auto-assigned identifiers (derived from the stack snapshot) with the user's
 	// --resources-file. User entries win on collision.
-	resources := mergeResourceNames(autoResourceNames(snap), userResources)
+	resources := autonames.Merge(autonames.ResourceNames(snap), userResources)
 	resourceInfos, err := resourceReferenceInfos(resources, snap)
 	if err != nil {
 		return err
@@ -366,7 +367,7 @@ func (pc *packageCommand) runStatefulSnippetPatch(
 	if err != nil {
 		return err
 	}
-	resources := mergeResourceNames(autoResourceNames(snap), userResources)
+	resources := autonames.Merge(autonames.ResourceNames(snap), userResources)
 	resourceInfos, err := resourceReferenceInfos(resources, snap)
 	if err != nil {
 		return err

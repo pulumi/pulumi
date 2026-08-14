@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -381,7 +382,7 @@ func TestDoCmdResourceUpsertConvertsReferences(t *testing.T) {
 				assert.Equal(t, "azure", ref.Package.Package)
 				assert.Equal(t, "1.2.3", ref.Package.Version)
 				assert.Equal(t, "https://example.com/azure", ref.Package.DownloadUrl)
-				autoName := availableHashedResourceIdent("source", referencedURN, nil)
+				autoName := autonames.AvailableHashedIdent("source", referencedURN, nil)
 				assert.Equal(t, req.Resources["source-name"], req.Resources[autoName],
 					"auto-assigned identifier should describe the same resource")
 				return &plugin.ConvertSnippetResponse{
