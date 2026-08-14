@@ -1,5 +1,6 @@
 component: backend/diy
 kind: improvement
-body: Report the state backend URL as configured when a bucket cannot be opened, adding
-    the resolved form only when normalization changed it
+body: Report the state backend URL as configured when it cannot be opened, adding the
+    resolved form when normalization changed it, and name a local path a state directory
+    rather than a bucket
 time: 2026-08-14T12:00:00Z

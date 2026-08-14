@@ -2143,9 +2143,9 @@ func TestJSONCheckpointIsCompact(t *testing.T) {
 	assert.Equal(t, compact.String(), string(data))
 }
 
-// TestDescribeBucketURL checks that a failed bucket open names the URL the user configured,
+// TestDescribeBackendURL checks that a failed bucket open names the URL the user configured,
 // and adds the normalized form only when normalization changed something they did not write.
-func TestDescribeBucketURL(t *testing.T) {
+func TestDescribeBackendURL(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -2204,7 +2204,33 @@ func TestDescribeBucketURL(t *testing.T) {
 			if cause == nil {
 				cause = errors.New("some failure")
 			}
-			assert.Equal(t, tt.expected, describeBucketURL(tt.original, tt.normalized, cause))
+			assert.Equal(t, tt.expected, describeBackendURL(tt.original, tt.normalized, cause))
+		})
+	}
+}
+
+// TestStateStoreNoun checks that errors do not call a local directory or a database a
+// "bucket", which is go-cloud's vocabulary rather than the user's.
+func TestStateStoreNoun(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		url      string
+		expected string
+	}{
+		{"file:///tmp/state", "state directory"},
+		{"file://~", "state directory"},
+		{"postgres://user:pw@localhost:5432/pulumi", "state database"},
+		{"s3://my-state", "bucket"},
+		{"gs://my-state", "bucket"},
+		{"azblob://my-state", "bucket"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, stateStoreNoun(tt.url))
 		})
 	}
 }

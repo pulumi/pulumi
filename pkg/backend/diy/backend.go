@@ -267,7 +267,8 @@ func newDIYBackend(
 
 	bucket, err := blobmux.OpenBucket(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("unable to open bucket %s: %w", describeBucketURL(originalURL, u, err), err)
+		return nil, fmt.Errorf("unable to open %s %s: %w",
+			stateStoreNoun(originalURL), describeBackendURL(originalURL, u, err), err)
 	}
 
 	if !strings.HasPrefix(u, FilePathPrefix) {
@@ -556,15 +557,24 @@ func (b *diyBackend) upgradeStack(
 	return nil
 }
 
-// describeBucketURL names the bucket we tried to open, for use in an error message. It
-// reports the URL as the user configured it, and adds the normalized form we actually
-// handed to go-cloud when normalization changed something the user did not write: a `~`
-// or relative path that resolved elsewhere, or legacy S3 parameters that were translated.
-// The `no_tmp_dir` parameter is excluded from that comparison, since massageBlobPath adds
-// it to every file:// URL and it says nothing about why the open failed. Some go-cloud
-// errors (the S3 ones) already quote the normalized URL, so cause is checked to avoid
-// printing it twice; if that ever stops being true we simply report it ourselves.
-func describeBucketURL(originalURL, normalized string, cause error) string {
+// stateStoreNoun names what a backend URL points at, so that errors do not call a local
+// directory or a database a "bucket" — go-cloud's vocabulary rather than the user's.
+func stateStoreNoun(originalURL string) string {
+	switch {
+	case strings.HasPrefix(originalURL, FilePathPrefix):
+		return "state directory"
+	case strings.HasPrefix(originalURL, "postgres://"):
+		return "state database"
+	default:
+		return "bucket"
+	}
+}
+
+// describeBackendURL names the backend for an error message: the URL as configured, plus
+// the normalized form when normalization changed something the user did not write. The
+// injected no_tmp_dir parameter is ignored, and a cause that already quotes the normalized
+// URL (go-cloud's S3 errors do) suppresses it rather than printing it twice.
+func describeBackendURL(originalURL, normalized string, cause error) string {
 	resolved := withoutInjectedNoTmpDir(originalURL, normalized)
 	if resolved == originalURL || strings.Contains(cause.Error(), resolved) {
 		return fmt.Sprintf("%q", originalURL)
