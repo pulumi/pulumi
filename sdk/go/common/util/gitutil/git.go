@@ -519,7 +519,7 @@ func expandHomeDir(path string) (string, error) {
 // resolveSymlinks resolves symbolic links in path. go-git v6 uses os.Root for local paths, which rejects symlinks with
 // absolute targets, so cloning into such a path (e.g. a home directory symlinked to an NFS mount) would fail. Resolving
 // the clone destination is safe: os.Root's checks against malicious symlinks inside cloned repos still apply. If path
-// does not exist yet, its closest existing ancestor is resolved instead and the remaining componts are re-appended. On
+// does not exist yet, its closest existing ancestor is resolved instead and the remaining components are re-appended. On
 // any other error the path is returned unchanged.
 func resolveSymlinks(path string) string {
 	resolved, err := filepath.EvalSymlinks(path)
