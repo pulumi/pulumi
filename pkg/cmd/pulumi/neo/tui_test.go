@@ -1444,10 +1444,8 @@ func TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback(t *testing.T
 func TestModel_Update_UIToolStarted_ShowsBusyBlock(t *testing.T) {
 	t.Parallel()
 
-	// Busy is already true when a tool starts in real flows (the hand-off
-	// assistant_message set it); tool lifecycle events only relabel the
-	// spinner, they never start it from idle (see
-	// TestBusy_LateToolCompletionAfterCancelStaysIdle).
+	// Tool lifecycle events never start the spinner from idle, so start
+	// busy, as the hand-off assistant_message leaves it in real flows.
 	ch := make(chan UIEvent, 4)
 	m := NewModel(ModelConfig{EventCh: ch, Busy: true})
 	updated, _ := m.Update(UIToolStarted{

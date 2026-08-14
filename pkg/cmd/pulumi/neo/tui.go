@@ -1657,10 +1657,9 @@ func (m *Model) applyBusyForEvent(ev UIEvent) tea.Cmd {
 		return nil
 	}
 	// Tool lifecycle events relabel an existing busy indicator but never
-	// start one from idle: a cancelled local tool reports UIToolCompleted
-	// after the server's cancelled event has already ended the turn, and
-	// resurrecting the spinner then would leave it on — and input blocked —
-	// with no further event ever arriving to clear it.
+	// start one from idle: a killed tool's late UIToolCompleted arrives
+	// after the cancelled event already ended the turn, and resurrecting
+	// the spinner then would block input forever.
 	switch ev.(type) {
 	case UIToolStarted, UIToolProgress, UIToolCompleted:
 		if !m.busy {
