@@ -35,7 +35,11 @@ def configure_monitor(ref, supports_parameterization=True):
     monitor = MockMonitor(ref)
     s = Settings(project="project", stack="stack")
     s.monitor = monitor
-    s.feature_support = {"parameterization": supports_parameterization}
+    s.monitor_features = (
+        {resource_pb2.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION}
+        if supports_parameterization
+        else set()
+    )
     settings.configure(s)
     return monitor
 
@@ -109,7 +113,7 @@ async def test_raises_when_parameterization_is_not_supported():
 async def test_raises_when_there_is_no_monitor():
     s = Settings(project="project", stack="stack")
     s.monitor = None
-    s.feature_support = {"parameterization": True}
+    s.monitor_features = {resource_pb2.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION}
     settings.configure(s)
     with pytest.raises(Exception, match="No monitor available"):
         await register_package(**BASE_ARGS)
