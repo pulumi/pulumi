@@ -622,6 +622,10 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	for _, n := range program.Nodes {
 		switch n := n.(type) {
 		case *pcl.Resource:
+			// Local component resources are constructed from the pulumi SDK, not from a package.
+			if n.IsComponent {
+				continue
+			}
 			pkg, _, _, _ := pcl.DecomposeToken(n.GetToken())
 			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
@@ -1462,14 +1466,19 @@ func (g *generator) genMapRangedCollection(
 
 // genResourceDeclaration handles the generation of instantiations of resources.
 func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDefinition bool) {
-	pkg, module, memberName, diagnostics := resourceTypeName(r)
-	g.diagnostics = append(g.diagnostics, diagnostics...)
+	// Local component resources have no package to import from; they are constructed from the SDK's base
+	// ComponentResource, which takes the type token as its first argument.
+	qualifiedMemberName := "pulumi.ComponentResource"
+	if !r.IsComponent {
+		pkg, module, memberName, diagnostics := resourceTypeName(r)
+		g.diagnostics = append(g.diagnostics, diagnostics...)
 
-	if module != "" {
-		module = "." + module
+		if module != "" {
+			module = "." + module
+		}
+
+		qualifiedMemberName = fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, memberName)
 	}
-
-	qualifiedMemberName := fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, memberName)
 
 	var hookVars map[string][]string
 	if r.Options != nil && r.Options.Hooks != nil {
@@ -1490,6 +1499,11 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 	}
 
 	instantiate := func(resName string) {
+		if r.IsComponent {
+			token, _ := r.GetToken()
+			g.Fgenf(w, "new %s(%q, %s, {}%s)", qualifiedMemberName, token, resName, optionsBag)
+			return
+		}
 		g.Fgenf(w, "new %s(%s, {", qualifiedMemberName, resName)
 		indenter := func(f func()) { f() }
 		if len(r.Inputs) > 1 {

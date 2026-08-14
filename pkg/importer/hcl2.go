@@ -81,6 +81,24 @@ func filterReferences(resourceName string, importState ImportState) ImportState 
 	}
 }
 
+// isLocalComponent reports whether a resource state is a component resource declared by a Pulumi program rather than
+// by a package. Remote components are served by a provider and do have a schema, so they are not included.
+func isLocalComponent(state *pkgresource.State) bool {
+	return !state.Custom && state.Provider == ""
+}
+
+// makeComponentResourceOptions builds the options block for a local component resource. Only the options that make
+// sense without a schema or a provider are carried over.
+func makeComponentResourceOptions(state *pkgresource.State, names NameTable) *model.Block {
+	options := appendResourceOption(nil, "component", &model.LiteralValueExpression{Value: cty.True})
+	if state.Parent != "" && state.Parent.QualifiedType() != resource.RootStackType {
+		if name, ok := names[state.Parent]; ok {
+			options = appendResourceOption(options, "parent", newVariableReference(name))
+		}
+	}
+	return options
+}
+
 // GenerateHCL2Definition generates a Pulumi HCL2 definition for a given resource.
 //
 // GenerateHCL2Definition will drop map entries who's type doesn't conform to the schema type.
@@ -89,7 +107,47 @@ func GenerateHCL2Definition(
 	state *pkgresource.State,
 	importState ImportState,
 ) (*model.Block, *schema.PackageDescriptor, error) {
-	// First up, we'll need to load the appropriate package for this resource. We'll do this by grabbing the resource's
+	var items []model.BodyItem
+	name := state.URN.Name()
+	// Check if _this_ urn is in the name table, if so we need to set logicalName and use the mapped name for
+	// the resource block.
+	if mappedName, ok := importState.Names[state.URN]; ok {
+		if mappedName != name {
+			items = append(items, &model.Attribute{
+				Name: "__logicalName",
+				Value: &model.TemplateExpression{
+					Parts: []model.Expression{
+						&model.LiteralValueExpression{
+							Value: cty.StringVal(state.URN.Name()),
+						},
+					},
+				},
+			})
+		}
+		name = mappedName
+	}
+
+	contract.Assertf(sanitizeName(name) == name, "names should be sanitized by this point")
+
+	// Local component resources are declared by a Pulumi program rather than by a package schema, so there is no
+	// provider to look up and no schema to shape their inputs. Emit the type token as written and let code
+	// generation construct the SDK's base ComponentResource with it.
+	if isLocalComponent(state) {
+		options := makeComponentResourceOptions(state, importState.Names)
+		if options != nil {
+			items = append(items, options)
+		}
+
+		typ := string(state.URN.Type())
+		return &model.Block{
+			Tokens: syntax.NewBlockTokens("resource", name, typ),
+			Type:   "resource",
+			Labels: []string{name, typ},
+			Body:   &model.Body{Items: items},
+		}, nil, nil
+	}
+
+	// Otherwise we'll need to load the appropriate package for this resource. We'll do this by grabbing the resource's
 	// provider reference and looking up that provider resource in the current program snapshot. From there, we can build
 	// a package descriptor and load the package and its schema.
 	providerRef, err := sdkproviders.ParseReference(state.Provider)
@@ -178,28 +236,6 @@ func GenerateHCL2Definition(
 	if !ok {
 		return nil, nil, fmt.Errorf("unknown resource type '%v'", r)
 	}
-
-	var items []model.BodyItem
-	name := state.URN.Name()
-	// Check if _this_ urn is in the name table, if so we need to set logicalName and use the mapped name for
-	// the resource block.
-	if mappedName, ok := importState.Names[state.URN]; ok {
-		if mappedName != name {
-			items = append(items, &model.Attribute{
-				Name: "__logicalName",
-				Value: &model.TemplateExpression{
-					Parts: []model.Expression{
-						&model.LiteralValueExpression{
-							Value: cty.StringVal(state.URN.Name()),
-						},
-					},
-				},
-			})
-		}
-		name = mappedName
-	}
-
-	contract.Assertf(sanitizeName(name) == name, "names should be sanitized by this point")
 
 	// keep track of a set of added references to avoid adding the same reference to the dependsOn list
 	// when the resource is already implicitly referenced via its properties

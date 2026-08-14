@@ -434,20 +434,20 @@ parent = parentComponent
 	assert.Equal(t, expectedCode, generatedProgram.String())
 }
 
-func TestGenerateLanguageDefinitionsSkipsLocalComponents(t *testing.T) {
+func TestGenerateLanguageDefinitionsGeneratesLocalComponents(t *testing.T) {
 	t.Parallel()
 
 	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
 
 	var generatedProgram strings.Builder
+	var generatedTypeScript string
 	generator := func(_ io.Writer, p *pcl.Program) error {
 		for _, content := range p.Source() {
 			generatedProgram.WriteString(content)
 		}
-		// The component belongs to the user's program, so its children reference it unbound.
 		files, _, err := nodejs.GenerateProgram(p)
 		require.NoError(t, err)
-		assert.Contains(t, string(files["index.ts"]), "parent: parentComponent")
+		generatedTypeScript = string(files["index.ts"])
 		return nil
 	}
 
@@ -495,7 +495,16 @@ func TestGenerateLanguageDefinitionsSkipsLocalComponents(t *testing.T) {
 
 	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, snapshot, nameTable)
 	require.NoError(t, err)
-	expectedCode := `package random {
+	expectedCode := `resource parentComponent "company:product:CRClass" {
+    __logicalName = "example"
+options {
+component = true
+
+}
+
+}
+
+package random {
     baseProviderName = "random"
 
 }
@@ -509,4 +518,14 @@ parent = parentComponent
 }
 `
 	assert.Equal(t, expectedCode, generatedProgram.String())
+
+	expectedTypeScript := `import * as pulumi from "@pulumi/pulumi";
+import * as random from "@pulumi/random";
+
+const parentComponent = new pulumi.ComponentResource("company:product:CRClass", "example", {});
+const randomPet = new random.RandomPet("randomPet", {}, {
+    parent: parentComponent,
+});
+`
+	assert.Equal(t, expectedTypeScript, generatedTypeScript)
 }

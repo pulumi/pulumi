@@ -667,6 +667,10 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		var schemaRes *schema.Resource
 		switch r := n.(type) {
 		case *pcl.Resource:
+			// Local component resources are constructed from the pulumi SDK, not from a package.
+			if r.IsComponent {
+				continue
+			}
 			pkg, _, _, _ = pcl.DecomposeToken(r.GetToken())
 			schemaRes = r.Schema
 		case *pcl.ReadResource:
@@ -1308,8 +1312,14 @@ func (g *generator) genMapRangedCollection(
 
 // genResourceDeclaration handles the generation of instantiations resources.
 func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDefinition bool) {
-	qualifiedMemberName, diagnostics := g.resourceTypeName(r)
-	g.diagnostics = append(g.diagnostics, diagnostics...)
+	// Local component resources have no package to import from; they are constructed from the SDK's base
+	// ComponentResource, which takes the type token as its first argument.
+	qualifiedMemberName := "pulumi.ComponentResource"
+	if !r.IsComponent {
+		var diagnostics hcl.Diagnostics
+		qualifiedMemberName, diagnostics = g.resourceTypeName(r)
+		g.diagnostics = append(g.diagnostics, diagnostics...)
+	}
 
 	var hookVars map[string][]string
 	if r.Options != nil && r.Options.Hooks != nil {
@@ -1344,6 +1354,13 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 	g.genTemps(w, temps)
 
 	instantiate := func(resName string) {
+		if r.IsComponent {
+			token, _ := r.GetToken()
+			g.Fgenf(w, "%s(%q, %s", qualifiedMemberName, token, resName)
+			g.genResourceOptions(w, optionsBag, false, hookVars)
+			g.Fprint(w, ")")
+			return
+		}
 		g.Fgenf(w, "%s(%s", qualifiedMemberName, resName)
 		indenter := func(f func()) { f() }
 		if len(r.Inputs) > 1 {

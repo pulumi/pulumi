@@ -927,6 +927,10 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 		}
 		switch r := n.(type) {
 		case *pcl.Resource:
+			// Local component resources are registered through the pulumi SDK, not constructed from a package.
+			if r.IsComponent {
+				continue
+			}
 			token, tokenRange := r.GetToken()
 			pkg, mod, name, _ := pcl.DecomposeToken(token, tokenRange)
 			if pkg == "pulumi" {
@@ -1657,6 +1661,31 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	// Blockname is not always equal to resourceName or varName, it is often
 	// surrounded by quotes, or obfuscated when there is keyword overlap.
 	instantiate := func(varName, blockName, resourceName string, w io.Writer) {
+		// Local component resources have no package to construct from; they are registered against the SDK's
+		// base component state, which takes the type token directly.
+		if r.IsComponent {
+			receiver := "&pulumi.ResourceState{}"
+			if g.scopeTraversalRoots.Has(blockName) {
+				g.Fgenf(w, "%s := &pulumi.ResourceState{}\n", varName)
+				receiver = varName
+			}
+			assignment := ":="
+			if g.isErrAssigned {
+				assignment = "="
+			}
+			g.Fgenf(w, "err %s ctx.RegisterComponentResource(%q, %s, %s", assignment, token, resourceName, receiver)
+			g.isErrAssigned = true
+			g.genResourceOptions(w, options)
+			g.Fprint(w, ")\n")
+			g.Fgenf(w, "if err != nil {\n")
+			if g.isComponent {
+				g.Fgenf(w, "return nil, err\n")
+			} else {
+				g.Fgenf(w, "return err\n")
+			}
+			g.Fgenf(w, "}\n")
+			return
+		}
 		if g.scopeTraversalRoots.Has(blockName) || strings.HasPrefix(varName, "__") {
 			g.Fgenf(w, "%s, err := %s.New%s(ctx, %s, ", varName, modOrAlias, typ, resourceName)
 		} else {
