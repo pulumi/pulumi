@@ -325,7 +325,7 @@ def require_pulumi_version(rg: str) -> None:
             raise grpc_error_to_exception(exn) from None
 
 
-def _monitor_supports_feature(feature: int) -> bool:
+def monitor_supports_feature(feature: int) -> bool:
     return feature in SETTINGS.monitor_features
 
 
@@ -347,50 +347,6 @@ def grpc_error_to_exception(exn: grpc.RpcError) -> Exception:
 
 def handle_grpc_error(exn: grpc.RpcError) -> NoReturn:
     raise grpc_error_to_exception(exn)
-
-
-def monitor_supports_secrets() -> bool:
-    return _monitor_supports_feature(resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS)
-
-
-def monitor_supports_resource_references() -> bool:
-    return _monitor_supports_feature(
-        resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES
-    )
-
-
-def monitor_supports_output_values() -> bool:
-    return _monitor_supports_feature(
-        resource_pb2.RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES
-    )
-
-
-def monitor_supports_deleted_with() -> bool:
-    return _monitor_supports_feature(resource_pb2.RESOURCE_MONITOR_FEATURE_DELETED_WITH)
-
-
-def monitor_supports_replace_with() -> bool:
-    return _monitor_supports_feature(resource_pb2.RESOURCE_MONITOR_FEATURE_REPLACE_WITH)
-
-
-def monitor_supports_alias_specs() -> bool:
-    return _monitor_supports_feature(resource_pb2.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS)
-
-
-def monitor_supports_transforms() -> bool:
-    return _monitor_supports_feature(resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS)
-
-
-def monitor_supports_invoke_transforms() -> bool:
-    return _monitor_supports_feature(
-        resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS
-    )
-
-
-def monitor_supports_parameterization() -> bool:
-    return _monitor_supports_feature(
-        resource_pb2.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION
-    )
 
 
 async def register_package(
@@ -426,7 +382,9 @@ async def register_package(
     if existing is not None:
         return existing
 
-    if not monitor_supports_parameterization():
+    if not monitor_supports_feature(
+        resource_pb2.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION
+    ):
         raise Exception(
             "The Pulumi CLI does not support parameterization. Please update the Pulumi CLI."
         )
@@ -453,23 +411,6 @@ async def register_package(
     ref = response.ref
     package_refs[key] = ref
     return ref
-
-
-def monitor_supports_resource_hooks() -> bool:
-    return _monitor_supports_feature(
-        resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS
-    )
-
-
-def monitor_supports_error_hooks() -> bool:
-    return _monitor_supports_feature(resource_pb2.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS)
-
-
-def monitor_supports_invoke_depends_on() -> bool:
-    # Advertised by GetDeploymentInfo only, so an engine that predates that RPC never has it.
-    return _monitor_supports_feature(
-        resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON
-    )
 
 
 def reset_options(
