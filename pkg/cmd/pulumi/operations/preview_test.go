@@ -495,6 +495,39 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 	assert.Nil(t, importFile.ProviderInputs)
 }
 
+// TestBuildImportFile_NewProviderUnknownInputs tests that provider configuration that isn't known
+// during the preview is left out of the import file rather than written to it as the unknown
+// placeholder (#24151).
+func TestBuildImportFile_NewProviderUnknownInputs(t *testing.T) {
+	t.Parallel()
+
+	events := make(chan engine.Event)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
+
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeRootStackMetadata(deploy.OpSame),
+	})
+
+	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
+		Inputs: resource.PropertyMap{
+			"version": resource.NewProperty("1.2.3"),
+			"region":  resource.MakeComputed(resource.NewProperty("")),
+		},
+	})
+	providerState.ID = providers.UnknownID
+	events <- engine.NewEvent(engine.ResourcePreEventPayload{
+		Metadata: makeMetadata(deploy.OpCreate, providerState),
+	})
+
+	close(events)
+
+	importFile, err := importFilePromise.Result(t.Context())
+	require.NoError(t, err)
+
+	require.Len(t, importFile.Resources, 1)
+	assert.Equal(t, map[string]any{"version": "1.2.3"}, importFile.Resources[0].Inputs)
+}
+
 // TestBuildImportFile_NewProviderWithParent tests that a created explicit provider parented to
 // another resource is declared with its parent.
 func TestBuildImportFile_NewProviderWithParent(t *testing.T) {
