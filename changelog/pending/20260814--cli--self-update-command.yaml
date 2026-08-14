@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Add a `pulumi self-update` command that updates a get.pulumi.com install in place, verifying the release against its published checksum before replacing anything
+time: 2026-08-14T00:00:00Z

@@ -77,6 +77,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/rattler"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/selfupdate"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templatecmd"
@@ -541,6 +542,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				cmdVersion.NewVersionCmd(),
 				about.NewAboutCmd(pkgWorkspace.Instance),
 				completion.NewGenCompletionCmd(cmd),
+				selfupdate.NewSelfUpdateCmd(),
 			},
 		},
 

@@ -341,6 +341,12 @@
             "flags": {}
         },
         {
+            "path": ["self-update"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
             "path": ["stack"],
             "propagate": true,
             "exclude": true,
