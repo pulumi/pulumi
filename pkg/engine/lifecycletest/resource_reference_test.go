@@ -407,7 +407,7 @@ func TestResourceReferences_NameAndTypeFilledByEngine(t *testing.T) {
 
 					return plugin.ConstructResponse{
 						URN:     component.URN,
-						Outputs: outputs,
+						Outputs: resource.FromResourcePropertyMap(outputs),
 					}, nil
 				},
 			}, nil

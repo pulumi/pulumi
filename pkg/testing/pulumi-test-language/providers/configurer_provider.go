@@ -209,17 +209,17 @@ func (p *ConfigurerProvider) GetMappings(
 func (p *ConfigurerProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "missing version")}, nil
 	}
-	if !version.IsString() || version.StringValue() != configurerVersion {
+	if !version.IsString() || version.AsString() != configurerVersion {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("version", "unexpected version"),
 		}, nil
 	}
 	// Expect version and optionally config.
-	if len(req.News) > 2 {
+	if req.News.Len() > 2 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
@@ -363,10 +363,10 @@ func (p *ConfigurerProvider) Construct(
 
 	return plugin.ConstructResponse{
 		URN: resource.URN(parent.Urn),
-		Outputs: resource.PropertyMap{
-			"providerConfig":   resource.NewProperty(providerConfig),
-			"innerProviderRef": innerRef,
-		},
+		Outputs: property.NewMap(map[string]property.Value{
+			"providerConfig":   property.New(providerConfig),
+			"innerProviderRef": resource.FromResourcePropertyValue(innerRef),
+		}),
 	}, nil
 }
 

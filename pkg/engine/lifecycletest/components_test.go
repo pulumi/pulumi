@@ -63,7 +63,7 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 
 				return plugin.ConstructResponse{
 					URN:     resp.URN,
-					Outputs: outs,
+					Outputs: resource.FromResourcePropertyMap(outs),
 				}, nil
 			}
 
@@ -425,10 +425,10 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 						deps := []resource.URN{respA.URN}
 						return plugin.ConstructResponse{
 							URN: resp.URN,
-							Outputs: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							Outputs: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							OutputDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -571,17 +571,10 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 						deps := []resource.URN{respA.URN}
 						return plugin.ConstructResponse{
 							URN: resp.URN,
-							Outputs: resource.PropertyMap{
-								"foo": resource.NewProperty(resource.Output{
-									Element:      resource.NewProperty("foo"),
-									Known:        true,
-									Secret:       true,
-									Dependencies: deps,
-								}),
-								"bar": resource.NewProperty(resource.Output{
-									Dependencies: deps,
-								}),
-							},
+							Outputs: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true).WithDependencies(deps),
+								"bar": property.New(property.Computed).WithDependencies(deps),
+							}),
 							OutputDependencies: nil, // Left blank on purpose because AcceptsOutputs is true
 						}, nil
 					},
@@ -722,10 +715,10 @@ func TestConstructCallSendDependencies(t *testing.T) {
 						deps := []resource.URN{respA.URN}
 						return plugin.ConstructResponse{
 							URN: resp.URN,
-							Outputs: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							Outputs: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							OutputDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -887,10 +880,10 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 						deps := []resource.URN{respA.URN}
 						return plugin.ConstructResponse{
 							URN: resp.URN,
-							Outputs: resource.PropertyMap{
-								"foo": resource.MakeSecret(resource.NewProperty("foo")),
-								"bar": resource.MakeComputed(resource.NewProperty("")),
-							},
+							Outputs: property.NewMap(map[string]property.Value{
+								"foo": property.New("foo").WithSecret(true),
+								"bar": property.New(property.Computed),
+							}),
 							OutputDependencies: map[resource.PropertyKey][]resource.URN{
 								"foo": deps,
 								"bar": deps,
@@ -1042,7 +1035,7 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 
 				return plugin.ConstructResponse{
 					URN:     resp.URN,
-					Outputs: outs,
+					Outputs: resource.FromResourcePropertyMap(outs),
 				}, nil
 			}
 
@@ -1123,7 +1116,7 @@ func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
 
 				return plugin.ConstructResponse{
 					URN:     urn,
-					Outputs: outs,
+					Outputs: resource.FromResourcePropertyMap(outs),
 				}, nil
 			}
 
@@ -1237,9 +1230,9 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByProgram(t *testing.T) {
 
 						return plugin.ConstructResponse{
 							URN: component.URN,
-							Outputs: resource.PropertyMap{
+							Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 								"custom": resource.MakeCustomResourceReference(custom.URN, custom.ID, ""),
-							},
+							}),
 						}, nil
 					}
 
@@ -1350,9 +1343,9 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 
 						return plugin.ConstructResponse{
 							URN: component.URN,
-							Outputs: resource.PropertyMap{
+							Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 								"custom": resource.MakeCustomResourceReference(custom.URN, custom.ID, ""),
-							},
+							}),
 						}, nil
 					}
 
@@ -1396,7 +1389,7 @@ func TestComponentRegisteredResourceOutputCanBeHydratedByComponent(t *testing.T)
 
 						return plugin.ConstructResponse{
 							URN:     component.URN,
-							Outputs: resource.PropertyMap{},
+							Outputs: property.Map{},
 						}, nil
 					}
 
@@ -1494,9 +1487,9 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 
 						return plugin.ConstructResponse{
 							URN: component.URN,
-							Outputs: resource.PropertyMap{
+							Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 								"custom": resource.MakeCustomResourceReference(customURN, customID, ""),
-							},
+							}),
 						}, nil
 					}
 
@@ -1619,9 +1612,9 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 
 						return plugin.ConstructResponse{
 							URN: component.URN,
-							Outputs: resource.PropertyMap{
+							Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 								"custom": resource.MakeCustomResourceReference(customURN, customID, ""),
-							},
+							}),
 						}, nil
 					}
 
@@ -1665,7 +1658,7 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 
 						return plugin.ConstructResponse{
 							URN:     component.URN,
-							Outputs: resource.PropertyMap{},
+							Outputs: property.Map{},
 						}, nil
 					}
 

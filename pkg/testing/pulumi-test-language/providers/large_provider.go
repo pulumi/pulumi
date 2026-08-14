@@ -82,18 +82,18 @@ func (p *LargeProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
 	// Expect just the version
-	version, ok := req.News["version"]
+	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "missing version")}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not a string")}, nil
 	}
-	if version.StringValue() != "4.3.2" {
+	if version.AsString() != "4.3.2" {
 		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "version is not 4.3.2")}, nil
 	}
 
-	if len(req.News) != 1 {
+	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
