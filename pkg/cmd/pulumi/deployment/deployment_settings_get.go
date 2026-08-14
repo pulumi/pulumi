@@ -136,7 +136,12 @@ func runDeploymentSettingsGet(
 	}
 
 	resp, err := c.GetStackDeploymentSettings(ctx, stackID)
-	if err != nil {
+	switch {
+	case isNotFound(err):
+		// The factory has already resolved the stack, so a 404 here only means the stack has no
+		// deployment settings rather than that the stack is missing.
+		resp = nil
+	case err != nil:
 		return fmt.Errorf("getting deployment settings: %w", err)
 	}
 	if resp == nil {

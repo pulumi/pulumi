@@ -20,20 +20,54 @@ package deployment
 
 import (
 	"fmt"
+	"os"
 	"slices"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 var editFlagNames = []string{
-	flagGitHubRepo, flagGitURL, flagBranch, flagCommit, flagFolder,
-	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter,
+	flagGitHubRepo, flagRepo, flagVCSProvider, flagGitURL, flagBranch, flagCommit, flagFolder,
+	flagGitAuthToken, flagGitAuthSSHKey, flagGitAuthSSHKeyPath, flagGitAuthSSHKeyPassword,
+	flagGitAuthUsername, flagGitAuthPassword, flagTemplateSourceURL,
+	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter, flagClearPathFilters,
+	flagDeployTags, flagTagFilter, flagClearTagFilters, flagReviewStackLabel, flagClearReviewStackLabel,
+	flagInstallationID, flagDeployPullRequest,
 	flagRunnerPool, flagExecutorImage, flagExecutorRootPath,
-	flagPreRunCommand, flagEnv, flagSecretEnv, flagRemoveEnv,
-	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy,
+	flagPreRunCommand, flagClearPreRunCommands, flagEnv, flagSecretEnv, flagRemoveEnv, flagClearEnv,
+	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy, flagRemediateIfDrift,
+	flagDeploymentRoleID, flagCache,
 	flagOIDCAWSRoleARN, flagOIDCAWSSessionName, flagOIDCAWSDuration, flagOIDCAWSPolicyARN, flagOIDCAWSClear,
 	flagOIDCAzureClientID, flagOIDCAzureTenantID, flagOIDCAzureSubscriptionID, flagOIDCAzureClear,
 	flagOIDCGCPProjectNumber, flagOIDCGCPWorkloadPoolID, flagOIDCGCPProviderID,
 	flagOIDCGCPServiceAccount, flagOIDCGCPRegion, flagOIDCGCPTokenLifetime, flagOIDCGCPClear,
+}
+
+// vcsEditFlags write the vcs object rather than a deep-merged key path, so setting any of them
+// forces a GET before the PATCH. The provider-neutral --branch / --commit / --folder / --git-url
+// write sourceContext.git and are deliberately absent.
+var vcsEditFlags = []string{
+	flagGitHubRepo, flagRepo, flagVCSProvider,
+	flagPreviewPRs, flagPushToDeploy, flagPRTemplate,
+	flagPathFilter, flagClearPathFilters,
+	flagDeployTags, flagTagFilter, flagClearTagFilters,
+	flagReviewStackLabel, flagClearReviewStackLabel,
+	flagInstallationID, flagDeployPullRequest,
+}
+
+var gitAuthEditFlags = []string{
+	flagGitAuthToken, flagGitAuthSSHKey, flagGitAuthSSHKeyPath, flagGitAuthSSHKeyPassword,
+	flagGitAuthUsername, flagGitAuthPassword,
+}
+
+// clearEditFlags are presence-only: passing one with an explicit false value is rejected rather
+// than silently ignored.
+var clearEditFlags = []string{
+	flagClearPathFilters, flagClearTagFilters, flagClearReviewStackLabel,
+	flagClearPreRunCommands, flagClearEnv,
+	flagOIDCAWSClear, flagOIDCAzureClear, flagOIDCGCPClear,
 }
 
 // oidcProviderFlags lists the field-setter flags for each OIDC provider so
@@ -56,6 +90,253 @@ func anyEditFlagSet(args deploymentSettingsEditArgs) bool {
 		return false
 	}
 	return slices.ContainsFunc(editFlagNames, args.flagsChanged)
+}
+
+func anyVCSEditFlagSet(args deploymentSettingsEditArgs) bool {
+	if args.flagsChanged == nil {
+		return false
+	}
+	return slices.ContainsFunc(vcsEditFlags, args.flagsChanged)
+}
+
+func anyGitAuthEditFlagSet(args deploymentSettingsEditArgs) bool {
+	if args.flagsChanged == nil {
+		return false
+	}
+	return slices.ContainsFunc(gitAuthEditFlags, args.flagsChanged)
+}
+
+func storedGitSource(stored *apitype.DeploymentSettings) *apitype.SourceContextGit {
+	if stored == nil || stored.SourceContext == nil {
+		return nil
+	}
+	return stored.SourceContext.Git
+}
+
+func storedGitRepoURL(stored *apitype.DeploymentSettings) string {
+	if git := storedGitSource(stored); git != nil {
+		return strings.TrimSpace(git.RepoURL)
+	}
+	return ""
+}
+
+// adoptedRepoURL reports the repository url a stack gives up by taking on a version control
+// integration, and is empty unless the stack stores a url and no integration. A stack that stores
+// both has to predate the service validation that rejects the pair, and letting an edit resolve that
+// pair silently changes where its deployments clone from; leaving it for the service to reject keeps
+// the failure loud.
+func adoptedRepoURL(stored *apitype.DeploymentSettings) string {
+	if stored == nil || stored.VCS != nil || stored.GitHub != nil {
+		return ""
+	}
+	return storedGitRepoURL(stored)
+}
+
+func storedGitCredentials(stored *apitype.DeploymentSettings) bool {
+	git := storedGitSource(stored)
+	if git == nil || git.GitAuth == nil {
+		return false
+	}
+	return git.GitAuth.PersonalAccessToken != nil || git.GitAuth.SSHAuth != nil || git.GitAuth.BasicAuth != nil
+}
+
+func clearFlagValue(args deploymentSettingsEditArgs, flag string) bool {
+	switch flag {
+	case flagClearPathFilters:
+		return args.clearPathFilters
+	case flagClearTagFilters:
+		return args.clearTagFilters
+	case flagClearReviewStackLabel:
+		return args.clearReviewStackLabels
+	case flagClearPreRunCommands:
+		return args.clearPreRunCommands
+	case flagClearEnv:
+		return args.clearEnv
+	case flagOIDCAWSClear:
+		return args.oidcAWSClear
+	case flagOIDCAzureClear:
+		return args.oidcAzureClear
+	case flagOIDCGCPClear:
+		return args.oidcGCPClear
+	}
+	return false
+}
+
+func parseVCSProvider(s string) (apitype.VCSProvider, error) {
+	known := []apitype.VCSProvider{
+		apitype.VCSProviderGitHub, apitype.VCSProviderGitLab, apitype.VCSProviderAzureDevOps,
+		apitype.VCSProviderBitbucket, apitype.VCSProviderCustom,
+	}
+	if slices.Contains(known, apitype.VCSProvider(s)) {
+		return apitype.VCSProvider(s), nil
+	}
+	names := make([]string, len(known))
+	for i, p := range known {
+		names[i] = string(p)
+	}
+	return "", fmt.Errorf("--%s must be one of %s, got %q", flagVCSProvider, strings.Join(names, ", "), s)
+}
+
+// resolveEditVCS applies the flags that were set on top of the stored vcs object. The whole object
+// is sent because the service replaces it wholesale, so a key left out of the patch is a key erased.
+func resolveEditVCS(
+	args deploymentSettingsEditArgs, stored *apitype.DeploymentSettings,
+) (*apitype.DeploymentSettingsVCS, error) {
+	if !anyVCSEditFlagSet(args) {
+		return nil, nil
+	}
+	changed := args.flagsChanged
+
+	var vcs apitype.DeploymentSettingsVCS
+	switch {
+	case stored != nil && stored.VCS != nil:
+		vcs = *stored.VCS
+	case stored != nil && stored.GitHub != nil:
+		g := stored.GitHub
+		vcs = apitype.DeploymentSettingsVCS{
+			Provider:            apitype.VCSProviderGitHub,
+			Repository:          g.Repository,
+			DeployCommits:       g.DeployCommits,
+			DeployTags:          g.DeployTags,
+			Paths:               g.Paths,
+			TagFilters:          g.TagFilters,
+			InstallationID:      g.InstallationID,
+			PullRequestTemplate: g.PullRequestTemplate,
+			PreviewPullRequests: g.PreviewPullRequests,
+			DeployPullRequest:   g.DeployPullRequest,
+			ReviewStackLabels:   g.ReviewStackLabels,
+		}
+	}
+
+	var requested apitype.VCSProvider
+	switch {
+	case changed(flagVCSProvider):
+		p, err := parseVCSProvider(args.vcsProvider)
+		if err != nil {
+			return nil, err
+		}
+		requested = p
+	case changed(flagGitHubRepo):
+		requested = apitype.VCSProviderGitHub
+	}
+
+	switch {
+	case vcs.Provider == "" && requested == "":
+		return nil, fmt.Errorf(
+			"this stack has no version control source configured; pass --%s to say which provider to configure",
+			flagVCSProvider)
+	case vcs.Provider == "":
+		vcs.Provider = requested
+	case requested != "" && requested != vcs.Provider:
+		return nil, fmt.Errorf(
+			"this stack's deployment source is %s, and %s would replace it; "+
+				"change the provider in the Pulumi Cloud console instead",
+			vcs.Provider, requestedProviderOrigin(args, requested))
+	}
+
+	for _, f := range []string{flagReviewStackLabel, flagClearReviewStackLabel} {
+		if changed(f) && vcs.Provider != apitype.VCSProviderGitHub {
+			return nil, fmt.Errorf("--%s is only supported on github sources, and this stack's source is %s",
+				f, vcs.Provider)
+		}
+	}
+
+	// Adopting an integration drops the stored repository url, which the service derives from the
+	// integration instead. Credentials stored alongside it survive, and the service only falls back to
+	// the integration's own access token when none are stored, so leaving them would have the stack
+	// clone the new repository with the old one's credentials and fail at deployment time.
+	if repoURL := adoptedRepoURL(stored); repoURL != "" &&
+		storedGitCredentials(stored) && !anyGitAuthEditFlagSet(args) {
+		return nil, fmt.Errorf(
+			"this stack's git source stores credentials for %s, and a %s integration would keep using them "+
+				"in place of its own; pass --%s \"\" to drop them, or set the credentials to use instead",
+			repoURL, vcs.Provider, flagGitAuthToken)
+	}
+
+	if changed(flagRepo) {
+		vcs.Repository = args.repo
+	}
+	if changed(flagGitHubRepo) {
+		vcs.Repository = args.githubRepo
+	}
+	if changed(flagPreviewPRs) {
+		vcs.PreviewPullRequests = args.previewPRs
+	}
+	if changed(flagPushToDeploy) {
+		vcs.DeployCommits = args.pushToDeploy
+	}
+	if changed(flagPRTemplate) {
+		vcs.PullRequestTemplate = args.prTemplate
+	}
+	if changed(flagPathFilter) {
+		vcs.Paths = args.pathFilters
+	}
+	if changed(flagClearPathFilters) {
+		vcs.Paths = nil
+	}
+	if changed(flagDeployTags) {
+		vcs.DeployTags = args.deployTags
+	}
+	if changed(flagTagFilter) {
+		vcs.TagFilters = args.tagFilters
+	}
+	if changed(flagClearTagFilters) {
+		vcs.TagFilters = nil
+	}
+	if changed(flagReviewStackLabel) {
+		vcs.ReviewStackLabels = args.reviewStackLabels
+	}
+	if changed(flagClearReviewStackLabel) {
+		vcs.ReviewStackLabels = nil
+	}
+	if changed(flagInstallationID) {
+		vcs.InstallationID = args.installationID
+	}
+	if changed(flagDeployPullRequest) {
+		vcs.DeployPullRequest = nil
+		if args.deployPullRequest > 0 {
+			pr := args.deployPullRequest
+			vcs.DeployPullRequest = &pr
+		}
+	}
+
+	// Both checks run against the merged object rather than the flags, so they also catch a flag that
+	// conflicts with what the stack already stores. The messages name the stored setting in that case,
+	// since naming a flag the user never passed sends them looking for it.
+	if vcs.DeployCommits && vcs.DeployTags {
+		switch {
+		case changed(flagPushToDeploy) && !changed(flagDeployTags):
+			return nil, fmt.Errorf("this stack deploys on tags; pass --%s=false to deploy on commits instead",
+				flagDeployTags)
+		case changed(flagDeployTags) && !changed(flagPushToDeploy):
+			return nil, fmt.Errorf("this stack deploys on commits; pass --%s=false to deploy on tags instead",
+				flagPushToDeploy)
+		default:
+			return nil, fmt.Errorf("--%s and --%s are mutually exclusive", flagPushToDeploy, flagDeployTags)
+		}
+	}
+
+	// The service silently discards deployPullRequest when any of the three standard triggers is on.
+	// Asking for a pull request number that would be discarded is refused; turning a trigger on for a
+	// stack that merely stores one drops it, which is what the service does with it anyway.
+	if vcs.DeployPullRequest != nil &&
+		(vcs.DeployCommits || vcs.PreviewPullRequests || vcs.PullRequestTemplate) {
+		if changed(flagDeployPullRequest) && args.deployPullRequest > 0 {
+			return nil, fmt.Errorf(
+				"--%s is only honored when --%s, --%s and --%s are all off; the service discards it otherwise",
+				flagDeployPullRequest, flagPushToDeploy, flagPreviewPRs, flagPRTemplate)
+		}
+		vcs.DeployPullRequest = nil
+	}
+
+	return &vcs, nil
+}
+
+func requestedProviderOrigin(args deploymentSettingsEditArgs, requested apitype.VCSProvider) string {
+	if args.flagsChanged(flagVCSProvider) {
+		return fmt.Sprintf("--%s %s", flagVCSProvider, requested)
+	}
+	return fmt.Sprintf("--%s (which implies a github source)", flagGitHubRepo)
 }
 
 // validateEditArgs catches conflicts that cobra can't express on its own
@@ -95,19 +376,97 @@ func validateEditArgs(args deploymentSettingsEditArgs) error {
 		}
 		envKeys[k] = flagRemoveEnv
 	}
-	if args.flagsChanged != nil {
-		for clearFlag, fieldFlags := range oidcProviderFlags {
-			if !args.flagsChanged(clearFlag) {
-				continue
-			}
-			for _, f := range fieldFlags {
-				if args.flagsChanged(f) {
-					return fmt.Errorf("--%s cannot be combined with --%s", clearFlag, f)
-				}
+	if args.flagsChanged == nil {
+		return nil
+	}
+	for clearFlag, fieldFlags := range oidcProviderFlags {
+		if !args.flagsChanged(clearFlag) {
+			continue
+		}
+		for _, f := range fieldFlags {
+			if args.flagsChanged(f) {
+				return fmt.Errorf("--%s cannot be combined with --%s", clearFlag, f)
 			}
 		}
 	}
+	for _, clearFlag := range clearEditFlags {
+		if args.flagsChanged(clearFlag) && !clearFlagValue(args, clearFlag) {
+			return fmt.Errorf("--%s does not accept a false value; omit it to leave the setting alone", clearFlag)
+		}
+	}
+	if args.flagsChanged(flagVCSProvider) {
+		if _, err := parseVCSProvider(args.vcsProvider); err != nil {
+			return err
+		}
+	}
+	if args.flagsChanged(flagGitAuthSSHKeyPassword) && !gitAuthSSHKeyEdited(args) {
+		return fmt.Errorf("--%s requires --%s or --%s",
+			flagGitAuthSSHKeyPassword, flagGitAuthSSHKey, flagGitAuthSSHKeyPath)
+	}
+	// An empty username clears the stored credentials, so only a real username needs a password.
+	if args.flagsChanged(flagGitAuthUsername) && args.gitAuthUsername != "" &&
+		!args.flagsChanged(flagGitAuthPassword) {
+		return fmt.Errorf("--%s requires --%s", flagGitAuthUsername, flagGitAuthPassword)
+	}
+	if args.flagsChanged(flagGitAuthPassword) && !args.flagsChanged(flagGitAuthUsername) {
+		return fmt.Errorf("--%s requires --%s", flagGitAuthPassword, flagGitAuthUsername)
+	}
+	if args.flagsChanged(flagDeployPullRequest) && args.deployPullRequest < 0 {
+		return fmt.Errorf("--%s must not be negative; pass 0 to clear it", flagDeployPullRequest)
+	}
 	return nil
+}
+
+// gitAuthSSHKeyEdited reports whether the SSH key was given inline or as a path, which
+// resolveEditGitAuthSSHKey has already folded into the one field.
+func gitAuthSSHKeyEdited(args deploymentSettingsEditArgs) bool {
+	return args.flagsChanged(flagGitAuthSSHKey) || args.flagsChanged(flagGitAuthSSHKeyPath)
+}
+
+// resolveEditGitAuthSSHKey reads the key file so the rest of the command has a single field to
+// consult. An empty key deletes the stored credentials, so neither an empty path nor an empty file
+// is accepted here: a truncated key file would otherwise wipe every stored authentication mode and
+// report success. Only the inline flag clears them.
+func resolveEditGitAuthSSHKey(args *deploymentSettingsEditArgs) error {
+	if !args.flagsChanged(flagGitAuthSSHKeyPath) {
+		return nil
+	}
+	if args.gitAuthSSHPrivateKeyPath == "" {
+		return fmt.Errorf("--%s requires a path; pass --%s \"\" to remove the stored git credentials",
+			flagGitAuthSSHKeyPath, flagGitAuthSSHKey)
+	}
+	key, err := os.ReadFile(args.gitAuthSSHPrivateKeyPath)
+	if err != nil {
+		return fmt.Errorf("reading SSH private key %q: %w", args.gitAuthSSHPrivateKeyPath, err)
+	}
+	if strings.TrimSpace(string(key)) == "" {
+		return fmt.Errorf("SSH private key %q holds no key material; pass --%s \"\" to remove the "+
+			"stored git credentials", args.gitAuthSSHPrivateKeyPath, flagGitAuthSSHKey)
+	}
+	args.gitAuthSSHPrivateKey = string(key)
+	return nil
+}
+
+// registerEditSecrets keeps the credentials the flags carry out of the request bodies the HTTP
+// client dumps at high verbosity.
+func registerEditSecrets(args deploymentSettingsEditArgs) {
+	var secrets []string
+	for _, v := range []string{
+		args.gitAuthToken, args.gitAuthSSHPrivateKey, args.gitAuthSSHPrivateKeyPassword,
+		args.gitAuthUsername, args.gitAuthPassword,
+	} {
+		if v != "" {
+			secrets = append(secrets, v)
+		}
+	}
+	for _, spec := range args.secretEnvVars {
+		if _, value, ok := strings.Cut(spec, "="); ok && value != "" {
+			secrets = append(secrets, value)
+		}
+	}
+	if len(secrets) > 0 {
+		logging.AddGlobalSecretFilter(secrets, "[secret]")
+	}
 }
 
 // buildSecretEnvVars converts each "KEY=VALUE" --secret-env entry into the plaintext-secret
@@ -119,15 +478,19 @@ func buildSecretEnvVars(specs []string) map[string]map[string]any {
 	out := map[string]map[string]any{}
 	for _, spec := range specs {
 		key, value, _ := strings.Cut(spec, "=")
-		out[key] = map[string]any{"secret": value}
+		out[key] = secretWireValue(value)
 	}
 	return out
 }
 
 // buildEditFlagPatch turns the parsed flag values into a JSON-shaped map that mirrors apitype.DeploymentSettings.
+// vcs, when non-nil, is the complete replacement object resolved by resolveEditVCS. The deprecated gitHub block is
+// never written alongside it: the service gives vcs priority and clears gitHub when both are present.
 func buildEditFlagPatch(
 	args deploymentSettingsEditArgs,
 	secretEnv map[string]map[string]any,
+	vcs *apitype.DeploymentSettingsVCS,
+	stored *apitype.DeploymentSettings,
 ) map[string]any {
 	patch := map[string]any{}
 	changed := args.flagsChanged
@@ -135,32 +498,45 @@ func buildEditFlagPatch(
 		changed = func(string) bool { return false }
 	}
 
-	if changed(flagGitHubRepo) {
-		setNested(patch, []string{"gitHub", "repository"}, args.githubRepo)
+	if vcs != nil {
+		patch["vcs"] = vcs
+		// The service resolves the clone url from the integration and rejects a settings object that
+		// carries both, so a stack moving off a plain git source has to give up its stored url.
+		if !changed(flagGitURL) && adoptedRepoURL(stored) != "" {
+			setNested(patch, []string{"sourceContext", "git", "repoUrl"}, nil)
+		}
 	}
 	if changed(flagGitURL) {
 		setNested(patch, []string{"sourceContext", "git", "repoUrl"}, args.gitURL)
 	}
+	// A branch and a commit cannot both be set: the service validates the merged object and rejects
+	// the pair. Setting either one therefore has to null the other rather than leave it stored.
 	if changed(flagBranch) {
-		setNested(patch, []string{"sourceContext", "git", "branch"}, args.branch)
+		setNested(patch, []string{"sourceContext", "git", "branch"}, nullIfEmpty(args.branch))
+		if args.branch != "" {
+			setNested(patch, []string{"sourceContext", "git", "commit"}, nil)
+		}
 	}
 	if changed(flagCommit) {
-		setNested(patch, []string{"sourceContext", "git", "commit"}, args.commit)
+		setNested(patch, []string{"sourceContext", "git", "commit"}, nullIfEmpty(args.commit))
+		if args.commit != "" {
+			setNested(patch, []string{"sourceContext", "git", "branch"}, nil)
+		}
 	}
 	if changed(flagFolder) {
 		setNested(patch, []string{"sourceContext", "git", "repoDir"}, args.folder)
 	}
-	if changed(flagPreviewPRs) {
-		setNested(patch, []string{"gitHub", "previewPullRequests"}, args.previewPRs)
+	if gitAuth, ok := buildGitAuthPatch(args, changed); ok {
+		setNested(patch, []string{"sourceContext", "git", "gitAuth"}, gitAuth)
 	}
-	if changed(flagPushToDeploy) {
-		setNested(patch, []string{"gitHub", "deployCommits"}, args.pushToDeploy)
-	}
-	if changed(flagPRTemplate) {
-		setNested(patch, []string{"gitHub", "pullRequestTemplate"}, args.prTemplate)
-	}
-	if changed(flagPathFilter) {
-		setNested(patch, []string{"gitHub", "paths"}, args.pathFilters)
+	if changed(flagTemplateSourceURL) {
+		// Clearing only the url would leave an empty template object behind, which then takes
+		// precedence over the git source and fails the deployment for a missing source url.
+		if args.templateSourceURL == "" {
+			setNested(patch, []string{"sourceContext", "template"}, nil)
+		} else {
+			setNested(patch, []string{"sourceContext", "template", "sourceUrl"}, args.templateSourceURL)
+		}
 	}
 
 	if changed(flagRunnerPool) {
@@ -173,11 +549,12 @@ func buildEditFlagPatch(
 		patch["agentPoolID"] = v
 	}
 	if changed(flagExecutorImage) {
-		// Map empty string to null so `--executor-image ""` clears the field
-		// back to the default image. Matches the --runner-pool convention.
-		var v any = args.executorImage
-		if args.executorImage == "" {
-			v = nil
+		// Only the keys the user set are emitted: a bare-string image decodes server-side to an
+		// object whose credentials are explicitly null, which erases the stored registry
+		// credentials. Empty string still clears the whole image, per the --runner-pool convention.
+		var v any
+		if args.executorImage != "" {
+			v = map[string]any{"reference": args.executorImage}
 		}
 		setNested(patch, []string{"executorContext", "executorImage"}, v)
 	}
@@ -189,9 +566,13 @@ func buildEditFlagPatch(
 		setNested(patch, []string{"executorContext", "executorRootPath"}, v)
 	}
 
-	if changed(flagPreRunCommand) {
+	switch {
+	case changed(flagClearPreRunCommands):
+		setNested(patch, []string{"operationContext", "preRunCommands"}, nil)
+	case changed(flagPreRunCommand):
 		setNested(patch, []string{"operationContext", "preRunCommands"}, args.preRunCommands)
 	}
+
 	envEntries := map[string]any{}
 	for _, spec := range args.envVars {
 		key, value, _ := strings.Cut(spec, "=")
@@ -203,7 +584,12 @@ func buildEditFlagPatch(
 	for _, key := range args.removeEnv {
 		envEntries[key] = nil
 	}
-	if len(envEntries) > 0 {
+	switch {
+	case changed(flagClearEnv):
+		// An empty map would be a no-op: the server copies through every stored key the patch does
+		// not mention.
+		setNested(patch, []string{"operationContext", "environmentVariables"}, nil)
+	case len(envEntries) > 0:
 		setNested(patch, []string{"operationContext", "environmentVariables"}, envEntries)
 	}
 
@@ -219,9 +605,24 @@ func buildEditFlagPatch(
 	if changed(flagDeleteAfterDestroy) {
 		setNested(patch, []string{"operationContext", "options", "deleteAfterDestroy"}, args.deleteAfterDestroy)
 	}
+	if changed(flagRemediateIfDrift) {
+		setNested(patch, []string{"operationContext", "options", "remediateIfDriftDetected"}, args.remediateIfDrift)
+	}
+	if changed(flagDeploymentRoleID) {
+		// Only a null role unsets the assignment: the service looks up a role object that carries an
+		// empty id and rejects it as invalid.
+		if args.deploymentRoleID == "" {
+			setNested(patch, []string{"operationContext", "role"}, nil)
+		} else {
+			setNested(patch, []string{"operationContext", "role", "id"}, args.deploymentRoleID)
+		}
+	}
+	if changed(flagCache) {
+		setNested(patch, []string{"cacheOptions", "enable"}, args.cache)
+	}
 
-	// OIDC — AWS
-	if changed(flagOIDCAWSClear) && args.oidcAWSClear {
+	// OIDC - AWS
+	if changed(flagOIDCAWSClear) {
 		setNested(patch, []string{"operationContext", "oidc", "aws"}, nil)
 	}
 	if changed(flagOIDCAWSRoleARN) {
@@ -231,14 +632,18 @@ func buildEditFlagPatch(
 		setNested(patch, []string{"operationContext", "oidc", "aws", "sessionName"}, args.oidcAWSSessionName)
 	}
 	if changed(flagOIDCAWSDuration) {
-		setNested(patch, []string{"operationContext", "oidc", "aws", "duration"}, args.oidcAWSDuration)
+		var v any = args.oidcAWSDuration
+		if args.oidcAWSDuration == "" {
+			v = nil
+		}
+		setNested(patch, []string{"operationContext", "oidc", "aws", "duration"}, v)
 	}
 	if changed(flagOIDCAWSPolicyARN) {
 		setNested(patch, []string{"operationContext", "oidc", "aws", "policyArns"}, args.oidcAWSPolicyARNs)
 	}
 
-	// OIDC — Azure
-	if changed(flagOIDCAzureClear) && args.oidcAzureClear {
+	// OIDC - Azure
+	if changed(flagOIDCAzureClear) {
 		setNested(patch, []string{"operationContext", "oidc", "azure"}, nil)
 	}
 	if changed(flagOIDCAzureClientID) {
@@ -251,8 +656,8 @@ func buildEditFlagPatch(
 		setNested(patch, []string{"operationContext", "oidc", "azure", "subscriptionId"}, args.oidcAzureSubscriptionID)
 	}
 
-	// OIDC — GCP
-	if changed(flagOIDCGCPClear) && args.oidcGCPClear {
+	// OIDC - GCP
+	if changed(flagOIDCGCPClear) {
 		setNested(patch, []string{"operationContext", "oidc", "gcp"}, nil)
 	}
 	if changed(flagOIDCGCPProjectNumber) {
@@ -271,10 +676,77 @@ func buildEditFlagPatch(
 		setNested(patch, []string{"operationContext", "oidc", "gcp", "region"}, args.oidcGCPRegion)
 	}
 	if changed(flagOIDCGCPTokenLifetime) {
-		setNested(patch, []string{"operationContext", "oidc", "gcp", "tokenLifetime"}, args.oidcGCPTokenLifetime)
+		var v any = args.oidcGCPTokenLifetime
+		if args.oidcGCPTokenLifetime == "" {
+			v = nil
+		}
+		setNested(patch, []string{"operationContext", "oidc", "gcp", "tokenLifetime"}, v)
 	}
 
 	return patch
+}
+
+// buildGitAuthPatch nulls the two git auth modes that were not selected: the executor picks an ssh
+// key over an access token over basic auth, so a stored mode left in place would win over the one
+// the user just set.
+func buildGitAuthPatch(args deploymentSettingsEditArgs, changed func(string) bool) (any, bool) {
+	switch {
+	case changed(flagGitAuthToken):
+		if args.gitAuthToken == "" {
+			return nil, true
+		}
+		return map[string]any{
+			"accessToken": secretWireValue(args.gitAuthToken),
+			"sshAuth":     nil,
+			"basicAuth":   nil,
+		}, true
+
+	case gitAuthSSHKeyEdited(args):
+		if args.gitAuthSSHPrivateKey == "" {
+			return nil, true
+		}
+		// The password is always written so that rotating to an unprotected key does not leave the
+		// previous key's passphrase bound to it.
+		sshAuth := map[string]any{
+			"sshPrivateKey": secretWireValue(args.gitAuthSSHPrivateKey),
+			"password":      nil,
+		}
+		if changed(flagGitAuthSSHKeyPassword) {
+			sshAuth["password"] = secretWireValue(args.gitAuthSSHPrivateKeyPassword)
+		}
+		return map[string]any{
+			"sshAuth":     sshAuth,
+			"accessToken": nil,
+			"basicAuth":   nil,
+		}, true
+
+	case changed(flagGitAuthUsername):
+		if args.gitAuthUsername == "" {
+			return nil, true
+		}
+		return map[string]any{
+			"basicAuth": map[string]any{
+				"userName": secretWireValue(args.gitAuthUsername),
+				"password": secretWireValue(args.gitAuthPassword),
+			},
+			"accessToken": nil,
+			"sshAuth":     nil,
+		}, true
+	}
+	return nil, false
+}
+
+func secretWireValue(v string) map[string]any {
+	return map[string]any{"secret": v}
+}
+
+// nullIfEmpty maps an empty flag value to a JSON null so the server clears the stored field, since
+// an empty string is a value the server would store as-is.
+func nullIfEmpty(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
 }
 
 func setNested(m map[string]any, path []string, value any) {
