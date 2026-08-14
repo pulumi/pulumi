@@ -970,6 +970,13 @@ func getUpgradeCommand(isDevVersion bool) string {
 		return "$ brew update && brew upgrade pulumi"
 	}
 
+	// Reinstalling is only worth suggesting when the CLI cannot replace itself. This covers installs made with a
+	// custom root as well, which the check below does not. Dev builds are not published with the checksums that
+	// `pulumi self-update` verifies, so those still go through the install script.
+	if !isDevVersion && selfupdate.CanUpdateInPlace() {
+		return "$ pulumi self-update"
+	}
+
 	if filepath.Dir(exe) != filepath.Join(curUser.HomeDir, workspace.BookkeepingDir, "bin") {
 		return ""
 	}

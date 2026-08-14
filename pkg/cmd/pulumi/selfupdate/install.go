@@ -55,6 +55,13 @@ func (e *errNotUpdatable) Error() string {
 	return e.reason + "\nTo upgrade, run:\n    " + e.hint
 }
 
+// CanUpdateInPlace reports whether the running CLI is one `pulumi self-update` is able to replace, so that callers
+// can offer that command in preference to reinstalling.
+func CanUpdateInPlace() bool {
+	_, err := detectInstallDir()
+	return err == nil
+}
+
 // detectInstallDir returns the directory holding the running CLI, provided it looks like an install produced by
 // get.pulumi.com and is safe to replace.
 func detectInstallDir() (string, error) {
