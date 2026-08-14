@@ -27,9 +27,12 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -133,6 +136,77 @@ func TestDoCmdShowResourcesSubcommand(t *testing.T) {
 
 	assert.Contains(t, stdout.String(), "myBucket")
 	assert.Contains(t, stdout.String(), string(bucket))
+}
+
+// Regression: `pulumi do show-resources` must fall back to the auto-materialized global project
+// and its default stack when CWD is not itself a Pulumi project. Pre-fix, RequireStack landed in
+// ChooseStack in non-interactive mode and failed instead of provisioning the global stack.
+//
+//nolint:paralleltest // Uses t.Chdir and t.Setenv.
+func TestDoCmdShowResourcesFallsBackToGlobalProject(t *testing.T) {
+	// CWD has no Pulumi.yaml; PULUMI_HOME hosts the global fallback project.
+	t.Chdir(t.TempDir())
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	stackURN := resource.URN("urn:pulumi:default::default-global-project::aws:s3/bucket:Bucket::myBucket")
+	stackRef := &backend.MockStackReference{
+		StringV:             globalStackName,
+		NameV:               tokens.MustParseStackName(globalStackName),
+		FullyQualifiedNameV: globalStackName,
+	}
+	mockStack := &backend.MockStack{
+		RefF: func() backend.StackReference { return stackRef },
+		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
+			return &deploy.Snapshot{
+				Resources: []*pkgresource.State{
+					{Type: stackURN.Type(), URN: stackURN, Custom: true},
+				},
+			}, nil
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		URLF:                   func() string { return "file://~" },
+		SupportsOrganizationsF: func() bool { return false },
+		ParseStackReferenceF:   func(string) (backend.StackReference, error) { return stackRef, nil },
+		GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+			return mockStack, nil
+		},
+	}
+	// ws.New must return a workspace whose Save is a no-op (ensureGlobalStack records the stack
+	// selection via w.Save()).
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return nil, "", workspace.ErrProjectNotFound
+		},
+		NewF: func(string) (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings { return &pkgWorkspace.Settings{} },
+				SaveF:     func() error { return nil },
+			}, nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink,
+			string, *workspace.Project, bool, bool, colors.Colorization,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd := NewDoCmd(lm, ws, nil, testHost, panicLoadConverterPlugin, nil)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs([]string{"show-resources"})
+	require.NoError(t, cmd.Execute(), "stderr: %s", stderr.String())
+	assert.Contains(t, stdout.String(), "myBucket")
 }
 
 //nolint:paralleltest // installMockUpsertBackend calls t.Setenv.
