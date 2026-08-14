@@ -1600,7 +1600,6 @@ func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- s.Run(ctx) }()
 
-	// An assistant_message dispatching one CLI tool call.
 	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
 		Type:    backendEventAssistantMessage,
 		IsFinal: true,
@@ -1614,8 +1613,6 @@ func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 		t.Fatal("tool handler never started")
 	}
 
-	// Cancel server-side while the tool is still running; UICancelled must
-	// reach the TUI without waiting for the tool to finish.
 	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventCancelled{
 		Type: backendEventCancelled,
 	})}
@@ -1635,7 +1632,6 @@ func TestSession_CancelledEventDeliveredWhileLocalToolRuns(t *testing.T) {
 	require.Eventually(t, gotCancelled, 2*time.Second, 20*time.Millisecond,
 		"cancelled event must be delivered while a local tool call is still executing")
 
-	// Unblock the tool and shut down.
 	close(release)
 	close(streamer.stream)
 	select {
@@ -1655,7 +1651,6 @@ func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 	streamer := newFakeStreamer()
 	started := make(chan struct{})
 	finished := make(chan error, 1)
-	// Blocks until its context is cancelled.
 	first := &probeHandler{invoke: func(ctx context.Context) (any, error) {
 		close(started)
 		<-ctx.Done()
@@ -1699,7 +1694,6 @@ func TestSession_CancelledEventCancelsInFlightBatchContext(t *testing.T) {
 		t.Fatal("cancelled event did not cancel the in-flight tool context")
 	}
 
-	// A new turn's CLI call must run with a fresh context.
 	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
 		Type: backendEventAssistantMessage,
 		ToolCalls: []apitype.AgentBackendEventToolCall{

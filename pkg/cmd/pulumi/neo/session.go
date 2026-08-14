@@ -56,7 +56,7 @@ type ToolHandler interface {
 }
 
 // toolBatch is one assistant message's worth of CLI tool calls queued for the tool
-// worker, along with the context that cancels it.
+// worker.
 type toolBatch struct {
 	ctx   context.Context
 	calls []apitype.AgentBackendEventToolCall
@@ -109,8 +109,7 @@ type Session struct {
 	// process-global os.Chdir depends on this) while drainStream keeps reading the
 	// SSE stream (pulumi/pulumi-service#44059).
 	batches chan toolBatch
-	// batchErrs delivers a fatal runBatch error back to drainStream/Run.
-	// Capacity 1; only the first error matters.
+	// batchErrs delivers the first fatal runBatch error back to drainStream/Run.
 	batchErrs chan error
 	// batchCtx/batchCancel cover every batch enqueued since the last cancelled
 	// event. Only the Run goroutine touches them, so no locking is needed.
@@ -141,7 +140,6 @@ func (s *Session) Run(ctx context.Context) error {
 	if s.batchCancel != nil {
 		s.batchCancel()
 	}
-	// Don't swallow a worker error that arrived after drainStream last looked.
 	if err == nil {
 		select {
 		case err = <-s.batchErrs:
@@ -211,7 +209,6 @@ func (s *Session) drainStream(
 		case <-ctx.Done():
 			return gotEvent, nil
 		case err := <-s.batchErrs:
-			// Fatal tool-worker error; abort the drain.
 			return gotEvent, err
 		case evt, ok := <-stream:
 			if !ok {
@@ -321,9 +318,6 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 		return nil
 	}
 	if head.Type == backendEventCancelled {
-		// Server-side cancel: stop the in-flight and any queued tool batches
-		// rather than letting them run to completion against a cancelled turn.
-		// Batches enqueued after this point (a new turn) get a fresh context.
 		if s.batchCancel != nil {
 			s.batchCancel()
 			s.batchCancel = nil
@@ -392,7 +386,6 @@ func (s *Session) toolWorker(done chan<- struct{}) {
 	defer close(done)
 	for batch := range s.batches {
 		if err := s.runBatch(batch.ctx, batch.calls); err != nil {
-			// Non-blocking: only the first error matters.
 			select {
 			case s.batchErrs <- err:
 			default:
@@ -404,7 +397,7 @@ func (s *Session) toolWorker(done chan<- struct{}) {
 func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEventToolCall) error {
 	items := make([]apitype.AgentUserEventToolResultItem, 0, len(calls))
 	for _, call := range calls {
-		// Cancelled turn: the agent isn't waiting for results, stop dispatching.
+		// The agent isn't waiting for results from a cancelled turn.
 		if ctx.Err() != nil {
 			return nil
 		}
@@ -447,7 +440,6 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 		})
 	}
 
-	// Don't post results for a cancelled turn.
 	if ctx.Err() != nil {
 		return nil
 	}
