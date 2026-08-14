@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/pulumihome"
 )
 
 // Never change: encrypted files reference this exact location.
@@ -33,12 +35,17 @@ type tpmFileStore struct {
 	err  error // non-nil when the Pulumi home directory could not be determined
 }
 
-// The caller resolves pulumiHome; this package cannot import workspace.
-func newTPMFileStore(pulumiHome string) itemStore {
-	if pulumiHome == "" {
-		return tpmFileStore{err: errors.New("the Pulumi home directory could not be determined, set PULUMI_HOME")}
+// newTPMFileStore locates the key file under the Pulumi home directory.
+// Deliberately pulumihome.Dir, not a workspace path helper: the key file's
+// location must be stable, never redirected to a per-session agent directory.
+// A home directory that cannot be determined disables only this backend, with
+// available() reporting the cause.
+func newTPMFileStore() itemStore {
+	home, err := pulumihome.Dir()
+	if err != nil {
+		return tpmFileStore{err: err}
 	}
-	return tpmFileStore{path: filepath.Join(pulumiHome, tpmFileName)}
+	return tpmFileStore{path: filepath.Join(home, tpmFileName)}
 }
 
 // Proves writability with a probe file, never touching the item.

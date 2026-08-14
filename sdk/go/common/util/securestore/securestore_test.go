@@ -138,7 +138,7 @@ func TestItemFormatRoundTrip(t *testing.T) {
 //nolint:paralleltest // MockInit swaps a package-global resolver
 func TestGetOrCreateKeyCreatesOnceAndIsStable(t *testing.T) {
 	MockInit(t)
-	st, err := Resolve(ModeAuto, "")
+	st, err := Resolve(ModeAuto)
 	require.NoError(t, err)
 	require.Equal(t, BackendMock, st.Backend())
 
@@ -153,7 +153,7 @@ func TestGetOrCreateKeyCreatesOnceAndIsStable(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, k1, k2)
 
-	rd, err := ForBackend(BackendMock, "")
+	rd, err := ForBackend(BackendMock)
 	require.NoError(t, err)
 	k3, err := rd.GetKey()
 	require.NoError(t, err)
@@ -168,7 +168,7 @@ func TestGetOrCreateKeyCreatesOnceAndIsStable(t *testing.T) {
 //nolint:paralleltest // MockInit swaps a package-global resolver
 func TestCorruptStoredItemSurfacesErrorNotRegeneration(t *testing.T) {
 	MockInit(t)
-	st, err := Resolve(ModeAuto, "")
+	st, err := Resolve(ModeAuto)
 	require.NoError(t, err)
 	require.NoError(t, st.b.store.set("garbage"))
 
@@ -183,7 +183,7 @@ func TestCorruptStoredItemSurfacesErrorNotRegeneration(t *testing.T) {
 func TestResolveModes(t *testing.T) {
 	MockInit(t)
 
-	st, err := Resolve(ModePlaintext, "")
+	st, err := Resolve(ModePlaintext)
 	require.NoError(t, err)
 	assert.Equal(t, BackendPlaintext, st.Backend())
 	_, err = st.GetKey()
@@ -192,11 +192,11 @@ func TestResolveModes(t *testing.T) {
 	assert.True(t, errors.Is(err, ErrUnavailable))
 	require.NoError(t, st.DeleteKey())
 
-	st, err = Resolve(ModeDefault, "")
+	st, err = Resolve(ModeDefault)
 	require.NoError(t, err)
 	assert.Equal(t, BackendPlaintext, st.Backend(), "default stays plaintext until the flip")
 
-	st, err = Resolve(ModeOS, "")
+	st, err = Resolve(ModeOS)
 	require.NoError(t, err)
 	assert.Equal(t, BackendMock, st.Backend())
 }
@@ -217,7 +217,7 @@ func TestOutcomeClassification(t *testing.T) {
 func TestDeclinedStopsTheChain(t *testing.T) {
 	fallback := &memStore{}
 	prevHook := platformCandidatesHook
-	platformCandidatesHook = func(bool, string) []backendImpl {
+	platformCandidatesHook = func(bool) []backendImpl {
 		return []backendImpl{
 			{id: BackendMockStrong, store: &refusingStore{}, wrap: rawWrapper{}},
 			{id: BackendMock, store: fallback, wrap: rawWrapper{}},
@@ -226,7 +226,7 @@ func TestDeclinedStopsTheChain(t *testing.T) {
 	t.Cleanup(func() { platformCandidatesHook = prevHook })
 
 	for _, mode := range []Mode{ModeAuto, ModeOS} {
-		st, err := Resolve(mode, "")
+		st, err := Resolve(mode)
 		require.Error(t, err, "a refusal must fail the resolution, not fall back")
 		assert.True(t, errors.Is(err, ErrDeclined))
 		assert.Nil(t, st)
@@ -238,10 +238,10 @@ func TestDeclinedStopsTheChain(t *testing.T) {
 //nolint:paralleltest // MockInit swaps a package-global resolver
 func TestForBackendUnknown(t *testing.T) {
 	MockInit(t)
-	_, err := ForBackend(Backend("windows-credman"), "")
+	_, err := ForBackend(Backend("windows-credman"))
 	assert.Error(t, err)
 
-	st, err := ForBackend(BackendPlaintext, "")
+	st, err := ForBackend(BackendPlaintext)
 	require.NoError(t, err)
 	assert.Equal(t, BackendPlaintext, st.Backend())
 }
@@ -275,12 +275,12 @@ func TestGetOrCreateKeyReconcilesWhenSetLosesRace(t *testing.T) {
 	winnerKey := testKey(t)
 	store := &raceLosingStore{winner: formatItem(wrapRaw, winnerKey)}
 	prevHook := platformCandidatesHook
-	platformCandidatesHook = func(bool, string) []backendImpl {
+	platformCandidatesHook = func(bool) []backendImpl {
 		return []backendImpl{{id: BackendMock, store: store, wrap: rawWrapper{}}}
 	}
 	t.Cleanup(func() { platformCandidatesHook = prevHook })
 
-	st, err := Resolve(ModeAuto, "")
+	st, err := Resolve(ModeAuto)
 	require.NoError(t, err)
 	key, err := st.GetOrCreateKey()
 	require.NoError(t, err, "losing the create race must reconcile silently, not fail")
@@ -290,7 +290,7 @@ func TestGetOrCreateKeyReconcilesWhenSetLosesRace(t *testing.T) {
 //nolint:paralleltest // mutates the package-global resolution hook
 func TestGetOrCreateKeyConcurrent(t *testing.T) {
 	MockInit(t)
-	st, err := Resolve(ModeAuto, "")
+	st, err := Resolve(ModeAuto)
 	require.NoError(t, err)
 
 	const n = 16
@@ -333,12 +333,12 @@ func TestGetOrCreateKeyUpgradesRawItemToTPM(t *testing.T) {
 	mem := &memStore{}
 	require.NoError(t, mem.set(formatItem(wrapRaw, rawKey)))
 	prevHook := platformCandidatesHook
-	platformCandidatesHook = func(bool, string) []backendImpl {
+	platformCandidatesHook = func(bool) []backendImpl {
 		return []backendImpl{{id: BackendMock, store: mem, wrap: fakeTPMWrapper{}}}
 	}
 	t.Cleanup(func() { platformCandidatesHook = prevHook })
 
-	st, err := Resolve(ModeAuto, "")
+	st, err := Resolve(ModeAuto)
 	require.NoError(t, err)
 	key, err := st.GetOrCreateKey()
 	require.NoError(t, err, "raw->tpm upgrade must succeed")

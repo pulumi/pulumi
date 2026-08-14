@@ -47,6 +47,14 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"If you would like to log out of all backends simultaneously, you can pass `--all`,\n\n" +
 			"    $ pulumi logout --all",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			logOutOfEverything := func() error {
+				if err := deleteAllAccounts(); err != nil {
+					return err
+				}
+				fmt.Fprintln(cmd.OutOrStdout(),
+					"Removed stored credentials that could no longer be decrypted; logged out of everything")
+				return nil
+			}
 			// If a <cloud> was specified as an argument, use it.
 			if len(args) > 0 {
 				if cloudURL != "" || all {
@@ -82,6 +90,10 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 					cloudURL, err = pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 					if err != nil {
+						// Removing everything does not require reading the file.
+						if workspace.IsUndecryptableCredentials(err) {
+							return logOutOfEverything()
+						}
 						return fmt.Errorf("could not determine current cloud: %w", err)
 					}
 
@@ -91,6 +103,9 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 				}
 
 				err = deleteAccount(cloudURL)
+				if workspace.IsUndecryptableCredentials(err) {
+					return logOutOfEverything()
+				}
 				fmt.Fprintf(cmd.OutOrStdout(), "Logged out of %s\n", cloudURL)
 			}
 

@@ -19,23 +19,22 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/pulumihome"
 )
 
 const (
 	// BookkeepingDir is the name of our bookkeeping folder, we store state here (like .git for git).
-	BookkeepingDir = ".pulumi"
+	BookkeepingDir = pulumihome.BookkeepingDir
 	// PluginDir is the name of the directory containing plugins.
 	PluginDir = "plugins"
 	// PolicyDir is the name of the directory that holds policy packs.
@@ -291,23 +290,7 @@ func isMarkupFile(path string, expect string) bool {
 
 // GetPulumiHomeDir returns the path of the '.pulumi' folder where Pulumi puts its artifacts.
 func GetPulumiHomeDir() (string, error) {
-	// Allow the folder we use to be overridden by an environment variable
-	dir := env.Home.Value()
-	if dir != "" {
-		return dir, nil
-	}
-
-	// Otherwise, use the current user's home dir + .pulumi
-	user, err := user.Current()
-	if err != nil {
-		return "", fmt.Errorf("getting current user: %w", err)
-	}
-
-	if user == nil || user.HomeDir == "" {
-		return "", fmt.Errorf("could not find user home directory, set %s", env.Home.Var().Name())
-	}
-
-	return filepath.Join(user.HomeDir, BookkeepingDir), nil
+	return pulumihome.Dir()
 }
 
 // GetPulumiPath returns the path to a file or directory under the '.pulumi' folder. It joins the path of
