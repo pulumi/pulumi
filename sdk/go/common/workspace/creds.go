@@ -621,27 +621,18 @@ func GetStoredCredentials() (Credentials, error) {
 	return readCredentialsFile(credsFile)
 }
 
-func deleteCurrentBackendKey() {
-	mode, err := credentialStoreMode()
-	if err != nil || (mode != securestore.ModeAuto && mode != securestore.ModeOS) {
-		return
-	}
-	if st, stErr := stores.Resolve(securestore.ModeAuto); stErr == nil {
-		if err := st.DeleteKey(); err != nil {
-			logging.V(3).Infof("could not delete credentials encryption key: %v", err)
-		}
-	}
-}
-
 // Recovering from a lost key is not the explicit "plaintext" opt-out, so the
 // replacement write stays encrypted.
 var replacedEnvelope atomic.Bool
 
-// The recovery path for `pulumi login` when the file cannot be decrypted.
-// Looks the key up both via the envelope's recorded backend and the best
-// available one, since they can differ. Best effort.
+// Best-effort key cleanup for logout, and for login replacing an unreadable
+// file. Deletes the key under the envelope's recorded backend and under the
+// current best one, since they can differ (unparseable envelope, orphaned
+// key, file already gone).
 func dropEnvelopeKey(credsFile string, markReplaced bool) {
+	sawEnvelope := false
 	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
+		sawEnvelope = true
 		if markReplaced {
 			replacedEnvelope.Store(true)
 		}
@@ -653,7 +644,19 @@ func dropEnvelopeKey(credsFile string, markReplaced bool) {
 			}
 		}
 	}
-	deleteCurrentBackendKey()
+	// Without an envelope or an opted-in mode no key can exist, so skip.
+	if !sawEnvelope {
+		mode, err := credentialStoreMode()
+		if err != nil || (mode != securestore.ModeAuto && mode != securestore.ModeOS) {
+			return
+		}
+	}
+	// Note: resolving probes the OS stores and may prompt for an unlock.
+	if st, stErr := stores.Resolve(securestore.ModeAuto); stErr == nil {
+		if err := st.DeleteKey(); err != nil {
+			logging.V(3).Infof("could not delete credentials encryption key: %v", err)
+		}
+	}
 }
 
 func ResetStoredCredentials() error {

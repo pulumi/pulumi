@@ -24,7 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 )
 
-// BookkeepingDir is the name of the Pulumi bookkeeping folder (like .git for git).
+// BookkeepingDir is the name of the Pulumi bookkeeping folder.
 const BookkeepingDir = ".pulumi"
 
 // Dir returns the path of the Pulumi home folder where Pulumi puts its artifacts.

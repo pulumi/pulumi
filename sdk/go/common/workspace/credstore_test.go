@@ -357,6 +357,24 @@ func TestResetStoredCredentialsClearsUndecryptableState(t *testing.T) {
 }
 
 //nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
+func TestLogoutDeletesKeyForUnparseableEnvelopeRegardlessOfMode(t *testing.T) {
+	// The envelope proves encryption was in use, so logout must clean up the
+	// key even in plaintext mode — the recorded backend is unknowable here.
+	pinSecureCreds(t, "auto")
+	require.NoError(t, StoreCredentials(testCreds()))
+	credsFile, err := getCredsFilePath()
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(credsFile, futureEnvelope(t), 0o600))
+
+	t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
+	resetCredStoreForTesting()
+
+	require.NoError(t, DeleteAllAccounts())
+	_, err = fakeStore(t).GetKey()
+	assert.ErrorIs(t, err, securestore.ErrKeyNotFound)
+}
+
+//nolint:paralleltest // t.Setenv and the package-global secure-store mock forbid parallel runs
 func TestDeleteAllAccountsWorksWhenUndecryptable(t *testing.T) {
 	pinSecureCreds(t, "auto")
 	require.NoError(t, StoreCredentials(testCreds()))
