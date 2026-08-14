@@ -175,10 +175,12 @@ func swapIn(stagedDir, installDir string) error {
 	}
 
 	stamp := strconv.Itoa(os.Getpid())
+	installed := make(map[string]bool, len(staged))
 	for _, entry := range staged {
 		if entry.IsDir() || !strings.HasPrefix(entry.Name(), "pulumi") {
 			continue
 		}
+		installed[entry.Name()] = true
 
 		target := filepath.Join(installDir, entry.Name())
 		if _, err := os.Lstat(target); err == nil {
@@ -201,10 +203,36 @@ func swapIn(stagedDir, installDir string) error {
 		}
 	}
 
+	// A binary the new release no longer ships would otherwise sit on $PATH indefinitely.
+	sweepOrphans(installDir, installed, stamp)
+
 	// The update is committed, so the displaced binaries are safe to drop. The running executable is among them on
 	// Windows and cannot be deleted yet; removeStale picks it up next time.
 	removeStale(installDir)
 	return nil
+}
+
+// sweepOrphans displaces binaries belonging to an earlier release that the new one no longer contains, so that the
+// install directory ends up holding what the archive held and nothing more. Both install scripts delete every
+// pulumi* file before they extract, and this keeps that behaviour. Orphans are renamed rather than deleted because
+// one of them may still be running, which Windows will not allow us to remove.
+func sweepOrphans(installDir string, installed map[string]bool, stamp string) {
+	entries, err := os.ReadDir(installDir)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasPrefix(name, "pulumi") || installed[name] {
+			continue
+		}
+		// Binaries displaced moments ago by the swap itself carry the same prefix.
+		if strings.Contains(name, staleSuffix) {
+			continue
+		}
+		//nolint:forbidigo // renaming within one directory, which is also how a running executable is displaced
+		_ = os.Rename(filepath.Join(installDir, name), filepath.Join(installDir, name+staleSuffix+"."+stamp))
+	}
 }
 
 // removeStale deletes binaries displaced by this or an earlier update, ignoring the ones still held open.

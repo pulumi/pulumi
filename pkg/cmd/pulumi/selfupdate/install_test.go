@@ -202,6 +202,26 @@ func TestRemoveOrphanedStagingClearsLeftoverDirectories(t *testing.T) {
 	assert.DirExists(t, keep)
 }
 
+func TestSwapInRemovesBinariesTheNewReleaseNoLongerShips(t *testing.T) {
+	t.Parallel()
+
+	install := bundle(t, "old")
+	staged := bundle(t, "new")
+
+	// The set of bundled binaries changes between releases, and one that is left behind stays on $PATH.
+	dropped := filepath.Join(install, "pulumi-language-dropped")
+	require.NoError(t, os.WriteFile(dropped, []byte("old pulumi-language-dropped"), 0o600))
+
+	require.NoError(t, swapIn(staged, install))
+
+	assert.NoFileExists(t, dropped)
+	for _, name := range []string{"pulumi", "pulumi-language-nodejs", "pulumi-language-python"} {
+		contents, err := os.ReadFile(filepath.Join(install, name))
+		require.NoError(t, err)
+		assert.Equal(t, "new "+name, string(contents))
+	}
+}
+
 func TestSwapInIgnoresUnrelatedFiles(t *testing.T) {
 	t.Parallel()
 
