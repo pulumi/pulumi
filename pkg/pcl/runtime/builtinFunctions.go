@@ -1105,6 +1105,19 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	notImplementedFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "message",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.DynamicPseudoType),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			return cty.NilVal, errors.New(args[0].AsString())
+		},
+	})
+
 	return map[string]function.Function{
 		"cwd":                literalStringFn(ectx.workingDirectory, ""),
 		"rootDirectory":      literalStringFn(ectx.rootDirectory, "rootDirectory"),
@@ -1132,6 +1145,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		"element":            stdlib.ElementFunc,
 		"join":               stdlib.JoinFunc,
 		"length":             lengthFunc,
+		"notImplemented":     notImplementedFn,
 		"singleOrNone":       singleOrNoneFn,
 		"entries":            entriesFn,
 		"lookup":             stdlib.LookupFunc,

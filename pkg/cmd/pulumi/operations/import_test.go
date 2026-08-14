@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	resourcestack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -617,6 +618,67 @@ func TestParseImportFileProviderInputs(t *testing.T) {
 	require.NotNil(t, imports[0].ProviderInputs)
 	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].ProviderInputs["region"])
 	assert.Equal(t, resource.NewProperty("6.0.0"), imports[0].ProviderInputs["version"])
+}
+
+func TestParseImportFileUnknownValues(t *testing.T) {
+	t.Parallel()
+
+	// The marker the stack serialisation uses to stand in for an unknown value.
+	unknown, err := resourcestack.SerializePropertyValue(
+		t.Context(), resource.MakeComputed(resource.NewProperty("")), sdkconfig.NopEncrypter, false)
+	require.NoError(t, err)
+
+	providerURN := resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::my-prov")
+	spec := importSpec{
+		Name:     "thing",
+		ID:       "thing-id",
+		Type:     "aws:s3:Bucket",
+		Provider: "my-prov",
+	}
+
+	tests := []struct {
+		field string
+		give  func(importSpec) importFile
+	}{
+		{
+			field: "providerInputs",
+			give: func(spec importSpec) importFile {
+				return importFile{
+					Resources: []importSpec{spec},
+					ProviderInputs: map[string]map[string]any{
+						"my-prov": {"region": unknown, "version": "6.0.0"},
+					},
+				}
+			},
+		},
+		{
+			field: "inputs",
+			give: func(spec importSpec) importFile {
+				spec.Inputs = map[string]any{"bucket": unknown}
+				return importFile{Resources: []importSpec{spec}}
+			},
+		},
+		{
+			field: "outputs",
+			give: func(spec importSpec) importFile {
+				spec.Outputs = map[string]any{"arn": []any{unknown}}
+				return importFile{Resources: []importSpec{spec}}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.field, func(t *testing.T) {
+			t.Parallel()
+
+			f := tt.give(spec)
+			f.NameTable = map[string]resource.URN{"my-prov": providerURN}
+
+			_, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+			assert.ErrorContains(t, err,
+				"the "+tt.field+" for resource 'thing' of type 'aws:s3:Bucket' contain unknown values")
+		})
+	}
 }
 
 func ptr[T any](v T) *T {

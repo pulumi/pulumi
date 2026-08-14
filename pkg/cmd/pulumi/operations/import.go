@@ -662,6 +662,17 @@ func parseImportFile(
 			}
 		}
 
+		for field, props := range map[string]resource.PropertyMap{
+			"inputs":         imp.Inputs,
+			"outputs":        imp.Outputs,
+			"providerInputs": imp.ProviderInputs,
+		} {
+			if props.ContainsUnknowns() {
+				pusherrf("the %v for %v contain unknown values; fill them in before importing",
+					field, describeResource(i, spec))
+			}
+		}
+
 		imports[i] = imp
 	}
 

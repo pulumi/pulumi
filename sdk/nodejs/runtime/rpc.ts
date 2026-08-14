@@ -20,7 +20,7 @@ import { ComponentResource, CustomResource, DependencyResource, ProviderResource
 import { debuggablePromise, debugPromiseLeaks, errorString } from "./debuggable";
 import { getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
 import { excessiveDebugOutput, isDryRun } from "./settings";
-import { getStore, getResourcePackages, getResourceModules } from "./state";
+import { getStore, getResourcePackages, getResourceModules, PendingResourceRegistration } from "./state";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as semver from "semver";
@@ -155,6 +155,9 @@ export interface SerializationOptions {
      * this will have no effect.
      */
     excludeResourceReferencesFromDependencies?: boolean;
+
+    /** @internal */
+    pendingRegistration?: PendingResourceRegistration;
 }
 
 /**
@@ -173,6 +176,9 @@ async function serializeFilteredProperties(
     const result: Record<string, any> = {};
     for (const k of Object.keys(props)) {
         if (acceptKey(k)) {
+            if (opts?.pendingRegistration !== undefined) {
+                opts.pendingRegistration.inputProperty = k;
+            }
             // We treat properties with undefined values as if they do not exist.
             const dependentResources = new Set<Resource>();
             let v;
@@ -450,6 +456,10 @@ export async function serializeProperty(
     if (Output.isInstance(prop)) {
         if (excessiveDebugOutput) {
             log.debug(`Serialize property [${ctx}]: Output<T>`);
+        }
+
+        if (opts?.pendingRegistration !== undefined) {
+            opts.pendingRegistration.awaitingOutput = prop;
         }
 
         // handle serializing both old-style outputs (with sync resources) and new-style outputs

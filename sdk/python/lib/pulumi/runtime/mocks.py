@@ -340,8 +340,13 @@ def set_mocks(
     """
     set_mocks configures the Pulumi runtime to use the given mocks for testing.
     """
+    monitor = MockMonitor(mocks) if monitor is None else monitor
+    monitor_features = set(
+        monitor.GetDeploymentInfo(empty_pb2.Empty()).supportedFeatures
+    )
     settings = MockSettings(
-        monitor=MockMonitor(mocks) if not monitor else monitor,
+        monitor=monitor,
+        monitor_features=monitor_features,
         engine=MockEngine(logger),
         project=project if project is not None else "project",
         stack=stack if stack is not None else "stack",

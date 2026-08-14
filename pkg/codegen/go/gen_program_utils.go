@@ -78,7 +78,7 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 			}`, true
 	case "notImplemented":
 		return fmt.Sprintf(`
-%sfunc notImplemented(message string) pulumi.AnyOutput {
+%sfunc notImplemented(message string) any {
 %s  panic(message)
 %s}`, indent, indent, indent), true
 	case "singleOrNone":

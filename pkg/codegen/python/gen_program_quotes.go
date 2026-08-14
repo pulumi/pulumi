@@ -300,6 +300,9 @@ func (g *generator) rewriteQuotes(x model.Expression) (model.Expression, []*quot
 				return idx, nil
 			}
 		case *model.ScopeTraversalExpression:
+			if isHookArgsTraversal(x) {
+				return x, nil
+			}
 			idx := g.rewriteTraversal(x.Traversal, nil, x.Parts)
 			if idx != nil {
 				return idx, nil

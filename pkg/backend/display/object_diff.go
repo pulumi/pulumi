@@ -886,6 +886,20 @@ func (p *propertyPrinter) printPropertyValueDiff(titleFunc func(*propertyPrinter
 	p = p.withOp(deploy.OpUpdate).withPrefix(true)
 	contract.Assertf(p.indent > 0, "indentation must be > 0 to print property value diffs")
 
+	if p.showSecrets && (diff.Old.IsSecret() || diff.New.IsSecret()) {
+		old, new := diff.Old, diff.New
+		if old.IsSecret() {
+			old = old.SecretValue().Element
+		}
+		if new.IsSecret() {
+			new = new.SecretValue().Element
+		}
+		if elemDiff := old.Diff(new); elemDiff != nil {
+			p.printPropertyValueDiff(titleFunc, *elemDiff)
+			return
+		}
+	}
+
 	if diff.Array != nil {
 		titleFunc(p)
 		p.writeVerbatim("[\n")

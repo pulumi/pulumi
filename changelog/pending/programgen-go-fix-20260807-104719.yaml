@@ -1,6 +1,0 @@
-component: programgen/go
-kind: fix
-body: Fix invalid `_ := index` statement emitted for resources with a numeric `range` whose value variable is unused
-time: 2026-08-07T10:47:19.000000+01:00
-custom:
-  PR: "24227"

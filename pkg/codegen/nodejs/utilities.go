@@ -108,6 +108,18 @@ func makeValidIdentifier(name string) string {
 	return name
 }
 
+// makeValidModuleSegment converts one `/`-separated segment of a module path into the (possibly
+// dotted) name it is referenced by in generated code. Dots are namespace separators (e.g. the
+// Kubernetes module "networking.k8s.io") and are preserved; each dotted part that is not a legal
+// identifier (e.g. containing hyphens) is sanitized.
+func makeValidModuleSegment(segment string) string {
+	parts := strings.Split(segment, ".")
+	for i, part := range parts {
+		parts[i] = makeValidIdentifier(part)
+	}
+	return strings.Join(parts, ".")
+}
+
 func makeSafeEnumName(name, typeName string) (string, error) {
 	// Replace common single character enum names.
 	safeName := codegen.ExpandShortEnumName(name)

@@ -30,12 +30,8 @@ type GetConfigResult struct {
 }
 
 func GetConfigOutput(ctx *pulumi.Context, args GetConfigOutputArgs, opts ...pulumi.InvokeOption) GetConfigResultOutput {
-	return pulumi.ToOutputWithContext(ctx.Context(), args).
-		ApplyT(func(v interface{}) (GetConfigResultOutput, error) {
-			args := v.(GetConfigArgs)
-			options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
-			return ctx.InvokeOutput("config:index:getConfig", args, GetConfigResultOutput{}, options).(GetConfigResultOutput), nil
-		}).(GetConfigResultOutput)
+	options := pulumi.InvokeOutputOptions{InvokeOptions: internal.PkgInvokeDefaultOpts(opts)}
+	return ctx.InvokeOutput("config:index:getConfig", args, GetConfigResultOutput{}, options).(GetConfigResultOutput)
 }
 
 type GetConfigOutputArgs struct {

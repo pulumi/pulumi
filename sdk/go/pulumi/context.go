@@ -975,6 +975,8 @@ func (ctx *Context) InvokePackageRaw(
 // InvokeOutputOptions are the options that control the behavior of an InvokeOutput call.
 type InvokeOutputOptions struct {
 	// The package reference for parameterized providers.
+	//
+	// Deprecated: use PackageRefF instead.
 	PackageRef string
 	// PackageRefF lazily resolves the package reference for parameterized providers.
 	//
