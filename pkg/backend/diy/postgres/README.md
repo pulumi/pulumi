@@ -17,7 +17,39 @@ postgres://username:password@hostname:port/database?param1=value1&param2=value2
 ## Configuration Options
 The following query parameters are supported in the connection string:
 - `table`: The name of the table to use for state storage (default: `pulumi_state`)
+- `checkpoint_format`: How stack checkpoints are stored (`legacy` (default) or `jsonb`). See [Queryable state](#queryable-state-opt-in) below.
 - All standard PostgreSQL connection parameters (sslmode, connect_timeout, etc.)
+
+## Queryable state (opt-in)
+By default, checkpoints are stored as base64-wrapped JSON in a `JSON` column, which makes them opaque to SQL. Add `?checkpoint_format=jsonb` to store checkpoints in a separate `JSONB` column so you can query state directly:
+
+```bash
+pulumi login "postgres://user:pass@host/db?checkpoint_format=jsonb"
+```
+
+Then run SQL like:
+```sql
+-- List resources across all stacks
+SELECT key, data_jsonb->'checkpoint'->'latest'->'resources'
+FROM pulumi_state
+WHERE key LIKE '.pulumi/stacks/%';
+
+-- Find stacks that manage a given resource type
+SELECT key FROM pulumi_state
+WHERE data_jsonb @> '{"checkpoint":{"latest":{"resources":[{"type":"aws:s3/bucket:Bucket"}]}}}';
+```
+
+Notes:
+- Secret values inside the checkpoint stay encrypted by whichever secrets provider the stack is configured to use (`passphrase`, cloud KMS, HashiCorp Vault, etc.) — same trust model as the local-file backend.
+- Rows are self-describing: exactly one of `data` / `data_jsonb` is populated. The flag controls writes only, so enabling, disabling, or running mixed writers against the same table is always safe.
+- All uncompressed JSON state blobs under `.pulumi/` — checkpoints, history entries, backups, and locks — use JSONB when the flag is on. Non-JSON blobs (`meta.yaml`, `Pulumi.<stack>.yaml`) and compressed variants (`.json.gz`, `.json.zst`) always use the legacy column.
+- Existing rows are not migrated; the next write rewrites that row in the new format. To migrate eagerly:
+  ```sql
+  UPDATE pulumi_state
+  SET data_jsonb = convert_from(decode(data->>'data', 'base64'), 'UTF8')::jsonb,
+      data = NULL
+  WHERE key LIKE '%.pulumi/%' AND key LIKE '%.json' AND data_jsonb IS NULL;
+  ```
 
 ## PostgreSQL Connection Parameters
 The following PostgreSQL connection parameters can be included in the connection string query parameters:
