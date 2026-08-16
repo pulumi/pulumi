@@ -1,0 +1,19 @@
+run: esc env version --utc
+error: exit status 1
+process:
+  fs:
+    .esc.yaml: |
+      environment:
+        imports:
+          - default/base
+environments:
+  test-user/default/base:
+    values:
+      foo: bar
+
+---
+> esc env version --utc
+
+---
+> esc env version --utc
+Error: the default environment is an anonymous list of imports; this command requires a named environment. Pass an environment explicitly

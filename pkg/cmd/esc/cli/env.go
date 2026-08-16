@@ -49,6 +49,45 @@ type envCommand struct {
 	esc *escCommand
 
 	envNameFlag string
+
+	// Memoized result of resolveDefaultEnvironment.
+	defaultEnvOnce bool
+	defaultEnv     *defaultEnvironment
+	defaultEnvErr  error
+}
+
+// errAnonymousDefault is returned when a command that requires a named environment picks up a
+// default environment that is an anonymous list of imports.
+var errAnonymousDefault = errors.New(
+	"the default environment is an anonymous list of imports; this command requires a named environment. " +
+		"Pass an environment explicitly")
+
+// envTarget identifies the environment a command operates on: either a named environment or the
+// anonymous import list implied by a default.
+type envTarget struct {
+	ref  environmentRef
+	anon *defaultEnvironment
+}
+
+// isAnonymous returns true if the target is an anonymous import list rather than a named environment.
+func (t envTarget) isAnonymous() bool {
+	return t.anon != nil
+}
+
+// orgName returns the organization the target is evaluated in.
+func (t envTarget) orgName() string {
+	if t.anon != nil {
+		return t.anon.orgName
+	}
+	return t.ref.orgName
+}
+
+// name returns a display name for the target.
+func (t envTarget) name() string {
+	if t.anon != nil {
+		return "default"
+	}
+	return t.ref.envName
 }
 
 func newEnvCmd(esc *escCommand) *cobra.Command {
@@ -78,6 +117,7 @@ func newEnvCmd(esc *escCommand) *cobra.Command {
 
 	cmd.AddCommand(newEnvInitCmd(env))
 	cmd.AddCommand(newEnvCloneCmd(env))
+	cmd.AddCommand(newEnvDefaultCmd(env))
 	cmd.AddCommand(newEnvEditCmd(env))
 	cmd.AddCommand(newEnvGetCmd(env))
 	cmd.AddCommand(newEnvDiffCmd(env))
@@ -266,13 +306,27 @@ func (cmd *envCommand) getNewEnvRef(
 
 // Get an environment reference for an existing environment
 // If the given path is ambiguous, we need to make additional API calls to disambiguate
+//
+// If no environment is given, the default environment for the working directory is used. Commands
+// that route through this function require a named environment, so an anonymous default (a list of
+// imports) is rejected.
 func (cmd *envCommand) getExistingEnvRef(
 	ctx context.Context,
 	args []string,
 ) (environmentRef, []string, error) {
 	if cmd.envNameFlag == "" {
 		if len(args) == 0 {
-			return environmentRef{}, nil, errors.New("no environment name specified")
+			def, err := cmd.resolveDefaultEnvironment(ctx)
+			if err != nil {
+				return environmentRef{}, nil, err
+			}
+			if def == nil {
+				return environmentRef{}, nil, errors.New("no environment name specified")
+			}
+			if def.ref == nil {
+				return environmentRef{}, nil, errAnonymousDefault
+			}
+			return *def.ref, nil, nil
 		}
 		cmd.envNameFlag, args = args[0], args[1:]
 	}
@@ -327,6 +381,50 @@ func (cmd *envCommand) getExistingEnvRefWithRelative(
 	}
 
 	return ref, nil
+}
+
+// getEnvTargetForOpenGet resolves the target of a command that accepts an optional environment
+// followed by an optional property path (i.e. `open` and `get`). It returns the target and the
+// remaining arguments.
+//
+// Disambiguation follows the default environment rules: an argument that contains a '/' is always
+// an environment reference, while a bare argument is a property path when a default environment is
+// configured and an environment name otherwise.
+func (cmd *envCommand) getEnvTargetForOpenGet(
+	ctx context.Context,
+	args []string,
+) (envTarget, []string, error) {
+	// An explicit --env is always the environment, and never consumes a positional argument.
+	if cmd.envNameFlag != "" {
+		ref, err := cmd.getExistingEnvRefWithRelative(ctx, cmd.envNameFlag, nil)
+		return envTarget{ref: ref}, args, err
+	}
+
+	// An explicit environment reference is always the environment.
+	if len(args) >= 2 || (len(args) == 1 && strings.Contains(args[0], "/")) {
+		ref, args, err := cmd.getExistingEnvRef(ctx, args)
+		return envTarget{ref: ref}, args, err
+	}
+
+	def, err := cmd.resolveDefaultEnvironment(ctx)
+	if err != nil {
+		return envTarget{}, nil, err
+	}
+
+	if len(args) == 1 {
+		if def == nil {
+			// No default: the bare argument names an environment, as it always has.
+			ref, args, err := cmd.getExistingEnvRef(ctx, args)
+			return envTarget{ref: ref}, args, err
+		}
+		// A default is configured: the bare argument is a property path.
+		return def.target(), args, nil
+	}
+
+	if def == nil {
+		return envTarget{}, nil, errors.New("no environment name specified")
+	}
+	return def.target(), nil, nil
 }
 
 func sortEnvironmentDiagnostics(diags []client.EnvironmentDiagnostic) {
