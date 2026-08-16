@@ -535,14 +535,18 @@ def resource_output(
     res: "Resource",
 ) -> tuple[Callable[[Any, bool, bool, Optional[Exception]], None], "Output"]:
     # When there is no running event loop (e.g., pulumi.runtime.set_mocks()
-    # called at module scope), create one so asyncio.Future() does not
-    # raise RuntimeError. Python 3.14+ no longer creates an implicit loop
-    # when get_event_loop() is called with no running loop.
+    # called at module scope), asyncio.Future() below can raise RuntimeError
+    # on Python 3.14+, where get_event_loop() no longer creates an implicit
+    # loop. Create and set one only when neither a running loop nor a
+    # thread-local loop already exists, so an existing loop is never clobbered.
     try:
         asyncio.get_running_loop()
     except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        try:
+            asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
     data_future: asyncio.Future[_OutputData[Any]] = asyncio.Future()
 
     def resolve(value: Any, known: bool, secret: bool, exn: Optional[Exception]):
