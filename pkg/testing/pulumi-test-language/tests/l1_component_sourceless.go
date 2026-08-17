@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +34,12 @@ func init() {
 					// than under one derived from its declaration.
 					component := RequireSingleResource(l, snap.Resources, "my:custom:Component")
 					assert.Equal(l, "myComponent", component.URN.Name())
-					assert.Empty(l, component.Inputs, "expected component to have no inputs")
+
+					want := resource.NewPropertyMapFromMap(map[string]any{
+						"aNumber": 42,
+						"aString": "hello",
+					})
+					assert.Equal(l, want, component.Inputs, "expected component inputs to be %v", want)
 				},
 			},
 		},

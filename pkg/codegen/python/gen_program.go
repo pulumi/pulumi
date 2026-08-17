@@ -1732,7 +1732,19 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		g.genTemps(w, temps)
 		g.Fgenf(w, "%s%s = pulumi.ComponentResource(%q, %s", g.Indent, g.nodeName(r.Name()), r.Token,
 			g.makeResourceName(r.LogicalName(), ""))
-		g.genResourceOptions(w, optionsBag, false, nil)
+		if len(r.Inputs) > 0 {
+			g.Fgen(w, ", {")
+			for i, attr := range r.Inputs {
+				if i > 0 {
+					g.Fgen(w, ", ")
+				}
+				value, valueTemps := g.lowerExpression(attr.Value, attr.Value.Type())
+				g.genTemps(w, valueTemps)
+				g.Fgenf(w, "%q: %.v", attr.Name, value)
+			}
+			g.Fgen(w, "}")
+		}
+		g.genResourceOptions(w, optionsBag, len(r.Inputs) != 0, nil)
 		g.Fgen(w, ")\n")
 		return
 	}

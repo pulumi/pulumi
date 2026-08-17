@@ -7,7 +7,10 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		myComponent := &pulumi.ResourceState{}
-		err := ctx.RegisterComponentResource("my:custom:Component", "myComponent", myComponent)
+		err := ctx.RegisterComponentResourceV2("my:custom:Component", "myComponent", pulumi.Map{
+			"aNumber": pulumi.Any(42),
+			"aString": pulumi.Any("hello"),
+		}, myComponent)
 		if err != nil {
 			return err
 		}

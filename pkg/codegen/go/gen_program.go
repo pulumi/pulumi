@@ -2061,8 +2061,20 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		if g.isComponent {
 			resourceName = fmt.Sprintf(`fmt.Sprintf("%%s-%s", name)`, r.LogicalName())
 		}
-		g.Fgenf(w, "err %s ctx.RegisterComponentResource(%q, %s, %s",
-			assignment, r.Token, resourceName, varName)
+		register, props := "RegisterComponentResource", ""
+		if len(r.Inputs) > 0 {
+			register = "RegisterComponentResourceV2"
+			var b bytes.Buffer
+			b.WriteString("pulumi.Map{\n")
+			for _, attr := range r.Inputs {
+				// There is no schema to type these against, so each value goes in as pulumi.Any.
+				g.Fgenf(&b, "%q: pulumi.Any(%.v),\n", attr.Name, attr.Value)
+			}
+			b.WriteString("}, ")
+			props = b.String()
+		}
+		g.Fgenf(w, "err %s ctx.%s(%q, %s, %s%s",
+			assignment, register, r.Token, resourceName, props, varName)
 		g.isErrAssigned = true
 		g.genResourceOptions(w, options)
 		g.Fgen(w, ")\n")

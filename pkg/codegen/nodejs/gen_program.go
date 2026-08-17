@@ -1821,9 +1821,22 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	// ComponentResource with the type token that names it.
 	if component.Program == nil {
 		optionsBag := g.genResourceOptions(component.Options, nil, nil)
-		g.Fgenf(w, "%sconst %s = new pulumi.ComponentResource(%q, %s, {}%s);\n",
+		g.Fgenf(w, "%sconst %s = new pulumi.ComponentResource(%q, %s, {",
 			g.Indent, g.nodeName(component.Name()), component.Token,
-			g.makeResourceName(component.LogicalName(), ""), optionsBag)
+			g.makeResourceName(component.LogicalName(), ""))
+		if len(component.Inputs) > 0 {
+			g.Indented(func() {
+				for _, attr := range component.Inputs {
+					propertyName := attr.Name
+					if !isLegalIdentifier(propertyName) {
+						propertyName = fmt.Sprintf("%q", propertyName)
+					}
+					g.Fgenf(w, "\n%s%s: %.v,", g.Indent, propertyName, attr.Value)
+				}
+			})
+			g.Fgenf(w, "\n%s", g.Indent)
+		}
+		g.Fgenf(w, "}%s);\n", optionsBag)
 		return
 	}
 

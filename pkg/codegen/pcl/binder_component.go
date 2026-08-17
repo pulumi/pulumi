@@ -228,14 +228,14 @@ func includeSourceDirectoryInDiagnostics(diags hcl.Diagnostics, componentSourceD
 	}
 }
 
-// bindSourcelessComponent binds a component declared without a source. Such a component has no inner program, so the
-// only things to read from its body are the type token that names it and its resource options.
+// bindSourcelessComponent binds a component declared without a source. Such a component has no inner program, so there
+// is no schema to shape its inputs: every attribute other than the type token is taken as an input of its own type.
 func (b *binder) bindSourcelessComponent(node *Component, block *model.Block) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
-	node.InputType = model.NewObjectType(map[string]model.Type{})
 	node.VariableType = model.DynamicType
 
+	inputProperties := map[string]model.Type{}
 	var options *model.Block
 	for _, item := range block.Body.Items {
 		switch item := item.(type) {
@@ -256,7 +256,8 @@ func (b *binder) bindSourcelessComponent(node *Component, block *model.Block) hc
 					node.Token = token
 				}
 			default:
-				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
+				node.Inputs = append(node.Inputs, item)
+				inputProperties[item.Name] = item.Value.Type()
 			}
 		case *model.Block:
 			if item.Type != "options" {
@@ -270,6 +271,8 @@ func (b *binder) bindSourcelessComponent(node *Component, block *model.Block) hc
 			options = item
 		}
 	}
+
+	node.InputType = model.NewObjectType(inputProperties)
 
 	if node.Token == "" {
 		diagnostics = append(diagnostics, errorf(node.SyntaxNode().Range(),
@@ -436,6 +439,13 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 				} else {
 					node.logicalName = logicalName
 				}
+				continue
+			}
+			// 'token' only names an existing component resource, which is what a component without a source
+			// does; a component with a source declares one, so the two are mutually exclusive.
+			if item.Name == "token" {
+				diagnostics = append(diagnostics, errorf(item.Syntax.NameRange,
+					"'token' may only be set on a component declared without a source"))
 				continue
 			}
 			// all other attributes are part of the inputs
