@@ -1,0 +1,3 @@
+import * as pulumi from "@pulumi/pulumi";
+
+const myComponent = new pulumi.ComponentResource("my:custom:Component", "myComponent", {});
