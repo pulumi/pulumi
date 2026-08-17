@@ -2050,7 +2050,16 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	// against the type token that names it.
 	if r.Program == nil {
 		options, temps := g.lowerResourceOptions(r.Options, nil)
+		// Lowering an input can introduce temporaries, which are statements in their own right; collect them all
+		// so that they are emitted before the statement that uses them rather than inside it.
+		inputs := make([]*model.Attribute, len(r.Inputs))
+		for i, attr := range r.Inputs {
+			value, valueTemps := g.lowerExpression(attr.Value, attr.Value.Type())
+			temps = append(temps, valueTemps...)
+			inputs[i] = &model.Attribute{Name: attr.Name, Value: value}
+		}
 		g.genTemps(w, temps)
+
 		varName := g.nodeName(r.Name())
 		g.Fgenf(w, "%s := &pulumi.ResourceState{}\n", varName)
 		assignment := ":="
@@ -2062,11 +2071,11 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 			resourceName = fmt.Sprintf(`fmt.Sprintf("%%s-%s", name)`, r.LogicalName())
 		}
 		register, props := "RegisterComponentResource", ""
-		if len(r.Inputs) > 0 {
+		if len(inputs) > 0 {
 			register = "RegisterComponentResourceV2"
 			var b bytes.Buffer
 			b.WriteString("pulumi.Map{\n")
-			for _, attr := range r.Inputs {
+			for _, attr := range inputs {
 				// There is no schema to type these against, so each value goes in as pulumi.Any.
 				g.Fgenf(&b, "%q: pulumi.Any(%.v),\n", attr.Name, attr.Value)
 			}

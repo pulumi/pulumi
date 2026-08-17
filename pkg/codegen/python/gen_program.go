@@ -1729,22 +1729,29 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	// ComponentResource with the type token that names it.
 	if r.Program == nil {
 		optionsBag, temps := g.lowerResourceOptions(r.Options, nil)
+		// Lowering an input can introduce temporaries, which are statements in their own right; collect them all
+		// so that they are emitted before the assignment that uses them rather than inside it.
+		inputs := make([]*model.Attribute, len(r.Inputs))
+		for i, attr := range r.Inputs {
+			value, valueTemps := g.lowerExpression(attr.Value, attr.Value.Type())
+			temps = append(temps, valueTemps...)
+			inputs[i] = &model.Attribute{Name: attr.Name, Value: value}
+		}
 		g.genTemps(w, temps)
+
 		g.Fgenf(w, "%s%s = pulumi.ComponentResource(%q, %s", g.Indent, g.nodeName(r.Name()), r.Token,
 			g.makeResourceName(r.LogicalName(), ""))
-		if len(r.Inputs) > 0 {
+		if len(inputs) > 0 {
 			g.Fgen(w, ", {")
-			for i, attr := range r.Inputs {
+			for i, attr := range inputs {
 				if i > 0 {
 					g.Fgen(w, ", ")
 				}
-				value, valueTemps := g.lowerExpression(attr.Value, attr.Value.Type())
-				g.genTemps(w, valueTemps)
-				g.Fgenf(w, "%q: %.v", attr.Name, value)
+				g.Fgenf(w, "%q: %.v", attr.Name, attr.Value)
 			}
 			g.Fgen(w, "}")
 		}
-		g.genResourceOptions(w, optionsBag, len(r.Inputs) != 0, nil)
+		g.genResourceOptions(w, optionsBag, len(inputs) != 0, nil)
 		g.Fgen(w, ")\n")
 		return
 	}

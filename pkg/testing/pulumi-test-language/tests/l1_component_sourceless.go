@@ -15,6 +15,8 @@
 package tests
 
 import (
+	"encoding/json"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,11 +37,22 @@ func init() {
 					component := RequireSingleResource(l, snap.Resources, "my:custom:Component")
 					assert.Equal(l, "myComponent", component.URN.Name())
 
+					inputs := component.Inputs.Copy()
+
+					// Languages differ in how they space out serialized JSON, so compare it parsed.
+					aJSON, ok := inputs["aJson"]
+					require.True(l, ok, "expected component to have an aJson input")
+					require.True(l, aJSON.IsString(), "expected aJson to be a string")
+					var parsed map[string]string
+					require.NoError(l, json.Unmarshal([]byte(aJSON.StringValue()), &parsed))
+					assert.Equal(l, map[string]string{"key": "value"}, parsed)
+					delete(inputs, "aJson")
+
 					want := resource.NewPropertyMapFromMap(map[string]any{
 						"aNumber": 42,
 						"aString": "hello",
 					})
-					assert.Equal(l, want, component.Inputs, "expected component inputs to be %v", want)
+					assert.Equal(l, want, inputs, "expected component inputs to be %v", want)
 				},
 			},
 		},
